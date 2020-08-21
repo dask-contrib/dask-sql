@@ -3,17 +3,9 @@ from dask_sql.java import get_java_class
 
 _plugins = {}
 
-def register_plugin(name, plugin):
-    _plugins[name] = plugin
-
 
 def register_plugin_class(plugin_class):
     _plugins[plugin_class.class_name] = plugin_class
-
-
-def register_plugin_classes(plugin_classes):
-    for plugin_class in plugin_classes:
-        register_plugin_class(plugin_class)
 
 
 def apply_rex_call(rex, df):
@@ -21,7 +13,7 @@ def apply_rex_call(rex, df):
 
     try:
         class_plugin = _plugins[class_name]
-    except KeyError:
+    except KeyError: # pragma: no cover
         raise NotImplementedError(f"No conversion for class {class_name} available (yet).")
 
     plugin_instance = class_plugin()

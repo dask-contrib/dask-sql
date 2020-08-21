@@ -135,4 +135,4 @@ class LogicalJoinPlugin:
 
             return lhs_index, rhs_index
 
-        raise TypeError("Can not extract lhs and rhs from this node")
+        raise TypeError("Can not extract lhs and rhs from this node") # pragma: no cover
