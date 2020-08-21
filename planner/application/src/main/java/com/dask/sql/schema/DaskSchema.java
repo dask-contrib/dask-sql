@@ -48,7 +48,6 @@ public class DaskSchema implements Schema {
 			return new DaskTable(catalogTable);
 		}
 
-		// TODO percy raise unsupported operation for schema
 		LOGGER.debug("was NOT found to be a database!");
 		return null;
 	}
@@ -116,10 +115,6 @@ public class DaskSchema implements Schema {
 	isMutable() {
 		return true;
 	}
-
-	// void updateMetaData(String schema, String table) {
-	// metaConnect.updateMetaData(schema, table);
-	// }
 
 	@Override
 	public Schema

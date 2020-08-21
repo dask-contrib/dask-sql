@@ -49,20 +49,6 @@ public class DaskTable implements ProjectableFilterableTable {
 	public RelDataType
 	getRowType(RelDataTypeFactory rdtf) {
 		RelDataTypeFactory.FieldInfoBuilder builder = rdtf.builder();
-		// for (TColumnType tct : rowInfo.getRow_desc()) {
-		// // MAPDLOGGER.debug("'" + tct.col_name + "'" + " \t" + tct.getCol_type().getEncoding() + " \t"
-		// // + tct.getCol_type().getFieldValue(TTypeInfo._Fields.TYPE) + " \t" + tct.getCol_type().nullable
-		// // + " \t" + tct.getCol_type().is_array + " \t" + tct.getCol_type().precision + " \t"
-		// // + tct.getCol_type().scale);
-		// //
-		// // builder.add(tct.col_name, createType(tct, rdtf));
-		//
-		// // TODO percy
-		// String col_name = null;
-		// RelDataType col_type = null;
-		//
-		// builder.add(col_name, col_type);
-		// }
 		for(CatalogColumn column : catalogTable.getColumns()) {
 			builder.add(column.getColumnName(), convertToSqlType(column.getColumnDataType(), rdtf));
 			builder.nullable(true);
@@ -124,76 +110,11 @@ public class DaskTable implements ProjectableFilterableTable {
 			case STRING:
 				temp = typeFactory.createSqlType(SqlTypeName.VARCHAR);
 				break;
-//			case STRING_CATEGORY:
-//				temp = typeFactory.createSqlType(SqlTypeName.VARCHAR);
-//				break;
 			default:
 				temp = null;
 		}
 		return temp;
 	}
-	// private RelDataType createType(TColumnType value, RelDataTypeFactory typeFactory) {
-	// RelDataType cType = getRelDataType(value.col_type.type, value.col_type.precision, value.col_type.scale,
-	// typeFactory);
-	// if (value.col_type.is_array) {
-	// if (value.col_type.isNullable()) {
-	// return typeFactory.createArrayType(typeFactory.createTypeWithNullability(cType, true), -1);
-	// } else {
-	// return typeFactory.createArrayType(cType, -1);
-	// }
-	// } else if (value.col_type.isNullable()) {
-	// return typeFactory.createTypeWithNullability(cType, true);
-	// } else {
-	// return cType;
-	// }
-	// }
-
-	// Convert our TDataumn type in to a base calcite SqlType
-	// todo confirm whether it is ok to ignore thinsg like lengths
-	// since we do not use them on the validator side of the calcite 'fence'
-	// private RelDataType getRelDataType(TDatumType dType, int precision, int scale, RelDataTypeFactory typeFactory) {
-	// switch (dType) {
-	// case SMALLINT:
-	// return typeFactory.createSqlType(SqlTypeName.SMALLINT);
-	// case INT:
-	// return typeFactory.createSqlType(SqlTypeName.INTEGER);
-	// case BIGINT:
-	// return typeFactory.createSqlType(SqlTypeName.BIGINT);
-	// case FLOAT:
-	// return typeFactory.createSqlType(SqlTypeName.FLOAT);
-	// case DECIMAL:
-	// return typeFactory.createSqlType(SqlTypeName.DECIMAL, precision, scale);
-	// case DOUBLE:
-	// return typeFactory.createSqlType(SqlTypeName.DOUBLE);
-	// case STR:
-	// return typeFactory.createSqlType(SqlTypeName.VARCHAR, 50);
-	// case TIME:
-	// return typeFactory.createSqlType(SqlTypeName.TIME);
-	// case TIMESTAMP:
-	// return typeFactory.createSqlType(SqlTypeName.TIMESTAMP);
-	// case DATE:
-	// return typeFactory.createSqlType(SqlTypeName.DATE);
-	// case BOOL:
-	// return typeFactory.createSqlType(SqlTypeName.BOOLEAN);
-	// case INTERVAL_DAY_TIME:
-	// return typeFactory.createSqlType(SqlTypeName.INTERVAL_DAY);
-	// case INTERVAL_YEAR_MONTH:
-	// return typeFactory.createSqlType(SqlTypeName.INTERVAL_YEAR_MONTH);
-	// case POINT:
-	// return typeFactory.createSqlType(SqlTypeName.ANY);
-	// // return new PointSqlType();
-	// case LINESTRING:
-	// return typeFactory.createSqlType(SqlTypeName.ANY);
-	// // return new LinestringSqlType();
-	// case POLYGON:
-	// return typeFactory.createSqlType(SqlTypeName.ANY);
-	// // return new PolygonSqlType();
-	// case MULTIPOLYGON:
-	// return typeFactory.createSqlType(SqlTypeName.ANY);
-	// default:
-	// throw new AssertionError(dType.name());
-	// }
-	// }
 
 	@Override
 	public boolean
@@ -212,8 +133,6 @@ public class DaskTable implements ProjectableFilterableTable {
 	@Override
 	public Enumerable<Object[]>
 	scan(DataContext root, List<RexNode> filters, int[] projects) {
-		// TODO Auto-generated method stub
-
 		return null;
 	}
 }
