@@ -1,6 +1,7 @@
 from dask_sql.physical.ral import convert_ral_to_df
 from dask_sql.physical.rex import apply_rex_call
 
+
 class LogicalFilterPlugin:
     class_name = "org.apache.calcite.rel.logical.LogicalFilter"
 

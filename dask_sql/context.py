@@ -13,6 +13,7 @@ class Context():
 
         ral_register_plugin_class(logical.LogicalTableScanPlugin)
         ral_register_plugin_class(logical.LogicalFilterPlugin)
+        ral_register_plugin_class(logical.LogicalProjectPlugin)
 
         rex_register_plugin_class(rex.RexInputRefPlugin)
         rex_register_plugin_class(rex.RexCallPlugin)
