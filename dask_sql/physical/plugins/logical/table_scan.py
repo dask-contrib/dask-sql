@@ -3,10 +3,6 @@ class LogicalTableScanPlugin:
 
    def __call__(self, ral, tables):
         table = ral.getTable()
-        hints = ral.getHints()
-
-        assert not hints, "Hints are not implemented so far"
-        # TODO: I do not know what hints are.
 
         table_names = [str(n) for n in table.getQualifiedName()]
         assert table_names[0] == "schema"

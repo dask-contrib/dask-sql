@@ -11,17 +11,13 @@ class LogicalProjectPlugin:
         input_ral = ral.getInput()
         df = convert_ral_to_df(input_ral, tables)
 
-        hints = ral.getHints()
-        assert not hints, "Hints are not implemented so far"
-        # TODO: I do not know what hints are.
-
         named_projects = ral.getNamedProjects()
 
         new_columns = {}
         for expr, key in named_projects:
             new_columns[str(key)] = apply_rex_call(expr, df)
 
-        df = df.assign(**new_columns)
+        df = df.drop(columns=list(df.columns)).assign(**new_columns)
 
         column_names = list(new_columns.keys())
         return df[column_names]

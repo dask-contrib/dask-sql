@@ -1,3 +1,6 @@
+from dask_sql.java import get_java_class
+
+
 _plugins = {}
 
 def register_plugin(name, plugin):
@@ -14,7 +17,7 @@ def register_plugin_classes(plugin_classes):
 
 
 def convert_ral_to_df(ral, tables):
-    class_name = ral.getClass().getName()
+    class_name = get_java_class(ral)
 
     try:
         class_plugin = _plugins[class_name]
