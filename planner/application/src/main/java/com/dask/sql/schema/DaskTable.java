@@ -7,7 +7,6 @@ package com.dask.sql.schema;
 
 import com.dask.sql.catalog.domain.CatalogColumn;
 import com.dask.sql.catalog.domain.CatalogColumnDataType;
-import com.dask.sql.catalog.domain.CatalogTable;
 
 import org.apache.calcite.DataContext;
 import org.apache.calcite.config.CalciteConnectionConfig;
@@ -35,21 +34,38 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
+import java.util.Collections;
+import java.util.Map;
 
 public class DaskTable implements ProjectableFilterableTable {
 	final static Logger LOGGER = LoggerFactory.getLogger(DaskTable.class);
+	private Map<String, CatalogColumn> tableColumns;
+	private String name;
 
-	private final CatalogTable catalogTable;
 
-	public DaskTable(CatalogTable catalogTable) { this.catalogTable = catalogTable; }
+	public DaskTable(String name, List<CatalogColumn> columns) {
+		this.name = name;
+		this.tableColumns = new HashMap<String, CatalogColumn>();
+		for(CatalogColumn column : columns) {
+			this.tableColumns.put(column.getColumnName(), column);
+		}
+	}
+
+	public String
+	getTableName() {
+		return this.name;
+	}
 
 	@Override
 	public RelDataType
 	getRowType(RelDataTypeFactory rdtf) {
 		RelDataTypeFactory.FieldInfoBuilder builder = rdtf.builder();
-		for(CatalogColumn column : catalogTable.getColumns()) {
+		for(CatalogColumn column : this.getColumns()) {
 			builder.add(column.getColumnName(), convertToSqlType(column.getColumnDataType(), rdtf));
 			builder.nullable(true);
 		}
@@ -66,6 +82,25 @@ public class DaskTable implements ProjectableFilterableTable {
 	public Schema.TableType
 	getJdbcTableType() {
 		return Schema.TableType.TABLE;
+	}
+
+
+	private Set<CatalogColumn>
+	getColumns() {
+		List<CatalogColumn> cols = new ArrayList<CatalogColumn>();
+
+		for(CatalogColumn col : this.tableColumns.values()) {
+			cols.add(col);
+		}
+		Collections.sort(cols);
+
+		Set<CatalogColumn> tempColumns = new LinkedHashSet<CatalogColumn>();
+
+		for(CatalogColumn col : cols) {
+			tempColumns.add(col);
+		}
+
+		return tempColumns;
 	}
 
 	private RelDataType
@@ -119,14 +154,13 @@ public class DaskTable implements ProjectableFilterableTable {
 	@Override
 	public boolean
 	isRolledUp(String string) {
-		// will set to false by default
 		return false;
 	}
 
 	@Override
 	public boolean
 	rolledUpColumnValidInsideAgg(String string, SqlCall sc, SqlNode sn, CalciteConnectionConfig ccc) {
-		throw new UnsupportedOperationException("rolledUpColumnValidInsideAgg Not supported yet.");
+		throw new UnsupportedOperationException("rolledUpColumnValidInsideAgg is not supported");
 	}
 
 

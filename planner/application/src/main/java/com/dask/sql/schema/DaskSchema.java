@@ -5,10 +5,6 @@
 
 package com.dask.sql.schema;
 
-import com.dask.sql.catalog.domain.CatalogDatabase;
-import com.dask.sql.catalog.domain.CatalogSchema;
-import com.dask.sql.catalog.domain.CatalogTable;
-
 import org.apache.calcite.linq4j.tree.Expression;
 import org.apache.calcite.rel.type.RelProtoDataType;
 import org.apache.calcite.schema.Function;
@@ -23,45 +19,53 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 
 public class DaskSchema implements Schema {
 	final static Logger LOGGER = LoggerFactory.getLogger(DaskSchema.class);
 
-	final private CatalogSchema catalogSchema;
-	final private CatalogDatabase catalogDatabase;
+	private String name;
+	private Map<String, DaskTable> databaseTables;
 
-	public DaskSchema(CatalogSchema catalogSchema) {
-		this.catalogSchema = catalogSchema;
-		this.catalogDatabase = null;
+	public DaskSchema(String name) {
+		this.databaseTables = new HashMap<String, DaskTable>();
+		this.name = name;
 	}
 
-	public DaskSchema(CatalogDatabase catalogDatabase) {
-		this.catalogSchema = null;
-		this.catalogDatabase = catalogDatabase;
+	public void
+	addTable(DaskTable table) {
+		this.databaseTables.put(table.getTableName(), table);
+	}
+
+	public void
+	removeTable(DaskTable table) {
+		this.databaseTables.remove(table.getTableName());
+	}
+
+	public void
+	removeTable(String tableName) {
+		this.databaseTables.remove(tableName);
+	}
+
+	public String
+	getName() {
+		return this.name;
 	}
 
 	@Override
 	public Table
 	getTable(String name) {
-		if(isDatabase()) {
-			final CatalogTable catalogTable = this.catalogDatabase.getTable(name);
-			return new DaskTable(catalogTable);
-		}
-
-		LOGGER.debug("was NOT found to be a database!");
-		return null;
-	}
-
-	public String
-	getName() {
-		return this.catalogDatabase.getDatabaseName();
+		return this.databaseTables.get(name);
 	}
 
 	@Override
 	public Set<String>
 	getTableNames() {
-		LOGGER.debug("getting table names");
-		return this.catalogDatabase.getTableNames();
+		Set<String> tableNames = new LinkedHashSet<String>();
+		tableNames.addAll(this.databaseTables.keySet());
+		return tableNames;
 	}
 
 	@Override
@@ -107,7 +111,7 @@ public class DaskSchema implements Schema {
 	@Override
 	public Expression
 	getExpression(SchemaPlus sp, String string) {
-		throw new UnsupportedOperationException("Not supported yet.");
+		throw new UnsupportedOperationException("Getting Expressions is not supported");
 	}
 
 	@Override
@@ -119,11 +123,6 @@ public class DaskSchema implements Schema {
 	@Override
 	public Schema
 	snapshot(SchemaVersion sv) {
-		throw new UnsupportedOperationException("Not supported yet.");
-	}
-
-	private boolean
-	isDatabase() {
-		return (this.catalogSchema == null && this.catalogDatabase != null);
+		throw new UnsupportedOperationException("Snapshot is not supported");
 	}
 }

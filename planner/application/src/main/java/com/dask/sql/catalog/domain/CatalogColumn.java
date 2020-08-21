@@ -12,25 +12,9 @@ public class CatalogColumn implements Comparable {
 		this.orderValue = orderValue;
 	}
 
-	private Long id;
-
 	private String name;
-
 	private CatalogColumnDataType dataType;
-
 	private int orderValue;
-
-	private CatalogTable table;
-
-	public Long
-	getId() {
-		return id;
-	}
-
-	public void
-	setId(Long id) {
-		this.id = id;
-	}
 
 	public String
 	getColumnName() {
@@ -50,16 +34,6 @@ public class CatalogColumn implements Comparable {
 	public void
 	setColumnDataType(CatalogColumnDataType dataType) {
 		this.dataType = dataType;
-	}
-
-	public CatalogTable
-	getTable() {
-		return table;
-	}
-
-	public void
-	setTable(CatalogTable newTable) {
-		this.table = newTable;
 	}
 
 	public void

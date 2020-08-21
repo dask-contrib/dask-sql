@@ -11,15 +11,14 @@ ColumnTypeClass = jpype.JClass(
     "com.dask.sql.catalog.domain.CatalogColumnDataType"
 )
 ColumnClass = jpype.JClass("com.dask.sql.catalog.domain.CatalogColumn")
-TableClass = jpype.JClass("com.dask.sql.catalog.domain.CatalogTable")
-DatabaseClass = jpype.JClass("com.dask.sql.catalog.domain.CatalogDatabase")
+TableClass = jpype.JClass("com.dask.sql.schema.DaskTable")
 DaskSchemaClass = jpype.JClass("com.dask.sql.schema.DaskSchema")
 RelationalAlgebraGeneratorClass = jpype.JClass(
     "com.dask.sql.application.RelationalAlgebraGenerator"
 )
 
 
-db = DatabaseClass("main")
+schema = DaskSchemaClass("main")
 
 tableName = "my_table"
 arr = ArrayClass()
@@ -29,10 +28,9 @@ for order, column in enumerate(["a", "b"]):
     column = ColumnClass(column, dataType, order)
     arr.add(column)
 
-tableJava = TableClass(tableName, db, arr)
+tableJava = TableClass(tableName, arr)
 
-db.addTable(tableJava)
-schema = DaskSchemaClass(db)
+schema.addTable(tableJava)
 generator = RelationalAlgebraGeneratorClass(schema)
 
 print(generator.getRelationalAlgebraString("SELECT SUM(a) FROM my_table GROUP BY b"))

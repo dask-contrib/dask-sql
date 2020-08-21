@@ -66,30 +66,12 @@ import java.util.Properties;
 public class RelationalAlgebraGenerator {
 	final static Logger LOGGER = LoggerFactory.getLogger(RelationalAlgebraGenerator.class);
 
-	/**
-	 * Planner that converts sql to relational algebra.
-	 */
 	private Planner planner;
-	/**
-	 * Program which takes relational algebra and optimizes it
-	 */
 	private HepProgram program;
-	/**
-	 * Stores the context for the program hep planner. E.G. it stores the schema.
-	 */
 	private FrameworkConfig config;
 
 	private List<RelOptRule> rules;
 
-	/**
-	 * Constructor for the relational algebra generator class. It will take the
-	 * schema store it in the  {@link #config} and then set up the  {@link
-	 * #program} for optimizing and the  {@link #planner} for parsing.
-	 *
-	 * @param newSchema This is the schema which we will be using to validate our
-	 *     query against.
-	 * 					This gets stored in the {@link #config}
-	 */
 	public RelationalAlgebraGenerator(DaskSchema newSchema) {
 		try {
 			Class.forName("org.apache.calcite.jdbc.Driver");
@@ -134,7 +116,6 @@ public class RelationalAlgebraGenerator {
 		}
 	}
 
-	/** Direct constructor for testing purposes */
 	public RelationalAlgebraGenerator(FrameworkConfig frameworkConfig, HepProgram hepProgram) {
 		this.config = frameworkConfig;
 		this.planner = Frameworks.getPlanner(frameworkConfig);
@@ -186,11 +167,8 @@ public class RelationalAlgebraGenerator {
 						  .addRuleInstance(FilterMergeRule.INSTANCE)
 						  .addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
 						  .addRuleInstance(ProjectRemoveRule.INSTANCE)
-
-						  //The following three rules evaluate expressions in Projects and Filters
 						  .addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
 						  .addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
-
 						  .addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
 						  .addRuleInstance(AggregateReduceFunctionsRule.INSTANCE)
 						  .build();
@@ -211,18 +189,6 @@ public class RelationalAlgebraGenerator {
 		return hepPlanner.findBestExp();
 	}
 
-	/**
-	 * Takes a sql statement and converts it into an optimized relational algebra
-	 * node. The result of this function is a logical plan that has been optimized
-	 * using a rule based optimizer.
-	 *
-	 * @param sql a string sql query that is to be parsed, converted into
-	 *     relational algebra, then optimized
-	 * @return a RelNode which contains the relational algebra tree generated from
-	 *     the sql statement provided after
-	 * 			an optimization step has been completed.
-	 * @throws SqlSyntaxException, SqlValidationException, RelConversionException
-	 */
 	public RelNode
 	getRelationalAlgebra(String sql) throws SqlSyntaxException, SqlValidationException, RelConversionException {
 		RelNode nonOptimizedPlan = getNonOptimizedRelationalAlgebra(sql);
@@ -241,16 +207,10 @@ public class RelationalAlgebraGenerator {
 		try {
 			response = RelOptUtil.toString(getRelationalAlgebra(sql));
 		}catch(SqlValidationException ex){
-			//System.out.println(ex.getMessage());
-			//System.out.println("Found validation err!");
 			return "fail: \n " + ex.getMessage();
 		}catch(SqlSyntaxException ex){
-			//System.out.println(ex.getMessage());
-			//System.out.println("Found syntax err!");
 			return "fail: \n " + ex.getMessage();
 		} catch(Exception ex) {
-			//System.out.println(ex.toString());
-			//System.out.println(ex.getMessage());
 			ex.printStackTrace();
 
 			LOGGER.error(ex.getMessage());
