@@ -1,21 +1,13 @@
-import jpype
+import dask.dataframe as dd
+import pandas as pd
 
-jpype.addClassPath("./planner/application/target/DaskSQL.jar")
-jpype.startJVM("-ea", convertStrings=False)
+from context import add_dask_table, get_ral, apply_ral
 
-ColumnTypeClass = jpype.JClass("org.apache.calcite.sql.type.SqlTypeName")
-TableClass = jpype.JClass("com.dask.sql.schema.DaskTable")
-DaskSchemaClass = jpype.JClass("com.dask.sql.schema.DaskSchema")
-RelationalAlgebraGeneratorClass = jpype.JClass("com.dask.sql.application.RelationalAlgebraGenerator")
+df = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]}), npartitions=1)
 
-tableJava = TableClass("my_table")
-for order, column in enumerate(["a", "b"]):
-    dataType = ColumnTypeClass.DOUBLE
-    tableJava.addColumn(column, dataType)
+add_dask_table(df, "my_table")
 
-schema = DaskSchemaClass("main")
-schema.addTable(tableJava)
+ral = get_ral("SELECT a, b from my_table WHERE a > 1 AND b < 3")
+df = apply_ral(ral)
 
-generator = RelationalAlgebraGeneratorClass(schema)
-
-print(generator.getRelationalAlgebraString("SELECT SUM(a) FROM my_table GROUP BY b"))
+print(df.compute())
