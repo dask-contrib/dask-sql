@@ -1,7 +1,7 @@
 class LogicalTableScanPlugin:
-   class_name = "org.apache.calcite.rel.logical.LogicalTableScan"
+    class_name = "org.apache.calcite.rel.logical.LogicalTableScan"
 
-   def __call__(self, ral, tables):
+    def __call__(self, ral, tables):
         table = ral.getTable()
 
         table_names = [str(n) for n in table.getQualifiedName()]

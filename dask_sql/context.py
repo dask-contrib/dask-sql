@@ -7,7 +7,7 @@ from dask_sql.physical.plugins import rex
 from dask_sql.physical.ral import convert_ral_to_df
 
 
-class Context():
+class Context:
     def __init__(self):
         self.tables = {}
 
@@ -50,4 +50,3 @@ class Context():
         ral = self._get_ral(sql)
         df = convert_ral_to_df(ral, tables=self.tables)
         return df
-

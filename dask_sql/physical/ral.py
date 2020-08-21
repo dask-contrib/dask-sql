@@ -13,10 +13,11 @@ def convert_ral_to_df(ral, tables):
 
     try:
         class_plugin = _plugins[class_name]
-    except KeyError: # pragma: no cover
-        raise NotImplementedError(f"No conversion for class {class_name} available (yet).")
+    except KeyError:  # pragma: no cover
+        raise NotImplementedError(
+            f"No conversion for class {class_name} available (yet)."
+        )
 
     plugin_instace = class_plugin()
     df = plugin_instace(ral, tables=tables)
     return df
-

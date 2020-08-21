@@ -13,11 +13,11 @@ def apply_rex_call(rex, df):
 
     try:
         class_plugin = _plugins[class_name]
-    except KeyError: # pragma: no cover
-        raise NotImplementedError(f"No conversion for class {class_name} available (yet).")
+    except KeyError:  # pragma: no cover
+        raise NotImplementedError(
+            f"No conversion for class {class_name} available (yet)."
+        )
 
     plugin_instance = class_plugin()
     df = plugin_instance(rex, df=df)
     return df
-
-

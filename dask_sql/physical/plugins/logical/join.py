@@ -11,7 +11,7 @@ from dask_sql.java import get_short_java_class, List
 class LogicalJoinPlugin:
     class_name = "org.apache.calcite.rel.logical.LogicalJoin"
 
-    JOIN_TYPE_MAPPING ={
+    JOIN_TYPE_MAPPING = {
         "INNER": "inner",
         "LEFT": "left",
         "RIGHT": "right",
@@ -31,8 +31,12 @@ class LogicalJoinPlugin:
         # However, that will confuse our column numbering in SQL.
         # So we make our life easier by converting the column names into unique names
         # We will convert back in the end
-        df_lhs_renamed = df_lhs.rename(columns={col: f"lhs_{i}" for i, col in enumerate(df_lhs.columns)})
-        df_rhs_renamed = df_rhs.rename(columns={col: f"rhs_{i}" for i, col in enumerate(df_rhs.columns)})
+        df_lhs_renamed = df_lhs.rename(
+            columns={col: f"lhs_{i}" for i, col in enumerate(df_lhs.columns)}
+        )
+        df_rhs_renamed = df_rhs.rename(
+            columns={col: f"rhs_{i}" for i, col in enumerate(df_rhs.columns)}
+        )
 
         join_type = ral.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
@@ -56,8 +60,14 @@ class LogicalJoinPlugin:
         # 4. dask can only merge on the same column names.
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
-        lhs_columns_to_add = {f"common_{i}": df_lhs_renamed.iloc[:, index] for i, index in enumerate(lhs_on)}
-        rhs_columns_to_add = {f"common_{i}": df_rhs_renamed.iloc[:, index] for i, index in enumerate(rhs_on)}
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed.iloc[:, index]
+            for i, index in enumerate(lhs_on)
+        }
+        rhs_columns_to_add = {
+            f"common_{i}": df_rhs_renamed.iloc[:, index]
+            for i, index in enumerate(rhs_on)
+        }
 
         df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
@@ -73,13 +83,19 @@ class LogicalJoinPlugin:
         df = df[list(df_lhs_renamed.columns) + list(df_rhs_renamed.columns)]
 
         # Now we also go back to the original names (just to have the output nicer)
-        df = df.rename(columns={f"lhs_{i}": col for i, col in enumerate(df_lhs.columns)})
-        df = df.rename(columns={f"rhs_{i}": col for i, col in enumerate(df_rhs.columns)})
+        df = df.rename(
+            columns={f"lhs_{i}": col for i, col in enumerate(df_lhs.columns)}
+        )
+        df = df.rename(
+            columns={f"rhs_{i}": col for i, col in enumerate(df_rhs.columns)}
+        )
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
         if filter_condition:
             # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
-            filter_condition = reduce(operator.and_, [apply_rex_call(rex, df) for rex in filter_condition])
+            filter_condition = reduce(
+                operator.and_, [apply_rex_call(rex, df) for rex in filter_condition]
+            )
             df = df[filter_condition]
 
         return df
@@ -129,10 +145,15 @@ class LogicalJoinPlugin:
         operand_lhs = operands[0]
         operand_rhs = operands[1]
 
-        if get_short_java_class(operand_lhs) == "RexInputRef" and get_short_java_class(operand_rhs) == "RexInputRef":
+        if (
+            get_short_java_class(operand_lhs) == "RexInputRef"
+            and get_short_java_class(operand_rhs) == "RexInputRef"
+        ):
             lhs_index = operand_lhs.getIndex()
             rhs_index = operand_rhs.getIndex()
 
             return lhs_index, rhs_index
 
-        raise TypeError("Can not extract lhs and rhs from this node") # pragma: no cover
+        raise TypeError(
+            "Can not extract lhs and rhs from this node"
+        )  # pragma: no cover
