@@ -116,17 +116,6 @@ public class RelationalAlgebraGenerator {
 		}
 	}
 
-	public RelationalAlgebraGenerator(FrameworkConfig frameworkConfig, HepProgram hepProgram) {
-		this.config = frameworkConfig;
-		this.planner = Frameworks.getPlanner(frameworkConfig);
-		this.program = hepProgram;
-	}
-
-	public void
-	setRules(List<RelOptRule> rules) {
-		this.rules = rules;
-	}
-
 	public SqlNode
 	validateQuery(String sql) throws SqlSyntaxException, SqlValidationException {
 		SqlNode tempNode;

@@ -5,9 +5,6 @@
 
 package com.dask.sql.schema;
 
-import com.dask.sql.catalog.domain.CatalogColumn;
-import com.dask.sql.catalog.domain.CatalogColumnDataType;
-
 import org.apache.calcite.DataContext;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.linq4j.Enumerable;
@@ -42,18 +39,21 @@ import java.util.Set;
 import java.util.Collections;
 import java.util.Map;
 
+import javafx.util.Pair;
+
 public class DaskTable implements ProjectableFilterableTable {
 	final static Logger LOGGER = LoggerFactory.getLogger(DaskTable.class);
-	private Map<String, CatalogColumn> tableColumns;
+	private ArrayList<Pair<String, SqlTypeName>> tableColumns;
 	private String name;
 
-
-	public DaskTable(String name, List<CatalogColumn> columns) {
+	public DaskTable(String name) {
 		this.name = name;
-		this.tableColumns = new HashMap<String, CatalogColumn>();
-		for(CatalogColumn column : columns) {
-			this.tableColumns.put(column.getColumnName(), column);
-		}
+		this.tableColumns = new ArrayList<Pair<String, SqlTypeName>>();
+	}
+
+	public void
+	addColumn(String columnName, SqlTypeName columnType) {
+		this.tableColumns.add(new Pair<>(columnName, columnType));
 	}
 
 	public String
@@ -65,8 +65,10 @@ public class DaskTable implements ProjectableFilterableTable {
 	public RelDataType
 	getRowType(RelDataTypeFactory rdtf) {
 		RelDataTypeFactory.FieldInfoBuilder builder = rdtf.builder();
-		for(CatalogColumn column : this.getColumns()) {
-			builder.add(column.getColumnName(), convertToSqlType(column.getColumnDataType(), rdtf));
+		for(Pair<String, SqlTypeName> column : tableColumns) {
+			String name = column.getKey();
+			SqlTypeName type = column.getValue();
+			builder.add(name, rdtf.createSqlType(type));
 			builder.nullable(true);
 		}
 		return builder.build();
@@ -84,72 +86,54 @@ public class DaskTable implements ProjectableFilterableTable {
 		return Schema.TableType.TABLE;
 	}
 
-
-	private Set<CatalogColumn>
-	getColumns() {
-		List<CatalogColumn> cols = new ArrayList<CatalogColumn>();
-
-		for(CatalogColumn col : this.tableColumns.values()) {
-			cols.add(col);
-		}
-		Collections.sort(cols);
-
-		Set<CatalogColumn> tempColumns = new LinkedHashSet<CatalogColumn>();
-
-		for(CatalogColumn col : cols) {
-			tempColumns.add(col);
-		}
-
-		return tempColumns;
-	}
-
-	private RelDataType
-	convertToSqlType(CatalogColumnDataType dataType, RelDataTypeFactory typeFactory) {
-		RelDataType temp = null;
-		switch(dataType) {
-			case INT8:
-			case UINT8:
-				temp = typeFactory.createSqlType(SqlTypeName.TINYINT);
-				break;
-			case INT16:
-			case UINT16:
-				temp = typeFactory.createSqlType(SqlTypeName.SMALLINT);
-				break;
-			case INT32:
-			case UINT32:
-				temp = typeFactory.createSqlType(SqlTypeName.INTEGER);
-				break;
-			case INT64:
-			case UINT64:
-				temp = typeFactory.createSqlType(SqlTypeName.BIGINT);
-				break;
-			case FLOAT32:
-				temp = typeFactory.createSqlType(SqlTypeName.FLOAT);
-				break;
-			case FLOAT64:
-				temp = typeFactory.createSqlType(SqlTypeName.DOUBLE);
-				break;
-			case BOOL8:
-				temp = typeFactory.createSqlType(SqlTypeName.BOOLEAN);
-				break;
-			case TIMESTAMP_DAYS:
-			case TIMESTAMP_SECONDS:
-				temp = typeFactory.createSqlType(SqlTypeName.DATE);
-				break;
-			case TIMESTAMP_MILLISECONDS:
-			case TIMESTAMP_MICROSECONDS:
-			case TIMESTAMP_NANOSECONDS:
-				temp = typeFactory.createSqlType(SqlTypeName.TIMESTAMP);
-				break;
-			case DICTIONARY32:
-			case STRING:
-				temp = typeFactory.createSqlType(SqlTypeName.VARCHAR);
-				break;
-			default:
-				temp = null;
-		}
-		return temp;
-	}
+	// private RelDataType
+	// convertToSqlType(SqlTypeName dataType, RelDataTypeFactory typeFactory) {
+		// return typeFactory.createSqlType(dataType);
+		// RelDataType temp = null;
+		// switch(dataType) {
+		// 	case INT8:
+		// 	case UINT8:
+		// 		temp = (SqlTypeName.TINYINT);
+		// 		break;
+		// 	case INT16:
+		// 	case UINT16:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.SMALLINT);
+		// 		break;
+		// 	case INT32:
+		// 	case UINT32:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.INTEGER);
+		// 		break;
+		// 	case INT64:
+		// 	case UINT64:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.BIGINT);
+		// 		break;
+		// 	case FLOAT32:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.FLOAT);
+		// 		break;
+		// 	case FLOAT64:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.DOUBLE);
+		// 		break;
+		// 	case BOOL8:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.BOOLEAN);
+		// 		break;
+		// 	case TIMESTAMP_DAYS:
+		// 	case TIMESTAMP_SECONDS:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.DATE);
+		// 		break;
+		// 	case TIMESTAMP_MILLISECONDS:
+		// 	case TIMESTAMP_MICROSECONDS:
+		// 	case TIMESTAMP_NANOSECONDS:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.TIMESTAMP);
+		// 		break;
+		// 	case DICTIONARY32:
+		// 	case STRING:
+		// 		temp = typeFactory.createSqlType(SqlTypeName.VARCHAR);
+		// 		break;
+		// 	default:
+		// 		temp = null;
+		// }
+		// return temp;
+	// }
 
 	@Override
 	public boolean
