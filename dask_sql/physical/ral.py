@@ -21,3 +21,24 @@ def convert_ral_to_df(ral, tables):
     plugin_instace = class_plugin()
     df = plugin_instace(ral, tables=tables)
     return df
+
+
+def fix_column_to_row_type(df, row_type):
+    field_names = [str(x) for x in row_type.getFieldNames()]
+
+    df = df.rename(columns=dict(zip(df.columns, field_names)))
+
+    # TODO: types!
+    # TODO: we could even us a similar function to test the input of the table
+    return df
+
+
+def check_columns_from_row_type(df, row_type):
+    field_names = [str(x) for x in row_type.getFieldNames()]
+
+    print(df.columns, field_names)
+    assert list(df.columns) == field_names
+
+    # TODO: types!
+    # TODO: we could even us a similar function to test the input of the table
+    return df

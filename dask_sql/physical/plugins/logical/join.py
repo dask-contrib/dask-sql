@@ -3,7 +3,7 @@ import operator
 
 import dask.dataframe as dd
 
-from dask_sql.physical.ral import convert_ral_to_df
+from dask_sql.physical.ral import convert_ral_to_df, fix_column_to_row_type
 from dask_sql.physical.rex import apply_rex_call
 from dask_sql.java import get_short_java_class, List
 
@@ -82,14 +82,6 @@ class LogicalJoinPlugin:
         # we have the correct column order (and to remove the temporary join columns)
         df = df[list(df_lhs_renamed.columns) + list(df_rhs_renamed.columns)]
 
-        # Now we also go back to the original names (just to have the output nicer)
-        df = df.rename(
-            columns={f"lhs_{i}": col for i, col in enumerate(df_lhs.columns)}
-        )
-        df = df.rename(
-            columns={f"rhs_{i}": col for i, col in enumerate(df_rhs.columns)}
-        )
-
         # 7. Last but not least we apply any filters by and-chaining together the filters
         if filter_condition:
             # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
@@ -97,6 +89,9 @@ class LogicalJoinPlugin:
                 operator.and_, [apply_rex_call(rex, df) for rex in filter_condition]
             )
             df = df[filter_condition]
+
+        # Now we go back to the names requested by the ral
+        df = fix_column_to_row_type(df, ral.getRowType())
 
         return df
 

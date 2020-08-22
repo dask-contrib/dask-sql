@@ -15,6 +15,7 @@ class Context:
         ral_register_plugin_class(logical.LogicalFilterPlugin)
         ral_register_plugin_class(logical.LogicalProjectPlugin)
         ral_register_plugin_class(logical.LogicalJoinPlugin)
+        ral_register_plugin_class(logical.LogicalSortPlugin)
 
         rex_register_plugin_class(rex.RexInputRefPlugin)
         rex_register_plugin_class(rex.RexCallPlugin)

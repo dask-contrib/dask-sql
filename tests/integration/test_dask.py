@@ -44,64 +44,115 @@ class DaskTestCase(TestCase):
         df = self.c.sql("SELECT * from my_table WHERE a < 3 AND (b > 1 AND b < 3)")
         df = df.compute()
 
-        assert_frame_equal(df, self.df[((self.df["a"] < 3) & ((self.df["b"] > 1) & (self.df["b"] < 3)))])
+        assert_frame_equal(
+            df,
+            self.df[((self.df["a"] < 3) & ((self.df["b"] > 1) & (self.df["b"] < 3)))],
+        )
+
+    def test_sort(self):
+        pandas_df = pd.DataFrame({"user_id": [2, 1, 2], "c": [3, 3, 1]})
+        self.c.register_dask_table(dd.from_pandas(pandas_df, npartitions=2), "my_table")
+
+        df = self.c.sql(
+            """
+        SELECT
+            *
+        FROM my_table
+        ORDER BY c, user_id DESC
+        """
+        )
+        df = df.compute()
+        df_expected = pandas_df.sort_values(
+            ["c", "user_id"], ascending=[True, False]
+        ).reset_index(drop=True)
+
+        assert_frame_equal(df, df_expected)
+
+    def test_sort_not_allowed(self):
+        pandas_df = pd.DataFrame({"user_id": [2, 1, 2], "c": [3, 3, 1]})
+        self.c.register_dask_table(dd.from_pandas(pandas_df, npartitions=2), "my_table")
+
+        self.assertRaises(
+            NotImplementedError, self.c.sql, "SELECT * FROM my_table ORDER BY c DESC"
+        )
 
     def test_join(self):
-        df = self.c.sql("SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a = rhs.a")
+        df = self.c.sql(
+            "SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a = rhs.a"
+        )
         df = df.compute()
 
         assert_frame_equal(df, self.df)
 
     def test_join_inner(self):
-        df = self.c.sql("SELECT lhs.a, rhs.b from my_table AS lhs INNER JOIN my_table AS rhs ON lhs.a = rhs.a")
+        df = self.c.sql(
+            "SELECT lhs.a, rhs.b from my_table AS lhs INNER JOIN my_table AS rhs ON lhs.a = rhs.a"
+        )
         df = df.compute()
 
         assert_frame_equal(df, self.df)
 
     def test_join_outer(self):
-        df = self.c.sql("SELECT lhs.a, rhs.b from my_table AS lhs FULL JOIN my_table AS rhs ON lhs.a = rhs.a")
+        df = self.c.sql(
+            "SELECT lhs.a, rhs.b from my_table AS lhs FULL JOIN my_table AS rhs ON lhs.a = rhs.a"
+        )
         df = df.compute()
 
         assert_frame_equal(df, self.df)
 
     def test_join_left(self):
-        df = self.c.sql("SELECT lhs.a, rhs.b from my_table AS lhs LEFT JOIN my_table AS rhs ON lhs.a = rhs.a")
+        df = self.c.sql(
+            "SELECT lhs.a, rhs.b from my_table AS lhs LEFT JOIN my_table AS rhs ON lhs.a = rhs.a"
+        )
         df = df.compute()
 
         assert_frame_equal(df, self.df)
 
     def test_join_right(self):
-        df = self.c.sql("SELECT lhs.a, rhs.b from my_table AS lhs RIGHT JOIN my_table AS rhs ON lhs.a = rhs.a")
+        df = self.c.sql(
+            "SELECT lhs.a, rhs.b from my_table AS lhs RIGHT JOIN my_table AS rhs ON lhs.a = rhs.a"
+        )
         df = df.compute()
 
         assert_frame_equal(df, self.df)
 
     def test_join_too_complex(self):
-        self.assertRaises(NotImplementedError, self.c.sql, "SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a < rhs.b")
+        self.assertRaises(
+            NotImplementedError,
+            self.c.sql,
+            "SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a < rhs.b",
+        )
 
     def test_join_strange(self):
-        self.assertRaises(NotImplementedError, self.c.sql, "SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a = 3")
+        self.assertRaises(
+            NotImplementedError,
+            self.c.sql,
+            "SELECT lhs.a, rhs.b from my_table AS lhs JOIN my_table AS rhs ON lhs.a = 3",
+        )
 
     def test_join_complex(self):
-        df = dd.from_pandas(pd.DataFrame({"user_id": [1, 1, 2], "b": [1, 2, 3]}), npartitions=1)
-        df2 = dd.from_pandas(pd.DataFrame({"user_id": [2, 2, 2], "c": [3, 2, 1]}), npartitions=1)
+        df = dd.from_pandas(
+            pd.DataFrame({"user_id": [1, 1, 2], "b": [1, 2, 3]}), npartitions=1
+        )
+        df2 = dd.from_pandas(
+            pd.DataFrame({"user_id": [2, 2, 2], "c": [3, 2, 1]}), npartitions=1
+        )
 
         self.c.register_dask_table(df, "my_table")
         self.c.register_dask_table(df2, "my_table_2")
 
-        df = self.c.sql("""
+        df = self.c.sql(
+            """
         SELECT
             lhs.user_id, lhs.b, rhs.user_id, rhs.c
         FROM my_table AS lhs
         JOIN my_table_2 AS rhs
             ON lhs.user_id = rhs.user_id AND lhs.b - rhs.c >= 0
-        """)
+        """
+        )
 
         df = df.compute()
 
-        df_expected = pd.DataFrame({
-             "user_id": [2, 2, 2],
-             "b": [3, 3, 3],
-             "user_id": [2, 2, 2],
-             "c": [3, 2, 1]
-        })
+        df_expected = pd.DataFrame(
+            {"user_id": [2, 2, 2], "b": [3, 3, 3], "user_id": [2, 2, 2], "c": [3, 2, 1]}
+        )
