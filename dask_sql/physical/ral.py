@@ -36,7 +36,6 @@ def fix_column_to_row_type(df, row_type):
 def check_columns_from_row_type(df, row_type):
     field_names = [str(x) for x in row_type.getFieldNames()]
 
-    print(df.columns, field_names)
     assert list(df.columns) == field_names
 
     # TODO: types!
