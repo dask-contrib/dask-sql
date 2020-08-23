@@ -170,14 +170,56 @@ class DaskTestCase(TestCase):
         df = self.c.sql("SELECT * FROM my_table_5 LIMIT 100 OFFSET 99")
         df = df.compute()
 
-        assert_frame_equal(df, self.df5.iloc[99:99 + 100])
+        assert_frame_equal(df, self.df5.iloc[99 : 99 + 100])
 
         df = self.c.sql("SELECT * FROM my_table_5 LIMIT 100 OFFSET 100")
         df = df.compute()
 
-        assert_frame_equal(df, self.df5.iloc[100:100 + 100])
+        assert_frame_equal(df, self.df5.iloc[100 : 100 + 100])
 
         df = self.c.sql("SELECT * FROM my_table_5 LIMIT 101 OFFSET 101")
         df = df.compute()
 
-        assert_frame_equal(df, self.df5.iloc[101:101 + 101])
+        assert_frame_equal(df, self.df5.iloc[101 : 101 + 101])
+
+    def test_group_by(self):
+        df = self.c.sql(
+            """
+        SELECT
+            user_id, SUM(c) AS S
+        FROM my_table_2
+        GROUP BY user_id
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"user_id": [2, 1], "S": [4, 3]})
+        assert_frame_equal(df, expected_df)
+
+    def test_group_by_all(self):
+        df = self.c.sql(
+            """
+        SELECT
+            SUM(c) AS S
+        FROM my_table_2
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"S": [7]})
+        assert_frame_equal(df, expected_df)
+
+    def test_group_by_case(self):
+        df = self.c.sql(
+            """
+        SELECT
+            user_id, SUM(CASE WHEN c = 3 THEN 1 END) AS S
+        FROM my_table_2
+        GROUP BY user_id
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"user_id": [2, 1], "S": [1, 1]})
+        assert_frame_equal(df, expected_df)
+

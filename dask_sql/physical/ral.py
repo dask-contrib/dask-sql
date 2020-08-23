@@ -30,7 +30,7 @@ def fix_column_to_row_type(df, row_type):
 
     # TODO: types!
     # TODO: we could even us a similar function to test the input of the table
-    return df
+    return df[field_names]
 
 
 def check_columns_from_row_type(df, row_type):

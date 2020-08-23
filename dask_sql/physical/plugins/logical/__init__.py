@@ -1,13 +1,15 @@
+from .aggregate import LogicalAggregatePlugin
 from .filter import LogicalFilterPlugin
-from .table_scan import LogicalTableScanPlugin
-from .project import LogicalProjectPlugin
 from .join import LogicalJoinPlugin
+from .project import LogicalProjectPlugin
 from .sort import LogicalSortPlugin
+from .table_scan import LogicalTableScanPlugin
 
 __all__ = [
+    LogicalAggregatePlugin,
     LogicalFilterPlugin,
-    LogicalTableScanPlugin,
-    LogicalProjectPlugin,
     LogicalJoinPlugin,
+    LogicalProjectPlugin,
     LogicalSortPlugin,
+    LogicalTableScanPlugin,
 ]

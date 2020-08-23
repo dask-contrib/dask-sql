@@ -11,14 +11,15 @@ class Context:
     def __init__(self):
         self.tables = {}
 
-        ral_register_plugin_class(logical.LogicalTableScanPlugin)
+        ral_register_plugin_class(logical.LogicalAggregatePlugin)
         ral_register_plugin_class(logical.LogicalFilterPlugin)
-        ral_register_plugin_class(logical.LogicalProjectPlugin)
         ral_register_plugin_class(logical.LogicalJoinPlugin)
+        ral_register_plugin_class(logical.LogicalProjectPlugin)
         ral_register_plugin_class(logical.LogicalSortPlugin)
+        ral_register_plugin_class(logical.LogicalTableScanPlugin)
 
-        rex_register_plugin_class(rex.RexInputRefPlugin)
         rex_register_plugin_class(rex.RexCallPlugin)
+        rex_register_plugin_class(rex.RexInputRefPlugin)
         rex_register_plugin_class(rex.RexLiteralPlugin)
 
     def register_dask_table(self, df, name):
