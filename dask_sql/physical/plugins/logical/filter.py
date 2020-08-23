@@ -16,9 +16,6 @@ class LogicalFilterPlugin:
         df = convert_ral_to_df(input_ral, tables)
         check_columns_from_row_type(df, ral.getExpectedInputRowType(0))
 
-        variable_set = ral.getVariablesSet()
-        assert not variable_set, "VariablesSet is not implemented so far"
-
         condition = ral.getCondition()
         df_condition = apply_rex_call(condition, df)
 

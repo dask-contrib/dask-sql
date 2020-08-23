@@ -4,6 +4,7 @@ from .join import LogicalJoinPlugin
 from .project import LogicalProjectPlugin
 from .sort import LogicalSortPlugin
 from .table_scan import LogicalTableScanPlugin
+from .values import LogicalValuesPlugin
 
 __all__ = [
     LogicalAggregatePlugin,
@@ -12,4 +13,5 @@ __all__ = [
     LogicalProjectPlugin,
     LogicalSortPlugin,
     LogicalTableScanPlugin,
+    LogicalValuesPlugin,
 ]

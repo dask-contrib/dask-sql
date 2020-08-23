@@ -3,6 +3,7 @@ from unittest import TestCase
 import dask.dataframe as dd
 import pandas as pd
 from pandas.testing import assert_frame_equal
+import numpy as np
 
 from dask_sql.context import Context
 
@@ -223,3 +224,9 @@ class DaskTestCase(TestCase):
         expected_df = pd.DataFrame({"user_id": [2, 1], "S": [1, 1]})
         assert_frame_equal(df, expected_df)
 
+    def test_case(self):
+        df = self.c.sql("SELECT (CASE WHEN 2 > 1 THEN 5 ELSE 42 END) AS R")
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"R": [5]}, dtype=np.int32)
+        assert_frame_equal(df, expected_df)
