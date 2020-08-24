@@ -1,7 +1,5 @@
-planner/application/dependency-reduced-pom.xml
-planner/application/target/
+planner/dependency-reduced-pom.xml
+planner/target/
 conda-env
-planner_copy
-calcite
 dask_sql.egg-info
 __pycache__

@@ -1,7 +1,7 @@
 import jpype
 
 
-jpype.addClassPath("../planner/application/target/DaskSQL.jar")
+jpype.addClassPath("../planner/target/DaskSQL.jar")
 jpype.startJVM("-ea", convertStrings=False)
 
 
