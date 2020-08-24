@@ -25,6 +25,7 @@ import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.ConversionUtil;
+import org.apache.calcite.util.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +39,6 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.Collections;
 import java.util.Map;
-
-import javafx.util.Pair;
 
 public class DaskTable implements ProjectableFilterableTable {
 	final static Logger LOGGER = LoggerFactory.getLogger(DaskTable.class);

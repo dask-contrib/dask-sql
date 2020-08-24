@@ -1,0 +1,7 @@
+python>=3.8.5
+dask>=2.19.0
+pandas>=1.0.5
+openjdk>=8
+maven>=3.6.0
+pytest>=6.0.1
+jpype1>=1.0.2
