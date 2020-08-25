@@ -8,7 +8,10 @@ class LogicalAggregatePlugin:
 
     AGGREGATION_MAPPING = {
         "$SUM0": "sum",
-        "COUNT": "size",
+        "COUNT": "count",
+        "MAX": "max",
+        "MIN": "min",
+        "SINGLE_VALUE": "first",
     }
 
     def __call__(self, ral, tables):
@@ -37,6 +40,10 @@ class LogicalAggregatePlugin:
             aggregations[col][col] = "first"
             output_column_order.append(col)
 
+        # Always keep an additional column around for empty groups and aggregates
+        additional_column_name = str(len(df.columns))
+        df = df.assign(**{additional_column_name: 1})
+
         for agg_call in ral.getNamedAggCalls():
             output_column_name = str(agg_call.getValue())
             expr = agg_call.getKey()
@@ -55,8 +62,12 @@ class LogicalAggregatePlugin:
                 )
 
             inputs = expr.getArgList()
-            assert len(inputs) == 1
-            input_column_name = df.columns[inputs[0]]
+            if len(inputs) == 1:
+                input_column_name = df.columns[inputs[0]]
+            elif len(inputs) == 0:
+                input_column_name = additional_column_name
+            else:
+                raise NotImplementedError("Can not cope with more than one input")
 
             aggregations[input_column_name][output_column_name] = aggregation_function
             output_column_order.append(output_column_name)
@@ -68,8 +79,6 @@ class LogicalAggregatePlugin:
             # To reuse the code, we just create a new column at the end with a single value
             # It is important to do this after creating the aggregations,
             # as we do not want this additional column to be used anywhere
-            additional_column_name = str(len(df.columns))
-            df = df.assign(**{additional_column_name: 1})
             group_columns = [additional_column_name]
 
         # Now we can perform the aggregates

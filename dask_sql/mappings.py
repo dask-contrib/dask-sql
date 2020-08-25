@@ -16,6 +16,7 @@ NP_TO_SQL = {
     np.dtype("uint16"): SqlTypeName.SMALLINT,
     np.dtype("uint8"): SqlTypeName.TINYINT,
     np.dtype("bool8"): SqlTypeName.BOOLEAN,
+    np.dtype("O"): SqlTypeName.VARCHAR,
 }
 
 SQL_TO_NP = {
