@@ -1,6 +1,7 @@
 import distutils
 from setuptools import setup, find_packages
 import os
+import shutil
 import subprocess
 
 
@@ -22,8 +23,9 @@ class MavenCommand(distutils.cmd.Command):
 
         subprocess.check_call(command, cwd="planner")
 
+        os.makedirs("dask_sql/jar", exist_ok=True)
+        shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
 
-# mvn clean install -f pom.xml
 
 setup(
     name="dask_sql",
@@ -34,6 +36,7 @@ setup(
     maintainer_email="nilslennartbraun@gmail.com",
     # license='BSD',
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
+    package_data={'dask_sql': ["jar/DaskSQL.jar"]},
     python_requires=">=3.5",
     long_description=(
         open("README.rst").read() if os.path.exists("README.rst") else ""
