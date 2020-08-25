@@ -1,7 +1,13 @@
 package com.dask.sql.application;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
 import com.dask.sql.schema.DaskSchema;
-import com.dask.sql.schema.DaskTable;
 
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.config.Lex;
@@ -15,23 +21,23 @@ import org.apache.calcite.plan.hep.HepProgram;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
+import org.apache.calcite.rel.rules.AggregateReduceFunctionsRule;
 import org.apache.calcite.rel.rules.FilterAggregateTransposeRule;
-import org.apache.calcite.rel.rules.FilterRemoveIsNotDistinctFromRule;
+import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.FilterMergeRule;
-import org.apache.calcite.rel.rules.FilterProjectTransposeRule;
+import org.apache.calcite.rel.rules.FilterRemoveIsNotDistinctFromRule;
 import org.apache.calcite.rel.rules.ProjectJoinTransposeRule;
 import org.apache.calcite.rel.rules.ProjectMergeRule;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
-import org.apache.calcite.rel.rules.AggregateReduceFunctionsRule;
 import org.apache.calcite.rel.rules.ReduceExpressionsRule;
-import org.apache.calcite.rex.RexExecutorImpl;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
+import org.apache.calcite.rex.RexExecutorImpl;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlOperatorTable;
-import org.apache.calcite.sql.fun.OracleSqlOperatorTable;
+import org.apache.calcite.sql.fun.SqlLibrary;
+import org.apache.calcite.sql.fun.SqlLibraryOperatorTableFactory;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -42,170 +48,141 @@ import org.apache.calcite.tools.Planner;
 import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
 /**
- * <h1>Generate Relational Algebra</h1>
- * The purpose of this class is to hold the planner, the program, and the
- * configuration for reuse based on a schema that is provided. It can then take
- * sql and convert it to relational algebra.
+ * The core of the calcite program: the generator for the relational algebra.
+ * Using a passed schema, it generates (optimized) relational algebra out of SQL
+ * query strings or throws an exception.
  *
- *
- * @author  Felipe Aramburu
- * @version 1.0
- * @since   2018-10-31
+ * This class is taken (in parts) from the blazingSQL project.
  */
 public class RelationalAlgebraGenerator {
-	final static Logger LOGGER = LoggerFactory.getLogger(RelationalAlgebraGenerator.class);
-
+	/// The created planner
 	private Planner planner;
-	private HepProgram program;
-	private FrameworkConfig config;
+	/// The planner for optimized queries
+	private HepPlanner hepPlanner;
 
-	private List<RelOptRule> rules;
+	/// Create a new relational algebra generator from a schema
+	public RelationalAlgebraGenerator(final DaskSchema schema) throws ClassNotFoundException, SQLException {
+		// Taken from https://calcite.apache.org/docs/ and blazingSQL
 
-	public RelationalAlgebraGenerator(DaskSchema newSchema) {
-		try {
-			Class.forName("org.apache.calcite.jdbc.Driver");
+		final CalciteConnection calciteConnection = getCalciteConnection();
+		calciteConnection.setSchema(schema.getName());
 
-			Properties info = new Properties();
-			info.setProperty("lex", "JAVA");
-			Connection connection = DriverManager.getConnection("jdbc:calcite:", info);
-			CalciteConnection calciteConnection = connection.unwrap(CalciteConnection.class);
-			calciteConnection.setSchema(newSchema.getName());
+		final SchemaPlus rootSchema = calciteConnection.getRootSchema();
+		rootSchema.add(schema.getName(), schema);
 
-			SchemaPlus schema = calciteConnection.getRootSchema();
+		final FrameworkConfig config = getConfig(rootSchema, schema.getName());
 
-			schema.add(newSchema.getName(), newSchema);
-
-			// schema.add("EMP", table);
-			List<String> defaultSchema = new ArrayList<String>();
-			defaultSchema.add(newSchema.getName());
-
-			Properties props = new Properties();
-			props.setProperty("defaultSchema", newSchema.getName());
-			List<SqlOperatorTable> sqlOperatorTables = new ArrayList<>();
-			sqlOperatorTables.add(SqlStdOperatorTable.instance());
-			sqlOperatorTables.add(OracleSqlOperatorTable.instance());
-			sqlOperatorTables.add(new CalciteCatalogReader(CalciteSchema.from(schema.getSubSchema(newSchema.getName())),
-				defaultSchema,
-				new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT),
-				new CalciteConnectionConfigImpl(props)));
-
-			config = Frameworks.newConfigBuilder()
-						 .defaultSchema(schema.getSubSchema(newSchema.getName()))
-						 .parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
-						 .operatorTable(new ChainedSqlOperatorTable(sqlOperatorTables))
-						 .build();
-
-			planner = Frameworks.getPlanner(config);
-		} catch(Exception e) {
-			e.printStackTrace();
-
-			config = null;
-			planner = null;
-			program = null;
-		}
+		planner = Frameworks.getPlanner(config);
+		hepPlanner = getHepPlanner(config);
 	}
 
-	public SqlNode
-	validateQuery(String sql) throws SqlSyntaxException, SqlValidationException {
-		SqlNode tempNode;
+	/// Create the framework config, e.g. containing with SQL dialect we speak
+	private FrameworkConfig getConfig(final SchemaPlus rootSchema, final String schemaName) {
+		final List<String> defaultSchema = new ArrayList<String>();
+		defaultSchema.add(schemaName);
+
+		final Properties props = new Properties();
+		props.setProperty("defaultSchema", schemaName);
+
+		final SchemaPlus schemaPlus = rootSchema.getSubSchema(schemaName);
+		final CalciteSchema calciteSchema = CalciteSchema.from(schemaPlus);
+
+		final CalciteCatalogReader calciteCatalogReader = new CalciteCatalogReader(calciteSchema, defaultSchema,
+				new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT), new CalciteConnectionConfigImpl(props));
+
+		final List<SqlOperatorTable> sqlOperatorTables = new ArrayList<>();
+		sqlOperatorTables.add(SqlStdOperatorTable.instance());
+		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
+		sqlOperatorTables.add(calciteCatalogReader);
+
+		return Frameworks.newConfigBuilder()
+				.defaultSchema(schemaPlus)
+				.parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
+				.operatorTable(new ChainedSqlOperatorTable(sqlOperatorTables)).build();
+	}
+
+	/// Get a connection to "connect" to the database.
+	private CalciteConnection getCalciteConnection() throws SQLException {
+		// Taken from https://calcite.apache.org/docs/
+		final Properties info = new Properties();
+		info.setProperty("lex", "JAVA");
+
+		final Connection connection = DriverManager.getConnection("jdbc:calcite:", info);
+		return connection.unwrap(CalciteConnection.class);
+	}
+
+	/// get an optimizer hep planner
+	private HepPlanner getHepPlanner(final FrameworkConfig config) {
+		// TODO: check if these rules are sensible
+		// Taken from blazingSQL
+		final HepProgram program = new HepProgramBuilder()
+		        .addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
+				.addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN)
+				.addRuleInstance(ProjectMergeRule.INSTANCE)
+				.addRuleInstance(FilterMergeRule.INSTANCE)
+				.addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
+				.addRuleInstance(ProjectRemoveRule.INSTANCE)
+				.addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
+				.addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
+				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
+				.addRuleInstance(AggregateReduceFunctionsRule.INSTANCE).build();
+
+		return new HepPlanner(program, config.getContext());
+	}
+
+	/// Parse a sql string into a sql tree
+	private SqlNode getSqlNode(final String sql) throws SqlParseException {
 		try {
-			tempNode = planner.parse(sql);
-		} catch(SqlParseException e) {
+			return planner.parse(sql);
+		} catch (final SqlParseException e) {
 			planner.close();
-			throw new SqlSyntaxException(sql, e);
+			throw e;
 		}
+	}
 
-		SqlNode validatedSqlNode;
+	/// Validate a sql node
+	private SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
 		try {
-			validatedSqlNode = planner.validate(tempNode);
-		} catch(ValidationException e) {
+			return planner.validate(sqlNode);
+		} catch(final ValidationException e) {
 			planner.close();
-			throw new SqlValidationException(sql, e);
+			throw e;
 		}
-		return validatedSqlNode;
 	}
 
-	public RelNode
-	getNonOptimizedRelationalAlgebra(String sql)
-		throws SqlSyntaxException, SqlValidationException, RelConversionException {
-		SqlNode validatedSqlNode = validateQuery(sql);
-		return planner.rel(validatedSqlNode).project();
+	/// Turn a validated sql node into a rel node
+	private RelNode getRelNode(final SqlNode validatedSqlNode) throws RelConversionException {
+		try {
+			return planner.rel(validatedSqlNode).project();
+		} catch (final RelConversionException e) {
+			planner.close();
+			throw e;
+		}
 	}
 
-	public RelNode
-	getOptimizedRelationalAlgebra(RelNode nonOptimizedPlan) throws RelConversionException {
-		// TODO: check
-		if(rules == null) {
-			program = new HepProgramBuilder()
-						  .addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
-						  .addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
-						  .addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
-						  .addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN)
-						  .addRuleInstance(ProjectMergeRule.INSTANCE)
-						  .addRuleInstance(FilterMergeRule.INSTANCE)
-						  .addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
-						  .addRuleInstance(ProjectRemoveRule.INSTANCE)
-						  .addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
-						  .addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
-						  .addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
-						  .addRuleInstance(AggregateReduceFunctionsRule.INSTANCE)
-						  .build();
-		} else {
-			HepProgramBuilder programBuilder = new HepProgramBuilder();
-			for(RelOptRule rule : rules) {
-				programBuilder = programBuilder.addRuleInstance(rule);
-			}
-			program = programBuilder.build();
-		}
-
-		final HepPlanner hepPlanner = new HepPlanner(program, config.getContext());
+	/// Turn a non-optimized algebra into an optimized one
+	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) throws RelConversionException {
 		nonOptimizedPlan.getCluster().getPlanner().setExecutor(new RexExecutorImpl(null));
 		hepPlanner.setRoot(nonOptimizedPlan);
-
 		planner.close();
 
 		return hepPlanner.findBestExp();
 	}
 
-	public RelNode
-	getRelationalAlgebra(String sql) throws SqlSyntaxException, SqlValidationException, RelConversionException {
-		RelNode nonOptimizedPlan = getNonOptimizedRelationalAlgebra(sql);
-		LOGGER.debug("non optimized\n" + RelOptUtil.toString(nonOptimizedPlan));
-
-		RelNode optimizedPlan = getOptimizedRelationalAlgebra(nonOptimizedPlan);
-		LOGGER.debug("optimized\n" + RelOptUtil.toString(optimizedPlan));
-
-		return optimizedPlan;
+	/// Return the algebra of a given string
+	public RelNode getRelationalAlgebra(final String sql)
+			throws SqlParseException, ValidationException, RelConversionException {
+		final SqlNode sqlNode = getSqlNode(sql);
+		final SqlNode validatedSqlNode = getValidatedNode(sqlNode);
+		final RelNode nonOptimizedRelNode = getRelNode(validatedSqlNode);
+		return getOptimizedRelationalAlgebra(nonOptimizedRelNode);
 	}
 
-	public String
-	getRelationalAlgebraString(String sql) throws SqlSyntaxException, SqlValidationException, RelConversionException {
-		String response = "";
-
-		try {
-			response = RelOptUtil.toString(getRelationalAlgebra(sql));
-		}catch(SqlValidationException ex){
-			return "fail: \n " + ex.getMessage();
-		}catch(SqlSyntaxException ex){
-			return "fail: \n " + ex.getMessage();
-		} catch(Exception ex) {
-			ex.printStackTrace();
-
-			LOGGER.error(ex.getMessage());
-			return "fail: \n " + ex.getMessage();
-		}
-
-		return response;
+	/// Return the string representation of a rel node
+	public String getRelationalAlgebraString(final RelNode relNode) {
+		return RelOptUtil.toString(relNode);
 	}
 }

@@ -43,9 +43,9 @@ class Context:
 
         # Now create a relational algebra from that
         generator = RelationalAlgebraGenerator(schema)
-        # TODO: Debug
-        print(generator.getRelationalAlgebraString(sql))
+
         ral = generator.getRelationalAlgebra(sql)
+        print(generator.getRelationalAlgebraString(ral))
 
         return ral
 
