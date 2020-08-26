@@ -36,7 +36,7 @@ setup(
     maintainer_email="nilslennartbraun@gmail.com",
     # license='BSD',
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
-    package_data={'dask_sql': ["jar/DaskSQL.jar"]},
+    package_data={"dask_sql": ["jar/DaskSQL.jar"]},
     python_requires=">=3.5",
     long_description=(
         open("README.rst").read() if os.path.exists("README.rst") else ""

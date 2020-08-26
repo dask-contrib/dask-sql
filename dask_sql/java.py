@@ -3,7 +3,7 @@ import pkg_resources
 import jpype
 
 
-jpype.addClassPath(pkg_resources.resource_filename('dask_sql', 'jar/DaskSQL.jar'))
+jpype.addClassPath(pkg_resources.resource_filename("dask_sql", "jar/DaskSQL.jar"))
 jpype.startJVM("-ea", convertStrings=False)
 
 
