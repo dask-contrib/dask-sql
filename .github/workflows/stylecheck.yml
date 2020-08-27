@@ -1,0 +1,20 @@
+---
+name: Python Style Check
+on: [pull_request]
+
+jobs:
+  test:
+    name: black style check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: goanpeca/setup-miniconda@v1
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: |
+        conda install black
+    - name: Check code style
+      shell: bash -l {0}
+      run: |
+        black --check .
