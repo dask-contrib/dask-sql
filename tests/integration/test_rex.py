@@ -68,8 +68,7 @@ class RexOperationsTestCase(DaskTestCase):
             """
             SELECT * FROM string_table
             WHERE a LIKE '%_' ESCAPE 'r'
-        """,
-            debug=True,
+        """
         ).compute()
 
         assert_frame_equal(df, expected_df)
