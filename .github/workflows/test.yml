@@ -1,6 +1,10 @@
 ---
 name: Test
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   test:
@@ -8,6 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Cache local Maven repository
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+    - name: Cache downloaded conda packages
+      uses: actions/cache@v2
+      with:
+        path: /home/runner/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ hashFiles('conda.yaml') }}
     - name: Set up Python
       uses: goanpeca/setup-miniconda@v1
     - name: Install dependencies
