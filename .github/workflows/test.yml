@@ -15,7 +15,8 @@ jobs:
       run: |
         conda install --file conda.yaml -c conda-forge
         which python
-        python setup.py java install
+        python setup.py java
+        pip install -e .
 
         # Print out the pip versions for debugging
         pip list

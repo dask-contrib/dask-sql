@@ -2,6 +2,7 @@ import operator
 from collections import namedtuple
 from functools import reduce
 from typing import Any, Union, Callable
+import re
 
 import numpy as np
 import dask.dataframe as dd
@@ -62,6 +63,90 @@ class CaseOperation(Operation):
             return then if where else other  # pragma: no cover
 
 
+class LikeOperation(Operation):
+    """The like operator (regex for SQL with some twist)"""
+
+    def __init__(self):
+        super().__init__(self.like)
+
+    def like(
+        self, test: Union[dd.Series, Any], regex: str, escape: str = None,
+    ) -> Union[dd.Series, Any]:
+        """
+        Returns true, if the string test matches the given regex
+        (maybe escaped by escape)
+        """
+
+        if not escape:
+            escape = "\\"
+
+        # Unfortunately, SQL's like syntax is not directly
+        # a regular expression. We need to do some translation
+        # SQL knows about the following wildcards:
+        # %, ?, [], _, #
+        transformed_regex = ""
+        escaped = False
+        in_char_range = False
+        for char in regex:
+            # Escape characters with "\"
+            if escaped:
+                char = "\\" + char
+                escaped = False
+
+            # Keep character ranges [...] as they are
+            elif in_char_range:
+                if char == "]":
+                    in_char_range = False
+
+            elif char == "[":
+                in_char_range = True
+
+            # These chars have a special meaning in regex
+            # whereas in SQL they have not, so we need to
+            # add additional escaping
+            elif char in [
+                "#",
+                "$",
+                "^",
+                ".",
+                "|",
+                "~",
+                "-",
+                "+",
+                "*",
+                "?",
+                "(",
+                ")",
+                "{",
+                "}",
+            ]:
+                char = "\\" + char
+
+            # The needed "\" is printed above, so we continue
+            elif char == escape:
+                escaped = True
+                continue
+
+            # An unescaped "%" in SQL is a .*
+            elif char == "%":
+                char = ".*"
+
+            # An unescaped "_" in SQL is a .
+            elif char == "_":
+                char = "."
+
+            transformed_regex += char
+
+        # the SQL like always goes over the full string
+        transformed_regex = "^" + transformed_regex + "$"
+
+        # Finally, apply the string
+        if is_frame(test):
+            return test.str.match(transformed_regex)
+        else:  # pragma: no cover
+            return bool(re.match(transformed_regex, test))
+
+
 class RexCallPlugin:
     """
     RexCall is used for expressions, which calculate something.
@@ -93,6 +178,7 @@ class RexCallPlugin:
         "/": ReduceOperation(operation=operator.truediv),
         "*": ReduceOperation(operation=operator.mul),
         "CASE": CaseOperation(),
+        "LIKE": LikeOperation(),
     }
 
     def convert(

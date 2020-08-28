@@ -37,8 +37,8 @@ class RexLiteralPlugin(BaseRexPlugin):
         if np_type == str and literal_value.startswith("_"):
             encoding, literal_value = literal_value.split("'", 1)
             literal_value = literal_value.rstrip("'")
-            literal_value = literal_value.encode(encoding).decode()
-            return literal_value
+            literal_value = literal_value.encode(encoding=encoding)
+            return literal_value.decode(encoding=encoding)
 
         # in all other cases we can just return the value as correct type
         return np_type(literal_value)
