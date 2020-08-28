@@ -3,7 +3,7 @@ name: Test
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
     - name: Cache downloaded conda packages
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: /home/runner/conda_pkgs_dir
         key: ${{ runner.os }}-conda-${{ hashFiles('conda.yaml') }}
