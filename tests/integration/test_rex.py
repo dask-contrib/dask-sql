@@ -25,10 +25,10 @@ class RexOperationsTestCase(DaskTestCase):
         assert_frame_equal(df, expected_df, check_dtype=False)
 
     def test_literals(self):
-        df = self.c.sql("""SELECT 'a string' as S, 4.4 AS F, -456434 AS I """)
+        df = self.c.sql("""SELECT 'a string äö' as S, 4.4 AS F, -456434 AS I """)
         df = df.compute()
 
-        expected_df = pd.DataFrame({"S": ["a string"], "F": [4.4], "I": [-456434]})
+        expected_df = pd.DataFrame({"S": ["a string äö"], "F": [4.4], "I": [-456434]})
         assert_frame_equal(df, expected_df, check_dtype=False)
 
     def test_like(self):
