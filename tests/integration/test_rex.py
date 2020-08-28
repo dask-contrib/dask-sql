@@ -1,4 +1,5 @@
 import pandas as pd
+import dask.dataframe as dd
 from pandas.testing import assert_frame_equal
 
 from tests.integration.fixtures import DaskTestCase
@@ -29,3 +30,46 @@ class RexOperationsTestCase(DaskTestCase):
 
         expected_df = pd.DataFrame({"S": ["a string"], "F": [4.4], "I": [-456434]})
         assert_frame_equal(df, expected_df, check_dtype=False)
+
+    def test_like(self):
+        expected_df = pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
+        self.c.register_dask_table(
+            dd.from_pandas(expected_df, npartitions=1), "string_table"
+        )
+
+        df = self.c.sql(
+            """
+            SELECT * FROM string_table
+            WHERE a LIKE '%n[a-z]rmal st_i%'
+        """
+        ).compute()
+
+        assert_frame_equal(df, expected_df.iloc[[0]])
+
+        df = self.c.sql(
+            """
+            SELECT * FROM string_table
+            WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
+        """
+        ).compute()
+
+        assert_frame_equal(df, expected_df.iloc[[1]])
+
+        df = self.c.sql(
+            """
+            SELECT * FROM string_table
+            WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
+        """
+        ).compute()
+
+        assert_frame_equal(df, expected_df.iloc[[2]])
+
+        df = self.c.sql(
+            """
+            SELECT * FROM string_table
+            WHERE a LIKE '%_' ESCAPE 'r'
+        """,
+            debug=True,
+        ).compute()
+
+        assert_frame_equal(df, expected_df)
