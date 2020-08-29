@@ -179,6 +179,13 @@ class LogicalJoinPlugin(BaseRelPlugin):
             lhs_index = operand_lhs.getIndex()
             rhs_index = operand_rhs.getIndex()
 
+            # The rhs table always comes after the lhs
+            # table. Therefore we have a very simple
+            # way of checking, which index comes from which
+            # input
+            if lhs_index > rhs_index:
+                lhs_index, rhs_index = rhs_index, lhs_index
+
             return lhs_index, rhs_index
 
         raise TypeError("Invalid join condition")  # pragma: no cover

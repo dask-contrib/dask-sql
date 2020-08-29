@@ -73,7 +73,7 @@ class JoinTestCase(DaskTestCase):
             lhs.user_id, lhs.b, rhs.user_id, rhs.c
         FROM user_table_2 AS lhs
         JOIN user_table_1 AS rhs
-            ON lhs.user_id = rhs.user_id AND lhs.b - rhs.c >= 0
+            ON rhs.user_id = lhs.user_id AND lhs.b - rhs.c >= 0
         """
         )
 
