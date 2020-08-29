@@ -61,7 +61,7 @@ class Context:
         """
         self.tables[name] = df.copy()
 
-    def sql(self, sql: str) -> dd.DataFrame:
+    def sql(self, sql: str, debug: bool = False) -> dd.DataFrame:
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the MYSQL standard - however, not all
@@ -69,11 +69,11 @@ class Context:
         In general, only select statements (no data manipulation) works.
         """
         # TODO: show a nice error message if something is broken
-        rel = self._get_ral(sql)
+        rel = self._get_ral(sql, debug=debug)
         df = RelConverter.convert(rel, tables=self.tables)
         return df
 
-    def _get_ral(self, sql, debug=False):
+    def _get_ral(self, sql, debug: bool = False):
         """Helper function to turn the sql query into a relational algebra"""
         # Create a schema filled with the dataframes we have
         # currently in our list
