@@ -1,5 +1,4 @@
-dask-sql
-========
+# dask-sql
 
 `dask-sql` adds a SQL query layer on top of `dask`.
 
@@ -48,38 +47,53 @@ print(result.compute())
 `dask-sql` also comes with a very simple test implementation of a SQL server speaking the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
 It is - so far - just a proof of concept. See below on how to start it.
 
-Installation
-------------
+## Installation
 
 So far, the project can only be installed via the sources.
 A packaged installation will come soon!
+
+### With `conda`
 
 Create a new conda environment using the supplied `conda.yaml`:
 
     conda create -n dask-sql --file conda.yaml -c conda-forge
     conda activate dask-sql
 
-Now run the java build
-
-    python setup.py java
-
 Finally, you can install the python module
 
     python setup.py install
 
-Or also in development mode
+This will trigger also the compilation of the java library.
+
+### With `pip`
+
+Make sure you have a running java installation with version >= 11.
+Currently, for the compilation the JDK is needed.
+
+After installing Java, you can install the package with
+
+    python setup.py install
+
+### For development
+
+You can also build the java library separately:
+
+    python setup.py java
+
+After that, you can install the package in development mode
 
     pip install -e .
 
-Testing
--------
+Make sure to re-run the java build whenever you do any changes to the
+java code.
+
+## Testing
 
 You can run the tests (after installation) with
 
     pytest tests
 
-SQL Server
-----------
+## SQL Server
 
 `dask-sql` comes with a small test implementation for a SQL server.
 Instead of rebuilding a full ODBC driver, we re-use the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
@@ -104,8 +118,7 @@ Now you can fire simple SQL queries (as no data is loaded by default):
         2
     (1 row)
 
-How does it work?
------------------
+## How does it work?
 
 At the core, `dask-sql` does two things:
 * translate the SQL query using Apache Calcite into a relational algebra, which is specified as a tree of java objects.
