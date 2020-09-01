@@ -31,6 +31,7 @@ _SQL_TO_PYTHON = {
     "TINYINT": np.int8,
     "BOOLEAN": np.bool8,
     "VARCHAR": str,
+    "NULL": type(None),
 }
 
 
@@ -65,3 +66,10 @@ def sql_to_python_type(sql_type):
         return _SQL_TO_PYTHON[sql_type]
     except KeyError:  # pragma: no cover
         raise NotImplementedError(f"The SQL type {sql_type} is not implemented (yet)")
+
+
+def null_python_type(python_type):
+    if np.issubdtype(python_type, np.number):
+        return np.nan
+
+    return None

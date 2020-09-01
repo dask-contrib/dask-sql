@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 from pandas.testing import assert_frame_equal
@@ -22,14 +23,23 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df = pd.DataFrame(
             {"S1": [None, None, 1], "S2": [1, 2, 3], "S3": [2, 3, 4], "S4": [1, 2, 1]}
         )
-        assert_frame_equal(df, expected_df, check_dtype=False)
+        assert_frame_equal(df, expected_df)
 
     def test_literals(self):
-        df = self.c.sql("""SELECT 'a string äö' as S, 4.4 AS F, -456434 AS I """)
+        df = self.c.sql("""SELECT 'a string äö' as S, 4.4 AS F, -4564347464 AS I """)
         df = df.compute()
 
-        expected_df = pd.DataFrame({"S": ["a string äö"], "F": [4.4], "I": [-456434]})
-        assert_frame_equal(df, expected_df, check_dtype=False)
+        expected_df = pd.DataFrame(
+            {"S": ["a string äö"], "F": [4.4], "I": [-4564347464]}
+        )
+        assert_frame_equal(df, expected_df)
+
+    def test_literal_null(self):
+        df = self.c.sql("""SELECT NULL AS N, 1 + NULL AS I""")
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"N": [None], "I": [np.nan]})
+        assert_frame_equal(df, expected_df)
 
     def test_like(self):
         expected_df = pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
