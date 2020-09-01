@@ -49,3 +49,32 @@ class GroupbyTestCase(DaskTestCase):
         expected_df["EXPR$0"] = expected_df["EXPR$0"].astype("int64")
         expected_df["S"] = expected_df["S"].astype("float64")
         assert_frame_equal(df, expected_df)
+
+    def test_group_by_nan(self):
+        df = self.c.sql(
+            """
+        SELECT
+            c
+        FROM user_table_nan
+        GROUP BY c
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"c": [3, 1]})
+        expected_df["c"] = expected_df["c"].astype("float64")
+        assert_frame_equal(df, expected_df)
+
+        df = self.c.sql(
+            """
+        SELECT
+            c
+        FROM user_table_inf
+        GROUP BY c
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
+        expected_df["c"] = expected_df["c"].astype("float64")
+        assert_frame_equal(df, expected_df)
