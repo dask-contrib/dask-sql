@@ -16,7 +16,7 @@ class DaskTestCase(TestCase):
         self.long_table = pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
 
         self.user_table_inf = pd.DataFrame({"c": [3, float("inf"), 1]})
-        self.user_table_nan = pd.DataFrame({"c": [3, float("inf"), 1]})
+        self.user_table_nan = pd.DataFrame({"c": [3, float("nan"), 1]})
 
         self.c = Context()
         self.c.register_dask_table(dd.from_pandas(self.df, npartitions=3), "df")
