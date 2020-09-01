@@ -3,6 +3,7 @@ from typing import Dict, List
 import dask.dataframe as dd
 from dask.highlevelgraph import HighLevelGraph
 from dask.dataframe.core import new_dd_object
+import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -59,6 +60,14 @@ class LogicalSortPlugin(BaseRelPlugin):
             raise NotImplementedError(
                 "The first column needs to be sorted ascending (yet)"
             )
+        # We can only sort if there are no NaNs or infs.
+        # Therefore we need to do a single pass over the dataframe
+        # to warn the user
+        # We shall also treat inf as na
+        with pd.option_context("use_inf_as_na", True):
+            if not (~df[first_sort_column].isna()).all().compute():
+                raise ValueError("Can not sort a column with NaNs")
+
         df = df.set_index(first_sort_column, drop=False).reset_index(drop=True)
 
         # sort the remaining columns if given
