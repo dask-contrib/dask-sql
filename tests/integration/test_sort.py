@@ -1,6 +1,8 @@
 from pandas.testing import assert_frame_equal
 
 from tests.integration.fixtures import DaskTestCase
+import pandas as pd
+import dask.dataframe as dd
 
 
 class SortTestCase(DaskTestCase):
@@ -20,11 +22,61 @@ class SortTestCase(DaskTestCase):
 
         assert_frame_equal(df, df_expected)
 
+    def test_sort_with_nan(self):
+        self.assertRaises(
+            ValueError,
+            self.c.sql,
+            """
+            SELECT
+                *
+            FROM user_table_nan
+            ORDER BY c
+        """,
+        )
+
+        self.assertRaises(
+            ValueError,
+            self.c.sql,
+            """
+            SELECT
+                *
+            FROM user_table_inf
+            ORDER BY c
+        """,
+        )
+
+    def test_sort_strings(self):
+        string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
+        self.c.register_dask_table(
+            dd.from_pandas(string_table, npartitions=1), "string_table"
+        )
+
+        df = self.c.sql(
+            """
+        SELECT
+            *
+        FROM string_table
+        ORDER BY a
+        """
+        )
+        df = df.compute().reset_index(drop=True)
+        df_expected = string_table.sort_values(["a"], ascending=True).reset_index(
+            drop=True
+        )
+
+        assert_frame_equal(df, df_expected)
+
     def test_sort_not_allowed(self):
+        # No DESC implemented for the first column
         self.assertRaises(
             NotImplementedError,
             self.c.sql,
             "SELECT * FROM user_table_1 ORDER BY c DESC",
+        )
+
+        # Wrong column
+        self.assertRaises(
+            Exception, self.c.sql, "SELECT * FROM user_table_1 ORDER BY 42",
         )
 
 

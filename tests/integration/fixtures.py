@@ -15,6 +15,9 @@ class DaskTestCase(TestCase):
         self.user_table_2 = pd.DataFrame({"user_id": [1, 1, 2], "b": [1, 2, 3]})
         self.long_table = pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
 
+        self.user_table_inf = pd.DataFrame({"c": [3, float("inf"), 1]})
+        self.user_table_nan = pd.DataFrame({"c": [3, float("nan"), 1]})
+
         self.c = Context()
         self.c.register_dask_table(dd.from_pandas(self.df, npartitions=3), "df")
         self.c.register_dask_table(
@@ -25,4 +28,10 @@ class DaskTestCase(TestCase):
         )
         self.c.register_dask_table(
             dd.from_pandas(self.long_table, npartitions=3), "long_table"
+        )
+        self.c.register_dask_table(
+            dd.from_pandas(self.user_table_nan, npartitions=3), "user_table_nan"
+        )
+        self.c.register_dask_table(
+            dd.from_pandas(self.user_table_inf, npartitions=3), "user_table_inf"
         )
