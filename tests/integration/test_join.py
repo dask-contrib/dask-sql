@@ -7,7 +7,7 @@ from tests.integration.fixtures import DaskTestCase
 class JoinTestCase(DaskTestCase):
     def test_join(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs JOIN df AS rhs ON lhs.a = rhs.a"
+            "SELECT lhs.a, rhs.b FROM df AS lhs JOIN df AS rhs ON lhs.a = rhs.a"
         )
         df = df.compute()
 
@@ -15,7 +15,7 @@ class JoinTestCase(DaskTestCase):
 
     def test_join_inner(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs INNER JOIN df AS rhs ON lhs.a = rhs.a"
+            "SELECT lhs.a, rhs.b FROM df AS lhs INNER JOIN df AS rhs ON lhs.a = rhs.a"
         )
         df = df.compute()
 
@@ -23,7 +23,7 @@ class JoinTestCase(DaskTestCase):
 
     def test_join_outer(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs FULL JOIN df AS rhs ON lhs.a = rhs.a"
+            "SELECT lhs.a, rhs.b FROM df AS lhs FULL JOIN df AS rhs ON lhs.a = rhs.a"
         )
         df = df.compute()
 
@@ -31,7 +31,7 @@ class JoinTestCase(DaskTestCase):
 
     def test_join_left(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs LEFT JOIN df AS rhs ON lhs.a = rhs.a"
+            "SELECT lhs.a, rhs.b FROM df AS lhs LEFT JOIN df AS rhs ON lhs.a = rhs.a"
         )
         df = df.compute()
 
@@ -39,7 +39,7 @@ class JoinTestCase(DaskTestCase):
 
     def test_join_right(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs RIGHT JOIN df AS rhs ON lhs.a = rhs.a"
+            "SELECT lhs.a, rhs.b FROM df AS lhs RIGHT JOIN df AS rhs ON lhs.a = rhs.a"
         )
         df = df.compute()
 
@@ -49,12 +49,12 @@ class JoinTestCase(DaskTestCase):
         self.assertRaises(
             NotImplementedError,
             self.c.sql,
-            "SELECT lhs.a, rhs.b from df AS lhs JOIN df AS rhs ON lhs.a = 3",
+            "SELECT lhs.a, rhs.b FROM df AS lhs JOIN df AS rhs ON lhs.a = 3",
         )
 
     def test_join_complex(self):
         df = self.c.sql(
-            "SELECT lhs.a, rhs.b from df AS lhs JOIN df AS rhs ON lhs.a < rhs.b",
+            "SELECT lhs.a, rhs.b FROM df AS lhs JOIN df AS rhs ON lhs.a < rhs.b",
         )
         df = df.compute()
 
