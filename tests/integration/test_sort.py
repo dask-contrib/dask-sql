@@ -12,12 +12,12 @@ class SortTestCase(DaskTestCase):
         SELECT
             *
         FROM user_table_1
-        ORDER BY c, user_id DESC
+        ORDER BY b, user_id DESC
         """
         )
         df = df.compute().reset_index(drop=True)
         df_expected = self.user_table_1.sort_values(
-            ["c", "user_id"], ascending=[True, False]
+            ["b", "user_id"], ascending=[True, False]
         ).reset_index(drop=True)
 
         assert_frame_equal(df, df_expected)
@@ -71,7 +71,7 @@ class SortTestCase(DaskTestCase):
         self.assertRaises(
             NotImplementedError,
             self.c.sql,
-            "SELECT * FROM user_table_1 ORDER BY c DESC",
+            "SELECT * FROM user_table_1 ORDER BY b DESC",
         )
 
         # Wrong column
