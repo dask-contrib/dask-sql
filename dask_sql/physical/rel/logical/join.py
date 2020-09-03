@@ -105,7 +105,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # 5. Now we can finally merge on these columns
         # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
         # plus the added columns
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns)
+        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
 
         # 6. So the next step is to make sure
         # we have the correct column order (and to remove the temporary join columns)
