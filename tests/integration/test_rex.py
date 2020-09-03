@@ -20,9 +20,11 @@ class RexOperationsTestCase(DaskTestCase):
         )
         df = df.compute()
 
-        expected_df = pd.DataFrame(
-            {"S1": [None, None, 1], "S2": [1, 2, 3], "S3": [2, 3, 4], "S4": [1, 2, 1]}
-        )
+        expected_df = pd.DataFrame(index=self.df.index)
+        expected_df["S1"] = self.df.a.apply(lambda a: 1 if a == 3 else None)
+        expected_df["S2"] = self.df.a.apply(lambda a: a if a > 0 else 1)
+        expected_df["S3"] = self.df.a.apply(lambda a: 3 if a == 4 else a + 1)
+        expected_df["S4"] = self.df.a.apply(lambda a: 1 if a == 3 else a)
         assert_frame_equal(df, expected_df)
 
     def test_literals(self):

@@ -10,28 +10,28 @@ from dask_sql.context import Context
 
 class DaskTestCase(TestCase):
     def setUp(self):
-        self.df = pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
-        self.user_table_1 = pd.DataFrame({"user_id": [2, 1, 2], "c": [3, 3, 1]})
-        self.user_table_2 = pd.DataFrame({"user_id": [1, 1, 2], "b": [1, 2, 3]})
+        self.df_simple = pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+        self.df = pd.DataFrame(
+            {"a": [1] * 100 + [2] * 200 + [3] * 400, "b": 10 * np.random.rand(700)}
+        )
+        self.user_table_1 = pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
+        self.user_table_2 = pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]})
         self.long_table = pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
 
         self.user_table_inf = pd.DataFrame({"c": [3, float("inf"), 1]})
         self.user_table_nan = pd.DataFrame({"c": [3, float("nan"), 1]})
 
         self.c = Context()
-        self.c.register_dask_table(dd.from_pandas(self.df, npartitions=3), "df")
-        self.c.register_dask_table(
-            dd.from_pandas(self.user_table_1, npartitions=3), "user_table_1"
-        )
-        self.c.register_dask_table(
-            dd.from_pandas(self.user_table_2, npartitions=3), "user_table_2"
-        )
-        self.c.register_dask_table(
-            dd.from_pandas(self.long_table, npartitions=3), "long_table"
-        )
-        self.c.register_dask_table(
-            dd.from_pandas(self.user_table_nan, npartitions=3), "user_table_nan"
-        )
-        self.c.register_dask_table(
-            dd.from_pandas(self.user_table_inf, npartitions=3), "user_table_inf"
-        )
+        for df_name in [
+            "df",
+            "df_simple",
+            "user_table_1",
+            "user_table_2",
+            "long_table",
+            "user_table_inf",
+            "user_table_nan",
+        ]:
+            df = getattr(self, df_name)
+            dask_df = dd.from_pandas(df, npartitions=3)
+            self.c.register_dask_table(dask_df, df_name)
+
