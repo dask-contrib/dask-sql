@@ -34,4 +34,3 @@ class DaskTestCase(TestCase):
             df = getattr(self, df_name)
             dask_df = dd.from_pandas(df, npartitions=3)
             self.c.register_dask_table(dask_df, df_name)
-
