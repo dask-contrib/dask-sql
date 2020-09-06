@@ -9,6 +9,7 @@ import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import is_frame
+from dask_sql.datacontainer import DataContainer
 
 
 class Operation:
@@ -182,10 +183,10 @@ class RexCallPlugin:
     }
 
     def convert(
-        self, rex: "org.apache.calcite.rex.RexNode", df: dd.DataFrame
+        self, rex: "org.apache.calcite.rex.RexNode", dc: DataContainer
     ) -> Union[dd.Series, Any]:
         # Prepare the operands by turning the RexNodes into python expressions
-        operands = [RexConverter.convert(o, df) for o in rex.getOperands()]
+        operands = [RexConverter.convert(o, dc) for o in rex.getOperands()]
 
         # Now use the operator name in the mapping
         operator_name = str(rex.getOperator().getName())
