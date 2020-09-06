@@ -12,7 +12,9 @@ import jpype
 
 # Define how to run the java virtual machine. Idea taken from blazingSQL.
 jpype.addClassPath(pkg_resources.resource_filename("dask_sql", "jar/DaskSQL.jar"))
-jpype.startJVM("-ea", "--illegal-access=deny", convertStrings=False)
+jpype.startJVM(
+    "-ea", "--illegal-access=deny", ignoreUnrecognized=True, convertStrings=False
+)
 
 
 # Some Java classes we need
