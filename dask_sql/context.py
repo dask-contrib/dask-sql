@@ -4,6 +4,7 @@ from dask_sql.java import DaskSchema, DaskTable, RelationalAlgebraGenerator
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical
 from dask_sql.physical.rex import RexConverter, core
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class Context:
@@ -54,13 +55,13 @@ class Context:
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
         """
-        Registering a dask table makes it usable in SQl queries.
+        Registering a dask table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
         If you change the table later, you need to re-register.
         """
-        self.tables[name] = df.copy()
+        self.tables[name] = DataContainer(df.copy(), ColumnContainer(df.columns))
 
     def sql(self, sql: str, debug: bool = False) -> dd.DataFrame:
         """
@@ -71,8 +72,8 @@ class Context:
         """
         # TODO: show a nice error message if something is broken
         rel = self._get_ral(sql, debug=debug)
-        df = RelConverter.convert(rel, tables=self.tables)
-        return df
+        dc = RelConverter.convert(rel, tables=self.tables)
+        return dc.assign()
 
     def _get_ral(self, sql, debug: bool = False):
         """Helper function to turn the sql query into a relational algebra"""
@@ -80,8 +81,9 @@ class Context:
         # currently in our list
         schema = DaskSchema("schema")
 
-        for name, df in self.tables.items():
+        for name, dc in self.tables.items():
             table = DaskTable(name)
+            df = dc.df
             for order, column in enumerate(df.columns):
                 data_type = df[column].dtype
                 sql_data_type = python_to_sql_type(data_type)
