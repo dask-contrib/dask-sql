@@ -10,43 +10,50 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [8, 11]
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache local Maven repository
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-    - name: Cache downloaded conda packages
-      uses: actions/cache@v2
-      with:
-        path: /home/runner/conda_pkgs_dir
-        key: ${{ runner.os }}-conda-${{ hashFiles('conda.yaml') }}
-    - name: Set up Python
-      uses: goanpeca/setup-miniconda@v1
-    - name: Install dependencies
-      shell: bash -l {0}
-      run: |
-        conda install --file conda.yaml -c conda-forge
-        which python
-        python setup.py java
-        pip install -e .
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
+      - name: Cache downloaded conda packages
+        uses: actions/cache@v2
+        with:
+          path: /home/runner/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ matrix.java }}-${{ hashFiles('conda.yaml') }}
+      - name: Set up Python
+        uses: goanpeca/setup-miniconda@v1
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          conda install --file conda.yaml -c conda-forge
 
-        # Print out the pip versions for debugging
-        pip list
+          # maybe re-install java
+          conda install openjdk=${{ matrix.java }}
 
-    - name: Test with pytest
-      shell: bash -l {0}
-      run: |
-        pytest --junitxml=junit/test-results.xml --cov-report=xml tests
+          which python
+          python setup.py java
+          pip install -e .
 
-    - name: Upload pytest test results
-      uses: actions/upload-artifact@v1
-      with:
-        name: pytest-results
-        path: junit/test-results.xml
-      # Use always() to always run this step to publish test results when there are test failures
-      if: ${{ always() }}
+          # Print out the pip versions for debugging
+          pip list
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
+      - name: Test with pytest
+        shell: bash -l {0}
+        run: |
+          pytest --junitxml=junit/test-results.xml --cov-report=xml tests
+
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v1
+        with:
+          name: pytest-results
+          path: junit/test-results.xml
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
