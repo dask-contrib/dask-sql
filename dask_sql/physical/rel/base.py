@@ -75,16 +75,3 @@ class BaseRelPlugin:
         from dask_sql.physical.rel.convert import RelConverter
 
         return [RelConverter.convert(input_rel, tables) for input_rel in input_rels]
-
-    @staticmethod
-    def make_unique(df, prefix="col"):
-        """
-        Make sure we have unique column names by calling each column
-
-            prefix_number
-
-        where number is the column index.
-        """
-        return df.rename(
-            columns={col: f"{prefix}_{i}" for i, col in enumerate(df.columns)}
-        )
