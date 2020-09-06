@@ -7,6 +7,7 @@ import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer
 
 
 class LogicalSortPlugin(BaseRelPlugin):
@@ -19,13 +20,17 @@ class LogicalSortPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalSort"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
-    ) -> dd.DataFrame:
-        (df,) = self.assert_inputs(rel, 1, tables)
-        self.check_columns_from_row_type(df, rel.getExpectedInputRowType(0))
+        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+    ) -> DataContainer:
+        (dc,) = self.assert_inputs(rel, 1, tables)
+        df = dc.df
+        cc = dc.column_container
 
         sort_collation = rel.getCollation().getFieldCollations()
-        sort_columns = [df.columns[int(x.getFieldIndex())] for x in sort_collation]
+        sort_columns = [
+            cc.get_backend_by_frontend_index(int(x.getFieldIndex()))
+            for x in sort_collation
+        ]
         sort_ascending = [str(x.getDirection()) == "ASCENDING" for x in sort_collation]
 
         offset = rel.offset
@@ -45,8 +50,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         if offset is not None or end is not None:
             df = self._apply_offset(df, offset, end)
 
-        df = self.fix_column_to_row_type(df, rel.getRowType())
-        return df
+        return DataContainer(df, cc)
 
     def _apply_sort(
         self, df: dd.DataFrame, sort_columns: List[str], sort_ascending: List[bool]

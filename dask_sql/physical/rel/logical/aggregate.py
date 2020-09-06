@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class LogicalAggregatePlugin(BaseRelPlugin):
@@ -33,28 +34,34 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
-    ) -> dd.DataFrame:
-        (df,) = self.assert_inputs(rel, 1, tables)
+        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+    ) -> DataContainer:
+        (dc,) = self.assert_inputs(rel, 1, tables)
+
+        df = dc.df
+        cc = dc.column_container
 
         # We make our life easier with having unique column names
-        df = self.make_unique(df)
+        cc = cc.make_unique()
 
         # I have no idea what that is, but so far it was always of length 1
         assert len(rel.getGroupSets()) == 1, "Do not know how to handle this case!"
 
         # Extract the information, which columns we need to group for
         group_column_indices = [int(i) for i in rel.getGroupSet()]
-        group_columns = [df.columns[i] for i in group_column_indices]
+        group_columns = [
+            cc.get_backend_by_frontend_index(i) for i in group_column_indices
+        ]
 
         # Always keep an additional column around for empty groups and aggregates
-        additional_column_name = str(len(df.columns))
-        df = df.assign(**{additional_column_name: 1})
+        additional_column_name = str(len(cc.columns))
 
         # Collect all aggregates
-        aggregations, output_column_order = self._collect_aggregations(
-            rel, df, group_columns, additional_column_name
-        )
+        (
+            aggregations,
+            output_column_order,
+            additional_column_needed,
+        ) = self._collect_aggregations(rel, cc, group_columns, additional_column_name)
 
         if not group_columns:
             # There was actually no GROUP BY specified in the SQL
@@ -64,6 +71,11 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             # It is important to do this after creating the aggregations,
             # as we do not want this additional column to be used anywhere
             group_columns = [additional_column_name]
+            additional_column_needed = True
+
+        if additional_column_needed:
+            df = df.assign(**{additional_column_name: 1})
+            cc.add(additional_column_name)
 
         # Now we can perform the aggregates
         df = df.groupby(by=group_columns).agg(aggregations)
@@ -73,21 +85,22 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df.columns = df.columns.get_level_values(-1)
-        df = df[output_column_order]
+        cc = ColumnContainer(df.columns)
 
-        df = self.fix_column_to_row_type(df, rel.getRowType())
-
-        return df
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        return DataContainer(df, cc)
 
     def _collect_aggregations(
         self,
         rel: "org.apache.calcite.rel.RelNode",
-        df: dd.DataFrame,
+        cc: ColumnContainer,
         group_columns: List[str],
         additional_column_name: str,
     ) -> Tuple[Dict[str, Dict[str, str]], List[int]]:
+
         aggregations = defaultdict(dict)
         output_column_order = []
+        additional_column_needed = False
 
         # SQL needs to copy the old content also. As the values are the same for a single group
         # anyways, we just use the first row
@@ -114,9 +127,10 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
             inputs = expr.getArgList()
             if len(inputs) == 1:
-                input_column_name = df.columns[inputs[0]]
+                input_column_name = cc.get_backend_by_frontend_index(inputs[0])
             elif len(inputs) == 0:
                 input_column_name = additional_column_name
+                additional_column_needed = True
             else:
                 raise NotImplementedError(
                     "Can not cope with more than one input"
@@ -125,4 +139,4 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             aggregations[input_column_name][output_column_name] = aggregation_function
             output_column_order.append(output_column_name)
 
-        return aggregations, output_column_order
+        return aggregations, output_column_order, additional_column_needed

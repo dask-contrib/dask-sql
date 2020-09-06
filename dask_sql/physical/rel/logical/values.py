@@ -5,6 +5,7 @@ import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class LogicalValuesPlugin(BaseRelPlugin):
@@ -24,8 +25,8 @@ class LogicalValuesPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalValues"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
-    ) -> dd.DataFrame:
+        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+    ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
@@ -37,6 +38,6 @@ class LogicalValuesPlugin(BaseRelPlugin):
         # We assume here that when using the values plan, the resulting dataframe will be quite small
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
         df = dd.from_pandas(pd.DataFrame(rows), npartitions=1)
-        df = self.fix_column_to_row_type(df, rel.getRowType())
+        cc = ColumnContainer(df.columns)
 
-        return df
+        return DataContainer(df, cc)
