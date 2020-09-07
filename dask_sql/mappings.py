@@ -82,7 +82,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     ):
         if str(literal_value) == "None":
             # NULL time
-            return np.datetime64()
+            return np.datetime64()  # pragma: no cover
 
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
