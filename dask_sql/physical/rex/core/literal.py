@@ -3,7 +3,7 @@ from typing import Any
 import dask.dataframe as dd
 
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.mappings import sql_to_python_type, null_python_type
+from dask_sql.mappings import sql_to_python_value
 
 
 class RexLiteralPlugin(BaseRexPlugin):
@@ -19,26 +19,9 @@ class RexLiteralPlugin(BaseRexPlugin):
     class_name = "org.apache.calcite.rex.RexLiteral"
 
     def convert(self, rex: "org.apache.calcite.rex.RexNode", df: dd.DataFrame) -> Any:
+        literal_value = rex.getValue()
+
         literal_type = str(rex.getType())
-        python_type = sql_to_python_type(literal_type)
+        python_value = sql_to_python_value(literal_type, literal_value)
 
-        # We first turn it into a string.
-        # That might not be the most efficient thing to do,
-        # but works for all types (so far)
-        # Additionally, a literal type is not used
-        # so often anyways.
-        literal_value = str(rex.getValue())
-
-        # empty literal type
-        if literal_value == "None":
-            return null_python_type(python_type)
-
-        # strings have the format _ENCODING'string'
-        if python_type == str and literal_value.startswith("_"):
-            encoding, literal_value = literal_value.split("'", 1)
-            literal_value = literal_value.rstrip("'")
-            literal_value = literal_value.encode(encoding=encoding)
-            return literal_value.decode(encoding=encoding)
-
-        # in all other cases we can just return the value as correct type
-        return python_type(literal_value)
+        return python_value
