@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import timedelta
 
-from dask_sql.mappings import python_to_sql_type, sql_to_python_type
+from dask_sql.mappings import python_to_sql_type, sql_to_python_value
 
 
 def test_python_to_sql():
@@ -10,10 +10,14 @@ def test_python_to_sql():
 
 
 def test_sql_to_python():
-    assert sql_to_python_type("CHAR(5)") == str
-    assert sql_to_python_type("BIGINT") == np.int64
-    assert sql_to_python_type("INTERVAL")(4) == timedelta(milliseconds=4)
+    assert sql_to_python_value("CHAR(5)", "test 123") == "test 123"
+    assert type(sql_to_python_value("BIGINT", 653)) == np.int64
+    assert sql_to_python_value("BIGINT", 653) == 653
+    assert sql_to_python_value("INTERVAL", 4) == timedelta(milliseconds=4)
 
 
 def test_python_to_sql_to_python():
-    assert sql_to_python_type(str(python_to_sql_type(np.dtype("int64")))) == np.int64
+    assert (
+        type(sql_to_python_value(str(python_to_sql_type(np.dtype("int64"))), 54))
+        == np.int64
+    )

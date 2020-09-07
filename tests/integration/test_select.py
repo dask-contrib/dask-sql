@@ -1,5 +1,7 @@
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
+import dask.dataframe as dd
 
 from tests.integration.fixtures import DaskTestCase
 
@@ -16,6 +18,28 @@ class SelectTestCase(DaskTestCase):
         df = df.compute()
 
         assert_frame_equal(df, self.df[["a"]])
+
+    def test_select_different_types(self):
+        expected_df = pd.DataFrame(
+            {
+                "date": pd.to_datetime(
+                    ["2022-01-21 17:34", "2022-01-21", "17:34", np.NaN]
+                ),
+                "string": ["this is a test", "another test", "äölüć", ""],
+                "integer": [1, 2, -4, 5],
+                "float": [-1.1, np.pi, np.NaN, np.sqrt(2)],
+            }
+        )
+        self.c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")
+        df = self.c.sql(
+            """
+        SELECT *
+        FROM df
+        """
+        )
+        df = df.compute()
+
+        assert_frame_equal(df, expected_df)
 
     def test_select_expr(self):
         df = self.c.sql("SELECT a + 1 AS a, b AS bla FROM df")

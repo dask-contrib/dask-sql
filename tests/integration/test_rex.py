@@ -28,11 +28,26 @@ class RexOperationsTestCase(DaskTestCase):
         assert_frame_equal(df, expected_df)
 
     def test_literals(self):
-        df = self.c.sql("""SELECT 'a string äö' AS S, 4.4 AS F, -4564347464 AS I """)
+        df = self.c.sql(
+            """SELECT 'a string äö' AS S,
+                      4.4 AS F,
+                      -4564347464 AS I,
+                      TIME '08:08:00.091' AS T,
+                      TIMESTAMP '2022-04-06 17:33:21' AS DT,
+                      DATE '1991-06-02' AS D
+            """
+        )
         df = df.compute()
 
         expected_df = pd.DataFrame(
-            {"S": ["a string äö"], "F": [4.4], "I": [-4564347464]}
+            {
+                "S": ["a string äö"],
+                "F": [4.4],
+                "I": [-4564347464],
+                "T": [pd.to_datetime("1970-01-01 08:08:00.091+00:00")],
+                "DT": [pd.to_datetime("2022-04-06 17:33:21+00:00")],
+                "D": [pd.to_datetime("1991-06-02 00:00+00:00")],
+            }
         )
         assert_frame_equal(df, expected_df)
 
