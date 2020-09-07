@@ -80,7 +80,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         or sql_type.startswith("TIME(")
         or sql_type == "DATE"
     ):
-        if literal_value == "None":
+        if str(literal_value) == "None":
             # NULL time
             return np.datetime64()
 
