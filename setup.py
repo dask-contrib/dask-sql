@@ -42,6 +42,10 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
         setuptools.command.build_py.build_py.run(self)
 
 
+with open("README.md") as f:
+    long_description = f.read()
+
+
 setup(
     name="dask_sql",
     use_scm_version=True,
@@ -50,6 +54,8 @@ setup(
     maintainer="Nils Braun",
     maintainer_email="nilslennartbraun@gmail.com",
     license="MIT",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
     python_requires=">=3.6",
