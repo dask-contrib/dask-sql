@@ -55,7 +55,7 @@ class SQLLiteComparisonTestCase(TestCase):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, **kwargs)
+        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
 
     def test_select(self):
         self.assert_query_gives_same_result(
@@ -79,8 +79,7 @@ class SQLLiteComparisonTestCase(TestCase):
         self.assert_query_gives_same_result(
             """
             SELECT 1 AS I, -5.34344 AS F, 'öäll' AS S
-        """,
-            check_dtype=False,
+        """
         )
 
         self.assert_query_gives_same_result(
