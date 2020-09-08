@@ -32,12 +32,23 @@ class LogicalValuesPlugin(BaseRelPlugin):
 
         rex_expression_rows = list(rel.getTuples())
         rows = []
-        for rex_expressions in rex_expression_rows:
-            rows.append([RexConverter.convert(rex, None) for rex in rex_expressions])
+        for rex_expression_row in rex_expression_rows:
+            # We convert each of the cells in the row
+            # using a RexConverter.
+            # As we do not have any information on the
+            # column headers, we just name them with
+            # their index.
+            rows.append(
+                {
+                    str(i): RexConverter.convert(rex_cell, None)
+                    for i, rex_cell in enumerate(rex_expression_row)
+                }
+            )
 
-        # We assume here that when using the values plan, the resulting dataframe will be quite small
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
-        df = dd.from_pandas(pd.DataFrame(rows), npartitions=1)
+        # We assume here that when using the values plan, the resulting dataframe will be quite small
+        df = pd.DataFrame(rows)
+        df = dd.from_pandas(df, npartitions=1)
         cc = ColumnContainer(df.columns)
 
         return DataContainer(df, cc)
