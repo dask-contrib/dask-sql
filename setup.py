@@ -22,7 +22,9 @@ class MavenCommand(distutils.cmd.Command):
 
     def run(self):
         """Run the mvn installation command"""
-        command = ["mvn", "clean", "install", "-f", "pom.xml"]
+        # We need to explicitely specify the full path to mvn
+        # for Windows
+        command = [shutil.which("mvn"), "clean", "install", "-f", "pom.xml"]
         self.announce(f"Running command: {' '.join(command)}", level=distutils.log.INFO)
 
         subprocess.check_call(command, cwd="planner")
