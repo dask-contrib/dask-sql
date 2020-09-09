@@ -10,10 +10,21 @@ import pkg_resources
 import jpype
 
 
-# Define how to run the java virtual machine. Idea taken from blazingSQL.
+# Define how to run the java virtual machine.
 jpype.addClassPath(pkg_resources.resource_filename("dask_sql", "jar/DaskSQL.jar"))
+
+# There seems to be a bug on Windows server for java >= 11 installed via conda
+# It uses a wrong java class path, which can be easily recognizes
+# by the \\bin\\bin part. We fix this here.
+jvmpath = jpype.getDefaultJVMPath()
+jvmpath = jvmpath.replace("\\bin\\bin\\server\\jvm.dll", "\\bin\\server\\jvm.dll")
+
 jpype.startJVM(
-    "-ea", "--illegal-access=deny", ignoreUnrecognized=True, convertStrings=False
+    "-ea",
+    "--illegal-access=deny",
+    ignoreUnrecognized=True,
+    convertStrings=False,
+    jvmpath=jvmpath,
 )
 
 
