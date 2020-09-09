@@ -51,4 +51,5 @@ class LogicalValuesPlugin(BaseRelPlugin):
         df = dd.from_pandas(df, npartitions=1)
         cc = ColumnContainer(df.columns)
 
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         return DataContainer(df, cc)

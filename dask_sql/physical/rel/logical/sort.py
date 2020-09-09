@@ -50,6 +50,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         if offset is not None or end is not None:
             df = self._apply_offset(df, offset, end)
 
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         return DataContainer(df, cc)
 
     def _apply_sort(

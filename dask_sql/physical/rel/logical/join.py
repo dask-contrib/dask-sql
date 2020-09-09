@@ -132,6 +132,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
