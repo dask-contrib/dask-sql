@@ -73,9 +73,11 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             group_columns = [additional_column_name]
             additional_column_needed = True
 
+        # If needed, add a column to group by which is
+        # the same for all rows
         if additional_column_needed:
             df = df.assign(**{additional_column_name: 1})
-            cc.add(additional_column_name)
+            cc = cc.add(additional_column_name)
 
         # Now we can perform the aggregates
         df = df.groupby(by=group_columns).agg(aggregations)

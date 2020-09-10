@@ -22,6 +22,8 @@ class LogicalFilterPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
+        # Every logic is handled in the RexConverter
+        # we just need to apply it here
         condition = rel.getCondition()
         df_condition = RexConverter.convert(condition, dc)
         df = df[df_condition]
