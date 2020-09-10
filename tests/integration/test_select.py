@@ -3,6 +3,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import dask.dataframe as dd
 
+from dask_sql.utils import ParsingException
 from tests.integration.fixtures import DaskTestCase
 
 
@@ -65,3 +66,9 @@ class SelectTestCase(DaskTestCase):
             {"e": 2 * (self.df["a"] - 1), "f": 2 * self.df["b"] - 1}
         )
         assert_frame_equal(df, expected_df)
+
+    def test_wrong_input(self):
+        self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")
+        self.assertRaises(
+            ParsingException, self.c.sql, """SELECT x FROM df""", debug=True
+        )
