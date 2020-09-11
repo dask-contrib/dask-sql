@@ -41,11 +41,11 @@ class RelConverter(Pluggable):
         class_name = get_java_class(rel)
 
         try:
-            plugin_instace = cls.get_plugin(class_name)
+            plugin_instance = cls.get_plugin(class_name)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"No conversion for class {class_name} available (yet)."
             )
 
-        df = plugin_instace.convert(rel, tables=tables)
+        df = plugin_instance.convert(rel, tables=tables)
         return df
