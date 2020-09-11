@@ -1,9 +1,16 @@
 import dask.dataframe as dd
 
-from dask_sql.java import DaskSchema, DaskTable, RelationalAlgebraGenerator
+from dask_sql.java import (
+    DaskSchema,
+    DaskTable,
+    RelationalAlgebraGenerator,
+    ValidationException,
+    SqlParseException,
+)
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical
 from dask_sql.physical.rex import RexConverter, core
+from dask_sql.utils import ParsingException
 
 
 class Context:
@@ -69,9 +76,20 @@ class Context:
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
         """
-        # TODO: show a nice error message if something is broken
-        rel = self._get_ral(sql, debug=debug)
-        df = RelConverter.convert(rel, tables=self.tables)
+        try:
+            rel = self._get_ral(sql, debug=debug)
+            df = RelConverter.convert(rel, tables=self.tables)
+        except (ValidationException, SqlParseException) as e:
+            if debug:
+                from_chained_exception = e
+            else:
+                # We do not want to re-raise an exception here
+                # as this would print the full java stack trace
+                # if debug is not set.
+                # Instead, we raise a nice exception
+                from_chained_exception = None
+
+            raise ParsingException(sql, str(e.message())) from from_chained_exception
         return df
 
     def _get_ral(self, sql, debug: bool = False):
