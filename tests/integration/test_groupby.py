@@ -9,7 +9,7 @@ class GroupbyTestCase(DaskTestCase):
         df = self.c.sql(
             """
         SELECT
-            user_id, SUM(b) AS S
+            user_id, SUM(b) AS "S"
         FROM user_table_1
         GROUP BY user_id
         """
@@ -25,7 +25,7 @@ class GroupbyTestCase(DaskTestCase):
         df = self.c.sql(
             """
         SELECT
-            SUM(b) AS S, SUM(2) AS X
+            SUM(b) AS "S", SUM(2) AS "X"
         FROM user_table_1
         """
         )
@@ -40,7 +40,7 @@ class GroupbyTestCase(DaskTestCase):
         df = self.c.sql(
             """
         SELECT
-            user_id + 1, SUM(CASE WHEN b = 3 THEN 1 END) AS S
+            user_id + 1, SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
         FROM user_table_1
         GROUP BY user_id + 1
         """

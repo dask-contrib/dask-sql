@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Properties;
 
 import com.dask.sql.schema.DaskSchema;
+import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
-import org.apache.calcite.config.Lex;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
-import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgram;
@@ -96,10 +96,16 @@ public class RelationalAlgebraGenerator {
 		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
 		sqlOperatorTables.add(calciteCatalogReader);
 
-		return Frameworks.newConfigBuilder()
-				.defaultSchema(schemaPlus)
-				.parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
-				.operatorTable(new ChainedSqlOperatorTable(sqlOperatorTables)).build();
+		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.configBuilder()).build();
+		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
+
+		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
+				.operatorTable(operatorTable).build();
+	}
+
+	/// Return the default dialect used
+	private SqlDialect getDialect() {
+		return PostgresqlSqlDialect.DEFAULT;
 	}
 
 	/// Get a connection to "connect" to the database.
@@ -116,16 +122,12 @@ public class RelationalAlgebraGenerator {
 	private HepPlanner getHepPlanner(final FrameworkConfig config) {
 		// TODO: check if these rules are sensible
 		// Taken from blazingSQL
-		final HepProgram program = new HepProgramBuilder()
-		        .addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
+		final HepProgram program = new HepProgramBuilder().addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
 				.addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
 				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN)
-				.addRuleInstance(ProjectMergeRule.INSTANCE)
-				.addRuleInstance(FilterMergeRule.INSTANCE)
-				.addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
-				.addRuleInstance(ProjectRemoveRule.INSTANCE)
-				.addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN).addRuleInstance(ProjectMergeRule.INSTANCE)
+				.addRuleInstance(FilterMergeRule.INSTANCE).addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
+				.addRuleInstance(ProjectRemoveRule.INSTANCE).addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
 				.addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
 				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
 				.addRuleInstance(AggregateReduceFunctionsRule.INSTANCE).build();
@@ -147,7 +149,7 @@ public class RelationalAlgebraGenerator {
 	private SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
 		try {
 			return planner.validate(sqlNode);
-		} catch(final ValidationException e) {
+		} catch (final ValidationException e) {
 			planner.close();
 			throw e;
 		}

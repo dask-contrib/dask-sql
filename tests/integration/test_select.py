@@ -56,7 +56,7 @@ class SelectTestCase(DaskTestCase):
             (
                 SELECT a - 1 AS c, 2*b  AS d
                 FROM df
-            ) AS `inner`
+            ) AS "inner"
             """
         )
         df = df.compute()
