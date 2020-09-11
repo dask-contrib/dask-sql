@@ -36,6 +36,8 @@ RelationalAlgebraGenerator = jpype.JClass(
 )
 SqlTypeName = jpype.JClass("org.apache.calcite.sql.type.SqlTypeName")
 List = jpype.JClass("java.util.List")
+ValidationException = jpype.JClass("org.apache.calcite.tools.ValidationException")
+SqlParseException = jpype.JClass("org.apache.calcite.sql.parser.SqlParseException")
 
 
 def get_java_class(instance):
