@@ -47,10 +47,14 @@ class GroupbyTestCase(DaskTestCase):
         )
         df = df.compute()
 
-        expected_df = pd.DataFrame({"EXPR$0": [2, 3, 4], "S": [1, 1, 1]})
-        expected_df["EXPR$0"] = expected_df["EXPR$0"].astype("int64")
+        user_id_column = '"user_table_1"."user_id" + 1'
+
+        expected_df = pd.DataFrame({user_id_column: [2, 3, 4], "S": [1, 1, 1]})
+        expected_df[user_id_column] = expected_df[user_id_column].astype("int64")
         expected_df["S"] = expected_df["S"].astype("float64")
-        assert_frame_equal(df.sort_values("EXPR$0").reset_index(drop=True), expected_df)
+        assert_frame_equal(
+            df.sort_values(user_id_column).reset_index(drop=True), expected_df
+        )
 
     def test_group_by_nan(self):
         df = self.c.sql(

@@ -42,10 +42,16 @@ class SelectTestCase(DaskTestCase):
         assert_frame_equal(df, expected_df)
 
     def test_select_expr(self):
-        df = self.c.sql("SELECT a + 1 AS a, b AS bla FROM df")
+        df = self.c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
         df = df.compute()
 
-        expected_df = pd.DataFrame({"a": self.df["a"] + 1, "bla": self.df["b"]})
+        expected_df = pd.DataFrame(
+            {
+                "a": self.df["a"] + 1,
+                "bla": self.df["b"],
+                '"df"."a" - 1': self.df["a"] - 1,
+            }
+        )
         assert_frame_equal(df, expected_df)
 
     def test_select_of_select(self):
