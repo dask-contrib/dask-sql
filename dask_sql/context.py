@@ -93,8 +93,12 @@ class Context:
         # Now create a relational algebra from that
         generator = RelationalAlgebraGenerator(schema)
 
-        rel = generator.getRelationalAlgebra(sql)
-        if debug:  # pragma: no cover
+        sqlNode = generator.getSqlNode(sql)
+        validatedSqlNode = generator.getValidatedNode(sqlNode)
+        nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+        rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+
+        if debug:
             print(generator.getRelationalAlgebraString(rel))
 
         return rel

@@ -100,11 +100,11 @@ public class RelationalAlgebraGenerator {
 		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
 
 		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
-				.operatorTable(operatorTable).build();
+				.executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
 	}
 
 	/// Return the default dialect used
-	private SqlDialect getDialect() {
+	public SqlDialect getDialect() {
 		return PostgresqlSqlDialect.DEFAULT;
 	}
 
@@ -136,7 +136,7 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Parse a sql string into a sql tree
-	private SqlNode getSqlNode(final String sql) throws SqlParseException {
+	public SqlNode getSqlNode(final String sql) throws SqlParseException {
 		try {
 			return planner.parse(sql);
 		} catch (final SqlParseException e) {
@@ -146,7 +146,7 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Validate a sql node
-	private SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
+	public SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
 		try {
 			return planner.validate(sqlNode);
 		} catch (final ValidationException e) {
@@ -156,7 +156,7 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Turn a validated sql node into a rel node
-	private RelNode getRelNode(final SqlNode validatedSqlNode) throws RelConversionException {
+	public RelNode getRelationalAlgebra(final SqlNode validatedSqlNode) throws RelConversionException {
 		try {
 			return planner.rel(validatedSqlNode).project();
 		} catch (final RelConversionException e) {
@@ -166,21 +166,11 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Turn a non-optimized algebra into an optimized one
-	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) throws RelConversionException {
-		nonOptimizedPlan.getCluster().getPlanner().setExecutor(new RexExecutorImpl(null));
+	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) {
 		hepPlanner.setRoot(nonOptimizedPlan);
 		planner.close();
 
 		return hepPlanner.findBestExp();
-	}
-
-	/// Return the algebra of a given string
-	public RelNode getRelationalAlgebra(final String sql)
-			throws SqlParseException, ValidationException, RelConversionException {
-		final SqlNode sqlNode = getSqlNode(sql);
-		final SqlNode validatedSqlNode = getValidatedNode(sqlNode);
-		final RelNode nonOptimizedRelNode = getRelNode(validatedSqlNode);
-		return getOptimizedRelationalAlgebra(nonOptimizedRelNode);
 	}
 
 	/// Return the string representation of a rel node
