@@ -30,6 +30,8 @@ jpype.startJVM(
 
 # Some Java classes we need
 DaskTable = jpype.JClass("com.dask.sql.schema.DaskTable")
+DaskAggregateFunction = jpype.JClass("com.dask.sql.schema.DaskAggregateFunction")
+DaskScalarFunction = jpype.JClass("com.dask.sql.schema.DaskScalarFunction")
 DaskSchema = jpype.JClass("com.dask.sql.schema.DaskSchema")
 RelationalAlgebraGenerator = jpype.JClass(
     "com.dask.sql.application.RelationalAlgebraGenerator"

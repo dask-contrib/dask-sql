@@ -30,7 +30,10 @@ class RexConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls, rex: "org.apache.calcite.rex.RexNode", df: dd.DataFrame
+        cls,
+        rex: "org.apache.calcite.rex.RexNode",
+        df: dd.DataFrame,
+        context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
         Convert the given rel (java instance)
@@ -47,5 +50,5 @@ class RexConverter(Pluggable):
                 f"No conversion for class {class_name} available (yet)."
             )
 
-        df = plugin_instance.convert(rex, df=df)
+        df = plugin_instance.convert(rex, df=df, context=context)
         return df

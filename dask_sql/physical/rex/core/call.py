@@ -8,6 +8,7 @@ import numpy as np
 import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import is_frame
 
 
@@ -147,7 +148,7 @@ class LikeOperation(Operation):
             return bool(re.match(transformed_regex, test))
 
 
-class RexCallPlugin:
+class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
     An example is
@@ -166,8 +167,8 @@ class RexCallPlugin:
     class_name = "org.apache.calcite.rex.RexCall"
 
     OPERATION_MAPPING = {
-        "AND": ReduceOperation(operation=operator.and_),
-        "OR": ReduceOperation(operation=operator.or_),
+        "and": ReduceOperation(operation=operator.and_),
+        "or": ReduceOperation(operation=operator.or_),
         ">": ReduceOperation(operation=operator.gt),
         ">=": ReduceOperation(operation=operator.ge),
         "<": ReduceOperation(operation=operator.lt),
@@ -177,23 +178,32 @@ class RexCallPlugin:
         "-": ReduceOperation(operation=operator.sub),
         "/": ReduceOperation(operation=operator.truediv),
         "*": ReduceOperation(operation=operator.mul),
-        "CASE": CaseOperation(),
-        "LIKE": LikeOperation(),
+        "case": CaseOperation(),
+        "like": LikeOperation(),
     }
 
     def convert(
-        self, rex: "org.apache.calcite.rex.RexNode", df: dd.DataFrame
+        self,
+        rex: "org.apache.calcite.rex.RexNode",
+        df: dd.DataFrame,
+        context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:
         # Prepare the operands by turning the RexNodes into python expressions
-        operands = [RexConverter.convert(o, df) for o in rex.getOperands()]
+        operands = [
+            RexConverter.convert(o, df, context=context) for o in rex.getOperands()
+        ]
 
         # Now use the operator name in the mapping
         operator_name = str(rex.getOperator().getName())
+        operator_name = operator_name.lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
-            raise NotImplementedError(f"{operator_name} not (yet) implemented")
+            try:
+                operation = context.functions[operator_name].f
+            except KeyError:
+                raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
         return operation(*operands)
 

@@ -36,12 +36,12 @@ class LogicalJoinPlugin(BaseRelPlugin):
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         # Joining is a bit more complicated, so lets do it in steps:
 
         # 1. We now have two inputs (from left and right), so we fetch them both
-        df_lhs, df_rhs = self.assert_inputs(rel, 2, tables)
+        df_lhs, df_rhs = self.assert_inputs(rel, 2, context)
 
         # 2. dask's merge will do some smart things with columns, which have the same name
         # on lhs an rhs (which also includes reordering).
@@ -116,7 +116,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
             # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
             filter_condition = reduce(
                 operator.and_,
-                [RexConverter.convert(rex, df) for rex in filter_condition],
+                [
+                    RexConverter.convert(rex, df, context=context)
+                    for rex in filter_condition
+                ],
             )
             df = df[filter_condition]
 

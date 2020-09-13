@@ -16,17 +16,17 @@ class LogicalProjectPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalProject"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         # Get the input of the previous step
-        (df,) = self.assert_inputs(rel, 1, tables)
+        (df,) = self.assert_inputs(rel, 1, context)
 
         # It is easiest to just replace all columns with the new ones
         named_projects = rel.getNamedProjects()
 
         new_columns = {}
         for expr, key in named_projects:
-            new_columns[str(key)] = RexConverter.convert(expr, df)
+            new_columns[str(key)] = RexConverter.convert(expr, df, context=context)
 
         df = df.drop(columns=list(df.columns)).assign(**new_columns)
 

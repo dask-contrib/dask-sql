@@ -19,9 +19,9 @@ class LogicalSortPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalSort"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
-        (df,) = self.assert_inputs(rel, 1, tables)
+        (df,) = self.assert_inputs(rel, 1, context)
         self.check_columns_from_row_type(df, rel.getExpectedInputRowType(0))
 
         sort_collation = rel.getCollation().getFieldCollations()
@@ -30,11 +30,11 @@ class LogicalSortPlugin(BaseRelPlugin):
 
         offset = rel.offset
         if offset:
-            offset = RexConverter.convert(offset, df)
+            offset = RexConverter.convert(offset, df, context=context)
 
         end = rel.fetch
         if end:
-            end = RexConverter.convert(end, df)
+            end = RexConverter.convert(end, df, context=context)
 
             if offset:
                 end += offset
