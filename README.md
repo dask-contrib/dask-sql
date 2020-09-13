@@ -1,91 +1,127 @@
 # dask-sql
 
+[![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
+[![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nils-braun/dask-sql/Test?logo=github)](https://github.com/nils-braun/dask-sql/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/nils-braun/dask-sql?logo=codecov)](https://codecov.io/gh/nils-braun/dask-sql)
+[![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
+
 `dask-sql` adds a SQL query layer on top of `dask`.
+This allows you to query and transform your dask dataframes using
+common SQL operations.
 
-It lets you register your dask dataframes and then run SQL queries against them.
 The queries will run as normal dask operations, which can be distributed within your dask cluster.
-The goal is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...)
+The goal of this project is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...).
+Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
-It uses [Apache Calcite](https://calcite.apache.org/) to convert
-SQL queries into a query plan (so called relational algebra) - similar to many other SQL engines (Hive, Flink, ...).
-This plan is then converted into normal dask API calls.
-Some ideas for this project are coming from the [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+---
 
+**NOTE**
 
-`dask-sql` is currently under development. Any contributions are highly welcome!
-It is mainly a proof of concept - many things are still missing.
+`dask-sql` is currently under development and does so far not understand all SQL commands.
+We are actively looking for feedback, improvements and contributors!
 
-Example
--------
+---
 
-We use the NYC flight data from the [dask tutorial](https://github.com/dask/dask-tutorial/blob/master/04_dataframe.ipynb), as an example:
+## Example
+
+We use the timeseries random data from `dask.datasets` as an example:
 
 ```python
 from dask_sql import Context
-import dask.dataframe as dd
+from dask.datasets import timeseries
 
 # Create a context to hold the registered tables
 c = Context()
 
+# If you have a cluster of dask workers,
+# initialize it now
+
 # Load the data and register it in the context
 # This will give the table a name
-df = dd.read_csv(...)
-c.register_dask_table(df, "nycflights")
+df = timeseries()
+c.register_dask_table(df, "timeseries")
 
 # Now execute an SQL query. The result is a dask dataframe
+# The query looks for the id with the highest x for each name
+# (this is just random test data, but you could think of looking
+# for outliers in the sensor data)
 result = c.sql("""
     SELECT
-        Origin, MAX(DepDelay)
-    FROM nycflights
-    GROUP BY Origin
+        lhs.name,
+        lhs.id,
+        lhs.x
+    FROM
+        timeseries AS lhs
+    JOIN
+        (
+            SELECT
+                name AS max_name,
+                MAX(x) AS max_x
+            FROM timeseries
+            GROUP BY name
+        ) AS rhs
+    ON
+        lhs.name = rhs.max_name AND
+        lhs.x = rhs.max_x
 """)
 
-# Show the result (or use it for any other dask calculation)
+# Show the result...
 print(result.compute())
-```
 
-`dask-sql` also comes with a very simple test implementation of a SQL server speaking the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
-It is - so far - just a proof of concept. See below on how to start it.
+# ... or use it for any other dask calculation
+# (just an example, could also be done via SQL)
+print(result.x.mean().compute())
+```
 
 ## Installation
 
-So far, the project can only be installed via the sources.
-A packaged installation will come soon!
+`dask-sql` can be installed via `conda` (preferred) or `pip` - or in a development environment.
 
 ### With `conda`
 
-Create a new conda environment using the supplied `conda.yaml`:
+Create a new conda environment or use your already present environment:
 
-    conda create -n dask-sql --file conda.yaml -c conda-forge
+    conda create -n dask-sql
     conda activate dask-sql
 
-Finally, you can install the python module
+Install the package from the `conda-forge` channel:
 
-    python setup.py install
-
-This will trigger also the compilation of the java library.
+    conda install dask-sql -c conda-forge
 
 ### With `pip`
 
-Make sure you have a running java installation with version >= 11.
-Currently, for the compilation the JDK is needed.
+`dask-sql` needs Java for the parsing of the SQL queries.
+Make sure you have a running java installation with version >= 8.
+
+To test if you have Java properly installed and set up, run
+
+    $ java -version
+    openjdk version "1.8.0_152-release"
+    OpenJDK Runtime Environment (build 1.8.0_152-release-1056-b12)
+    OpenJDK 64-Bit Server VM (build 25.152-b12, mixed mode)
 
 After installing Java, you can install the package with
 
-    python setup.py install
+    pip install dask-sql
 
 ### For development
 
-You can also build the java library separately:
+If you want to have the newest (unreleased) `dask-sql` version or if you plan to do development on `dask-sql`, you can also install the package from sources.
 
-    python setup.py java
+    git clone https://github.com/nils-braun/dask-sql.git
+
+Create a new conda environment and install the development environment:
+
+    conda create -n dask-sql --file conda.yaml -c conda-forge
 
 After that, you can install the package in development mode
 
     pip install -e .
 
-Make sure to re-run the java build whenever you do any changes to the
-java code.
+This will also compile the Java classes. If there were changes to the Java code, you need to rerun this compilation with
+
+    python setup.py java
 
 ## Testing
 
@@ -93,10 +129,21 @@ You can run the tests (after installation) with
 
     pytest tests
 
+## How does it work?
+
+At the core, `dask-sql` does two things:
+
+- translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
+- convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
+
+For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
+After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
+
 ## SQL Server
 
 `dask-sql` comes with a small test implementation for a SQL server.
 Instead of rebuilding a full ODBC driver, we re-use the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
+It is - so far - just a proof of concept
 
 You can test the sql postgres server by running
 
@@ -117,12 +164,3 @@ Now you can fire simple SQL queries (as no data is loaded by default):
     --------
         2
     (1 row)
-
-## How does it work?
-
-At the core, `dask-sql` does two things:
-* translate the SQL query using Apache Calcite into a relational algebra, which is specified as a tree of java objects.
-* convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
-
-For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
-After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
