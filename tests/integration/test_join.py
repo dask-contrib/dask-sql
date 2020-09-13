@@ -86,7 +86,7 @@ class JoinTestCase(DaskTestCase):
 
     def test_join_strange(self):
         self.assertRaises(
-            NotImplementedError,
+            Exception,
             self.c.sql,
             "SELECT lhs.a, rhs.b FROM df_simple AS lhs JOIN df_simple AS rhs ON lhs.a = 3",
         )

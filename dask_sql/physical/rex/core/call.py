@@ -9,6 +9,7 @@ import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import is_frame
+from dask_sql.mappings import sql_to_python_df, sql_to_python_value
 
 
 class Operation:
@@ -18,9 +19,12 @@ class Operation:
         """Init with the given function"""
         self.f = f
 
-    def __call__(self, *operands) -> Union[dd.Series, Any]:
+    def __call__(self, *operands, rex) -> Union[dd.Series, Any]:
         """Call the stored function"""
-        return self.f(*operands)
+        try:
+            return self.f(*operands, rex=rex)
+        except TypeError:
+            return self.f(*operands)
 
 
 class ReduceOperation(Operation):
@@ -59,8 +63,10 @@ class CaseOperation(Operation):
             # properties of where (but the content of then).
             tmp = where.apply(lambda x: then, meta=(where.name, type(then)))
             return tmp.where(where, other=other)
-        else:
-            return then if where else other  # pragma: no cover
+        else:  # pragma: no cover
+            # so far, calcite has always converted this into a literal before
+            # giving it to dask
+            return then if where else other
 
 
 class LikeOperation(Operation):
@@ -144,7 +150,26 @@ class LikeOperation(Operation):
         if is_frame(test):
             return test.str.match(transformed_regex)
         else:  # pragma: no cover
+            # so far, calcite has always converted this into a literal before
+            # giving it to dask
             return bool(re.match(transformed_regex, test))
+
+
+class CastOperation(Operation):
+    """The cast operator (convert between different types)"""
+
+    def __init__(self):
+        super().__init__(self.cast)
+
+    def cast(self, df, rex):
+        sql_type = str(rex.getType())
+
+        if is_frame(df):
+            return sql_to_python_df(sql_type, df)
+        else:  # pragma: no cover
+            # so far, calcite has always converted this into a literal before
+            # giving it to dask
+            return sql_to_python_value(sql_type, df)
 
 
 class RexCallPlugin:
@@ -179,6 +204,7 @@ class RexCallPlugin:
         "*": ReduceOperation(operation=operator.mul),
         "CASE": CaseOperation(),
         "LIKE": LikeOperation(),
+        "CAST": CastOperation(),
     }
 
     def convert(
@@ -192,9 +218,9 @@ class RexCallPlugin:
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
-        return operation(*operands)
+        return operation(*operands, rex=rex)
 
         # TODO: We have information on the typing here - we should use it

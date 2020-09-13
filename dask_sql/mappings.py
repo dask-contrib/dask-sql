@@ -1,7 +1,8 @@
 from typing import Any
+from datetime import timedelta, datetime, timezone
 
 import numpy as np
-from datetime import timedelta, datetime, timezone
+import dask.dataframe as dd
 
 from dask_sql.java import SqlTypeName
 
@@ -110,6 +111,42 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
                 return None
 
             return python_type(literal_value)
+        except KeyError:  # pragma: no cover
+            raise NotImplementedError(
+                f"The SQL type {sql_type} is not implemented (yet)"
+            )
+
+
+def sql_to_python_df(sql_type: str, series: dd.Series) -> dd.Series:
+    """Mapping between SQL and python data frames (of correct type)."""
+    # We need a second function, as te converstion of scalars is quite
+    # different from dataframes
+    # For dataframes we can go the shortcut on the "astype" function
+    # if possible
+
+    if sql_type.startswith("CHAR(") or sql_type == "VARCHAR":
+        # Assumption: there is no encoding involved here!
+        return series.astype(str)
+
+    elif sql_type.startswith("INTERVAL"):  # pragma: no cover
+        raise NotImplementedError(f"The SQL type {sql_type} is not implemented (yet)")
+
+    elif (
+        sql_type.startswith("TIMESTAMP(")
+        or sql_type.startswith("TIME(")
+        or sql_type == "DATE"
+    ):
+        return dd.to_datetime(series)
+
+    elif sql_type.startswith("DECIMAL("):
+        # We use np.float64 always, even though we might
+        # be able to use a smaller type
+        return series.astype(np.float64)
+    else:
+        try:
+            python_type = _SQL_TO_PYTHON[sql_type]
+
+            return series.astype(python_type)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"

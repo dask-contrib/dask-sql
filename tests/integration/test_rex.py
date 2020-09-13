@@ -99,3 +99,26 @@ class RexOperationsTestCase(DaskTestCase):
         ).compute()
 
         assert_frame_equal(df, expected_df)
+
+    def test_cast(self):
+        df = self.c.sql(
+            """
+            SELECT CAST(b AS BIGINT) AS b
+            FROM df
+        """
+        ).compute()
+
+        assert_frame_equal(df, self.df[["b"]].astype("int64"))
+
+        df = self.c.sql(
+            """
+            SELECT CAST('2010-04-06' AS DATE) AS b
+        """
+        ).compute()
+
+        assert_frame_equal(
+            df,
+            pd.DataFrame(
+                {"b": pd.to_datetime(["2010-04-06T00:00"])}, dtype="datetime64[ns, UTC]"
+            ),
+        )
