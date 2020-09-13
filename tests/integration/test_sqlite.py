@@ -152,6 +152,16 @@ class SQLLiteComparisonTestCase(TestCase):
         """
         )
 
+        self.assert_query_gives_same_result(
+            """
+            SELECT
+                SUM(c), AVG(user_id), 5
+            FROM df2
+            ORDER BY SUM(c)
+            LIMIT 10
+        """
+        )
+
     def test_filter(self):
         self.assert_query_gives_same_result(
             """
@@ -172,3 +182,40 @@ class SQLLiteComparisonTestCase(TestCase):
                 d LIKE '%c'
         """
         )
+
+    def test_cast(self):
+        self.assert_query_gives_same_result(
+            """
+            SELECT
+                CAST(a AS INTEGER), CAST(b AS DOUBLE)
+            FROM df1
+        """
+        )
+
+    def test_union(self):
+        self.assert_query_gives_same_result(
+            """
+            SELECT
+                user_id, c AS b
+            FROM df2
+            UNION
+            SELECT
+                user_id, b
+            FROM df1
+        """,
+            ["user_id", "b"],
+        )
+
+        self.assert_query_gives_same_result(
+            """
+            SELECT
+                user_id, b
+            FROM df1
+            UNION ALL
+            SELECT
+                user_id, c AS b
+            FROM df2
+        """,
+            ["user_id", "b"],
+        )
+
