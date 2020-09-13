@@ -218,4 +218,3 @@ class SQLLiteComparisonTestCase(TestCase):
         """,
             ["user_id", "b"],
         )
-
