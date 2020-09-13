@@ -7,19 +7,21 @@ import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.Table;
+import org.apache.calcite.schema.impl.ScalarFunctionImpl;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 
 /**
- * A DaskSchema contains the list of all known tables.
+ * A DaskSchema contains the list of all known tables and functions
  *
- * In principle it is just a mapping table name -> table in a format that
- * calcite understands.
+ * In principle it is just a mapping table name -> table and function name ->
+ * function in a format that calcite understands.
  */
 public class DaskSchema implements Schema {
 	/**
@@ -29,10 +31,13 @@ public class DaskSchema implements Schema {
 	private final String name;
 	/// Mapping of tables name -> table.
 	private final Map<String, DaskTable> databaseTables;
+	/// Mapping of function name -> function
+	private final Map<String, Function> functions;
 
 	/// Create a new DaskSchema with the given name
 	public DaskSchema(final String name) {
 		this.databaseTables = new HashMap<String, DaskTable>();
+		this.functions = new HashMap<String, Function>();
 		this.name = name;
 	}
 
@@ -41,14 +46,14 @@ public class DaskSchema implements Schema {
 		this.databaseTables.put(table.getTableName(), table);
 	}
 
-	/// Remove a table from the list
-	public void removeTable(final DaskTable table) {
-		this.databaseTables.remove(table.getTableName());
+	/// Add an already created scalar function to the list
+	public void addFunction(final DaskScalarFunction function) {
+		this.functions.put(function.getFunctionName(), function);
 	}
 
-	/// Remove a table with the given name from the list
-	public void removeTable(final String tableName) {
-		this.databaseTables.remove(tableName);
+	/// Add an already created scalar function to the list
+	public void addFunction(final DaskAggregateFunction function) {
+		this.functions.put(function.getFunctionName(), function);
 	}
 
 	/// Get the name of this schema
@@ -70,17 +75,21 @@ public class DaskSchema implements Schema {
 		return tableNames;
 	}
 
-	/// calcite method: return all defined functions (currently none)
+	/// calcite method: return all stored functions
 	@Override
-	public Collection<Function> getFunctions(final String string) {
+	public Collection<Function> getFunctions(final String name) {
 		final Collection<Function> functionCollection = new HashSet<Function>();
+		if (this.functions.containsKey(name)) {
+			functionCollection.add(this.functions.get(name));
+		}
 		return functionCollection;
 	}
 
-	/// calcite method: return all function names (currently none)
+	/// calcite method: return all stored function names
 	@Override
 	public Set<String> getFunctionNames() {
 		final Set<String> functionSet = new HashSet<String>();
+		functionSet.addAll(this.functions.keySet());
 		return functionSet;
 	}
 
