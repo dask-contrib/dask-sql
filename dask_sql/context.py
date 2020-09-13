@@ -11,6 +11,7 @@ from dask_sql.java import (
     RelationalAlgebraGenerator,
     SqlParseException,
     ValidationException,
+    get_java_class,
 )
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical
@@ -165,7 +166,7 @@ class Context:
         In general, only select statements (no data manipulation) works.
         """
         try:
-            rel = self._get_ral(sql, debug=debug)
+            rel, select_names = self._get_ral(sql, debug=debug)
             df = RelConverter.convert(rel, context=self)
         except (ValidationException, SqlParseException) as e:
             if debug:
@@ -178,6 +179,14 @@ class Context:
                 from_chained_exception = None
 
             raise ParsingException(sql, str(e.message())) from from_chained_exception
+
+        if select_names:
+            # Rename any columns named EXPR$* to a more human readable name
+            df.columns = [
+                df_col if not df_col.startswith("EXPR$") else select_name
+                for df_col, select_name in zip(df.columns, select_names)
+            ]
+
         return df
 
     def _prepare_schema(self):
@@ -218,15 +227,34 @@ class Context:
             dask_function.addParameter(param_name, sql_param_type, False)
 
     def _get_ral(self, sql, debug: bool = False):
-        """Helper function to turn the sql query into a relational algebra"""
+        """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
         schema = self._prepare_schema()
 
         # Now create a relational algebra from that
         generator = RelationalAlgebraGenerator(schema)
 
-        rel = generator.getRelationalAlgebra(sql)
-        if debug:  # pragma: no cover
+        sqlNode = generator.getSqlNode(sql)
+        validatedSqlNode = generator.getValidatedNode(sqlNode)
+        nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+        rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+        default_dialect = generator.getDialect()
+
+        # Internal, temporary results of calcite are sometimes
+        # named EXPR$N (with N a number), which is not very helpful
+        # to the user. We replace these cases therefore with
+        # the actual query string. This logic probably fails in some
+        # edge cases (if the outer SQLNode is not a select node),
+        # but so far I did not find such a case.
+        # So please raise an issue if you have found one!
+        if get_java_class(sqlNode) == "org.apache.calcite.sql.SqlSelect":
+            select_names = [
+                str(s.toSqlString(default_dialect)) for s in sqlNode.getSelectList()
+            ]
+        else:
+            select_names = None
+
+        if debug:
             print(generator.getRelationalAlgebraString(rel))
 
-        return rel
+        return rel, select_names
