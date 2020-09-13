@@ -28,7 +28,7 @@ class FunctionTestCase(DaskTestCase):
 
         df = self.c.sql(
             """
-            SELECT fagg(b) AS test, sum(b) AS S
+            SELECT fagg(b) AS test, sum(b) AS "S"
             FROM df
             """
         )
