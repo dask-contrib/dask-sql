@@ -11,10 +11,10 @@ class RexOperationsTestCase(DaskTestCase):
         df = self.c.sql(
             """
         SELECT
-            (CASE WHEN a = 3 THEN 1 END) AS S1,
-            (CASE WHEN a > 0 THEN a ELSE 1 END) AS S2,
-            (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS S3,
-            (CASE WHEN a = 3 THEN 1 ELSE a END) AS S4
+            (CASE WHEN a = 3 THEN 1 END) AS "S1",
+            (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
+            (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
+            (CASE WHEN a = 3 THEN 1 ELSE a END) AS "S4"
         FROM df
         """
         )
@@ -29,12 +29,12 @@ class RexOperationsTestCase(DaskTestCase):
 
     def test_literals(self):
         df = self.c.sql(
-            """SELECT 'a string äö' AS S,
-                      4.4 AS F,
-                      -4564347464 AS I,
-                      TIME '08:08:00.091' AS T,
-                      TIMESTAMP '2022-04-06 17:33:21' AS DT,
-                      DATE '1991-06-02' AS D
+            """SELECT 'a string äö' AS "S",
+                      4.4 AS "F",
+                      -4564347464 AS "I",
+                      TIME '08:08:00.091' AS "T",
+                      TIMESTAMP '2022-04-06 17:33:21' AS "DT",
+                      DATE '1991-06-02' AS "D"
             """
         )
         df = df.compute()
@@ -52,7 +52,11 @@ class RexOperationsTestCase(DaskTestCase):
         assert_frame_equal(df, expected_df)
 
     def test_literal_null(self):
-        df = self.c.sql("""SELECT NULL AS N, 1 + NULL AS I""")
+        df = self.c.sql(
+            """
+        SELECT NULL AS "N", 1 + NULL AS "I"
+        """
+        )
         df = df.compute()
 
         expected_df = pd.DataFrame({"N": [None], "I": [np.nan]})
