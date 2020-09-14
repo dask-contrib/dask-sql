@@ -71,7 +71,7 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: jar
-          path: dask_sql/jar/DaskSQL.jar
+          path: dask_sql/jar/
       - name: Install dependencies
         shell: bash -l {0}
         run: |
