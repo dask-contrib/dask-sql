@@ -47,6 +47,7 @@ jobs:
 
   test:
     name: "Test (${{ matrix.os }}, java: ${{ matrix.java }})"
+    needs: build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
