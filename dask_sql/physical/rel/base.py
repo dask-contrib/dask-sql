@@ -15,7 +15,7 @@ class BaseRelPlugin:
     class_name = None
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         """Base method to implement"""
         raise NotImplementedError  # pragma: no cover
@@ -56,7 +56,7 @@ class BaseRelPlugin:
     def assert_inputs(
         rel: "org.apache.calcite.rel.RelNode",
         n: int = 1,
-        tables: Dict[str, dd.DataFrame] = None,
+        context: "dask_sql.Context" = None,
     ) -> List[dd.DataFrame]:
         """
         Many RelNodes build on top of others.
@@ -72,7 +72,7 @@ class BaseRelPlugin:
         # Late import to remove cycling dependency
         from dask_sql.physical.rel.convert import RelConverter
 
-        return [RelConverter.convert(input_rel, tables) for input_rel in input_rels]
+        return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
     def make_unique(df, prefix="col"):

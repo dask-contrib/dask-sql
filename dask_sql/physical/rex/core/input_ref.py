@@ -13,7 +13,10 @@ class RexInputRefPlugin(BaseRexPlugin):
     class_name = "org.apache.calcite.rex.RexInputRef"
 
     def convert(
-        self, rex: "org.apache.calcite.rex.RexNode", df: dd.DataFrame
+        self,
+        rex: "org.apache.calcite.rex.RexNode",
+        df: dd.DataFrame,
+        context: "dask_sql.Context",
     ) -> dd.Series:
         # The column is references by index
         index = rex.getIndex()

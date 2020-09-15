@@ -25,17 +25,17 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalAggregate"
 
     AGGREGATION_MAPPING = {
-        "$SUM0": "sum",
-        "COUNT": "count",
-        "MAX": "max",
-        "MIN": "min",
-        "SINGLE_VALUE": "first",
+        "$sum0": "sum",
+        "count": "count",
+        "max": "max",
+        "min": "min",
+        "single_value": "first",
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
-        (df,) = self.assert_inputs(rel, 1, tables)
+        (df,) = self.assert_inputs(rel, 1, context)
 
         # We make our life easier with having unique column names
         df = self.make_unique(df)
@@ -53,7 +53,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Collect all aggregates
         aggregations, output_column_order = self._collect_aggregations(
-            rel, df, group_columns, additional_column_name
+            rel, df, group_columns, additional_column_name, context
         )
 
         if not group_columns:
@@ -85,6 +85,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         df: dd.DataFrame,
         group_columns: List[str],
         additional_column_name: str,
+        context: "dask_sql.Context",
     ) -> Tuple[Dict[str, Dict[str, str]], List[int]]:
         aggregations = defaultdict(dict)
         output_column_order = []
@@ -105,12 +106,16 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                 )  # pragma: no cover
 
             aggregation_name = str(expr.getAggregation().getName())
+            aggregation_name = aggregation_name.lower()
             try:
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
-            except KeyError:  # pragma: no cover
-                raise NotImplementedError(
-                    f"Aggregation function {aggregation_name} not implemented (yet)."
-                )
+            except KeyError:
+                try:
+                    aggregation_function = context.functions[aggregation_name].f
+                except KeyError:  # pragma: no cover
+                    raise NotImplementedError(
+                        f"Aggregation function {aggregation_name} not implemented (yet)."
+                    )
 
             inputs = expr.getArgList()
             if len(inputs) == 1:

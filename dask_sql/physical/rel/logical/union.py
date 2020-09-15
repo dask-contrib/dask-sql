@@ -15,9 +15,9 @@ class LogicalUnionPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalUnion"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
-        first_df, second_df = self.assert_inputs(rel, 2, tables)
+        first_df, second_df = self.assert_inputs(rel, 2, context)
 
         # For concatenating, they should have exactly the same fields
         output_field_names = [str(x) for x in rel.getRowType().getFieldNames()]

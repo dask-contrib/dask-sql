@@ -40,8 +40,11 @@ _SQL_TO_PYTHON = {
 def python_to_sql_type(python_type):
     """Mapping between python and SQL types."""
 
+    if isinstance(python_type, np.dtype):
+        python_type = python_type.type
+
     try:
-        return _PYTHON_TO_SQL[python_type.type]
+        return _PYTHON_TO_SQL[python_type]
     except KeyError:  # pragma: no cover
         raise NotImplementedError(
             f"The python type {python_type} is not implemented (yet)"
