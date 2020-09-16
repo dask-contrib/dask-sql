@@ -1,9 +1,12 @@
 import distutils
-from setuptools import setup, find_packages
-import setuptools.command.build_py
 import os
 import shutil
 import subprocess
+import sys
+
+import setuptools.command.build_py
+from setuptools import find_packages, setup
+from sphinx.setup_command import BuildDoc
 
 
 class MavenCommand(distutils.cmd.Command):
@@ -47,10 +50,11 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
 with open("README.md") as f:
     long_description = f.read()
 
+needs_sphinx = "build_sphinx" in sys.argv
+sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
 setup(
     name="dask_sql",
-    use_scm_version=True,
     description="Dask SQL",
     url="http://github.com/nils-braun/dask-sql/",
     maintainer="Nils Braun",
@@ -60,9 +64,15 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
+    use_scm_version=True,
     python_requires=">=3.6",
-    setup_requires=["setuptools_scm"],
+    setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=["dask[dataframe]>=2.19.0", "jpype1>=1.0.2"],
     zip_safe=False,
-    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand},
+    cmdclass={
+        "java": MavenCommand,
+        "build_py": BuildPyCommand,
+        "build_sphinx": BuildDoc,
+    },
+    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )
