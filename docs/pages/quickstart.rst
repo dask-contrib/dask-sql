@@ -39,7 +39,8 @@ In this example, we do not read in external data, but use test data in the form 
 --------------------
 
 If we want to work with the data in SQL, we need to give the data frame a unique name.
-We do this by registering the data at a ``Context` of ``dask_sql``.
+We do this by registering the data at an instance of a :class:`dask_sql.Context`.
+Typically, you only have a single context per application.
 
 .. code-block:: python
 
@@ -48,7 +49,8 @@ We do this by registering the data at a ``Context` of ``dask_sql``.
     c = Context()
     c.register_dask_table(df, "timeseries")
 
-From now on, the data is accessible as the "timeseries" table.
+From now on, the data is accessible as the "timeseries" table of this context.
+It is possible to register multiple data frames at the same context.
 
 .. hint::
 
@@ -77,10 +79,11 @@ Now you can go ahead and query the data with normal SQL!
     """)
     result.compute()
 
-``dask-sql`` understands some set of SQL commands, but there is still some missing.
+``dask-sql`` understands some set of SQL commands, but there are still some missing.
 Have a look into the :ref:`sql` description for more information.
 
 .. note::
 
-    If you have found an SQL feature, which is currently not supported by ``dask-sql``, please raise an issue on our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_.
+    If you have found an SQL feature, which is currently not supported by ``dask-sql``,
+    please raise an issue on our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_.
 

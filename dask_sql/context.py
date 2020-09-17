@@ -25,32 +25,38 @@ FunctionDescription = namedtuple(
 
 class Context:
     """
-    Main object to communicate with dask_sql.
-    It holds a store of all registered tables and can convert
-    SQL queries to dask dataframes.
+    Main object to communicate with ``dask_sql``.
+    It holds a store of all registered data frames (= tables)
+    and can convert SQL queries to dask data frames.
     The tables in these queries are referenced by the name,
     which is given when registering a dask dataframe.
 
+    Example:
+        .. code-block:: python
 
-        from dask_sql import Context
-        c = Context()
+            from dask_sql import Context
+            c = Context()
 
-        # Register a table
-        c.register_dask_table(df, "my_table")
+            # Register a table
+            c.register_dask_table(df, "my_table")
 
-        # Now execute an SQL query. The result is a dask dataframe
-        result = c.sql("SELECT a, b FROM my_table")
+            # Now execute an SQL query. The result is a dask dataframe
+            result = c.sql("SELECT a, b FROM my_table")
 
-        # Trigger the computation (or use the dataframe for something else)
-        result.compute()
+            # Trigger the computation (or use the data frame for something else)
+            result.compute()
+
+    Usually, you will only ever have a single context in your program.
+
+    See also:
+        :func:`sql`
+        :func:`register_dask_table`
 
     """
 
     def __init__(self):
         """
         Create a new context.
-        Usually, you will only ever have a single context
-        in your program.
         """
         # Storage for the registered tables
         self.tables = {}
@@ -75,11 +81,25 @@ class Context:
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
         """
-        Registering a dask table makes it usable in SQl queries.
+        Registering a dask table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
         If you change the table later, you need to re-register.
+
+        Example:
+            This code registers a data frame as table "data"
+            and then uses it in a query.
+
+            .. code-block:: python
+
+                c.register_dask_table(df, "data")
+                df_result = c.sql("SELECT a, b FROM data")
+
+        Args:
+            df (:class:`dask.dataframe.DataFrame`): The data frame to register
+            name: (:obj:`str`): Under which name should the new table be addressable
+
         """
         self.tables[name.lower()] = df.copy()
 
@@ -97,6 +117,8 @@ class Context:
         (no aggregations).
         This means, if you register a function "f", you can now call
 
+        .. code-block:: sql
+
             SELECT f(x)
             FROM df
 
@@ -105,16 +127,34 @@ class Context:
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
-        return type. Use numpy dtypes if possible.
+        return type. Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
+
+        More information: :ref:`custom`
+
         Example:
+            This example registers a function "f", which
+            calculates the square of an integer and applies
+            it to the column ``x``.
 
-            def f(x):
-                return x ** 2
+            .. code-block:: python
 
-            c.register_function(f, "f", [("x", np.int64)], np.int64)
+                def f(x):
+                    return x ** 2
 
-            sql = "SELECT f(x) FROM df"
-            df_result = c.sql(sql)
+                c.register_function(f, "f", [("x", np.int64)], np.int64)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+
+        Args:
+            f (:obj:`Callable`): The function to register
+            name (:obj:`str`): Under which name should the new function be addressable in SQL
+            parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
+                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
+            return_type (:obj:`type`): The return type of the function
+
+        See also:
+            :func:`register_aggregation`
 
         """
         self.functions[name.lower()] = FunctionDescription(
@@ -135,6 +175,8 @@ class Context:
         (no scalar function calls).
         This means, if you register a aggregation "fagg", you can now call
 
+        .. code-block:: sql
+
             SELECT fagg(y)
             FROM df
             GROUP BY x
@@ -144,14 +186,33 @@ class Context:
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
-        return type. Use numpy dtypes if possible.
+        return type. Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_  if possible.
+
+        More information: :ref:`custom`
+
         Example:
+            The following code registers a new aggregation "fagg", which
+            computes the sum of a column and uses it on the ``y`` column.
 
-            fagg = dd.Aggregation("fagg", lambda x: x.sum(), lambda x: x.sum())
-            c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
+            .. code-block:: python
 
-            sql = "SELECT fagg(y) FROM df GROUP BY x"
-            df_result = c.sql(sql)
+                fagg = dd.Aggregation("fagg", lambda x: x.sum(), lambda x: x.sum())
+                c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
+
+                sql = "SELECT fagg(y) FROM df GROUP BY x"
+                df_result = c.sql(sql)
+
+        Args:
+            f (:class:`dask.dataframe.Aggregate`): The aggregate to register. See
+                `the dask documentation <https://docs.dask.org/en/latest/dataframe-groupby.html#aggregate>`_
+                for more information.
+            name (:obj:`str`): Under which name should the new aggregate be addressable in SQL
+            parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
+                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
+            return_type (:obj:`type`): The return type of the function
+
+        See also:
+            :func:`register_function`
 
         """
         self.functions[name.lower()] = FunctionDescription(
@@ -161,9 +222,29 @@ class Context:
     def sql(self, sql: str, debug: bool = False) -> dd.DataFrame:
         """
         Query the registered tables with the given SQL.
-        The SQL follows approximately the MYSQL standard - however, not all
+        The SQL follows approximately the postgreSQL standard - however, not all
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
+
+        For more information, see :ref:`sql`.
+
+        Example:
+            In this example, a query is called
+            using the registered tables and then
+            executed using dask.
+
+            .. code-block:: python
+
+                result = c.sql("SELECT a, b FROM my_table")
+                print(result.compute())
+
+        Args:
+            sql (:obj:`str`): The query string to execute
+            debug (:obj:`bool`): Turn on printing of debug information.
+
+        Returns:
+            :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
+
         """
         try:
             rel, select_names = self._get_ral(sql, debug=debug)
