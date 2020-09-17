@@ -3,6 +3,7 @@
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nils-braun/dask-sql/Test?logo=github)](https://github.com/nils-braun/dask-sql/actions)
+[![Read the Docs](https://img.shields.io/readthedocs/dask-sql)](https://dask-sql.readthedocs.io/en/latest/)
 [![Codecov](https://img.shields.io/codecov/c/github/nils-braun/dask-sql?logo=codecov)](https://codecov.io/gh/nils-braun/dask-sql)
 [![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
 
