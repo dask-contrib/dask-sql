@@ -145,3 +145,19 @@ class RexOperationsTestCase(DaskTestCase):
         ).compute()
 
         assert_frame_equal(df, self.string_table)
+
+    def test_null(self):
+        df = self.c.sql(
+            """
+            SELECT
+                c IS NOT NULL AS nn,
+                c IS NULL AS n
+            FROM user_table_nan
+        """
+        ).compute()
+
+        expected_df = pd.DataFrame(index=[0, 1, 2])
+        expected_df["nn"] = [True, False, True]
+        expected_df["n"] = [False, True, False]
+        assert_frame_equal(df, expected_df)
+

@@ -23,6 +23,10 @@ class Operation:
         """Call the stored function"""
         return self.f(*operands)
 
+    def of(self, op: "Operation") -> "Operation":
+        """Functional composition"""
+        return Operation(lambda x: self(op(x)))
+
 
 class ReduceOperation(Operation):
     """Special operator, which is executed by reducing an operation over the input"""
@@ -78,6 +82,19 @@ class NotOperation(Operation):
             return ~df
         else:
             return not df  # pragma: no cover
+
+
+class IsNullOperation(Operation):
+    """The is null operator"""
+
+    def __init__(self):
+        super().__init__(self.null)
+
+    def null(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns true where `df` is null (where `df` can also be just a scalar).
+        """
+        return np.isnan(df)
 
 
 class LikeOperation(Operation):
@@ -198,6 +215,8 @@ class RexCallPlugin(BaseRexPlugin):
         "case": CaseOperation(),
         "like": LikeOperation(),
         "not": NotOperation(),
+        "is null": IsNullOperation(),
+        "is not null": NotOperation().of(IsNullOperation()),
     }
 
     def convert(
