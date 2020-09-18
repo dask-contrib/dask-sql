@@ -1,9 +1,18 @@
+import operator
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Callable
+from functools import reduce
 
 import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+
+class ReduceAggregation(dd.Aggregation):
+    def __init__(self, name: str, operation: Callable):
+        series_aggregate = lambda s: s.aggregate(lambda x: reduce(operation, x))
+
+        super().__init__(name, series_aggregate, series_aggregate)
 
 
 class LogicalAggregatePlugin(BaseRelPlugin):
@@ -26,7 +35,17 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
     AGGREGATION_MAPPING = {
         "$sum0": "sum",
+        "any_value": dd.Aggregation(
+            "any_value",
+            lambda s: s.sample(n=1).values,
+            lambda s0: s0.sample(n=1).values,
+        ),
+        "avg": "mean",
+        "bit_and": ReduceAggregation("bit_and", operator.and_),
+        "bit_or": ReduceAggregation("bit_or", operator.or_),
+        "bit_xor": ReduceAggregation("bit_xor", operator.xor),
         "count": "count",
+        "every": dd.Aggregation("every", lambda s: s.all(), lambda s0: s0.all()),
         "max": "max",
         "min": "min",
         "single_value": "first",
