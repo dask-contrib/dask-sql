@@ -160,4 +160,3 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["nn"] = [True, False, True]
         expected_df["n"] = [False, True, False]
         assert_frame_equal(df, expected_df)
-
