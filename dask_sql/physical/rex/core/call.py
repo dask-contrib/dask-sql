@@ -64,6 +64,22 @@ class CaseOperation(Operation):
             return then if where else other  # pragma: no cover
 
 
+class NotOperation(Operation):
+    """The not operator"""
+
+    def __init__(self):
+        super().__init__(self.not_)
+
+    def not_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns not `df` (where `df` can also be just a scalar).
+        """
+        if is_frame(df):
+            return ~df
+        else:
+            return not df  # pragma: no cover
+
+
 class LikeOperation(Operation):
     """The like operator (regex for SQL with some twist)"""
 
@@ -174,12 +190,14 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add),
         "-": ReduceOperation(operation=operator.sub),
         "/": ReduceOperation(operation=operator.truediv),
         "*": ReduceOperation(operation=operator.mul),
         "case": CaseOperation(),
         "like": LikeOperation(),
+        "not": NotOperation(),
     }
 
     def convert(

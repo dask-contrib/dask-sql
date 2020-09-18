@@ -169,6 +169,6 @@ class SQLLiteComparisonTestCase(TestCase):
                 *
             FROM df2
             WHERE
-                d LIKE '%c'
+                d NOT LIKE '%c'
         """
         )
