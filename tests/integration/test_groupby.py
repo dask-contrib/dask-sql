@@ -36,6 +36,20 @@ class GroupbyTestCase(DaskTestCase):
         expected_df["X"] = expected_df["X"].astype("int32")
         assert_frame_equal(df, expected_df)
 
+    def test_group_by_filtered(self):
+        df = self.c.sql(
+            """
+        SELECT
+            SUM(b) FILTER (WHERE user_id = 2) AS "S"
+        FROM user_table_1
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame({"S": [4]})
+        expected_df["S"] = expected_df["S"].astype("int64")
+        assert_frame_equal(df, expected_df)
+
     def test_group_by_case(self):
         df = self.c.sql(
             """
