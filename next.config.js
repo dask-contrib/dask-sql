@@ -2,8 +2,7 @@ const webpack = require("webpack");
 
 const isProd = (process.env.NODE_ENV || "production") === "production";
 
-// keeping for later compatibility
-const assetPrefix = isProd ? "" : "";
+const assetPrefix = isProd ? "/dask-sql" : "";
 
 module.exports = {
   assetPrefix: assetPrefix,
@@ -11,9 +10,6 @@ module.exports = {
     config.plugins.push(
       new webpack.DefinePlugin({
         "process.env.ASSET_PREFIX": JSON.stringify(assetPrefix),
-        "process.env.FRESH_API_URL": JSON.stringify(
-          "https://backend-kus76h2pea-uc.a.run.app/extraction"
-        ),
       })
     );
 
