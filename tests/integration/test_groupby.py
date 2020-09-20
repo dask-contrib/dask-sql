@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
@@ -40,14 +41,32 @@ class GroupbyTestCase(DaskTestCase):
         df = self.c.sql(
             """
         SELECT
-            SUM(b) FILTER (WHERE user_id = 2) AS "S"
+            SUM(b) FILTER (WHERE user_id = 2) AS "S1",
+            SUM(b) "S2"
         FROM user_table_1
         """
         )
         df = df.compute()
 
-        expected_df = pd.DataFrame({"S": [4]})
-        expected_df["S"] = expected_df["S"].astype("int64")
+        expected_df = pd.DataFrame({"S1": [4], "S2": [10]}, dtype="int64")
+        assert_frame_equal(df, expected_df)
+
+    def test_group_by_filtered2(self):
+        df = self.c.sql(
+            """
+        SELECT
+            user_id,
+            SUM(b) FILTER (WHERE user_id = 2) AS "S1",
+            SUM(b) "S2"
+        FROM user_table_1
+        GROUP BY user_id
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame(
+            {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3]},
+        )
         assert_frame_equal(df, expected_df)
 
     def test_group_by_case(self):
@@ -98,3 +117,33 @@ class GroupbyTestCase(DaskTestCase):
         expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
         expected_df["c"] = expected_df["c"].astype("float64")
         assert_frame_equal(df, expected_df)
+
+    def test_aggregations(self):
+        df = self.c.sql(
+            """
+        SELECT
+            user_id,
+            EVERY(b = 3) AS e,
+            BIT_AND(b) AS b,
+            BIT_OR(b) AS bb,
+            MIN(b) AS m,
+            SINGLE_VALUE(b) AS s
+        FROM user_table_1
+        GROUP BY user_id
+        """
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame(
+            {
+                "user_id": [1, 2, 3],
+                "e": [True, False, True],
+                "b": [3, 1, 3],
+                "bb": [3, 3, 3],
+                "m": [3, 1, 3],
+                "s": [3, 3, 3],
+            }
+        )
+        assert_frame_equal(
+            df.sort_values("user_id").reset_index(drop=True), expected_df
+        )

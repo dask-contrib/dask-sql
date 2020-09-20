@@ -134,7 +134,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             if df_agg is None:
                 df_agg = filtered_df_agg
             else:
-                df_agg = dd.concat([df_agg, filtered_df_agg], axis=1)
+                df_agg = df_agg.assign(
+                    **{col: filtered_df_agg[col] for col in filtered_df_agg.columns}
+                )
 
         # SQL does not care about the index, but we do not want to have any multiindices
         df_agg = df_agg.reset_index(drop=True)

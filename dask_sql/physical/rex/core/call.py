@@ -61,7 +61,7 @@ class CaseOperation(Operation):
             tmp = where.apply(lambda x: then, meta=(where.name, type(then)))
             return tmp.where(where, other=other)
         else:
-            return then if where else other  # pragma: no cover
+            return then if where else other
 
 
 class IsTrueOperation(Operation):
