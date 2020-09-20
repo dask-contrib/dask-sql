@@ -19,7 +19,7 @@ class LogicalTableScanPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalTableScan"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
@@ -35,8 +35,9 @@ class LogicalTableScanPlugin(BaseRelPlugin):
         assert table_names[0] == "schema"
         assert len(table_names) == 2
         table_name = table_names[1]
+        table_name = table_name.lower()
 
-        dc = tables[table_name]
+        dc = context.tables[table_name]
         df = dc.df
         cc = dc.column_container
 

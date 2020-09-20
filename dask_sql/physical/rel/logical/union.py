@@ -16,9 +16,9 @@ class LogicalUnionPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalUnion"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        first_dc, second_dc = self.assert_inputs(rel, 2, tables)
+        first_dc, second_dc = self.assert_inputs(rel, 2, context)
 
         first_df = first_dc.df
         first_cc = first_dc.column_container

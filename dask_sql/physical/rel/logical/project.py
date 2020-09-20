@@ -19,10 +19,10 @@ class LogicalProjectPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalProject"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
-    ) -> dd.DataFrame:
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+    ) -> DataContainer:
         # Get the input of the previous step
-        (dc,) = self.assert_inputs(rel, 1, tables)
+        (dc,) = self.assert_inputs(rel, 1, context)
 
         df = dc.df
         cc = dc.column_container
@@ -43,7 +43,7 @@ class LogicalProjectPlugin(BaseRelPlugin):
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 cc = cc.add(key, backend_column_name)
             else:
-                new_columns[key] = RexConverter.convert(expr, dc=dc)
+                new_columns[key] = RexConverter.convert(expr, dc, context=context)
                 cc = cc.add(key, key)
 
         # Actually add the new columns

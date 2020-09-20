@@ -3,6 +3,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import dask.dataframe as dd
 
+from dask_sql.utils import ParsingException
 from tests.integration.fixtures import DaskTestCase
 
 
@@ -51,10 +52,16 @@ class SelectTestCase(DaskTestCase):
         assert_frame_equal(df, expected_df)
 
     def test_select_expr(self):
-        df = self.c.sql("SELECT a + 1 AS a, b AS bla FROM df")
+        df = self.c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
         df = df.compute()
 
-        expected_df = pd.DataFrame({"a": self.df["a"] + 1, "bla": self.df["b"]})
+        expected_df = pd.DataFrame(
+            {
+                "a": self.df["a"] + 1,
+                "bla": self.df["b"],
+                '"df"."a" - 1': self.df["a"] - 1,
+            }
+        )
         assert_frame_equal(df, expected_df)
 
     def test_select_of_select(self):
@@ -65,7 +72,7 @@ class SelectTestCase(DaskTestCase):
             (
                 SELECT a - 1 AS c, 2*b  AS d
                 FROM df
-            ) AS `inner`
+            ) AS "inner"
             """
         )
         df = df.compute()
@@ -74,3 +81,9 @@ class SelectTestCase(DaskTestCase):
             {"e": 2 * (self.df["a"] - 1), "f": 2 * self.df["b"] - 1}
         )
         assert_frame_equal(df, expected_df)
+
+    def test_wrong_input(self):
+        self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")
+        self.assertRaises(
+            ParsingException, self.c.sql, """SELECT x FROM df""", debug=True
+        )

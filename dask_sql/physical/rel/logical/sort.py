@@ -20,9 +20,9 @@ class LogicalSortPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalSort"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        (dc,) = self.assert_inputs(rel, 1, tables)
+        (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
 
@@ -35,11 +35,11 @@ class LogicalSortPlugin(BaseRelPlugin):
 
         offset = rel.offset
         if offset:
-            offset = RexConverter.convert(offset, df)
+            offset = RexConverter.convert(offset, df, context=context)
 
         end = rel.fetch
         if end:
-            end = RexConverter.convert(end, df)
+            end = RexConverter.convert(end, df, context=context)
 
             if offset:
                 end += offset

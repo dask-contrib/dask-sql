@@ -17,7 +17,10 @@ class BaseRexPlugin:
     class_name = None
 
     def convert(
-        self, rex: "org.apache.calcite.rex.RexNode", dc: DataContainer
+        self,
+        rex: "org.apache.calcite.rex.RexNode",
+        dc: DataContainer,
+        context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:
         """Base method to implement"""
         raise NotImplementedError  # pragma: no cover

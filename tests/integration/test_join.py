@@ -105,6 +105,31 @@ class JoinTestCase(DaskTestCase):
             df.sort_values(["a", "b"]).reset_index(drop=True), df_expected
         )
 
+        df = self.c.sql(
+            """
+                SELECT lhs.a, lhs.b, rhs.a, rhs.b
+                FROM
+                    df_simple AS lhs
+                JOIN df_simple AS rhs
+                ON lhs.a < rhs.b AND lhs.b < rhs.a
+            """,
+            debug=True,
+        )
+        df = df.compute()
+
+        df_expected = pd.DataFrame(
+            {
+                "a": [1, 1, 2],
+                "b": [1.1, 1.1, 2.2],
+                "a0": [2, 3, 3],
+                "b0": [2.2, 3.3, 3.3],
+            }
+        )
+
+        assert_frame_equal(
+            df.sort_values(["a", "b0"]).reset_index(drop=True), df_expected
+        )
+
     def test_join_complex_2(self):
         df = self.c.sql(
             """

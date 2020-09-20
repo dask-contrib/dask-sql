@@ -37,9 +37,9 @@ class UnionTestCase(DaskTestCase):
     def test_union_mixed(self):
         df = self.c.sql(
             """
-            SELECT a AS I, b as II FROM df
+            SELECT a AS "I", b as "II" FROM df
             UNION ALL
-            SELECT a as I, a as II FROM long_table
+            SELECT a as "I", a as "II" FROM long_table
             """
         )
         df = df.compute()

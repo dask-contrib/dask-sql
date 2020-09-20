@@ -14,7 +14,10 @@ class RexInputRefPlugin(BaseRexPlugin):
     class_name = "org.apache.calcite.rex.RexInputRef"
 
     def convert(
-        self, rex: "org.apache.calcite.rex.RexNode", dc: DataContainer
+        self,
+        rex: "org.apache.calcite.rex.RexNode",
+        dc: DataContainer,
+        context: "dask_sql.Context",
     ) -> dd.Series:
         df = dc.df
         cc = dc.column_container

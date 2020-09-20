@@ -18,7 +18,7 @@ class RelConverter(Pluggable):
     and they are expected to have a convert (instance) method
     in the form
 
-        def convert(self, rel, tables)
+        def convert(self, rel, context)
 
     to do the actual conversion.
     """
@@ -30,22 +30,22 @@ class RelConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, dd.DataFrame]
+        cls, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         """
         Convert the given rel (java instance)
         into a python expression (a dask dataframe)
         using the stored plugins and the dictionary of
-        registered dask tables.
+        registered dask tables from the context.
         """
         class_name = get_java_class(rel)
 
         try:
-            plugin_instace = cls.get_plugin(class_name)
+            plugin_instance = cls.get_plugin(class_name)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"No conversion for class {class_name} available (yet)."
             )
 
-        df = plugin_instace.convert(rel, tables=tables)
+        df = plugin_instance.convert(rel, context=context)
         return df

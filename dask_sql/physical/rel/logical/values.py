@@ -25,7 +25,7 @@ class LogicalValuesPlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalValues"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
@@ -40,7 +40,7 @@ class LogicalValuesPlugin(BaseRelPlugin):
             # their index.
             rows.append(
                 {
-                    str(i): RexConverter.convert(rex_cell, None)
+                    str(i): RexConverter.convert(rex_cell, None, context=context)
                     for i, rex_cell in enumerate(rex_expression_row)
                 }
             )

@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Properties;
 
 import com.dask.sql.schema.DaskSchema;
+import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
-import org.apache.calcite.config.Lex;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
-import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgram;
@@ -96,10 +96,16 @@ public class RelationalAlgebraGenerator {
 		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
 		sqlOperatorTables.add(calciteCatalogReader);
 
-		return Frameworks.newConfigBuilder()
-				.defaultSchema(schemaPlus)
-				.parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
-				.operatorTable(new ChainedSqlOperatorTable(sqlOperatorTables)).build();
+		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.configBuilder()).build();
+		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
+
+		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
+				.executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
+	}
+
+	/// Return the default dialect used
+	public SqlDialect getDialect() {
+		return PostgresqlSqlDialect.DEFAULT;
 	}
 
 	/// Get a connection to "connect" to the database.
@@ -116,16 +122,12 @@ public class RelationalAlgebraGenerator {
 	private HepPlanner getHepPlanner(final FrameworkConfig config) {
 		// TODO: check if these rules are sensible
 		// Taken from blazingSQL
-		final HepProgram program = new HepProgramBuilder()
-		        .addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
+		final HepProgram program = new HepProgramBuilder().addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
 				.addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
 				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN)
-				.addRuleInstance(ProjectMergeRule.INSTANCE)
-				.addRuleInstance(FilterMergeRule.INSTANCE)
-				.addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
-				.addRuleInstance(ProjectRemoveRule.INSTANCE)
-				.addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN).addRuleInstance(ProjectMergeRule.INSTANCE)
+				.addRuleInstance(FilterMergeRule.INSTANCE).addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
+				.addRuleInstance(ProjectRemoveRule.INSTANCE).addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
 				.addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
 				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
 				.addRuleInstance(AggregateReduceFunctionsRule.INSTANCE).build();
@@ -134,7 +136,7 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Parse a sql string into a sql tree
-	private SqlNode getSqlNode(final String sql) throws SqlParseException {
+	public SqlNode getSqlNode(final String sql) throws SqlParseException {
 		try {
 			return planner.parse(sql);
 		} catch (final SqlParseException e) {
@@ -144,17 +146,17 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Validate a sql node
-	private SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
+	public SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
 		try {
 			return planner.validate(sqlNode);
-		} catch(final ValidationException e) {
+		} catch (final ValidationException e) {
 			planner.close();
 			throw e;
 		}
 	}
 
 	/// Turn a validated sql node into a rel node
-	private RelNode getRelNode(final SqlNode validatedSqlNode) throws RelConversionException {
+	public RelNode getRelationalAlgebra(final SqlNode validatedSqlNode) throws RelConversionException {
 		try {
 			return planner.rel(validatedSqlNode).project();
 		} catch (final RelConversionException e) {
@@ -164,21 +166,11 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Turn a non-optimized algebra into an optimized one
-	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) throws RelConversionException {
-		nonOptimizedPlan.getCluster().getPlanner().setExecutor(new RexExecutorImpl(null));
+	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) {
 		hepPlanner.setRoot(nonOptimizedPlan);
 		planner.close();
 
 		return hepPlanner.findBestExp();
-	}
-
-	/// Return the algebra of a given string
-	public RelNode getRelationalAlgebra(final String sql)
-			throws SqlParseException, ValidationException, RelConversionException {
-		final SqlNode sqlNode = getSqlNode(sql);
-		final SqlNode validatedSqlNode = getValidatedNode(sqlNode);
-		final RelNode nonOptimizedRelNode = getRelNode(validatedSqlNode);
-		return getOptimizedRelationalAlgebra(nonOptimizedRelNode);
 	}
 
 	/// Return the string representation of a rel node

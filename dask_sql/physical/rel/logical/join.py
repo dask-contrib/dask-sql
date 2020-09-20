@@ -37,12 +37,12 @@ class LogicalJoinPlugin(BaseRelPlugin):
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", tables: Dict[str, DataContainer]
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
         # 1. We now have two inputs (from left and right), so we fetch them both
-        dc_lhs, dc_rhs = self.assert_inputs(rel, 2, tables)
+        dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
         cc_lhs = dc_lhs.column_container
         cc_rhs = dc_rhs.column_container
 
@@ -140,7 +140,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
             # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
             filter_condition = reduce(
                 operator.and_,
-                [RexConverter.convert(rex, dc) for rex in filter_condition],
+                [
+                    RexConverter.convert(rex, dc, context=context)
+                    for rex in filter_condition
+                ],
             )
             df = df[filter_condition]
             dc = DataContainer(df, cc)

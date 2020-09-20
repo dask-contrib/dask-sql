@@ -20,7 +20,12 @@ class RexLiteralPlugin(BaseRexPlugin):
 
     class_name = "org.apache.calcite.rex.RexLiteral"
 
-    def convert(self, rex: "org.apache.calcite.rex.RexNode", dc: DataContainer) -> Any:
+    def convert(
+        self,
+        rex: "org.apache.calcite.rex.RexNode",
+        dc: DataContainer,
+        context: "dask_sql.Context",
+    ) -> Any:
         literal_value = rex.getValue()
 
         literal_type = str(rex.getType())
