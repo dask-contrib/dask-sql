@@ -61,7 +61,23 @@ class CaseOperation(Operation):
             tmp = where.apply(lambda x: then, meta=(where.name, type(then)))
             return tmp.where(where, other=other)
         else:
-            return then if where else other  # pragma: no cover
+            return then if where else other
+
+
+class IsTrueOperation(Operation):
+    """The is true operator"""
+
+    def __init__(self):
+        super().__init__(self.true_)
+
+    def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns true where `df` is true (where `df` can also be just a scalar).
+        """
+        if is_frame(df):
+            return df.astype(bool)
+
+        return bool(df)
 
 
 class LikeOperation(Operation):
@@ -180,6 +196,7 @@ class RexCallPlugin(BaseRexPlugin):
         "*": ReduceOperation(operation=operator.mul),
         "case": CaseOperation(),
         "like": LikeOperation(),
+        "is true": IsTrueOperation(),
     }
 
     def convert(
