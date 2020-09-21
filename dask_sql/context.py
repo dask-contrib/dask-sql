@@ -16,6 +16,7 @@ from dask_sql.java import (
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical
 from dask_sql.physical.rex import RexConverter, core
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 from dask_sql.utils import ParsingException
 
 FunctionDescription = namedtuple(
@@ -75,13 +76,15 @@ class Context:
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
         """
-        Registering a dask table makes it usable in SQl queries.
+        Registering a dask table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
         If you change the table later, you need to re-register.
         """
-        self.tables[name.lower()] = df.copy()
+        self.tables[name.lower()] = DataContainer(
+            df.copy(), ColumnContainer(df.columns)
+        )
 
     def register_function(
         self,
@@ -167,7 +170,7 @@ class Context:
         """
         try:
             rel, select_names = self._get_ral(sql, debug=debug)
-            df = RelConverter.convert(rel, context=self)
+            dc = RelConverter.convert(rel, context=self)
         except (ValidationException, SqlParseException) as e:
             if debug:
                 from_chained_exception = e
@@ -182,12 +185,16 @@ class Context:
 
         if select_names:
             # Rename any columns named EXPR$* to a more human readable name
-            df.columns = [
-                df_col if not df_col.startswith("EXPR$") else select_name
-                for df_col, select_name in zip(df.columns, select_names)
-            ]
+            cc = dc.column_container
+            cc = cc.rename(
+                {
+                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
+                    for df_col, select_name in zip(cc.columns, select_names)
+                }
+            )
+            dc = DataContainer(dc.df, cc)
 
-        return df
+        return dc.assign()
 
     def _prepare_schema(self):
         """
@@ -196,8 +203,9 @@ class Context:
         """
         schema = DaskSchema("schema")
 
-        for name, df in self.tables.items():
+        for name, dc in self.tables.items():
             table = DaskTable(name)
+            df = dc.df
             for column in df.columns:
                 data_type = df[column].dtype
                 sql_data_type = python_to_sql_type(data_type)

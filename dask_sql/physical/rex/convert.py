@@ -5,6 +5,7 @@ import dask.dataframe as dd
 from dask_sql.java import get_java_class
 from dask_sql.utils import Pluggable
 from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.datacontainer import DataContainer
 
 
 class RexConverter(Pluggable):
@@ -32,7 +33,7 @@ class RexConverter(Pluggable):
     def convert(
         cls,
         rex: "org.apache.calcite.rex.RexNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
@@ -50,5 +51,5 @@ class RexConverter(Pluggable):
                 f"No conversion for class {class_name} available (yet)."
             )
 
-        df = plugin_instance.convert(rex, df=df, context=context)
+        df = plugin_instance.convert(rex, dc, context=context)
         return df

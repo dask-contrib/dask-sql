@@ -8,6 +8,7 @@ import dask.dataframe as dd
 from dask_sql.physical.rex import RexConverter
 from dask_sql.java import get_short_java_class
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class LogicalJoinPlugin(BaseRelPlugin):
@@ -37,19 +38,27 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
+    ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
         # 1. We now have two inputs (from left and right), so we fetch them both
-        df_lhs, df_rhs = self.assert_inputs(rel, 2, context)
+        dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
+        cc_lhs = dc_lhs.column_container
+        cc_rhs = dc_rhs.column_container
 
         # 2. dask's merge will do some smart things with columns, which have the same name
         # on lhs an rhs (which also includes reordering).
         # However, that will confuse our column numbering in SQL.
         # So we make our life easier by converting the column names into unique names
         # We will convert back in the end
-        df_lhs_renamed = self.make_unique(df_lhs, "lhs")
-        df_rhs_renamed = self.make_unique(df_rhs, "rhs")
+        cc_lhs_renamed = cc_lhs.make_unique("lhs")
+        cc_rhs_renamed = cc_rhs.make_unique("rhs")
+
+        dc_lhs_renamed = DataContainer(dc_lhs.df, cc_lhs_renamed)
+        dc_rhs_renamed = DataContainer(dc_rhs.df, cc_rhs_renamed)
+
+        df_lhs_renamed = dc_lhs_renamed.assign()
+        df_rhs_renamed = dc_rhs_renamed.assign()
 
         join_type = rel.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
@@ -70,7 +79,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # The given column indices are for the full, merged table which consists
         # of lhs and rhs put side-by-side (in this order)
         # We therefore need to normalize the rhs indices relative to the rhs table.
-        rhs_on = [index - len(df_lhs.columns) for index in rhs_on]
+        rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
 
         # 4. dask can only merge on the same column names.
         # We therefore create new columns on purpose, which have a distinct name.
@@ -109,7 +118,22 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
         # 6. So the next step is to make sure
         # we have the correct column order (and to remove the temporary join columns)
-        df = df[list(df_lhs_renamed.columns) + list(df_rhs_renamed.columns)]
+        correct_column_order = list(df_lhs_renamed.columns) + list(
+            df_rhs_renamed.columns
+        )
+        cc = ColumnContainer(df.columns).limit_to(correct_column_order)
+
+        # and to rename them like the rel specifies
+        row_type = rel.getRowType()
+        field_specifications = [str(f) for f in row_type.getFieldNames()]
+        cc = cc.rename(
+            {
+                from_col: to_col
+                for from_col, to_col in zip(cc.columns, field_specifications)
+            }
+        )
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
         if filter_condition:
@@ -117,16 +141,14 @@ class LogicalJoinPlugin(BaseRelPlugin):
             filter_condition = reduce(
                 operator.and_,
                 [
-                    RexConverter.convert(rex, df, context=context)
+                    RexConverter.convert(rex, dc, context=context)
                     for rex in filter_condition
                 ],
             )
             df = df[filter_condition]
+            dc = DataContainer(df, cc)
 
-        # Now we go back to the names requested by the rel
-        df = self.fix_column_to_row_type(df, rel.getRowType())
-
-        return df
+        return dc
 
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"

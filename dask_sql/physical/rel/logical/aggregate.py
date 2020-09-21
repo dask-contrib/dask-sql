@@ -2,10 +2,12 @@ import operator
 from collections import defaultdict
 from functools import reduce
 from typing import Callable, Dict, List, Tuple, Union
+import uuid
 
 import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class GroupDatasetDescription:
@@ -87,26 +89,38 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
-        (df,) = self.assert_inputs(rel, 1, context)
+    ) -> DataContainer:
+        (dc,) = self.assert_inputs(rel, 1, context)
+
+        df = dc.df
+        cc = dc.column_container
 
         # We make our life easier with having unique column names
-        df = self.make_unique(df)
+        cc = cc.make_unique()
 
         # I have no idea what that is, but so far it was always of length 1
         assert len(rel.getGroupSets()) == 1, "Do not know how to handle this case!"
 
         # Extract the information, which columns we need to group for
         group_column_indices = [int(i) for i in rel.getGroupSet()]
-        group_columns = [df.columns[i] for i in group_column_indices]
+        group_columns = [
+            cc.get_backend_by_frontend_index(i) for i in group_column_indices
+        ]
 
         # Always keep an additional column around for empty groups and aggregates
-        additional_column_name = str(len(df.columns))
+        additional_column_name = str(uuid.uuid4())
+
+        # NOTE: it might be the case that
+        # we do not need this additional
+        # column, but hopefully adding a single
+        # column of 1 is not so problematic...
         df = df.assign(**{additional_column_name: 1})
+        cc = cc.add(additional_column_name)
+        dc = DataContainer(df, cc)
 
         # Collect all aggregates
         filtered_aggregations, output_column_order = self._collect_aggregations(
-            rel, df, group_columns, additional_column_name, context
+            rel, dc, group_columns, additional_column_name, context
         )
 
         if not group_columns:
@@ -143,16 +157,15 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
-        df_agg = df_agg[output_column_order]
+        cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
 
-        df_agg = self.fix_column_to_row_type(df_agg, rel.getRowType())
-
-        return df_agg
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        return DataContainer(df_agg, cc)
 
     def _collect_aggregations(
         self,
         rel: "org.apache.calcite.rel.RelNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         group_columns: List[str],
         additional_column_name: str,
         context: "dask_sql.Context",
@@ -165,6 +178,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         """
         aggregations = defaultdict(lambda: defaultdict(dict))
         output_column_order = []
+        df = dc.df
+        cc = dc.column_container
 
         # SQL needs to copy the old content also. As the values of the group columns
         # are the same for a single group anyways, we just use the first row
@@ -178,8 +193,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             expr = agg_call.getKey()
 
             if expr.hasFilter():
-                filter_column = expr.filterArg
-                filter_expression = df.iloc[:, filter_column]
+                filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
+                filter_expression = df[filter_column]
                 filtered_df = df[filter_expression]
 
                 grouped_df = GroupDatasetDescription(filtered_df, filter_column)
@@ -205,7 +220,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
             inputs = expr.getArgList()
             if len(inputs) == 1:
-                input_col = df.columns[inputs[0]]
+                input_col = cc.get_backend_by_frontend_index(inputs[0])
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
