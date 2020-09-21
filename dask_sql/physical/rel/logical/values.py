@@ -5,6 +5,7 @@ import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 
 class LogicalValuesPlugin(BaseRelPlugin):
@@ -25,23 +26,30 @@ class LogicalValuesPlugin(BaseRelPlugin):
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
+    ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
         rex_expression_rows = list(rel.getTuples())
         rows = []
-        for rex_expressions in rex_expression_rows:
+        for rex_expression_row in rex_expression_rows:
+            # We convert each of the cells in the row
+            # using a RexConverter.
+            # As we do not have any information on the
+            # column headers, we just name them with
+            # their index.
             rows.append(
-                [
-                    RexConverter.convert(rex, None, context=context)
-                    for rex in rex_expressions
-                ]
+                {
+                    str(i): RexConverter.convert(rex_cell, None, context=context)
+                    for i, rex_cell in enumerate(rex_expression_row)
+                }
             )
 
-        # We assume here that when using the values plan, the resulting dataframe will be quite small
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
-        df = dd.from_pandas(pd.DataFrame(rows), npartitions=1)
-        df = self.fix_column_to_row_type(df, rel.getRowType())
+        # We assume here that when using the values plan, the resulting dataframe will be quite small
+        df = pd.DataFrame(rows)
+        df = dd.from_pandas(df, npartitions=1)
+        cc = ColumnContainer(df.columns)
 
-        return df
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        return DataContainer(df, cc)

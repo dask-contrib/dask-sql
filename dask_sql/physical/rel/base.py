@@ -2,6 +2,8 @@ from typing import Dict, List
 
 import dask.dataframe as dd
 
+from dask_sql.datacontainer import ColumnContainer
+
 
 class BaseRelPlugin:
     """
@@ -22,20 +24,20 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        df: dd.DataFrame, row_type: "org.apache.calcite.rel.type.RelDataType"
-    ) -> dd.DataFrame:
+        cc: ColumnContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
+    ) -> ColumnContainer:
         """
-        Make sure that the given dask dataframe
+        Make sure that the given column container
         has the column names specified by the row type.
         We assume that the column order is already correct
         and will just "blindly" rename the columns.
         """
         field_names = [str(x) for x in row_type.getFieldNames()]
 
-        df = df.rename(columns=dict(zip(df.columns, field_names)))
+        cc = cc.rename(columns=dict(zip(cc.columns, field_names)))
 
         # TODO: We can also check for the types here and do any conversions if needed
-        return df[field_names]
+        return cc.limit_to(field_names)
 
     @staticmethod
     def check_columns_from_row_type(
@@ -73,16 +75,3 @@ class BaseRelPlugin:
         from dask_sql.physical.rel.convert import RelConverter
 
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
-
-    @staticmethod
-    def make_unique(df, prefix="col"):
-        """
-        Make sure we have unique column names by calling each column
-
-            prefix_number
-
-        where number is the column index.
-        """
-        return df.rename(
-            columns={col: f"{prefix}_{i}" for i, col in enumerate(df.columns)}
-        )

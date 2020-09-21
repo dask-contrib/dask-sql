@@ -3,7 +3,10 @@ from typing import Dict
 import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
 
 
 class LogicalProjectPlugin(BaseRelPlugin):
@@ -17,22 +20,38 @@ class LogicalProjectPlugin(BaseRelPlugin):
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
+    ) -> DataContainer:
         # Get the input of the previous step
-        (df,) = self.assert_inputs(rel, 1, context)
+        (dc,) = self.assert_inputs(rel, 1, context)
 
-        # It is easiest to just replace all columns with the new ones
+        df = dc.df
+        cc = dc.column_container
+
+        # Collect all (new) columns
         named_projects = rel.getNamedProjects()
 
+        column_names = []
         new_columns = {}
         for expr, key in named_projects:
-            new_columns[str(key)] = RexConverter.convert(expr, df, context=context)
+            key = str(key)
+            column_names.append(key)
 
-        df = df.drop(columns=list(df.columns)).assign(**new_columns)
+            # shortcut: if we have a column already, there is no need to re-assign it again
+            # this is only the case if the expr is a RexInputRef
+            if get_java_class(expr) == RexInputRefPlugin.class_name:
+                index = expr.getIndex()
+                backend_column_name = cc.get_backend_by_frontend_index(index)
+                cc = cc.add(key, backend_column_name)
+            else:
+                new_columns[key] = RexConverter.convert(expr, dc, context=context)
+                cc = cc.add(key, key)
+
+        # Actually add the new columns
+        if new_columns:
+            df = df.assign(**new_columns)
 
         # Make sure the order is correct
-        column_names = list(new_columns.keys())
-        df = df[column_names]
+        cc = cc.limit_to(column_names)
 
-        df = self.fix_column_to_row_type(df, rel.getRowType())
-        return df
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        return DataContainer(df, cc)

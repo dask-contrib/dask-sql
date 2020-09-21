@@ -10,6 +10,7 @@ import dask.dataframe as dd
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import is_frame
+from dask_sql.datacontainer import DataContainer
 
 
 class Operation:
@@ -65,7 +66,23 @@ class CaseOperation(Operation):
             tmp = where.apply(lambda x: then, meta=(where.name, type(then)))
             return tmp.where(where, other=other)
         else:
-            return then if where else other  # pragma: no cover
+            return then if where else other
+
+
+class IsTrueOperation(Operation):
+    """The is true operator"""
+
+    def __init__(self):
+        super().__init__(self.true_)
+
+    def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns true where `df` is true (where `df` can also be just a scalar).
+        """
+        if is_frame(df):
+            return df.astype(bool)
+
+        return bool(df)
 
 
 class NotOperation(Operation):
@@ -217,17 +234,18 @@ class RexCallPlugin(BaseRexPlugin):
         "not": NotOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
+        "is true": IsTrueOperation(),
     }
 
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
-            RexConverter.convert(o, df, context=context) for o in rex.getOperands()
+            RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
         ]
 
         # Now use the operator name in the mapping

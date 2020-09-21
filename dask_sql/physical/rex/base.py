@@ -2,6 +2,8 @@ from typing import Union, Any
 
 import dask.dataframe as dd
 
+from dask_sql.datacontainer import DataContainer
+
 
 class BaseRexPlugin:
     """
@@ -17,7 +19,7 @@ class BaseRexPlugin:
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:
         """Base method to implement"""

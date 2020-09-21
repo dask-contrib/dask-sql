@@ -1,8 +1,7 @@
 from typing import Dict
 
-import dask.dataframe as dd
-
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.datacontainer import DataContainer
 
 
 class LogicalTableScanPlugin(BaseRelPlugin):
@@ -21,7 +20,7 @@ class LogicalTableScanPlugin(BaseRelPlugin):
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
+    ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
@@ -38,12 +37,14 @@ class LogicalTableScanPlugin(BaseRelPlugin):
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        df = context.tables[table_name]
+        dc = context.tables[table_name]
+        df = dc.df
+        cc = dc.column_container
 
         # Make sure we only return the requested columns
         row_type = table.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
-        df = df[field_specifications]
+        cc = cc.limit_to(field_specifications)
 
-        df = self.fix_column_to_row_type(df, rel.getRowType())
-        return df
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        return DataContainer(df, cc)
