@@ -111,7 +111,10 @@ class IsNullOperation(Operation):
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
-        return np.isnan(df)
+        if is_frame(df):
+            return df.isna()
+
+        return df is None or np.isnan(df)
 
 
 class LikeOperation(Operation):

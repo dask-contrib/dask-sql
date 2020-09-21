@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 import operator
 
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_series_equal
 
@@ -72,6 +73,17 @@ def test_like():
     assert op("another string", r"s%") == False
     assert op("normal", r"n[a-z]rm_l") == True
     assert op("not normal", r"n[a-z]rm_l") == False
+
+
+def test_nan():
+    op = call.IsNullOperation()
+
+    assert op(None) == True
+    assert op(np.NaN) == True
+    assert_series_equal(
+        op(pd.Series(["a", None, "c"])), pd.Series([False, True, False])
+    )
+    assert_series_equal(op(pd.Series([3, 2, np.NaN])), pd.Series([False, False, True]))
 
 
 def test_simple_ops():
