@@ -10,6 +10,7 @@ import dask_sql.physical.rex.core.call as call
 
 df1 = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 df2 = dd.from_pandas(pd.DataFrame({"a": [3, 2, 1]}), npartitions=1)
+ops_mapping = call.RexCallPlugin.OPERATION_MAPPING
 
 
 def test_operation():
@@ -87,8 +88,6 @@ def test_nan():
 
 
 def test_simple_ops():
-    ops_mapping = call.RexCallPlugin.OPERATION_MAPPING
-
     assert_series_equal(
         ops_mapping["and"](df1.a >= 2, df2.a >= 2).compute(),
         pd.Series([False, True, False]),
@@ -112,3 +111,21 @@ def test_simple_ops():
         pd.Series([5, 6, 7]),
         check_names=False,
     )
+
+
+def test_math_operations():
+    assert_series_equal(
+        ops_mapping["abs"](-df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
+    )
+    assert_series_equal(
+        ops_mapping["round"](df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
+    )
+    assert_series_equal(
+        ops_mapping["floor"](df1.a).compute(),
+        pd.Series([1.0, 2.0, 3.0]),
+        check_names=False,
+    )
+
+    assert ops_mapping["abs"](-5) == 5
+    assert ops_mapping["round"](1.234, 2) == 1.23
+    assert ops_mapping["floor"](1.234) == 1
