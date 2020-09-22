@@ -62,12 +62,54 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df = pd.DataFrame({"N": [None], "I": [np.nan]})
         assert_frame_equal(df, expected_df)
 
-    def test_like(self):
-        expected_df = pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
-        self.c.register_dask_table(
-            dd.from_pandas(expected_df, npartitions=1), "string_table"
+    def test_not(self):
+        df = self.c.sql(
+            """
+        SELECT
+            *
+        FROM string_table
+        WHERE NOT a LIKE '%normal%'
+        """
         )
+        df = df.compute()
 
+        expected_df = self.string_table[~self.string_table.a.str.contains("normal")]
+        assert_frame_equal(df, expected_df, check_dtype=False)
+
+    def test_operators(self):
+        df = self.c.sql(
+            """
+        SELECT
+            a * b AS m,
+            a / b AS q,
+            a + b AS s,
+            a - b AS d,
+            a = b AS e,
+            a > b AS g,
+            a >= b AS ge,
+            a < b AS l,
+            a <= b AS le,
+            a <> b AS n
+        FROM df
+        """,
+            debug=True,
+        )
+        df = df.compute()
+
+        expected_df = pd.DataFrame(index=self.df.index)
+        expected_df["m"] = self.df["a"] * self.df["b"]
+        expected_df["q"] = self.df["a"] / self.df["b"]
+        expected_df["s"] = self.df["a"] + self.df["b"]
+        expected_df["d"] = self.df["a"] - self.df["b"]
+        expected_df["e"] = self.df["a"] == self.df["b"]
+        expected_df["g"] = self.df["a"] > self.df["b"]
+        expected_df["ge"] = self.df["a"] >= self.df["b"]
+        expected_df["l"] = self.df["a"] < self.df["b"]
+        expected_df["le"] = self.df["a"] <= self.df["b"]
+        expected_df["n"] = self.df["a"] != self.df["b"]
+        assert_frame_equal(df, expected_df)
+
+    def test_like(self):
         df = self.c.sql(
             """
             SELECT * FROM string_table
@@ -75,7 +117,7 @@ class RexOperationsTestCase(DaskTestCase):
         """
         ).compute()
 
-        assert_frame_equal(df, expected_df.iloc[[0]])
+        assert_frame_equal(df, self.string_table.iloc[[0]])
 
         df = self.c.sql(
             """
@@ -84,7 +126,7 @@ class RexOperationsTestCase(DaskTestCase):
         """
         ).compute()
 
-        assert_frame_equal(df, expected_df.iloc[[1]])
+        assert_frame_equal(df, self.string_table.iloc[[1]])
 
         df = self.c.sql(
             """
@@ -93,7 +135,7 @@ class RexOperationsTestCase(DaskTestCase):
         """
         ).compute()
 
-        assert_frame_equal(df, expected_df.iloc[[2]])
+        assert_frame_equal(df, self.string_table.iloc[[2]])
 
         df = self.c.sql(
             """
@@ -102,4 +144,33 @@ class RexOperationsTestCase(DaskTestCase):
         """
         ).compute()
 
+        assert_frame_equal(df, self.string_table)
+
+    def test_null(self):
+        df = self.c.sql(
+            """
+            SELECT
+                c IS NOT NULL AS nn,
+                c IS NULL AS n
+            FROM user_table_nan
+        """
+        ).compute()
+
+        expected_df = pd.DataFrame(index=[0, 1, 2])
+        expected_df["nn"] = [True, False, True]
+        expected_df["n"] = [False, True, False]
+        assert_frame_equal(df, expected_df)
+
+        df = self.c.sql(
+            """
+            SELECT
+                a IS NOT NULL AS nn,
+                a IS NULL AS n
+            FROM string_table
+        """
+        ).compute()
+
+        expected_df = pd.DataFrame(index=[0, 1, 2])
+        expected_df["nn"] = [True, True, True]
+        expected_df["n"] = [False, False, False]
         assert_frame_equal(df, expected_df)

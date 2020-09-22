@@ -10,7 +10,7 @@ class FunctionTestCase(DaskTestCase):
         def f(x):
             return x ** 2
 
-        self.c.register_function(f, "f", [("x", np.int64)], np.int64)
+        self.c.register_function(f, "f", [("x", np.float64)], np.float64)
 
         df = self.c.sql(
             """

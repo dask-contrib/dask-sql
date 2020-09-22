@@ -24,6 +24,10 @@ class Operation:
         """Call the stored function"""
         return self.f(*operands)
 
+    def of(self, op: "Operation") -> "Operation":
+        """Functional composition"""
+        return Operation(lambda x: self(op(x)))
+
 
 class ReduceOperation(Operation):
     """Special operator, which is executed by reducing an operation over the input"""
@@ -79,6 +83,38 @@ class IsTrueOperation(Operation):
             return df.astype(bool)
 
         return bool(df)
+
+
+class NotOperation(Operation):
+    """The not operator"""
+
+    def __init__(self):
+        super().__init__(self.not_)
+
+    def not_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns not `df` (where `df` can also be just a scalar).
+        """
+        if is_frame(df):
+            return ~df
+        else:
+            return not df  # pragma: no cover
+
+
+class IsNullOperation(Operation):
+    """The is null operator"""
+
+    def __init__(self):
+        super().__init__(self.null)
+
+    def null(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns true where `df` is null (where `df` can also be just a scalar).
+        """
+        if is_frame(df):
+            return df.isna()
+
+        return df is None or np.isnan(df)
 
 
 class LikeOperation(Operation):
@@ -191,12 +227,16 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add),
         "-": ReduceOperation(operation=operator.sub),
         "/": ReduceOperation(operation=operator.truediv),
         "*": ReduceOperation(operation=operator.mul),
         "case": CaseOperation(),
         "like": LikeOperation(),
+        "not": NotOperation(),
+        "is null": IsNullOperation(),
+        "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
     }
 

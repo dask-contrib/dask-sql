@@ -12,7 +12,10 @@ class DaskTestCase(TestCase):
     def setUp(self):
         self.df_simple = pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
         self.df = pd.DataFrame(
-            {"a": [1] * 100 + [2] * 200 + [3] * 400, "b": 10 * np.random.rand(700)}
+            {
+                "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
+                "b": 10 * np.random.rand(700),
+            }
         )
         self.user_table_1 = pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
         self.user_table_2 = pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]})
@@ -20,6 +23,7 @@ class DaskTestCase(TestCase):
 
         self.user_table_inf = pd.DataFrame({"c": [3, float("inf"), 1]})
         self.user_table_nan = pd.DataFrame({"c": [3, float("nan"), 1]})
+        self.string_table = pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
 
         self.c = Context()
         for df_name in [
@@ -30,6 +34,7 @@ class DaskTestCase(TestCase):
             "long_table",
             "user_table_inf",
             "user_table_nan",
+            "string_table",
         ]:
             df = getattr(self, df_name)
             dask_df = dd.from_pandas(df, npartitions=3)
