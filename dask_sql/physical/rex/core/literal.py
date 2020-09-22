@@ -1,9 +1,11 @@
 from typing import Any
 
+import numpy as np
 import dask.dataframe as dd
 
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.mappings import sql_to_python_value
+from dask_sql.datacontainer import DataContainer
 
 
 class RexLiteralPlugin(BaseRexPlugin):
@@ -21,7 +23,7 @@ class RexLiteralPlugin(BaseRexPlugin):
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
         literal_value = rex.getValue()

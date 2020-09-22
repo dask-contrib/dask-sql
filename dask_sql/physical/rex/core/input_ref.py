@@ -1,6 +1,7 @@
 import dask.dataframe as dd
 
 from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.datacontainer import DataContainer
 
 
 class RexInputRefPlugin(BaseRexPlugin):
@@ -15,9 +16,13 @@ class RexInputRefPlugin(BaseRexPlugin):
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",
-        df: dd.DataFrame,
+        dc: DataContainer,
         context: "dask_sql.Context",
     ) -> dd.Series:
+        df = dc.df
+        cc = dc.column_container
+
         # The column is references by index
         index = rex.getIndex()
-        return df.iloc[:, index]
+        backend_column_name = cc.get_backend_by_frontend_index(index)
+        return df[backend_column_name]
