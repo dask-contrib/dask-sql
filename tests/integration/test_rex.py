@@ -232,4 +232,3 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["tan"] = np.tan(self.df.b)
         expected_df["truncate"] = np.trunc(self.df.b)
         assert_frame_equal(df, expected_df)
-
