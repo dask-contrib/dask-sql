@@ -174,3 +174,61 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["nn"] = [True, True, True]
         expected_df["n"] = [False, False, False]
         assert_frame_equal(df, expected_df)
+
+    def test_math_operations(self):
+        df = self.c.sql(
+            """
+            SELECT
+                ABS(b) AS "abs"
+                , ACOS(b) AS "acos"
+                , ASIN(b) AS "asin"
+                , ATAN(b) AS "atan"
+                , ATAN2(a, b) AS "atan2"
+                , CBRT(b) AS "cbrt"
+                , CEIL(b) AS "ceil"
+                , COS(b) AS "cos"
+                , COT(b) AS "cot"
+                , DEGREES(b) AS "degrees"
+                , EXP(b) AS "exp"
+                , FLOOR(b) AS "floor"
+                , LOG10(b) AS "log10"
+                , LN(b) AS "ln"
+                , POWER(b, 2) AS "power"
+                , POWER(b, a) AS "power2"
+                , RADIANS(b) AS "radians"
+                , ROUND(b) AS "round"
+                , ROUND(b, 3) AS "round2"
+                , SIGN(b) AS "sign"
+                , SIN(b) AS "sin"
+                , TAN(b) AS "tan"
+                , TRUNCATE(b) AS "truncate"
+            FROM df
+        """,
+            debug=True,
+        ).compute()
+
+        expected_df = pd.DataFrame(index=self.df.index)
+        expected_df["abs"] = self.df.b.abs()
+        expected_df["acos"] = np.arccos(self.df.b)
+        expected_df["asin"] = np.arcsin(self.df.b)
+        expected_df["atan"] = np.arctan(self.df.b)
+        expected_df["atan2"] = np.arctan2(self.df.a, self.df.b)
+        expected_df["cbrt"] = np.cbrt(self.df.b)
+        expected_df["ceil"] = np.ceil(self.df.b)
+        expected_df["cos"] = np.cos(self.df.b)
+        expected_df["cot"] = 1 / np.tan(self.df.b)
+        expected_df["degrees"] = self.df.b / np.pi * 180
+        expected_df["exp"] = np.exp(self.df.b)
+        expected_df["floor"] = np.floor(self.df.b)
+        expected_df["log10"] = np.log10(self.df.b)
+        expected_df["ln"] = np.log(self.df.b)
+        expected_df["power"] = np.power(self.df.b, 2)
+        expected_df["power2"] = np.power(self.df.b, self.df.a)
+        expected_df["radians"] = self.df.b / 180 * np.pi
+        expected_df["round"] = np.round(self.df.b)
+        expected_df["round2"] = np.round(self.df.b, 3)
+        expected_df["sign"] = np.sign(self.df.b)
+        expected_df["sin"] = np.sin(self.df.b)
+        expected_df["tan"] = np.tan(self.df.b)
+        expected_df["truncate"] = np.trunc(self.df.b)
+        assert_frame_equal(df, expected_df)

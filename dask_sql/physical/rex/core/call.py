@@ -6,6 +6,7 @@ import re
 
 import numpy as np
 import dask.dataframe as dd
+import dask.array as da
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -27,6 +28,27 @@ class Operation:
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
         return Operation(lambda x: self(op(x)))
+
+
+class TensorScalaOperation(Operation):
+    """
+    Helper operation to call a function on the input,
+    depending if the first is a dataframe or not
+    """
+
+    def __init__(self, tensor_f: Callable, scalar_f: Callable = None):
+        """Init with the given operation"""
+        super().__init__(self.apply)
+
+        self.tensor_f = tensor_f
+        self.scalar_f = scalar_f or tensor_f
+
+    def apply(self, *operands):
+        """Call the stored functions"""
+        if is_frame(operands[0]):
+            return self.tensor_f(*operands)
+
+        return self.scalar_f(*operands)
 
 
 class ReduceOperation(Operation):
@@ -220,6 +242,7 @@ class RexCallPlugin(BaseRexPlugin):
     class_name = "org.apache.calcite.rex.RexCall"
 
     OPERATION_MAPPING = {
+        # "binary" functions
         "and": ReduceOperation(operation=operator.and_),
         "or": ReduceOperation(operation=operator.or_),
         ">": ReduceOperation(operation=operator.gt),
@@ -232,12 +255,36 @@ class RexCallPlugin(BaseRexPlugin):
         "-": ReduceOperation(operation=operator.sub),
         "/": ReduceOperation(operation=operator.truediv),
         "*": ReduceOperation(operation=operator.mul),
+        # special operations
         "case": CaseOperation(),
         "like": LikeOperation(),
         "not": NotOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
+        # Unary math functions
+        "abs": TensorScalaOperation(lambda x: x.abs(), np.abs),
+        "acos": Operation(da.arccos),
+        "asin": Operation(da.arcsin),
+        "atan": Operation(da.arctan),
+        "atan2": Operation(da.arctan2),
+        "cbrt": Operation(da.cbrt),
+        "ceil": Operation(da.ceil),
+        "cos": Operation(da.cos),
+        "cot": Operation(lambda x: 1 / da.tan(x)),
+        "degrees": Operation(da.degrees),
+        "exp": Operation(da.exp),
+        "floor": Operation(da.floor),
+        "log10": Operation(da.log10),
+        "ln": Operation(da.log),
+        # "mod": Operation(da.mod), # needs cast
+        "power": Operation(da.power),
+        "radians": Operation(da.radians),
+        "round": TensorScalaOperation(lambda x, *ops: x.round(*ops), np.round),
+        "sign": Operation(da.sign),
+        "sin": Operation(da.sin),
+        "tan": Operation(da.tan),
+        "truncate": Operation(da.trunc),
     }
 
     def convert(
