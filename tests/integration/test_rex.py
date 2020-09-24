@@ -175,6 +175,37 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["n"] = [False, False, False]
         assert_frame_equal(df, expected_df)
 
+    def test_boolean_operations(self):
+        df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
+        df["b"] = df["b"].apply(
+            lambda x: pd.NA if x < 0 else x > 0, meta=("b", "bool")
+        )  # turn into a bool column
+        self.c.register_dask_table(df, "df")
+
+        df = self.c.sql(
+            """
+            SELECT
+                b IS TRUE AS t,
+                b IS FALSE AS f,
+                b IS NOT TRUE AS nt,
+                b IS NOT FALSE AS nf,
+                b IS UNKNOWN AS u,
+                b IS NOT UNKNOWN AS nu
+            FROM df"""
+        ).compute()
+
+        expected_df = pd.DataFrame(
+            {
+                "t": [True, False, False],
+                "f": [False, True, False],
+                "nt": [False, True, True],
+                "nf": [True, False, True],
+                "u": [False, False, True],
+                "nu": [True, True, False],
+            }
+        )
+        assert_frame_equal(df, expected_df)
+
     def test_math_operations(self):
         df = self.c.sql(
             """
