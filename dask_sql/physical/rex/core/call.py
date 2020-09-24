@@ -105,7 +105,7 @@ class IsFalseOperation(Operation):
         if is_frame(df):
             return ~df.fillna(True)
 
-        return not np.isnan(df) and not bool(df)
+        return df is not None and not np.isnan(df) and not bool(df)
 
 
 class IsTrueOperation(Operation):
@@ -122,7 +122,7 @@ class IsTrueOperation(Operation):
         if is_frame(df):
             return df.fillna(False)
 
-        return not np.isnan(df) and bool(df)
+        return df is not None and not np.isnan(df) and bool(df)
 
 
 class NotOperation(Operation):

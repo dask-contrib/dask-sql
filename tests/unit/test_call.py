@@ -10,6 +10,9 @@ import dask_sql.physical.rex.core.call as call
 
 df1 = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 df2 = dd.from_pandas(pd.DataFrame({"a": [3, 2, 1]}), npartitions=1)
+df3 = dd.from_pandas(
+    pd.DataFrame({"a": [True, pd.NA, False]}, dtype="boolean"), npartitions=1
+)
 ops_mapping = call.RexCallPlugin.OPERATION_MAPPING
 
 
@@ -52,18 +55,40 @@ def test_case():
     assert op(False, 1, 2) == 2
 
 
-def test_is_truease():
+def test_is_true():
     op = call.IsTrueOperation()
 
     assert_series_equal(
         op(df1.a > 2).compute(), pd.Series([False, False, True]), check_names=False
     )
     assert_series_equal(
-        op(df2.a).compute(), pd.Series([True, True, True]), check_names=False
+        op(df3.a).compute(),
+        pd.Series([True, False, False], dtype="boolean"),
+        check_names=False,
     )
 
     assert op(1) == True
     assert op(0) == False
+    assert op(None) == False
+    assert op(np.NaN) == False
+
+
+def test_is_false():
+    op = call.IsFalseOperation()
+
+    assert_series_equal(
+        op(df1.a > 2).compute(), pd.Series([True, True, False]), check_names=False
+    )
+    assert_series_equal(
+        op(df3.a).compute(),
+        pd.Series([False, False, True], dtype="boolean"),
+        check_names=False,
+    )
+
+    assert op(1) == False
+    assert op(0) == True
+    assert op(None) == False
+    assert op(np.NaN) == False
 
 
 def test_like():
