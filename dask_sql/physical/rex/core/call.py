@@ -91,6 +91,23 @@ class CaseOperation(Operation):
             return then if where else other
 
 
+class IsFalseOperation(Operation):
+    """The is false operator"""
+
+    def __init__(self):
+        super().__init__(self.false_)
+
+    def false_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+        """
+        Returns true where `df` is false (where `df` can also be just a scalar).
+        Returns false on nan.
+        """
+        if is_frame(df):
+            return ~df.fillna(True)
+
+        return not np.isnan(df) and not bool(df)
+
+
 class IsTrueOperation(Operation):
     """The is true operator"""
 
@@ -100,11 +117,12 @@ class IsTrueOperation(Operation):
     def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
+        Returns false on nan.
         """
         if is_frame(df):
-            return df.astype(bool)
+            return df.fillna(False)
 
-        return bool(df)
+        return not np.isnan(df) and bool(df)
 
 
 class NotOperation(Operation):
@@ -262,6 +280,11 @@ class RexCallPlugin(BaseRexPlugin):
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
+        "is not true": NotOperation().of(IsTrueOperation()),
+        "is false": IsFalseOperation(),
+        "is not false": NotOperation().of(IsFalseOperation()),
+        "is unknown": IsNullOperation(),
+        "is not unknown": NotOperation().of(IsNullOperation()),
         # Unary math functions
         "abs": TensorScalaOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
