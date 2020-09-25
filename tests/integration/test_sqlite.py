@@ -17,11 +17,12 @@ class SQLLiteComparisonTestCase(TestCase):
 
         df1 = pd.DataFrame(
             {
-                "user_id": np.random.choice([1, 2, 3, 4, float("nan")], 100),
+                "user_id": np.random.choice([1, 2, 3, 4, pd.NA], 100),
                 "a": np.random.rand(100),
                 "b": np.random.randint(-10, 10, 100),
             }
         )
+        df1["user_id"] = df1["user_id"].astype("Int64")
 
         df2 = pd.DataFrame(
             {
@@ -30,8 +31,8 @@ class SQLLiteComparisonTestCase(TestCase):
                 "d": np.random.choice(["a", "b", "c"], 100),
             }
         )
-        # the other is also a float, that makes joining simpler
-        df2["user_id"] = df2["user_id"].astype("float64")
+        # the other is a Int64, that makes joining simpler
+        df2["user_id"] = df2["user_id"].astype("Int64")
 
         self.c = Context()
         self.c.register_dask_table(dd.from_pandas(df1, npartitions=3), "df1")

@@ -21,7 +21,7 @@ class RexOperationsTestCase(DaskTestCase):
         df = df.compute()
 
         expected_df = pd.DataFrame(index=self.df.index)
-        expected_df["S1"] = self.df.a.apply(lambda a: 1 if a == 3 else None)
+        expected_df["S1"] = self.df.a.apply(lambda a: 1 if a == 3 else pd.NA)
         expected_df["S2"] = self.df.a.apply(lambda a: a if a > 0 else 1)
         expected_df["S3"] = self.df.a.apply(lambda a: 3 if a == 4 else a + 1)
         expected_df["S4"] = self.df.a.apply(lambda a: 1 if a == 3 else a)
@@ -59,7 +59,7 @@ class RexOperationsTestCase(DaskTestCase):
         )
         df = df.compute()
 
-        expected_df = pd.DataFrame({"N": [None], "I": [np.nan]})
+        expected_df = pd.DataFrame({"N": [None], "I": [pd.NA]})
         assert_frame_equal(df, expected_df)
 
     def test_not(self):
@@ -74,7 +74,7 @@ class RexOperationsTestCase(DaskTestCase):
         df = df.compute()
 
         expected_df = self.string_table[~self.string_table.a.str.contains("normal")]
-        assert_frame_equal(df, expected_df, check_dtype=False)
+        assert_frame_equal(df, expected_df)
 
     def test_operators(self):
         df = self.c.sql(
