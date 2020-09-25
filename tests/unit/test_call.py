@@ -71,6 +71,7 @@ def test_is_true():
     assert op(0) == False
     assert op(None) == False
     assert op(np.NaN) == False
+    assert op(pd.NA) == False
 
 
 def test_is_false():
@@ -89,6 +90,7 @@ def test_is_false():
     assert op(0) == True
     assert op(None) == False
     assert op(np.NaN) == False
+    assert op(pd.NA) == False
 
 
 def test_like():
@@ -106,10 +108,13 @@ def test_nan():
 
     assert op(None) == True
     assert op(np.NaN) == True
+    assert op(pd.NA) == True
     assert_series_equal(
         op(pd.Series(["a", None, "c"])), pd.Series([False, True, False])
     )
-    assert_series_equal(op(pd.Series([3, 2, np.NaN])), pd.Series([False, False, True]))
+    assert_series_equal(
+        op(pd.Series([3, 2, np.NaN, pd.NA])), pd.Series([False, False, True, True])
+    )
 
 
 def test_simple_ops():

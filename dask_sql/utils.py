@@ -2,13 +2,14 @@ from collections import defaultdict
 import re
 
 import numpy as np
+import pandas as pd
 
 
 def is_frame(df):
     """
     Check if something is a dataframe (and not a scalar or none)
     """
-    return df is not None and not np.isscalar(df)
+    return df is not None and not np.isscalar(df) and not isinstance(df, type(pd.NA))
 
 
 class Pluggable:

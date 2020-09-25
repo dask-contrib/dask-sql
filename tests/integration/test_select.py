@@ -33,11 +33,11 @@ class SelectTestCase(DaskTestCase):
         expected_df = pd.DataFrame(
             {
                 "date": pd.to_datetime(
-                    ["2022-01-21 17:34", "2022-01-21", "17:34", np.NaN]
+                    ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]
                 ),
                 "string": ["this is a test", "another test", "äölüć", ""],
                 "integer": [1, 2, -4, 5],
-                "float": [-1.1, np.pi, np.NaN, np.sqrt(2)],
+                "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
             }
         )
         self.c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")

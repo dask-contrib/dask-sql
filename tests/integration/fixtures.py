@@ -22,7 +22,7 @@ class DaskTestCase(TestCase):
         self.long_table = pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
 
         self.user_table_inf = pd.DataFrame({"c": [3, float("inf"), 1]})
-        self.user_table_nan = pd.DataFrame({"c": [3, float("nan"), 1]})
+        self.user_table_nan = pd.DataFrame({"c": [3, pd.NA, 1]})
         self.string_table = pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
 
         self.c = Context()
@@ -48,13 +48,14 @@ class ComparisonTestCase(TestCase):
         df1 = dd.from_pandas(
             pd.DataFrame(
                 {
-                    "user_id": np.random.choice([1, 2, 3, 4, float("nan")], 100),
+                    "user_id": np.random.choice([1, 2, 3, 4, pd.NA], 100),
                     "a": np.random.rand(100),
                     "b": np.random.randint(-10, 10, 100),
                 }
             ),
             npartitions=3,
         )
+        df1["user_id"] = df1["user_id"].astype("Int64")
 
         df2 = dd.from_pandas(
             pd.DataFrame(
@@ -66,8 +67,8 @@ class ComparisonTestCase(TestCase):
             ),
             npartitions=3,
         )
-        # the other is also a float, that makes joining simpler
-        df2["user_id"] = df2["user_id"].astype("float64")
+        # the other is a Int64, that makes joining simpler
+        df2["user_id"] = df2["user_id"].astype("Int64")
 
         # add some NaNs
         df1["a"] = df1["a"].apply(

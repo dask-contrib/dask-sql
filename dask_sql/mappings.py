@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from datetime import timedelta, datetime, timezone
 
 from dask_sql.java import SqlTypeName
@@ -11,14 +12,23 @@ _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
     np.float32: SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
     np.int32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.int16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
     np.int8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
     np.uint64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
     np.uint32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.uint16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
     np.uint8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
     np.bool8: SqlTypeName.BOOLEAN,
+    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     np.object_: SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
@@ -85,7 +95,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     ):
         if str(literal_value) == "None":
             # NULL time
-            return np.datetime64()  # pragma: no cover
+            return pd.NaT
 
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
@@ -99,21 +109,22 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
-        return np.float64(str(literal_value))
+        python_type = np.float64
     else:
         try:
             python_type = _SQL_TO_PYTHON[sql_type]
-            literal_value = str(literal_value)
-
-            # empty literal type. We return NaN if possible
-            if literal_value == "None":
-                if np.issubdtype(python_type, np.number):
-                    return np.nan
-
-                return None
-
-            return python_type(literal_value)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"
             )
+
+    literal_value = str(literal_value)
+
+    # empty literal type. We return NaN if possible
+    if literal_value == "None":
+        if isinstance(python_type(), np.floating):
+            return np.NaN
+        else:
+            return pd.NA
+
+    return python_type(literal_value)
