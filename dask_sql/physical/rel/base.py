@@ -1,8 +1,11 @@
 from typing import Dict, List
 
 import dask.dataframe as dd
+import dask.array as da
+import pandas as pd
 
-from dask_sql.datacontainer import ColumnContainer
+from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.mappings import sql_to_python_type, similar_type
 
 
 class BaseRelPlugin:
@@ -75,3 +78,32 @@ class BaseRelPlugin:
         from dask_sql.physical.rel.convert import RelConverter
 
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
+
+    @staticmethod
+    def fix_dtype_to_row_type(
+        dc: DataContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
+    ):
+        df = dc.df
+        cc = dc.column_container
+
+        field_types = {
+            int(field.getIndex()): str(field.getType())
+            for field in row_type.getFieldList()
+        }
+
+        for index, field_type in field_types.items():
+            expected_type = sql_to_python_type(field_type)
+            field_name = cc.get_backend_by_frontend_index(index)
+            current_type = df[field_name].dtype
+
+            if similar_type(current_type, expected_type):
+                continue
+
+            current_float = pd.api.types.is_float_dtype(current_type)
+            expected_integer = pd.api.types.is_integer_dtype(expected_type)
+            if current_float and expected_integer:
+                df[field_name] = da.trunc(df[field_name])
+
+            df[field_name] = df[field_name].astype(expected_type)
+
+        return DataContainer(df, dc.column_container)

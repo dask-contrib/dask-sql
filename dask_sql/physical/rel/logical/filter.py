@@ -29,4 +29,5 @@ class LogicalFilterPlugin(BaseRelPlugin):
         df = df[df_condition]
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        # No column type has changed, so no need to convert again
         return DataContainer(df, cc)
