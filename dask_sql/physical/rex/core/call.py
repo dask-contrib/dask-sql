@@ -4,6 +4,7 @@ from functools import reduce
 from typing import Any, Union, Callable
 import re
 
+import pandas as pd
 import numpy as np
 import dask.dataframe as dd
 import dask.array as da
@@ -58,6 +59,29 @@ class ReduceOperation(Operation):
         self.operation = operation
 
         super().__init__(lambda *operands: reduce(self.operation, operands))
+
+
+class SQLDivisionOperator(Operation):
+    """
+    Division is handled differently in SQL and python.
+    In python3, it will always preserve the full information, even if starting with
+    an integer (so 1/2 = 0.5).
+    In SQL, integer division will return an integer again. However, it is not floor division
+    (where -1/2 = -1), but truncated division (so -1 / 2 = 0).
+    """
+
+    def __init__(self):
+        super().__init__(self.div)
+
+    def div(self, lhs, rhs):
+        result = lhs / rhs
+
+        lhs_float = pd.api.types.is_float_dtype(lhs)
+        rhs_float = pd.api.types.is_float_dtype(rhs)
+        if not lhs_float and not rhs_float:
+            result = da.trunc(result)
+
+        return result
 
 
 class CaseOperation(Operation):
@@ -271,7 +295,7 @@ class RexCallPlugin(BaseRexPlugin):
         "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add),
         "-": ReduceOperation(operation=operator.sub),
-        "/": ReduceOperation(operation=operator.truediv),
+        "/": ReduceOperation(operation=SQLDivisionOperator()),
         "*": ReduceOperation(operation=operator.mul),
         # special operations
         "case": CaseOperation(),

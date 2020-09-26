@@ -109,6 +109,18 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["n"] = self.df["a"] != self.df["b"]
         assert_frame_equal(df, expected_df)
 
+    def test_integer_division(self):
+        df = self.c.sql(
+            """
+            SELECT
+                1 / b AS b
+            FROM
+                user_table_1
+            """
+        ).compute()
+
+        assert_frame_equal(df, pd.DataFrame({"b": [0.0, 0.0, 1.0, 0.0]}))
+
     def test_like(self):
         df = self.c.sql(
             """
