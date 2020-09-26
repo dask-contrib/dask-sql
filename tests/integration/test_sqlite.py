@@ -98,7 +98,7 @@ class SQLLiteComparisonTestCase(ComparisonTestCase):
         self.assert_query_gives_same_result(
             """
             SELECT
-                d, SUM(c), AVG(user_id)
+                d, SUM(c), SUM(user_id)
             FROM df2
             GROUP BY d
             ORDER BY SUM(c)

@@ -34,7 +34,8 @@ class RexOperationsTestCase(DaskTestCase):
                       -4564347464 AS "I",
                       TIME '08:08:00.091' AS "T",
                       TIMESTAMP '2022-04-06 17:33:21' AS "DT",
-                      DATE '1991-06-02' AS "D"
+                      DATE '1991-06-02' AS "D",
+                      INTERVAL '1' DAY AS "IN"
             """
         )
         df = df.compute()
@@ -44,9 +45,10 @@ class RexOperationsTestCase(DaskTestCase):
                 "S": ["a string äö"],
                 "F": [4.4],
                 "I": [-4564347464],
-                "T": [pd.to_datetime("1970-01-01 08:08:00.091+00:00")],
-                "DT": [pd.to_datetime("2022-04-06 17:33:21+00:00")],
-                "D": [pd.to_datetime("1991-06-02 00:00+00:00")],
+                "T": [pd.to_datetime("1970-01-01 08:08:00.091")],
+                "DT": [pd.to_datetime("2022-04-06 17:33:21")],
+                "D": [pd.to_datetime("1991-06-02 00:00")],
+                "IN": [pd.to_timedelta("1d")],
             }
         )
         assert_frame_equal(df, expected_df)
@@ -59,7 +61,8 @@ class RexOperationsTestCase(DaskTestCase):
         )
         df = df.compute()
 
-        expected_df = pd.DataFrame({"N": [None], "I": [pd.NA]})
+        expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
+        expected_df["I"] = expected_df["I"].astype("Int32")
         assert_frame_equal(df, expected_df)
 
     def test_not(self):
@@ -262,4 +265,24 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["sin"] = np.sin(self.df.b)
         expected_df["tan"] = np.tan(self.df.b)
         expected_df["truncate"] = np.trunc(self.df.b)
+        assert_frame_equal(df, expected_df)
+
+    def test_integer_div(self):
+        df = self.c.sql(
+            """
+            SELECT
+                1 / a AS a,
+                a / 2 AS b,
+                1.0 / a AS c
+            FROM df_simple
+        """,
+            debug=True,
+        ).compute()
+
+        expected_df = pd.DataFrame(index=self.df_simple.index)
+        expected_df["a"] = [1, 0, 0]
+        expected_df["a"] = expected_df["a"].astype("Int64")
+        expected_df["b"] = [0, 1, 1]
+        expected_df["b"] = expected_df["b"].astype("Int64")
+        expected_df["c"] = [1.0, 0.5, 0.333333]
         assert_frame_equal(df, expected_df)

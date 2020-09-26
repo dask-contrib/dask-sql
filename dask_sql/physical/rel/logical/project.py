@@ -54,4 +54,6 @@ class LogicalProjectPlugin(BaseRelPlugin):
         cc = cc.limit_to(column_names)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        return DataContainer(df, cc)
+        dc = DataContainer(df, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        return dc

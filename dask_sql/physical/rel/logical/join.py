@@ -148,6 +148,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
             df = df[filter_condition]
             dc = DataContainer(df, cc)
 
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
 
     def _split_join_condition(

@@ -139,6 +139,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         for filtered_df_desc, aggregation in filtered_aggregations.items():
             # ... we perform the aggregations ...
             filtered_df = filtered_df_desc.df
+            # TODO: we could use the type information for
+            # pre-calculating the meta information
             filtered_df_agg = filtered_df.groupby(by=group_columns).agg(aggregation)
 
             # ... fix the column names to a single level ...
@@ -160,7 +162,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        return DataContainer(df_agg, cc)
+        dc = DataContainer(df_agg, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        return dc
 
     def _collect_aggregations(
         self,
