@@ -12,8 +12,7 @@ class SQLLiteComparisonTestCase(ComparisonTestCase):
         self.assert_query_gives_same_result(
             """
             SELECT * FROM df1
-        """,
-            check_dtype=False,
+        """
         )
 
         self.assert_query_gives_same_result(
@@ -31,8 +30,7 @@ class SQLLiteComparisonTestCase(ComparisonTestCase):
         self.assert_query_gives_same_result(
             """
             SELECT 1 AS I, -5.34344 AS F, 'öäll' AS S
-        """,
-            check_dtype=False,  # int32 != int64
+        """
         )
 
         self.assert_query_gives_same_result(
@@ -51,7 +49,6 @@ class SQLLiteComparisonTestCase(ComparisonTestCase):
             JOIN df2 ON df1.user_id = df2.user_id
         """,
             ["user_id", "a", "b", "user_id_2", "c", "d"],
-            check_dtype=False,
         )
 
     def test_sort(self):
@@ -114,8 +111,7 @@ class SQLLiteComparisonTestCase(ComparisonTestCase):
             FROM df1
             WHERE
                 user_id = 3 AND a > 0.5
-        """,
-            check_dtype=False,
+        """
         )
 
         self.assert_query_gives_same_result(

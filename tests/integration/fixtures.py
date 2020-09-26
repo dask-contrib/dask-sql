@@ -67,6 +67,7 @@ class ComparisonTestCase(TestCase):
             ),
             npartitions=3,
         )
+
         # the other is a Int64, that makes joining simpler
         df2["user_id"] = df2["user_id"].astype("Int64")
 
@@ -100,4 +101,4 @@ class ComparisonTestCase(TestCase):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, **kwargs)
+        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
