@@ -40,4 +40,3 @@ class TimeSeriesTestCase(TestCase):
         df = result.compute()
 
         self.assertGreater(len(df), 0)
-
