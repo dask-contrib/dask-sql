@@ -31,18 +31,15 @@ class SQLLiteComparisonTestCase(TestCase):
                 "d": np.random.choice(["a", "b", "c"], 100),
             }
         )
-
-        df1.to_sql("df1", self.con, index=False)
-        df2.to_sql("df2", self.con, index=False)
-
-        # the other is a Int64, that makes joining simpler
-        # However, we want it to stay an int in the database,
-        # so we only do this afterwards
+        # the other is also an Int64, that makes joining simpler
         df2["user_id"] = df2["user_id"].astype("Int64")
 
         self.c = Context()
         self.c.register_dask_table(dd.from_pandas(df1, npartitions=3), "df1")
         self.c.register_dask_table(dd.from_pandas(df2, npartitions=3), "df2")
+
+        df1.to_sql("df1", self.con, index=False)
+        df2.to_sql("df2", self.con, index=False)
 
     def assert_query_gives_same_result(self, query, sort_columns=None, **kwargs):
         sql_result = pd.read_sql_query(query, self.con)
