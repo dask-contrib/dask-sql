@@ -83,6 +83,16 @@ class BaseRelPlugin:
     def fix_dtype_to_row_type(
         dc: DataContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
     ):
+        """
+        Fix the dtype of the given data container (or: the df within it)
+        to the data type given as argument.
+        To prevent unneeded conversions, do only convert if really needed,
+        e.g. if the two types are "similar" enough, do not convert.
+        Similarity involves the same general type (int, float, string etc)
+        but not necessary the size (int64 and int32 are compatible)
+        or the nullability.
+        TODO: we should check the nullability of the SQL type
+        """
         df = dc.df
         cc = dc.column_container
 
