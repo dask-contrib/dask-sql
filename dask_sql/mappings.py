@@ -35,6 +35,7 @@ _PYTHON_TO_SQL = {
 }
 
 # Default mapping between SQL types and python types
+# for values
 _SQL_TO_PYTHON_SCALARS = {
     "DOUBLE": np.float64,
     "FLOAT": np.float32,
@@ -47,6 +48,8 @@ _SQL_TO_PYTHON_SCALARS = {
     "NULL": type(None),
 }
 
+# Default mapping between SQL types and python types
+# for data frames
 _SQL_TO_PYTHON_FRAMES = {
     "DOUBLE": np.float64,
     "FLOAT": np.float32,
@@ -144,6 +147,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 
 def sql_to_python_type(sql_type: str) -> type:
+    """Turn an SQL type into a dataframe dtype"""
     if sql_type.startswith("CHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
@@ -169,6 +173,14 @@ def sql_to_python_type(sql_type: str) -> type:
 
 
 def similar_type(lhs: type, rhs: type) -> bool:
+    """
+    Measure simularity between types.
+    Two types are similar, if they both come from the same family,
+    e.g. both are ints, uints, floats, strings etc.
+    Size or precision is not taken into account.
+
+    TODO: nullability is not checked so far.
+    """
     pdt = pd.api.types
     is_uint = pdt.is_unsigned_integer_dtype
     is_sint = pdt.is_signed_integer_dtype
