@@ -156,6 +156,7 @@ class DataContainer:
             **{
                 col_from: self.df[col_to]
                 for col_from, col_to in self.column_container.mapping()
+                if col_from in self.column_container.columns
             }
         )
         return df[self.column_container.columns]
