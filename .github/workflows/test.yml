@@ -78,8 +78,8 @@ jobs:
           conda install --file conda.yaml -c conda-forge
           # maybe re-install java
           conda install openjdk=${{ matrix.java }}
-          # explicitly install docker package
-          pip install docker
+          # explicitly install docker and sqlalchemy package
+          pip install docker sqlalchemy psycopg2
           which python
           pip list
           conda list
