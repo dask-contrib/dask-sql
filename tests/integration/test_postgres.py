@@ -1,9 +1,12 @@
 from time import sleep
 
+import pytest
+
 from dask_sql import Context
 from tests.integration.fixtures import ComparisonTestCase
 
-
+# skip the test if the docker package is not installed
+@pytest.importorskip("docker")
 class PostgresTestCase(ComparisonTestCase):
     @classmethod
     def setUpClass(cls):
