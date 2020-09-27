@@ -39,3 +39,66 @@ class DaskTestCase(TestCase):
             df = getattr(self, df_name)
             dask_df = dd.from_pandas(df, npartitions=3)
             self.c.register_dask_table(dask_df, df_name)
+
+
+class ComparisonTestCase(TestCase):
+    def setUp(self):
+        np.random.seed(42)
+
+        df1 = dd.from_pandas(
+            pd.DataFrame(
+                {
+                    "user_id": np.random.choice([1, 2, 3, 4, pd.NA], 100),
+                    "a": np.random.rand(100),
+                    "b": np.random.randint(-10, 10, 100),
+                }
+            ),
+            npartitions=3,
+        )
+        df1["user_id"] = df1["user_id"].astype("Int64")
+
+        df2 = dd.from_pandas(
+            pd.DataFrame(
+                {
+                    "user_id": np.random.choice([1, 2, 3, 4], 100),
+                    "c": np.random.randint(20, 30, 100),
+                    "d": np.random.choice(["a", "b", "c"], 100),
+                }
+            ),
+            npartitions=3,
+        )
+
+        # the other is a Int64, that makes joining simpler
+        df2["user_id"] = df2["user_id"].astype("Int64")
+
+        # add some NaNs
+        df1["a"] = df1["a"].apply(
+            lambda a: float("nan") if a > 0.8 else a, meta=("a", "float")
+        )
+        df1["b_bool"] = df1["b"].apply(
+            lambda b: pd.NA if b > 5 else b < 0, meta=("a", "bool")
+        )
+
+        self.c = Context()
+        self.c.register_dask_table(df1, "df1")
+        self.c.register_dask_table(df2, "df2")
+
+        df1.compute().to_sql("df1", self.engine, index=False, if_exists="replace")
+        df2.compute().to_sql("df2", self.engine, index=False, if_exists="replace")
+
+    def assert_query_gives_same_result(self, query, sort_columns=None, **kwargs):
+        sql_result = pd.read_sql_query(query, self.engine)
+        dask_result = self.c.sql(query, debug=True).compute()
+
+        # allow that the names are different
+        # as expressions are handled differently
+        dask_result.columns = sql_result.columns
+
+        if sort_columns:
+            sql_result = sql_result.sort_values(sort_columns)
+            dask_result = dask_result.sort_values(sort_columns)
+
+        sql_result = sql_result.reset_index(drop=True)
+        dask_result = dask_result.reset_index(drop=True)
+
+        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)

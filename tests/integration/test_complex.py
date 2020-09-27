@@ -10,7 +10,7 @@ class TimeSeriesTestCase(TestCase):
     def setUpClass(cls):
         cls.c = Context()
 
-        df = timeseries().persist()
+        df = timeseries(freq="1d").persist()
         cls.c.register_dask_table(df, "timeseries")
 
     def test_complex_query(self):

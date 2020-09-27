@@ -1,62 +1,12 @@
-from unittest import TestCase
 import sqlite3
 
-import numpy as np
-import pandas as pd
-from pandas.testing import assert_frame_equal
-import dask.dataframe as dd
-
-from dask_sql import Context
+from tests.integration.fixtures import ComparisonTestCase
 
 
-class SQLLiteComparisonTestCase(TestCase):
+class SQLLiteComparisonTestCase(ComparisonTestCase):
     def setUp(self):
-        np.random.seed(42)
-
-        self.con = sqlite3.connect(":memory:")
-
-        df1 = pd.DataFrame(
-            {
-                "user_id": np.random.choice([1, 2, 3, 4, pd.NA], 100),
-                "a": np.random.rand(100),
-                "b": np.random.randint(-10, 10, 100),
-            }
-        )
-        df1["user_id"] = df1["user_id"].astype("Int64")
-
-        df2 = pd.DataFrame(
-            {
-                "user_id": np.random.choice([1, 2, 3, 4], 100),
-                "c": np.random.randint(20, 30, 100),
-                "d": np.random.choice(["a", "b", "c"], 100),
-            }
-        )
-        # the other is also an Int64, that makes joining simpler
-        df2["user_id"] = df2["user_id"].astype("Int64")
-
-        self.c = Context()
-        self.c.register_dask_table(dd.from_pandas(df1, npartitions=3), "df1")
-        self.c.register_dask_table(dd.from_pandas(df2, npartitions=3), "df2")
-
-        df1.to_sql("df1", self.con, index=False)
-        df2.to_sql("df2", self.con, index=False)
-
-    def assert_query_gives_same_result(self, query, sort_columns=None, **kwargs):
-        sql_result = pd.read_sql_query(query, self.con)
-        dask_result = self.c.sql(query, debug=True).compute()
-
-        # allow that the names are differnet
-        # as expressions are handled differently
-        dask_result.columns = sql_result.columns
-
-        if sort_columns:
-            sql_result = sql_result.sort_values(sort_columns)
-            dask_result = dask_result.sort_values(sort_columns)
-
-        sql_result = sql_result.reset_index(drop=True)
-        dask_result = dask_result.reset_index(drop=True)
-
-        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
+        self.engine = sqlite3.connect(":memory:")
+        super().setUp()
 
     def test_select(self):
         self.assert_query_gives_same_result(
@@ -105,9 +55,9 @@ class SQLLiteComparisonTestCase(TestCase):
         self.assert_query_gives_same_result(
             """
             SELECT
-                *
+                user_id, b
             FROM df1
-            ORDER BY a, user_id, b DESC
+            ORDER BY b, user_id DESC
         """
         )
 
@@ -157,7 +107,7 @@ class SQLLiteComparisonTestCase(TestCase):
         self.assert_query_gives_same_result(
             """
             SELECT
-                *
+                a
             FROM df1
             WHERE
                 user_id = 3 AND a > 0.5
@@ -167,7 +117,7 @@ class SQLLiteComparisonTestCase(TestCase):
         self.assert_query_gives_same_result(
             """
             SELECT
-                *
+                d
             FROM df2
             WHERE
                 d NOT LIKE '%c'
