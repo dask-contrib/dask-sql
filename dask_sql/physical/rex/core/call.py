@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import dask.dataframe as dd
 import dask.array as da
+import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -129,7 +130,7 @@ class IsFalseOperation(Operation):
         if is_frame(df):
             return ~df.fillna(True)
 
-        return df is not None and not np.isnan(df) and not bool(df)
+        return not pd.isna(df) and df is not None and not np.isnan(df) and not bool(df)
 
 
 class IsTrueOperation(Operation):
@@ -146,7 +147,7 @@ class IsTrueOperation(Operation):
         if is_frame(df):
             return df.fillna(False)
 
-        return df is not None and not np.isnan(df) and bool(df)
+        return not pd.isna(df) and df is not None and not np.isnan(df) and bool(df)
 
 
 class NotOperation(Operation):
@@ -178,7 +179,7 @@ class IsNullOperation(Operation):
         if is_frame(df):
             return df.isna()
 
-        return df is None or np.isnan(df)
+        return pd.isna(df) or df is None or np.isnan(df)
 
 
 class LikeOperation(Operation):

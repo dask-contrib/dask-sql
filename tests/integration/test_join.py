@@ -40,13 +40,15 @@ class JoinTestCase(DaskTestCase):
 
         expected_df = pd.DataFrame(
             {
+                # That is strange. Unfortunately, it seems dask fills in the
+                # missing rows with NaN, not with NA...
                 "user_id": [1, 1, 2, 2, 3, np.NaN],
                 "b": [3, 3, 1, 3, 3, np.NaN],
                 "c": [1, 2, 3, 3, np.NaN, 4],
             }
         )
         assert_frame_equal(
-            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df
         )
 
     def test_join_left(self):
@@ -57,6 +59,8 @@ class JoinTestCase(DaskTestCase):
 
         expected_df = pd.DataFrame(
             {
+                # That is strange. Unfortunately, it seems dask fills in the
+                # missing rows with NaN, not with NA...
                 "user_id": [1, 1, 2, 2, 3],
                 "b": [3, 3, 1, 3, 3],
                 "c": [1, 2, 3, 3, np.NaN],
@@ -74,12 +78,13 @@ class JoinTestCase(DaskTestCase):
 
         expected_df = pd.DataFrame(
             {
+                # That is strange. Unfortunately, it seems dask fills in the
+                # missing rows with NaN, not with NA...
                 "user_id": [1, 1, 2, 2, np.NaN],
                 "b": [3, 3, 1, 3, np.NaN],
                 "c": [1, 2, 3, 3, 4],
             }
         )
-        expected_df["user_id"] = expected_df["user_id"].astype("float64")
         assert_frame_equal(
             df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
         )

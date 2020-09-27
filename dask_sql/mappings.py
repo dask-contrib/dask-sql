@@ -1,5 +1,6 @@
 from typing import Any
 
+import pandas as pd
 import numpy as np
 from datetime import timedelta, datetime, timezone
 
@@ -11,20 +12,31 @@ _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
     np.float32: SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
     np.int32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.int16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
     np.int8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
     np.uint64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
     np.uint32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.uint16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
     np.uint8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
     np.bool8: SqlTypeName.BOOLEAN,
+    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     np.object_: SqlTypeName.VARCHAR,
+    pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
 # Default mapping between SQL types and python types
-_SQL_TO_PYTHON = {
+# for values
+_SQL_TO_PYTHON_SCALARS = {
     "DOUBLE": np.float64,
     "FLOAT": np.float32,
     "BIGINT": np.int64,
@@ -33,6 +45,20 @@ _SQL_TO_PYTHON = {
     "TINYINT": np.int8,
     "BOOLEAN": np.bool8,
     "VARCHAR": str,
+    "NULL": type(None),
+}
+
+# Default mapping between SQL types and python types
+# for data frames
+_SQL_TO_PYTHON_FRAMES = {
+    "DOUBLE": np.float64,
+    "FLOAT": np.float32,
+    "BIGINT": pd.Int64Dtype(),
+    "INTEGER": pd.Int32Dtype(),
+    "SMALLINT": pd.Int16Dtype(),
+    "TINYINT": pd.Int8Dtype(),
+    "BOOLEAN": pd.BooleanDtype(),
+    "VARCHAR": pd.StringDtype(),
     "NULL": type(None),
 }
 
@@ -76,7 +102,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         # no matter what the actual interval is
         # I am not sure if this breaks somewhere,
         # but so far it works
-        return timedelta(milliseconds=int(literal_value))
+        return timedelta(milliseconds=float(str(literal_value)))
 
     elif (
         sql_type.startswith("TIMESTAMP(")
@@ -85,7 +111,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     ):
         if str(literal_value) == "None":
             # NULL time
-            return np.datetime64()  # pragma: no cover
+            return pd.NaT  # pragma: no cover
 
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
@@ -99,21 +125,88 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
-        return np.float64(str(literal_value))
+        python_type = np.float64
     else:
         try:
-            python_type = _SQL_TO_PYTHON[sql_type]
-            literal_value = str(literal_value)
-
-            # empty literal type. We return NaN if possible
-            if literal_value == "None":
-                if np.issubdtype(python_type, np.number):
-                    return np.nan
-
-                return None
-
-            return python_type(literal_value)
+            python_type = _SQL_TO_PYTHON_SCALARS[sql_type]
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"
             )
+
+    literal_value = str(literal_value)
+
+    # empty literal type. We return NaN if possible
+    if literal_value == "None":
+        if isinstance(python_type(), np.floating):
+            return np.NaN
+        else:
+            return pd.NA
+
+    return python_type(literal_value)
+
+
+def sql_to_python_type(sql_type: str) -> type:
+    """Turn an SQL type into a dataframe dtype"""
+    if sql_type.startswith("CHAR("):
+        return pd.StringDtype()
+    elif sql_type.startswith("INTERVAL"):
+        return np.dtype("<m8[ns]")
+    elif (
+        sql_type.startswith("TIMESTAMP(")
+        or sql_type.startswith("TIME(")
+        or sql_type == "DATE"
+    ):
+        return np.dtype("<M8[ns]")
+
+    elif sql_type.startswith("DECIMAL("):
+        # We use np.float64 always, even though we might
+        # be able to use a smaller type
+        return np.float64
+    else:
+        try:
+            return _SQL_TO_PYTHON_FRAMES[sql_type]
+        except KeyError:  # pragma: no cover
+            raise NotImplementedError(
+                f"The SQL type {sql_type} is not implemented (yet)"
+            )
+
+
+def similar_type(lhs: type, rhs: type) -> bool:
+    """
+    Measure simularity between types.
+    Two types are similar, if they both come from the same family,
+    e.g. both are ints, uints, floats, strings etc.
+    Size or precision is not taken into account.
+
+    TODO: nullability is not checked so far.
+    """
+    pdt = pd.api.types
+    is_uint = pdt.is_unsigned_integer_dtype
+    is_sint = pdt.is_signed_integer_dtype
+    is_float = pdt.is_float_dtype
+    is_object = pdt.is_object_dtype
+    is_string = pdt.is_string_dtype
+    is_dt_ns = pdt.is_datetime64_ns_dtype
+    is_dt_tz = lambda t: is_dt_ns(t) and pdt.is_datetime64tz_dtype(t)
+    is_dt_ntz = lambda t: is_dt_ns(t) and not pdt.is_datetime64tz_dtype(t)
+    is_td_ns = pdt.is_timedelta64_ns_dtype
+    is_bool = pdt.is_bool_dtype
+
+    checks = [
+        is_uint,
+        is_sint,
+        is_float,
+        is_object,
+        is_string,
+        is_dt_tz,
+        is_dt_ntz,
+        is_td_ns,
+        is_bool,
+    ]
+
+    for check in checks:
+        if check(lhs) and check(rhs):
+            return True
+
+    return False

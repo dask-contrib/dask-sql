@@ -51,6 +51,7 @@ class LogicalSortPlugin(BaseRelPlugin):
             df = self._apply_offset(df, offset, end)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        # No column type has changed, so no need to cast again
         return DataContainer(df, cc)
 
     def _apply_sort(
