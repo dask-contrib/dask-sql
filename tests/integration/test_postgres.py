@@ -2,17 +2,16 @@ from time import sleep
 
 import pytest
 
+docker = pytest.importorskip("docker")
+from sqlalchemy import create_engine
+
 from dask_sql import Context
 from tests.integration.fixtures import ComparisonTestCase
 
 # skip the test if the docker package is not installed
-@pytest.importorskip("docker")
 class PostgresTestCase(ComparisonTestCase):
     @classmethod
     def setUpClass(cls):
-        import docker
-        from sqlalchemy import create_engine
-
         client = docker.from_env()
 
         cls.network = client.networks.create("dask-sql", driver="bridge")
@@ -206,4 +205,3 @@ class PostgresTestCase(ComparisonTestCase):
                 d NOT LIKE '%c'
         """
         )
-
