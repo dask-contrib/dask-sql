@@ -182,6 +182,28 @@ class IsNullOperation(Operation):
         return pd.isna(df) or df is None or np.isnan(df)
 
 
+class IsDistinctOperation(Operation):
+    """Checks if two inputs are distinct, treating NULL as the same"""
+
+    def __init__(self):
+        super().__init__(self.distinct)
+
+    def distinct(
+        self, lhs: Union[dd.Series, Any], rhs: Union[dd.Series, Any]
+    ) -> Union[dd.Series, Any]:
+        """
+        Returns true if `lhs` != `rhs`.
+        """
+        is_null = IsNullOperation()
+
+        if is_null(lhs) and is_null(rhs):
+            return False
+        elif is_null(lhs) or is_null(rhs):
+            return True
+
+        return lhs != rhs
+
+
 class LikeOperation(Operation):
     """The like operator (regex for SQL with some twist)"""
 
@@ -310,6 +332,8 @@ class RexCallPlugin(BaseRexPlugin):
         "is not false": NotOperation().of(IsFalseOperation()),
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
+        "is distinct from": IsDistinctOperation(),
+        "is not distinct from": NotOperation().of(IsDistinctOperation()),
         # Unary math functions
         "abs": TensorScalaOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
