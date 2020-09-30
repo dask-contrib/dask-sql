@@ -286,3 +286,28 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["b"] = expected_df["b"].astype("Int64")
         expected_df["c"] = [1.0, 0.5, 0.333333]
         assert_frame_equal(df, expected_df)
+
+    def test_subqueries(self):
+        df = self.c.sql(
+            """
+            SELECT *
+            FROM
+                user_table_2
+            WHERE
+                EXISTS(
+                    SELECT *
+                    FROM user_table_1
+                    WHERE
+                        user_table_1.b = user_table_2.c
+                )
+        """,
+            debug=True,
+        ).compute()
+
+        assert_frame_equal(
+            df.reset_index(drop=True),
+            self.user_table_2[
+                self.user_table_2.c.isin(self.user_table_1.b)
+            ].reset_index(drop=True),
+        )
+

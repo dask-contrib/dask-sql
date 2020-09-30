@@ -49,6 +49,9 @@ class ColumnContainer:
         limited to only the ones given as parameter.
         Also uses the order of these as the new column order.
         """
+        if not fields:
+            return self  # pragma: no cover
+
         assert all(f in self._frontend_backend_mapping for f in fields)
         cc = self._copy()
         cc._frontend_columns = [str(x) for x in fields]

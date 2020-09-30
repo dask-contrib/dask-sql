@@ -153,3 +153,48 @@ class JoinTestCase(DaskTestCase):
         )
 
         assert_frame_equal(df.sort_values("b").reset_index(drop=True), df_expected)
+
+    def test_join_literal(self):
+        df = self.c.sql(
+            """
+        SELECT
+            lhs.user_id, lhs.b, rhs.user_id, rhs.c
+        FROM user_table_1 AS lhs
+        JOIN user_table_2 AS rhs
+            ON True
+        """
+        )
+
+        df = df.compute()
+
+        df_expected = pd.DataFrame(
+            {
+                "user_id": [2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+                "b": [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                "user_id0": [1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4],
+                "c": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
+            }
+        )
+
+        assert_frame_equal(
+            df.sort_values(["b", "user_id", "user_id0"]).reset_index(drop=True),
+            df_expected,
+        )
+
+        df = self.c.sql(
+            """
+        SELECT
+            lhs.user_id, lhs.b, rhs.user_id, rhs.c
+        FROM user_table_1 AS lhs
+        JOIN user_table_2 AS rhs
+            ON False
+        """,
+            debug=True,
+        )
+
+        df = df.compute()
+
+        df_expected = pd.DataFrame({"user_id": [], "b": [], "user_id0": [], "c": []})
+
+        assert_frame_equal(df, df_expected, check_dtype=False)
+
