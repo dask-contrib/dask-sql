@@ -3,6 +3,7 @@ import operator
 from typing import Dict, Tuple, List
 import warnings
 
+import numpy as np
 import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
@@ -145,7 +146,16 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     for rex in filter_condition
                 ],
             )
-            df = df[filter_condition]
+            # Some (complex) SQL queries can lead to the strange
+            # condition which is always true or false.
+            # We do not need to filter in this case
+            if isinstance(filter_condition, np.bool_):
+                if not filter_condition:
+                    # empty dataset
+                    df = dd.from_pandas(df.head(0), npartitions=0)  # pragma: no cover
+            else:
+                df = df[filter_condition]
+
             dc = DataContainer(df, cc)
 
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
@@ -154,7 +164,14 @@ class LogicalJoinPlugin(BaseRelPlugin):
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
-        assert get_short_java_class(join_condition) == "RexCall"
+        join_condition_type = get_short_java_class(join_condition)
+
+        if join_condition_type == "RexLiteral":
+            return [], [], [join_condition]
+        if join_condition_type != "RexCall":
+            raise NotImplementedError(
+                "Can not understand join condition."
+            )  # pragma: no cover
 
         # Simplest case: ... ON lhs.a == rhs.b
         try:

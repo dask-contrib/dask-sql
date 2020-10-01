@@ -205,3 +205,32 @@ class PostgresTestCase(ComparisonTestCase):
                 d NOT LIKE '%c'
         """
         )
+
+    def test_string_operations(self):
+        self.assert_query_gives_same_result(
+            """
+            SELECT
+                s,
+                s || 'hello' || s,
+                CHAR_LENGTH(s),
+                UPPER(s),
+                LOWER(s),
+                POSITION('a' IN s),
+                POSITION('ZL' IN s),
+                TRIM('a' FROM s),
+                TRIM(BOTH 'a' FROM s),
+                TRIM(LEADING 'a' FROM s),
+                TRIM(TRAILING 'a' FROM s),
+                OVERLAY(s PLACING 'XXX' FROM 2),
+                OVERLAY(s PLACING 'XXX' FROM 2 FOR 4),
+                OVERLAY(s PLACING 'XXX' FROM 2 FOR 1),
+                SUBSTRING(s FROM -1),
+                SUBSTRING(s FROM 10),
+                SUBSTRING(s FROM 2),
+                SUBSTRING(s FROM 2 FOR 2),
+                INITCAP(s),
+                INITCAP(UPPER(s)),
+                INITCAP(LOWER(s))
+            FROM df3
+        """
+        )

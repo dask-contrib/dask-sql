@@ -286,3 +286,85 @@ class RexOperationsTestCase(DaskTestCase):
         expected_df["b"] = expected_df["b"].astype("Int64")
         expected_df["c"] = [1.0, 0.5, 0.333333]
         assert_frame_equal(df, expected_df)
+
+    def test_subqueries(self):
+        df = self.c.sql(
+            """
+            SELECT *
+            FROM
+                user_table_2
+            WHERE
+                EXISTS(
+                    SELECT *
+                    FROM user_table_1
+                    WHERE
+                        user_table_1.b = user_table_2.c
+                )
+        """,
+            debug=True,
+        ).compute()
+
+        assert_frame_equal(
+            df.reset_index(drop=True),
+            self.user_table_2[
+                self.user_table_2.c.isin(self.user_table_1.b)
+            ].reset_index(drop=True),
+        )
+
+    def test_string_functions(self):
+        df = self.c.sql(
+            """
+            SELECT
+                a || 'hello' || a AS a,
+                CHAR_LENGTH(a) AS b,
+                UPPER(a) AS c,
+                LOWER(a) AS d,
+                POSITION('a' IN a FROM 4) AS e,
+                POSITION('ZL' IN a) AS f,
+                TRIM('a' FROM a) AS g,
+                TRIM(BOTH 'a' FROM a) AS h,
+                TRIM(LEADING 'a' FROM a) AS i,
+                TRIM(TRAILING 'a' FROM a) AS j,
+                OVERLAY(a PLACING 'XXX' FROM -1) AS k,
+                OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS l,
+                OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS m,
+                SUBSTRING(a FROM -1) AS n,
+                SUBSTRING(a FROM 10) AS o,
+                SUBSTRING(a FROM 2) AS p,
+                SUBSTRING(a FROM 2 FOR 2) AS q,
+                INITCAP(a) AS r,
+                INITCAP(UPPER(a)) AS s,
+                INITCAP(LOWER(a)) AS t
+            FROM
+                string_table
+            """
+        ).compute()
+
+        expected_df = pd.DataFrame(
+            {
+                "a": ["a normal stringhelloa normal string"],
+                "b": [15],
+                "c": ["A NORMAL STRING"],
+                "d": ["a normal string"],
+                "e": [7],
+                "f": [0],
+                "g": [" normal string"],
+                "h": [" normal string"],
+                "i": [" normal string"],
+                "j": ["a normal string"],
+                "k": ["XXXormal string"],
+                "l": ["aXXXmal string"],
+                "m": ["aXXXnormal string"],
+                "n": ["a normal string"],
+                "o": ["string"],
+                "p": [" normal string"],
+                "q": [" n"],
+                "r": ["A Normal String"],
+                "s": ["A Normal String"],
+                "t": ["A Normal String"],
+            }
+        )
+
+        assert_frame_equal(
+            df.head(1), expected_df,
+        )

@@ -47,7 +47,12 @@ class LogicalValuesPlugin(BaseRelPlugin):
 
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
         # We assume here that when using the values plan, the resulting dataframe will be quite small
-        df = pd.DataFrame(rows)
+        if rows:
+            df = pd.DataFrame(rows)
+        else:
+            field_names = [str(x) for x in rel.getRowType().getFieldNames()]
+            df = pd.DataFrame(columns=field_names)
+
         df = dd.from_pandas(df, npartitions=1)
         cc = ColumnContainer(df.columns)
 

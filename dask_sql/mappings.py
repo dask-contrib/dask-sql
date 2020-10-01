@@ -46,6 +46,7 @@ _SQL_TO_PYTHON_SCALARS = {
     "BOOLEAN": np.bool8,
     "VARCHAR": str,
     "NULL": type(None),
+    "SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
 }
 
 # Default mapping between SQL types and python types
@@ -85,7 +86,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     # Additionally, a literal type is not used
     # so often anyways.
 
-    if sql_type.startswith("CHAR(") or sql_type == "VARCHAR":
+    if (
+        sql_type.startswith("CHAR(")
+        or sql_type.startswith("VARCHAR(")
+        or sql_type == "VARCHAR"
+    ):
         # Some varchars contain an additional encoding
         # in the format _ENCODING'string'
         literal_value = str(literal_value)
@@ -148,7 +153,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
-    if sql_type.startswith("CHAR("):
+    if (
+        sql_type.startswith("CHAR(")
+        or sql_type.startswith("VARCHAR(")
+        or sql_type == "VARCHAR"
+    ):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
         return np.dtype("<m8[ns]")

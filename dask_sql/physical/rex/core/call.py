@@ -32,7 +32,7 @@ class Operation:
         return Operation(lambda x: self(op(x)))
 
 
-class TensorScalaOperation(Operation):
+class TensorScalarOperation(Operation):
     """
     Helper operation to call a function on the input,
     depending if the first is a dataframe or not
@@ -266,6 +266,92 @@ class LikeOperation(Operation):
             return bool(re.match(transformed_regex, test))
 
 
+class PositionOperation(Operation):
+    """The position operator (get the position of a string)"""
+
+    def __init__(self):
+        super().__init__(self.position)
+
+    def position(self, search, s, start=None):
+        """Attention: SQL starts counting at 1"""
+        if is_frame(s):
+            s = s.str
+
+        if start is None or start <= 0:
+            start = 0
+        else:
+            start -= 1
+
+        return s.find(search, start) + 1
+
+
+class SubStringOperation(Operation):
+    """The substring operator (get a slice of a string)"""
+
+    def __init__(self):
+        super().__init__(self.substring)
+
+    def substring(self, s, start, length=None):
+        """Attention: SQL starts counting at 1"""
+        if start <= 0:
+            start = 0
+        else:
+            start -= 1
+
+        end = length + start if length else None
+        if is_frame(s):
+            return s.str.slice(start, end)
+
+        if end:
+            return s[start:end]
+        else:
+            return s[start:]
+
+
+class TrimOperation(Operation):
+    """The trim operator (remove occurrences left and right of a string)"""
+
+    def __init__(self):
+        super().__init__(self.trim)
+
+    def trim(self, flags, search, s):
+        if is_frame(s):
+            s = s.str
+
+        if flags == "LEADING":
+            strip_call = s.lstrip
+        elif flags == "TRAILING":
+            strip_call = s.rstrip
+        else:
+            strip_call = s.strip
+
+        return strip_call(search)
+
+
+class OverlayOperation(Operation):
+    """The overlay operator (replace string according to positions)"""
+
+    def __init__(self):
+        super().__init__(self.overlay)
+
+    def overlay(self, s, replace, start, length=None):
+        """Attention: SQL starts counting at 1"""
+        if start <= 0:
+            start = 0
+        else:
+            start -= 1
+
+        if length is None:
+            length = len(replace)
+        end = length + start
+
+        if is_frame(s):
+            return s.str.slice_replace(start, end, replace)
+
+        s = s[:start] + replace + s[end:]
+        return s
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -311,7 +397,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
         # Unary math functions
-        "abs": TensorScalaOperation(lambda x: x.abs(), np.abs),
+        "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
         "asin": Operation(da.arcsin),
         "atan": Operation(da.arctan),
@@ -328,11 +414,21 @@ class RexCallPlugin(BaseRexPlugin):
         # "mod": Operation(da.mod), # needs cast
         "power": Operation(da.power),
         "radians": Operation(da.radians),
-        "round": TensorScalaOperation(lambda x, *ops: x.round(*ops), np.round),
+        "round": TensorScalarOperation(lambda x, *ops: x.round(*ops), np.round),
         "sign": Operation(da.sign),
         "sin": Operation(da.sin),
         "tan": Operation(da.tan),
         "truncate": Operation(da.trunc),
+        # string operations
+        "||": ReduceOperation(operation=operator.add),
+        "char_length": TensorScalarOperation(lambda x: x.str.len(), lambda x: len(x)),
+        "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
+        "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
+        "position": PositionOperation(),
+        "trim": TrimOperation(),
+        "overlay": OverlayOperation(),
+        "substring": SubStringOperation(),
+        "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
     }
 
     def convert(
