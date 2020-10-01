@@ -368,4 +368,3 @@ class RexOperationsTestCase(DaskTestCase):
         assert_frame_equal(
             df.head(1), expected_df,
         )
-
