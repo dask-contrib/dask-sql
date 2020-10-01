@@ -159,3 +159,23 @@ def test_math_operations():
     assert ops_mapping["abs"](-5) == 5
     assert ops_mapping["round"](1.234, 2) == 1.23
     assert ops_mapping["floor"](1.234) == 1
+
+
+def test_string_operations():
+    a = "a normal string"
+    assert ops_mapping["char_length"](a) == 15
+    assert ops_mapping["upper"](a) == "A NORMAL STRING"
+    assert ops_mapping["lower"](a) == "a normal string"
+    assert ops_mapping["position"]("a", a, 4) == 7
+    assert ops_mapping["position"]("ZL", a) == 0
+    assert ops_mapping["trim"]("BOTH", "a", a) == " normal string"
+    assert ops_mapping["trim"]("LEADING", "a", a) == " normal string"
+    assert ops_mapping["trim"]("TRAILING", "a", a) == "a normal string"
+    assert ops_mapping["overlay"](a, "XXX", 2) == "aXXXrmal string"
+    assert ops_mapping["overlay"](a, "XXX", 2, 4) == "aXXXmal string"
+    assert ops_mapping["overlay"](a, "XXX", 2, 1) == "aXXXnormal string"
+    assert ops_mapping["substring"](a, -1) == "a normal string"
+    assert ops_mapping["substring"](a, 10) == "string"
+    assert ops_mapping["substring"](a, 2) == " normal string"
+    assert ops_mapping["substring"](a, 2, 2) == " n"
+    assert ops_mapping["initcap"](a) == "A Normal String"

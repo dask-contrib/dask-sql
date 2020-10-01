@@ -68,6 +68,18 @@ class ComparisonTestCase(TestCase):
             npartitions=3,
         )
 
+        df3 = dd.from_pandas(
+            pd.DataFrame(
+                {
+                    "s": [
+                        "".join(np.random.choice(["a", "B", "c", "D"], 10))
+                        for _ in range(100)
+                    ]
+                }
+            ),
+            npartitions=3,
+        )
+
         # the other is a Int64, that makes joining simpler
         df2["user_id"] = df2["user_id"].astype("Int64")
 
@@ -82,9 +94,11 @@ class ComparisonTestCase(TestCase):
         self.c = Context()
         self.c.register_dask_table(df1, "df1")
         self.c.register_dask_table(df2, "df2")
+        self.c.register_dask_table(df3, "df3")
 
         df1.compute().to_sql("df1", self.engine, index=False, if_exists="replace")
         df2.compute().to_sql("df2", self.engine, index=False, if_exists="replace")
+        df3.compute().to_sql("df3", self.engine, index=False, if_exists="replace")
 
     def assert_query_gives_same_result(self, query, sort_columns=None, **kwargs):
         sql_result = pd.read_sql_query(query, self.engine)
