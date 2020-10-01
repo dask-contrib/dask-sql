@@ -182,13 +182,13 @@ class IsNullOperation(Operation):
         return pd.isna(df) or df is None or np.isnan(df)
 
 
-class LikeOperation(Operation):
-    """The like operator (regex for SQL with some twist)"""
+class RegexOperation(Operation):
+    """An abstract regex operation, which transforms the SQL regex into something python can understand"""
 
     def __init__(self):
-        super().__init__(self.like)
+        super().__init__(self.regex)
 
-    def like(
+    def regex(
         self, test: Union[dd.Series, Any], regex: str, escape: str = None,
     ) -> Union[dd.Series, Any]:
         """
@@ -217,29 +217,14 @@ class LikeOperation(Operation):
                 if char == "]":
                     in_char_range = False
 
-            elif char == "[":
-                in_char_range = True
-
             # These chars have a special meaning in regex
             # whereas in SQL they have not, so we need to
             # add additional escaping
-            elif char in [
-                "#",
-                "$",
-                "^",
-                ".",
-                "|",
-                "~",
-                "-",
-                "+",
-                "*",
-                "?",
-                "(",
-                ")",
-                "{",
-                "}",
-            ]:
+            elif char in self.replacement_chars:
                 char = "\\" + char
+
+            elif char == "[":
+                in_char_range = True
 
             # The needed "\" is printed above, so we continue
             elif char == escape:
@@ -264,6 +249,38 @@ class LikeOperation(Operation):
             return test.str.match(transformed_regex)
         else:  # pragma: no cover
             return bool(re.match(transformed_regex, test))
+
+
+class LikeOperation(RegexOperation):
+    replacement_chars = [
+        "#",
+        "$",
+        "^",
+        ".",
+        "|",
+        "~",
+        "-",
+        "+",
+        "*",
+        "?",
+        "(",
+        ")",
+        "{",
+        "}",
+        "[",
+        "]",
+    ]
+
+
+class SimilarOperation(RegexOperation):
+    replacement_chars = [
+        "#",
+        "$",
+        "^",
+        ".",
+        "~",
+        "-",
+    ]
 
 
 class PositionOperation(Operation):
@@ -387,6 +404,7 @@ class RexCallPlugin(BaseRexPlugin):
         # special operations
         "case": CaseOperation(),
         "like": LikeOperation(),
+        "similar to": SimilarOperation(),
         "not": NotOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),

@@ -116,7 +116,7 @@ class RexOperationsTestCase(DaskTestCase):
         df = self.c.sql(
             """
             SELECT * FROM string_table
-            WHERE a LIKE '%n[a-z]rmal st_i%'
+            WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
         """
         ).compute()
 
@@ -134,7 +134,7 @@ class RexOperationsTestCase(DaskTestCase):
         df = self.c.sql(
             """
             SELECT * FROM string_table
-            WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
+            WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
         ).compute()
 

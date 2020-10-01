@@ -99,6 +99,8 @@ def test_like():
     assert op("a string", r"%a%") == True
     assert op("another string", r"a%") == True
     assert op("another string", r"s%") == False
+
+    op = call.SimilarOperation()
     assert op("normal", r"n[a-z]rm_l") == True
     assert op("not normal", r"n[a-z]rm_l") == False
 
