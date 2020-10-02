@@ -146,4 +146,3 @@ class LoggableDataFrame:
             return f"DataFrame: {[(col, dtype) for col, dtype in zip(cols, dtypes)]}"
 
         return f"Literal: {df}"
-
