@@ -1,8 +1,8 @@
 import operator
-from collections import namedtuple
 from functools import reduce
 from typing import Any, Union, Callable
 import re
+import logging
 
 import pandas as pd
 import numpy as np
@@ -12,8 +12,10 @@ import pandas as pd
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.utils import is_frame
+from dask_sql.utils import LoggableDataFrame, is_frame
 from dask_sql.datacontainer import DataContainer
+
+logger = logging.getLogger(__name__)
 
 
 class Operation:
@@ -454,6 +456,9 @@ class RexCallPlugin(BaseRexPlugin):
             except KeyError:
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
+        logger.debug(
+            f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
+        )
         return operation(*operands)
 
         # TODO: We have information on the typing here - we should use it

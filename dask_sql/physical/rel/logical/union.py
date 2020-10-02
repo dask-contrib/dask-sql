@@ -1,5 +1,3 @@
-from typing import Dict
-
 import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter

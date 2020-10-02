@@ -84,6 +84,4 @@ class SelectTestCase(DaskTestCase):
 
     def test_wrong_input(self):
         self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")
-        self.assertRaises(
-            ParsingException, self.c.sql, """SELECT x FROM df""", debug=True
-        )
+        self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")

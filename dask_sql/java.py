@@ -6,8 +6,11 @@ It needs to know the java class path, which is set
 to the jar file in the package resources.
 """
 import pkg_resources
+import logging
 
 import jpype
+
+logger = logging.getLogger(__name__)
 
 
 # Define how to run the java virtual machine.
@@ -19,6 +22,7 @@ jpype.addClassPath(pkg_resources.resource_filename("dask_sql", "jar/DaskSQL.jar"
 jvmpath = jpype.getDefaultJVMPath()
 jvmpath = jvmpath.replace("\\bin\\bin\\server\\jvm.dll", "\\bin\\server\\jvm.dll")
 
+logger.debug(f"Starting JVM from path {jvmpath}...")
 jpype.startJVM(
     "-ea",
     "--illegal-access=deny",
@@ -26,6 +30,7 @@ jpype.startJVM(
     convertStrings=False,
     jvmpath=jvmpath,
 )
+logger.debug("...having started JVM")
 
 
 # Some Java classes we need
