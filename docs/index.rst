@@ -41,11 +41,11 @@ but any other data (from disk, S3, API, hdfs) can be used.
          timeseries AS lhs
       JOIN
          (
-               SELECT
-                  name AS max_name,
-                  MAX(x) AS max_x
-               FROM timeseries
-               GROUP BY name
+            SELECT
+               name AS max_name,
+               MAX(x) AS max_x
+            FROM timeseries
+            GROUP BY name
          ) AS rhs
       ON
          lhs.name = rhs.max_name AND

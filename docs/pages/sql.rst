@@ -5,7 +5,9 @@ SQL Syntax
 
 ``dask-sql`` understands SQL in postgreSQL syntax.
 So far, not every valid postgreSQL operator and keyword is already
-implemented in ``dask-sql``.
+implemented in ``dask-sql``, but a large fraction of it.
+Have a look into our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_
+to find out what is still missing.
 
 General
 -------
@@ -54,7 +56,7 @@ The typical ingredients of a ``SELECT`` are also possible in ``dask-sql``:
         s
     LIMIT 100
 
-Also joins and (complex) subqueries are possible:
+Also (all kind of) joins and (complex) subqueries are possible:
 
 .. code-block:: sql
 
@@ -73,6 +75,123 @@ Also joins and (complex) subqueries are possible:
       ON
          lhs.name = rhs.max_name AND
          lhs.x = rhs.max_x
+
+Implemented operations
+----------------------
+
+The following list includes all operations understood and implemented in ``dask-sql``.
+Scalar functions can be used to turn a column (or multiple) into a column of the same length (such as ``x + y`` or ``sin(x)``)
+whereas aggregation functions can only be used in ``GROUP BY`` clauses, as they
+turn a column into a single value.
+For more information on the semantic of the different functions, please have a look into the
+`Apache Calcite documentation <https://calcite.apache.org/docs/reference.html>`_.
+
+Scalar Functions
+~~~~~~~~~~~~~~~~
+
+Binary Operations: ``AND``, ``OR``, ``>``, ``>=``, ``<``, ``<=``, ``=``, ``<>``, ``+``, ``-``, ``/``, ``*``
+
+Unary Math Operations: ``ABS``, ``ACOS``, ``ASIN``, ``ATAN``, ``ATAN2``, ``CBRT``, ``CEIL``, ``COS``, ``COT``, ``DEGREES``, ``EXP``, ``FLOOR``, ``LOG10``, ``LN``, ``POWER``, ``RADIANS``, ``ROUND``, ``SIGN``, ``SIN``, ``TAN``, ``TRUNCATE``
+
+String operations: ``||``, ``CHAR_LENGTH``, ``UPPER``, ``LOWER``, ``POSITION``, ``TRIM``, ``OVERLAY``, ``SUBSTRING``, ``INITCAP``
+
+Special Operations: ``CASE``, ``LIKE``, ``NOT``, ``IS NULL``, ``IS NOT NULL``, ``IS TRUE``, ``IS NOT TRUE``, ``IS FALSE:``, ``IS NOT FALSE``, ``IS UNKNOWN``, ``IS NOT UNKNOWN``, ``EXISTS``
+
+Aggregations
+~~~~~~~~~~~~
+
+``ANY_VALUE``, ``AVG``, ``BIT_AND``, ``BIT_OR``, ``BIT_XOR``, ``COUNT``, ``EVERY``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``SUM``
+
+Implemented Types
+-----------------
+
+``dask-sql`` needs to map between SQL and ``dask`` (python) types.
+For this, it uses the following mapping:
+
++-----------------------+----------------+
+| From Python Type      | To SQL Type    |
++=======================+================+
+| ``np.bool8``          |  ``BOOLEAN``   |
++-----------------------+----------------+
+| ``np.datetime64``     |  ``TIMESTAMP`` |
++-----------------------+----------------+
+| ``np.float32``        |  ``FLOAT``     |
++-----------------------+----------------+
+| ``np.float64``        |  ``DOUBLE``    |
++-----------------------+----------------+
+| ``np.int16``          |  ``SMALLINT``  |
++-----------------------+----------------+
+| ``np.int32``          |  ``INTEGER``   |
++-----------------------+----------------+
+| ``np.int64``          |  ``BIGINT``    |
++-----------------------+----------------+
+| ``np.int8``           |  ``TINYINT``   |
++-----------------------+----------------+
+| ``np.object_``        |  ``VARCHAR``   |
++-----------------------+----------------+
+| ``np.uint16``         |  ``SMALLINT``  |
++-----------------------+----------------+
+| ``np.uint32``         |  ``INTEGER``   |
++-----------------------+----------------+
+| ``np.uint64``         |  ``BIGINT``    |
++-----------------------+----------------+
+| ``np.uint8``          |  ``TINYINT``   |
++-----------------------+----------------+
+| ``pd.BooleanDtype``   |  ``BOOLEAN``   |
++-----------------------+----------------+
+| ``pd.Int16Dtype``     |  ``SMALLINT``  |
++-----------------------+----------------+
+| ``pd.Int32Dtype``     |  ``INTEGER``   |
++-----------------------+----------------+
+| ``pd.Int64Dtype``     |  ``BIGINT``    |
++-----------------------+----------------+
+| ``pd.Int8Dtype``      |  ``TINYINT``   |
++-----------------------+----------------+
+| ``pd.StringDtype``    |  ``VARCHAR``   |
++-----------------------+----------------+
+| ``pd.UInt16Dtype``    |  ``SMALLINT``  |
++-----------------------+----------------+
+| ``pd.UInt32Dtype``    |  ``INTEGER``   |
++-----------------------+----------------+
+| ``pd.UInt64Dtype``    |  ``BIGINT``    |
++-----------------------+----------------+
+| ``pd.UInt8Dtype``     |  ``TINYINT``   |
++-----------------------+----------------+
+
++-------------------+-----------------------------+
+| From SQL Type     | To Python Type              |
++===================+=============================+
+| ``BIGINT``        |    ``pd.Int64Dtype``        |
++-------------------+-----------------------------+
+| ``BOOLEAN``       |    ``pd.BooleanDtype``      |
++-------------------+-----------------------------+
+| ``CHAR(*)``       |    ``pd.StringDtype``       |
++-------------------+-----------------------------+
+| ``DATE``          |    ``np.dtype("<M8[ns]")``  |
++-------------------+-----------------------------+
+| ``DECIMAL(*)``    |    ``np.float64``           |
++-------------------+-----------------------------+
+| ``DOUBLE``        |    ``np.float64``           |
++-------------------+-----------------------------+
+| ``FLOAT``         |    ``np.float32``           |
++-------------------+-----------------------------+
+| ``INTEGER``       |    ``pd.Int32Dtype()``      |
++-------------------+-----------------------------+
+| ``INTERVAL``      |    ``np.dtype("<m8[ns]")``  |
++-------------------+-----------------------------+
+| ``SMALLINT``      |    ``pd.Int16Dtype()``      |
++-------------------+-----------------------------+
+| ``TIME(*)``       |    ``np.dtype("<M8[ns]")``  |
++-------------------+-----------------------------+
+| ``TIMESTAMP(*)``  |    ``np.dtype("<M8[ns]")``  |
++-------------------+-----------------------------+
+| ``TINYINT``       |    ``pd.Int8Dtype``         |
++-------------------+-----------------------------+
+| ``VARCHAR``       |    ``pd.StringDtype``       |
++-------------------+-----------------------------+
+| ``VARCHAR(*)``    |    ``pd.StringDtype``       |
++-------------------+-----------------------------+
+
 
 Limitatons
 ----------
