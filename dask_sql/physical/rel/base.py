@@ -1,4 +1,5 @@
-from typing import Dict, List
+from typing import List
+import logging
 
 import dask.dataframe as dd
 import dask.array as da
@@ -6,6 +7,8 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import sql_to_python_type, similar_type
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRelPlugin:
@@ -114,6 +117,9 @@ class BaseRelPlugin:
             if current_float and expected_integer:
                 df[field_name] = da.trunc(df[field_name])
 
+            logger.debug(
+                f"Need to cast {field_name} from {current_type} to {expected_type}"
+            )
             df[field_name] = df[field_name].astype(expected_type)
 
         return DataContainer(df, dc.column_container)

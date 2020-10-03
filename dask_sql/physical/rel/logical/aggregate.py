@@ -3,11 +3,14 @@ from collections import defaultdict
 from functools import reduce
 from typing import Callable, Dict, List, Tuple, Union
 import uuid
+import logging
 
 import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer, ColumnContainer
+
+logger = logging.getLogger(__name__)
 
 
 class GroupDatasetDescription:
@@ -132,11 +135,21 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             # as we do not want this additional column to be used anywhere
             group_columns = [additional_column_name]
 
+            logger.debug("Performing full-table aggregation")
+
         # Now we can perform the aggregates
         # We iterate through all pairs of (possible pre-filtered)
         # dataframes and the aggregations to perform in this data...
         df_agg = None
         for filtered_df_desc, aggregation in filtered_aggregations.items():
+            filtered_column = filtered_df_desc.filtered_column
+            if filtered_column:
+                logger.debug(
+                    f"Aggregating {dict(aggregation)} on the data filtered by {filtered_column}"
+                )
+            else:
+                logger.debug(f"Aggregating {dict(aggregation)} on the data")
+
             # ... we perform the aggregations ...
             filtered_df = filtered_df_desc.df
             # TODO: we could use the type information for

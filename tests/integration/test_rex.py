@@ -94,8 +94,7 @@ class RexOperationsTestCase(DaskTestCase):
             a <= b AS le,
             a <> b AS n
         FROM df
-        """,
-            debug=True,
+        """
         )
         df = df.compute()
 
@@ -237,8 +236,7 @@ class RexOperationsTestCase(DaskTestCase):
                 , TAN(b) AS "tan"
                 , TRUNCATE(b) AS "truncate"
             FROM df
-        """,
-            debug=True,
+        """
         ).compute()
 
         expected_df = pd.DataFrame(index=self.df.index)
@@ -275,8 +273,7 @@ class RexOperationsTestCase(DaskTestCase):
                 a / 2 AS b,
                 1.0 / a AS c
             FROM df_simple
-        """,
-            debug=True,
+        """
         ).compute()
 
         expected_df = pd.DataFrame(index=self.df_simple.index)
@@ -300,8 +297,7 @@ class RexOperationsTestCase(DaskTestCase):
                     WHERE
                         user_table_1.b = user_table_2.c
                 )
-        """,
-            debug=True,
+        """
         ).compute()
 
         assert_frame_equal(

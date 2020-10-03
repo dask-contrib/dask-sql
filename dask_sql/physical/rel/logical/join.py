@@ -1,7 +1,8 @@
 from functools import reduce
 import operator
-from typing import Dict, Tuple, List
+from typing import Tuple, List
 import warnings
+import logging
 
 import numpy as np
 import dask.dataframe as dd
@@ -10,6 +11,8 @@ from dask_sql.physical.rex import RexConverter
 from dask_sql.java import get_short_java_class
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer, ColumnContainer
+
+logger = logging.getLogger(__name__)
 
 
 class LogicalJoinPlugin(BaseRelPlugin):
@@ -75,6 +78,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # known solution so far.
         join_condition = rel.getCondition()
         lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+
+        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
 
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
@@ -146,13 +151,17 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     for rex in filter_condition
                 ],
             )
+            logger.debug(f"Additionally applying filter {filter_condition}")
             # Some (complex) SQL queries can lead to the strange
             # condition which is always true or false.
             # We do not need to filter in this case
             if isinstance(filter_condition, np.bool_):
-                if not filter_condition:
+                if not filter_condition:  # pragma: no cover
                     # empty dataset
-                    df = dd.from_pandas(df.head(0), npartitions=0)  # pragma: no cover
+                    logger.warning(
+                        "Join condition is always false - returning empty dataset"
+                    )
+                    df = dd.from_pandas(df.head(0), npartitions=0)
             else:
                 df = df[filter_condition]
 
