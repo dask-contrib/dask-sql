@@ -348,10 +348,14 @@ class Context:
         # edge cases (if the outer SQLNode is not a select node),
         # but so far I did not find such a case.
         # So please raise an issue if you have found one!
+        def toSqlString(s):
+            try:
+                return str(s.toSqlString(default_dialect))
+            except:
+                return str(s)  # pragma: no cover
+
         if get_java_class(sqlNode) == "org.apache.calcite.sql.SqlSelect":
-            select_names = [
-                str(s.toSqlString(default_dialect)) for s in sqlNode.getSelectList()
-            ]
+            select_names = [toSqlString(s) for s in sqlNode.getSelectList()]
         else:
             logger.debug(
                 "Not extracting output column names as the SQL is not a SELECT call"
