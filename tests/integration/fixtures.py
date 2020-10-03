@@ -102,7 +102,7 @@ class ComparisonTestCase(TestCase):
 
     def assert_query_gives_same_result(self, query, sort_columns=None, **kwargs):
         sql_result = pd.read_sql_query(query, self.engine)
-        dask_result = self.c.sql(query, debug=True).compute()
+        dask_result = self.c.sql(query).compute()
 
         # allow that the names are different
         # as expressions are handled differently

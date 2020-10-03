@@ -1,6 +1,8 @@
 from collections import defaultdict
+from dask_sql.datacontainer import DataContainer
 import re
 
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
@@ -123,3 +125,24 @@ class ParsingException(Exception):
         message += "\n\t" + "\n\t".join(sql)
 
         return message
+
+
+class LoggableDataFrame:
+    """Small helper class to print resulting dataframes or series in logging messages"""
+
+    def __init__(self, df):
+        self.df = df
+
+    def __str__(self):
+        df = self.df
+        if isinstance(df, pd.Series) or isinstance(df, dd.Series):
+            return f"Series: {(df.name, df.dtype)}"
+
+        elif isinstance(df, DataContainer):
+            cols = df.column_container.columns
+            dtypes = {col: dtype for col, dtype in zip(df.df.columns, df.df.dtypes)}
+            mapping = df.column_container.get_backend_by_frontend_index
+            dtypes = [dtypes[mapping(index)] for index in range(len(cols))]
+            return f"DataFrame: {[(col, dtype) for col, dtype in zip(cols, dtypes)]}"
+
+        return f"Literal: {df}"

@@ -1,5 +1,6 @@
 from typing import Callable, List, Tuple
 from collections import namedtuple
+import logging
 
 import dask.dataframe as dd
 
@@ -18,6 +19,8 @@ from dask_sql.physical.rel import RelConverter, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 from dask_sql.utils import ParsingException
+
+logger = logging.getLogger(__name__)
 
 FunctionDescription = namedtuple(
     "FunctionDescription", ["f", "parameters", "return_type", "aggregation"]
@@ -222,7 +225,7 @@ class Context:
             f, parameters, return_type, True
         )
 
-    def sql(self, sql: str, debug: bool = False) -> dd.DataFrame:
+    def sql(self, sql: str) -> dd.DataFrame:
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the postgreSQL standard - however, not all
@@ -250,19 +253,15 @@ class Context:
 
         """
         try:
-            rel, select_names = self._get_ral(sql, debug=debug)
+            rel, select_names = self._get_ral(sql)
             dc = RelConverter.convert(rel, context=self)
         except (ValidationException, SqlParseException) as e:
-            if debug:
-                from_chained_exception = e
-            else:
-                # We do not want to re-raise an exception here
-                # as this would print the full java stack trace
-                # if debug is not set.
-                # Instead, we raise a nice exception
-                from_chained_exception = None
-
-            raise ParsingException(sql, str(e.message())) from from_chained_exception
+            logger.debug(f"Original exception raised by Java:\n {e}")
+            # We do not want to re-raise an exception here
+            # as this would print the full java stack trace
+            # if debug is not set.
+            # Instead, we raise a nice exception
+            raise ParsingException(sql, str(e.message())) from None
 
         if select_names:
             # Rename any columns named EXPR$* to a more human readable name
@@ -284,9 +283,15 @@ class Context:
         """
         schema = DaskSchema("schema")
 
+        if not self.tables:  # pragma: no cover
+            logger.warn("No tables are registered.")
+
         for name, dc in self.tables.items():
             table = DaskTable(name)
             df = dc.df
+            logger.debug(
+                f"Adding table '{name}' to schema with columns: {list(df.columns)}"
+            )
             for column in df.columns:
                 data_type = df[column].dtype
                 sql_data_type = python_to_sql_type(data_type)
@@ -295,11 +300,16 @@ class Context:
 
             schema.addTable(table)
 
+        if not self.functions:
+            logger.debug("No custom functions defined.")
+
         for name, function_description in self.functions.items():
             sql_return_type = python_to_sql_type(function_description.return_type)
             if function_description.aggregation:
+                logger.debug(f"Adding function '{name}' to schema as aggregation.")
                 dask_function = DaskAggregateFunction(name, sql_return_type)
             else:
+                logger.debug(f"Adding function '{name}' to schema as scalar function.")
                 dask_function = DaskScalarFunction(name, sql_return_type)
             self._add_parameters_from_description(function_description, dask_function)
 
@@ -315,7 +325,7 @@ class Context:
 
             dask_function.addParameter(param_name, sql_param_type, False)
 
-    def _get_ral(self, sql, debug: bool = False):
+    def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
         schema = self._prepare_schema()
@@ -329,6 +339,8 @@ class Context:
         rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
         default_dialect = generator.getDialect()
 
+        logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+
         # Internal, temporary results of calcite are sometimes
         # named EXPR$N (with N a number), which is not very helpful
         # to the user. We replace these cases therefore with
@@ -341,9 +353,13 @@ class Context:
                 str(s.toSqlString(default_dialect)) for s in sqlNode.getSelectList()
             ]
         else:
+            logger.debug(
+                "Not extracting output column names as the SQL is not a SELECT call"
+            )
             select_names = None
 
-        if debug:
-            print(generator.getRelationalAlgebraString(rel))
+        logger.debug(
+            f"Extracted relational algebra:\n {generator.getRelationalAlgebraString(rel)}"
+        )
 
         return rel, select_names

@@ -1,12 +1,12 @@
-from typing import Dict
-
-import dask.dataframe as dd
+import logging
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import get_java_class
+
+logger = logging.getLogger(__name__)
 
 
 class LogicalProjectPlugin(BaseRelPlugin):
@@ -41,9 +41,13 @@ class LogicalProjectPlugin(BaseRelPlugin):
             if get_java_class(expr) == RexInputRefPlugin.class_name:
                 index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
+                logger.debug(
+                    f"Not re-adding the same column {key} (but just referencing it)"
+                )
                 cc = cc.add(key, backend_column_name)
             else:
                 new_columns[key] = RexConverter.convert(expr, dc, context=context)
+                logger.debug(f"Adding a new column {key} out of {expr}")
                 cc = cc.add(key, key)
 
         # Actually add the new columns

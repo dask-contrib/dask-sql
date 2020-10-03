@@ -117,8 +117,7 @@ class JoinTestCase(DaskTestCase):
                     df_simple AS lhs
                 JOIN df_simple AS rhs
                 ON lhs.a < rhs.b AND lhs.b < rhs.a
-            """,
-            debug=True,
+            """
         )
         df = df.compute()
 
@@ -188,8 +187,7 @@ class JoinTestCase(DaskTestCase):
         FROM user_table_1 AS lhs
         JOIN user_table_2 AS rhs
             ON False
-        """,
-            debug=True,
+        """
         )
 
         df = df.compute()
