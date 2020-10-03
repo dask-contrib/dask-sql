@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 import operator
+from datetime import datetime
 
 import dask.dataframe as dd
 import numpy as np
@@ -147,10 +148,14 @@ def test_simple_ops():
 
 def test_math_operations():
     assert_series_equal(
-        ops_mapping["abs"](-df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
+        ops_mapping["abs"](-df1.a).compute(),
+        pd.Series([1, 2, 3]),
+        check_names=False,
     )
     assert_series_equal(
-        ops_mapping["round"](df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
+        ops_mapping["round"](df1.a).compute(),
+        pd.Series([1, 2, 3]),
+        check_names=False,
     )
     assert_series_equal(
         ops_mapping["floor"](df1.a).compute(),
@@ -181,3 +186,24 @@ def test_string_operations():
     assert ops_mapping["substring"](a, 2) == " normal string"
     assert ops_mapping["substring"](a, 2, 2) == " n"
     assert ops_mapping["initcap"](a) == "A Normal String"
+
+
+def test_dates():
+    op = call.ExtractOperation()
+
+    date = datetime(2021, 10, 3, 15, 53, 42, 47)
+    assert int(op("CENTURY", date)) == 20
+    assert op("DAY", date) == 3
+    assert int(op("DECADE", date)) == 202
+    assert op("DOW", date) == 0
+    assert op("DOY", date) == 276
+    assert op("HOUR", date) == 15
+    assert op("MICROSECOND", date) == 47
+    assert op("MILLENNIUM", date) == 2
+    assert op("MILLISECOND", date) == 47000
+    assert op("MINUTE", date) == 53
+    assert op("MONTH", date) == 10
+    assert op("QUARTER", date) == 4
+    assert op("SECOND", date) == 42
+    assert op("WEEK", date) == 39
+    assert op("YEAR", date) == 2021

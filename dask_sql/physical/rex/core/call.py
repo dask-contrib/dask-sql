@@ -16,6 +16,7 @@ from dask_sql.utils import LoggableDataFrame, is_frame
 from dask_sql.datacontainer import DataContainer
 
 logger = logging.getLogger(__name__)
+SeriesOrScalar = Union[dd.Series, Any]
 
 
 class Operation:
@@ -25,7 +26,7 @@ class Operation:
         """Init with the given function"""
         self.f = f
 
-    def __call__(self, *operands) -> Union[dd.Series, Any]:
+    def __call__(self, *operands) -> SeriesOrScalar:
         """Call the stored function"""
         return self.f(*operands)
 
@@ -95,10 +96,10 @@ class CaseOperation(Operation):
 
     def case(
         self,
-        where: Union[dd.Series, Any],
-        then: Union[dd.Series, Any],
-        other: Union[dd.Series, Any],
-    ) -> Union[dd.Series, Any]:
+        where: SeriesOrScalar,
+        then: SeriesOrScalar,
+        other: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
         """
@@ -124,7 +125,10 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def false_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -141,7 +145,10 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def true_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -158,7 +165,10 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def not_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -174,7 +184,10 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def null(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -191,8 +204,11 @@ class RegexOperation(Operation):
         super().__init__(self.regex)
 
     def regex(
-        self, test: Union[dd.Series, Any], regex: str, escape: str = None,
-    ) -> Union[dd.Series, Any]:
+        self,
+        test: SeriesOrScalar,
+        regex: str,
+        escape: str = None,
+    ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex
         (maybe escaped by escape)
@@ -371,6 +387,51 @@ class OverlayOperation(Operation):
         return s
 
 
+class ExtractOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract)
+
+    def extract(self, what, df: SeriesOrScalar):
+        input_df = df
+        if is_frame(df):
+            df = df.dt
+        else:
+            df = pd.to_datetime(df)
+
+        if what == "CENTURY":
+            return da.trunc(df.year / 100)
+        elif what == "DAY":
+            return df.day
+        elif what == "DECADE":
+            return da.trunc(df.year / 10)
+        elif what == "DOW":
+            return (df.dayofweek + 1) % 7
+        elif what == "DOY":
+            return df.dayofyear
+        elif what == "HOUR":
+            return df.hour
+        elif what == "MICROSECOND":
+            return df.microsecond
+        elif what == "MILLENNIUM":
+            return da.trunc(df.year / 1000)
+        elif what == "MILLISECOND":
+            return da.trunc(1000 * df.microsecond)
+        elif what == "MINUTE":
+            return df.minute
+        elif what == "MONTH":
+            return df.month
+        elif what == "QUARTER":
+            return df.quarter
+        elif what == "SECOND":
+            return df.second
+        elif what == "WEEK":
+            return df.week
+        elif what == "YEAR":
+            return df.year
+        else:  # pragma: no cover
+            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -449,6 +510,8 @@ class RexCallPlugin(BaseRexPlugin):
         "overlay": OverlayOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        # date/time operations
+        "extract": ExtractOperation(),
     }
 
     def convert(
@@ -456,7 +519,7 @@ class RexCallPlugin(BaseRexPlugin):
         rex: "org.apache.calcite.rex.RexNode",
         dc: DataContainer,
         context: "dask_sql.Context",
-    ) -> Union[dd.Series, Any]:
+    ) -> SeriesOrScalar:
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(o, dc, context=context) for o in rex.getOperands()

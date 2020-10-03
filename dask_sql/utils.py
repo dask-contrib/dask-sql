@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dask_sql.datacontainer import DataContainer
 import re
+from datetime import datetime
 
 import dask.dataframe as dd
 import numpy as np
@@ -11,7 +12,12 @@ def is_frame(df):
     """
     Check if something is a dataframe (and not a scalar or none)
     """
-    return df is not None and not np.isscalar(df) and not isinstance(df, type(pd.NA))
+    return (
+        df is not None
+        and not np.isscalar(df)
+        and not isinstance(df, type(pd.NA))
+        and not isinstance(df, datetime)
+    )
 
 
 class Pluggable:
