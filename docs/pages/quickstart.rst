@@ -79,7 +79,7 @@ Now you can go ahead and query the data with normal SQL!
     """)
     result.compute()
 
-``dask-sql`` understands some set of SQL commands, but there are still some missing.
+``dask-sql`` understands a large fraction of SQL commands, but there are still some missing.
 Have a look into the :ref:`sql` description for more information.
 
 .. note::

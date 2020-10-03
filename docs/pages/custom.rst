@@ -22,7 +22,7 @@ Example:
     c.register_function(f, "f", [("x", np.int64)], np.int64)
 
 The registration gives a name to the function and also adds type information on the input types and names, as well as the return type.
-All usual numpy types are supported.
+All usual numpy types (e.g. ``np.int64``) and pandas types (``Int64``) are supported.
 
 After registration, the function can be used as any other usual SQL function:
 
