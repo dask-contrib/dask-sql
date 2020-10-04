@@ -15,7 +15,7 @@ from dask_sql.java import (
     get_java_class,
 )
 from dask_sql.mappings import python_to_sql_type
-from dask_sql.physical.rel import RelConverter, logical
+from dask_sql.physical.rel import RelConverter, logical, show
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 from dask_sql.utils import ParsingException
@@ -78,6 +78,9 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(show.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(show.ShowSchemasPlugin, replace=False)
+        RelConverter.add_plugin_class(show.ShowTablesPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -334,6 +337,11 @@ class Context:
         generator = RelationalAlgebraGenerator(schema)
 
         sqlNode = generator.getSqlNode(sql)
+        sqlNodeClass = get_java_class(sqlNode)
+
+        if sqlNodeClass.startswith("com.dask.sql.parser."):
+            return sqlNode, []
+
         validatedSqlNode = generator.getValidatedNode(sqlNode)
         nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
         rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
@@ -354,7 +362,7 @@ class Context:
             except:
                 return str(s)  # pragma: no cover
 
-        if get_java_class(sqlNode) == "org.apache.calcite.sql.SqlSelect":
+        if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
             select_names = [toSqlString(s) for s in sqlNode.getSelectList()]
         else:
             logger.debug(

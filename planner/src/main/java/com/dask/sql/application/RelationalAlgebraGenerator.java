@@ -96,7 +96,8 @@ public class RelationalAlgebraGenerator {
 		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
 		sqlOperatorTables.add(calciteCatalogReader);
 
-		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.configBuilder()).build();
+		SqlParser.Config parserConfig = getDialect()
+				.configureParser(SqlParser.configBuilder().setParserFactory(new DaskSqlParserImplFactory())).build();
 		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
 
 		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
