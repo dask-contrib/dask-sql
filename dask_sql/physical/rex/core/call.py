@@ -1,3 +1,4 @@
+from datetime import datetime
 import operator
 from functools import reduce
 from typing import Any, Union, Callable
@@ -9,6 +10,7 @@ import numpy as np
 import dask.dataframe as dd
 import dask.array as da
 import pandas as pd
+from tzlocal import get_localzone
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -512,6 +514,13 @@ class RexCallPlugin(BaseRexPlugin):
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
         # date/time operations
         "extract": ExtractOperation(),
+        "localtime": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
+        "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
+        "current_time": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
+        "current_date": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
+        "current_timestamp": Operation(
+            lambda *args: pd.Timestamp.now(tz=get_localzone())
+        ),
     }
 
     def convert(
