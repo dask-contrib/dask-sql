@@ -69,8 +69,7 @@ The problem is probably somewhere here:
     assert str(e) == expected
 
     e = ParsingException(
-        "SELECT * FROM df",
-        """Lexical error at line 1, column 3.  Message""",
+        "SELECT * FROM df", """Lexical error at line 1, column 3.  Message""",
     )
 
     expected = """Can not parse the given SQL: Lexical error at line 1, column 3.  Message
@@ -97,9 +96,6 @@ The problem is probably somewhere here:
 \tWHERE x = 3"""
     assert str(e) == expected
 
-    e = ParsingException(
-        "SELECT *",
-        "Message",
-    )
+    e = ParsingException("SELECT *", "Message",)
 
     assert str(e) == "Message"

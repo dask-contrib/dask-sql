@@ -76,9 +76,7 @@ class SortTestCase(DaskTestCase):
 
         # Wrong column
         self.assertRaises(
-            Exception,
-            self.c.sql,
-            "SELECT * FROM user_table_1 ORDER BY 42",
+            Exception, self.c.sql, "SELECT * FROM user_table_1 ORDER BY 42",
         )
 
 

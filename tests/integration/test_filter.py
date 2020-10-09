@@ -19,6 +19,5 @@ class FilterTestCase(DaskTestCase):
             ((self.df["a"] < 3) & ((self.df["b"] > 1) & (self.df["b"] < 3)))
         ]
         assert_frame_equal(
-            df,
-            expected_df,
+            df, expected_df,
         )

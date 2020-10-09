@@ -65,11 +65,7 @@ class GroupbyTestCase(DaskTestCase):
         df = df.compute()
 
         expected_df = pd.DataFrame(
-            {
-                "user_id": [1, 2, 3],
-                "S1": [np.NaN, 4.0, np.NaN],
-                "S2": [3, 4, 3],
-            },
+            {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3],},
         )
         assert_frame_equal(df, expected_df)
 

@@ -40,10 +40,7 @@ class ShowTestCase(DaskTestCase):
 
         expected_df = pd.DataFrame(
             {
-                "Column": [
-                    "user_id",
-                    "b",
-                ],
+                "Column": ["user_id", "b",],
                 "Type": ["bigint", "bigint"],
                 "Extra": [""] * 2,
                 "Comment": [""] * 2,

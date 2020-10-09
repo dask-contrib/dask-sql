@@ -16,8 +16,7 @@ class JoinTestCase(DaskTestCase):
             {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
         )
         assert_frame_equal(
-            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-            expected_df,
+            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
         )
 
     def test_join_inner(self):
@@ -30,8 +29,7 @@ class JoinTestCase(DaskTestCase):
             {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
         )
         assert_frame_equal(
-            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-            expected_df,
+            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
         )
 
     def test_join_outer(self):
@@ -69,8 +67,7 @@ class JoinTestCase(DaskTestCase):
             }
         )
         assert_frame_equal(
-            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-            expected_df,
+            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
         )
 
     def test_join_right(self):
@@ -89,8 +86,7 @@ class JoinTestCase(DaskTestCase):
             }
         )
         assert_frame_equal(
-            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-            expected_df,
+            df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
         )
 
     def test_join_strange(self):
