@@ -68,6 +68,8 @@ class Context:
         self.functions = {}
         # Storage for the registered aggregations
         self.aggregations = {}
+        # Name of the root schema (not changable so far)
+        self.schema_name = "schema"
 
         # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.LogicalAggregatePlugin, replace=False)
@@ -288,7 +290,7 @@ class Context:
         Create a schema filled with the dataframes
         and functions we have currently in our list
         """
-        schema = DaskSchema("schema")
+        schema = DaskSchema(self.schema_name)
 
         if not self.tables:  # pragma: no cover
             logger.warn("No tables are registered.")
@@ -363,8 +365,8 @@ class Context:
         def toSqlString(s):
             try:
                 return str(s.toSqlString(default_dialect))
-            except:
-                return str(s)  # pragma: no cover
+            except:  # pragma: no cover
+                return str(s)
 
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
             select_names = [toSqlString(s) for s in sqlNode.getSelectList()]

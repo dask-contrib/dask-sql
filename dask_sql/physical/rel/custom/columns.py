@@ -26,7 +26,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
         tableName = components[-1]
 
         if len(components) == 2:
-            if components[0] != "schema":
+            if components[0] != context.schema_name:
                 raise AttributeError(f"Schema {components[0]} is not defined.")
         elif len(components) > 2:
             raise AttributeError(
