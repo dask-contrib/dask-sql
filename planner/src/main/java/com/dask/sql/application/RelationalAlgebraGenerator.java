@@ -131,9 +131,14 @@ public class RelationalAlgebraGenerator {
 				.addRuleInstance(ProjectMergeRule.Config.DEFAULT.toRule())
 				.addRuleInstance(FilterMergeRule.Config.DEFAULT.toRule())
 				.addRuleInstance(ProjectJoinTransposeRule.Config.DEFAULT.toRule())
-				.addRuleInstance(ProjectRemoveRule.Config.DEFAULT.toRule())
+				// In principle, not a bad idea. But we need to keep the most
+				// outer project - because otherwise the column name information is lost
+				// in cases such as SELECT x AS a, y AS B FROM df
+				// .addRuleInstance(ProjectRemoveRule.Config.DEFAULT.toRule())
 				.addRuleInstance(ReduceExpressionsRule.ProjectReduceExpressionsRule.Config.DEFAULT.toRule())
-				.addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
+				// this rule might make sense, but turns a < 1 into a SEARCH expression
+				// which is currently not supported by dask-sql
+				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
 				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
 				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
 
@@ -163,7 +168,7 @@ public class RelationalAlgebraGenerator {
 	/// Turn a validated sql node into a rel node
 	public RelNode getRelationalAlgebra(final SqlNode validatedSqlNode) throws RelConversionException {
 		try {
-			return planner.rel(validatedSqlNode).project();
+			return planner.rel(validatedSqlNode).project(true);
 		} catch (final RelConversionException e) {
 			planner.close();
 			throw e;

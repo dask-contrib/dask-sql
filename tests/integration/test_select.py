@@ -18,10 +18,11 @@ class SelectTestCase(DaskTestCase):
         df = self.c.sql("SELECT a as b, b as a FROM df")
         df = df.compute()
 
-        expected_df = self.df
-        expected_df.assign(a=self.df.b, b=self.df.a)
+        expected_df = pd.DataFrame(index=self.df.index)
+        expected_df["b"] = self.df.a
+        expected_df["a"] = self.df.b
 
-        assert_frame_equal(df, expected_df)
+        assert_frame_equal(df[["a", "b"]], expected_df[["a", "b"]])
 
     def test_select_column(self):
         df = self.c.sql("SELECT a FROM df")
