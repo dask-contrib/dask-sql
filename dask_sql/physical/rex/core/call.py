@@ -124,7 +124,10 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def false_(
+        self,
+        df: Union[dd.Series, Any],
+    ) -> Union[dd.Series, Any]:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -141,7 +144,10 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def true_(
+        self,
+        df: Union[dd.Series, Any],
+    ) -> Union[dd.Series, Any]:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -158,7 +164,10 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def not_(
+        self,
+        df: Union[dd.Series, Any],
+    ) -> Union[dd.Series, Any]:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -174,7 +183,10 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def null(
+        self,
+        df: Union[dd.Series, Any],
+    ) -> Union[dd.Series, Any]:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -191,7 +203,10 @@ class LikeOperation(Operation):
         super().__init__(self.like)
 
     def like(
-        self, test: Union[dd.Series, Any], regex: str, escape: str = None,
+        self,
+        test: Union[dd.Series, Any],
+        regex: str,
+        escape: str = None,
     ) -> Union[dd.Series, Any]:
         """
         Returns true, if the string test matches the given regex

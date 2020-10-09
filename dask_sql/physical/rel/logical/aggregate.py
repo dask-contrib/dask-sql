@@ -186,9 +186,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         group_columns: List[str],
         additional_column_name: str,
         context: "dask_sql.Context",
-    ) -> Tuple[
-        Dict[GroupDatasetDescription, AggregationDescription], List[int],
-    ]:
+    ) -> Tuple[Dict[GroupDatasetDescription, AggregationDescription], List[int],]:
         """
         Create a mapping of dataframe -> aggregations (in the form input colum, output column, aggregation)
         and the expected order of output columns.
