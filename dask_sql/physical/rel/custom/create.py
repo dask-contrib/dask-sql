@@ -22,7 +22,26 @@ def convert_literal(value):
 
 class CreateTablePlugin(BaseRelPlugin):
     """
-    Create a table with given parameters
+    Create a table with given parameters from already existing data
+    and register it at the context.
+    The SQL call looks like
+
+        CREATE TABLE <table-name> WITH (
+            parameter = value,
+            ...
+        )
+
+    It uses calls to "dask.dataframe.read_<format>"
+    where format is given by the "format" parameter (defaults to CSV).
+    The only mandatory parameter is the "location" parameter.
+
+    Using this SQL is equivalent to just doing
+
+        df = dd.read_<format>(location, **kwargs)
+        context.register_dask_dataframe(df, <table-name>)
+
+    but can also be used without writing a single line of code.
+    Nothing is returned.
     """
 
     class_name = "com.dask.sql.parser.SqlCreateTable"

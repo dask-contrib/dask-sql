@@ -8,6 +8,13 @@ from dask_sql.datacontainer import DataContainer, ColumnContainer
 class ShowTablesPlugin(BaseRelPlugin):
     """
     Show all tables currently defined for a given schema.
+    The SQL is:
+
+        SHOW TABLES FROM <schema>
+
+    Please note that dask-sql currently
+    only allows for a single schema (called "schema").
+
     The result is also a table, although it is created on the fly.
     """
 

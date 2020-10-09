@@ -8,7 +8,11 @@ from dask_sql.mappings import python_to_sql_type
 
 class ShowColumnsPlugin(BaseRelPlugin):
     """
-    Show all schemas.
+    Show all columns (and their types) for a given table.
+    The SQL is:
+
+        SHOW COLUMNS FROM <table>
+
     The result is also a table, although it is created on the fly.
     """
 

@@ -7,7 +7,14 @@ from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 class ShowSchemasPlugin(BaseRelPlugin):
     """
-    Show all schemas.
+    Show all schemas. Please note that dask-sql currently
+    only allows for a single schema (called "schema"),
+    but some external applications need to have this
+    functionality.
+    The SQL is:
+
+        SHOW SCHEMAS
+
     The result is also a table, although it is created on the fly.
     """
 
