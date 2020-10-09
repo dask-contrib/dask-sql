@@ -31,7 +31,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
 
         dc = context.tables[tableName]
         cols = dc.column_container.columns
-        dtypes = list(map(lambda x: str(python_to_sql_type(x)), dc.df.dtypes))
+        dtypes = list(map(lambda x: str(python_to_sql_type(x)).lower(), dc.df.dtypes))
         df = pd.DataFrame(
             {
                 "Column": cols,

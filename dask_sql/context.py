@@ -15,7 +15,7 @@ from dask_sql.java import (
     get_java_class,
 )
 from dask_sql.mappings import python_to_sql_type
-from dask_sql.physical.rel import RelConverter, logical, show
+from dask_sql.physical.rel import RelConverter, logical, custom
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 from dask_sql.utils import ParsingException
@@ -78,9 +78,10 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
-        RelConverter.add_plugin_class(show.ShowColumnsPlugin, replace=False)
-        RelConverter.add_plugin_class(show.ShowSchemasPlugin, replace=False)
-        RelConverter.add_plugin_class(show.ShowTablesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -266,18 +267,21 @@ class Context:
             # Instead, we raise a nice exception
             raise ParsingException(sql, str(e.message())) from None
 
-        if select_names:
-            # Rename any columns named EXPR$* to a more human readable name
-            cc = dc.column_container
-            cc = cc.rename(
-                {
-                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
-                    for df_col, select_name in zip(cc.columns, select_names)
-                }
-            )
-            dc = DataContainer(dc.df, cc)
+        if dc is not None:
+            if select_names:
+                # Rename any columns named EXPR$* to a more human readable name
+                cc = dc.column_container
+                cc = cc.rename(
+                    {
+                        df_col: df_col
+                        if not df_col.startswith("EXPR$")
+                        else select_name
+                        for df_col, select_name in zip(cc.columns, select_names)
+                    }
+                )
+                dc = DataContainer(dc.df, cc)
 
-        return dc.assign()
+            return dc.assign()
 
     def _prepare_schema(self):
         """

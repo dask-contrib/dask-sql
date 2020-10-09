@@ -53,3 +53,40 @@ SqlNode SqlShowColumns() :
         return new SqlShowColumns(s.end(tableName), tableName);
     }
 }
+
+void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
+{
+    final SqlNode keyword;
+    final SqlNode literal;
+}
+{
+    keyword = SimpleIdentifier()
+    <EQ>
+    literal = Literal()
+    {
+        kwargs.put(keyword, literal);
+    }
+}
+
+// CREATE TABLE name WITH (key = value)
+SqlNode SqlCreateTable() :
+{
+    final SqlParserPos pos;
+    final SqlIdentifier tableName;
+    final HashMap<SqlNode, SqlNode> kwargs = new HashMap<SqlNode, SqlNode>();
+}
+{
+    <CREATE> { pos = getPos(); } <TABLE>
+    tableName = SimpleIdentifier()
+    <WITH>
+    <LPAREN>
+    KeyValueExpression(kwargs)
+    (
+        <COMMA>
+        KeyValueExpression(kwargs)
+    )*
+    <RPAREN>
+    {
+        return new SqlCreateTable(pos, tableName, kwargs);
+    }
+}
