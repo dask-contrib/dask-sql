@@ -25,7 +25,7 @@ jobs:
       - name: Cache downloaded conda packages
         uses: actions/cache@v2
         with:
-          path: /home/runner/conda_pkgs_dir
+          path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ hashFiles('conda.yaml') }}
       - name: Set up Python
         uses: goanpeca/setup-miniconda@v1
