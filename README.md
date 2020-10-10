@@ -15,6 +15,8 @@ The queries will run as normal dask operations, which can be distributed within 
 The goal of this project is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...).
 Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
+Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
+
 ---
 
 **NOTE**
