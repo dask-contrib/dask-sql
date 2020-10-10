@@ -6,8 +6,9 @@ from tests.integration.fixtures import DaskTestCase
 
 class CreateTestCase(DaskTestCase):
     def test_create_from_csv(self):
-        with tempfile.NamedTemporaryFile() as f:
-            self.df.to_csv(f.name, index=False)
+        with tempfile.NamedTemporaryFile(mode="w") as f:
+            self.df.to_csv(f, index=False)
+            f.flush()
 
             self.c.sql(
                 f"""
@@ -29,8 +30,9 @@ class CreateTestCase(DaskTestCase):
             assert_frame_equal(self.df, df)
 
     def test_create_from_csv_persist(self):
-        with tempfile.NamedTemporaryFile() as f:
-            self.df.to_csv(f.name, index=False)
+        with tempfile.NamedTemporaryFile(mode="w") as f:
+            self.df.to_csv(f, index=False)
+            f.flush()
 
             self.c.sql(
                 f"""
