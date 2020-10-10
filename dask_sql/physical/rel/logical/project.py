@@ -32,6 +32,7 @@ class LogicalProjectPlugin(BaseRelPlugin):
 
         column_names = []
         new_columns = {}
+        new_mappings = {}
         for expr, key in named_projects:
             key = str(key)
             column_names.append(key)
@@ -44,15 +45,20 @@ class LogicalProjectPlugin(BaseRelPlugin):
                 logger.debug(
                     f"Not re-adding the same column {key} (but just referencing it)"
                 )
-                cc = cc.add(key, backend_column_name)
+                new_mappings[key] = backend_column_name
             else:
                 new_columns[key] = RexConverter.convert(expr, dc, context=context)
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 cc = cc.add(key, key)
+                new_mappings[key] = key
 
         # Actually add the new columns
         if new_columns:
             df = df.assign(**new_columns)
+
+        # and the new mappings
+        for key, backend_column_name in new_mappings.items():
+            cc = cc.add(key, backend_column_name)
 
         # Make sure the order is correct
         cc = cc.limit_to(column_names)

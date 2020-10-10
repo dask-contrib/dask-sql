@@ -32,7 +32,7 @@ class LogicalTableScanPlugin(BaseRelPlugin):
         # And the first something is fixed to "schema" by the context
         # For us, it makes no difference anyways.
         table_names = [str(n) for n in table.getQualifiedName()]
-        assert table_names[0] == "schema"
+        assert table_names[0] == context.schema_name
         assert len(table_names) == 2
         table_name = table_names[1]
         table_name = table_name.lower()

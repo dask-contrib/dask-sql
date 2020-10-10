@@ -39,12 +39,14 @@ _PYTHON_TO_SQL = {
 _SQL_TO_PYTHON_SCALARS = {
     "DOUBLE": np.float64,
     "FLOAT": np.float32,
+    "DECIMAL": np.float32,
     "BIGINT": np.int64,
     "INTEGER": np.int32,
     "SMALLINT": np.int16,
     "TINYINT": np.int8,
     "BOOLEAN": np.bool8,
     "VARCHAR": str,
+    "CHAR": str,
     "NULL": type(None),
     "SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
 }
@@ -90,6 +92,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         sql_type.startswith("CHAR(")
         or sql_type.startswith("VARCHAR(")
         or sql_type == "VARCHAR"
+        or sql_type == "CHAR"
     ):
         # Some varchars contain an additional encoding
         # in the format _ENCODING'string'

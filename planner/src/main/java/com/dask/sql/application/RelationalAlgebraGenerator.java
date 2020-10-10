@@ -41,7 +41,7 @@ import org.apache.calcite.sql.fun.SqlLibraryOperatorTableFactory;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.sql.util.ChainedSqlOperatorTable;
+import org.apache.calcite.sql.util.SqlOperatorTables;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Frameworks;
 import org.apache.calcite.tools.Planner;
@@ -96,8 +96,9 @@ public class RelationalAlgebraGenerator {
 		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
 		sqlOperatorTables.add(calciteCatalogReader);
 
-		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.configBuilder()).build();
-		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
+		SqlParser.Config parserConfig = getDialect()
+				.configureParser(SqlParser.config().withParserFactory(new DaskSqlParserImplFactory()));
+		SqlOperatorTable operatorTable = SqlOperatorTables.chain(sqlOperatorTables);
 
 		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
 				.executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
@@ -122,15 +123,24 @@ public class RelationalAlgebraGenerator {
 	private HepPlanner getHepPlanner(final FrameworkConfig config) {
 		// TODO: check if these rules are sensible
 		// Taken from blazingSQL
-		final HepProgram program = new HepProgramBuilder().addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
-				.addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN).addRuleInstance(ProjectMergeRule.INSTANCE)
-				.addRuleInstance(FilterMergeRule.INSTANCE).addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
-				.addRuleInstance(ProjectRemoveRule.INSTANCE).addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
-				.addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
-				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
-				.addRuleInstance(AggregateReduceFunctionsRule.INSTANCE).build();
+		final HepProgram program = new HepProgramBuilder()
+				.addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.JOIN.toRule())
+				.addRuleInstance(FilterAggregateTransposeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterJoinRule.FilterIntoJoinRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ProjectMergeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterMergeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ProjectJoinTransposeRule.Config.DEFAULT.toRule())
+				// In principle, not a bad idea. But we need to keep the most
+				// outer project - because otherwise the column name information is lost
+				// in cases such as SELECT x AS a, y AS B FROM df
+				// .addRuleInstance(ProjectRemoveRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ReduceExpressionsRule.ProjectReduceExpressionsRule.Config.DEFAULT.toRule())
+				// this rule might make sense, but turns a < 1 into a SEARCH expression
+				// which is currently not supported by dask-sql
+				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
+				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
 
 		return new HepPlanner(program, config.getContext());
 	}
@@ -158,7 +168,7 @@ public class RelationalAlgebraGenerator {
 	/// Turn a validated sql node into a rel node
 	public RelNode getRelationalAlgebra(final SqlNode validatedSqlNode) throws RelConversionException {
 		try {
-			return planner.rel(validatedSqlNode).project();
+			return planner.rel(validatedSqlNode).project(true);
 		} catch (final RelConversionException e) {
 			planner.close();
 			throw e;

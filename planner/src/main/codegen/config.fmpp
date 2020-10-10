@@ -1,0 +1,62 @@
+# This file defines additional parsers to be used in dask-sql
+# Three things need to be done for implementing a new SQL
+# expression to be understood by dask-sql (or more explicit:
+# Apache Calcite):
+#   1. A class extending SqlCall needs to be implemented
+#      (they can be found in com/dask/sql/parser/)
+#   2. The parsing expression (how the SQL expression looks like)
+#      needs to be implemented in includes/parserImpls.ftl
+#   3. It needs to be added here.
+# The rest happens during compilation, where these files are used
+# for creating the parser class.
+
+data: {
+    # Default taken from the calcite jar (see pom.xml)
+    default: tdd("../default_config.fmpp")
+    parser: {
+      # Defines how the new grammer will be named (after compilation)
+      package: "com.dask.sql.parser",
+      class: "DaskSqlParserImpl",
+
+      # List of import statements.
+      imports: [
+        "org.apache.calcite.util.*",
+        "java.util.*",
+        "com.dask.sql.parser.SqlCreateTable",
+        "com.dask.sql.parser.SqlShowColumns",
+        "com.dask.sql.parser.SqlShowSchemas",
+        "com.dask.sql.parser.SqlShowTables"
+      ]
+
+      # List of keywords.
+      keywords: [
+        "SCHEMAS"
+        "TABLES"
+        "COLUMNS"
+      ]
+
+      # The keywords can only be used in a specific context,
+      # so we can keep them non-reserved
+      nonReservedKeywordsToAdd: [
+        "SCHEMAS"
+        "TABLES"
+        "COLUMNS"
+      ]
+
+      # List of methods for parsing custom SQL statements
+      statementParserMethods: [
+         "SqlShowSchemas()"
+         "SqlShowTables()"
+         "SqlShowColumns()"
+         "SqlCreateTable()"
+      ]
+
+      # location of the implementation
+      implementationFiles: [
+        "parserImpls.ftl"
+      ]
+    }
+}
+freemarkerLinks: {
+    includes: includes/
+}
