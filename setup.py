@@ -6,7 +6,6 @@ import sys
 
 import setuptools.command.build_py
 from setuptools import find_packages, setup
-from sphinx.setup_command import BuildDoc
 
 
 class MavenCommand(distutils.cmd.Command):
@@ -74,7 +73,6 @@ setup(
     cmdclass={
         "java": MavenCommand,
         "build_py": BuildPyCommand,
-        "build_sphinx": BuildDoc,
     },
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )
