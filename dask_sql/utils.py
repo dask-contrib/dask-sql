@@ -53,7 +53,12 @@ class ParsingException(Exception):
         Create a new exception out of the SQL query and the exception text
         raise by calcite.
         """
-        message = self._extract_message(sql, validation_exception_string)
+        message, from_line, from_col = self._extract_message(
+            sql, validation_exception_string
+        )
+        self.from_line = from_line
+        self.from_col = from_col
+
         super().__init__(message)
 
     @staticmethod
@@ -81,7 +86,7 @@ class ParsingException(Exception):
         match = re.match(self.JAVA_MSG_REGEX, message)
         if not match:
             # Don't understand this message - just return it
-            return message
+            return message, 1, 1
 
         match = match.groupdict()
 
@@ -124,7 +129,7 @@ class ParsingException(Exception):
         message += "The problem is probably somewhere here:\n"
         message += "\n\t" + "\n\t".join(sql)
 
-        return message
+        return message, from_line, from_col
 
 
 class LoggableDataFrame:

@@ -5,3 +5,5 @@ API Documentation
    :members:
    :undoc-members:
 
+.. autofunction:: dask_sql.run_server
+
