@@ -87,7 +87,7 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
    .. code-block:: dockerfile
 
-        FROM nils-braun/dask-sql
+        FROM nbraun/dask-sql
 
         COPY startup_script.py /opt/dask_sql/startup_script.py
 

@@ -1,6 +1,6 @@
 # Dockerfile for dask-sql running the SQL server
 # For more information, see https://dask-sql.readthedocs.io/.
-FROM continuumio/miniconda:4.7.12
+FROM continuumio/miniconda3:4.8.2
 LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
 # Install dependencies for dask-sql
