@@ -108,4 +108,3 @@ class QueryError:
             }
         except AttributeError:  # pragma: no cover
             pass
-
