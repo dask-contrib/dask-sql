@@ -69,6 +69,7 @@ but any other data (from disk, S3, API, hdfs) can be used.
    pages/sql
    pages/custom
    pages/api
+   pages/server
    pages/how_does_it_work
 
 

@@ -293,7 +293,7 @@ class Context:
         schema = DaskSchema(self.schema_name)
 
         if not self.tables:  # pragma: no cover
-            logger.warn("No tables are registered.")
+            logger.warning("No tables are registered.")
 
         for name, dc in self.tables.items():
             table = DaskTable(name)
