@@ -97,10 +97,7 @@ class CaseOperation(Operation):
         super().__init__(self.case)
 
     def case(
-        self,
-        where: SeriesOrScalar,
-        then: SeriesOrScalar,
-        other: SeriesOrScalar,
+        self, where: SeriesOrScalar, then: SeriesOrScalar, other: SeriesOrScalar,
     ) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
@@ -127,10 +124,7 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(
-        self,
-        df: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -147,10 +141,7 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(
-        self,
-        df: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -167,10 +158,7 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(
-        self,
-        df: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -186,10 +174,7 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(
-        self,
-        df: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -206,10 +191,7 @@ class RegexOperation(Operation):
         super().__init__(self.regex)
 
     def regex(
-        self,
-        test: SeriesOrScalar,
-        regex: str,
-        escape: str = None,
+        self, test: SeriesOrScalar, regex: str, escape: str = None,
     ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex
@@ -514,13 +496,11 @@ class RexCallPlugin(BaseRexPlugin):
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
         # date/time operations
         "extract": ExtractOperation(),
-        "localtime": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
+        "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
-        "current_time": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
-        "current_date": Operation(lambda *args: pd.Timestamp.now(tz=get_localzone())),
-        "current_timestamp": Operation(
-            lambda *args: pd.Timestamp.now(tz=get_localzone())
-        ),
+        "current_time": Operation(lambda *args: pd.Timestamp.now()),
+        "current_date": Operation(lambda *args: pd.Timestamp.now()),
+        "current_timestamp": Operation(lambda *args: pd.Timestamp.now()),
     }
 
     def convert(
