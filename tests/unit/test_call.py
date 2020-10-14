@@ -148,14 +148,10 @@ def test_simple_ops():
 
 def test_math_operations():
     assert_series_equal(
-        ops_mapping["abs"](-df1.a).compute(),
-        pd.Series([1, 2, 3]),
-        check_names=False,
+        ops_mapping["abs"](-df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
     )
     assert_series_equal(
-        ops_mapping["round"](df1.a).compute(),
-        pd.Series([1, 2, 3]),
-        check_names=False,
+        ops_mapping["round"](df1.a).compute(), pd.Series([1, 2, 3]), check_names=False,
     )
     assert_series_equal(
         ops_mapping["floor"](df1.a).compute(),

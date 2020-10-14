@@ -68,11 +68,13 @@ setup(
     use_scm_version=True,
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
-    install_requires=["dask[dataframe]>=2.19.0", "jpype1>=1.0.2", "fastapi>=0.61.1", "uvicorn>=0.11.3"],
+    install_requires=[
+        "dask[dataframe]>=2.19.0",
+        "jpype1>=1.0.2",
+        "fastapi>=0.61.1",
+        "uvicorn>=0.11.3",
+    ],
     zip_safe=False,
-    cmdclass={
-        "java": MavenCommand,
-        "build_py": BuildPyCommand,
-    },
+    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )

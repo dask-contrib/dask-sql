@@ -364,8 +364,7 @@ class RexOperationsTestCase(DaskTestCase):
         )
 
         assert_frame_equal(
-            df.head(1),
-            expected_df,
+            df.head(1), expected_df,
         )
 
     def test_date_functions(self):
