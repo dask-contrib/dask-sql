@@ -15,6 +15,14 @@ The queries will run as normal dask operations, which can be distributed within 
 The goal of this project is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...).
 Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
+Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
+
+You can try out `dask-sql` quickly by using the docker command
+
+    docker run --rm -it -p 8080:8080 nils-braun/dask-sql
+
+See information in the SQL server at the end of this page.
+
 ---
 
 **NOTE**
@@ -143,20 +151,24 @@ After the translation to a relational algebra is done (using `RelationalAlgebraG
 ## SQL Server
 
 `dask-sql` comes with a small test implementation for a SQL server.
-Instead of rebuilding a full ODBC driver, we re-use the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
-It is - so far - just a proof of concept
+Instead of rebuilding a full ODBC driver, we re-use the [presto wire protocol](https://github.com/prestodb/presto/wiki/HTTP-Protocol).
+It is - so far - only a start of the development and missing important concepts, such as
+authentication.
 
-You can test the sql postgres server by running
+You can test the sql presto server by running
 
-    python dask_sql/server/handler.py
+    python dask_sql/server/app.py
 
-in one terminal. This will spin up a server on port 9876
-that looks similar to a normal postgres database to any postgres client
-(except that you can only do queries, no database creation etc.)
+or by using the created docker image
 
-You can test this for example with the default postgres client:
+    docker run --rm -it -p 8080:8080 nils-braun/dask-sql
 
-    psql -h localhost -p 9876
+in one terminal. This will spin up a server on port 8080 (by default)
+that looks similar to a normal presto database to any presto client.
+
+You can test this for example with the default [presto client](https://prestosql.io/docs/current/installation/cli.html):
+
+    presto --server localhost:8080
 
 Now you can fire simple SQL queries (as no data is loaded by default):
 
@@ -165,3 +177,5 @@ Now you can fire simple SQL queries (as no data is loaded by default):
     --------
         2
     (1 row)
+
+You can find more information in the [documentation](https://dask-sql.readthedocs.io/en/latest/pages/server.html).

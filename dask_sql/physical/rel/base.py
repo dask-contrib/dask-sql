@@ -109,12 +109,18 @@ class BaseRelPlugin:
             field_name = cc.get_backend_by_frontend_index(index)
             current_type = df[field_name].dtype
 
+            logger.debug(
+                f"Column {field_name} has type {current_type}, expecting {expected_type}..."
+            )
+
             if similar_type(current_type, expected_type):
+                logger.debug("...not converting.")
                 continue
 
             current_float = pd.api.types.is_float_dtype(current_type)
             expected_integer = pd.api.types.is_integer_dtype(expected_type)
             if current_float and expected_integer:
+                logger.debug("...truncating...")
                 df[field_name] = da.trunc(df[field_name])
 
             logger.debug(

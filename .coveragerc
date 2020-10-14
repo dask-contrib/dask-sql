@@ -1,6 +1,5 @@
 [run]
 omit = tests/*
-       dask_sql/server/*
 branch = True
 
 [report]

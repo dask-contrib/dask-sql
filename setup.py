@@ -6,7 +6,6 @@ import sys
 
 import setuptools.command.build_py
 from setuptools import find_packages, setup
-from sphinx.setup_command import BuildDoc
 
 
 class MavenCommand(distutils.cmd.Command):
@@ -47,8 +46,10 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
         setuptools.command.build_py.build_py.run(self)
 
 
-with open("README.md") as f:
-    long_description = f.read()
+long_description = ""
+if os.path.exists("README.md"):
+    with open("README.md") as f:
+        long_description = f.read()
 
 needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
@@ -67,12 +68,11 @@ setup(
     use_scm_version=True,
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
-    install_requires=["dask[dataframe]>=2.19.0", "jpype1>=1.0.2"],
+    install_requires=["dask[dataframe]>=2.19.0", "jpype1>=1.0.2", "fastapi>=0.61.1", "uvicorn>=0.11.3"],
     zip_safe=False,
     cmdclass={
         "java": MavenCommand,
         "build_py": BuildPyCommand,
-        "build_sphinx": BuildDoc,
     },
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )
