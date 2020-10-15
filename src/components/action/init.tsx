@@ -49,7 +49,10 @@ const Action: FC<ActionProps> = () => (
           conda install -c conda-forge dask-sql <br />
           # or (needs java pre-installed) <br />
           <span className="font-bold text-orange-700">$ </span>
-          pip install -U dask-sql
+          pip install -U dask-sql <br />
+          # or run the SQL server via docker <br />
+          <span className="font-bold text-orange-700">$ </span>
+          docker run --rm -it -p 8080:8080 nils-braun/dask-sql
           <br />
         </p>
       </div>
