@@ -4,7 +4,7 @@ import Footer from "../components/footer";
 import Hero from "../components/hero";
 import Features from "../components/features";
 import ShowCase from "../components/showcase";
-import Action from "../components/action/init";
+import Action from "../components/action";
 import Topology from "../components/topology";
 
 export interface HomePageProps { }

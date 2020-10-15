@@ -61,24 +61,28 @@ const Topology: FC<TopologyProps> = () => (
                     <TopologyTitle>dask-sql Library</TopologyTitle>
                     <TopologyText>
                         <code>dask-sql</code> will connect to your
-                        dask cluster (and the computing infrastructure)
-                        and will translate your SQL queries into
-                        dask API calls, which are executed on your cluster.
+                        dask cluster and will translate your SQL queries into
+                        dask API calls.
+                        A large fraction of the SQL standard is already understood.
+                        <br />
+                        <a className="underline" href="https://dask-sql.readthedocs.io/en/latest/pages/sql.html">Learn more.</a>
                     </TopologyText>
                 </TopologyCard>
                 <TopologyCard col={3} row={2} span={1}>
                     <TopologyTitle>dask-sql SQL server</TopologyTitle>
                     <TopologyText>
-                        It is also possible to deploy a <code>dask-sql</code>
+                        It is also possible to deploy a <code>dask-sql</code>{" "}
                         service, e.g. with a docker image,
                         which lets you send SQL queries via a presto-compatible
                         REST interface.
+                        <br />
+                        <a className="underline" href="https://dask-sql.readthedocs.io/en/latest/pages/server.html">Learn more.</a>
                     </TopologyText>
                 </TopologyCard>
                 <TopologyCard col={4} row={1} span={1}>
                     <TopologyTitle>Notebooks and Code</TopologyTitle>
                     <TopologyText>
-                        You can import <code>dask-sql</code>
+                        You can import <code>dask-sql</code>{" "}
                         into your own scripts and mix SQL code
                         with your normal dataframe operations.
                         It works particularly well with the
