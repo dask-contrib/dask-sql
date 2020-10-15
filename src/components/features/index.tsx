@@ -1,7 +1,7 @@
 import { FC } from "react";
 import Card from "./card";
 
-interface FeaturesProps {}
+interface FeaturesProps { }
 
 const Features: FC<FeaturesProps> = () => (
   <section className="bg-white py-12 ">
