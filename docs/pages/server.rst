@@ -17,6 +17,12 @@ You can test the sql presto server by running
 
     python dask_sql/server/app.py
 
+or by using the created docker image
+
+.. code-block:: bash
+
+    docker run --rm -it -p 8080:8080 nils-braun/dask-sql
+
 in one terminal. This will spin up a server on port 8080 (by default).
 The port and bind interfaces can be controlled with the ``--port`` and ``--host`` switch.
 
