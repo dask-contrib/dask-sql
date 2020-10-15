@@ -1,6 +1,8 @@
 import { FC } from "react";
 
-interface ShowCaseProps {}
+import { CodeLine, Keyword, String, Comment } from "./code"
+
+interface ShowCaseProps { }
 
 const ShowCase: FC<ShowCaseProps> = () => (
   <section className="bg-white">
@@ -8,80 +10,60 @@ const ShowCase: FC<ShowCaseProps> = () => (
       <div className="flex items-center md:-mt-40 w-4/5 mx-auto content-end">
         <div className="browser-mockup bg-gray-400 flex flex-1 m-6 md:px-0 md:m-12 w-1/2 rounded shadow-xl">
           <div className="bg-black w-full h-full overflow-x-auto">
-            <p className="text-white font-mono text-base p-10">
-              <span className="whitespace-no-wrap text-gray-500">
+            <div className="text-white font-mono text-base p-10">
+              <CodeLine indent={0}>
+                <Keyword>if</Keyword> __name__ == <String>"__main__"</String>:
+              </CodeLine>
+              <CodeLine indent={4}><Comment>
+                # Create a dask cluster
+              </Comment></CodeLine>
+              <CodeLine indent={4}>
+                <Keyword>from</Keyword> dask.distributed <Keyword>import</Keyword> Client
+              </CodeLine>
+              <CodeLine indent={4}>
+                client = Client()
+              </CodeLine>
+              <br />
+              <CodeLine indent={4}><Comment>
                 # Load the data with dask
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">
-                <span className="text-purple-500 font-bold">import</span>{" "}
-                dask.datasets
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">
+              </Comment></CodeLine>
+              <CodeLine indent={4}>
+                <Keyword>import</Keyword> dask.datasets
+              </CodeLine>
+              <CodeLine indent={4}>
                 df = dask.datasets.timeseries()
-              </span>
+              </CodeLine>
               <br />
+              <CodeLine indent={4}><Comment>
+                # Register the data in a dask-sql context
+              </Comment></CodeLine>
+              <CodeLine indent={4}>
+                <Keyword>from</Keyword> dask_sql <Keyword>import</Keyword> Context
+              </CodeLine>
+              <CodeLine indent={4}>c = Context()</CodeLine>
+              <CodeLine indent={4}>
+                c.register_dask_table(df, <String>"timeseries"</String>)
+              </CodeLine>
               <br />
-
-              <span className="whitespace-no-wrap text-gray-500">
-                # Register the data in dask-sql
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">
-                <span className="text-purple-500 font-bold">from</span> dask_sql{" "}
-                <span className="text-purple-500 font-bold">import</span>{" "}
-                Context
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">c = Context()</span>
-              <br />
-              <span className="whitespace-no-wrap">
-                c.register_dask_table(df,{" "}
-                <span className="text-indigo-400">"timeseries"</span>)
-              </span>
-              <br />
-              <br />
-
-              <span className="whitespace-no-wrap text-gray-500">
-                # Query the data utilizing your dask cluster with SQL
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">
+              <CodeLine indent={4}><Comment>
+                # Query the data utilizing your dask cluster with standard SQL
+              </Comment></CodeLine>
+              <CodeLine indent={4}>
                 result = c.sql(
-                <span className="text-indigo-400">
+                <String>
                   "SELECT name, SUM(x) FROM timeseries GROUP BY name"
-                </span>
+                  </String>
                 ).compute()
-              </span>
-              {/* <span className="whitespace-no-wrap">
-                from dask.datasets import timeseries
-              </span>
-              <br />
-              <span className="whitespace-no-wrap">
-                from dask_sql import Context
-              </span>
-              <br />
-              <br />
-              <span className="whitespace-no-wrap">
-                timeseries, y = load_robot_execution_failures()
-              </span>
-              <br />
-              <br />
-              <span className="whitespace-no-wrap">
-                <span>
-                  features = extract_relevant_features(timeseries, y, column_id=
-                </span>
-                <span className="text-blue-600">"id"</span>, column_sort=
-                <span className="text-blue-600">"time"</span>)
-              </span>
-              <br /> */}
-            </p>
+              </CodeLine>
+              <CodeLine indent={4}>
+                print(result)
+              </CodeLine>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </section>
+  </section >
 );
 
 export default ShowCase;
