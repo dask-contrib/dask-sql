@@ -52,7 +52,7 @@ const Action: FC<ActionProps> = () => (
           pip install -U dask-sql <br />
           # or run the SQL server via docker <br />
           <span className="font-bold text-orange-700">$ </span>
-          docker run --rm -it -p 8080:8080 nils-braun/dask-sql
+          docker run --rm -it -p 8080:8080 nbraun/dask-sql
           <br />
         </p>
       </div>
