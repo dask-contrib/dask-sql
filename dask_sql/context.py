@@ -252,8 +252,8 @@ class Context:
         )
 
     def sql(
-        self, sql: str, return_futures: bool = False
-    ) -> Union(dd.DataFrame, pd.DataFrame):
+        self, sql: str, return_futures: bool = True
+    ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the postgreSQL standard - however, not all
@@ -281,16 +281,9 @@ class Context:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
-        try:
-            rel, select_names = self._get_ral(sql)
-            dc = RelConverter.convert(rel, context=self)
-        except (ValidationException, SqlParseException) as e:
-            logger.debug(f"Original exception raised by Java:\n {e}")
-            # We do not want to re-raise an exception here
-            # as this would print the full java stack trace
-            # if debug is not set.
-            # Instead, we raise a nice exception
-            raise ParsingException(sql, str(e.message())) from None
+        rel, select_names, _ = self._get_ral(sql)
+
+        dc = RelConverter.convert(rel, context=self)
 
         if dc is None:
             return
@@ -311,6 +304,26 @@ class Context:
             df = df.compute()
 
         return df
+
+    def explain(self, sql: str) -> str:
+        """
+        Return the stringified relational algebra that this query will produce
+        once triggered (with ``sql()``).
+        Helpful to understand the inner workings of dask-sql, but typically not
+        needed to query your data.
+
+        If the query is of DDL type (e.g. CREATE TABLE or DESCRIBE SCHEMA),
+        no relational algebra plan is created and therefore nothing returned.
+
+        Args:
+            sql (:obj:`str`): The query string to use
+
+        Returns:
+            :obj:`str`: a description of the created relational algebra.
+
+        """
+        _, _, rel_string = self._get_ral(sql)
+        return rel_string
 
     def _prepare_schema(self):
         """
@@ -368,19 +381,27 @@ class Context:
 
         # Now create a relational algebra from that
         generator = RelationalAlgebraGenerator(schema)
-
-        sqlNode = generator.getSqlNode(sql)
-        sqlNodeClass = get_java_class(sqlNode)
-
-        if sqlNodeClass.startswith("com.dask.sql.parser."):
-            return sqlNode, []
-
-        validatedSqlNode = generator.getValidatedNode(sqlNode)
-        nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
-        rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
         default_dialect = generator.getDialect()
 
         logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+
+        try:
+            sqlNode = generator.getSqlNode(sql)
+            sqlNodeClass = get_java_class(sqlNode)
+
+            if sqlNodeClass.startswith("com.dask.sql.parser."):
+                return sqlNode, [], None
+
+            validatedSqlNode = generator.getValidatedNode(sqlNode)
+            nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+            rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+        except (ValidationException, SqlParseException) as e:
+            logger.debug(f"Original exception raised by Java:\n {e}")
+            # We do not want to re-raise an exception here
+            # as this would print the full java stack trace
+            # if debug is not set.
+            # Instead, we raise a nice exception
+            raise ParsingException(sql, str(e.message())) from None
 
         # Internal, temporary results of calcite are sometimes
         # named EXPR$N (with N a number), which is not very helpful
@@ -403,8 +424,7 @@ class Context:
             )
             select_names = None
 
-        logger.debug(
-            f"Extracted relational algebra:\n {generator.getRelationalAlgebraString(rel)}"
-        )
+        rel_string = str(generator.getRelationalAlgebraString(rel))
 
-        return rel, select_names
+        logger.debug(f"Extracted relational algebra:\n {rel_string}")
+        return rel, select_names, rel_string
