@@ -1,9 +1,10 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
 
 import dask.dataframe as dd
+import pandas as pd
 
 from dask_sql.java import (
     DaskAggregateFunction,
@@ -90,7 +91,7 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
-    def create_table(self, name: str, df: dd.DataFrame):
+    def create_table(self, table_name: str, input: dd.DataFrame):
         """
         Registering a (dask) table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
@@ -108,12 +109,12 @@ class Context:
                 df_result = c.sql("SELECT a, b FROM data")
 
         Args:
-            name: (:obj:`str`): Under which name should the new table be addressable
-            df (:class:`dask.dataframe.DataFrame`): The data frame to register
+            table_name: (:obj:`str`): Under which name should the new table be addressable
+            input (:class:`dask.dataframe.DataFrame`): The data frame to register
 
         """
-        self.tables[name.lower()] = DataContainer(
-            df.copy(), ColumnContainer(df.columns)
+        self.tables[table_name.lower()] = DataContainer(
+            input.copy(), ColumnContainer(input.columns)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
@@ -122,6 +123,17 @@ class Context:
             DeprecationWarning,
         )
         return self.create_table(name, df)
+
+    def drop_table(self, table_name: str):
+        """
+        Remove a table with the given name from the registered tables.
+        This will also delete the dataframe.
+
+        Args:
+            table_name: (:obj:`str`): Which table to remove.
+
+        """
+        del self.tables[table_name]
 
     def register_function(
         self,
@@ -239,7 +251,9 @@ class Context:
             f, parameters, return_type, True
         )
 
-    def sql(self, sql: str) -> dd.DataFrame:
+    def sql(
+        self, sql: str, return_futures: bool = False
+    ) -> Union(dd.DataFrame, pd.DataFrame):
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the postgreSQL standard - however, not all
@@ -260,7 +274,8 @@ class Context:
 
         Args:
             sql (:obj:`str`): The query string to execute
-            debug (:obj:`bool`): Turn on printing of debug information.
+            return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
+                Defaults to returning the dask dataframe.
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
@@ -277,21 +292,25 @@ class Context:
             # Instead, we raise a nice exception
             raise ParsingException(sql, str(e.message())) from None
 
-        if dc is not None:
-            if select_names:
-                # Rename any columns named EXPR$* to a more human readable name
-                cc = dc.column_container
-                cc = cc.rename(
-                    {
-                        df_col: df_col
-                        if not df_col.startswith("EXPR$")
-                        else select_name
-                        for df_col, select_name in zip(cc.columns, select_names)
-                    }
-                )
-                dc = DataContainer(dc.df, cc)
+        if dc is None:
+            return
 
-            return dc.assign()
+        if select_names:
+            # Rename any columns named EXPR$* to a more human readable name
+            cc = dc.column_container
+            cc = cc.rename(
+                {
+                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
+                    for df_col, select_name in zip(cc.columns, select_names)
+                }
+            )
+            dc = DataContainer(dc.df, cc)
+
+        df = dc.assign()
+        if not return_futures:
+            df = df.compute()
+
+        return df
 
     def _prepare_schema(self):
         """
