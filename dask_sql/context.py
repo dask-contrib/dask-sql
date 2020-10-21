@@ -1,6 +1,7 @@
 from typing import Callable, List, Tuple
 from collections import namedtuple
 import logging
+import warnings
 
 import dask.dataframe as dd
 
@@ -42,7 +43,7 @@ class Context:
             c = Context()
 
             # Register a table
-            c.register_dask_table(df, "my_table")
+            c.create_table("my_table", df)
 
             # Now execute an SQL query. The result is a dask dataframe
             result = c.sql("SELECT a, b FROM my_table")
@@ -54,7 +55,7 @@ class Context:
 
     See also:
         :func:`sql`
-        :func:`register_dask_table`
+        :func:`create_table`
 
     """
 
@@ -89,9 +90,9 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
-    def register_dask_table(self, df: dd.DataFrame, name: str):
+    def create_table(self, name: str, df: dd.DataFrame):
         """
-        Registering a dask table makes it usable in SQL queries.
+        Registering a (dask) table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
@@ -103,17 +104,24 @@ class Context:
 
             .. code-block:: python
 
-                c.register_dask_table(df, "data")
+                c.create_table("data", df)
                 df_result = c.sql("SELECT a, b FROM data")
 
         Args:
-            df (:class:`dask.dataframe.DataFrame`): The data frame to register
             name: (:obj:`str`): Under which name should the new table be addressable
+            df (:class:`dask.dataframe.DataFrame`): The data frame to register
 
         """
         self.tables[name.lower()] = DataContainer(
             df.copy(), ColumnContainer(df.columns)
         )
+
+    def register_dask_table(self, df: dd.DataFrame, name: str):
+        warnings.warn(
+            "register_dask_table is deprecated, use the more general create_table instead.",
+            DeprecationWarning,
+        )
+        return self.create_table(name, df)
 
     def register_function(
         self,

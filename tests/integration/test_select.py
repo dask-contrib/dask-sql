@@ -41,7 +41,7 @@ class SelectTestCase(DaskTestCase):
                 "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
             }
         )
-        self.c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")
+        self.c.create_table("df", dd.from_pandas(expected_df, npartitions=1))
         df = self.c.sql(
             """
         SELECT *

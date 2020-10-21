@@ -47,8 +47,8 @@ class SortTestCase(DaskTestCase):
 
     def test_sort_strings(self):
         string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
-        self.c.register_dask_table(
-            dd.from_pandas(string_table, npartitions=1), "string_table"
+        self.c.create_table(
+            "string_table", dd.from_pandas(string_table, npartitions=1),
         )
 
         df = self.c.sql(

@@ -11,7 +11,7 @@ class TimeSeriesTestCase(TestCase):
         cls.c = Context()
 
         df = timeseries(freq="1d").persist()
-        cls.c.register_dask_table(df, "timeseries")
+        cls.c.create_table("timeseries", df)
 
     def test_complex_query(self):
         result = self.c.sql(

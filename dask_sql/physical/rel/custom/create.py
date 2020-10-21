@@ -80,4 +80,4 @@ class CreateTablePlugin(BaseRelPlugin):
         if persist:
             df = df.persist()
 
-        context.register_dask_table(df, table_name)
+        context.create_table(table_name, df)

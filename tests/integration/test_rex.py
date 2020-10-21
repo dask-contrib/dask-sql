@@ -182,7 +182,7 @@ class RexOperationsTestCase(DaskTestCase):
         df["b"] = df["b"].apply(
             lambda x: pd.NA if x < 0 else x > 0, meta=("b", "bool")
         )  # turn into a bool column
-        self.c.register_dask_table(df, "df")
+        self.c.create_table("df", df)
 
         df = self.c.sql(
             """

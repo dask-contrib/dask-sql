@@ -38,7 +38,7 @@ class DaskTestCase(TestCase):
         ]:
             df = getattr(self, df_name)
             dask_df = dd.from_pandas(df, npartitions=3)
-            self.c.register_dask_table(dask_df, df_name)
+            self.c.create_table(df_name, dask_df)
 
 
 class ComparisonTestCase(TestCase):
@@ -92,9 +92,9 @@ class ComparisonTestCase(TestCase):
         )
 
         self.c = Context()
-        self.c.register_dask_table(df1, "df1")
-        self.c.register_dask_table(df2, "df2")
-        self.c.register_dask_table(df3, "df3")
+        self.c.create_table("df1", df1)
+        self.c.create_table("df2", df2)
+        self.c.create_table("df3", df3)
 
         df1.compute().to_sql("df1", self.engine, index=False, if_exists="replace")
         df2.compute().to_sql("df2", self.engine, index=False, if_exists="replace")
