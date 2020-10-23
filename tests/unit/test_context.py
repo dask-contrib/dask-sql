@@ -3,6 +3,7 @@ import warnings
 
 import dask.dataframe as dd
 import pandas as pd
+from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
 
@@ -62,3 +63,19 @@ class ContextTestCase(TestCase):
 
         result = c.sql("SELECT * FROM df", return_futures=False)
         self.assertIsInstance(result, pd.DataFrame)
+
+    def test_input_types(self):
+        c = Context()
+        df = pd.DataFrame({"a": [1, 2, 3]})
+
+        def assert_correct_output():
+            result = c.sql("SELECT * FROM df")
+            self.assertIsInstance(result, dd.DataFrame)
+            assert_frame_equal(result.compute(), df)
+
+        c.create_table("df", df)
+        assert_correct_output()
+
+        c.create_table("df", dd.from_pandas(df, npartitions=1))
+        assert_correct_output()
+

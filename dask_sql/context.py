@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 FunctionDescription = namedtuple(
     "FunctionDescription", ["f", "parameters", "return_type", "aggregation"]
 )
+InputType = Union[dd.DataFrame, pd.DataFrame]
 
 
 class Context:
@@ -91,9 +92,9 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
-    def create_table(self, table_name: str, input: dd.DataFrame):
+    def create_table(self, table_name: str, input: InputType):
         """
-        Registering a (dask) table makes it usable in SQL queries.
+        Registering a (dask/pandas) table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
@@ -113,9 +114,8 @@ class Context:
             input (:class:`dask.dataframe.DataFrame`): The data frame to register
 
         """
-        self.tables[table_name.lower()] = DataContainer(
-            input.copy(), ColumnContainer(input.columns)
-        )
+        dc = self._to_dc(input)
+        self.tables[table_name.lower()] = dc
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
         warnings.warn(
@@ -365,6 +365,12 @@ class Context:
             schema.addFunction(dask_function)
 
         return schema
+
+    @staticmethod
+    def _to_dc(input: InputType):
+        if isinstance(input, pd.DataFrame):
+            input = dd.from_pandas(input, npartitions=1)
+        return DataContainer(input.copy(), ColumnContainer(input.columns))
 
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
