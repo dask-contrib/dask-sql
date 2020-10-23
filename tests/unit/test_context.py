@@ -1,5 +1,7 @@
 from unittest import TestCase
 import warnings
+import os
+import tempfile
 
 import dask.dataframe as dd
 import pandas as pd
@@ -9,6 +11,17 @@ from dask_sql import Context
 
 
 class ContextTestCase(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.f = os.path.join(tempfile.gettempdir(), os.urandom(24).hex() + ".csv")
+
+    def tearDown(self):
+        super().tearDown()
+
+        if os.path.exists(self.f):
+            os.unlink(self.f)
+
     def test_add_remove_tables(self):
         c = Context()
 
@@ -79,3 +92,18 @@ class ContextTestCase(TestCase):
         c.create_table("df", dd.from_pandas(df, npartitions=1))
         assert_correct_output()
 
+        df.to_csv(self.f, index=False)
+        c.create_table("df", self.f)
+        assert_correct_output()
+
+        df.to_csv(self.f, index=False)
+        c.create_table("df", self.f, file_format="csv")
+        assert_correct_output()
+
+        df.to_parquet(self.f, index=False)
+        c.create_table("df", self.f, file_format="parquet")
+        assert_correct_output()
+
+        self.assertRaises(
+            AttributeError, c.create_table, "df", self.f, file_format="unknown"
+        )

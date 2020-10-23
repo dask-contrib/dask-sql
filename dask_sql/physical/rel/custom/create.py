@@ -68,16 +68,4 @@ class CreateTablePlugin(BaseRelPlugin):
         except KeyError:
             raise AttributeError("Parameters must include a 'location' parameter.")
 
-        read_function_name = f"read_{format}"
-
-        try:
-            read_function = getattr(dd, read_function_name)
-        except AttributeError:
-            raise AttributeError(f"Do not understand input format {format}.")
-
-        df = read_function(location, **kwargs)
-
-        if persist:
-            df = df.persist()
-
-        context.create_table(table_name, df)
+        context.create_table(table_name, location, file_format=format, persist=persist)

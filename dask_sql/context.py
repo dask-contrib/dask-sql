@@ -2,6 +2,7 @@ from typing import Callable, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
+import os
 
 import dask.dataframe as dd
 import pandas as pd
@@ -92,13 +93,32 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
-    def create_table(self, table_name: str, input: InputType):
+    def create_table(
+        self,
+        table_name: str,
+        input_table: InputType,
+        file_format: str = None,
+        persist: bool = True,
+        **kwargs,
+    ):
         """
         Registering a (dask/pandas) table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
         If you change the table later, you need to re-register.
+
+        Instead of passing an already loaded table, it is also possible
+        to pass a string to a storage location.
+        The library will then try to load the data using one of
+        `dask's read methods <https://docs.dask.org/en/latest/dataframe-create.html>`_.
+        If the file format can not be deduced automatically, it is also
+        possible to specify it via the ``file_format`` parameter.
+        Typical file formats are csv or parquet.
+        Any additional parameters will get passed on to the read method.
+        Please note that some file formats require additional libraries.
+        By default, the data will be loaded directly into the memory
+        of the nodes. If you do not want that, set persist to False.
 
         Example:
             This code registers a data frame as table "data"
@@ -109,12 +129,29 @@ class Context:
                 c.create_table("data", df)
                 df_result = c.sql("SELECT a, b FROM data")
 
+            This code reads a file from disk.
+            Please note that we assume that the file(s) are reachable under this path
+            from every node in the cluster
+
+            .. code-block:: python
+
+                c.create_table("data", "/home/user/data.csv")
+                df_result = c.sql("SELECT a, b FROM data")
+
         Args:
             table_name: (:obj:`str`): Under which name should the new table be addressable
-            input (:class:`dask.dataframe.DataFrame`): The data frame to register
+            input_table (:class:`dask.dataframe.DataFrame` or :class:`pandas.DataFrame` or :obj:`str`):
+                The data frame to register.
+            file_format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
+                Specify the file format directly here if it can not be deduced from the extension.
+            persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
+                Set to false to turn off loading the file data directly into memory.
+
 
         """
-        dc = self._to_dc(input)
+        dc = self._to_dc(
+            input_table, file_format=file_format, persist=persist, **kwargs
+        )
         self.tables[table_name.lower()] = dc
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
@@ -366,11 +403,35 @@ class Context:
 
         return schema
 
+    def _to_dc(
+        self,
+        input_table: InputType,
+        file_format: str = None,
+        persist: bool = True,
+        **kwargs,
+    ):
+        if isinstance(input_table, pd.DataFrame):
+            input_table = dd.from_pandas(input_table, npartitions=1)
+        elif isinstance(input_table, str):
+            read_input_function = self._get_read_input_function(
+                input_table, file_format
+            )
+            input_table = read_input_function(input_table, **kwargs)
+            if persist:
+                input_table = input_table.persist()
+        return DataContainer(input_table.copy(), ColumnContainer(input_table.columns))
+
     @staticmethod
-    def _to_dc(input: InputType):
-        if isinstance(input, pd.DataFrame):
-            input = dd.from_pandas(input, npartitions=1)
-        return DataContainer(input.copy(), ColumnContainer(input.columns))
+    def _get_read_input_function(input_table, file_format: str = None):
+        if not file_format:
+            _, extension = os.path.splitext(input_table)
+
+            file_format = extension.lstrip(".")
+
+        try:
+            return getattr(dd, f"read_{file_format}")
+        except AttributeError:
+            raise AttributeError("Can not read files of format {file_format}")
 
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
