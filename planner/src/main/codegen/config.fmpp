@@ -45,10 +45,11 @@ data: {
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
+         "SqlCreateTable()"
+         "SqlDescribeTable()"
+         "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
-         "SqlShowColumns()"
-         "SqlCreateTable()"
       ]
 
       # location of the implementation
