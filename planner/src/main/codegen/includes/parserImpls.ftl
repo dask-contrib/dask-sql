@@ -1,13 +1,21 @@
 // SHOW SCHEMAS
 SqlNode SqlShowSchemas() :
 {
-    SqlParserPos pos;
+    final SqlParserPos pos;
+    SqlIdentifier catalog = null;
+    SqlNode like = null;
 }
 {
     <SHOW> <SCHEMAS>
+    (
+        <FROM> catalog = SimpleIdentifier()
+    )?
+    (
+        <LIKE> like = Literal()
+    )?
     {
         pos = getPos();
-        return new SqlShowSchemas(pos);
+        return new SqlShowSchemas(pos, catalog, like);
     }
 }
 
