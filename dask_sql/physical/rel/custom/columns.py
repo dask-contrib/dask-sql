@@ -23,15 +23,14 @@ class ShowColumnsPlugin(BaseRelPlugin):
     ) -> DataContainer:
         components = list(map(str, sql.getTable().names))
 
+        # some queries might also include the database
+        # as we do not have such a concept, we just get rid of it
+        components = components[-2:]
         tableName = components[-1]
 
         if len(components) == 2:
             if components[0] != context.schema_name:
                 raise AttributeError(f"Schema {components[0]} is not defined.")
-        elif len(components) > 2:
-            raise AttributeError(
-                "Table specification must be in the form [schema.]table"
-            )
 
         dc = context.tables[tableName]
         cols = dc.column_container.columns
