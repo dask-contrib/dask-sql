@@ -23,7 +23,7 @@ class ShowTablesPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        schema = str(sql.getSchema())
+        schema = str(sql.getSchema()).split(".")[-1]
         if schema != context.schema_name:
             raise AttributeError(f"Schema {schema} is not defined.")
 
