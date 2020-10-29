@@ -9,7 +9,9 @@ class ShowTestCase(DaskTestCase):
         df = self.c.sql("SHOW SCHEMAS")
         df = df.compute()
 
-        expected_df = pd.DataFrame({"Schema": [self.c.schema_name]})
+        expected_df = pd.DataFrame(
+            {"Schema": [self.c.schema_name, "information_schema"]}
+        )
 
         assert_frame_equal(df, expected_df)
 

@@ -9,13 +9,17 @@ Instead of rebuilding a full ODBC driver, we re-use the `presto wire protocol <h
     It is - so far - only a start of the development and missing important concepts, such as
     authentication.
 
-    You need to install ``fastapi>=0.61.1`` and ``uvicorn>=0.11.3`` before running the server.
-
 You can test the sql presto server by running
 
 .. code-block:: bash
 
     python dask_sql/server/app.py
+
+or by using the created docker image
+
+.. code-block:: bash
+
+    docker run --rm -it -p 8080:8080 nbraun/dask-sql:0.1.2
 
 in one terminal. This will spin up a server on port 8080 (by default).
 The port and bind interfaces can be controlled with the ``--port`` and ``--host`` switch.
@@ -87,7 +91,7 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
    .. code-block:: dockerfile
 
-        FROM nbraun/dask-sql
+        FROM nbraun/dask-sql:0.1.2
 
         COPY startup_script.py /opt/dask_sql/startup_script.py
 

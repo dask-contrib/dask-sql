@@ -1,11 +1,36 @@
+import os
+import warnings
 from collections import defaultdict
 from dask_sql.datacontainer import DataContainer
 import re
 from datetime import datetime
+import logging
 
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+def _set_or_check_java_home():
+    """
+    We have some assumptions on the JAVA_HOME, namely our jvm comes from
+    a conda environment. That does not need to be true, but we should at
+    least warn the user.
+    """
+    if "CONDA_PREFIX" not in os.environ:
+        # we are not running in a conda env
+        return  # pragma: no cover
+
+    if "JAVA_HOME" not in os.environ:  # pragma: no cover
+        logger.debug("Setting $JAVA_HOME to $CONDA_PREFIX")
+        os.environ["JAVA_HOME"] = os.environ["CONDA_PREFIX"]
+    elif os.environ["JAVA_HOME"] != os.environ["CONDA_PREFIX"]:  # pragma: no cover
+        warnings.warn(
+            "You are running in a conda environment, but the JAVA_PATH is not using it. "
+            "If this is by mistake, set $JAVA_HOME to $CONDA_PREFIX."
+        )
 
 
 def is_frame(df):
