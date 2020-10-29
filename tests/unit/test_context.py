@@ -62,7 +62,7 @@ class ContextTestCase(TestCase):
 
         self.assertEqual(
             sql_string,
-            "LogicalProject(a=[$0])\n  LogicalTableScan(table=[[schema, df]])\n",
+            f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}",
         )
 
     def test_sql(self):
