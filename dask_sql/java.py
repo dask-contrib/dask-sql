@@ -59,4 +59,3 @@ def get_java_class(instance):
 def get_short_java_class(instance):
     """Get only the last part of the class of a java object, after the last ."""
     return get_java_class(instance).split(".")[-1]
-
