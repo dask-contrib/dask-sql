@@ -32,7 +32,11 @@ class ShowColumnsPlugin(BaseRelPlugin):
             if components[0] != context.schema_name:
                 raise AttributeError(f"Schema {components[0]} is not defined.")
 
-        dc = context.tables[tableName]
+        try:
+            dc = context.tables[tableName]
+        except KeyError:  # pragma: no cover
+            raise AttributeError(f"Table {tableName} is not defined.")
+
         cols = dc.column_container.columns
         dtypes = list(map(lambda x: str(python_to_sql_type(x)).lower(), dc.df.dtypes))
         df = pd.DataFrame(

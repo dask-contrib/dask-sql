@@ -29,6 +29,9 @@ class ShowSchemasPlugin(BaseRelPlugin):
 
         # We currently do not use any of the passed additional parameters,
         # such as FROM or LIKE.
+        like = str(sql.like).strip("'")
+        if like and like != "None":
+            df = df[df.Schema == like]
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
