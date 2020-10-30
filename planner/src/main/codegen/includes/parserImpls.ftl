@@ -49,11 +49,13 @@ SqlNode SqlShowColumns() :
 SqlNode SqlDescribeTable() :
 {
     final Span s;
+    final SqlIdentifier schemaName;
     final SqlIdentifier tableName;
 }
 {
     <DESCRIBE> { s = span(); }
-    tableName = CompoundIdentifier()
+
+    tableName = CompoundTableIdentifier()
     {
         return new SqlShowColumns(s.end(tableName), tableName);
     }
