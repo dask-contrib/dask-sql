@@ -1,110 +1,90 @@
-import os
-import tempfile
-
+import pytest
 from fastapi.testclient import TestClient
 
-from dask_sql import Context
 from dask_sql.server.app import app
-from tests.integration.fixtures import DaskTestCase
 
 
-class TestServer(DaskTestCase):
-    def setUp(self):
-        super().setUp()
+@pytest.fixture()
+def app_client(c):
+    app.c = c
+    yield TestClient(app)
 
-        app.c = Context()
-        self.client = TestClient(app)
 
-        self.f = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+def test_routes(app_client):
+    assert app_client.post("/v1/statement", data="SELECT 1 + 1").status_code == 200
+    assert app_client.get("/v1/statement", data="SELECT 1 + 1").status_code == 405
+    assert app_client.get("/v1/empty").status_code == 200
 
-    def tearDown(self):
-        super().tearDown()
 
-        if os.path.exists(self.f):
-            os.unlink(self.f)
+def test_sql_query(app_client):
+    response = app_client.post("/v1/statement", data="SELECT 1 + 1")
+    assert response.status_code == 200
 
-    def test_routes(self):
-        self.assertEqual(
-            self.client.post("/v1/statement", data="SELECT 1 + 1").status_code, 200
+    result = response.json()
+
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "1 + 1",
+            "type": "integer",
+            "typeSignature": {"rawType": "integer", "arguments": []},
+        }
+    ]
+
+    assert result["data"] == [[2]]
+    assert "error" not in result
+
+
+def test_wrong_sql_query(app_client):
+    response = app_client.post("/v1/statement", data="SELECT 1 + ")
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert "columns" not in result
+    assert "data" not in result
+    assert "error" in result
+    assert "message" in result["error"]
+    assert "errorLocation" in result["error"]
+    assert result["error"]["errorLocation"] == {"lineNumber": 1, "columnNumber": 10}
+
+
+def test_add_and_query(app_client, df, temporary_data_file):
+    df.to_csv(temporary_data_file, index=False)
+
+    response = app_client.post(
+        "/v1/statement",
+        data=f"""
+        CREATE TABLE
+            new_table
+        WITH (
+            location = '{temporary_data_file}',
+            format = 'csv'
         )
-        self.assertEqual(
-            self.client.get("/v1/statement", data="SELECT 1 + 1").status_code, 405
-        )
-        self.assertEqual(self.client.get("/v1/empty").status_code, 200)
+    """,
+    )
+    assert response.status_code == 200
 
-    def test_sql_query(self):
-        response = self.client.post("/v1/statement", data="SELECT 1 + 1")
-        self.assertEqual(response.status_code, 200)
+    response = app_client.post("/v1/statement", data="SELECT * FROM new_table")
+    assert response.status_code == 200
 
-        result = response.json()
+    result = response.json()
 
-        self.assertIn("columns", result)
-        self.assertIn("data", result)
-        self.assertEqual(
-            result["columns"],
-            [
-                {
-                    "name": "1 + 1",
-                    "type": "integer",
-                    "typeSignature": {"rawType": "integer", "arguments": []},
-                }
-            ],
-        )
-        self.assertEqual(result["data"], [[2]])
-        self.assertNotIn("error", result)
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "a",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        },
+        {
+            "name": "b",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        },
+    ]
 
-    def test_wrong_sql_query(self):
-        response = self.client.post("/v1/statement", data="SELECT 1 + ")
-        self.assertEqual(response.status_code, 200)
-
-        result = response.json()
-
-        self.assertNotIn("columns", result)
-        self.assertNotIn("data", result)
-        self.assertIn("error", result)
-        self.assertIn("message", result["error"])
-        self.assertIn("errorLocation", result["error"])
-        self.assertEqual(
-            result["error"]["errorLocation"], {"lineNumber": 1, "columnNumber": 10}
-        )
-
-    def test_add_and_query(self):
-        self.df.to_csv(self.f, index=False)
-
-        response = self.client.post(
-            "/v1/statement",
-            data=f"""
-            CREATE TABLE
-                new_table
-            WITH (
-                location = '{self.f}',
-                format = 'csv'
-            )
-        """,
-        )
-        self.assertEqual(response.status_code, 200)
-
-        response = self.client.post("/v1/statement", data="SELECT * FROM new_table")
-        self.assertEqual(response.status_code, 200)
-
-        result = response.json()
-
-        self.assertIn("columns", result)
-        self.assertIn("data", result)
-        self.assertEqual(
-            result["columns"],
-            [
-                {
-                    "name": "a",
-                    "type": "double",
-                    "typeSignature": {"rawType": "double", "arguments": []},
-                },
-                {
-                    "name": "b",
-                    "type": "double",
-                    "typeSignature": {"rawType": "double", "arguments": []},
-                },
-            ],
-        )
-        self.assertEqual(len(result["data"]), 700)
-        self.assertNotIn("error", result)
+    assert len(result["data"]) == 700
+    assert "error" not in result

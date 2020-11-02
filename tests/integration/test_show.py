@@ -1,68 +1,69 @@
+import pytest
+
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from tests.integration.fixtures import DaskTestCase
+
+def test_schemas(c):
+    df = c.sql("SHOW SCHEMAS")
+    df = df.compute()
+
+    expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
+
+    assert_frame_equal(df, expected_df)
 
 
-class ShowTestCase(DaskTestCase):
-    def test_schemas(self):
-        df = self.c.sql("SHOW SCHEMAS")
-        df = df.compute()
+def test_tables(c):
+    df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
+    df = df.compute()
 
-        expected_df = pd.DataFrame(
-            {"Schema": [self.c.schema_name, "information_schema"]}
-        )
+    expected_df = pd.DataFrame(
+        {
+            "Table": [
+                "df",
+                "df_simple",
+                "user_table_1",
+                "user_table_2",
+                "long_table",
+                "user_table_inf",
+                "user_table_nan",
+                "string_table",
+            ]
+        }
+    )
 
-        assert_frame_equal(df, expected_df)
+    assert_frame_equal(
+        df.sort_values("Table").reset_index(drop=True),
+        expected_df.sort_values("Table").reset_index(drop=True),
+    )
 
-    def test_tables(self):
-        df = self.c.sql(f'SHOW TABLES FROM "{self.c.schema_name}"')
-        df = df.compute()
 
-        expected_df = pd.DataFrame(
-            {
-                "Table": [
-                    "df",
-                    "df_simple",
-                    "user_table_1",
-                    "user_table_2",
-                    "long_table",
-                    "user_table_inf",
-                    "user_table_nan",
-                    "string_table",
-                ]
-            }
-        )
+def test_columns(c):
+    df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
+    df = df.compute()
 
-        assert_frame_equal(df.sort_values("Table"), expected_df.sort_values("Table"))
+    expected_df = pd.DataFrame(
+        {
+            "Column": ["user_id", "b",],
+            "Type": ["bigint", "bigint"],
+            "Extra": [""] * 2,
+            "Comment": [""] * 2,
+        }
+    )
 
-    def test_columns(self):
-        df = self.c.sql(f'SHOW COLUMNS FROM "{self.c.schema_name}"."user_table_1"')
-        df = df.compute()
+    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
 
-        expected_df = pd.DataFrame(
-            {
-                "Column": ["user_id", "b",],
-                "Type": ["bigint", "bigint"],
-                "Extra": [""] * 2,
-                "Comment": [""] * 2,
-            }
-        )
+    df = c.sql('SHOW COLUMNS FROM "user_table_1"')
+    df = df.compute()
+    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
 
-        assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
 
-        df = self.c.sql('SHOW COLUMNS FROM "user_table_1"')
-        df = df.compute()
-        assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
-
-    def test_wrong_input(self):
-        self.assertRaises(
-            AttributeError, self.c.sql, 'SHOW COLUMNS FROM "wrong"."table"'
-        )
-        self.assertRaises(
-            AttributeError, self.c.sql, 'SHOW COLUMNS FROM "wrong"."table"."column"'
-        )
-        self.assertRaises(
-            KeyError, self.c.sql, f'SHOW COLUMNS FROM "{self.c.schema_name}"."table"'
-        )
-        self.assertRaises(AttributeError, self.c.sql, 'SHOW TABLES FROM "wrong"')
+def test_wrong_input(c):
+    with pytest.raises(AttributeError):
+        c.sql('SHOW COLUMNS FROM "wrong"."table"')
+    with pytest.raises(AttributeError):
+        c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
+    with pytest.raises(KeyError):
+        c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
+    with pytest.raises(AttributeError):
+        c.sql('SHOW TABLES FROM "wrong"')
