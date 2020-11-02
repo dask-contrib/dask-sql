@@ -91,6 +91,7 @@ def test_add_and_query(app_client, df, temporary_data_file):
     )
     result = response.json()
     assert "error" not in result
+    assert response.status_code == 200
 
     response = app_client.post("/v1/statement", data="SELECT * FROM new_table")
     assert response.status_code == 200
