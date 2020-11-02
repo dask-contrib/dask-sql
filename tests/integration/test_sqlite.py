@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def engine():
     yield sqlite3.connect(":memory:")
 

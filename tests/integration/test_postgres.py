@@ -6,7 +6,7 @@ docker = pytest.importorskip("docker")
 from sqlalchemy import create_engine
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def engine():
     client = docker.from_env()
 

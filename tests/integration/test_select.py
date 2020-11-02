@@ -87,4 +87,3 @@ def test_wrong_input(c):
 
     with pytest.raises(ParsingException):
         c.sql("""SELECT x FROM df""")
-
