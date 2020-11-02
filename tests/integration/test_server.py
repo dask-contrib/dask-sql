@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from dask_sql.server.app import _init_app, app
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def app_client():
     _init_app(app)
 
