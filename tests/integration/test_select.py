@@ -1,88 +1,90 @@
+import pytest
+
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import dask.dataframe as dd
 
 from dask_sql.utils import ParsingException
-from tests.integration.fixtures import DaskTestCase
 
 
-class SelectTestCase(DaskTestCase):
-    def test_select(self):
-        df = self.c.sql("SELECT * FROM df")
-        df = df.compute()
+def test_select(c, df):
+    result_df = c.sql("SELECT * FROM df")
+    result_df = result_df.compute()
 
-        assert_frame_equal(df, self.df)
+    assert_frame_equal(result_df, df)
 
-    def test_select_alias(self):
-        df = self.c.sql("SELECT a as b, b as a FROM df")
-        df = df.compute()
 
-        expected_df = pd.DataFrame(index=self.df.index)
-        expected_df["b"] = self.df.a
-        expected_df["a"] = self.df.b
+def test_select_alias(c, df):
+    result_df = c.sql("SELECT a as b, b as a FROM df")
+    result_df = result_df.compute()
 
-        assert_frame_equal(df[["a", "b"]], expected_df[["a", "b"]])
+    expected_df = pd.DataFrame(index=df.index)
+    expected_df["b"] = df.a
+    expected_df["a"] = df.b
 
-    def test_select_column(self):
-        df = self.c.sql("SELECT a FROM df")
-        df = df.compute()
+    assert_frame_equal(result_df[["a", "b"]], expected_df[["a", "b"]])
 
-        assert_frame_equal(df, self.df[["a"]])
 
-    def test_select_different_types(self):
-        expected_df = pd.DataFrame(
-            {
-                "date": pd.to_datetime(
-                    ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]
-                ),
-                "string": ["this is a test", "another test", "äölüć", ""],
-                "integer": [1, 2, -4, 5],
-                "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
-            }
-        )
-        self.c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")
-        df = self.c.sql(
-            """
-        SELECT *
-        FROM df
+def test_select_column(c, df):
+    result_df = c.sql("SELECT a FROM df")
+    result_df = result_df.compute()
+
+    assert_frame_equal(result_df, df[["a"]])
+
+
+def test_select_different_types(c):
+    expected_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
+            "string": ["this is a test", "another test", "äölüć", ""],
+            "integer": [1, 2, -4, 5],
+            "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
+        }
+    )
+    c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")
+    df = c.sql(
         """
-        )
-        df = df.compute()
+    SELECT *
+    FROM df
+    """
+    )
+    df = df.compute()
 
-        assert_frame_equal(df, expected_df)
+    assert_frame_equal(df, expected_df)
 
-    def test_select_expr(self):
-        df = self.c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
-        df = df.compute()
 
-        expected_df = pd.DataFrame(
-            {
-                "a": self.df["a"] + 1,
-                "bla": self.df["b"],
-                '"df"."a" - 1': self.df["a"] - 1,
-            }
-        )
-        assert_frame_equal(df, expected_df)
+def test_select_expr(c, df):
+    result_df = c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
+    result_df = result_df.compute()
 
-    def test_select_of_select(self):
-        df = self.c.sql(
-            """
-            SELECT 2*c AS e, d - 1 AS f
-            FROM
-            (
-                SELECT a - 1 AS c, 2*b  AS d
-                FROM df
-            ) AS "inner"
-            """
-        )
-        df = df.compute()
+    expected_df = pd.DataFrame(
+        {"a": df["a"] + 1, "bla": df["b"], '"df"."a" - 1': df["a"] - 1,}
+    )
+    assert_frame_equal(result_df, expected_df)
 
-        expected_df = pd.DataFrame(
-            {"e": 2 * (self.df["a"] - 1), "f": 2 * self.df["b"] - 1}
-        )
-        assert_frame_equal(df, expected_df)
 
-    def test_wrong_input(self):
-        self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")
-        self.assertRaises(ParsingException, self.c.sql, """SELECT x FROM df""")
+def test_select_of_select(c, df):
+    result_df = c.sql(
+        """
+        SELECT 2*c AS e, d - 1 AS f
+        FROM
+        (
+            SELECT a - 1 AS c, 2*b  AS d
+            FROM df
+        ) AS "inner"
+        """
+    )
+    result_df = result_df.compute()
+
+    expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
+    assert_frame_equal(result_df, expected_df)
+
+
+def test_wrong_input(c):
+    with pytest.raises(ParsingException):
+        c.sql("""SELECT x FROM df""")
+
+    with pytest.raises(ParsingException):
+        c.sql("""SELECT x FROM df""")
+

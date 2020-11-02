@@ -1,89 +1,75 @@
-import os
-import tempfile
+import pytest
+
 from pandas.testing import assert_frame_equal
 
-from tests.integration.fixtures import DaskTestCase
+
+def test_create_from_csv(c, df, temporary_data_file):
+    df.to_csv(temporary_data_file, index=False)
+
+    c.sql(
+        f"""
+        CREATE TABLE
+            new_table
+        WITH (
+            location = '{temporary_data_file}',
+            format = 'csv'
+        )
+    """
+    )
+
+    df = c.sql(
+        """
+        SELECT * FROM new_table
+    """
+    ).compute()
+
+    assert_frame_equal(df, df)
 
 
-class CreateTestCase(DaskTestCase):
-    def setUp(self):
-        super().setUp()
+def test_create_from_csv_persist(c, df, temporary_data_file):
+    df.to_csv(temporary_data_file, index=False)
 
-        self.f = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    c.sql(
+        f"""
+        CREATE TABLE
+            new_table
+        WITH (
+            location = '{temporary_data_file}',
+            format = 'csv',
+            persist = True
+        )
+    """
+    )
 
-    def tearDown(self):
-        super().tearDown()
+    df = c.sql(
+        """
+        SELECT * FROM new_table
+    """
+    ).compute()
 
-        if os.path.exists(self.f):
-            os.unlink(self.f)
+    assert_frame_equal(df, df)
 
-    def test_create_from_csv(self):
-        self.df.to_csv(self.f, index=False)
 
-        self.c.sql(
+def test_wrong_create(c):
+    with pytest.raises(AttributeError):
+        c.sql(
             f"""
             CREATE TABLE
                 new_table
             WITH (
-                location = '{self.f}',
                 format = 'csv'
             )
         """
         )
 
-        df = self.c.sql(
-            """
-            SELECT * FROM new_table
-        """
-        ).compute()
-
-        assert_frame_equal(self.df, df)
-
-    def test_create_from_csv_persist(self):
-        self.df.to_csv(self.f, index=False)
-
-        self.c.sql(
+    with pytest.raises(AttributeError):
+        c.sql(
             f"""
             CREATE TABLE
                 new_table
             WITH (
-                location = '{self.f}',
-                format = 'csv',
-                persist = True
+                format = 'strange',
+                location = 'some/path'
             )
         """
-        )
-
-        df = self.c.sql(
-            """
-            SELECT * FROM new_table
-        """
-        ).compute()
-
-        assert_frame_equal(self.df, df)
-
-    def test_wrong_create(self):
-        self.assertRaises(
-            AttributeError,
-            self.c.sql,
-            f"""
-                CREATE TABLE
-                    new_table
-                WITH (
-                    format = 'csv'
-                )
-            """,
-        )
-
-        self.assertRaises(
-            AttributeError,
-            self.c.sql,
-            f"""
-                CREATE TABLE
-                    new_table
-                WITH (
-                    format = 'strange',
-                    location = 'some/path'
-                )
-            """,
         )
