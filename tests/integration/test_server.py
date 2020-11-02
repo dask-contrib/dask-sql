@@ -1,162 +1,146 @@
-import os
-import tempfile
 from time import sleep
 
-from dask.distributed import Client
-from distributed.utils_comm import retry_operation
+import pytest
 from fastapi.testclient import TestClient
 
-from dask_sql import Context
-from dask_sql.server.app import app, _init_app
-from tests.integration.fixtures import DaskTestCase
+from dask_sql.server.app import _init_app, app
 
 
-class TestServer(DaskTestCase):
-    def setUp(self):
-        super().setUp()
+@pytest.fixture()
+def app_client():
+    _init_app(app)
 
-        _init_app(app)
-        self.client = TestClient(app)
+    yield TestClient(app)
 
-        self.f = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    app.client.close()
 
-    def tearDown(self):
-        super().tearDown()
 
-        app.client.close()
+def test_routes(app_client):
+    assert app_client.post("/v1/statement", data="SELECT 1 + 1").status_code == 200
+    assert app_client.get("/v1/statement", data="SELECT 1 + 1").status_code == 405
+    assert app_client.get("/v1/empty").status_code == 200
+    assert app_client.get("/v1/status/some-wrong-uuid").status_code == 404
+    assert app_client.delete("/v1/cancel/some-wrong-uuid").status_code == 404
+    assert app_client.get("/v1/cancel/some-wrong-uuid").status_code == 405
 
-        if os.path.exists(self.f):
-            os.unlink(self.f)
 
-    def test_routes(self):
-        self.assertEqual(
-            self.client.post("/v1/statement", data="SELECT 1 + 1").status_code, 200
+def test_sql_query_cancel(app_client):
+    response = app_client.post("/v1/statement", data="SELECT 1 + 1")
+    assert response.status_code == 200
+
+    cancel_url = response.json()["partialCancelUri"]
+
+    response = app_client.delete(cancel_url)
+    assert response.status_code == 200
+
+    response = app_client.delete(cancel_url)
+    assert response.status_code == 404
+
+
+def test_sql_query(app_client):
+    response = app_client.post("/v1/statement", data="SELECT 1 + 1")
+    assert response.status_code == 200
+
+    result = get_result_or_error(app_client, response)
+
+    assert "columns" in result
+    assert "data" in result
+    assert "error" not in result
+    assert "nextUri" not in result
+
+    assert result["columns"] == [
+        {
+            "name": "1 + 1",
+            "type": "integer",
+            "typeSignature": {"rawType": "integer", "arguments": []},
+        }
+    ]
+    assert result["data"] == [[2]]
+
+
+def test_wrong_sql_query(app_client):
+    response = app_client.post("/v1/statement", data="SELECT 1 + ")
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert "columns" not in result
+    assert "data" not in result
+    assert "error" in result
+    assert "message" in result["error"]
+    assert "errorLocation" in result["error"]
+    assert result["error"]["errorLocation"] == {
+        "lineNumber": 1,
+        "columnNumber": 10,
+    }
+
+
+def test_add_and_query(app_client, df, temporary_data_file):
+    df.to_csv(temporary_data_file, index=False)
+
+    response = app_client.post(
+        "/v1/statement",
+        data=f"""
+        CREATE TABLE
+            new_table
+        WITH (
+            location = '{temporary_data_file}',
+            format = 'csv'
         )
-        self.assertEqual(
-            self.client.get("/v1/statement", data="SELECT 1 + 1").status_code, 405
-        )
-        self.assertEqual(self.client.get("/v1/empty").status_code, 200)
-        self.assertEqual(self.client.get("/v1/status/some-wrong-uuid").status_code, 404)
-        self.assertEqual(
-            self.client.post("/v1/cancel/some-wrong-uuid").status_code, 404
-        )
+    """,
+    )
+    result = response.json()
+    assert "error" not in result
 
-    def test_sql_query_cancel(self):
-        response = self.client.post("/v1/statement", data="SELECT 1 + 1")
-        self.assertEqual(response.status_code, 200)
+    response = app_client.post("/v1/statement", data="SELECT * FROM new_table")
+    assert response.status_code == 200
 
-        cancel_url = response.json()["partialCancelUri"]
+    result = get_result_or_error(app_client, response)
 
-        response = self.client.post(cancel_url)
-        self.assertEqual(response.status_code, 200)
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "a",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        },
+        {
+            "name": "b",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        },
+    ]
 
-        response = self.client.post(cancel_url)
-        self.assertEqual(response.status_code, 404)
+    assert len(result["data"]) == 700
+    assert "error" not in result
 
-    def test_sql_query(self):
-        response = self.client.post("/v1/statement", data="SELECT 1 + 1")
-        self.assertEqual(response.status_code, 200)
 
-        result = self.get_result_or_error(response)
+def get_result_or_error(app_client, response):
+    result = response.json()
 
-        self.assertIn("columns", result)
-        self.assertIn("data", result)
-        self.assertNotIn("error", result)
-        self.assertNotIn("nextUri", result)
+    assert "nextUri" in result
+    assert "error" not in result
 
-        self.assertEqual(
-            result["columns"],
-            [
-                {
-                    "name": "1 + 1",
-                    "type": "integer",
-                    "typeSignature": {"rawType": "integer", "arguments": []},
-                }
-            ],
-        )
-        self.assertEqual(result["data"], [[2]])
+    status_url = result["nextUri"]
+    next_url = status_url
 
-    def test_wrong_sql_query(self):
-        response = self.client.post("/v1/statement", data="SELECT 1 + ")
-        self.assertEqual(response.status_code, 200)
+    counter = 0
+    while True:
+        response = app_client.get(next_url)
+        assert response.status_code == 200
 
         result = response.json()
 
-        self.assertNotIn("columns", result)
-        self.assertNotIn("data", result)
-        self.assertIn("error", result)
-        self.assertIn("message", result["error"])
-        self.assertIn("errorLocation", result["error"])
-        self.assertEqual(
-            result["error"]["errorLocation"], {"lineNumber": 1, "columnNumber": 10}
-        )
+        if "nextUri" not in result:
+            break
 
-    def test_add_and_query(self):
-        self.df.to_csv(self.f, index=False)
+        next_url = result["nextUri"]
 
-        response = self.client.post(
-            "/v1/statement",
-            data=f"""
-            CREATE TABLE
-                new_table
-            WITH (
-                location = '{self.f}',
-                format = 'csv'
-            )
-        """,
-        )
-        result = response.json()
-        self.assertNotIn("error", result)
+        counter += 1
+        assert counter <= 100
 
-        response = self.client.post("/v1/statement", data="SELECT * FROM new_table")
-        self.assertEqual(response.status_code, 200)
+        sleep(0.1)
 
-        result = self.get_result_or_error(response)
+    return result
 
-        self.assertIn("columns", result)
-        self.assertIn("data", result)
-        self.assertEqual(
-            result["columns"],
-            [
-                {
-                    "name": "a",
-                    "type": "double",
-                    "typeSignature": {"rawType": "double", "arguments": []},
-                },
-                {
-                    "name": "b",
-                    "type": "double",
-                    "typeSignature": {"rawType": "double", "arguments": []},
-                },
-            ],
-        )
-        self.assertEqual(len(result["data"]), 700)
-        self.assertNotIn("error", result)
-
-    def get_result_or_error(self, response):
-        result = response.json()
-
-        self.assertIn("nextUri", result)
-        self.assertNotIn("error", result)
-
-        status_url = result["nextUri"]
-        next_url = status_url
-
-        counter = 0
-        while True:
-            response = self.client.get(next_url)
-            self.assertEqual(response.status_code, 200)
-
-            result = response.json()
-
-            if "nextUri" not in result:
-                break
-
-            next_url = result["nextUri"]
-
-            counter += 1
-            self.assertLessEqual(counter, 100)
-
-            sleep(0.1)
-
-        return result
