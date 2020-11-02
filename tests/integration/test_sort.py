@@ -22,6 +22,22 @@ class SortTestCase(DaskTestCase):
 
         assert_frame_equal(df, df_expected)
 
+    def test_sort_by_alias(self):
+        df = self.c.sql(
+            """
+        SELECT
+            b AS my_column
+        FROM user_table_1
+        ORDER BY my_column, user_id DESC
+        """
+        )
+        df = df.compute().reset_index(drop=True).rename(columns={"my_column": "b"})
+        df_expected = self.user_table_1.sort_values(
+            ["b", "user_id"], ascending=[True, False]
+        ).reset_index(drop=True)[["b"]]
+
+        assert_frame_equal(df, df_expected)
+
     def test_sort_with_nan(self):
         self.assertRaises(
             ValueError,
