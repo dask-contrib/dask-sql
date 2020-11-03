@@ -4,6 +4,7 @@ import dask.dataframe as dd
 from dask.highlevelgraph import HighLevelGraph
 from dask.dataframe.core import new_dd_object
 import pandas as pd
+import dask.array as da
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -70,9 +71,12 @@ class LogicalSortPlugin(BaseRelPlugin):
         # Therefore we need to do a single pass over the dataframe
         # to warn the user
         # We shall also treat inf as na
-        with pd.option_context("use_inf_as_na", True):
-            if not (~df[first_sort_column].isna()).all().compute():
-                raise ValueError("Can not sort a column with NaNs")
+        col = df[first_sort_column]
+        isnan = col.isna().any()
+        numeric = pd.api.types.is_numeric_dtype(col.dtype)
+        # Important to evaluate the isinf late, as it only works with numeric-type columns
+        if isnan.compute() or (numeric and da.isinf(col).any().compute()):
+            raise ValueError("Can not sort a column with NaNs")
 
         df = df.set_index(first_sort_column, drop=False).reset_index(drop=True)
 
