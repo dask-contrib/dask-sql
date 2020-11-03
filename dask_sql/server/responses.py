@@ -48,11 +48,15 @@ class StatementStats:
 
 
 class QueryResults:
-    def __init__(self, request: Request):
+    def __init__(self, request: Request, next_url: str = None, cancel_url: str = None):
         empty_url = str(request.url.replace(path=request.app.url_path_for("empty")))
 
         self.id = str(uuid.uuid4())
         self.infoUri = empty_url
+        if next_url:
+            self.nextUri = next_url
+        if cancel_url:
+            self.partialCancelUri = cancel_url
         self.stats = StatementStats()
         self.warnings = []
 
@@ -73,7 +77,7 @@ class DataResults(QueryResults):
 
     @staticmethod
     def get_data_description(df):
-        return df.itertuples(index=False, name=None)
+        return list(df.itertuples(index=False, name=None))
 
     def __init__(self, df: dd.DataFrame, request: Request):
         super().__init__(request)
@@ -83,8 +87,6 @@ class DataResults(QueryResults):
 
         self.columns = self.get_column_description(df)
         self.data = self.get_data_description(df)
-        self.nextUri = self.infoUri  # use empty URL
-        self.partialCancelUri = self.infoUri  # use empty URL
 
 
 class ErrorResults(QueryResults):

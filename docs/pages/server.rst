@@ -15,19 +15,26 @@ You can test the sql presto server by running
 
     python dask_sql/server/app.py
 
+or by running these lines of code
+
+.. code-block:: python
+
+    from dask_sql import run_server
+
+    run_server()
+
 or by using the created docker image
 
 .. code-block:: bash
 
     docker run --rm -it -p 8080:8080 nbraun/dask-sql:0.1.2
 
-in one terminal. This will spin up a server on port 8080 (by default).
-The port and bind interfaces can be controlled with the ``--port`` and ``--host`` switch.
+This will spin up a server on port 8080 (by default).
+The port and bind interfaces can be controlled with the ``--port`` and ``--host`` command line arguments (or options to :func:`dask_sql.run_server`).
 
 The running server looks similar to a normal presto database to any presto client and can therefore be used
 with any library, e.g. the `presto CLI client <https://prestosql.io/docs/current/installation/cli.html>`_ or
 ``sqlalchemy`` via the `PyHive <https://github.com/dropbox/PyHive#sqlalchemy>`_ package:
-
 
 .. code-block:: bash
 
@@ -56,6 +63,22 @@ Or via ``sqlalchemy`` (after having installed ``PyHive``):
 Of course, it is also possible to call the usual ``CREATE TABLE``
 commands.
 
+Preregister your own data sources
+---------------------------------
+
+The python function :func:`dask_sql.run_server` accepts an already created :class:`dask_sql.Context`.
+This means you can preload your data sources and register them with a context before starting your server.
+By this, your server will already have data to query:
+
+.. code-block:: python
+
+    from dask_sql import Context
+    c = Context()
+    c.register_dask_table(...)
+
+    # Then spin up the ``dask-sql`` server
+    from dask_sql import run_server
+    run_server(context=c)
 
 
 Run it in your own ``dask`` cluster
@@ -77,14 +100,11 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
         from dask.distributed import Client
         client = Client(scheduler_address)
 
-        # Maybe pre-fill the ``dask-sql`` context:
-        from dask_sql import Context
-        c = Context()
         ...
 
         # Then spin up the ``dask-sql`` server
         from dask_sql import run_server
-        run_server(context=c)
+        run_server(client=client)
 
 2. Deploy this script to your cluster as a service. How you do this, depends on your cluster infrastructure (kubernetes, mesos, openshift, ...).
    For example you could create a docker image with a dockerfile similar to this:
@@ -98,3 +118,6 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
         ENTRYPOINT [ "/opt/conda/bin/python", "/opt/dask_sql/startup_script.py" ]
 
 3. After your service is deployed, you can use it in your applications as a "normal" presto database.
+
+The ``dask-sql`` SQL server was successfully tested with `Apache Hue <https://gethue.com/>`_ and
+`Metabase <https://www.metabase.com/>`_.

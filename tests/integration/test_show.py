@@ -12,6 +12,13 @@ def test_schemas(c):
 
     assert_frame_equal(df, expected_df)
 
+    df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
+    df = df.compute()
+
+    expected_df = pd.DataFrame({"Schema": ["information_schema"]})
+
+    assert_frame_equal(df.reset_index(drop=True), expected_df.reset_index(drop=True))
+
 
 def test_tables(c):
     df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
@@ -63,7 +70,7 @@ def test_wrong_input(c):
         c.sql('SHOW COLUMNS FROM "wrong"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
-    with pytest.raises(KeyError):
+    with pytest.raises(AttributeError):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW TABLES FROM "wrong"')
