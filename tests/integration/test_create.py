@@ -1,5 +1,5 @@
 import pytest
-
+import dask.dataframe as dd
 from pandas.testing import assert_frame_equal
 
 
@@ -24,6 +24,29 @@ def test_create_from_csv(c, df, temporary_data_file):
     ).compute()
 
     assert_frame_equal(df, df)
+
+
+def test_cluster_memory(client, c, df):
+    client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
+
+    c.sql(
+        f"""
+        CREATE TABLE
+            new_table
+        WITH (
+            location = 'df',
+            format = 'memory'
+        )
+    """
+    )
+
+    return_df = c.sql(
+        """
+        SELECT * FROM new_table
+    """
+    ).compute()
+
+    assert_frame_equal(df, return_df)
 
 
 def test_create_from_csv_persist(c, df, temporary_data_file):
