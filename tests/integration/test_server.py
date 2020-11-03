@@ -144,4 +144,3 @@ def get_result_or_error(app_client, response):
         sleep(0.1)
 
     return result
-
