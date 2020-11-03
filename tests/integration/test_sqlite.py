@@ -67,6 +67,7 @@ def test_sort(assert_query_gives_same_result):
         SELECT
             c, d
         FROM df2
+        WHERE d IS NOT NULL -- sqlite sorts the NaNs in a strange way
         ORDER BY c, d, user_id
     """
     )
@@ -78,6 +79,7 @@ def test_limit(assert_query_gives_same_result):
         SELECT
             c, d
         FROM df2
+        WHERE d IS NOT NULL -- sqlite sorts the NaNs in a strange way
         ORDER BY c, d, user_id
         LIMIT 10 OFFSET 20
     """
@@ -88,6 +90,7 @@ def test_limit(assert_query_gives_same_result):
         SELECT
             c, d
         FROM df2
+        WHERE d IS NOT NULL -- sqlite sorts the NaNs in a strange way
         ORDER BY c, d, user_id
         LIMIT 200
     """
@@ -100,6 +103,7 @@ def test_groupby(assert_query_gives_same_result):
         SELECT
             d, SUM(c), SUM(user_id)
         FROM df2
+        WHERE d IS NOT NULL -- dask behaves differently on NaNs in groupbys
         GROUP BY d
         ORDER BY SUM(c)
         LIMIT 10
