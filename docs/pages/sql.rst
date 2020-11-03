@@ -100,6 +100,8 @@ To show column information on a specific table named "df"
 
     SHOW COLUMNS FROM "df"
 
+.. _creation:
+
 Table Creation
 --------------
 
@@ -125,6 +127,8 @@ and format.
 With the ``persist`` parameter, it can be controlled if the data should be cached
 or re-read for every SQL query.
 The additional parameters are passed to the call to ``read_<format>``.
+If you omit the format argument, it will be deduced from the file name extension.
+More ways to load data can be found in :ref:`data_input`.
 
 
 Implemented operations

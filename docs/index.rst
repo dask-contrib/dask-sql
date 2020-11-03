@@ -67,6 +67,7 @@ but any other data (from disk, S3, API, hdfs) can be used.
    pages/installation
    pages/quickstart
    pages/sql
+   pages/data_input
    pages/custom
    pages/api
    pages/server
