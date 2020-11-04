@@ -59,6 +59,9 @@ but any other data (from disk, S3, API, hdfs) can be used.
    # (just an example, could also be done via SQL)
    print(result.x.mean().compute())
 
+The API of ``dask-sql`` is very similar to the one from `blazingsql <http://blazingsql.com/>`_,
+which makes interchanging distributed CPU and GPU calculation easy.
+
 
 .. toctree::
    :maxdepth: 1
