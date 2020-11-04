@@ -177,6 +177,7 @@ def test_groupby(assert_query_gives_same_result):
         SELECT
             d, SUM(1.0 * c), AVG(1.0 * user_id)
         FROM df2
+        WHERE d IS NOT NULL -- dask behaves differently on NaNs in groupbys
         GROUP BY d
         ORDER BY SUM(c)
         LIMIT 10
@@ -202,6 +203,16 @@ def test_filter(assert_query_gives_same_result):
         FROM df2
         WHERE
             d NOT LIKE '%c'
+    """
+    )
+
+    assert_query_gives_same_result(
+        """
+        SELECT
+            d
+        FROM df2
+        WHERE
+            (d NOT LIKE '%c') IS NULL
     """
     )
 

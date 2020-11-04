@@ -150,6 +150,17 @@ def test_like(c, string_table):
 
     assert_frame_equal(df, string_table)
 
+    string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
+    c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
+    df = c.sql(
+        """
+        SELECT * FROM string_table2
+        WHERE b LIKE 'b'
+    """
+    ).compute()
+
+    assert_frame_equal(df, string_table2.iloc[[1]])
+
 
 def test_null(c):
     df = c.sql(
@@ -163,6 +174,7 @@ def test_null(c):
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, False, True]
+    expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, True, False]
     assert_frame_equal(df, expected_df)
 
@@ -177,6 +189,7 @@ def test_null(c):
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, True, True]
+    expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, False, False]
     assert_frame_equal(df, expected_df)
 
@@ -208,8 +221,12 @@ def test_boolean_operations(c):
             "nf": [True, False, True],
             "u": [False, False, True],
             "nu": [True, True, False],
-        }
+        },
+        dtype="bool",
     )
+    expected_df["nt"] = expected_df["nt"].astype("boolean")
+    expected_df["nf"] = expected_df["nf"].astype("boolean")
+    expected_df["nu"] = expected_df["nu"].astype("boolean")
     assert_frame_equal(df, expected_df)
 
 

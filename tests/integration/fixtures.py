@@ -116,7 +116,7 @@ def assert_query_gives_same_result(engine):
             {
                 "user_id": np.random.choice([1, 2, 3, 4], 100),
                 "c": np.random.randint(20, 30, 100),
-                "d": np.random.choice(["a", "b", "c"], 100),
+                "d": np.random.choice(["a", "b", "c", None], 100),
             }
         ),
         npartitions=3,
@@ -129,6 +129,7 @@ def assert_query_gives_same_result(engine):
                     "".join(np.random.choice(["a", "B", "c", "D"], 10))
                     for _ in range(100)
                 ]
+                + [None]
             }
         ),
         npartitions=3,
