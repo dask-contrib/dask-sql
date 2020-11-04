@@ -42,7 +42,7 @@ def test_select_different_types(c):
             "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
         }
     )
-    c.register_dask_table(dd.from_pandas(expected_df, npartitions=1), "df")
+    c.create_table("df", expected_df)
     df = c.sql(
         """
     SELECT *

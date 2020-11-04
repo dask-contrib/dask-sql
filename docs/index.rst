@@ -26,7 +26,7 @@ but any other data (from disk, S3, API, hdfs) can be used.
    # Load the data and register it in the context
    # This will give the table a name
    df = timeseries()
-   c.register_dask_table(df, "timeseries")
+   c.create_table("timeseries", df)
 
    # Now execute an SQL query. The result is a dask dataframe
    # The query looks for the id with the highest x for each name
@@ -58,6 +58,9 @@ but any other data (from disk, S3, API, hdfs) can be used.
    # ... or use it for any other dask calculation
    # (just an example, could also be done via SQL)
    print(result.x.mean().compute())
+
+The API of ``dask-sql`` is very similar to the one from `blazingsql <http://blazingsql.com/>`_,
+which makes interchanging distributed CPU and GPU calculation easy.
 
 
 .. toctree::

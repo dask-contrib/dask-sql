@@ -3,7 +3,7 @@ from dask.datasets import timeseries
 
 def test_complex_query(c):
     df = timeseries(freq="1d").persist()
-    c.register_dask_table(df, "timeseries")
+    c.create_table("timeseries", df)
 
     result = c.sql(
         """

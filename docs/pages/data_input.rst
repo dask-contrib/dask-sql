@@ -22,9 +22,38 @@ Make sure to install required libraries both on the driver and worker machines.
     c = Context()
     df = dd.read_csv("s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
 
-    c.register_dask_table(df, "my_data")
+    c.create_table("my_data", df)
 
-2. Load if via SQL
+or in short (equivalent):
+
+.. code-block:: python
+
+    from dask_sql import Context
+
+    c = Context()
+
+    c.create_table("my_data", "s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+
+Load hive data
+''''''''''''''
+
+As an experimental feature, it is now also possible to use data stored in the Apache Hive metastore.
+For this, ``dask-sql`` will retrieve the information on the storage location and format
+from the metastore and will then register the raw data directly in the context.
+This means, no Hive data query will be issued and you might be able to see a speed improvement.
+
+.. code-block:: python
+
+    from dask_sql import Context
+    from pyhive.hive import connect
+
+    c = Context()
+
+    cursor = connect("hive-server", 10000).cursor()
+    c.create_table("my_data", cursor, hive_table_name="the_name_in_hive")
+
+
+2. Load it via SQL
 ------------------
 
 If you are connected to the SQL server implementation or you do not want to issue python command calls, you can also
@@ -71,7 +100,7 @@ To achieve the same thing from python, you can just use dask's methods to get th
 .. code-block:: python
 
     df = client.get_dataset("my_df")
-    c.register_dask_table(df, "my_data")
+    c.create_table("my_data", df)
 
 
 .. note::

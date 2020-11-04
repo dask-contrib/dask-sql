@@ -106,7 +106,7 @@ Table Creation
 --------------
 
 As described in :ref:`quickstart`, it is possible to register an already
-created dask dataframe with a call to ``c.register_dask_table``.
+created dask dataframe with a call to ``c.create_table``.
 However, it is also possible to load data directly from disk (or s3, hdfs, URL, ...)
 and register it as a table in ``dask_sql``.
 Behind the scenes, a call to one of the ``read_<format>`` of the ``dask.dataframe``

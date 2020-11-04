@@ -65,7 +65,7 @@ def test_sort_with_nan(c):
 
 def test_sort_strings(c):
     string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
-    c.register_dask_table(dd.from_pandas(string_table, npartitions=1), "string_table")
+    c.create_table("string_table", string_table)
 
     df = c.sql(
         """

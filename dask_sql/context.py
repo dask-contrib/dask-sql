@@ -1,8 +1,10 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 from collections import namedtuple
 import logging
+import warnings
 
 import dask.dataframe as dd
+import pandas as pd
 
 from dask_sql.java import (
     DaskAggregateFunction,
@@ -14,10 +16,11 @@ from dask_sql.java import (
     ValidationException,
     get_java_class,
 )
+from dask_sql.input_utils import to_dc, InputType
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical, custom
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.datacontainer import DataContainer
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
@@ -42,7 +45,7 @@ class Context:
             c = Context()
 
             # Register a table
-            c.register_dask_table(df, "my_table")
+            c.create_table("my_table", df)
 
             # Now execute an SQL query. The result is a dask dataframe
             result = c.sql("SELECT a, b FROM my_table")
@@ -54,7 +57,7 @@ class Context:
 
     See also:
         :func:`sql`
-        :func:`register_dask_table`
+        :func:`create_table`
 
     """
 
@@ -89,13 +92,36 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
-    def register_dask_table(self, df: dd.DataFrame, name: str):
+    def create_table(
+        self,
+        table_name: str,
+        input_table: InputType,
+        file_format: str = None,
+        persist: bool = True,
+        hive_table_name: str = None,
+        hive_schema_name: str = "default",
+        **kwargs,
+    ):
         """
-        Registering a dask table makes it usable in SQL queries.
+        Registering a (dask/pandas) table makes it usable in SQL queries.
         The name you give here can be used as table name in the SQL later.
 
         Please note, that the table is stored as it is now.
         If you change the table later, you need to re-register.
+
+        Instead of passing an already loaded table, it is also possible
+        to pass a string to a storage location.
+        The library will then try to load the data using one of
+        `dask's read methods <https://docs.dask.org/en/latest/dataframe-create.html>`_.
+        If the file format can not be deduced automatically, it is also
+        possible to specify it via the ``file_format`` parameter.
+        Typical file formats are csv or parquet.
+        Any additional parameters will get passed on to the read method.
+        Please note that some file formats require additional libraries.
+        By default, the data will be loaded directly into the memory
+        of the nodes. If you do not want that, set persist to False.
+
+        See :ref:`data_input` for more information.
 
         Example:
             This code registers a data frame as table "data"
@@ -103,17 +129,70 @@ class Context:
 
             .. code-block:: python
 
-                c.register_dask_table(df, "data")
+                c.create_table("data", df)
+                df_result = c.sql("SELECT a, b FROM data")
+
+            This code reads a file from disk.
+            Please note that we assume that the file(s) are reachable under this path
+            from every node in the cluster
+
+            .. code-block:: python
+
+                c.create_table("data", "/home/user/data.csv")
+                df_result = c.sql("SELECT a, b FROM data")
+
+            This example reads from a hive table.
+
+            .. code-block:: python
+
+                from pyhive.hive import connect
+
+                cursor = connect("localhost", 10000).cursor()
+                c.create_table("data", cursor, hive_table_name="the_name_in_hive")
                 df_result = c.sql("SELECT a, b FROM data")
 
         Args:
-            df (:class:`dask.dataframe.DataFrame`): The data frame to register
-            name: (:obj:`str`): Under which name should the new table be addressable
+            table_name: (:obj:`str`): Under which name should the new table be addressable
+            input_table (:class:`dask.dataframe.DataFrame` or :class:`pandas.DataFrame` or :obj:`str` or :class:`hive.Cursor`):
+                The data frame/location/hive connection to register.
+            file_format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
+                Specify the file format directly here if it can not be deduced from the extension.
+                If set to "memory", load the data from a published dataset in the dask cluster.
+            persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
+                Set to false to turn off loading the file data directly into memory.
+            hive_table_name (:obj:`str`): If using input from a hive table, you can specify the
+                hive table name if different from the table_name.
+            hive_schema_name (:obj:`str`): If using input from a hive table, you can specify the
+                hive schema name.
 
         """
-        self.tables[name.lower()] = DataContainer(
-            df.copy(), ColumnContainer(df.columns)
+        dc = to_dc(
+            input_table,
+            file_format=file_format,
+            persist=persist,
+            hive_table_name=hive_table_name or table_name,
+            hive_schema_name=hive_schema_name,
+            **kwargs,
         )
+        self.tables[table_name.lower()] = dc
+
+    def register_dask_table(self, df: dd.DataFrame, name: str):
+        warnings.warn(
+            "register_dask_table is deprecated, use the more general create_table instead.",
+            DeprecationWarning,
+        )
+        return self.create_table(name, df)
+
+    def drop_table(self, table_name: str):
+        """
+        Remove a table with the given name from the registered tables.
+        This will also delete the dataframe.
+
+        Args:
+            table_name: (:obj:`str`): Which table to remove.
+
+        """
+        del self.tables[table_name]
 
     def register_function(
         self,
@@ -231,7 +310,9 @@ class Context:
             f, parameters, return_type, True
         )
 
-    def sql(self, sql: str) -> dd.DataFrame:
+    def sql(
+        self, sql: str, return_futures: bool = True
+    ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the postgreSQL standard - however, not all
@@ -252,38 +333,56 @@ class Context:
 
         Args:
             sql (:obj:`str`): The query string to execute
-            debug (:obj:`bool`): Turn on printing of debug information.
+            return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
+                Defaults to returning the dask dataframe.
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
-        try:
-            rel, select_names = self._get_ral(sql)
-            dc = RelConverter.convert(rel, context=self)
-        except (ValidationException, SqlParseException) as e:
-            logger.debug(f"Original exception raised by Java:\n {e}")
-            # We do not want to re-raise an exception here
-            # as this would print the full java stack trace
-            # if debug is not set.
-            # Instead, we raise a nice exception
-            raise ParsingException(sql, str(e.message())) from None
+        rel, select_names, _ = self._get_ral(sql)
 
-        if dc is not None:
-            if select_names:
-                # Rename any columns named EXPR$* to a more human readable name
-                cc = dc.column_container
-                cc = cc.rename(
-                    {
-                        df_col: df_col
-                        if not df_col.startswith("EXPR$")
-                        else select_name
-                        for df_col, select_name in zip(cc.columns, select_names)
-                    }
-                )
-                dc = DataContainer(dc.df, cc)
+        dc = RelConverter.convert(rel, context=self)
 
-            return dc.assign()
+        if dc is None:
+            return
+
+        if select_names:
+            # Rename any columns named EXPR$* to a more human readable name
+            cc = dc.column_container
+            cc = cc.rename(
+                {
+                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
+                    for df_col, select_name in zip(cc.columns, select_names)
+                }
+            )
+            dc = DataContainer(dc.df, cc)
+
+        df = dc.assign()
+        if not return_futures:
+            df = df.compute()
+
+        return df
+
+    def explain(self, sql: str) -> str:
+        """
+        Return the stringified relational algebra that this query will produce
+        once triggered (with ``sql()``).
+        Helpful to understand the inner workings of dask-sql, but typically not
+        needed to query your data.
+
+        If the query is of DDL type (e.g. CREATE TABLE or DESCRIBE SCHEMA),
+        no relational algebra plan is created and therefore nothing returned.
+
+        Args:
+            sql (:obj:`str`): The query string to use
+
+        Returns:
+            :obj:`str`: a description of the created relational algebra.
+
+        """
+        _, _, rel_string = self._get_ral(sql)
+        return rel_string
 
     def _prepare_schema(self):
         """
@@ -341,19 +440,27 @@ class Context:
 
         # Now create a relational algebra from that
         generator = RelationalAlgebraGenerator(schema)
-
-        sqlNode = generator.getSqlNode(sql)
-        sqlNodeClass = get_java_class(sqlNode)
-
-        if sqlNodeClass.startswith("com.dask.sql.parser."):
-            return sqlNode, []
-
-        validatedSqlNode = generator.getValidatedNode(sqlNode)
-        nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
-        rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
         default_dialect = generator.getDialect()
 
         logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+
+        try:
+            sqlNode = generator.getSqlNode(sql)
+            sqlNodeClass = get_java_class(sqlNode)
+
+            if sqlNodeClass.startswith("com.dask.sql.parser."):
+                return sqlNode, [], None
+
+            validatedSqlNode = generator.getValidatedNode(sqlNode)
+            nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+            rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+        except (ValidationException, SqlParseException) as e:
+            logger.debug(f"Original exception raised by Java:\n {e}")
+            # We do not want to re-raise an exception here
+            # as this would print the full java stack trace
+            # if debug is not set.
+            # Instead, we raise a nice exception
+            raise ParsingException(sql, str(e.message())) from None
 
         # Internal, temporary results of calcite are sometimes
         # named EXPR$N (with N a number), which is not very helpful
@@ -376,8 +483,7 @@ class Context:
             )
             select_names = None
 
-        logger.debug(
-            f"Extracted relational algebra:\n {generator.getRelationalAlgebraString(rel)}"
-        )
+        rel_string = str(generator.getRelationalAlgebraString(rel))
 
-        return rel, select_names
+        logger.debug(f"Extracted relational algebra:\n {rel_string}")
+        return rel, select_names, rel_string

@@ -199,7 +199,7 @@ def test_boolean_operations(c):
     df["b"] = df["b"].apply(
         lambda x: pd.NA if x < 0 else x > 0, meta=("b", "bool")
     )  # turn into a bool column
-    c.register_dask_table(df, "df")
+    c.create_table("df", df)
 
     df = c.sql(
         """

@@ -78,14 +78,16 @@ def c(
     c = Context()
     for df_name, df in dfs.items():
         dask_df = dd.from_pandas(df, npartitions=3)
-        c.register_dask_table(dask_df, df_name)
+        c.create_table(df_name, dask_df)
 
     yield c
 
 
 @pytest.fixture()
 def temporary_data_file():
-    temporary_data_file = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    temporary_data_file = os.path.join(
+        tempfile.gettempdir(), os.urandom(24).hex() + ".csv"
+    )
 
     yield temporary_data_file
 
@@ -148,9 +150,9 @@ def assert_query_gives_same_result(engine):
     from dask_sql.context import Context
 
     c = Context()
-    c.register_dask_table(df1, "df1")
-    c.register_dask_table(df2, "df2")
-    c.register_dask_table(df3, "df3")
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
+    c.create_table("df3", df3)
 
     df1.compute().to_sql("df1", engine, index=False, if_exists="replace")
     df2.compute().to_sql("df2", engine, index=False, if_exists="replace")

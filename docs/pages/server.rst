@@ -74,7 +74,7 @@ By this, your server will already have data to query:
 
     from dask_sql import Context
     c = Context()
-    c.register_dask_table(...)
+    c.create_table(...)
 
     # Then spin up the ``dask-sql`` server
     from dask_sql import run_server
