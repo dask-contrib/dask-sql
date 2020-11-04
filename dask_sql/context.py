@@ -5,6 +5,7 @@ import warnings
 import os
 
 import dask.dataframe as dd
+from distributed.client import default_client
 import pandas as pd
 
 from dask_sql.java import (
@@ -120,6 +121,8 @@ class Context:
         By default, the data will be loaded directly into the memory
         of the nodes. If you do not want that, set persist to False.
 
+        See :ref:`data_input` for more information.
+
         Example:
             This code registers a data frame as table "data"
             and then uses it in a query.
@@ -144,6 +147,7 @@ class Context:
                 The data frame to register.
             file_format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
                 Specify the file format directly here if it can not be deduced from the extension.
+                If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to false to turn off loading the file data directly into memory.
 
@@ -411,7 +415,7 @@ class Context:
         **kwargs,
     ):
         if isinstance(input_table, pd.DataFrame):
-            input_table = dd.from_pandas(input_table, npartitions=1)
+            input_table = dd.from_pandas(input_table, npartitions=1, **kwargs)
         elif isinstance(input_table, str):
             read_input_function = self._get_read_input_function(
                 input_table, file_format
@@ -423,6 +427,10 @@ class Context:
 
     @staticmethod
     def _get_read_input_function(input_table, file_format: str = None):
+        if file_format == "memory":
+            client = default_client()
+            return client.get_dataset
+
         if not file_format:
             _, extension = os.path.splitext(input_table)
 

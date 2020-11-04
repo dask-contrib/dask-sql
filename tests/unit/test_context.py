@@ -1,8 +1,7 @@
-from unittest import TestCase
 import warnings
 import os
-import tempfile
 
+import pytest
 import dask.dataframe as dd
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -10,100 +9,92 @@ from pandas.testing import assert_frame_equal
 from dask_sql import Context
 
 
-class ContextTestCase(TestCase):
-    def setUp(self):
-        super().setUp()
+def test_add_remove_tables():
+    c = Context()
 
-        self.f = os.path.join(tempfile.gettempdir(), os.urandom(24).hex() + ".csv")
+    data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
 
-    def tearDown(self):
-        super().tearDown()
+    c.create_table("table", data_frame)
+    assert "table" in c.tables
 
-        if os.path.exists(self.f):
-            os.unlink(self.f)
+    c.drop_table("table")
+    assert "table" not in c.tables
 
-    def test_add_remove_tables(self):
-        c = Context()
-
-        data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
-
-        c.create_table("table", data_frame)
-        self.assertIn("table", c.tables)
-
+    with pytest.raises(KeyError):
         c.drop_table("table")
-        self.assertNotIn("table", c.tables)
 
-        self.assertRaises(KeyError, c.drop_table, "table")
 
-    def test_deprecation_warning(self):
-        c = Context()
-        data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
+def test_deprecation_warning():
+    c = Context()
+    data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
 
-            c.register_dask_table(data_frame, "table")
+        c.register_dask_table(data_frame, "table")
 
-            assert len(w) == 1
-            assert issubclass(w[-1].category, DeprecationWarning)
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
 
-        self.assertIn("table", c.tables)
+    assert "table" in c.tables
 
-        c.drop_table("table")
-        self.assertNotIn("table", c.tables)
+    c.drop_table("table")
+    assert "table" not in c.tables
 
-    def test_explain(self):
-        c = Context()
 
-        data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-        c.create_table("df", data_frame)
+def test_explain():
+    c = Context()
 
-        sql_string = c.explain("SELECT * FROM df")
+    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
+    c.create_table("df", data_frame)
 
-        self.assertEqual(
-            sql_string,
-            f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}",
-        )
+    sql_string = c.explain("SELECT * FROM df")
 
-    def test_sql(self):
-        c = Context()
+    assert (
+        sql_string
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}"
+    )
 
-        data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-        c.create_table("df", data_frame)
 
+def test_sql():
+    c = Context()
+
+    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
+    c.create_table("df", data_frame)
+
+    result = c.sql("SELECT * FROM df")
+    assert isinstance(result, dd.DataFrame)
+
+    result = c.sql("SELECT * FROM df", return_futures=False)
+    assert isinstance(result, pd.DataFrame)
+
+
+def test_input_types(temporary_data_file):
+    c = Context()
+    df = pd.DataFrame({"a": [1, 2, 3]})
+
+    def assert_correct_output():
         result = c.sql("SELECT * FROM df")
-        self.assertIsInstance(result, dd.DataFrame)
+        assert isinstance(result, dd.DataFrame)
+        assert_frame_equal(result.compute(), df)
 
-        result = c.sql("SELECT * FROM df", return_futures=False)
-        self.assertIsInstance(result, pd.DataFrame)
+    c.create_table("df", df)
+    assert_correct_output()
 
-    def test_input_types(self):
-        c = Context()
-        df = pd.DataFrame({"a": [1, 2, 3]})
+    c.create_table("df", dd.from_pandas(df, npartitions=1))
+    assert_correct_output()
 
-        def assert_correct_output():
-            result = c.sql("SELECT * FROM df")
-            self.assertIsInstance(result, dd.DataFrame)
-            assert_frame_equal(result.compute(), df)
+    df.to_csv(temporary_data_file, index=False)
+    c.create_table("df", temporary_data_file)
+    assert_correct_output()
 
-        c.create_table("df", df)
-        assert_correct_output()
+    df.to_csv(temporary_data_file, index=False)
+    c.create_table("df", temporary_data_file, file_format="csv")
+    assert_correct_output()
 
-        c.create_table("df", dd.from_pandas(df, npartitions=1))
-        assert_correct_output()
+    df.to_parquet(temporary_data_file, index=False)
+    c.create_table("df", temporary_data_file, file_format="parquet")
+    assert_correct_output()
 
-        df.to_csv(self.f, index=False)
-        c.create_table("df", self.f)
-        assert_correct_output()
-
-        df.to_csv(self.f, index=False)
-        c.create_table("df", self.f, file_format="csv")
-        assert_correct_output()
-
-        df.to_parquet(self.f, index=False)
-        c.create_table("df", self.f, file_format="parquet")
-        assert_correct_output()
-
-        self.assertRaises(
-            AttributeError, c.create_table, "df", self.f, file_format="unknown"
-        )
+    with pytest.raises(AttributeError):
+        c.create_table("df", temporary_data_file, file_format="unknown")

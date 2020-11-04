@@ -1,4 +1,5 @@
 import logging
+from distributed.client import default_client
 import pandas as pd
 import dask.dataframe as dd
 
@@ -68,4 +69,7 @@ class CreateTablePlugin(BaseRelPlugin):
         except KeyError:
             raise AttributeError("Parameters must include a 'location' parameter.")
 
-        context.create_table(table_name, location, file_format=format, persist=persist)
+        context.create_table(
+            table_name, location, file_format=format, persist=persist, **kwargs
+        )
+

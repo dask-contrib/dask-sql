@@ -35,6 +35,8 @@ In this example, we do not read in external data, but use test data in the form 
 
     df = dask.datasets.timeseries()
 
+Read more on the data input part in :ref:`data_input`.
+
 2. Data Registration
 --------------------
 
