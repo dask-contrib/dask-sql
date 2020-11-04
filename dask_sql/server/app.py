@@ -102,10 +102,12 @@ def run_server(
     Run a HTTP server for answering SQL queries using ``dask-sql``.
     It uses the `Presto Wire Protocol <https://github.com/prestodb/presto/wiki/HTTP-Protocol>`_
     for communication.
-    This means, it has a single POST endpoint `v1/statement`, which answers
+    This means, it has a single POST endpoint `/v1/statement`, which answers
     SQL queries (as string in the body) with the output as a JSON
     (in the format described in the documentation above).
     Every SQL expression that ``dask-sql`` understands can be used here.
+
+    See :ref:`server` for more information.
 
     Note:
         The presto protocol also includes some statistics on the query

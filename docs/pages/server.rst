@@ -1,3 +1,5 @@
+.. _server:
+
 SQL Server
 ==========
 
@@ -119,5 +121,5 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
 3. After your service is deployed, you can use it in your applications as a "normal" presto database.
 
-The ``dask-sql`` SQL server was successfully tested with `Apache Hue <https://gethue.com/>`_ and
-`Metabase <https://www.metabase.com/>`_.
+The ``dask-sql`` SQL server was successfully tested with `Apache Hue <https://gethue.com/>`_, `Apache Superset <https://superset.apache.org/>`_
+and `Metabase <https://www.metabase.com/>`_.

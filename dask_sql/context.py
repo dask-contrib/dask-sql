@@ -177,6 +177,9 @@ class Context:
         self.tables[table_name.lower()] = dc
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
+        """
+        Outdated version of :func:`create_table()`.
+        """
         warnings.warn(
             "register_dask_table is deprecated, use the more general create_table instead.",
             DeprecationWarning,
