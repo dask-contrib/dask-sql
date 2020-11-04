@@ -72,4 +72,3 @@ class CreateTablePlugin(BaseRelPlugin):
         context.create_table(
             table_name, location, file_format=format, persist=persist, **kwargs
         )
-
