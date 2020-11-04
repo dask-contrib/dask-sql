@@ -2,10 +2,8 @@ from typing import Callable, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
-import os
 
 import dask.dataframe as dd
-from distributed.client import default_client
 import pandas as pd
 
 from dask_sql.java import (
@@ -18,10 +16,11 @@ from dask_sql.java import (
     ValidationException,
     get_java_class,
 )
+from dask_sql.input_utils import to_dc, InputType
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical, custom
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.datacontainer import DataContainer
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 FunctionDescription = namedtuple(
     "FunctionDescription", ["f", "parameters", "return_type", "aggregation"]
 )
-InputType = Union[dd.DataFrame, pd.DataFrame]
 
 
 class Context:
@@ -100,6 +98,8 @@ class Context:
         input_table: InputType,
         file_format: str = None,
         persist: bool = True,
+        hive_table_name: str = None,
+        hive_schema_name: str = "default",
         **kwargs,
     ):
         """
@@ -141,20 +141,38 @@ class Context:
                 c.create_table("data", "/home/user/data.csv")
                 df_result = c.sql("SELECT a, b FROM data")
 
+            This example reads from a hive table.
+
+            .. code-block:: python
+
+                from pyhive.hive import connect
+
+                cursor = connect("localhost", 10000).cursor()
+                c.create_table("data", cursor, hive_database_name="the_name_in_hive")
+                df_result = c.sql("SELECT a, b FROM data")
+
         Args:
             table_name: (:obj:`str`): Under which name should the new table be addressable
-            input_table (:class:`dask.dataframe.DataFrame` or :class:`pandas.DataFrame` or :obj:`str`):
-                The data frame to register.
+            input_table (:class:`dask.dataframe.DataFrame` or :class:`pandas.DataFrame` or :obj:`str` or :class:`hive.Cursor`):
+                The data frame/location/hive connection to register.
             file_format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to false to turn off loading the file data directly into memory.
-
+            hive_table_name (:obj:`str`): If using input from a hive table, you can specify the
+                hive table name if different from the table_name.
+            hive_schema_name (:obj:`str`): If using input from a hive table, you can specify the
+                hive schema name.
 
         """
-        dc = self._to_dc(
-            input_table, file_format=file_format, persist=persist, **kwargs
+        dc = to_dc(
+            input_table,
+            file_format=file_format,
+            persist=persist,
+            hive_table_name=hive_table_name or table_name,
+            hive_schema_name=hive_schema_name,
+            **kwargs,
         )
         self.tables[table_name.lower()] = dc
 
@@ -406,40 +424,6 @@ class Context:
             schema.addFunction(dask_function)
 
         return schema
-
-    def _to_dc(
-        self,
-        input_table: InputType,
-        file_format: str = None,
-        persist: bool = True,
-        **kwargs,
-    ):
-        if isinstance(input_table, pd.DataFrame):
-            input_table = dd.from_pandas(input_table, npartitions=1, **kwargs)
-        elif isinstance(input_table, str):
-            read_input_function = self._get_read_input_function(
-                input_table, file_format
-            )
-            input_table = read_input_function(input_table, **kwargs)
-            if persist:
-                input_table = input_table.persist()
-        return DataContainer(input_table.copy(), ColumnContainer(input_table.columns))
-
-    @staticmethod
-    def _get_read_input_function(input_table, file_format: str = None):
-        if file_format == "memory":
-            client = default_client()
-            return client.get_dataset
-
-        if not file_format:
-            _, extension = os.path.splitext(input_table)
-
-            file_format = extension.lstrip(".")
-
-        try:
-            return getattr(dd, f"read_{file_format}")
-        except AttributeError:
-            raise AttributeError("Can not read files of format {file_format}")
 
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):

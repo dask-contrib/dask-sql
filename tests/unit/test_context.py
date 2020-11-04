@@ -23,6 +23,9 @@ def test_add_remove_tables():
     with pytest.raises(KeyError):
         c.drop_table("table")
 
+    c.create_table("table", [data_frame])
+    assert "table" in c.tables
+
 
 def test_deprecation_warning():
     c = Context()
