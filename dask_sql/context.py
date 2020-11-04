@@ -148,7 +148,7 @@ class Context:
                 from pyhive.hive import connect
 
                 cursor = connect("localhost", 10000).cursor()
-                c.create_table("data", cursor, hive_database_name="the_name_in_hive")
+                c.create_table("data", cursor, hive_table_name="the_name_in_hive")
                 df_result = c.sql("SELECT a, b FROM data")
 
         Args:

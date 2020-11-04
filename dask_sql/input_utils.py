@@ -6,13 +6,17 @@ from typing import Union
 import dask.dataframe as dd
 from distributed.client import default_client
 import pandas as pd
-from pyhive import hive
+
+try:
+    from pyhive import hive
+except ImportError:
+    hive = None
 
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 logger = logging.Logger(__name__)
 
-InputType = Union[dd.DataFrame, pd.DataFrame, str, hive.Cursor]
+InputType = Union[dd.DataFrame, pd.DataFrame, str, "hive.Cursor"]
 
 
 def to_dc(
@@ -60,7 +64,7 @@ def _get_dask_dataframe(
         return dd.from_pandas(input_item, npartitions=1, **kwargs)
     elif isinstance(input_item, dd.DataFrame):
         return input_item
-    elif isinstance(input_item, hive.Cursor):  # pragma: no cover
+    elif hive and isinstance(input_item, hive.Cursor):  # pragma: no cover
         return _get_files_from_hive(
             input_item, table_name=hive_table_name, schema=hive_schema_name, **kwargs
         )
@@ -89,7 +93,7 @@ def _get_files_from_location(input_item, file_format: str = None, **kwargs):
 
 
 def _get_files_from_hive(
-    cursor: hive.Cursor, table_name: str, schema: str = "default", **kwargs
+    cursor: "hive.Cursor", table_name: str, schema: str = "default", **kwargs
 ):  # pragma: no cover
     (
         table_information,
@@ -142,7 +146,7 @@ def _get_files_from_hive(
 
 
 def _parse_hive_table_description(
-    cursor: hive.Cursor, schema: str, table_name: str, partition: str = None
+    cursor: "hive.Cursor", schema: str, table_name: str, partition: str = None
 ):  # pragma: no cover
     """
     Extract all information from the output
@@ -205,7 +209,7 @@ def _parse_hive_table_description(
 
 
 def _parse_hive_partition_description(
-    cursor: hive.Cursor, schema: str, table_name: str
+    cursor: "hive.Cursor", schema: str, table_name: str
 ):  # pragma: no cover
     """
     Extract all partition informaton for a given table
