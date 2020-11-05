@@ -1,4 +1,5 @@
 import logging
+from distributed.client import default_client
 import pandas as pd
 import dask.dataframe as dd
 
@@ -68,16 +69,6 @@ class CreateTablePlugin(BaseRelPlugin):
         except KeyError:
             raise AttributeError("Parameters must include a 'location' parameter.")
 
-        read_function_name = f"read_{format}"
-
-        try:
-            read_function = getattr(dd, read_function_name)
-        except AttributeError:
-            raise AttributeError(f"Do not understand input format {format}.")
-
-        df = read_function(location, **kwargs)
-
-        if persist:
-            df = df.persist()
-
-        context.register_dask_table(df, table_name)
+        context.create_table(
+            table_name, location, file_format=format, persist=persist, **kwargs
+        )

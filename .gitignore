@@ -50,3 +50,6 @@ planner/.settings/
 planner/dependency-reduced-pom.xml
 planner/target/
 dask_sql/jar
+.next/
+dask-worker-space/
+node_modules/

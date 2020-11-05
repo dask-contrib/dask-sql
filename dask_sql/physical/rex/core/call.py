@@ -163,7 +163,7 @@ class NotOperation(Operation):
         Returns not `df` (where `df` can also be just a scalar).
         """
         if is_frame(df):
-            return ~df
+            return ~(df.astype("boolean"))
         else:
             return not df  # pragma: no cover
 
@@ -248,7 +248,7 @@ class RegexOperation(Operation):
 
         # Finally, apply the string
         if is_frame(test):
-            return test.str.match(transformed_regex)
+            return test.str.match(transformed_regex).astype("boolean")
         else:  # pragma: no cover
             return bool(re.match(transformed_regex, test))
 

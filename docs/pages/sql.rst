@@ -100,11 +100,13 @@ To show column information on a specific table named "df"
 
     SHOW COLUMNS FROM "df"
 
+.. _creation:
+
 Table Creation
 --------------
 
 As described in :ref:`quickstart`, it is possible to register an already
-created dask dataframe with a call to ``c.register_dask_table``.
+created dask dataframe with a call to ``c.create_table``.
 However, it is also possible to load data directly from disk (or s3, hdfs, URL, ...)
 and register it as a table in ``dask_sql``.
 Behind the scenes, a call to one of the ``read_<format>`` of the ``dask.dataframe``
@@ -125,6 +127,8 @@ and format.
 With the ``persist`` parameter, it can be controlled if the data should be cached
 or re-read for every SQL query.
 The additional parameters are passed to the call to ``read_<format>``.
+If you omit the format argument, it will be deduced from the file name extension.
+More ways to load data can be found in :ref:`data_input`.
 
 
 Implemented operations

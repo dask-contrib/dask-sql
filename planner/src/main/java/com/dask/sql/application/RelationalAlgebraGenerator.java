@@ -42,6 +42,7 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlOperatorTables;
+import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Frameworks;
 import org.apache.calcite.tools.Planner;
@@ -96,8 +97,9 @@ public class RelationalAlgebraGenerator {
 		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
 		sqlOperatorTables.add(calciteCatalogReader);
 
-		SqlParser.Config parserConfig = getDialect()
-				.configureParser(SqlParser.config().withParserFactory(new DaskSqlParserImplFactory()));
+		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.Config.DEFAULT)
+				.withConformance(SqlConformanceEnum.DEFAULT).withParserFactory(new DaskSqlParserImplFactory());
+
 		SqlOperatorTable operatorTable = SqlOperatorTables.chain(sqlOperatorTables);
 
 		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)

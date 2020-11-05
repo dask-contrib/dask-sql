@@ -49,7 +49,7 @@ c = Context()
 # Load the data and register it in the context
 # This will give the table a name
 df = timeseries()
-c.register_dask_table(df, "timeseries")
+c.create_table("timeseries", df)
 
 # Now execute an SQL query. The result is a dask dataframe
 # The query looks for the id with the highest x for each name

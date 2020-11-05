@@ -46,6 +46,21 @@ SqlNode SqlShowColumns() :
     }
 }
 
+SqlNode SqlDescribeTable() :
+{
+    final Span s;
+    final SqlIdentifier schemaName;
+    final SqlIdentifier tableName;
+}
+{
+    <DESCRIBE> { s = span(); }
+
+    tableName = CompoundTableIdentifier()
+    {
+        return new SqlShowColumns(s.end(tableName), tableName);
+    }
+}
+
 void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
 {
     final SqlNode keyword;

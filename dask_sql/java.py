@@ -14,6 +14,21 @@ from dask_sql.utils import _set_or_check_java_home
 
 logger = logging.getLogger(__name__)
 
+try:  # pragma: no cover
+    # If using dask-sql together with hdfs input
+    # (e.g. via dask), we have two concurring components
+    # accessing the Java VM: the hdfs FS implementation
+    # and dask-sql. hdfs needs to have the hadoop libraries
+    # in the classpath and has a nice helper function for that
+    # Unfortunately, this classpath will not be picked up if
+    # set after the JVM is already running. So we need to make
+    # sure we call it in all circumstances before starting the
+    # JVM.
+    from pyarrow.hdfs import _maybe_set_hadoop_classpath
+
+    _maybe_set_hadoop_classpath()
+except:  # pragma: no cover
+    pass
 
 # Define how to run the java virtual machine.
 jpype.addClassPath(pkg_resources.resource_filename("dask_sql", "jar/DaskSQL.jar"))

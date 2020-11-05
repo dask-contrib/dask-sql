@@ -35,6 +35,8 @@ In this example, we do not read in external data, but use test data in the form 
 
     df = dask.datasets.timeseries()
 
+Read more on the data input part in :ref:`data_input`.
+
 2. Data Registration
 --------------------
 
@@ -47,7 +49,7 @@ Typically, you only have a single context per application.
     from dask_sql import Context
 
     c = Context()
-    c.register_dask_table(df, "timeseries")
+    c.create_table("timeseries", df)
 
 From now on, the data is accessible as the "timeseries" table of this context.
 It is possible to register multiple data frames at the same context.
@@ -60,7 +62,7 @@ It is possible to register multiple data frames at the same context.
     .. code-block:: python
 
         df = df.persist()
-        c.register_dask_table(df, "timeseries")
+        c.create_table("timeseries", df)
 
 
 3. Run your queries

@@ -27,8 +27,10 @@ class ShowSchemasPlugin(BaseRelPlugin):
         schema = context.schema_name
         df = pd.DataFrame({"Schema": [schema, "information_schema"]})
 
-        # We currently do not use any of the passed additional parameters,
-        # such as FROM or LIKE.
+        # We currently do not use the passed additional parameter FROM.
+        like = str(sql.like).strip("'")
+        if like and like != "None":
+            df = df[df.Schema == like]
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
