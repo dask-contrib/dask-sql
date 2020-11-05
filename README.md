@@ -20,7 +20,7 @@ Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
 You can try out `dask-sql` quickly by using the docker command
 
-    docker run --rm -it -p 8080:8080 nbraun/dask-sql:0.1.2
+    docker run --rm -it -p 8080:8080 nbraun/dask-sql
 
 See information in the SQL server at the end of this page.
 
@@ -162,7 +162,7 @@ You can test the sql presto server by running
 
 or by using the created docker image
 
-    docker run --rm -it -p 8080:8080 nbraun/dask-sql:0.1.2
+    docker run --rm -it -p 8080:8080 nbraun/dask-sql
 
 in one terminal. This will spin up a server on port 8080 (by default)
 that looks similar to a normal presto database to any presto client.

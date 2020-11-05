@@ -29,7 +29,7 @@ or by using the created docker image
 
 .. code-block:: bash
 
-    docker run --rm -it -p 8080:8080 nbraun/dask-sql:0.1.2
+    docker run --rm -it -p 8080:8080 nbraun/dask-sql
 
 This will spin up a server on port 8080 (by default).
 The port and bind interfaces can be controlled with the ``--port`` and ``--host`` command line arguments (or options to :func:`dask_sql.run_server`).
@@ -113,7 +113,7 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
    .. code-block:: dockerfile
 
-        FROM nbraun/dask-sql:0.1.2
+        FROM nbraun/dask-sql
 
         COPY startup_script.py /opt/dask_sql/startup_script.py
 
