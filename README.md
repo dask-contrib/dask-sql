@@ -6,6 +6,7 @@
 [![Read the Docs](https://img.shields.io/readthedocs/dask-sql)](https://dask-sql.readthedocs.io/en/latest/)
 [![Codecov](https://img.shields.io/codecov/c/github/nils-braun/dask-sql?logo=codecov)](https://codecov.io/gh/nils-braun/dask-sql)
 [![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab)
 
 `dask-sql` adds a SQL query layer on top of `dask`.
 This allows you to query and transform your dask dataframes using
