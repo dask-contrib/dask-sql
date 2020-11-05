@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
@@ -117,11 +119,20 @@ def test_like(c, string_table):
     df = c.sql(
         """
         SELECT * FROM string_table
-        WHERE a LIKE '%n[a-z]rmal st_i%'
+        WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     ).compute()
 
     assert_frame_equal(df, string_table.iloc[[0]])
+
+    df = c.sql(
+        """
+        SELECT * FROM string_table
+        WHERE a LIKE '%n[a-z]rmal st_i%'
+    """
+    ).compute()
+
+    assert len(df) == 0
 
     df = c.sql(
         """
@@ -131,6 +142,15 @@ def test_like(c, string_table):
     ).compute()
 
     assert_frame_equal(df, string_table.iloc[[1]])
+
+    df = c.sql(
+        """
+        SELECT * FROM string_table
+        WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
+        """
+    ).compute()
+
+    assert_frame_equal(df, string_table.iloc[[2]])
 
     df = c.sql(
         """
@@ -387,3 +407,54 @@ def test_string_functions(c):
     assert_frame_equal(
         df.head(1), expected_df,
     )
+
+
+def test_date_functions(c):
+    date = datetime(2021, 10, 3, 15, 53, 42, 47)
+
+    df = dd.from_pandas(pd.DataFrame({"d": [date]}), npartitions=1)
+    c.register_dask_table(df, "df")
+
+    df = c.sql(
+        """
+        SELECT
+            EXTRACT(CENTURY FROM d) AS "century",
+            EXTRACT(DAY FROM d) AS "day",
+            EXTRACT(DECADE FROM d) AS "decade",
+            EXTRACT(DOW FROM d) AS "dow",
+            EXTRACT(DOY FROM d) AS "doy",
+            EXTRACT(HOUR FROM d) AS "hour",
+            EXTRACT(MICROSECOND FROM d) AS "microsecond",
+            EXTRACT(MILLENNIUM FROM d) AS "millennium",
+            EXTRACT(MILLISECOND FROM d) AS "millisecond",
+            EXTRACT(MINUTE FROM d) AS "minute",
+            EXTRACT(MONTH FROM d) AS "month",
+            EXTRACT(QUARTER FROM d) AS "quarter",
+            EXTRACT(SECOND FROM d) AS "second",
+            EXTRACT(WEEK FROM d) AS "week",
+            EXTRACT(YEAR FROM d) AS "year"
+        FROM df
+    """
+    ).compute()
+
+    expected_df = pd.DataFrame(
+        {
+            "century": [20],
+            "day": [3],
+            "decade": [202],
+            "dow": [0],
+            "doy": [276],
+            "hour": [15],
+            "microsecond": [47],
+            "millennium": [2],
+            "millisecond": [47000],
+            "minute": [53],
+            "month": [10],
+            "quarter": [4],
+            "second": [42],
+            "week": [39],
+            "year": [2021],
+        }
+    )
+
+    assert_frame_equal(df, expected_df, check_dtype=False)

@@ -1,3 +1,4 @@
+from datetime import datetime
 import operator
 from functools import reduce
 from typing import Any, Union, Callable
@@ -9,6 +10,7 @@ import numpy as np
 import dask.dataframe as dd
 import dask.array as da
 import pandas as pd
+from tzlocal import get_localzone
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -16,6 +18,7 @@ from dask_sql.utils import LoggableDataFrame, is_frame
 from dask_sql.datacontainer import DataContainer
 
 logger = logging.getLogger(__name__)
+SeriesOrScalar = Union[dd.Series, Any]
 
 
 class Operation:
@@ -25,7 +28,7 @@ class Operation:
         """Init with the given function"""
         self.f = f
 
-    def __call__(self, *operands) -> Union[dd.Series, Any]:
+    def __call__(self, *operands) -> SeriesOrScalar:
         """Call the stored function"""
         return self.f(*operands)
 
@@ -94,11 +97,8 @@ class CaseOperation(Operation):
         super().__init__(self.case)
 
     def case(
-        self,
-        where: Union[dd.Series, Any],
-        then: Union[dd.Series, Any],
-        other: Union[dd.Series, Any],
-    ) -> Union[dd.Series, Any]:
+        self, where: SeriesOrScalar, then: SeriesOrScalar, other: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
         """
@@ -124,7 +124,7 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -141,7 +141,7 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -158,7 +158,7 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -174,7 +174,7 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: Union[dd.Series, Any],) -> Union[dd.Series, Any]:
+    def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -184,15 +184,15 @@ class IsNullOperation(Operation):
         return pd.isna(df) or df is None or np.isnan(df)
 
 
-class LikeOperation(Operation):
-    """The like operator (regex for SQL with some twist)"""
+class RegexOperation(Operation):
+    """An abstract regex operation, which transforms the SQL regex into something python can understand"""
 
     def __init__(self):
-        super().__init__(self.like)
+        super().__init__(self.regex)
 
-    def like(
-        self, test: Union[dd.Series, Any], regex: str, escape: str = None,
-    ) -> Union[dd.Series, Any]:
+    def regex(
+        self, test: SeriesOrScalar, regex: str, escape: str = None,
+    ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex
         (maybe escaped by escape)
@@ -219,29 +219,14 @@ class LikeOperation(Operation):
                 if char == "]":
                     in_char_range = False
 
-            elif char == "[":
-                in_char_range = True
-
             # These chars have a special meaning in regex
             # whereas in SQL they have not, so we need to
             # add additional escaping
-            elif char in [
-                "#",
-                "$",
-                "^",
-                ".",
-                "|",
-                "~",
-                "-",
-                "+",
-                "*",
-                "?",
-                "(",
-                ")",
-                "{",
-                "}",
-            ]:
+            elif char in self.replacement_chars:
                 char = "\\" + char
+
+            elif char == "[":
+                in_char_range = True
 
             # The needed "\" is printed above, so we continue
             elif char == escape:
@@ -266,6 +251,38 @@ class LikeOperation(Operation):
             return test.str.match(transformed_regex).astype("boolean")
         else:  # pragma: no cover
             return bool(re.match(transformed_regex, test))
+
+
+class LikeOperation(RegexOperation):
+    replacement_chars = [
+        "#",
+        "$",
+        "^",
+        ".",
+        "|",
+        "~",
+        "-",
+        "+",
+        "*",
+        "?",
+        "(",
+        ")",
+        "{",
+        "}",
+        "[",
+        "]",
+    ]
+
+
+class SimilarOperation(RegexOperation):
+    replacement_chars = [
+        "#",
+        "$",
+        "^",
+        ".",
+        "~",
+        "-",
+    ]
 
 
 class PositionOperation(Operation):
@@ -354,6 +371,51 @@ class OverlayOperation(Operation):
         return s
 
 
+class ExtractOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract)
+
+    def extract(self, what, df: SeriesOrScalar):
+        input_df = df
+        if is_frame(df):
+            df = df.dt
+        else:
+            df = pd.to_datetime(df)
+
+        if what == "CENTURY":
+            return da.trunc(df.year / 100)
+        elif what == "DAY":
+            return df.day
+        elif what == "DECADE":
+            return da.trunc(df.year / 10)
+        elif what == "DOW":
+            return (df.dayofweek + 1) % 7
+        elif what == "DOY":
+            return df.dayofyear
+        elif what == "HOUR":
+            return df.hour
+        elif what == "MICROSECOND":
+            return df.microsecond
+        elif what == "MILLENNIUM":
+            return da.trunc(df.year / 1000)
+        elif what == "MILLISECOND":
+            return da.trunc(1000 * df.microsecond)
+        elif what == "MINUTE":
+            return df.minute
+        elif what == "MONTH":
+            return df.month
+        elif what == "QUARTER":
+            return df.quarter
+        elif what == "SECOND":
+            return df.second
+        elif what == "WEEK":
+            return df.week
+        elif what == "YEAR":
+            return df.year
+        else:  # pragma: no cover
+            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -389,6 +451,7 @@ class RexCallPlugin(BaseRexPlugin):
         # special operations
         "case": CaseOperation(),
         "like": LikeOperation(),
+        "similar to": SimilarOperation(),
         "not": NotOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
@@ -431,6 +494,13 @@ class RexCallPlugin(BaseRexPlugin):
         "overlay": OverlayOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        # date/time operations
+        "extract": ExtractOperation(),
+        "localtime": Operation(lambda *args: pd.Timestamp.now()),
+        "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
+        "current_time": Operation(lambda *args: pd.Timestamp.now()),
+        "current_date": Operation(lambda *args: pd.Timestamp.now()),
+        "current_timestamp": Operation(lambda *args: pd.Timestamp.now()),
     }
 
     def convert(
@@ -438,7 +508,7 @@ class RexCallPlugin(BaseRexPlugin):
         rex: "org.apache.calcite.rex.RexNode",
         dc: DataContainer,
         context: "dask_sql.Context",
-    ) -> Union[dd.Series, Any]:
+    ) -> SeriesOrScalar:
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
