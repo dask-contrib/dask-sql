@@ -269,10 +269,10 @@ Limitatons
     Whenever you find a not already implemented operation, keyword
     or functionality, please raise an issue at our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_ with your use-case.
 
-Apart from those functional limitations, there are also two operations which need special care: ``ORDER BY`` and ``LIMIT``.
+Apart from those functional limitations, there is a operation which need special care: ``ORDER BY```.
 Normally, ``dask-sql`` calls create a ``dask`` data frame, which gets only computed when you call the ``.compute()`` member.
-Due to internal constraints, this is currently not the case for ``ORDER BY`` and ``LIMIT``.
-Including one of those operations will trigger a calculation of the full data frame already when calling ``Context.sql()``.
+Due to internal constraints, this is currently not the case for ``ORDER BY``.
+Including this operation will trigger a calculation of the full data frame already when calling ``Context.sql()``.
 
 .. warning::
 
@@ -280,4 +280,4 @@ Including one of those operations will trigger a calculation of the full data fr
     The data inside ``dask`` is partitioned, to distribute it over the cluster.
     ``head`` will only return the first N elements from the first partition - even if N is larger than the partition size.
     As a benefit, calling ``.head(N)`` is typically faster than calculating the full data sample with ``.compute()``.
-    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered - but will also need to compute the full data set for this.
+    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered - but will also need to do precalculate the first partition to find out, if it needs to have a look into all data or not.
