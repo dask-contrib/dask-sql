@@ -145,6 +145,29 @@ def test_register_and_query(app_client, df):
     assert "error" not in result
 
 
+def test_inf_table(app_client, user_table_inf):
+    app_client.app.c.create_table("new_table", user_table_inf)
+
+    response = app_client.post("/v1/statement", data="SELECT * FROM new_table")
+    assert response.status_code == 200
+
+    result = get_result_or_error(app_client, response)
+
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "c",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        }
+    ]
+
+    assert len(result["data"]) == 3
+    assert result["data"][1] == ["+Infinity"]
+    assert "error" not in result
+
+
 def get_result_or_error(app_client, response):
     result = response.json()
 

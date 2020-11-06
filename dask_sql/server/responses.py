@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import Request, FastAPI
 import dask.dataframe as dd
+import numpy as np
 
 from dask_sql.mappings import python_to_sql_type
 
@@ -78,8 +79,27 @@ class DataResults(QueryResults):
     @staticmethod
     def get_data_description(df):
         return [
-            [str(cell) for cell in row] for row in df.itertuples(index=False, name=None)
+            DataResults.convert_row(row)
+            for row in df.itertuples(index=False, name=None)
         ]
+
+    @staticmethod
+    def convert_cell(cell):
+        try:
+            if np.isnan(cell):  # pragma: no cover
+                return "NaN"
+            elif np.isposinf(cell):
+                return "+Infinity"
+            elif np.isneginf(cell):  # pragma: no cover
+                return "-Infinity"
+        except TypeError:  # pragma: no cover
+            pass
+
+        return str(cell)
+
+    @staticmethod
+    def convert_row(row):
+        return [DataResults.convert_cell(cell) for cell in row]
 
     def __init__(self, df: dd.DataFrame, request: Request):
         super().__init__(request)
