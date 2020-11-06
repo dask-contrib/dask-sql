@@ -8,44 +8,44 @@ from pandas.testing import assert_frame_equal
 import numpy as np
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def df_simple():
     return pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def df():
     return pd.DataFrame(
         {"a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400, "b": 10 * np.random.rand(700),}
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def user_table_1():
     return pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def user_table_2():
     return pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def long_table():
     return pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def user_table_inf():
     return pd.DataFrame({"c": [3, float("inf"), 1]})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def user_table_nan():
     return pd.DataFrame({"c": [3, pd.NA, 1]})
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def string_table():
     return pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
 
