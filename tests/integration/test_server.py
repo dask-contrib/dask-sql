@@ -55,7 +55,7 @@ def test_sql_query(app_client):
             "typeSignature": {"rawType": "integer", "arguments": []},
         }
     ]
-    assert result["data"] == [["2"]]
+    assert result["data"] == [[2]]
 
 
 def test_wrong_sql_query(app_client):

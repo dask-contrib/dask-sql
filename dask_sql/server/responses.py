@@ -95,7 +95,12 @@ class DataResults(QueryResults):
         except TypeError:  # pragma: no cover
             pass
 
-        return str(cell)
+        try:
+            return cell.item()
+        except AttributeError:
+            pass
+
+        return cell
 
     @staticmethod
     def convert_row(row):
