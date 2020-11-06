@@ -55,7 +55,7 @@ def test_sql_query(app_client):
             "typeSignature": {"rawType": "integer", "arguments": []},
         }
     ]
-    assert result["data"] == [[2]]
+    assert result["data"] == [["2"]]
 
 
 def test_wrong_sql_query(app_client):
@@ -105,6 +105,34 @@ def test_add_and_query(app_client, df, temporary_data_file):
             "name": "a",
             "type": "double",
             "typeSignature": {"rawType": "double", "arguments": []},
+        },
+        {
+            "name": "b",
+            "type": "double",
+            "typeSignature": {"rawType": "double", "arguments": []},
+        },
+    ]
+
+    assert len(result["data"]) == 700
+    assert "error" not in result
+
+
+def test_register_and_query(app_client, df):
+    df["a"] = df["a"].astype("UInt8")
+    app_client.app.c.create_table("new_table", df)
+
+    response = app_client.post("/v1/statement", data="SELECT * FROM new_table")
+    assert response.status_code == 200
+
+    result = get_result_or_error(app_client, response)
+
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "a",
+            "type": "tinyint",
+            "typeSignature": {"rawType": "tinyint", "arguments": []},
         },
         {
             "name": "b",

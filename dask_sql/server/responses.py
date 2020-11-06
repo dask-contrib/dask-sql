@@ -77,7 +77,9 @@ class DataResults(QueryResults):
 
     @staticmethod
     def get_data_description(df):
-        return list(df.itertuples(index=False, name=None))
+        return [
+            [str(cell) for cell in row] for row in df.itertuples(index=False, name=None)
+        ]
 
     def __init__(self, df: dd.DataFrame, request: Request):
         super().__init__(request)
