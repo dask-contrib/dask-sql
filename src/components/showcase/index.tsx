@@ -42,7 +42,7 @@ const ShowCase: FC<ShowCaseProps> = () => (
               </CodeLine>
               <CodeLine indent={4}>c = Context()</CodeLine>
               <CodeLine indent={4}>
-                c.register_dask_table(df, <String>"timeseries"</String>)
+                c.create_table(<String>"timeseries"</String>, df)
               </CodeLine>
               <br />
               <CodeLine indent={4}><Comment>
