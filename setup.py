@@ -73,6 +73,7 @@ setup(
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
+        "tzlocal>=2.1",
     ],
     zip_safe=False,
     cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
