@@ -186,4 +186,3 @@ def test_view_table_persist(c, temporary_data_file, df):
     assert_frame_equal(
         c.sql("SELECT c FROM count_table").compute(), pd.DataFrame({"c": [700]})
     )
-
