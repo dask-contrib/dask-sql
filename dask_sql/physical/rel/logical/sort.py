@@ -61,11 +61,6 @@ class LogicalSortPlugin(BaseRelPlugin):
         first_sort_column = sort_columns[0]
         first_sort_ascending = sort_ascending[0]
 
-        # Sort the first column with set_index. Currently, we can only handle ascending sort
-        if not first_sort_ascending:
-            raise NotImplementedError(
-                "The first column needs to be sorted ascending (yet)"
-            )
         # We can only sort if there are no NaNs or infs.
         # Therefore we need to do a single pass over the dataframe
         # to warn the user
@@ -78,6 +73,12 @@ class LogicalSortPlugin(BaseRelPlugin):
             raise ValueError("Can not sort a column with NaNs")
 
         df = df.set_index(first_sort_column, drop=False).reset_index(drop=True)
+        if not first_sort_ascending:
+            # As set_index().reset_index() always sorts ascending, we need to reverse
+            # the order inside all partitions and the order of the partitions itself
+            df = dd.from_delayed(
+                reversed([self.reverse_partition(p) for p in df.to_delayed()])
+            )
 
         # sort the remaining columns if given
         if len(sort_columns) > 1:
@@ -155,3 +156,9 @@ class LogicalSortPlugin(BaseRelPlugin):
                 for partition_number, partition in enumerate(df.to_delayed())
             ]
         )
+
+    @staticmethod
+    @dask.delayed
+    def reverse_partition(partition):
+        """Small helper function to revert a partition in dask"""
+        return partition[::-1]
