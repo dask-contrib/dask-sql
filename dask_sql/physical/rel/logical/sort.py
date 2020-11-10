@@ -76,9 +76,8 @@ class LogicalSortPlugin(BaseRelPlugin):
         if not first_sort_ascending:
             # As set_index().reset_index() always sorts ascending, we need to reverse
             # the order inside all partitions and the order of the partitions itself
-            df = dd.from_delayed(
-                reversed([self.reverse_partition(p) for p in df.to_delayed()])
-            )
+            df = df.map_partitions(self.reverse_partition, meta=df)
+            df = df.partitions[::-1]
 
         # sort the remaining columns if given
         if len(sort_columns) > 1:
@@ -106,8 +105,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         if not offset:
             # We do a (hopefully) very quick check: if the first partition
             # is already enough, we will just ust this
-            first_partition_length = df.map_partitions(lambda x: len(x)).to_delayed()[0]
-            first_partition_length = first_partition_length.compute()
+            first_partition_length = len(df.partitions[0])
             if first_partition_length >= end:
                 return df.head(end, compute=False)
 
@@ -153,12 +151,11 @@ class LogicalSortPlugin(BaseRelPlugin):
         return dd.from_delayed(
             [
                 select_from_to(partition, partition_number, partition_borders)
-                for partition_number, partition in enumerate(df.to_delayed())
+                for partition_number, partition in enumerate(df.partitions)
             ]
         )
 
     @staticmethod
-    @dask.delayed
     def reverse_partition(partition):
         """Small helper function to revert a partition in dask"""
         return partition[::-1]
