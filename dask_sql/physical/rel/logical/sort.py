@@ -76,7 +76,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         if not first_sort_ascending:
             # As set_index().reset_index() always sorts ascending, we need to reverse
             # the order inside all partitions and the order of the partitions itself
-            df = df.map_partitions(self.reverse_partition, meta=df)
+            df = df.map_partitions(lambda partition: partition[::-1], meta=df)
             df = df.partitions[::-1]
 
         # sort the remaining columns if given
@@ -154,8 +154,3 @@ class LogicalSortPlugin(BaseRelPlugin):
                 for partition_number, partition in enumerate(df.partitions)
             ]
         )
-
-    @staticmethod
-    def reverse_partition(partition):
-        """Small helper function to revert a partition in dask"""
-        return partition[::-1]
