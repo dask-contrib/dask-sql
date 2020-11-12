@@ -130,7 +130,7 @@ The additional parameters are passed to the call to ``read_<format>``.
 If you omit the format argument, it will be deduced from the file name extension.
 More ways to load data can be found in :ref:`data_input`.
 
-Using a similar syntax, it is also possible to create a (materialized) view of a SQL (maybe complicated) query.
+Using a similar syntax, it is also possible to create a (materialized) view of a (maybe complicated) SQL query.
 With the following command, you give the result of the ``SELECT`` query a name, that you can use
 in subsequent calls.
 
