@@ -15,7 +15,7 @@ You can test the sql presto server by running
 
 .. code-block:: bash
 
-    python dask_sql/server/app.py
+    python scripts/startup_script.py
 
 or by running these lines of code
 
