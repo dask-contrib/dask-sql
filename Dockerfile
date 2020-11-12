@@ -1,6 +1,6 @@
 # Dockerfile for dask-sql running the SQL server
 # For more information, see https://dask-sql.readthedocs.io/.
-FROM continuumio/miniconda3:4.8.2
+FROM daskdev/dask:2.30.0
 LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
 # Install dependencies for dask-sql
@@ -22,6 +22,8 @@ RUN cd /opt/dask_sql/ \
     && pip install -e .
 
 # Set the script to execute
+COPY scripts/startup_script.py /opt/dask_sql/startup_script.py
+
 EXPOSE 8080
 ENV JAVA_HOME /opt/conda
-ENTRYPOINT [ "/opt/conda/bin/python", "/opt/dask_sql/dask_sql/server/app.py" ]
+ENTRYPOINT [ "/usr/bin/prepare.sh", "/opt/conda/bin/python", "/opt/dask_sql/startup_script.py" ]
