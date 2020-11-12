@@ -76,7 +76,7 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
 }
 
 // CREATE TABLE name WITH (key = value) or
-// CREATE TABLE name WITH AS
+// CREATE TABLE name AS
 SqlNode SqlCreateTable() :
 {
     final SqlParserPos pos;
