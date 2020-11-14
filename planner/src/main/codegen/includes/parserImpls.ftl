@@ -75,25 +75,66 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
     }
 }
 
-// CREATE TABLE name WITH (key = value)
+// CREATE TABLE name WITH (key = value) or
+// CREATE TABLE name AS
 SqlNode SqlCreateTable() :
 {
     final SqlParserPos pos;
     final SqlIdentifier tableName;
     final HashMap<SqlNode, SqlNode> kwargs = new HashMap<SqlNode, SqlNode>();
+    final SqlSelect select;
 }
 {
     <CREATE> { pos = getPos(); } <TABLE>
     tableName = SimpleIdentifier()
-    <WITH>
-    <LPAREN>
-    KeyValueExpression(kwargs)
     (
-        <COMMA>
+        <WITH>
+        <LPAREN>
         KeyValueExpression(kwargs)
-    )*
-    <RPAREN>
+        (
+            <COMMA>
+            KeyValueExpression(kwargs)
+        )*
+        <RPAREN>
+        {
+            return new SqlCreateTable(pos, tableName, kwargs);
+        }
+    |
+        <AS>
+        (
+            <LPAREN>
+            select = SqlSelect()
+            <RPAREN>
+        |
+            select = SqlSelect()
+        )
+        {
+            // True = do make persistent
+            return new SqlCreateTableAs(pos, tableName, select, true);
+        }
+    )
+}
+
+// CREATE VIEW name AS
+SqlNode SqlCreateView() :
+{
+    final SqlParserPos pos;
+    final SqlIdentifier tableName;
+    final SqlSelect select;
+}
+{
+    <CREATE> { pos = getPos(); } <VIEW>
+    tableName = SimpleIdentifier()
+    <AS>
+    (
+        <LPAREN>
+        select = SqlSelect()
+        <RPAREN>
+    |
+        select = SqlSelect()
+    )
     {
-        return new SqlCreateTable(pos, tableName, kwargs);
+        // False = do not make persistent
+        return new SqlCreateTableAs(pos, tableName, select, false);
     }
 }

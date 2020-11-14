@@ -35,7 +35,6 @@ def to_dc(
     filled_get_dask_dataframe = lambda *args: _get_dask_dataframe(
         *args,
         file_format=file_format,
-        persist=persist,
         hive_table_name=hive_table_name,
         hive_schema_name=hive_schema_name,
         **kwargs,
@@ -57,7 +56,6 @@ def _get_dask_dataframe(
     file_format: str = None,
     hive_table_name: str = None,
     hive_schema_name: str = "default",
-    persist: bool = True,
     **kwargs,
 ):
     if isinstance(input_item, pd.DataFrame):
