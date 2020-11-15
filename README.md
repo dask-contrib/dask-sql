@@ -158,7 +158,7 @@ authentication.
 
 You can test the sql presto server by running
 
-    python dask_sql/server/app.py
+    python scripts/startup_script.py
 
 or by using the created docker image
 

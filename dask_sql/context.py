@@ -83,6 +83,7 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
@@ -472,14 +473,11 @@ class Context:
         # edge cases (if the outer SQLNode is not a select node),
         # but so far I did not find such a case.
         # So please raise an issue if you have found one!
-        def toSqlString(s):
-            try:
-                return str(s.toSqlString(default_dialect))
-            except:  # pragma: no cover
-                return str(s)
-
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-            select_names = [toSqlString(s) for s in sqlNode.getSelectList()]
+            select_names = [
+                self._to_sql_string(s, default_dialect=default_dialect)
+                for s in sqlNode.getSelectList()
+            ]
         else:
             logger.debug(
                 "Not extracting output column names as the SQL is not a SELECT call"
@@ -490,3 +488,15 @@ class Context:
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
+
+    def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
+        if default_dialect is None:
+            schema = self._prepare_schema()
+
+            generator = RelationalAlgebraGenerator(schema)
+            default_dialect = generator.getDialect()
+
+        try:
+            return str(s.toSqlString(default_dialect))
+        except:  # pragma: no cover
+            return str(s)

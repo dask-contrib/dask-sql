@@ -130,6 +130,38 @@ The additional parameters are passed to the call to ``read_<format>``.
 If you omit the format argument, it will be deduced from the file name extension.
 More ways to load data can be found in :ref:`data_input`.
 
+Using a similar syntax, it is also possible to create a (materialized) view of a (maybe complicated) SQL query.
+With the following command, you give the result of the ``SELECT`` query a name, that you can use
+in subsequent calls.
+
+.. code-block:: sql
+
+    CREATE TABLE my_table AS (
+        SELECT
+            a, b, SUM(c)
+        FROM data
+        GROUP BY a, b
+        ...
+    )
+
+    SELECT * FROM my_table
+
+Instead of using ``CREATE TABLE`` it is also possible to use ``CREATE VIEW``.
+The result is very similar, the only difference is when the result will be computed: a view is recomputed on every usage,
+whereas a table is only calculated once on creation (also known as a materialized view).
+This means, if you e.g. read data from a remote file and the file changes, a query containing a view will
+be updated whereas a query with a table will stay constant.
+To update a table, you need to recreate it.
+
+.. hint::
+
+    Use views to simplify complicated queries (like a "shortcut") and tables for caching.
+
+.. note::
+
+    The update of the view only works, if your primary data source (the files you were reading in),
+    are not persisted during reading.
+
 
 Implemented operations
 ----------------------
@@ -280,4 +312,4 @@ Including this operation will trigger a calculation of the full data frame alrea
     The data inside ``dask`` is partitioned, to distribute it over the cluster.
     ``head`` will only return the first N elements from the first partition - even if N is larger than the partition size.
     As a benefit, calling ``.head(N)`` is typically faster than calculating the full data sample with ``.compute()``.
-    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered - but will also need to do precalculate the first partition to find out, if it needs to have a look into all data or not.
+    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered - but will also need to precalculate the first partition to find out, if it needs to have a look into all data or not.

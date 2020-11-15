@@ -23,6 +23,7 @@ data: {
         "org.apache.calcite.util.*",
         "java.util.*",
         "com.dask.sql.parser.SqlCreateTable",
+        "com.dask.sql.parser.SqlCreateTableAs",
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables"
@@ -46,6 +47,7 @@ data: {
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
          "SqlCreateTable()"
+         "SqlCreateView()"
          "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"
