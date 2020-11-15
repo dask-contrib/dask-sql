@@ -1,8 +1,7 @@
-from typing import Dict, List
+from typing import List
 
+import dask
 import dask.dataframe as dd
-from dask.highlevelgraph import HighLevelGraph
-from dask.dataframe.core import new_dd_object
 import pandas as pd
 import dask.array as da
 
@@ -62,11 +61,6 @@ class LogicalSortPlugin(BaseRelPlugin):
         first_sort_column = sort_columns[0]
         first_sort_ascending = sort_ascending[0]
 
-        # Sort the first column with set_index. Currently, we can only handle ascending sort
-        if not first_sort_ascending:
-            raise NotImplementedError(
-                "The first column needs to be sorted ascending (yet)"
-            )
         # We can only sort if there are no NaNs or infs.
         # Therefore we need to do a single pass over the dataframe
         # to warn the user
@@ -79,6 +73,11 @@ class LogicalSortPlugin(BaseRelPlugin):
             raise ValueError("Can not sort a column with NaNs")
 
         df = df.set_index(first_sort_column, drop=False).reset_index(drop=True)
+        if not first_sort_ascending:
+            # As set_index().reset_index() always sorts ascending, we need to reverse
+            # the order inside all partitions and the order of the partitions itself
+            df = df.map_partitions(lambda partition: partition[::-1], meta=df)
+            df = df.partitions[::-1]
 
         # sort the remaining columns if given
         if len(sort_columns) > 1:
@@ -94,8 +93,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         Limit the dataframe to the window [offset, end].
         That is unfortunately, not so simple as we do not know how many
         items we have in each partition. We have therefore no other way than to
-        calculate (!!!) the sizes of each partition
-        (this means we need to compute the dataframe already here).
+        calculate (!!!) the sizes of each partition.
 
         After that, we can create a new dataframe from the old
         dataframe by calculating for each partition if and how much
@@ -104,24 +102,31 @@ class LogicalSortPlugin(BaseRelPlugin):
         we need to pass the partition number to the selection
         function, which is not possible with normal "map_partitions".
         """
-        # As we need to calculate the partition size, we better persist
-        # the df. I think...
-        # TODO: check if this is the best thing to do
-        df = df.persist()
+        if not offset:
+            # We do a (hopefully) very quick check: if the first partition
+            # is already enough, we will just ust this
+            first_partition_length = len(df.partitions[0])
+            if first_partition_length >= end:
+                return df.head(end, compute=False)
 
         # First, we need to find out which partitions we want to use.
         # Therefore we count the total number of entries
-        partition_borders = df.map_partitions(lambda x: len(x)).compute()
-        partition_borders = partition_borders.cumsum().to_dict()
+        partition_borders = df.map_partitions(lambda x: len(x))
 
         # Now we let each of the partitions figure out, how much it needs to return
         # using these partition borders
-        # For this, we generate out own dask computation graph (as it does not really)
-        # fit well with one of the already present methods
+        # For this, we generate out own dask computation graph (as it does not really
+        # fit well with one of the already present methods).
 
         # (a) we define a method to be calculated on each partition
         # This method returns the part of the partition, which falls between [offset, fetch]
-        def select_from_to(df, partition_index):
+        # Please note that the dask object "partition_borders", will be turned into
+        # its pandas representation at this point and we can calculate the cumsum
+        # (which is not possible on the dask object). Recalculating it should not cost
+        # us much, as we assume the number of partitions is rather small.
+        @dask.delayed
+        def select_from_to(df, partition_index, partition_borders):
+            partition_borders = partition_borders.cumsum().to_dict()
             this_partition_border_left = (
                 partition_borders[partition_index - 1] if partition_index > 0 else 0
             )
@@ -141,20 +146,11 @@ class LogicalSortPlugin(BaseRelPlugin):
 
             return df.iloc[from_index:to_index]
 
-        # Then we (b) define a task graph. It should calculate the function above on each of the partitions of
-        # df (specified by (df._name, i) for each partition i). As an argument, we pass the partition_index.
-        dask_graph_name = df._name + "-limit"
-        dask_graph_dict = {}
-
-        for partition_index in range(df.npartitions):
-            dask_graph_dict[(dask_graph_name, partition_index)] = (
-                select_from_to,
-                (df._name, partition_index),
-                partition_index,
-            )
-
-        # We replace df with our new graph
-        graph = HighLevelGraph.from_collections(
-            dask_graph_name, dask_graph_dict, dependencies=[df]
+        # (b) Now we just need to apply the function on every partition
+        # We do this via the delayed interface, which seems the easiest one.
+        return dd.from_delayed(
+            [
+                select_from_to(partition, partition_number, partition_borders)
+                for partition_number, partition in enumerate(df.partitions)
+            ]
         )
-        return new_dd_object(graph, dask_graph_name, df._meta, df.divisions)
