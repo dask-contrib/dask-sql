@@ -87,6 +87,7 @@ const Topology: FC<TopologyProps> = () => (
                         with your normal dataframe operations.
                         It works particularly well with the
                         interactive notebook format.
+                        Launch a <a className="underline" href="https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab">test notebook server</a>.
                     </TopologyText>
                 </TopologyCard>
                 <TopologyCard col={4} row={2} span={1}>
