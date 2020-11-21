@@ -5,6 +5,7 @@ from dask_sql.datacontainer import DataContainer
 import re
 from datetime import datetime
 import logging
+import platform
 
 import dask.dataframe as dd
 import numpy as np
@@ -23,13 +24,17 @@ def _set_or_check_java_home():
         # we are not running in a conda env
         return  # pragma: no cover
 
+    correct_java_path = os.environ["CONDA_PREFIX"]
+    if platform.system() == "Windows":  # pragma: no cover
+        correct_java_path = os.path.join(correct_java_path, "Library")
+
     if "JAVA_HOME" not in os.environ:  # pragma: no cover
         logger.debug("Setting $JAVA_HOME to $CONDA_PREFIX")
-        os.environ["JAVA_HOME"] = os.environ["CONDA_PREFIX"]
-    elif os.environ["JAVA_HOME"] != os.environ["CONDA_PREFIX"]:  # pragma: no cover
+        os.environ["JAVA_HOME"] = correct_java_path
+    elif os.environ["JAVA_HOME"] != correct_java_path:  # pragma: no cover
         warnings.warn(
             "You are running in a conda environment, but the JAVA_PATH is not using it. "
-            "If this is by mistake, set $JAVA_HOME to $CONDA_PREFIX."
+            f"If this is by mistake, set $JAVA_HOME to {correct_java_path}."
         )
 
 
