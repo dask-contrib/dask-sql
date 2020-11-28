@@ -254,4 +254,3 @@ def _fetch_all_results(
         return result.fetchall()
     except AttributeError:
         return cursor.fetchall()
-
