@@ -81,6 +81,25 @@ def test_select_of_select(c, df):
     assert_frame_equal(result_df, expected_df)
 
 
+def test_select_of_select_with_casing(c, df):
+    result_df = c.sql(
+        """
+        SELECT AAA, aaa, aAa
+        FROM
+        (
+            SELECT a - 1 AS aAa, 2*b AS aaa, a + b AS AAA
+            FROM df
+        ) AS "inner"
+        """
+    )
+    result_df = result_df.compute()
+
+    expected_df = pd.DataFrame(
+        {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
+    )
+    assert_frame_equal(result_df, expected_df)
+
+
 def test_wrong_input(c):
     with pytest.raises(ParsingException):
         c.sql("""SELECT x FROM df""")
