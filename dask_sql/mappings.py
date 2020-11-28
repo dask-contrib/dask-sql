@@ -106,10 +106,26 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         return literal_value
 
     elif sql_type.startswith("INTERVAL"):
+        # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
+        try:
+            interval_type = sql_type.split()[1].lower()
+
+            if interval_type in {"year", "quarter", "month"}:
+                # if sql_type is INTERVAL YEAR, Calcite will covert to months
+                delta = pd.tseries.offsets.DateOffset(months=float(str(literal_value)))
+                return delta
+        except IndexError:
+            # no finer granular interval type specified
+            pass
+        except TypeError:
+            # interval type is not recognized, fall back to default case
+            pass
+
         # Calcite will always convert to milliseconds
         # no matter what the actual interval is
         # I am not sure if this breaks somewhere,
         # but so far it works
+        # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return timedelta(milliseconds=float(str(literal_value)))
 
     elif sql_type == "BOOLEAN":
