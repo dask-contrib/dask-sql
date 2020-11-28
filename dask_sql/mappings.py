@@ -112,6 +112,9 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         # but so far it works
         return timedelta(milliseconds=float(str(literal_value)))
 
+    elif sql_type == "BOOLEAN":
+        return bool(literal_value)
+
     elif (
         sql_type.startswith("TIMESTAMP(")
         or sql_type.startswith("TIME(")
