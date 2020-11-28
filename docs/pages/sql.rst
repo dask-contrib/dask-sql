@@ -13,6 +13,7 @@ General
 -------
 
 Identifiers can be specified with double quotes or without quotes (if there is no ambiguity with SQL keywords).
+Casing with be kept (with or without quotes).
 
 .. code-block:: sql
 
