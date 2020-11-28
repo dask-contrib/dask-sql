@@ -12,11 +12,21 @@ try:
 except ImportError:
     hive = None
 
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy = None
+
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 
 logger = logging.Logger(__name__)
 
-InputType = Union[dd.DataFrame, pd.DataFrame, str, "hive.Cursor"]
+InputType = Union[
+    dd.DataFrame,
+    pd.DataFrame,
+    str,
+    Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
+]
 
 
 def to_dc(
@@ -58,11 +68,16 @@ def _get_dask_dataframe(
     hive_schema_name: str = "default",
     **kwargs,
 ):
+    is_sqlalchemy_hive = sqlalchemy and isinstance(
+        input_item, sqlalchemy.engine.base.Connection
+    )
+    is_hive_cursor = hive and isinstance(input_item, hive.Cursor)
+
     if isinstance(input_item, pd.DataFrame):
         return dd.from_pandas(input_item, npartitions=1, **kwargs)
     elif isinstance(input_item, dd.DataFrame):
         return input_item
-    elif hive and isinstance(input_item, hive.Cursor):  # pragma: no cover
+    elif is_hive_cursor or is_sqlalchemy_hive:  # pragma: no cover
         return _get_files_from_hive(
             input_item, table_name=hive_table_name, schema=hive_schema_name, **kwargs
         )
@@ -91,7 +106,10 @@ def _get_files_from_location(input_item, file_format: str = None, **kwargs):
 
 
 def _get_files_from_hive(
-    cursor: "hive.Cursor", table_name: str, schema: str = "default", **kwargs
+    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
+    table_name: str,
+    schema: str = "default",
+    **kwargs,
 ):  # pragma: no cover
     (
         table_information,
@@ -144,7 +162,10 @@ def _get_files_from_hive(
 
 
 def _parse_hive_table_description(
-    cursor: "hive.Cursor", schema: str, table_name: str, partition: str = None
+    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
+    schema: str,
+    table_name: str,
+    partition: str = None,
 ):  # pragma: no cover
     """
     Extract all information from the output
@@ -153,11 +174,12 @@ def _parse_hive_table_description(
     """
     cursor.execute(f"USE {schema}")
     if partition:
-        cursor.execute(f"DESCRIBE FORMATTED {table_name} PARTITION ({partition})")
+        result = _fetch_all_results(
+            cursor, f"DESCRIBE FORMATTED {table_name} PARTITION ({partition})"
+        )
     else:
-        cursor.execute(f"DESCRIBE FORMATTED {table_name}")
+        result = _fetch_all_results(cursor, f"DESCRIBE FORMATTED {table_name}")
 
-    result = cursor.fetchall()
     logger.debug(f"Got information from hive: {result}")
 
     table_information = {}
@@ -165,8 +187,6 @@ def _parse_hive_table_description(
     partition_information = {}
     mode = None
     last_field = None
-
-    from pprint import pprint
 
     for key, value, value2 in result:
         key = key.strip().rstrip(":") if key else ""
@@ -207,14 +227,31 @@ def _parse_hive_table_description(
 
 
 def _parse_hive_partition_description(
-    cursor: "hive.Cursor", schema: str, table_name: str
+    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
+    schema: str,
+    table_name: str,
 ):  # pragma: no cover
     """
     Extract all partition informaton for a given table
     """
     cursor.execute(f"USE {schema}")
-    cursor.execute(f"SHOW PARTITIONS {table_name}")
-
-    result = cursor.fetchall()
+    result = _fetch_all_results(cursor, "SHOW PARTITIONS {table_name}")
 
     return [row[0] for row in result]
+
+
+def _fetch_all_results(
+    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"], sql: str
+):  # pragma: no cover
+    """
+    The pyhive.Cursor and the sqlalchemy connection behave slightly different.
+    The former has the fetchall method on the cursor,
+    whereas the latter on the executed query.
+    """
+    result = cursor.execute(sql)
+
+    try:
+        return result.fetchall()
+    except AttributeError:
+        return cursor.fetchall()
+

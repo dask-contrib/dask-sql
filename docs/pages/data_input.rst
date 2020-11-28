@@ -42,14 +42,20 @@ For this, ``dask-sql`` will retrieve the information on the storage location and
 from the metastore and will then register the raw data directly in the context.
 This means, no Hive data query will be issued and you might be able to see a speed improvement.
 
+It is both possible to use a `pyhive.hive.Cursor` or an `sqlalchemy` connection.
+
 .. code-block:: python
 
     from dask_sql import Context
     from pyhive.hive import connect
+    import sqlalchemy
 
     c = Context()
 
     cursor = connect("hive-server", 10000).cursor()
+    # or
+    cursor = sqlalchemy.create_engine("hive://hive-server:10000").connect()
+
     c.create_table("my_data", cursor, hive_table_name="the_name_in_hive")
 
 
