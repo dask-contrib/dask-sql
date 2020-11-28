@@ -432,7 +432,8 @@ def test_date_functions(c):
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
+            LAST_DAY(d) as "last_day"
         FROM df
     """
     ).compute()
@@ -454,6 +455,7 @@ def test_date_functions(c):
             "second": [42],
             "week": [39],
             "year": [2021],
+            "last_day": [datetime(2021, 10, 31, 15, 53, 42, 47)]
         }
     )
 

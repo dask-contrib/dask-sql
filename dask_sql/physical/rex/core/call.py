@@ -501,6 +501,14 @@ class RexCallPlugin(BaseRexPlugin):
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
         "current_date": Operation(lambda *args: pd.Timestamp.now()),
         "current_timestamp": Operation(lambda *args: pd.Timestamp.now()),
+        # "timestampadd": 
+        # "timestampdiff":
+        "last_day": TensorScalarOperation(
+            lambda x: x + pd.tseries.offsets.MonthEnd(1),
+            lambda x: pd.to_datetime(x) + pd.tseries.offsets.MonthEnd(1)
+        ),
+        # "date_floor": 
+        # "date_ceil": 
     }
 
     def convert(
