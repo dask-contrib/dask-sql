@@ -25,7 +25,7 @@ def _set_or_check_java_home():
         return  # pragma: no cover
 
     correct_java_path = os.path.normpath(os.environ["CONDA_PREFIX"])
-    if platform.system() == "Windows":  # pragma: no cover
+    if platform.system() == "Windows":
         correct_java_path = os.path.normpath(os.path.join(correct_java_path, "Library"))
 
     java_path = os.path.normpath(os.environ["JAVA_HOME"])
