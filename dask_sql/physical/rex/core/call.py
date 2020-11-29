@@ -40,7 +40,7 @@ class Operation:
 class PredicteBasedOperation(Operation):
     """
     Helper operation to call a function on the input,
-    depending if the first arg evaluates, given a predicate function, to true or not
+    depending if the first arg evaluates, given a predicate function, to true or false
     """
     def __init__(self, predicte: Callable, true_route: Callable, false_route: Callable):
         super().__init__(self.apply)
@@ -423,6 +423,9 @@ class ExtractOperation(Operation):
 
 
 class CeilFloorOperation(PredicteBasedOperation):
+    """
+    Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
+    """
 
     def __init__(self, round_method: str):
         assert round_method in {
@@ -546,14 +549,10 @@ class RexCallPlugin(BaseRexPlugin):
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
         "current_date": Operation(lambda *args: pd.Timestamp.now()),
         "current_timestamp": Operation(lambda *args: pd.Timestamp.now()),
-        # "timestampadd": 
-        # "timestampdiff":
         "last_day": TensorScalarOperation(
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: pd.to_datetime(x) + pd.tseries.offsets.MonthEnd(1)
         ),
-        # "date_floor": 
-        # "date_ceil": 
     }
 
     def convert(
