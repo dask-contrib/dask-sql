@@ -9,7 +9,7 @@ import pandas as pd
 
 try:
     from pyhive import hive
-except ImportError:
+except ImportError:  # pragma: no cover
     hive = None
 
 try:

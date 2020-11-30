@@ -29,16 +29,18 @@ jobs:
           key: ${{ runner.os }}-conda-v1-${{ hashFiles('conda.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
-      - name: Install dependencies
+      - name: Install dependencies and build the jar
         shell: bash -l {0}
         run: |
           conda install --file conda.yaml -c conda-forge
           which python
           pip list
           conda list
-      - name: Build jar
-        shell: bash -l {0}
-        run: python setup.py java
+
+          # This needs to happen in the same
+          # shell, because otherwise the JAVA_HOME
+          # will be wrong on windows
+          python setup.py java
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
@@ -76,20 +78,24 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install --file conda.yaml -c conda-forge
-          # maybe re-install java
-          conda install openjdk=${{ matrix.java }}
-          which python
-          pip list
-          conda list
       - name: Install sqlalchemy and docker pkg for postgres test
         shell: bash -l {0}
         run: |
           # explicitly install docker and sqlalchemy package
           pip install docker sqlalchemy psycopg2
         if: matrix.os == 'ubuntu-latest'
-      - name: Test with pytest
+      - name: Install Java (again) and test with pytest
         shell: bash -l {0}
-        run: pytest --junitxml=junit/test-results.xml --cov-report=xml tests
+        run: |
+          conda install openjdk=${{ matrix.java }}
+          which python
+          pip list
+          conda list
+
+          # This needs to happen in the same
+          # shell, because otherwise the JAVA_HOME
+          # will be wrong on windows
+          pytest --junitxml=junit/test-results.xml --cov-report=xml tests
       - name: Upload pytest test results
         uses: actions/upload-artifact@v1
         with:
