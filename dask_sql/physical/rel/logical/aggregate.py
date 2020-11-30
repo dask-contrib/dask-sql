@@ -219,9 +219,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                 grouped_df = GroupDatasetDescription(df)
 
             if expr.isDistinct():
-                raise NotImplementedError(
-                    "DISTINCT is not implemented (yet)"
-                )  # pragma: no cover
+                raise NotImplementedError("DISTINCT is not implemented (yet)")
 
             aggregation_name = str(expr.getAggregation().getName())
             aggregation_name = aggregation_name.lower()
@@ -241,9 +239,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
-                raise NotImplementedError(
-                    "Can not cope with more than one input"
-                )  # pragma: no cover
+                raise NotImplementedError("Can not cope with more than one input")
 
             aggregations[grouped_df][input_col][output_col] = aggregation_function
             output_column_order.append(output_col)

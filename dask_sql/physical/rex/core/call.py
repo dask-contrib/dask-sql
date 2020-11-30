@@ -165,7 +165,7 @@ class NotOperation(Operation):
         if is_frame(df):
             return ~(df.astype("boolean"))
         else:
-            return not df  # pragma: no cover
+            return not df
 
 
 class IsNullOperation(Operation):
@@ -249,7 +249,7 @@ class RegexOperation(Operation):
         # Finally, apply the string
         if is_frame(test):
             return test.str.match(transformed_regex).astype("boolean")
-        else:  # pragma: no cover
+        else:
             return bool(re.match(transformed_regex, test))
 
 
@@ -412,7 +412,7 @@ class ExtractOperation(Operation):
             return df.week
         elif what == "YEAR":
             return df.year
-        else:  # pragma: no cover
+        else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 

@@ -101,3 +101,8 @@ def test_input_types(temporary_data_file):
 
     with pytest.raises(AttributeError):
         c.create_table("df", temporary_data_file, file_format="unknown")
+
+    strangeThing = object()
+
+    with pytest.raises(ValueError):
+        c.create_table("df", strangeThing)

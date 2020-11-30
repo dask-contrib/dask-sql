@@ -26,7 +26,7 @@ class BaseRelPlugin:
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         """Base method to implement"""
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     @staticmethod
     def fix_column_to_row_type(

@@ -106,6 +106,15 @@ def test_like():
     assert op("not normal", r"n[a-z]rm_l") == False
 
 
+def test_not():
+    op = call.NotOperation()
+
+    assert op(False) == True
+    assert op(True) == False
+
+    assert op(3) == False
+
+
 def test_nan():
     op = call.IsNullOperation()
 

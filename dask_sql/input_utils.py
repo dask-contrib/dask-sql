@@ -83,7 +83,7 @@ def _get_dask_dataframe(
         )
     elif isinstance(input_item, str):
         return _get_files_from_location(input_item, file_format=file_format, **kwargs)
-    else:  # pragma: no cover
+    else:
         raise ValueError(f"Do not understand the input type {type(input_item)}")
 
 
