@@ -20,12 +20,12 @@ def _set_or_check_java_home():
     a conda environment. That does not need to be true, but we should at
     least warn the user.
     """
-    if "CONDA_PREFIX" not in os.environ:
+    if "CONDA_PREFIX" not in os.environ:  # pragma: no cover
         # we are not running in a conda env
-        return  # pragma: no cover
+        return
 
     correct_java_path = os.path.normpath(os.environ["CONDA_PREFIX"])
-    if platform.system() == "Windows":
+    if platform.system() == "Windows":  # pragma: no cover
         correct_java_path = os.path.normpath(os.path.join(correct_java_path, "Library"))
 
     java_path = os.path.normpath(os.environ["JAVA_HOME"])
