@@ -230,4 +230,3 @@ class LogicalJoinPlugin(BaseRelPlugin):
         raise TypeError(
             "Invalid join condition"
         )  # pragma: no cover. Do not how how it could be triggered.
-
