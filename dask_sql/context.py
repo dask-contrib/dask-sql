@@ -395,7 +395,7 @@ class Context:
         """
         schema = DaskSchema(self.schema_name)
 
-        if not self.tables:  # pragma: no cover
+        if not self.tables:
             logger.warning("No tables are registered.")
 
         for name, dc in self.tables.items():
@@ -498,5 +498,5 @@ class Context:
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover
+        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
             return str(s)

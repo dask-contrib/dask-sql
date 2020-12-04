@@ -34,7 +34,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
 
         try:
             dc = context.tables[tableName]
-        except KeyError:  # pragma: no cover
+        except KeyError:
             raise AttributeError(f"Table {tableName} is not defined.")
 
         cols = dc.column_container.columns

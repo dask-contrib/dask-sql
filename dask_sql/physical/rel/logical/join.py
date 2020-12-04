@@ -167,9 +167,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         if join_condition_type == "RexLiteral":
             return [], [], [join_condition]
         if join_condition_type != "RexCall":
-            raise NotImplementedError(
-                "Can not understand join condition."
-            )  # pragma: no cover
+            raise NotImplementedError("Can not understand join condition.")
 
         # Simplest case: ... ON lhs.a == rhs.b
         try:
@@ -229,4 +227,6 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
             return lhs_index, rhs_index
 
-        raise TypeError("Invalid join condition")  # pragma: no cover
+        raise TypeError(
+            "Invalid join condition"
+        )  # pragma: no cover. Do not how how it could be triggered.
