@@ -156,9 +156,9 @@ Instead of rebuilding a full ODBC driver, we re-use the [presto wire protocol](h
 It is - so far - only a start of the development and missing important concepts, such as
 authentication.
 
-You can test the sql presto server by running
+You can test the sql presto server by running (after installation)
 
-    python scripts/startup_script.py
+    dask-sql-server
 
 or by using the created docker image
 

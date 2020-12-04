@@ -75,6 +75,7 @@ setup(
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",
     ],
+    entry_points={"console_scripts": ["dask-sql-server = dask_sql.server.app:main"]},
     zip_safe=False,
     cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
