@@ -16,6 +16,8 @@ import java.util.Set;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * A DaskSchema contains the list of all known tables and functions
@@ -32,12 +34,12 @@ public class DaskSchema implements Schema {
 	/// Mapping of tables name -> table.
 	private final Map<String, DaskTable> databaseTables;
 	/// Mapping of function name -> function
-	private final Map<String, Function> functions;
+	private final Collection<DaskFunction> functions;
 
 	/// Create a new DaskSchema with the given name
 	public DaskSchema(final String name) {
 		this.databaseTables = new HashMap<String, DaskTable>();
-		this.functions = new HashMap<String, Function>();
+		this.functions = new HashSet<DaskFunction>();
 		this.name = name;
 	}
 
@@ -48,12 +50,12 @@ public class DaskSchema implements Schema {
 
 	/// Add an already created scalar function to the list
 	public void addFunction(final DaskScalarFunction function) {
-		this.functions.put(function.getFunctionName(), function);
+		this.functions.add(function);
 	}
 
 	/// Add an already created scalar function to the list
 	public void addFunction(final DaskAggregateFunction function) {
-		this.functions.put(function.getFunctionName(), function);
+		this.functions.add(function);
 	}
 
 	/// Get the name of this schema
@@ -79,8 +81,11 @@ public class DaskSchema implements Schema {
 	@Override
 	public Collection<Function> getFunctions(final String name) {
 		final Collection<Function> functionCollection = new HashSet<Function>();
-		if (this.functions.containsKey(name)) {
-			functionCollection.add(this.functions.get(name));
+
+		for (final DaskFunction function : this.functions) {
+			if (function.getFunctionName().equals(name)) {
+				functionCollection.add((Function) function);
+			}
 		}
 		return functionCollection;
 	}
@@ -89,7 +94,10 @@ public class DaskSchema implements Schema {
 	@Override
 	public Set<String> getFunctionNames() {
 		final Set<String> functionSet = new HashSet<String>();
-		functionSet.addAll(this.functions.keySet());
+		for (final DaskFunction function : this.functions) {
+			functionSet.add(function.getFunctionName());
+		}
+
 		return functionSet;
 	}
 
