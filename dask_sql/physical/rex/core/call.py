@@ -522,7 +522,7 @@ class RexCallPlugin(BaseRexPlugin):
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
-                operation = context.functions[operator_name].f
+                operation = context.functions[operator_name]
             except KeyError:
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 

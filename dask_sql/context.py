@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
@@ -26,7 +26,7 @@ from dask_sql.utils import ParsingException
 logger = logging.getLogger(__name__)
 
 FunctionDescription = namedtuple(
-    "FunctionDescription", ["f", "parameters", "return_type", "aggregation"]
+    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
 )
 
 
@@ -68,7 +68,8 @@ class Context:
         # Storage for the registered tables
         self.tables = {}
         # Storage for the registered functions
-        self.functions = {}
+        self.functions: Dict[str, Callable] = {}
+        self.function_list: List[FunctionDescription] = []
         # Storage for the registered aggregations
         self.aggregations = {}
         # Name of the root schema (not changable so far)
@@ -252,9 +253,16 @@ class Context:
             :func:`register_aggregation`
 
         """
-        self.functions[name.lower()] = FunctionDescription(
-            f, parameters, return_type, False
+        name = name.lower()
+        self.function_list.append(
+            FunctionDescription(name, parameters, return_type, False)
         )
+        if name in self.functions:
+            if self.functions[name] != f:
+                raise ValueError(
+                    "Registering different functions with the same name is not allowed"
+                )
+        self.functions[name] = f
 
     def register_aggregation(
         self,
@@ -310,9 +318,16 @@ class Context:
             :func:`register_function`
 
         """
-        self.functions[name.lower()] = FunctionDescription(
-            f, parameters, return_type, True
+        name = name.lower()
+        self.function_list.append(
+            FunctionDescription(name, parameters, return_type, True)
         )
+        if name in self.functions:
+            if self.functions[name] != f:
+                raise ValueError(
+                    "Registering different functions with the same name is not allowed"
+                )
+        self.functions[name] = f
 
     def sql(
         self, sql: str, return_futures: bool = True
@@ -415,7 +430,8 @@ class Context:
         if not self.functions:
             logger.debug("No custom functions defined.")
 
-        for name, function_description in self.functions.items():
+        for function_description in self.function_list:
+            name = function_description.name
             sql_return_type = python_to_sql_type(function_description.return_type)
             if function_description.aggregation:
                 logger.debug(f"Adding function '{name}' to schema as aggregation.")
@@ -423,7 +439,10 @@ class Context:
             else:
                 logger.debug(f"Adding function '{name}' to schema as scalar function.")
                 dask_function = DaskScalarFunction(name, sql_return_type)
-            self._add_parameters_from_description(function_description, dask_function)
+
+            dask_function = self._add_parameters_from_description(
+                function_description, dask_function
+            )
 
             schema.addFunction(dask_function)
 
@@ -436,6 +455,8 @@ class Context:
             sql_param_type = python_to_sql_type(param_type)
 
             dask_function.addParameter(param_name, sql_param_type, False)
+
+        return dask_function
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
