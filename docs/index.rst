@@ -74,6 +74,7 @@ which makes interchanging distributed CPU and GPU calculation easy.
    pages/custom
    pages/api
    pages/server
+   pages/cmd
    pages/how_does_it_work
 
 

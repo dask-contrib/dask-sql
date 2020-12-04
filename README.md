@@ -84,6 +84,12 @@ print(result.compute())
 print(result.x.mean().compute())
 ```
 
+You can also run the CLI `dask-sql` for testing out SQL commands quickly:
+
+    dask-sql --load-test-data --startup
+
+    (dask-sql) > SELECT * FROM timeseries LIMIT 10;
+
 ## Installation
 
 `dask-sql` can be installed via `conda` (preferred) or `pip` - or in a development environment.
