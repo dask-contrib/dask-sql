@@ -74,6 +74,8 @@ setup(
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",
+        "prompt_toolkit",
+        "pygments",
     ],
     entry_points={
         "console_scripts": [
