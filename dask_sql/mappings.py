@@ -121,10 +121,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
             # interval type is not recognized, fall back to default case
             pass
 
-        # Calcite will always convert to milliseconds
-        # no matter what the actual interval is
-        # I am not sure if this breaks somewhere,
-        # but so far it works
+        # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return timedelta(milliseconds=float(str(literal_value)))
 

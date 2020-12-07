@@ -498,7 +498,8 @@ def test_date_functions(c):
             "floor_to_hour": [datetime(2021, 10, 3, 15)],
             "floor_to_minute": [datetime(2021, 10, 3, 15, 53)],
             "floor_to_seconds": [datetime(2021, 10, 3, 15, 53, 42)],
-            "floor_to_millisec": [datetime(2021, 10, 3, 15, 53, 42)],        }
+            "floor_to_millisec": [datetime(2021, 10, 3, 15, 53, 42)],
+        }
     )
 
     assert_frame_equal(df, expected_df, check_dtype=False)
