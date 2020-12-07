@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
@@ -452,11 +453,11 @@ def test_date_functions(c):
             CEIL(d TO SECOND) as ceil_to_seconds, 
             CEIL(d TO MILLISECOND) as ceil_to_millisec, 
 
-            floor(d TO DAY) as floor_to_day, 
-            floor(d TO HOUR) as floor_to_hour, 
-            floor(d TO MINUTE) as floor_to_minute, 
-            floor(d TO SECOND) as floor_to_seconds, 
-            floor(d TO MILLISECOND) as floor_to_millisec 
+            FLOOR(d TO DAY) as floor_to_day, 
+            FLOOR(d TO HOUR) as floor_to_hour, 
+            FLOOR(d TO MINUTE) as floor_to_minute, 
+            FLOOR(d TO SECOND) as floor_to_seconds, 
+            FLOOR(d TO MILLISECOND) as floor_to_millisec 
 
         FROM df
     """
@@ -503,3 +504,13 @@ def test_date_functions(c):
     )
 
     assert_frame_equal(df, expected_df, check_dtype=False)
+
+    # test exception handling
+    with pytest.raises(NotImplementedError):
+        df = c.sql(
+            """
+            SELECT             
+                FLOOR(d TO YEAR) as floor_to_year
+            FROM df
+            """
+        ).compute()

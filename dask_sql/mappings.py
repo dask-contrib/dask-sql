@@ -114,10 +114,10 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
                 # if sql_type is INTERVAL YEAR, Calcite will covert to months
                 delta = pd.tseries.offsets.DateOffset(months=float(str(literal_value)))
                 return delta
-        except IndexError:
+        except IndexError:  # pragma: no cover
             # no finer granular interval type specified
             pass
-        except TypeError:
+        except TypeError:  # pragma: no cover
             # interval type is not recognized, fall back to default case
             pass
 
