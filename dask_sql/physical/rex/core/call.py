@@ -14,7 +14,7 @@ from tzlocal import get_localzone
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.utils import LoggableDataFrame, is_frame
+from dask_sql.utils import LoggableDataFrame, is_frame, is_datetime, convert_to_datetime
 from dask_sql.datacontainer import DataContainer
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,26 @@ class Operation:
         return Operation(lambda x: self(op(x)))
 
 
-class TensorScalarOperation(Operation):
+class PredicteBasedOperation(Operation):
+    """
+    Helper operation to call a function on the input,
+    depending if the first arg evaluates, given a predicate function, to true or false
+    """
+
+    def __init__(self, predicte: Callable, true_route: Callable, false_route: Callable):
+        super().__init__(self.apply)
+        self.predicte = predicte
+        self.true_route = true_route
+        self.false_route = false_route
+
+    def apply(self, *operands):
+        if self.predicte(operands[0]):
+            return self.true_route(*operands)
+
+        return self.false_route(*operands)
+
+
+class TensorScalarOperation(PredicteBasedOperation):
     """
     Helper operation to call a function on the input,
     depending if the first is a dataframe or not
@@ -45,17 +64,7 @@ class TensorScalarOperation(Operation):
 
     def __init__(self, tensor_f: Callable, scalar_f: Callable = None):
         """Init with the given operation"""
-        super().__init__(self.apply)
-
-        self.tensor_f = tensor_f
-        self.scalar_f = scalar_f or tensor_f
-
-    def apply(self, *operands):
-        """Call the stored functions"""
-        if is_frame(operands[0]):
-            return self.tensor_f(*operands)
-
-        return self.scalar_f(*operands)
+        super().__init__(is_frame, tensor_f, scalar_f)
 
 
 class ReduceOperation(Operation):
@@ -377,10 +386,7 @@ class ExtractOperation(Operation):
 
     def extract(self, what, df: SeriesOrScalar):
         input_df = df
-        if is_frame(df):
-            df = df.dt
-        else:
-            df = pd.to_datetime(df)
+        df = convert_to_datetime(df)
 
         if what == "CENTURY":
             return da.trunc(df.year / 100)
@@ -414,6 +420,48 @@ class ExtractOperation(Operation):
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
+class CeilFloorOperation(PredicteBasedOperation):
+    """
+    Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
+    """
+
+    def __init__(self, round_method: str):
+        assert round_method in {
+            "ceil",
+            "floor",
+        }, f"Round method can only be either ceil or floor"
+
+        super().__init__(
+            is_datetime,  # if the series is dt type
+            self._round_datetime,
+            getattr(da, round_method),
+        )
+
+        self.round_method = round_method
+
+    def _round_datetime(self, *operands):
+        df, unit = operands
+
+        df = convert_to_datetime(df)
+
+        unit_map = {
+            "DAY": "D",
+            "HOUR": "H",
+            "MINUTE": "T",
+            "SECOND": "S",
+            "MICROSECOND": "U",
+            "MILLISECOND": "L",
+        }
+
+        try:
+            freq = unit_map[unit.upper()]
+            return getattr(df, self.round_method)(freq)
+        except KeyError:
+            raise NotImplementedError(
+                f"{self.round_method} TO {unit} is not (yet) implemented."
+            )
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -468,12 +516,12 @@ class RexCallPlugin(BaseRexPlugin):
         "atan": Operation(da.arctan),
         "atan2": Operation(da.arctan2),
         "cbrt": Operation(da.cbrt),
-        "ceil": Operation(da.ceil),
+        "ceil": CeilFloorOperation("ceil"),
         "cos": Operation(da.cos),
         "cot": Operation(lambda x: 1 / da.tan(x)),
         "degrees": Operation(da.degrees),
         "exp": Operation(da.exp),
-        "floor": Operation(da.floor),
+        "floor": CeilFloorOperation("floor"),
         "log10": Operation(da.log10),
         "ln": Operation(da.log),
         # "mod": Operation(da.mod), # needs cast
@@ -501,6 +549,10 @@ class RexCallPlugin(BaseRexPlugin):
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
         "current_date": Operation(lambda *args: pd.Timestamp.now()),
         "current_timestamp": Operation(lambda *args: pd.Timestamp.now()),
+        "last_day": TensorScalarOperation(
+            lambda x: x + pd.tseries.offsets.MonthEnd(1),
+            lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
+        ),
     }
 
     def convert(

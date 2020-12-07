@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
@@ -432,7 +433,32 @@ def test_date_functions(c):
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
+
+            LAST_DAY(d) as "last_day",
+
+            TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
+            TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",
+            TIMESTAMPADD(WEEK, 1, d) as "plus_1_week",
+            TIMESTAMPADD(DAY, 1, d) as "plus_1_day",
+            TIMESTAMPADD(HOUR, 1, d) as "plus_1_hour",
+            TIMESTAMPADD(MINUTE, 1, d) as "plus_1_min",
+            TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
+            TIMESTAMPADD(MICROSECOND, 1000, d) as "plus_1000_millisec",
+            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
+
+            CEIL(d TO DAY) as ceil_to_day, 
+            CEIL(d TO HOUR) as ceil_to_hour, 
+            CEIL(d TO MINUTE) as ceil_to_minute, 
+            CEIL(d TO SECOND) as ceil_to_seconds, 
+            CEIL(d TO MILLISECOND) as ceil_to_millisec, 
+
+            FLOOR(d TO DAY) as floor_to_day, 
+            FLOOR(d TO HOUR) as floor_to_hour, 
+            FLOOR(d TO MINUTE) as floor_to_minute, 
+            FLOOR(d TO SECOND) as floor_to_seconds, 
+            FLOOR(d TO MILLISECOND) as floor_to_millisec 
+
         FROM df
     """
     ).compute()
@@ -454,7 +480,37 @@ def test_date_functions(c):
             "second": [42],
             "week": [39],
             "year": [2021],
+            "last_day": [datetime(2021, 10, 31, 15, 53, 42, 47)],
+            "plus_1_year": [datetime(2023, 10, 3, 15, 53, 42, 47)],
+            "plus_1_month": [datetime(2021, 11, 3, 15, 53, 42, 47)],
+            "plus_1_week": [datetime(2021, 10, 10, 15, 53, 42, 47)],
+            "plus_1_day": [datetime(2021, 10, 4, 15, 53, 42, 47)],
+            "plus_1_hour": [datetime(2021, 10, 3, 16, 53, 42, 47)],
+            "plus_1_min": [datetime(2021, 10, 3, 15, 54, 42, 47)],
+            "plus_1_sec": [datetime(2021, 10, 3, 15, 53, 43, 47)],
+            "plus_1000_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1047)],
+            "plus_1_qt": [datetime(2022, 1, 3, 15, 53, 42, 47)],
+            "ceil_to_day": [datetime(2021, 10, 4)],
+            "ceil_to_hour": [datetime(2021, 10, 3, 16)],
+            "ceil_to_minute": [datetime(2021, 10, 3, 15, 54)],
+            "ceil_to_seconds": [datetime(2021, 10, 3, 15, 53, 43)],
+            "ceil_to_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000)],
+            "floor_to_day": [datetime(2021, 10, 3)],
+            "floor_to_hour": [datetime(2021, 10, 3, 15)],
+            "floor_to_minute": [datetime(2021, 10, 3, 15, 53)],
+            "floor_to_seconds": [datetime(2021, 10, 3, 15, 53, 42)],
+            "floor_to_millisec": [datetime(2021, 10, 3, 15, 53, 42)],
         }
     )
 
     assert_frame_equal(df, expected_df, check_dtype=False)
+
+    # test exception handling
+    with pytest.raises(NotImplementedError):
+        df = c.sql(
+            """
+            SELECT             
+                FLOOR(d TO YEAR) as floor_to_year
+            FROM df
+            """
+        ).compute()

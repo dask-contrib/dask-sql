@@ -212,3 +212,18 @@ def test_dates():
     assert op("SECOND", date) == 42
     assert op("WEEK", date) == 39
     assert op("YEAR", date) == 2021
+
+    ceil_op = call.CeilFloorOperation("ceil")
+    floor_op = call.CeilFloorOperation("floor")
+
+    assert ceil_op(date, "DAY") == datetime(2021, 10, 4)
+    assert ceil_op(date, "HOUR") == datetime(2021, 10, 3, 16)
+    assert ceil_op(date, "MINUTE") == datetime(2021, 10, 3, 15, 54)
+    assert ceil_op(date, "SECOND") == datetime(2021, 10, 3, 15, 53, 43)
+    assert ceil_op(date, "MILLISECOND") == datetime(2021, 10, 3, 15, 53, 42, 1000)
+
+    assert floor_op(date, "DAY") == datetime(2021, 10, 3)
+    assert floor_op(date, "HOUR") == datetime(2021, 10, 3, 15)
+    assert floor_op(date, "MINUTE") == datetime(2021, 10, 3, 15, 53)
+    assert floor_op(date, "SECOND") == datetime(2021, 10, 3, 15, 53, 42)
+    assert floor_op(date, "MILLISECOND") == datetime(2021, 10, 3, 15, 53, 42)

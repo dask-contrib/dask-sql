@@ -52,6 +52,24 @@ def is_frame(df):
     )
 
 
+def is_datetime(obj):
+    """
+    Check if a scalar or a series is of datetime type
+    """
+    return pd.api.types.is_datetime64_any_dtype(obj) or isinstance(obj, datetime)
+
+
+def convert_to_datetime(df):
+    """
+    Covert a scalar or a series to datetime type
+    """
+    if is_frame(df):
+        df = df.dt
+    else:
+        df = pd.to_datetime(df)
+    return df
+
+
 class Pluggable:
     """
     Helper class for everything which can be extended by plugins.
