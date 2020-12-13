@@ -1,10 +1,15 @@
 from typing import Any
+import logging
 
 import pandas as pd
 import numpy as np
+import dask.array as da
+import dask.dataframe as dd
 from datetime import timedelta, datetime, timezone
 
 from dask_sql.java import SqlTypeName
+
+logger = logging.getLogger(__name__)
 
 
 # Default mapping between python types and SQL types
@@ -56,12 +61,18 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "DOUBLE": np.float64,
     "FLOAT": np.float32,
+    "DECIMAL": np.float64,
     "BIGINT": pd.Int64Dtype(),
     "INTEGER": pd.Int32Dtype(),
+    "INT": pd.Int32Dtype(),  # Although not in the standard, makes compatibility easier
     "SMALLINT": pd.Int16Dtype(),
     "TINYINT": pd.Int8Dtype(),
     "BOOLEAN": pd.BooleanDtype(),
     "VARCHAR": pd.StringDtype(),
+    "CHAR": pd.StringDtype(),
+    "STRING": pd.StringDtype(),  # Although not in the standard, makes compatibility easier
+    "DATE": np.dtype("<M8[ns]"),
+    "TIMESTAMP": np.dtype("<M8[ns]"),
     "NULL": type(None),
 }
 
@@ -172,21 +183,12 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
-    if (
-        sql_type.startswith("CHAR(")
-        or sql_type.startswith("VARCHAR(")
-        or sql_type == "VARCHAR"
-    ):
+    if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
         return np.dtype("<m8[ns]")
-    elif (
-        sql_type.startswith("TIMESTAMP(")
-        or sql_type.startswith("TIME(")
-        or sql_type == "DATE"
-    ):
+    elif sql_type.startswith("TIMESTAMP(") or sql_type.startswith("TIME("):
         return np.dtype("<M8[ns]")
-
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
@@ -238,3 +240,34 @@ def similar_type(lhs: type, rhs: type) -> bool:
             return True
 
     return False
+
+
+def cast_column_type(
+    df: dd.DataFrame, column_name: str, expected_type: type
+) -> dd.DataFrame:
+    """
+    Cast the type of the given column to the expected type,
+    if they are far "enough" away.
+    This means, a float will never be converted into a double
+    or a tinyint into another int - but a string to an integer etc.
+    """
+    current_type = df[column_name].dtype
+
+    logger.debug(
+        f"Column {column_name} has type {current_type}, expecting {expected_type}..."
+    )
+
+    if similar_type(current_type, expected_type):
+        logger.debug("...not converting.")
+        return df
+
+    current_float = pd.api.types.is_float_dtype(current_type)
+    expected_integer = pd.api.types.is_integer_dtype(expected_type)
+    if current_float and expected_integer:
+        logger.debug("...truncating...")
+        df[column_name] = da.trunc(df[column_name])
+
+    logger.debug(f"Need to cast {column_name} from {current_type} to {expected_type}")
+    df[column_name] = df[column_name].astype(expected_type)
+
+    return df
