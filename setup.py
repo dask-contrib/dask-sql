@@ -74,7 +74,15 @@ setup(
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",
+        "prompt_toolkit",
+        "pygments",
     ],
+    entry_points={
+        "console_scripts": [
+            "dask-sql-server = dask_sql.server.app:main",
+            "dask-sql = dask_sql.cmd:main",
+        ]
+    },
     zip_safe=False,
     cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},

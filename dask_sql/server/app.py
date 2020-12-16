@@ -97,6 +97,8 @@ def run_server(
     client: dask.distributed.Client = None,
     host: str = "0.0.0.0",
     port: int = 8080,
+    startup=False,
+    log_level=None,
 ):  # pragma: no cover
     """
     Run a HTTP server for answering SQL queries using ``dask-sql``.
@@ -119,9 +121,11 @@ def run_server(
         client (:obj:`dask.distributed.Client`): If set, use this dask client instead of a new one.
         host (:obj:`str`): The host interface to listen on (defaults to all interfaces)
         port (:obj:`int`): The port to listen on (defaults to 8080)
+        startup (:obj:`bool`): Whether to wait until Apache Calcite was loaded
+        log_level: (:obj:`str`): The log level of the server and dask-sql
 
     Example:
-        It is possible to run an SQL server by using the CLI script in ``dask_sql.server.app``
+        It is possible to run an SQL server by using the CLI script ``dask-sql-server``
         or by calling this function directly in your user code:
 
         .. code-block:: python
@@ -151,7 +155,68 @@ def run_server(
     """
     _init_app(app, context=context, client=client)
 
-    uvicorn.run(app, host=host, port=port)
+    if startup:
+        app.c.sql("SELECT 1 + 1").compute()
+
+    uvicorn.run(app, host=host, port=port, log_level=log_level)
+
+
+def main():  # pragma: no cover
+    """
+    CLI version of the :func:`run_server` function.
+    """
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="The host interface to listen on (defaults to all interfaces)",
+    )
+    parser.add_argument(
+        "--port", default=8080, help="The port to listen on (defaults to 8080)"
+    )
+    parser.add_argument(
+        "--scheduler-address",
+        default=None,
+        help="Connect to this dask scheduler if given",
+    )
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Set the log level of the server. Defaults to info.",
+        choices=uvicorn.config.LOG_LEVELS,
+    )
+    parser.add_argument(
+        "--load-test-data",
+        default=False,
+        action="store_true",
+        help="Preload some test data.",
+    )
+    parser.add_argument(
+        "--startup",
+        default=False,
+        action="store_true",
+        help="Wait until Apache Calcite was properly loaded",
+    )
+
+    args = parser.parse_args()
+
+    client = None
+    if args.scheduler_address:
+        client = dask.distributed.Client(args.scheduler_address)
+
+    context = Context()
+    if args.load_test_data:
+        df = dask.datasets.timeseries(freq="1d")
+        context.create_table("timeseries", df.persist())
+
+    run_server(
+        context=context,
+        client=client,
+        host=args.host,
+        port=args.port,
+        startup=args.startup,
+        log_level=args.log_level,
+    )
 
 
 def _init_app(

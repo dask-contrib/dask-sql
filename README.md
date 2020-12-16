@@ -84,6 +84,12 @@ print(result.compute())
 print(result.x.mean().compute())
 ```
 
+You can also run the CLI `dask-sql` for testing out SQL commands quickly:
+
+    dask-sql --load-test-data --startup
+
+    (dask-sql) > SELECT * FROM timeseries LIMIT 10;
+
 ## Installation
 
 `dask-sql` can be installed via `conda` (preferred) or `pip` - or in a development environment.
@@ -156,9 +162,9 @@ Instead of rebuilding a full ODBC driver, we re-use the [presto wire protocol](h
 It is - so far - only a start of the development and missing important concepts, such as
 authentication.
 
-You can test the sql presto server by running
+You can test the sql presto server by running (after installation)
 
-    python scripts/startup_script.py
+    dask-sql-server
 
 or by using the created docker image
 

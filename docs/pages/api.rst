@@ -7,3 +7,5 @@ API Documentation
 
 .. autofunction:: dask_sql.run_server
 
+.. autofunction:: dask_sql.cmd_loop
+
