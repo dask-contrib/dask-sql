@@ -2,8 +2,7 @@ import pytest
 
 # skip the test if the docker package is not installed
 docker = pytest.importorskip("docker")
-
-from sqlalchemy import create_engine
+sqlalchemy = pytest.importorskip("sqlalchemy")
 
 
 @pytest.fixture(scope="session")
@@ -35,7 +34,7 @@ def engine():
         address = postgres.attrs["NetworkSettings"]["Networks"]["dask-sql"]["IPAddress"]
         port = 5432
 
-        engine = create_engine(
+        engine = sqlalchemy.create_engine(
             f"postgresql+psycopg2://postgres@{address}:{port}/postgres"
         )
         yield engine

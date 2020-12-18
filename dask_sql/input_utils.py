@@ -2,6 +2,7 @@ import os
 from functools import partial
 import logging
 from typing import Union
+import ast
 
 import dask.dataframe as dd
 from distributed.client import default_client
@@ -18,6 +19,7 @@ except ImportError:
     sqlalchemy = None
 
 from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.mappings import sql_to_python_type, cast_column_type
 
 logger = logging.Logger(__name__)
 
@@ -111,23 +113,43 @@ def _get_files_from_hive(
     schema: str = "default",
     **kwargs,
 ):  # pragma: no cover
+    parsed = _parse_hive_table_description(cursor, schema, table_name)
     (
+        column_information,
         table_information,
         storage_information,
         partition_information,
-    ) = _parse_hive_table_description(cursor, schema, table_name)
+    ) = parsed
 
-    if table_information["Table Type"] != "EXTERNAL_TABLE":
-        raise AssertionError("Can only read in EXTERNAL TABLES")
+    logger.debug("Extracted hive information: ")
+    logger.debug(f"column information: {column_information}")
+    logger.debug(f"table information: {table_information}")
+    logger.debug(f"storage information: {storage_information}")
+    logger.debug(f"partition information: {partition_information}")
 
-    format = storage_information["InputFormat"].split(".")[-1]
-    storage_description = storage_information["Storage Desc Params"]
+    # Convert column information
+    column_information = {
+        col: sql_to_python_type(col_type.upper())
+        for col, col_type in column_information.items()
+    }
 
-    if format == "TextInputFormat":
-        read_function = partial(
-            dd.read_csv, sep=storage_description.get("field.delim", ",")
+    # Extract format information
+    if "InputFormat" in storage_information:
+        format = storage_information["InputFormat"].split(".")[-1]
+    # databricks format is different, see https://github.com/nils-braun/dask-sql/issues/83
+    elif "InputFormat" in table_information:
+        format = table_information["InputFormat"].split(".")[-1]
+    else:
+        raise RuntimeError(
+            "Do not understand the output of 'DESCRIBE FORMATTED <table>'"
         )
-    elif format == "ParquetInputFormat":
+
+    if format == "TextInputFormat" or format == "SequenceFileInputFormat":
+        storage_description = storage_information.get("Storage Desc Params", {})
+        read_function = partial(
+            dd.read_csv, sep=storage_description.get("field.delim", ","), header=None,
+        )
+    elif format == "ParquetInputFormat" or format == "MapredParquetInputFormat":
         read_function = dd.read_parquet
     elif format == "OrcInputFormat":
         read_function = dd.read_orc
@@ -137,28 +159,60 @@ def _get_files_from_hive(
         raise AttributeError(f"Do not understand hive's table format {format}")
 
     def _normalize(loc):
-        return os.path.join(loc.lstrip("file:"), "**")
+        return os.path.join(loc.lstrip("file:"), "[A-Za-z0-9-]*")
+
+    def wrapped_read_function(location, column_information, **kwargs):
+        location = _normalize(location)
+        logger.debug(f"Reading in hive data from {location}")
+        df = read_function(location, **kwargs)
+
+        logger.debug(f"Applying column information: {column_information}")
+        df.columns = column_information.keys()
+
+        for col, expected_type in column_information.items():
+            df = cast_column_type(df, col, expected_type)
+
+        return df
 
     if partition_information:
-        partition_information = _parse_hive_partition_description(
-            cursor, schema, table_name
-        )
+        partition_list = _parse_hive_partition_description(cursor, schema, table_name)
+        logger.debug(f"Reading in partitions from {partition_list}")
 
         tables = []
-        for partition in partition_information:
-            (table_information, _, _) = _parse_hive_table_description(
+        for partition in partition_list:
+            parsed = _parse_hive_table_description(
                 cursor, schema, table_name, partition=partition
             )
-            location = _normalize(table_information["Location"])
-            table = read_function(location, **kwargs)
+            (partition_column_information, partition_table_information, _, _,) = parsed
 
-            # TODO: insert partition info into dataframe?
+            location = partition_table_information["Location"]
+            table = wrapped_read_function(
+                location, partition_column_information, **kwargs
+            )
+
+            # Now add the additional partition columns
+            partition_values = ast.literal_eval(
+                partition_table_information["Partition Value"]
+            )
+
+            logger.debug(
+                f"Applying additional partition information as columns: {partition_information}"
+            )
+
+            partition_id = 0
+            for partition_key, partition_type in partition_information.items():
+                table[partition_key] = partition_values[partition_id]
+                table = cast_column_type(table, partition_key, partition_type)
+
+                partition_id += 1
+
             tables.append(table)
 
         return dd.concat(tables)
 
-    location = _normalize(table_information["Location"])
-    return read_function(location, **kwargs)
+    location = table_information["Location"]
+    df = wrapped_read_function(location, column_information, **kwargs)
+    return df
 
 
 def _parse_hive_table_description(
@@ -183,9 +237,10 @@ def _parse_hive_table_description(
     logger.debug(f"Got information from hive: {result}")
 
     table_information = {}
+    column_information = {}
     storage_information = {}
     partition_information = {}
-    mode = None
+    mode = "column"
     last_field = None
 
     for key, value, value2 in result:
@@ -211,7 +266,10 @@ def _parse_hive_table_description(
         elif key:
             if not value:
                 value = dict()
-            if mode == "storage":
+            if mode == "column":
+                column_information[key] = value
+                last_field = column_information[key]
+            elif mode == "storage":
                 storage_information[key] = value
                 last_field = storage_information[key]
             elif mode == "table":
@@ -223,7 +281,12 @@ def _parse_hive_table_description(
         elif value and last_field is not None:
             last_field[value] = value2
 
-    return table_information, storage_information, partition_information
+    return (
+        column_information,
+        table_information,
+        storage_information,
+        partition_information,
+    )
 
 
 def _parse_hive_partition_description(
@@ -235,7 +298,7 @@ def _parse_hive_partition_description(
     Extract all partition informaton for a given table
     """
     cursor.execute(f"USE {schema}")
-    result = _fetch_all_results(cursor, "SHOW PARTITIONS {table_name}")
+    result = _fetch_all_results(cursor, f"SHOW PARTITIONS {table_name}")
 
     return [row[0] for row in result]
 
