@@ -12,6 +12,8 @@ from dask_sql.context import Context
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
+pytest.importorskip("pyhive")
+
 
 DEFAULT_CONFIG = {
     "HIVE_SITE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
