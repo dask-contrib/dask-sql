@@ -14,7 +14,6 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 
 
 DEFAULT_CONFIG = {
-    "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
     "HIVE_SITE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
     "HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName": "org.postgresql.Driver",
     "HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName": "hive",
@@ -70,14 +69,19 @@ def hive_cursor():
         hive_server = client.containers.create(
             "bde2020/hive:2.3.2-postgresql-metastore",
             hostname="hive-server",
+            name="hive-server",
             network="dask-sql-hive",
-            volumes=[f"{tmpdir}:{tmpdir}"],
-            environment={**DEFAULT_CONFIG,},
+            volumes=[f"{tmpdir}:{tmpdir}", f"{tmpdir_parted}:{tmpdir_parted}"],
+            environment={
+                "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
+                **DEFAULT_CONFIG,
+            },
         )
 
         hive_metastore = client.containers.create(
             "bde2020/hive:2.3.2-postgresql-metastore",
             hostname="hive-metastore",
+            name="hive-metastore",
             network="dask-sql-hive",
             environment=DEFAULT_CONFIG,
             command="/opt/hive/bin/hive --service metastore",
@@ -86,6 +90,7 @@ def hive_cursor():
         hive_postgres = client.containers.create(
             "bde2020/hive-metastore-postgresql:2.3.0",
             hostname="hive-metastore-postgresql",
+            name="hive-metastore-postgresql",
             network="dask-sql-hive",
         )
 
@@ -116,7 +121,7 @@ def hive_cursor():
             if b"get_multi_table" in l:
                 break
 
-        time.sleep(1)
+        time.sleep(2)
 
         hive_server.reload()
         address = hive_server.attrs["NetworkSettings"]["Networks"]["dask-sql-hive"][
@@ -133,14 +138,14 @@ def hive_cursor():
         cursor.execute("INSERT INTO df (i, j) VALUES (2, 4)")
 
         cursor.execute(
-            f"CREATE TABLE df (i INTEGER) PARTITIONED BY (j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'"
+            f"CREATE TABLE df_part (i INTEGER) PARTITIONED BY (j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'"
         )
-        cursor.execute("INSERT INTO df_part PARTITION (j=1) (i) VALUES (2)")
-        cursor.execute("INSERT INTO df_part PARTITION (j=2) (i) VALUES (4)")
+        cursor.execute("INSERT INTO df_part PARTITION (j=2) (i) VALUES (1)")
+        cursor.execute("INSERT INTO df_part PARTITION (j=4) (i) VALUES (2)")
 
         # The data files are created as root user by default. Change that:
-        hive_server.exec_run(["chmod", "a+rwx", tmpdir])
-        hive_server.exec_run(["chmod", "a+rwx", tmpdir_parted])
+        hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])
+        hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_parted])
 
         yield cursor
     finally:
@@ -179,5 +184,6 @@ def test_select_partitions(hive_cursor):
 
     result_df = c.sql("SELECT * FROM df_part").compute().reset_index(drop=True)
     df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
+    df["j"] = df["j"].astype("int64")
 
     assert_frame_equal(df, result_df)

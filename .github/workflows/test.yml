@@ -78,11 +78,10 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install --file conda.yaml -c conda-forge
-      - name: Install sqlalchemy and docker pkg for postgres test
+      - name: Install sqlalchemy, pyhive and docker pkg for postgres/hive test
         shell: bash -l {0}
         run: |
-          # explicitly install docker and sqlalchemy package
-          pip install docker sqlalchemy psycopg2
+          pip install docker sqlalchemy psycopg2 pyhive
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}

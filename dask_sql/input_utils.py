@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import sqlalchemy
-except ImportError:
+except ImportError:  # pragma: no cover
     sqlalchemy = None
 
 from dask_sql.datacontainer import DataContainer, ColumnContainer
@@ -79,7 +79,7 @@ def _get_dask_dataframe(
         return dd.from_pandas(input_item, npartitions=1, **kwargs)
     elif isinstance(input_item, dd.DataFrame):
         return input_item
-    elif is_hive_cursor or is_sqlalchemy_hive:  # pragma: no cover
+    elif is_hive_cursor or is_sqlalchemy_hive:
         return _get_files_from_hive(
             input_item, table_name=hive_table_name, schema=hive_schema_name, **kwargs
         )
@@ -112,7 +112,7 @@ def _get_files_from_hive(
     table_name: str,
     schema: str = "default",
     **kwargs,
-):  # pragma: no cover
+):
     parsed = _parse_hive_table_description(cursor, schema, table_name)
     (
         column_information,
@@ -137,25 +137,27 @@ def _get_files_from_hive(
     if "InputFormat" in storage_information:
         format = storage_information["InputFormat"].split(".")[-1]
     # databricks format is different, see https://github.com/nils-braun/dask-sql/issues/83
-    elif "InputFormat" in table_information:
+    elif "InputFormat" in table_information:  # pragma: no cover
         format = table_information["InputFormat"].split(".")[-1]
     else:
         raise RuntimeError(
             "Do not understand the output of 'DESCRIBE FORMATTED <table>'"
-        )
+        )  # pragma: no cover
 
-    if format == "TextInputFormat" or format == "SequenceFileInputFormat":
+    if (
+        format == "TextInputFormat" or format == "SequenceFileInputFormat"
+    ):  # pragma: no cover
         storage_description = storage_information.get("Storage Desc Params", {})
         read_function = partial(
             dd.read_csv, sep=storage_description.get("field.delim", ","), header=None,
         )
     elif format == "ParquetInputFormat" or format == "MapredParquetInputFormat":
         read_function = dd.read_parquet
-    elif format == "OrcInputFormat":
+    elif format == "OrcInputFormat":  # pragma: no cover
         read_function = dd.read_orc
-    elif format == "JsonInputFormat":
+    elif format == "JsonInputFormat":  # pragma: no cover
         read_function = dd.read_json
-    else:
+    else:  # pragma: no cover
         raise AttributeError(f"Do not understand hive's table format {format}")
 
     def _normalize(loc):
@@ -220,7 +222,7 @@ def _parse_hive_table_description(
     schema: str,
     table_name: str,
     partition: str = None,
-):  # pragma: no cover
+):
     """
     Extract all information from the output
     of the DESCRIBE FORMATTED call, which is unfortunately
@@ -262,7 +264,7 @@ def _parse_hive_table_description(
         elif key == "# Partition Information":
             mode = "partition"
         elif key.startswith("#"):
-            mode = None
+            mode = None  # pragma: no cover
         elif key:
             if not value:
                 value = dict()
@@ -278,6 +280,8 @@ def _parse_hive_table_description(
             elif mode == "partition":
                 partition_information[key] = value
                 last_field = partition_information[key]
+            else:  # pragma: no cover
+                pass
         elif value and last_field is not None:
             last_field[value] = value2
 
@@ -293,7 +297,7 @@ def _parse_hive_partition_description(
     cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
     schema: str,
     table_name: str,
-):  # pragma: no cover
+):
     """
     Extract all partition informaton for a given table
     """
@@ -305,7 +309,7 @@ def _parse_hive_partition_description(
 
 def _fetch_all_results(
     cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"], sql: str
-):  # pragma: no cover
+):
     """
     The pyhive.Cursor and the sqlalchemy connection behave slightly different.
     The former has the fetchall method on the cursor,
@@ -315,5 +319,5 @@ def _fetch_all_results(
 
     try:
         return result.fetchall()
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         return cursor.fetchall()
