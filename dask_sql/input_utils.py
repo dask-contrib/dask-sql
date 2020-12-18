@@ -149,21 +149,17 @@ def _get_files_from_hive(
         read_function = partial(
             dd.read_csv, sep=storage_description.get("field.delim", ","), header=None,
         )
-        file_extension = "csv"
     elif format == "ParquetInputFormat" or format == "MapredParquetInputFormat":
         read_function = dd.read_parquet
-        file_extension = "parquet"
     elif format == "OrcInputFormat":
         read_function = dd.read_orc
-        file_extension = "orc"
     elif format == "JsonInputFormat":
         read_function = dd.read_json
-        file_extension = "json"
     else:
         raise AttributeError(f"Do not understand hive's table format {format}")
 
     def _normalize(loc):
-        return os.path.join(loc.lstrip("file:"), f"*.{file_extension}")
+        return os.path.join(loc.lstrip("file:"), "[A-Za-z0-9-]*")
 
     def wrapped_read_function(location, column_information, **kwargs):
         location = _normalize(location)
