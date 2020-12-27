@@ -53,17 +53,18 @@ logger.debug("...having started JVM")
 
 
 # Some Java classes we need
-DaskTable = jpype.JClass("com.dask.sql.schema.DaskTable")
-DaskAggregateFunction = jpype.JClass("com.dask.sql.schema.DaskAggregateFunction")
-DaskScalarFunction = jpype.JClass("com.dask.sql.schema.DaskScalarFunction")
-DaskSchema = jpype.JClass("com.dask.sql.schema.DaskSchema")
-RelationalAlgebraGenerator = jpype.JClass(
-    "com.dask.sql.application.RelationalAlgebraGenerator"
-)
-SqlTypeName = jpype.JClass("org.apache.calcite.sql.type.SqlTypeName")
-List = jpype.JClass("java.util.List")
-ValidationException = jpype.JClass("org.apache.calcite.tools.ValidationException")
-SqlParseException = jpype.JClass("org.apache.calcite.sql.parser.SqlParseException")
+com = jpype.JPackage("com")
+org = jpype.JPackage("org")
+java = jpype.JPackage("java")
+
+DaskTable = com.dask.sql.schema.DaskTable
+DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
+DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
+DaskSchema = com.dask.sql.schema.DaskSchema
+RelationalAlgebraGenerator = com.dask.sql.application.RelationalAlgebraGenerator
+SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
+ValidationException = org.apache.calcite.tools.ValidationException
+SqlParseException = org.apache.calcite.sql.parser.SqlParseException
 
 
 def get_java_class(instance):

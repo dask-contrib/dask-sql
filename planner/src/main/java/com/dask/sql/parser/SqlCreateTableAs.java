@@ -14,10 +14,10 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 
 public class SqlCreateTableAs extends SqlCall {
     final SqlIdentifier tableName;
-    final SqlSelect select;
+    final SqlNode select;
     final boolean persist;
 
-    public SqlCreateTableAs(final SqlParserPos pos, final SqlIdentifier tableName, final SqlSelect select,
+    public SqlCreateTableAs(final SqlParserPos pos, final SqlIdentifier tableName, final SqlNode select,
             final boolean persist) {
         super(pos);
         this.tableName = tableName;
@@ -52,7 +52,7 @@ public class SqlCreateTableAs extends SqlCall {
         return this.tableName;
     }
 
-    public SqlSelect getSelect() {
+    public SqlNode getSelect() {
         return this.select;
     }
 

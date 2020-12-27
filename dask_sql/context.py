@@ -86,6 +86,7 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
@@ -474,11 +475,13 @@ class Context:
             sqlNodeClass = get_java_class(sqlNode)
 
             if sqlNodeClass.startswith("com.dask.sql.parser."):
-                return sqlNode, [], None
-
-            validatedSqlNode = generator.getValidatedNode(sqlNode)
-            nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
-            rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                rel = sqlNode
+                rel_string = ""
+            else:
+                validatedSqlNode = generator.getValidatedNode(sqlNode)
+                nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                rel_string = str(generator.getRelationalAlgebraString(rel))
         except (ValidationException, SqlParseException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
@@ -504,8 +507,6 @@ class Context:
                 "Not extracting output column names as the SQL is not a SELECT call"
             )
             select_names = None
-
-        rel_string = str(generator.getRelationalAlgebraString(rel))
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string

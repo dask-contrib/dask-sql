@@ -82,7 +82,7 @@ SqlNode SqlCreateTable() :
     final SqlParserPos pos;
     final SqlIdentifier tableName;
     final HashMap<SqlNode, SqlNode> kwargs = new HashMap<SqlNode, SqlNode>();
-    final SqlSelect select;
+    final SqlNode select;
 }
 {
     <CREATE> { pos = getPos(); } <TABLE>
@@ -101,13 +101,7 @@ SqlNode SqlCreateTable() :
         }
     |
         <AS>
-        (
-            <LPAREN>
-            select = SqlSelect()
-            <RPAREN>
-        |
-            select = SqlSelect()
-        )
+        select = OptionallyParenthesizedExpression()
         {
             // True = do make persistent
             return new SqlCreateTableAs(pos, tableName, select, true);
@@ -120,21 +114,90 @@ SqlNode SqlCreateView() :
 {
     final SqlParserPos pos;
     final SqlIdentifier tableName;
-    final SqlSelect select;
+    final SqlNode select;
 }
 {
     <CREATE> { pos = getPos(); } <VIEW>
     tableName = SimpleIdentifier()
     <AS>
-    (
-        <LPAREN>
-        select = SqlSelect()
-        <RPAREN>
-    |
-        select = SqlSelect()
-    )
+    select = OptionallyParenthesizedExpression()
     {
         // False = do not make persistent
         return new SqlCreateTableAs(pos, tableName, select, false);
     }
+}
+
+SqlIdentifier ModelIdentifier() :
+{
+    final SqlIdentifier modelName;
+}
+{
+    <MODEL>
+    modelName = SimpleIdentifier()
+    {
+        return modelName;
+    }
+}
+
+SqlNode ExpressionOrPredict() :
+{
+    final SqlNode e;
+}
+{
+    (
+        e = SqlPredictModel()
+    |
+        e = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+    )
+    {
+        return e;
+    }
+}
+
+SqlNode OptionallyParenthesizedExpression() :
+{
+    final SqlNode e;
+}
+{
+    (
+        <LPAREN>
+        e = ExpressionOrPredict()
+        <RPAREN>
+    |
+        e = ExpressionOrPredict()
+    )
+    {
+        return e;
+    }
+}
+
+SqlNode SqlPredictModel() :
+{
+    final SqlParserPos pos;
+    final List<SqlNode> selectList;
+    final SqlIdentifier model;
+    final SqlNode select;
+    final SqlNode stmt;
+}
+{
+    (
+        LOOKAHEAD(<SELECT> SelectList() <FROM> <PREDICT>)
+        <SELECT>
+        { pos = getPos(); }
+        selectList = SelectList()
+        <FROM> <PREDICT>
+        <LPAREN>
+        model = ModelIdentifier()
+        <COMMA>
+        select = OptionallyParenthesizedExpression()
+        <RPAREN>
+        {
+            return new SqlPredictModel(pos, new SqlNodeList(selectList, Span.of(selectList).pos()), model, select);
+        }
+    |
+        stmt = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+        {
+            return stmt;
+        }
+    )
 }

@@ -27,6 +27,7 @@ data: {
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables"
+        "com.dask.sql.parser.SqlPredictModel"
       ]
 
       # List of keywords.
@@ -34,6 +35,8 @@ data: {
         "SCHEMAS"
         "TABLES"
         "COLUMNS"
+        "MODEL"
+        "PREDICT"
       ]
 
       # The keywords can only be used in a specific context,
@@ -42,6 +45,8 @@ data: {
         "SCHEMAS"
         "TABLES"
         "COLUMNS"
+        "MODEL"
+        "PREDICT"
       ]
 
       # List of methods for parsing custom SQL statements
@@ -52,6 +57,7 @@ data: {
          "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
+         "SqlPredictModel()"
       ]
 
       # location of the implementation
