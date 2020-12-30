@@ -4,34 +4,43 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlCreate;
 import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
-public class SqlCreateTable extends SqlCall {
+public class SqlCreateTable extends SqlCreate {
+    private static final SqlOperator OPERATOR = new SqlSpecialOperator("CREATE TABLE", SqlKind.CREATE_TABLE);
+
     final SqlIdentifier tableName;
     final HashMap<SqlNode, SqlNode> kwargs;
 
-    public SqlCreateTable(final SqlParserPos pos, final SqlIdentifier tableName,
-            final HashMap<SqlNode, SqlNode> kwargs) {
-        super(pos);
+    public SqlCreateTable(final SqlParserPos pos, final boolean replace, final boolean ifNotExists,
+            final SqlIdentifier tableName, final HashMap<SqlNode, SqlNode> kwargs) {
+        super(OPERATOR, pos, replace, ifNotExists);
         this.tableName = tableName;
         this.kwargs = kwargs;
     }
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword("CREATE");
-        writer.keyword("TABLE");
-        this.tableName.unparse(writer, leftPrec, rightPrec);
-        writer.keyword("WITH");
-        writer.keyword("(");
+        if (this.getReplace()) {
+            writer.keyword("CREATE OR REPLACE TABLE");
+        } else {
+            writer.keyword("CREATE TABLE");
+        }
+        if (this.getIfNotExists()) {
+            writer.keyword("IF NOT EXISTS");
+        }
+        this.getTableName().unparse(writer, leftPrec, rightPrec);
+        writer.keyword("WITH (");
 
         boolean firstRound = true;
-        for (Map.Entry<SqlNode, SqlNode> entry : this.kwargs.entrySet()) {
+        for (Map.Entry<SqlNode, SqlNode> entry : this.getKwargs().entrySet()) {
             if (!firstRound) {
                 writer.keyword(",");
             }
@@ -41,11 +50,6 @@ public class SqlCreateTable extends SqlCall {
             firstRound = false;
         }
         writer.keyword(")");
-    }
-
-    @Override
-    public SqlOperator getOperator() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -59,5 +63,9 @@ public class SqlCreateTable extends SqlCall {
 
     public HashMap<SqlNode, SqlNode> getKwargs() {
         return this.kwargs;
+    }
+
+    public boolean getIfNotExists() {
+        return this.ifNotExists;
     }
 }
