@@ -31,7 +31,9 @@ def _set_or_check_java_home():
     if "JAVA_HOME" not in os.environ:  # pragma: no cover
         logger.debug("Setting $JAVA_HOME to $CONDA_PREFIX")
         os.environ["JAVA_HOME"] = correct_java_path
-    elif os.path.normpath(os.environ["JAVA_HOME"]) != correct_java_path:  # pragma: no cover
+    elif (
+        os.path.normpath(os.environ["JAVA_HOME"]) != correct_java_path
+    ):  # pragma: no cover
         warnings.warn(
             "You are running in a conda environment, but the JAVA_PATH is not using it. "
             f"If this is by mistake, set $JAVA_HOME to {correct_java_path}, instead of {os.environ['JAVA_HOME']}."
