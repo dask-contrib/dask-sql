@@ -82,7 +82,8 @@ jobs:
         shell: bash -l {0}
         run: |
           # explicitly install docker and sqlalchemy package
-          pip install docker sqlalchemy psycopg2
+          conda install sqlalchemy psycopg2 -c conda-forge
+          pip install docker
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
