@@ -24,6 +24,7 @@ data: {
         "org.apache.calcite.sql.SqlCreate",
         "org.apache.calcite.sql.SqlDrop",
         "java.util.*",
+        "com.dask.sql.parser.SqlAnalyzeTable",
         "com.dask.sql.parser.SqlCreateTable",
         "com.dask.sql.parser.SqlCreateTableAs",
         "com.dask.sql.parser.SqlDropTable",
@@ -38,6 +39,9 @@ data: {
         "TABLES"
         "COLUMNS"
         "IF"
+        "ANALYZE"
+        "COMPUTE"
+        "STATISTICS"
       ]
 
       # The keywords can only be used in a specific context,
@@ -47,10 +51,14 @@ data: {
         "TABLES"
         "COLUMNS"
         "IF"
+        "ANALYZE"
+        "COMPUTE"
+        "STATISTICS"
       ]
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
+         "SqlAnalyzeTable()"
          "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"

@@ -91,3 +91,26 @@ boolean IfExists() :
     ]
     { return false; }
 }
+
+/// List of comma separated column names
+List<SqlIdentifier> ColumnIdentifierList() :
+{
+    final List<SqlIdentifier> columnList = new ArrayList<SqlIdentifier>();
+    SqlIdentifier columnName;
+}
+{
+    columnName = SimpleIdentifier()
+    {
+        columnList.add(columnName);
+    }
+    (
+        <COMMA>
+        columnName = SimpleIdentifier()
+        {
+            columnList.add(columnName);
+        }
+    )*
+    {
+        return columnList;
+    }
+}
