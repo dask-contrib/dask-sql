@@ -70,6 +70,9 @@ setup(
     setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=[
         "dask[dataframe]>=2.19.0",
+        "pandas<1.2.0",  # pandas 1.2.0 introduced float NaN dtype,
+        # which is currently not working with postgres,
+        # so the test is failing
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
@@ -84,6 +87,13 @@ setup(
         ]
     },
     zip_safe=False,
-    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
-    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
+    cmdclass={
+        "java": MavenCommand,
+        "build_py": BuildPyCommand,
+    },
+    command_options={
+        "build_sphinx": {
+            "source_dir": ("setup.py", "docs"),
+        }
+    },
 )
