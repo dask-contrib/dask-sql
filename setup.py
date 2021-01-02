@@ -87,13 +87,6 @@ setup(
         ]
     },
     zip_safe=False,
-    cmdclass={
-        "java": MavenCommand,
-        "build_py": BuildPyCommand,
-    },
-    command_options={
-        "build_sphinx": {
-            "source_dir": ("setup.py", "docs"),
-        }
-    },
+    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
+    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )
