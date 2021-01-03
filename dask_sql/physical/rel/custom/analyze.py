@@ -30,13 +30,6 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     ) -> DataContainer:
         components = list(map(str, sql.getTableName().names))
         dc = get_table_from_compound_identifier(context, components)
-        #     +--------------+----------+
-        # |     num_nulls|         0|
-        # |distinct_count|         2|
-        # |   avg_col_len|         4|
-        # |   max_col_len|         4|
-        # |     histogram|      NULL|
-
         columns = list(map(str, sql.getColumnList()))
 
         if not columns:
@@ -50,10 +43,10 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         statistics = dd.from_pandas(
             pd.DataFrame({col: [] for col in columns}), npartitions=1
         )
-        statistics.append(df[[mapping(col) for col in columns]].describe())
+        statistics = statistics.append(df[[mapping(col) for col in columns]].describe())
 
         # Add additional information
-        statistics.append(
+        statistics = statistics.append(
             pd.Series(
                 {
                     col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
@@ -62,42 +55,10 @@ class AnalyzeTablePlugin(BaseRelPlugin):
                 name="data_type",
             )
         )
-        statistics.append(pd.Series({col: col for col in columns}, name="col_name",))
-
-        from dask.dataframe import methods
-        from dask.utils import M
-        from functools import reduce
-        import numpy as np
-
-        print(
-            df.reduction(
-                chunk=lambda chunk: pd.Series(
-                    {mapping(col): chunk[mapping(col)].unique() for col in columns}
-                ),
-                combine=lambda x: {
-                    mapping(col): reduce(
-                        lambda x, y: np.hstack([x, y]), x[mapping(col)].values
-                    )
-                    for col in columns
-                },
-                aggregate=lambda x: pd.Series(
-                    {mapping(col): len(x[mapping(col)]) for col in columns}
-                ),
-                split_every=None,
-                # chunk_kwargs={"dropna": dropna},
-                # aggregate_kwargs={"dropna": dropna},
-            ).compute()
+        statistics = statistics.append(
+            pd.Series({col: col for col in columns}, name="col_name",)
         )
 
-        df = pd.DataFrame(
-            {
-                "Column": cols,
-                "Type": dtypes,
-                "Extra": [""] * len(cols),
-                "Comment": [""] * len(cols),
-            }
-        )
-
-        cc = ColumnContainer(df.columns)
-        dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
+        cc = ColumnContainer(statistics.columns)
+        dc = DataContainer(statistics, cc)
         return dc
