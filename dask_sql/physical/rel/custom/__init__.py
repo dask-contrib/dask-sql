@@ -1,3 +1,4 @@
+from .analyze import AnalyzeTablePlugin
 from .create_table import CreateTablePlugin
 from .create_table_as import CreateTableAsPlugin
 from .drop_table import DropTablePlugin
@@ -6,6 +7,7 @@ from .schemas import ShowSchemasPlugin
 from .tables import ShowTablesPlugin
 
 __all__ = [
+    AnalyzeTablePlugin,
     CreateTableAsPlugin,
     CreateTablePlugin,
     DropTablePlugin,

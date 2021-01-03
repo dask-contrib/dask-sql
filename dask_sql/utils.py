@@ -1,7 +1,7 @@
 import os
+from typing import List
 import warnings
 from collections import defaultdict
-from dask_sql.datacontainer import DataContainer
 import re
 from datetime import datetime
 import logging
@@ -10,6 +10,8 @@ import platform
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+
+from dask_sql.datacontainer import DataContainer
 
 logger = logging.getLogger(__name__)
 
@@ -207,3 +209,26 @@ class LoggableDataFrame:
             return f"DataFrame: {[(col, dtype) for col, dtype in zip(cols, dtypes)]}"
 
         return f"Literal: {df}"
+
+
+def get_table_from_compound_identifier(
+    context: "dask_sql.Context", components: List[str]
+) -> DataContainer:
+    """
+    Helper function to return the correct table
+    from the stored tables in the context
+    with the given name (and maybe also schema name)
+    """
+    # some queries might also include the database
+    # as we do not have such a concept, we just get rid of it
+    components = components[-2:]
+    tableName = components[-1]
+
+    if len(components) == 2:
+        if components[0] != context.schema_name:
+            raise AttributeError(f"Schema {components[0]} is not defined.")
+
+    try:
+        return context.tables[tableName]
+    except KeyError:
+        raise AttributeError(f"Table {tableName} is not defined.")
