@@ -3,7 +3,7 @@
 SQL Syntax
 ==========
 
-``dask-sql`` understands SQL in (mostly) postgreSQL syntax.
+``dask-sql`` understands SQL in (mostly) presto SQL syntax.
 So far, not every valid SQL operator and keyword is already
 implemented in ``dask-sql``, but a large fraction of it.
 Have a look into our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_
