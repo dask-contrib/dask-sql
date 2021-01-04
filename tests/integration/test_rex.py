@@ -68,6 +68,35 @@ def test_literal_null(c):
     assert_frame_equal(df, expected_df)
 
 
+def test_random(c, df):
+    result_df = c.sql(
+        """
+    SELECT RAND(0) AS "0", RAND(1) AS "1"
+    """
+    )
+    result_df = result_df.compute()
+
+    # As the seed is fixed, this should always give the same results
+    expected_df = pd.DataFrame({"0": [0.5488135039273248], "1": [0.417022004702574]})
+    assert_frame_equal(result_df, expected_df)
+
+    result_df = c.sql(
+        """
+    SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < 0.5
+    """
+    )
+    result_df = result_df.compute()
+
+    assert len(result_df) == 342
+    assert list(result_df["R"].iloc[:5]) == [
+        0.3745401188473625,
+        0.9507143064099162,
+        0.7319939418114051,
+        0.5986584841970366,
+        0.15601864044243652,
+    ]
+
+
 def test_not(c, string_table):
     df = c.sql(
         """
@@ -447,17 +476,17 @@ def test_date_functions(c):
             TIMESTAMPADD(MICROSECOND, 1000, d) as "plus_1000_millisec",
             TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
 
-            CEIL(d TO DAY) as ceil_to_day, 
-            CEIL(d TO HOUR) as ceil_to_hour, 
-            CEIL(d TO MINUTE) as ceil_to_minute, 
-            CEIL(d TO SECOND) as ceil_to_seconds, 
-            CEIL(d TO MILLISECOND) as ceil_to_millisec, 
+            CEIL(d TO DAY) as ceil_to_day,
+            CEIL(d TO HOUR) as ceil_to_hour,
+            CEIL(d TO MINUTE) as ceil_to_minute,
+            CEIL(d TO SECOND) as ceil_to_seconds,
+            CEIL(d TO MILLISECOND) as ceil_to_millisec,
 
-            FLOOR(d TO DAY) as floor_to_day, 
-            FLOOR(d TO HOUR) as floor_to_hour, 
-            FLOOR(d TO MINUTE) as floor_to_minute, 
-            FLOOR(d TO SECOND) as floor_to_seconds, 
-            FLOOR(d TO MILLISECOND) as floor_to_millisec 
+            FLOOR(d TO DAY) as floor_to_day,
+            FLOOR(d TO HOUR) as floor_to_hour,
+            FLOOR(d TO MINUTE) as floor_to_minute,
+            FLOOR(d TO SECOND) as floor_to_seconds,
+            FLOOR(d TO MILLISECOND) as floor_to_millisec
 
         FROM df
     """
@@ -509,7 +538,7 @@ def test_date_functions(c):
     with pytest.raises(NotImplementedError):
         df = c.sql(
             """
-            SELECT             
+            SELECT
                 FLOOR(d TO YEAR) as floor_to_year
             FROM df
             """

@@ -1,4 +1,3 @@
-from datetime import datetime
 import operator
 from functools import reduce
 from typing import Any, Union, Callable
@@ -7,10 +6,10 @@ import logging
 
 import pandas as pd
 import numpy as np
+import dask
 import dask.dataframe as dd
 import dask.array as da
 import pandas as pd
-from tzlocal import get_localzone
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -24,39 +23,44 @@ SeriesOrScalar = Union[dd.Series, Any]
 class Operation:
     """Helper wrapper around a function, which is used as operator"""
 
+    # True, if the operation should also get the dataframe passed
+    needs_dc = False
+
     def __init__(self, f: Callable):
         """Init with the given function"""
         self.f = f
 
-    def __call__(self, *operands) -> SeriesOrScalar:
+    def __call__(self, *operands, **kwargs) -> SeriesOrScalar:
         """Call the stored function"""
-        return self.f(*operands)
+        return self.f(*operands, **kwargs)
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
         return Operation(lambda x: self(op(x)))
 
 
-class PredicteBasedOperation(Operation):
+class PredicateBasedOperation(Operation):
     """
     Helper operation to call a function on the input,
     depending if the first arg evaluates, given a predicate function, to true or false
     """
 
-    def __init__(self, predicte: Callable, true_route: Callable, false_route: Callable):
+    def __init__(
+        self, predicate: Callable, true_route: Callable, false_route: Callable
+    ):
         super().__init__(self.apply)
-        self.predicte = predicte
+        self.predicate = predicate
         self.true_route = true_route
         self.false_route = false_route
 
-    def apply(self, *operands):
-        if self.predicte(operands[0]):
-            return self.true_route(*operands)
+    def apply(self, *operands, **kwargs):
+        if self.predicate(operands[0]):
+            return self.true_route(*operands, **kwargs)
 
-        return self.false_route(*operands)
+        return self.false_route(*operands, **kwargs)
 
 
-class TensorScalarOperation(PredicteBasedOperation):
+class TensorScalarOperation(PredicateBasedOperation):
     """
     Helper operation to call a function on the input,
     depending if the first is a dataframe or not
@@ -422,7 +426,7 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
-class CeilFloorOperation(PredicteBasedOperation):
+class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
     """
@@ -462,6 +466,39 @@ class CeilFloorOperation(PredicteBasedOperation):
             raise NotImplementedError(
                 f"{self.round_method} TO {unit} is not (yet) implemented."
             )
+
+
+class RandomOperation(Operation):
+    """
+    Return a random number between 0 and 1 with the random number
+    generator set to the given seed.
+    As we need to know how many random numbers we should generate,
+    we also get the current dataframe as input.
+    """
+
+    needs_dc = True
+
+    def __init__(self):
+        super().__init__(self.random_frame)
+
+    def random_frame(self, seed: int, dc: DataContainer) -> dd.Series:
+        """This function - in contrast to others in this module - will only ever be called on data frames"""
+
+        @dask.delayed
+        def random_number_with_seed(df, seed):
+            state = np.random.RandomState(seed=seed)
+            random_numbers = state.random_sample(size=len(df))
+            return pd.Series(random_numbers, index=df.index)
+
+        df = dc.df
+        return dd.from_delayed(
+            [
+                random_number_with_seed(partition, partition_index + seed)
+                for partition_index, partition in enumerate(df.partitions)
+            ],
+            divisions=df.divisions,
+            meta=(None, "float64"),
+        )
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -509,6 +546,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is not false": NotOperation().of(IsFalseOperation()),
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
+        "rand": RandomOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
@@ -581,6 +619,9 @@ class RexCallPlugin(BaseRexPlugin):
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
         )
-        return operation(*operands)
+        if hasattr(operation, "needs_dc") and operation.needs_dc:
+            return operation(*operands, dc=dc)
+        else:
+            return operation(*operands)
 
         # TODO: We have information on the typing here - we should use it
