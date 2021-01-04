@@ -13,16 +13,26 @@ Additionally, queries can be materialized into new tables for caching or faster 
 
 .. code-block:: sql
 
-    CREATE TABLE <table-name> WITH ( <key> = <value>, ...)
-    CREATE TABLE <table-name> AS ( SELECT ... )
-    CREATE VIEW <table-name> AS ( SELECT ... )
+    CREATE [ OR REPLACE ] TABLE [ IF NOT EXISTS ] <table-name> WITH ( <key> = <value>, ...)
+    CREATE [ OR REPLACE ] TABLE [ IF NOT EXISTS ] <table-name> AS ( SELECT ... )
+    CREATE [ OR REPLACE ] VIEW [ IF NOT EXISTS ] <table-name> AS ( SELECT ... )
+    DROP TABLE | VIEW [ IF EXISTS ] <table-name>
 
 See :ref:`sql` for information on how to reference tables correctly.
+Please note, that there can only ever exist a single view or table with the same name.
 
 .. note::
 
     As there is only a single schema "schema" in ``dask-sql``,
     table names should not include a separator "." in ``CREATE`` calls.
+
+By default, if a table with the same name does already exist, ``dask-sql`` will raise an exception
+(and in turn will raise an exception if you try to delete a table which is not present).
+With the flags ``IF [NOT] EXISTS`` and ``OR REPLACE``, this behavior can be controlled:
+
+* ``CREATE OR REPLACE TABLE | VIEW`` will override an already present table/view with the same name without raising an exception.
+* ``CREATE TABLE IF NOT EXISTS`` will not create the table/view if it already exists (and will also not raise an exception).
+* ``DROP TABLE | VIEW IF EXISTS`` will only drop the table/view if it exists and will not do anything otherwise.
 
 ``CREATE TABLE WITH``
 ---------------------
