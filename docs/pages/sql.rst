@@ -3,17 +3,26 @@
 SQL Syntax
 ==========
 
-``dask-sql`` understands SQL in postgreSQL syntax.
-So far, not every valid postgreSQL operator and keyword is already
+``dask-sql`` understands SQL in (mostly) postgreSQL syntax.
+So far, not every valid SQL operator and keyword is already
 implemented in ``dask-sql``, but a large fraction of it.
 Have a look into our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_
 to find out what is still missing.
 
+``dask-sql`` understands queries for data retrieval (``SELECT``), queries on metadata information (``SHOW`` and ``DESCRIBE``) and queries for table creation (``CREATE TABLE``).
+In the following, general information for these queries are given - the sub-pages give details on each of the implemented keywords or operations.
+The information on these pages apply to all ways SQL queries can be handed over to ``dask-sql``: via Python (:ref:`api`), the SQL server (:ref:`server`) or the command line (:ref:`cmd`).
+
 General
 -------
 
+Data in ``dask-sql`` is - similar to most SQL systems - grouped in named tables, which consist of columns (with names and data types) and rows.
+The tables are again grouped into schemas.
+For simplicity, there only exists a single schema, named "schema".
+
+For many queries, it is necessary to refer to a schema, table, or column.
 Identifiers can be specified with double quotes or without quotes (if there is no ambiguity with SQL keywords).
-Casing with be kept (with or without quotes).
+Casing will be kept (with or without quotes).
 
 .. code-block:: sql
 
@@ -23,7 +32,24 @@ Casing with be kept (with or without quotes).
         "df"
 
 ``"date"`` definitely needs quotation marks (as ``DATE`` is also an SQL keyword), but ``name`` and ``df`` can also be specified without quotation marks.
-To prevent ambiguities, the full table identifier can be used - but in many cases the bare column name is enough.
+
+To prevent ambiguities, the full table identifier can be used:
+
+.. code-block:: sql
+
+    SELECT
+        "df"."date"
+    FROM
+        "schema"."df"
+
+In many cases however, the bare name is enough:
+
+.. code-block:: sql
+
+    SELECT
+        "date"
+    FROM
+        "df"
 
 String literals get single quotes:
 
@@ -31,170 +57,22 @@ String literals get single quotes:
 
     SELECT 'string literal'
 
-``dask-sql`` can only understand a single SQL query per call to ``Context.sql``.
-Therefore, there should also be no semicolons after the query.
-
-Selecting
----------
-
-The typical ingredients of a ``SELECT`` are also possible in ``dask-sql``:
-
-.. code-block:: sql
-
-    SELECT
-        name, SUM(x) AS s
-    FROM
-        data
-    WHERE
-        y < 3 AND x > 0.5
-    GROUP BY
-        name
-    HAVING
-        SUM(x) < 5
-    UNION SELECT
-        'myself' AS name, 42 AS s
-    ORDER BY
-        s
-    LIMIT 100
-
-Also (all kind of) joins and (complex) subqueries are possible:
-
-.. code-block:: sql
-
-    SELECT
-         lhs.name, lhs.id, lhs.x
-      FROM
-         date AS lhs
-      JOIN
-         (
-               SELECT
-                  name AS max_name,
-                  MAX(x) AS max_x
-               FROM timeseries
-               GROUP BY name
-         ) AS rhs
-      ON
-         lhs.name = rhs.max_name AND
-         lhs.x = rhs.max_x
-
-Describing
-----------
-
-It is possible to get information on the currently registered tables
-and their columns:
-
-To show the schemas (there is always just a single one called "schema"):
-
-.. code-block:: sql
-
-    SHOW SCHEMAS
-
-To show the registered tables:
-
-.. code-block:: sql
-
-    SHOW TABLES FROM "schema"
-
-To show column information on a specific table named "df"
-
-.. code-block:: sql
-
-    SHOW COLUMNS FROM "df"
-
-.. _creation:
-
-Table Creation
---------------
-
-As described in :ref:`quickstart`, it is possible to register an already
-created dask dataframe with a call to ``c.create_table``.
-However, it is also possible to load data directly from disk (or s3, hdfs, URL, ...)
-and register it as a table in ``dask_sql``.
-Behind the scenes, a call to one of the ``read_<format>`` of the ``dask.dataframe``
-will be executed.
-
-.. code-block:: sql
-
-    CREATE TABLE df WITH (
-        location = "/some/file/path",
-        format = "csv/parquet/json/...",
-        persist = True,
-        additional_parameter = value,
-        ...
-    )
-
-This will create and register a new table "df" with the data under the specified location
-and format.
-With the ``persist`` parameter, it can be controlled if the data should be cached
-or re-read for every SQL query.
-The additional parameters are passed to the call to ``read_<format>``.
-If you omit the format argument, it will be deduced from the file name extension.
-More ways to load data can be found in :ref:`data_input`.
-
-Using a similar syntax, it is also possible to create a (materialized) view of a (maybe complicated) SQL query.
-With the following command, you give the result of the ``SELECT`` query a name, that you can use
-in subsequent calls.
-
-.. code-block:: sql
-
-    CREATE TABLE my_table AS (
-        SELECT
-            a, b, SUM(c)
-        FROM data
-        GROUP BY a, b
-        ...
-    )
-
-    SELECT * FROM my_table
-
-Instead of using ``CREATE TABLE`` it is also possible to use ``CREATE VIEW``.
-The result is very similar, the only difference is when the result will be computed: a view is recomputed on every usage,
-whereas a table is only calculated once on creation (also known as a materialized view).
-This means, if you e.g. read data from a remote file and the file changes, a query containing a view will
-be updated whereas a query with a table will stay constant.
-To update a table, you need to recreate it.
-
-.. hint::
-
-    Use views to simplify complicated queries (like a "shortcut") and tables for caching.
-
 .. note::
 
-    The update of the view only works, if your primary data source (the files you were reading in),
-    are not persisted during reading.
+    ``dask-sql`` can only understand a single SQL query per call to ``Context.sql``.
+    Therefore, there should also be no semicolons after the query.
 
 
-Implemented operations
-----------------------
+Query Types and Reference
+-------------------------
 
-The following list includes all operations understood and implemented in ``dask-sql``.
-Scalar functions can be used to turn a column (or multiple) into a column of the same length (such as ``x + y`` or ``sin(x)``)
-whereas aggregation functions can only be used in ``GROUP BY`` clauses, as they
-turn a column into a single value.
-For more information on the semantic of the different functions, please have a look into the
-`Apache Calcite documentation <https://calcite.apache.org/docs/reference.html>`_.
+.. toctree::
+   :maxdepth: 1
 
-Scalar Functions
-~~~~~~~~~~~~~~~~
+   sql/select.rst
+   sql/creation.rst
+   sql/describe.rst
 
-Binary Operations: ``AND``, ``OR``, ``>``, ``>=``, ``<``, ``<=``, ``=``, ``<>``, ``+``, ``-``, ``/``, ``*``
-
-Unary Math Operations: ``ABS``, ``ACOS``, ``ASIN``, ``ATAN``, ``ATAN2``, ``CBRT``, ``CEIL``, ``COS``, ``COT``, ``DEGREES``, ``EXP``, ``FLOOR``, ``LOG10``, ``LN``, ``POWER``, ``RADIANS``, ``ROUND``, ``SIGN``, ``SIN``, ``TAN``, ``TRUNCATE``
-
-String operations: ``LIKE``, ``SIMILAR TO``, ``||``, ``CHAR_LENGTH``, ``UPPER``, ``LOWER``, ``POSITION``, ``TRIM``, ``OVERLAY``, ``SUBSTRING``, ``INITCAP``
-
-Date operations: ``EXTRACT``, ``YEAR``, ``QUARTER``, ``MONTH``, ``WEEK``, ``DAYOFYEAR``, ``DAYOFMONTH``, ``DAYOFWEEK``, ``HOUR``, ``MINUTE``, ``SECOND``, ``LOCALTIME``, ``LOCALTIMESTAMP``, ``CURRENT_TIME``, ``CURRENT_DATE``, ``CURRENT_TIMESTAMP``
-
-.. note::
-
-Due to a `bug/inconsistency <https://issues.apache.org/jira/browse/CALCITE-4313>`_ in Apache Calcite, both the ``CURRENTTIME`` and ``LOCALTIME`` return a time without timezone and are therefore the same functionality.
-
-Special Operations: ``CASE``, ``NOT``, ``IS NULL``, ``IS NOT NULL``, ``IS TRUE``, ``IS NOT TRUE``, ``IS FALSE:``, ``IS NOT FALSE``, ``IS UNKNOWN``, ``IS NOT UNKNOWN``, ``EXISTS``
-
-Aggregations
-~~~~~~~~~~~~
-
-``ANY_VALUE``, ``AVG``, ``BIT_AND``, ``BIT_OR``, ``BIT_XOR``, ``COUNT``, ``EVERY``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``SUM``
 
 Implemented Types
 -----------------
@@ -286,15 +164,12 @@ For this, it uses the following mapping:
 | ``VARCHAR(*)``    |    ``pd.StringDtype``       |
 +-------------------+-----------------------------+
 
-
 Limitatons
 ----------
 
 ``dask-sql`` is still in early development, therefore exist some limitations:
 
-* Not all operations and aggregations are implemented already
-* The first sorting direction in the ``ORDER BY`` must be in ascending order.
-  All subsequent columns can also be sorted in decreasing order.
+* Not all operations and aggregations are implemented already, most prominently: ``WINDOW`` is not implemented so far.
 * ``GROUP BY`` aggregations can not use ``DISTINCT``
 
 .. note::
