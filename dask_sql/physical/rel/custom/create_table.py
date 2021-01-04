@@ -50,12 +50,20 @@ class CreateTablePlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
+        table_name = str(sql.getTableName())
+
+        if table_name in context.tables:
+            if sql.getIfNotExists():
+                return
+            elif not sql.getReplace():
+                raise RuntimeError(
+                    f"A table with the name {table_name} is already present."
+                )
+
         kwargs = {
             str(key): convert_literal(value)
             for key, value in dict(sql.getKwargs()).items()
         }
-
-        table_name = str(sql.getTableName())
 
         logger.debug(
             f"Creating new table with name {table_name} and parameters {kwargs}"

@@ -1,13 +1,15 @@
-from dask_sql.physical.rel.custom.predict import PredictModelPlugin
-from .create import CreateTablePlugin
-from .create_as import CreateAsPlugin
 from .columns import ShowColumnsPlugin
+from .create_table import CreateTablePlugin
+from .create_table_as import CreateTableAsPlugin
+from .drop_table import DropTablePlugin
+from .predict import PredictModelPlugin
 from .schemas import ShowSchemasPlugin
 from .tables import ShowTablesPlugin
 
 __all__ = [
-    CreateAsPlugin,
+    CreateTableAsPlugin,
     CreateTablePlugin,
+    DropTablePlugin,
     PredictModelPlugin,
     ShowColumnsPlugin,
     ShowSchemasPlugin,

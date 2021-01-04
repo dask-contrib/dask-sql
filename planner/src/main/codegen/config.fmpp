@@ -21,9 +21,12 @@ data: {
       # List of import statements.
       imports: [
         "org.apache.calcite.util.*",
+        "org.apache.calcite.sql.SqlCreate",
+        "org.apache.calcite.sql.SqlDrop",
         "java.util.*",
         "com.dask.sql.parser.SqlCreateTable",
         "com.dask.sql.parser.SqlCreateTableAs",
+        "com.dask.sql.parser.SqlDropTable",
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables"
@@ -32,27 +35,27 @@ data: {
 
       # List of keywords.
       keywords: [
-        "SCHEMAS"
-        "TABLES"
         "COLUMNS"
+        "IF"
         "MODEL"
         "PREDICT"
+        "SCHEMAS"
+        "TABLES"
       ]
 
       # The keywords can only be used in a specific context,
       # so we can keep them non-reserved
       nonReservedKeywordsToAdd: [
-        "SCHEMAS"
-        "TABLES"
         "COLUMNS"
+        "IF"
         "MODEL"
         "PREDICT"
+        "SCHEMAS"
+        "TABLES"
       ]
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
-         "SqlCreateTable()"
-         "SqlCreateView()"
          "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"
@@ -60,9 +63,20 @@ data: {
          "SqlPredictModel()"
       ]
 
+      createStatementParserMethods: [
+         "SqlCreateTable"
+         "SqlCreateView"
+      ]
+
+      dropStatementParserMethods: [
+         "SqlDropTable"
+      ]
+
       # location of the implementation
       implementationFiles: [
-        "parserImpls.ftl"
+        "utils.ftl"
+        "create.ftl"
+        "show.ftl"
       ]
     }
 }
