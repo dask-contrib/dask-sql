@@ -4,18 +4,20 @@ Data Retrieval
 Query data from already created tables. The ``SELECT`` call follows mostly the standard SQL conventions,
 including all typical ingredients (such as ``WHERE``, ``GROUP BY``, ``ORDER BY`` etc.).
 
-.. code-block:: sql
+.. raw:: html
 
-    SELECT [ ALL | DISTINCT ]
-        * | <expression> [ [ AS ] <alias> ] [ , ... ]
-        [ FROM <from> [, ... ] ]
-        [ WHERE <filter-condition> ]
-        [ GROUP BY <group-by> ]
-        [ HAVING <having-condition> ]
-        [ UNION [ ALL | DISTINCT ] <select> ]
-        [ ORDER BY <order-by> [ ASC | DESC ] , ... ]
-        [ LIMIT <end> ]
-        [ OFFSET <start> ]
+    <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">SELECT</span> <span class="p">[</span> <span class="k">ALL</span> <span class="o">|</span> <span class="k">DISTINCT</span> <span class="p">]</span>
+        <span class="o">*</span> <span class="o">|</span> <span class="ss">&lt;expression&gt;</span> <span class="p">[</span> <span class="p">[</span> <span class="k">AS</span> <span class="p">]</span> <span class="ss">&lt;alias&gt;</span> <span class="p">]</span> <span class="p">[</span> <span class="p">,</span> <span class="p">...</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">FROM</span> <span class="ss">&lt;from&gt;</span> <span class="p">[ ,</span> <span class="p">...</span> <span class="p">]</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">WHERE</span> <span class="ss">&lt;filter-condition&gt;</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">GROUP</span> <span class="k">BY</span> <span class="ss">&lt;group-by&gt;</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">HAVING</span> <span class="ss">&lt;having-condition&gt;</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">UNION</span> <span class="p">[</span> <span class="k">ALL</span> <span class="o">|</span> <span class="k">DISTINCT</span> <span class="p">]</span> <span class="ss">&lt;select&gt;</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">ORDER</span> <span class="k">BY</span> <span class="ss">&lt;order-by&gt;</span> <span class="p">[</span> <span class="k">ASC</span> <span class="o">|</span> <span class="k">DESC</span> <span class="p">]</span> [</span> <span class="p">,</span> <span class="p">...</span> <span class="p">] <span class="p">]</span>
+        <span class="p">[</span> <span class="k">LIMIT</span> <span class="ss">&lt;end&gt;</span> <span class="p">]</span>
+        <span class="p">[</span> <span class="k">OFFSET</span> <span class="ss">&lt;start&gt;</span> <span class="p">]</span>
+    </pre></div>
+    </div>
 
 .. note::
 

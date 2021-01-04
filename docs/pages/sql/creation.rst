@@ -11,12 +11,14 @@ Behind the scenes, a call to one of the ``read_<format>`` of the ``dask.datafram
 will be executed.
 Additionally, queries can be materialized into new tables for caching or faster access.
 
-.. code-block:: sql
+.. raw:: html
 
-    CREATE [ OR REPLACE ] TABLE [ IF NOT EXISTS ] <table-name> WITH ( <key> = <value>, ...)
-    CREATE [ OR REPLACE ] TABLE [ IF NOT EXISTS ] <table-name> AS ( SELECT ... )
-    CREATE [ OR REPLACE ] VIEW [ IF NOT EXISTS ] <table-name> AS ( SELECT ... )
-    DROP TABLE | VIEW [ IF EXISTS ] <table-name>
+    <div class="highlight"><pre>
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">WITH</span> ( <span class="ss">&lt;key&gt;</span> = <span class="ss">&lt;value&gt;</span> [ , ... ] )
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">VIEW</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
+    <span class="k">DROP TABLE</span> | <span class="k">VIEW</span> [ <span class="k">IF EXISTS</span> ] <span class="ss">&lt;table-name></span>
+    </pre></div>
 
 See :ref:`sql` for information on how to reference tables correctly.
 Please note, that there can only ever exist a single view or table with the same name.
@@ -47,15 +49,17 @@ More ways to load data can be found in :ref:`data_input`.
 
 Example:
 
-.. code-block:: sql
+.. raw:: html
 
-    CREATE TABLE df WITH (
-        location = "/some/file/path",
-        format = "csv/parquet/json/...",
-        persist = True,
-        additional_parameter = value,
-        ...
-    )
+    <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">df</span> <span class="k">WITH</span> <span class="p">(</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="ss">"/some/file/path"</span><span class="p">,</span>
+        <span class="n">format</span> <span class="o">=</span> <span class="ss">"csv/parquet/json/..."</span><span class="p">,</span>
+        <span class="n">persist</span> <span class="o">=</span> <span class="k">True</span><span class="p">,</span>
+        <span class="n">additional_parameter</span> <span class="o">=</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">...</span>
+    <span class="p">)</span>
+    </pre></div>
+    </div>
 
 ``CREATE TABLE AS``
 -------------------
