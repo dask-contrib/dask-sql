@@ -478,16 +478,22 @@ class RandomOperation(Operation):
 
     needs_dc = True
 
-    def __init__(self):
+    def __init__(self, random_function):
         super().__init__(self.random_frame)
+        self.random_function = random_function
 
-    def random_frame(self, seed: int, dc: DataContainer) -> dd.Series:
+    def random_frame(
+        self, seed: int = None, *args, dc: DataContainer = None
+    ) -> dd.Series:
         """This function - in contrast to others in this module - will only ever be called on data frames"""
+
+        if seed is None:
+            raise NotImplementedError("Default seed is currently not implemented")
 
         @dask.delayed
         def random_number_with_seed(df, seed):
             state = np.random.RandomState(seed=seed)
-            random_numbers = state.random_sample(size=len(df))
+            random_numbers = self.random_function(*args, state=state, size=len(df))
             return pd.Series(random_numbers, index=df.index)
 
         df = dc.df
@@ -546,7 +552,14 @@ class RexCallPlugin(BaseRexPlugin):
         "is not false": NotOperation().of(IsFalseOperation()),
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
-        "rand": RandomOperation(),
+        "rand": RandomOperation(
+            random_function=lambda state, size: state.random_sample(size=size)
+        ),
+        "rand_integer": RandomOperation(
+            random_function=lambda high, state, size: state.randint(
+                size=size, low=0, high=high
+            )
+        ),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
