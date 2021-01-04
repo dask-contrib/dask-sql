@@ -12,10 +12,10 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 
 public class SqlPredictModel extends SqlCall {
     final SqlNodeList selectList;
-    final SqlIdentifier modelName;
+    final SqlModelIdentifier modelName;
     final SqlNode select;
 
-    public SqlPredictModel(final SqlParserPos pos, final SqlNodeList selectList, final SqlIdentifier modelName,
+    public SqlPredictModel(final SqlParserPos pos, final SqlNodeList selectList, final SqlModelIdentifier modelName,
             final SqlNode select) {
         super(pos);
         this.selectList = selectList;
@@ -31,11 +31,8 @@ public class SqlPredictModel extends SqlCall {
                 : SqlNodeList.of(SqlIdentifier.star(SqlParserPos.ZERO));
         writer.list(SqlWriter.FrameTypeEnum.SELECT_LIST, SqlWriter.COMMA, selectClause);
 
-        writer.keyword("FROM");
-        writer.keyword("PREDICT");
-        writer.keyword("(");
+        writer.keyword("FROM PREDICT (");
 
-        writer.keyword("MODEL");
         this.modelName.unparse(writer, leftPrec, rightPrec);
         writer.keyword(",");
 
@@ -62,7 +59,7 @@ public class SqlPredictModel extends SqlCall {
         return this.selectList;
     }
 
-    public SqlIdentifier getModelName() {
+    public SqlModelIdentifier getModelName() {
         return this.modelName;
     }
 }

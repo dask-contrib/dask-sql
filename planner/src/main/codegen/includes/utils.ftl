@@ -30,12 +30,13 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
  * A list of key = value, separated by comma
  * and in left and right parenthesis.
  */
-HashMap<SqlNode, SqlNode> ParenthesizedKeyValueExpressions() :
+SqlKwargs ParenthesizedKeyValueExpressions() :
 {
+    final Span s;
     final HashMap<SqlNode, SqlNode> kwargs = new HashMap<SqlNode, SqlNode>();
 }
 {
-    <LPAREN>
+    <LPAREN> { s = span(); }
     KeyValueExpression(kwargs)
     (
         <COMMA>
@@ -43,7 +44,7 @@ HashMap<SqlNode, SqlNode> ParenthesizedKeyValueExpressions() :
     )*
     <RPAREN>
     {
-        return kwargs;
+        return new SqlKwargs(s.end(this), kwargs);
     }
 }
 
