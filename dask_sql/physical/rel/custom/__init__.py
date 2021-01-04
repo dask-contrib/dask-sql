@@ -1,12 +1,14 @@
-from .create import CreateTablePlugin
-from .create_as import CreateAsPlugin
+from .create_table import CreateTablePlugin
+from .create_table_as import CreateTableAsPlugin
+from .drop_table import DropTablePlugin
 from .columns import ShowColumnsPlugin
 from .schemas import ShowSchemasPlugin
 from .tables import ShowTablesPlugin
 
 __all__ = [
-    CreateAsPlugin,
+    CreateTableAsPlugin,
     CreateTablePlugin,
+    DropTablePlugin,
     ShowColumnsPlugin,
     ShowSchemasPlugin,
     ShowTablesPlugin,

@@ -7,7 +7,7 @@ from dask_sql.mappings import sql_to_python_value
 logger = logging.getLogger(__name__)
 
 
-class CreateAsPlugin(BaseRelPlugin):
+class CreateTableAsPlugin(BaseRelPlugin):
     """
     Create a table or view from the given SELECT query
     and register it at the context.
@@ -33,8 +33,17 @@ class CreateAsPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        sql_select = sql.getSelect()
         table_name = str(sql.getTableName())
+
+        if table_name in context.tables:
+            if sql.getIfNotExists():
+                return
+            elif not sql.getReplace():
+                raise RuntimeError(
+                    f"A table with the name {table_name} is already present."
+                )
+
+        sql_select = sql.getSelect()
         persist = bool(sql.isPersist())
 
         logger.debug(
