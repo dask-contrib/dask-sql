@@ -127,7 +127,8 @@ def test_correct_argument_passing(c, training_df):
             fit_kwargs = (
                 first_arg = 3,
                 second_arg = ARRAY [ 1, 2 ],
-                third_arg = MAP [ 'a', 1 ]
+                third_arg = MAP [ 'a', 1 ],
+                forth_arg = MULTISET [ 1, 1, 2, 3 ]
             )
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -142,4 +143,6 @@ def test_correct_argument_passing(c, training_df):
 
     fit_function.assert_called_once()
     call_kwargs = fit_function.call_args.kwargs
-    assert call_kwargs == dict(first_arg=3, second_arg=[1, 2], third_arg={"a": 1})
+    assert call_kwargs == dict(
+        first_arg=3, second_arg=[1, 2], third_arg={"a": 1}, forth_arg=set([1, 2, 3])
+    )

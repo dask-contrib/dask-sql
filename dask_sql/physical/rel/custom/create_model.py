@@ -60,7 +60,7 @@ class CreateModelPlugin(BaseRelPlugin):
         y = df[target_column]
         model = ModelClass(**kwargs)
 
-        model = model.fit(X, y)
+        model = model.fit(X, y, **fit_kwargs)
         context.register_model(<model-name>, model)
 
     but can also be used without writing a single line of code.
@@ -73,14 +73,14 @@ class CreateModelPlugin(BaseRelPlugin):
             target_column = 'target'
         ) AS (
             SELECT x, y, target
-            FROM data
+            FROM "data"
         )
 
     Notes:
 
         This SQL call is not a 1:1 replacement for a normal
         python training and can not fulfill all use-cases
-        ore requirements!
+        or requirements!
 
         If you are dealing with large amounts of data,
         you might run into problems while model training and/or
@@ -96,7 +96,7 @@ class CreateModelPlugin(BaseRelPlugin):
         * If you are training on large amounts of data,
           you can try setting wrap_fit to True. This will
           do the same on the training step, but works only on
-          those models, which have a `fit_partion` method.
+          those models, which have a `fit_partial` method.
     """
 
     class_name = "com.dask.sql.parser.SqlCreateModel"
@@ -107,6 +107,14 @@ class CreateModelPlugin(BaseRelPlugin):
         select = sql.getSelect()
         model_name = str(sql.getModelName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
+
+        if model_name in context.models:
+            if sql.getIfNotExists():
+                return
+            elif not sql.getReplace():
+                raise RuntimeError(
+                    f"A model with the name {model_name} is already present."
+                )
 
         logger.debug(
             f"Creating model {model_name} from query {select} with options {kwargs}"

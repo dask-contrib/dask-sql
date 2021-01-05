@@ -20,12 +20,12 @@ class PredictModelPlugin(BaseRelPlugin):
     The return value is the input dataframe with an additional column named
     "target", which contains the predicted values.
     The model needs to be registered at the context before using it in this function,
-    either by calling :ref:`register_model` explicitely or by training
+    either by calling :ref:`register_model` explicitly or by training
     a model using the `CREATE MODEL` SQL statement.
 
     A model can be anything which has a `predict` function.
     Please note however, that it will need to act on Dask dataframes. If you
-    are using a non-optimized model, it might be that you run out of memory if
+    are using a model not optimized for this, it might be that you run out of memory if
     your data is larger than the RAM of a single machine.
     To prevent this, have a look into the dask-ml package,
     especially the [ParallelPostFit](https://ml.dask.org/meta-estimators.html)

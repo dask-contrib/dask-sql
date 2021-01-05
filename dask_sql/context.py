@@ -90,6 +90,7 @@ class Context:
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
