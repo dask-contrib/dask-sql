@@ -162,4 +162,4 @@ class CreateModelPlugin(BaseRelPlugin):
             y = None
 
         model.fit(X, y, **fit_kwargs)
-        context.register_model(model_name, model)
+        context.register_model(model_name, model, X.columns)

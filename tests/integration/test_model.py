@@ -15,7 +15,7 @@ def check_trained_model(c):
     ).compute()
 
     assert "target" in result_df.columns
-    assert result_df["target"].sum() > 0
+    assert len(result_df["target"]) > 0
 
 
 @pytest.fixture()
@@ -138,7 +138,9 @@ def test_correct_argument_passing(c, training_df):
     """
     )
 
-    mocked_model = c.models["my_model"]
+    mocked_model, columns = c.models["my_model"]
+    assert list(columns) == ["x", "y"]
+
     fit_function = mocked_model.fit
 
     fit_function.assert_called_once()
@@ -146,3 +148,106 @@ def test_correct_argument_passing(c, training_df):
     assert call_kwargs == dict(
         first_arg=3, second_arg=[1, 2], third_arg={"a": 1}, forth_arg=set([1, 2, 3])
     )
+
+
+def test_replace_and_error(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    first_mock, _ = c.models["my_model"]
+
+    with pytest.raises(RuntimeError):
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'mock.MagicMock',
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+                LIMIT 100
+            )
+        """
+        )
+
+    c.sql(
+        """
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    assert c.models["my_model"][0] == first_mock
+
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    assert c.models["my_model"][0] != first_mock
+    second_mock, _ = c.models["my_model"]
+
+    c.sql("DROP MODEL my_model")
+
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    assert c.models["my_model"][0] != second_mock
+
+
+def test_drop_model(c, training_df):
+    with pytest.raises(RuntimeError):
+        c.sql("DROP MODEL my_model")
+
+    c.sql("DROP MODEL IF EXISTS my_model")
+
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    c.sql("DROP MODEL IF EXISTS my_model")
+
+    assert "my_model" not in c.models

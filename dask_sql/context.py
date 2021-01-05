@@ -409,7 +409,7 @@ class Context:
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
-    def register_model(self, model_name: str, model: Any):
+    def register_model(self, model_name: str, model: Any, training_columns: List[str]):
         """
         Add a model to the model registry.
         A model can be anything which has a `.predict` function that transforms
@@ -422,8 +422,10 @@ class Context:
         Args:
             model_name (:obj:`str`): The name of the model
             model: The model to store
+            training_columns: (list of str): The names of the columns which were
+                used during the training.
         """
-        self.models[model_name] = model
+        self.models[model_name] = (model, training_columns)
 
     def _prepare_schema(self):
         """

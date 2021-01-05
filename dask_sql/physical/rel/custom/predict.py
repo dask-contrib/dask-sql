@@ -61,7 +61,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
         if model_type == IdentifierType.REFERENCE:
             try:
-                model = context.models[model_name]
+                model, training_columns = context.models[model_name]
             except KeyError:
                 raise KeyError(f"No model registered with name {model_name}")
         else:
@@ -70,7 +70,7 @@ class PredictModelPlugin(BaseRelPlugin):
         sql_select_query = context._to_sql_string(sql_select)
         df = context.sql(sql_select_query)
 
-        prediction = model.predict(df)
+        prediction = model.predict(df[training_columns])
         predicted_df = df.assign(target=prediction)
 
         # Create a temporary context, which includes the
