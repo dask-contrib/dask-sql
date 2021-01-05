@@ -20,18 +20,20 @@ class PredictModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         sql_select = sql.getSelect()
-        model_name = str(sql.getModelName())
+        model_name = str(sql.getModelName().getIdentifier())
         select_list = sql.getSelectList()
 
         logger.debug(
             f"Predicting from {model_name} and query {sql_select} to {list(select_list)}"
         )
 
+        model = context.models[model_name]
+
         sql_select_query = context._to_sql_string(sql_select)
         df = context.sql(sql_select_query)
 
-        # TODO: do magic with prediction and storing in temporary table
-        predicted_df = df.copy()
+        prediction = model.predict(df)
+        predicted_df = df.assign(target=prediction)
 
         # Create a temporary context, which includes the
         # new "table"

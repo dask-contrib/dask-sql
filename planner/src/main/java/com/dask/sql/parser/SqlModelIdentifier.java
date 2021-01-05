@@ -44,7 +44,7 @@ public class SqlModelIdentifier extends SqlCall {
         throw new UnsupportedOperationException();
     }
 
-    public final SqlIdentifier getModelName() {
+    public final SqlIdentifier getIdentifier() {
         return this.modelName;
     }
 
