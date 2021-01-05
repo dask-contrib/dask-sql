@@ -13,13 +13,16 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
     <EQ>
     (
         literal = Literal()
-    <#--  |
+    |
         literal = MultisetConstructor()
     |
         literal = ArrayConstructor()
     |
         LOOKAHEAD(3)
-        literal = MapConstructor()  -->
+        literal = MapConstructor()
+    |
+        LOOKAHEAD(3)
+        literal = ParenthesizedKeyValueExpressions()
     )
     {
         kwargs.put(keyword, literal);

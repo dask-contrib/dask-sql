@@ -11,7 +11,7 @@ import pandas as pd
 
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import org, java
+from dask_sql.java import org, java, com
 
 logger = logging.getLogger(__name__)
 
@@ -189,14 +189,28 @@ def convert_sql_kwargs(
     sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
 ) -> Dict[str, Any]:
     def convert_literal(value):
-        literal_type = str(value.getTypeName())
+        if isinstance(value, org.apache.calcite.sql.SqlBasicCall):
+            operator_mapping = {
+                "ARRAY": list,
+                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "MULTISET": set,
+            }
 
-        if literal_type == "CHAR":
-            return str(value.getStringValue())
+            operator = operator_mapping[str(value.getOperator())]
+            operands = [convert_literal(o) for o in value.getOperands()]
 
-        literal_value = value.getValue()
-        python_value = sql_to_python_value(literal_type, literal_value)
-        return python_value
+            return operator(operands)
+        elif isinstance(value, com.dask.sql.parser.SqlKwargs):
+            return convert_sql_kwargs(value.getMap())
+        else:
+            literal_type = str(value.getTypeName())
+
+            if literal_type == "CHAR":
+                return str(value.getStringValue())
+
+            literal_value = value.getValue()
+            python_value = sql_to_python_value(literal_type, literal_value)
+            return python_value
 
     return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
 
