@@ -188,6 +188,14 @@ class LoggableDataFrame:
 def convert_sql_kwargs(
     sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
 ) -> Dict[str, Any]:
+    """
+    Convert a HapMap (probably coming from a SqlKwargs class instance)
+    into its python equivalent. Basically calls convert_sql_kwargs
+    for each of the values, except for some special handling for
+    nested key-value parameters, ARRAYs etc. and CHARs (which unfortunately have
+    an additional "'" around them if used in convert_sql_kwargs directly).
+    """
+
     def convert_literal(value):
         if isinstance(value, org.apache.calcite.sql.SqlBasicCall):
             operator_mapping = {
