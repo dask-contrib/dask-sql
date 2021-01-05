@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
@@ -72,6 +72,8 @@ class Context:
         self.function_list: List[FunctionDescription] = []
         # Storage for the registered aggregations
         self.aggregations = {}
+        # Storage for the trained models
+        self.models = {}
         # Name of the root schema (not changable so far)
         self.schema_name = "schema"
 
@@ -405,6 +407,22 @@ class Context:
         """
         _, _, rel_string = self._get_ral(sql)
         return rel_string
+
+    def register_model(self, model_name: str, model: Any):
+        """
+        Add a model to the model registry.
+        A model can be anything which has a `.predict` function that transforms
+        a Dask dataframe into predicted labels (as a Dask series).
+        After model registration, the model can be used in calls to
+        `SELECT ... FROM PREDICT` with the given name.
+        Instead of creating your own model and register it, you can also
+        train a model directly in dask-sql. See the SQL command `CrEATE MODEL`.
+
+        Args:
+            model_name (:obj:`str`): The name of the model
+            model: The model to store
+        """
+        self.models[model_name] = model
 
     def _prepare_schema(self):
         """
