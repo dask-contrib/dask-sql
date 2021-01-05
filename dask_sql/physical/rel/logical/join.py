@@ -165,7 +165,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
         if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
             return [], [], [join_condition]
-        elif isinstance(join_condition, org.apache.calcite.rex.RexCall):
+        elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
             raise NotImplementedError("Can not understand join condition.")
 
         # Simplest case: ... ON lhs.a == rhs.b

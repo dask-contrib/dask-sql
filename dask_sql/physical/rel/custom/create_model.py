@@ -48,6 +48,7 @@ class CreateModelPlugin(BaseRelPlugin):
       [dask-ml docu](https://ml.dask.org/incremental.html)
       to learn more about it. Defaults to false. Typically you set
       it to true for sklearn models if training on big data.
+    * fit_kwargs: keyword arguments sent to the call to fit().
 
     All other arguments are passed to the constructor of the
     model class.
@@ -114,15 +115,16 @@ class CreateModelPlugin(BaseRelPlugin):
         try:
             model_class = kwargs.pop("model_class")
         except KeyError:
-            raise AttributeError("Parameters must include a 'model_class' parameter.")
+            raise ValueError("Parameters must include a 'model_class' parameter.")
 
         target_column = kwargs.pop("target_column", "")
         wrap_predict = kwargs.pop("wrap_predict", False)
         wrap_fit = kwargs.pop("wrap_fit", False)
+        fit_kwargs = kwargs.pop("fit_kwargs", {})
 
         try:
             ModelClass = import_class(model_class)
-        except ImportError:  # pragma: no cover
+        except ImportError:
             raise ValueError(
                 f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
             )
@@ -151,5 +153,5 @@ class CreateModelPlugin(BaseRelPlugin):
             X = training_df
             y = None
 
-        model = model.fit(X, y)
+        model.fit(X, y, **fit_kwargs)
         context.register_model(model_name, model)
