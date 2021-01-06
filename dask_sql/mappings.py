@@ -83,6 +83,9 @@ def python_to_sql_type(python_type):
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
+    if pd.api.types.is_datetime64tz_dtype(python_type):
+        return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+
     try:
         return _PYTHON_TO_SQL[python_type]
     except KeyError:  # pragma: no cover
@@ -189,6 +192,10 @@ def sql_to_python_type(sql_type: str) -> type:
         return np.dtype("<m8[ns]")
     elif sql_type.startswith("TIMESTAMP(") or sql_type.startswith("TIME("):
         return np.dtype("<M8[ns]")
+    elif sql_type.startswith("TIMESTAMP_WITH_LOCAL_TIME_ZONE("):
+        # Everything is converted to UTC
+        # So far, this did not break
+        return pd.DatetimeTZDtype(unit="ns", tz="UTC")
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
