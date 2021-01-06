@@ -89,9 +89,9 @@ class PredictModelPlugin(BaseRelPlugin):
 
         sql_ns = org.apache.calcite.sql
         pos = sql.getParserPosition()
-        from_clause = sql_ns.SqlIdentifier(
-            java.util.List.of(temporary_table), pos
-        )  # TODO: correct pos
+        from_column_list = java.util.ArrayList()
+        from_column_list.add(temporary_table)
+        from_clause = sql_ns.SqlIdentifier(from_column_list, pos)  # TODO: correct pos
 
         outer_select = sql_ns.SqlSelect(
             sql.getParserPosition(),
