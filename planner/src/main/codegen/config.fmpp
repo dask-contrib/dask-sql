@@ -24,6 +24,7 @@ data: {
         "org.apache.calcite.sql.SqlCreate",
         "org.apache.calcite.sql.SqlDrop",
         "java.util.*",
+        "com.dask.sql.parser.SqlAnalyzeTable",
         "com.dask.sql.parser.SqlCreateModel",
         "com.dask.sql.parser.SqlCreateTable",
         "com.dask.sql.parser.SqlCreateTableAs",
@@ -39,27 +40,34 @@ data: {
 
       # List of keywords.
       keywords: [
+        "ANALYZE"
         "COLUMNS"
+        "COMPUTE"
         "IF"
         "MODEL"
         "PREDICT"
         "SCHEMAS"
+        "STATISTICS"
         "TABLES"
       ]
 
       # The keywords can only be used in a specific context,
       # so we can keep them non-reserved
       nonReservedKeywordsToAdd: [
+        "ANALYZE"
         "COLUMNS"
+        "COMPUTE"
         "IF"
         "MODEL"
         "PREDICT"
         "SCHEMAS"
+        "STATISTICS"
         "TABLES"
       ]
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
+         "SqlAnalyzeTable()"
          "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"

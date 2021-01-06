@@ -86,6 +86,7 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)

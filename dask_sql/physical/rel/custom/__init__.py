@@ -1,3 +1,4 @@
+from .analyze import AnalyzeTablePlugin
 from .columns import ShowColumnsPlugin
 from .create_model import CreateModelPlugin
 from .create_table import CreateTablePlugin
@@ -9,6 +10,7 @@ from .schemas import ShowSchemasPlugin
 from .tables import ShowTablesPlugin
 
 __all__ = [
+    AnalyzeTablePlugin,
     CreateModelPlugin,
     CreateTableAsPlugin,
     CreateTablePlugin,

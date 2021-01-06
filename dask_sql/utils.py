@@ -1,3 +1,4 @@
+from typing import List
 import importlib
 from typing import Any, Dict
 from collections import defaultdict
@@ -183,6 +184,29 @@ class LoggableDataFrame:
             return f"DataFrame: {[(col, dtype) for col, dtype in zip(cols, dtypes)]}"
 
         return f"Literal: {df}"
+
+
+def get_table_from_compound_identifier(
+    context: "dask_sql.Context", components: List[str]
+) -> DataContainer:
+    """
+    Helper function to return the correct table
+    from the stored tables in the context
+    with the given name (and maybe also schema name)
+    """
+    # some queries might also include the database
+    # as we do not have such a concept, we just get rid of it
+    components = components[-2:]
+    tableName = components[-1]
+
+    if len(components) == 2:
+        if components[0] != context.schema_name:
+            raise AttributeError(f"Schema {components[0]} is not defined.")
+
+    try:
+        return context.tables[tableName]
+    except KeyError:
+        raise AttributeError(f"Table {tableName} is not defined.")
 
 
 def convert_sql_kwargs(
