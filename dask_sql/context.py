@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
@@ -72,6 +72,8 @@ class Context:
         self.function_list: List[FunctionDescription] = []
         # Storage for the registered aggregations
         self.aggregations = {}
+        # Storage for the trained models
+        self.models = {}
         # Name of the root schema (not changable so far)
         self.schema_name = "schema"
 
@@ -85,8 +87,11 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
@@ -405,6 +410,24 @@ class Context:
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
+    def register_model(self, model_name: str, model: Any, training_columns: List[str]):
+        """
+        Add a model to the model registry.
+        A model can be anything which has a `.predict` function that transforms
+        a Dask dataframe into predicted labels (as a Dask series).
+        After model registration, the model can be used in calls to
+        `SELECT ... FROM PREDICT` with the given name.
+        Instead of creating your own model and register it, you can also
+        train a model directly in dask-sql. See the SQL command `CrEATE MODEL`.
+
+        Args:
+            model_name (:obj:`str`): The name of the model
+            model: The model to store
+            training_columns: (list of str): The names of the columns which were
+                used during the training.
+        """
+        self.models[model_name] = (model, training_columns)
+
     def _prepare_schema(self):
         """
         Create a schema filled with the dataframes
@@ -476,11 +499,13 @@ class Context:
             sqlNodeClass = get_java_class(sqlNode)
 
             if sqlNodeClass.startswith("com.dask.sql.parser."):
-                return sqlNode, [], None
-
-            validatedSqlNode = generator.getValidatedNode(sqlNode)
-            nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
-            rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                rel = sqlNode
+                rel_string = ""
+            else:
+                validatedSqlNode = generator.getValidatedNode(sqlNode)
+                nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                rel_string = str(generator.getRelationalAlgebraString(rel))
         except (ValidationException, SqlParseException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
@@ -506,8 +531,6 @@ class Context:
                 "Not extracting output column names as the SQL is not a SELECT call"
             )
             select_names = None
-
-        rel_string = str(generator.getRelationalAlgebraString(rel))
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string

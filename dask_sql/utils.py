@@ -1,45 +1,20 @@
-import os
 from typing import List
-import warnings
+import importlib
+from typing import Any, Dict
 from collections import defaultdict
 import re
 from datetime import datetime
 import logging
-import platform
 
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+from dask_sql.mappings import sql_to_python_value
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import org, java, com
 
 logger = logging.getLogger(__name__)
-
-
-def _set_or_check_java_home():
-    """
-    We have some assumptions on the JAVA_HOME, namely our jvm comes from
-    a conda environment. That does not need to be true, but we should at
-    least warn the user.
-    """
-    if "CONDA_PREFIX" not in os.environ:  # pragma: no cover
-        # we are not running in a conda env
-        return
-
-    correct_java_path = os.path.normpath(os.environ["CONDA_PREFIX"])
-    if platform.system() == "Windows":  # pragma: no cover
-        correct_java_path = os.path.normpath(os.path.join(correct_java_path, "Library"))
-
-    if "JAVA_HOME" not in os.environ:  # pragma: no cover
-        logger.debug("Setting $JAVA_HOME to $CONDA_PREFIX")
-        os.environ["JAVA_HOME"] = correct_java_path
-    elif (
-        os.path.normpath(os.environ["JAVA_HOME"]) != correct_java_path
-    ):  # pragma: no cover
-        warnings.warn(
-            "You are running in a conda environment, but the JAVA_PATH is not using it. "
-            f"If this is by mistake, set $JAVA_HOME to {correct_java_path}, instead of {os.environ['JAVA_HOME']}."
-        )
 
 
 def is_frame(df):
@@ -232,3 +207,51 @@ def get_table_from_compound_identifier(
         return context.tables[tableName]
     except KeyError:
         raise AttributeError(f"Table {tableName} is not defined.")
+
+
+def convert_sql_kwargs(
+    sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
+) -> Dict[str, Any]:
+    """
+    Convert a HapMap (probably coming from a SqlKwargs class instance)
+    into its python equivalent. Basically calls convert_sql_kwargs
+    for each of the values, except for some special handling for
+    nested key-value parameters, ARRAYs etc. and CHARs (which unfortunately have
+    an additional "'" around them if used in convert_sql_kwargs directly).
+    """
+
+    def convert_literal(value):
+        if isinstance(value, org.apache.calcite.sql.SqlBasicCall):
+            operator_mapping = {
+                "ARRAY": list,
+                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "MULTISET": set,
+            }
+
+            operator = operator_mapping[str(value.getOperator())]
+            operands = [convert_literal(o) for o in value.getOperands()]
+
+            return operator(operands)
+        elif isinstance(value, com.dask.sql.parser.SqlKwargs):
+            return convert_sql_kwargs(value.getMap())
+        else:
+            literal_type = str(value.getTypeName())
+
+            if literal_type == "CHAR":
+                return str(value.getStringValue())
+
+            literal_value = value.getValue()
+            python_value = sql_to_python_value(literal_type, literal_value)
+            return python_value
+
+    return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
+
+
+def import_class(name: str) -> type:
+    """
+    Import a class with the given name by loading the module
+    and referencing the class in the module
+    """
+    module_path, class_name = name.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    return getattr(module, class_name)
