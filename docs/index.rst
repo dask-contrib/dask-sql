@@ -72,6 +72,7 @@ which makes interchanging distributed CPU and GPU calculation easy.
    pages/sql
    pages/data_input
    pages/custom
+   pages/machine_learning
    pages/api
    pages/server
    pages/cmd

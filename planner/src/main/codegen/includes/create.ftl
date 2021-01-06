@@ -6,7 +6,7 @@
 SqlCreate SqlCreateTable(final Span s, boolean replace) :
 {
     final SqlIdentifier tableName;
-    final HashMap<SqlNode, SqlNode> kwargs;
+    final SqlKwargs kwargs;
     final SqlNode select;
     final boolean ifNotExists;
 }

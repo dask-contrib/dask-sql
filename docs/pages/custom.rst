@@ -5,6 +5,7 @@ Custom Functions and Aggregations
 
 Additional to the included SQL functionalities, it is possible to include custom functions and aggregations into the SQL queries of ``dask-sql``.
 The custom functions are classified into scalar functions and aggregations.
+If you want to combine Machine Learning with SQL, you might also be interested in :ref:`machine_learning`.
 
 Scalar Functions
 ----------------

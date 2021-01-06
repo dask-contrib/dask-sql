@@ -1,24 +1,10 @@
 import logging
-from distributed.client import default_client
-import pandas as pd
-import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import sql_to_python_value
+from dask_sql.utils import convert_sql_kwargs
 
 logger = logging.getLogger(__name__)
-
-
-def convert_literal(value):
-    literal_type = str(value.getTypeName())
-
-    if literal_type == "CHAR":
-        return str(value.getStringValue())
-
-    literal_value = value.getValue()
-    python_value = sql_to_python_value(literal_type, literal_value)
-    return python_value
 
 
 class CreateTablePlugin(BaseRelPlugin):
@@ -60,10 +46,7 @@ class CreateTablePlugin(BaseRelPlugin):
                     f"A table with the name {table_name} is already present."
                 )
 
-        kwargs = {
-            str(key): convert_literal(value)
-            for key, value in dict(sql.getKwargs()).items()
-        }
+        kwargs = convert_sql_kwargs(sql.getKwargs())
 
         logger.debug(
             f"Creating new table with name {table_name} and parameters {kwargs}"

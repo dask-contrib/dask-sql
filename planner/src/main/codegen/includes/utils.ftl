@@ -13,13 +13,16 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
     <EQ>
     (
         literal = Literal()
-    <#--  |
+    |
         literal = MultisetConstructor()
     |
         literal = ArrayConstructor()
     |
         LOOKAHEAD(3)
-        literal = MapConstructor()  -->
+        literal = MapConstructor()
+    |
+        LOOKAHEAD(3)
+        literal = ParenthesizedKeyValueExpressions()
     )
     {
         kwargs.put(keyword, literal);
@@ -30,12 +33,13 @@ void KeyValueExpression(final HashMap<SqlNode, SqlNode> kwargs) :
  * A list of key = value, separated by comma
  * and in left and right parenthesis.
  */
-HashMap<SqlNode, SqlNode> ParenthesizedKeyValueExpressions() :
+SqlKwargs ParenthesizedKeyValueExpressions() :
 {
+    final Span s;
     final HashMap<SqlNode, SqlNode> kwargs = new HashMap<SqlNode, SqlNode>();
 }
 {
-    <LPAREN>
+    <LPAREN> { s = span(); }
     KeyValueExpression(kwargs)
     (
         <COMMA>
@@ -43,7 +47,23 @@ HashMap<SqlNode, SqlNode> ParenthesizedKeyValueExpressions() :
     )*
     <RPAREN>
     {
-        return kwargs;
+        return new SqlKwargs(s.end(this), kwargs);
+    }
+}
+
+
+SqlNode ExpressionOrPredict() :
+{
+    final SqlNode e;
+}
+{
+    (
+        e = SqlPredictModel()
+    |
+        e = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+    )
+    {
+        return e;
     }
 }
 
@@ -60,10 +80,10 @@ SqlNode OptionallyParenthesizedQuery() :
 {
     (
         <LPAREN>
-        query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+        query = ExpressionOrPredict()
         <RPAREN>
     |
-        query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+        query = ExpressionOrPredict()
     )
     {
         return query;

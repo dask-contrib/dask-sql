@@ -13,12 +13,17 @@ Additionally, queries can be materialized into new tables for caching or faster 
 
 .. raw:: html
 
+    <div class="highlight-sql notranslate">
     <div class="highlight"><pre>
-    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">WITH</span> ( <span class="ss">&lt;key&gt;</span> = <span class="ss">&lt;value&gt;</span> [ , ... ] )
-    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
-    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">VIEW</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span> <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span>
+        <span class="k">WITH</span> ( <span class="ss">&lt;key&gt;</span> = <span class="ss">&lt;value&gt;</span> [ , ... ] )
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">TABLE</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span>
+        <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
+    <span class="k">CREATE</span> [ <span class="k">OR REPLACE</span> ] <span class="k">VIEW</span> [ <span class="k">IF NOT EXISTS</span> ] <span class="ss">&lt;table-name></span>
+        <span class="k">AS</span> ( <span class="k">SELECT</span> ... )
     <span class="k">DROP TABLE</span> | <span class="k">VIEW</span> [ <span class="k">IF EXISTS</span> ] <span class="ss">&lt;table-name></span>
     </pre></div>
+    </div>
 
 See :ref:`sql` for information on how to reference tables correctly.
 Please note, that there can only ever exist a single view or table with the same name.
@@ -41,6 +46,7 @@ With the flags ``IF [NOT] EXISTS`` and ``OR REPLACE``, this behavior can be cont
 
 This will create and register a new table "df" with the data under the specified location
 and format.
+For information on how to specify key-value arguments properly, see :ref:`sql`.
 With the ``persist`` parameter, it can be controlled if the data should be cached
 or re-read for every SQL query.
 The additional parameters are passed to the call to ``read_<format>``.
@@ -67,6 +73,7 @@ Example:
 Using a similar syntax, it is also possible to create a (materialized) view of a (maybe complicated) SQL query.
 With the command, you give the result of the ``SELECT`` query a name, that you can use
 in subsequent calls.
+The ``SELECT`` can also contain a call to ``PREDICT``, see :ref:`ml`.
 
 Example:
 
@@ -114,3 +121,10 @@ Example:
     )
 
     SELECT * FROM my_table
+
+``DROP TABLE | VIEW``
+---------------------
+
+Remove a table or view with the given name.
+Please note again, that views and tables are treated equally, so ``CREATE TABLE``
+will also delete the view with the given name and vise versa.

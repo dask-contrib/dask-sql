@@ -4,7 +4,7 @@ from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import get_java_class
+from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class LogicalProjectPlugin(BaseRelPlugin):
 
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
-            if get_java_class(expr) == RexInputRefPlugin.class_name:
+            if isinstance(expr, org.apache.calcite.rex.RexInputRef):
                 index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
