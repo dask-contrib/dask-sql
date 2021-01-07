@@ -260,10 +260,11 @@ class Context:
             :func:`register_aggregation`
 
         """
-        name = name.lower()
         self.function_list.append(
             FunctionDescription(name, parameters, return_type, False)
         )
+
+        name = name.lower()
         if name in self.functions:
             if self.functions[name] != f:
                 raise ValueError(
@@ -325,10 +326,11 @@ class Context:
             :func:`register_function`
 
         """
-        name = name.lower()
         self.function_list.append(
             FunctionDescription(name, parameters, return_type, True)
         )
+
+        name = name.lower()
         if name in self.functions:
             if self.functions[name] != f:
                 raise ValueError(
