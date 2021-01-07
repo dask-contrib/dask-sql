@@ -239,6 +239,8 @@ def convert_sql_kwargs(
 
             if literal_type == "CHAR":
                 return str(value.getStringValue())
+            elif literal_type == "DECIMAL" and value.isInteger():
+                literal_type = "BIGINT"
 
             literal_value = value.getValue()
             python_value = sql_to_python_value(literal_type, literal_value)
