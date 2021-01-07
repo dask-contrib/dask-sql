@@ -521,6 +521,10 @@ class Context:
         # edge cases (if the outer SQLNode is not a select node),
         # but so far I did not find such a case.
         # So please raise an issue if you have found one!
+        if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
+            sqlNode = sqlNode.query
+            sqlNodeClass = get_java_class(sqlNode)
+
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
             select_names = [
                 self._to_sql_string(s, default_dialect=default_dialect)
