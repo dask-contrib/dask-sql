@@ -15,4 +15,3 @@ class DaskInputPlugin(BaseInputPlugin):
 
     def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
         return input_item
-

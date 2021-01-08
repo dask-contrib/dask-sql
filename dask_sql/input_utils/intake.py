@@ -26,4 +26,3 @@ class IntakeCatalogInputPlugin(BaseInputPlugin):
             input_item = intake.open_catalog(input_item, **catalog_kwargs)
 
         return input_item[table_name].to_dask(**kwargs)
-
