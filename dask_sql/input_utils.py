@@ -158,7 +158,7 @@ def _get_files_from_hive(
         df = read_function(location, **kwargs)
 
         logger.debug(f"Applying column information: {column_information}")
-        df.columns = column_information.keys()
+        df = df.rename(columns=dict(zip(df.columns, column_information.keys())))
 
         for col, expected_type in column_information.items():
             df = cast_column_type(df, col, expected_type)
@@ -228,7 +228,7 @@ def _parse_hive_table_description(
     logger.debug(f"Got information from hive: {result}")
 
     table_information = {}
-    column_information = {}
+    column_information = {}  # using the fact that dicts are insertion ordered
     storage_information = {}
     partition_information = {}
     mode = "column"
