@@ -1,6 +1,7 @@
 from .convert import InputUtil, InputType
 from .dask import DaskInputPlugin
 from .hive import HiveInputPlugin
+from .intake import IntakeCatalogInputPlugin
 from .location import LocationInputPlugin
 from .pandas import PandasInputPlugin
 
@@ -9,6 +10,7 @@ __all__ = [
     InputType,
     DaskInputPlugin,
     HiveInputPlugin,
+    IntakeCatalogInputPlugin,
     LocationInputPlugin,
     PandasInputPlugin,
 ]

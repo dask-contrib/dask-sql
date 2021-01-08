@@ -105,6 +105,8 @@ class Context:
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.HiveInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.IntakeCatalogInputPlugin, replace=False)
+        # needs to be the last entry, as it only checks for string
         InputUtil.add_plugin_class(input_utils.LocationInputPlugin, replace=False)
 
     def create_table(
