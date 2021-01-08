@@ -32,11 +32,10 @@ InputType = Union[
 
 
 def to_dc(
+    table_name: str,
     input_item: InputType,
     file_format: str = None,
     persist: bool = True,
-    hive_table_name: str = None,
-    hive_schema_name: str = "default",
     **kwargs,
 ) -> DataContainer:
     """
@@ -44,12 +43,8 @@ def to_dc(
     locations as string, hive tables) into the loaded data containers,
     maybe persist them to cluster memory before.
     """
-    filled_get_dask_dataframe = lambda *args: _get_dask_dataframe(
-        *args,
-        file_format=file_format,
-        hive_table_name=hive_table_name,
-        hive_schema_name=hive_schema_name,
-        **kwargs,
+    filled_get_dask_dataframe = lambda *args: _get_dask_dataframe_function(
+        table_name, *args, file_format=file_format, **kwargs,
     )
 
     if isinstance(input_item, list):
@@ -63,12 +58,8 @@ def to_dc(
     return DataContainer(table.copy(), ColumnContainer(table.columns))
 
 
-def _get_dask_dataframe(
-    input_item: InputType,
-    file_format: str = None,
-    hive_table_name: str = None,
-    hive_schema_name: str = "default",
-    **kwargs,
+def _get_dask_dataframe_function(
+    table_name: str, input_item: InputType, file_format: str = None, **kwargs,
 ):
     is_sqlalchemy_hive = sqlalchemy and isinstance(
         input_item, sqlalchemy.engine.base.Connection
@@ -80,9 +71,7 @@ def _get_dask_dataframe(
     elif isinstance(input_item, dd.DataFrame):
         return input_item
     elif is_hive_cursor or is_sqlalchemy_hive:  # pragma: no cover
-        return _get_files_from_hive(
-            input_item, table_name=hive_table_name, schema=hive_schema_name, **kwargs
-        )
+        return _get_files_from_hive(table_name, input_item, **kwargs)
     elif isinstance(input_item, str):
         return _get_files_from_location(input_item, file_format=file_format, **kwargs)
     else:
@@ -108,11 +97,13 @@ def _get_files_from_location(input_item, file_format: str = None, **kwargs):
 
 
 def _get_files_from_hive(
-    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
     table_name: str,
-    schema: str = "default",
+    cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
     **kwargs,
 ):  # pragma: no cover
+    table_name = kwargs.pop("hive_table_name", table_name)
+    schema = kwargs.pop("hive_schema_name", "default")
+
     parsed = _parse_hive_table_description(cursor, schema, table_name)
     (
         column_information,

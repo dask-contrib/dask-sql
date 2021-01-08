@@ -107,8 +107,6 @@ class Context:
         input_table: InputType,
         file_format: str = None,
         persist: bool = True,
-        hive_table_name: str = None,
-        hive_schema_name: str = "default",
         **kwargs,
     ):
         """
@@ -169,19 +167,11 @@ class Context:
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to false to turn off loading the file data directly into memory.
-            hive_table_name (:obj:`str`): If using input from a hive table, you can specify the
-                hive table name if different from the table_name.
-            hive_schema_name (:obj:`str`): If using input from a hive table, you can specify the
-                hive schema name.
+            **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
         dc = to_dc(
-            input_table,
-            file_format=file_format,
-            persist=persist,
-            hive_table_name=hive_table_name or table_name,
-            hive_schema_name=hive_schema_name,
-            **kwargs,
+            table_name, input_table, file_format=file_format, persist=persist, **kwargs,
         )
         self.tables[table_name.lower()] = dc
 
