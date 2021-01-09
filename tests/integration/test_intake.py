@@ -24,10 +24,10 @@ def intake_catalog_location():
     yaml_location = os.path.join(tmpdir, "catalog.yaml")
     with open(yaml_location, "w") as f:
         f.write(
-            f"""sources:
+            """sources:
     intake_table:
         args:
-            urlpath: "{csv_location}"
+            urlpath: "{{ CATALOG_DIR }}/data.csv"
         description: "Some Data"
         driver: csv
         """
