@@ -15,6 +15,7 @@ def df_simple():
 
 @pytest.fixture()
 def df():
+    np.random.seed(42)
     return pd.DataFrame(
         {"a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400, "b": 10 * np.random.rand(700),}
     )
@@ -51,6 +52,21 @@ def string_table():
 
 
 @pytest.fixture()
+def datetime_table():
+    return pd.DataFrame(
+        {
+            "timezone": pd.date_range(
+                start="2014-08-01 09:00", freq="H", periods=3, tz="Europe/Berlin"
+            ),
+            "no_timezone": pd.date_range(start="2014-08-01 09:00", freq="H", periods=3),
+            "utc_timezone": pd.date_range(
+                start="2014-08-01 09:00", freq="H", periods=3, tz="UTC"
+            ),
+        }
+    )
+
+
+@pytest.fixture()
 def c(
     df_simple,
     df,
@@ -60,6 +76,7 @@ def c(
     user_table_inf,
     user_table_nan,
     string_table,
+    datetime_table,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -70,6 +87,7 @@ def c(
         "user_table_inf": user_table_inf,
         "user_table_nan": user_table_nan,
         "string_table": string_table,
+        "datetime_table": datetime_table,
     }
 
     # Lazy import, otherwise the pytest framework has problems

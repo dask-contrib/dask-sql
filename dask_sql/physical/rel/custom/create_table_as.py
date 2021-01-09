@@ -2,7 +2,6 @@ import logging
 
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
 

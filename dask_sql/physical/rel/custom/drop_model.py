@@ -6,27 +6,27 @@ from dask_sql.datacontainer import DataContainer
 logger = logging.getLogger(__name__)
 
 
-class DropTablePlugin(BaseRelPlugin):
+class DropModelPlugin(BaseRelPlugin):
     """
-    Drop a table with given name.
+    Drop a model with given name.
     The SQL call looks like
 
-        DROP TABLE <table-name>
+        DROP MODEL <table-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropTable"
+    class_name = "com.dask.sql.parser.SqlDropModel"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        table_name = str(sql.getTableName())
+        model_name = str(sql.getModelName())
 
-        if table_name not in context.tables:
+        if model_name not in context.models:
             if not sql.getIfExists():
                 raise RuntimeError(
-                    f"A table with the name {table_name} is not present."
+                    f"A model with the name {model_name} is not present."
                 )
             else:
                 return
 
-        del context.tables[table_name]
+        del context.models[model_name]

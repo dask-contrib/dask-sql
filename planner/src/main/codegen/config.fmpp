@@ -24,9 +24,15 @@ data: {
         "org.apache.calcite.sql.SqlCreate",
         "org.apache.calcite.sql.SqlDrop",
         "java.util.*",
+        "com.dask.sql.parser.SqlAnalyzeTable",
+        "com.dask.sql.parser.SqlCreateModel",
         "com.dask.sql.parser.SqlCreateTable",
         "com.dask.sql.parser.SqlCreateTableAs",
+        "com.dask.sql.parser.SqlDropModel",
         "com.dask.sql.parser.SqlDropTable",
+        "com.dask.sql.parser.SqlKwargs",
+        "com.dask.sql.parser.SqlModelIdentifier",
+        "com.dask.sql.parser.SqlPredictModel"
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables"
@@ -34,43 +40,58 @@ data: {
 
       # List of keywords.
       keywords: [
-        "SCHEMAS"
-        "TABLES"
+        "ANALYZE"
         "COLUMNS"
+        "COMPUTE"
         "IF"
+        "MODEL"
+        "PREDICT"
+        "SCHEMAS"
+        "STATISTICS"
+        "TABLES"
       ]
 
       # The keywords can only be used in a specific context,
       # so we can keep them non-reserved
       nonReservedKeywordsToAdd: [
-        "SCHEMAS"
-        "TABLES"
+        "ANALYZE"
         "COLUMNS"
+        "COMPUTE"
         "IF"
+        "MODEL"
+        "PREDICT"
+        "SCHEMAS"
+        "STATISTICS"
+        "TABLES"
       ]
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
+         "SqlAnalyzeTable()"
          "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
+         "SqlPredictModel()"
       ]
 
       createStatementParserMethods: [
+         "SqlCreateModel"
          "SqlCreateTable"
          "SqlCreateView"
       ]
 
       dropStatementParserMethods: [
+         "SqlDropModel"
          "SqlDropTable"
       ]
 
       # location of the implementation
       implementationFiles: [
-        "utils.ftl"
         "create.ftl"
+        "model.ftl"
         "show.ftl"
+        "utils.ftl"
       ]
     }
 }

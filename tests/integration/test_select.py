@@ -106,3 +106,14 @@ def test_wrong_input(c):
 
     with pytest.raises(ParsingException):
         c.sql("""SELECT x FROM df""")
+
+
+def test_timezones(c, datetime_table):
+    result_df = c.sql(
+        """
+        SELECT * FROM datetime_table
+        """
+    )
+    result_df = result_df.compute()
+
+    assert_frame_equal(result_df, datetime_table)

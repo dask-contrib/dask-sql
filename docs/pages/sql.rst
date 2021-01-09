@@ -3,13 +3,13 @@
 SQL Syntax
 ==========
 
-``dask-sql`` understands SQL in (mostly) postgreSQL syntax.
+``dask-sql`` understands SQL in (mostly) presto SQL syntax.
 So far, not every valid SQL operator and keyword is already
 implemented in ``dask-sql``, but a large fraction of it.
 Have a look into our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_
 to find out what is still missing.
 
-``dask-sql`` understands queries for data retrieval (``SELECT``), queries on metadata information (``SHOW`` and ``DESCRIBE``) and queries for table creation (``CREATE TABLE``).
+``dask-sql`` understands queries for data retrieval (``SELECT``), queries on metadata information (``SHOW`` and ``DESCRIBE``), queries for table creation (``CREATE TABLE``) and machine learning (``CREATE MODEL`` and ``PREDICT``).
 In the following, general information for these queries are given - the sub-pages give details on each of the implemented keywords or operations.
 The information on these pages apply to all ways SQL queries can be handed over to ``dask-sql``: via Python (:ref:`api`), the SQL server (:ref:`server`) or the command line (:ref:`cmd`).
 
@@ -63,6 +63,35 @@ String literals get single quotes:
     Therefore, there should also be no semicolons after the query.
 
 
+Some SQL statements, like ``CREATE MODEL WITH`` and ``CREATE TABLE WITH`` expect a list of key-value arguments,
+which resemble (not accidentally) a Python dictionary. They are in the form
+
+.. code-block:: none
+
+    (
+        key = value
+        [ , ... ]
+    )
+
+with an arbitrary number of key-value pairs and always are enclosed in brackets. The keys are (similar to Pythons ``dict`` constructor) unquoted.
+A value can be any valid SQL literal (e.g. ``3``, ``4.2``, ``'string'``), a key-value parameter list itself
+or a list (``ARRAY``) or a set (``MULTISET``) (or another way of writing dictionaries with ``MAP``).
+
+This means, the following is a valid key-value parameter list:
+
+.. code-block:: sql
+
+    (
+        first_argument = 3,
+        second_argument = MULTISET [ 1, 1, 2, 3 ],
+        third_argument = (
+            sub_argument_1 = ARRAY [ 1, 2, 3 ],
+            sub_argument_2 = 'a string'
+        )
+    )
+
+Please note that, in contrast to python, no comma is allowed after the last argument.
+
 Query Types and Reference
 -------------------------
 
@@ -71,6 +100,7 @@ Query Types and Reference
 
    sql/select.rst
    sql/creation.rst
+   sql/ml.rst
    sql/describe.rst
 
 

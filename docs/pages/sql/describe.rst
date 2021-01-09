@@ -2,14 +2,19 @@ Metadata Information
 ====================
 
 With these operations, it is possible to get information on the currently registered tables
-and their columns:
+and their columns.
+The output format is mostly compatible with the presto format.
 
-.. code-block:: sql
+.. raw:: html
 
-    SHOW SCHEMAS
-    SHOW TABLES FROM "schema-name"
-    SHOW COLUMNS FROM "table-name"
-    DESCRIBE "table-name"
+    <div class="highlight"><pre>
+    <span class="k">SHOW SCHEMAS</span>
+    <span class="k">SHOW TABLES FROM</span> <span class="ss">&lt;schema-name&gt;</span>
+    <span class="k">SHOW COLUMNS FROM</span> <span class="ss">&lt;table-name></span>
+    <span class="k">DESCRIBE</span> <span class="ss">&lt;table-name></span>
+    <span class="k">ANALYZE TABLE</span> <span class="ss">&lt;table-name&gt;</span> <span class="k">COMPUTE STATISTICS</span>
+        [ <span class="k">FOR ALL COLUMNS</span> | <span class="k">FOR COLUMNS</span> <span class="ss">&lt;column&gt;</span>, [ ,... ] ]
+    </pre></div>
 
 See :ref:`sql` for information on how to reference schemas and tables correctly.
 
@@ -23,17 +28,21 @@ which is needed by some BI tools (which is empty).
 
 Example:
 
-.. code-block:: sql
+.. raw:: html
 
-    SHOW SCHEMAS
+    <div class="highlight"><pre>
+    <span class="k">SHOW SCHEMAS</span>
+    </pre></div>
 
 Result:
 
-.. code-block:: none
-
-                   Schema
-    0              schema
-    1  information_schema
++------------------------+
+| Schema                 |
++========================+
+| schema                 |
++------------------------+
+| information_schema     |
++------------------------+
 
 ``SHOW TABLES``
 ---------------
@@ -42,17 +51,19 @@ Show the registered tables in a given schema.
 
 Example:
 
-.. code-block:: sql
+.. raw:: html
 
-    SHOW TABLES FROM "schema"
+    <div class="highlight"><pre>
+    <span class="k">SHOW TABLES FROM</span> <span class="ss">"schema"</span>
+    </pre></div>
 
 Result:
 
-.. code-block:: none
-
-            Table
-    0  timeseries
-
++------------+
+| Table      |
++============+
+| timeseries |
++------------+
 
 ``SHOW COLUMNS`` and ``DESCRIBE``
 ---------------------------------
@@ -61,16 +72,67 @@ Show column information on a specific table.
 
 Example:
 
-.. code-block:: sql
+.. raw:: html
 
-    SHOW COLUMNS FROM "timeseries"
+    <div class="highlight"><pre>
+    <span class="k">SHOW COLUMNS FROM</span> <span class="ss">"timeseries"</span>
+    </pre></div>
 
 Result:
 
-.. code-block:: none
++--------+---------+---------------+
+| Column |    Type | Extra Comment |
++========+=========+===============+
+|     id |  bigint |               |
++--------+---------+---------------+
+|   name | varchar |               |
++--------+---------+---------------+
+|      x |  double |               |
++--------+---------+---------------+
+|      y |  double |               |
++--------+---------+---------------+
 
-      Column     Type Extra Comment
-    0     id   bigint
-    1   name  varchar
-    2      x   double
-    3      y   double
+The column "Extra Comment" is shown for compatibility with presto.
+
+
+``ANALYZE TABLE``
+-----------------
+
+Calculate statistics on a given table (and the given columns or all columns)
+and return it as a query result.
+Please note, that this process can be time consuming on large tables.
+Even though this statement is very similar to the ``ANALYZE TABLE`` statement in e.g. `Apache Spark <https://spark.apache.org/docs/3.0.0/sql-ref-syntax-aux-analyze-table.html>`_, it does not optimize subsequent queries (as the pendent in Spark will do).
+
+Example:
+
+.. raw:: html
+
+    <div class="highlight"><pre>
+    <span class="k">ANALYZE TABLE</span> <span class="ss">"timeseries"</span> <span class="k">COMPUTE STATISTICS</span> <span class="k">FOR COLUMNS</span> <span class="ss">x</span>, <span class="ss">y</span>
+    </pre></div>
+
+Result:
+
++-----------+-----------+-----------+
+|           |         x |         y |
++===========+===========+===========+
+| count     |        30 |        30 |
++-----------+-----------+-----------+
+| mean      |  0.140374 | -0.107481 |
++-----------+-----------+-----------+
+| std       |  0.568248 |  0.573106 |
++-----------+-----------+-----------+
+| min       | -0.795112 | -0.966043 |
++-----------+-----------+-----------+
+| 25%       | -0.379635 | -0.561234 |
++-----------+-----------+-----------+
+| 50%       | 0.0104101 | -0.237795 |
++-----------+-----------+-----------+
+| 75%       |   0.70208 |  0.263459 |
++-----------+-----------+-----------+
+| max       |  0.990747 |  0.947069 |
++-----------+-----------+-----------+
+| data_type |    double |    double |
++-----------+-----------+-----------+
+| col_name  |         x |         y |
++-----------+-----------+-----------+

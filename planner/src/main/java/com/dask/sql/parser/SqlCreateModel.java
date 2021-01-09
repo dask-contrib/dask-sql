@@ -2,6 +2,7 @@ package com.dask.sql.parser;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.calcite.sql.SqlCreate;
 import org.apache.calcite.sql.SqlIdentifier;
@@ -12,33 +13,37 @@ import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
-public class SqlCreateTable extends SqlCreate {
-    private static final SqlOperator OPERATOR = new SqlSpecialOperator("CREATE TABLE", SqlKind.CREATE_TABLE);
+public class SqlCreateModel extends SqlCreate {
+    private static final SqlOperator OPERATOR = new SqlSpecialOperator("CREATE MODEL", SqlKind.OTHER_DDL);
 
-    final SqlIdentifier tableName;
+    final SqlIdentifier modelName;
     final SqlKwargs kwargs;
+    final SqlNode select;
 
-    public SqlCreateTable(final SqlParserPos pos, final boolean replace, final boolean ifNotExists,
-            final SqlIdentifier tableName, final SqlKwargs kwargs) {
+    public SqlCreateModel(final SqlParserPos pos, final boolean replace, final boolean ifNotExists,
+            final SqlIdentifier modelName, final SqlKwargs kwargs, final SqlNode select) {
         super(OPERATOR, pos, replace, ifNotExists);
-        this.tableName = tableName;
+        this.modelName = modelName;
         this.kwargs = kwargs;
+        this.select = select;
     }
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
         if (this.getReplace()) {
-            writer.keyword("CREATE OR REPLACE TABLE");
+            writer.keyword("CREATE OR REPLACE MODEL");
         } else {
-            writer.keyword("CREATE TABLE");
+            writer.keyword("CREATE MODEL");
         }
         if (this.getIfNotExists()) {
             writer.keyword("IF NOT EXISTS");
         }
-        this.getTableName().unparse(writer, leftPrec, rightPrec);
+        this.getModelName().unparse(writer, leftPrec, rightPrec);
         writer.keyword("WITH (");
         this.kwargs.unparse(writer, leftPrec, rightPrec);
         writer.keyword(")");
+        writer.keyword("AS");
+        this.getSelect().unparse(writer, leftPrec, rightPrec);
     }
 
     @Override
@@ -46,8 +51,8 @@ public class SqlCreateTable extends SqlCreate {
         throw new UnsupportedOperationException();
     }
 
-    public SqlIdentifier getTableName() {
-        return this.tableName;
+    public SqlIdentifier getModelName() {
+        return this.modelName;
     }
 
     public HashMap<SqlNode, SqlNode> getKwargs() {
@@ -56,5 +61,9 @@ public class SqlCreateTable extends SqlCreate {
 
     public boolean getIfNotExists() {
         return this.ifNotExists;
+    }
+
+    public SqlNode getSelect() {
+        return this.select;
     }
 }

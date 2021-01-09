@@ -46,6 +46,7 @@ SqlNode SqlShowColumns() :
     }
 }
 
+// DESCRIBE "table"
 SqlNode SqlDescribeTable() :
 {
     final Span s;
@@ -57,5 +58,31 @@ SqlNode SqlDescribeTable() :
     tableName = CompoundTableIdentifier()
     {
         return new SqlShowColumns(s.end(this), tableName);
+    }
+}
+
+// ANALYZE TABLE table_identifier COMPUTE STATISTICS [ FOR COLUMNS col [ , ... ] | FOR ALL COLUMNS ]
+SqlNode SqlAnalyzeTable() :
+{
+    final Span s;
+    final SqlIdentifier tableName;
+    final List<SqlIdentifier> columnList;
+}
+{
+    <ANALYZE> { s = span(); } <TABLE>
+    tableName = CompoundTableIdentifier()
+    <COMPUTE> <STATISTICS>
+    (
+        LOOKAHEAD(2)
+        <FOR> <COLUMNS>
+        columnList = ColumnIdentifierList()
+    |
+        <FOR> <ALL> <COLUMNS>
+        {
+            columnList = new ArrayList<SqlIdentifier>();
+        }
+    )
+    {
+        return new SqlAnalyzeTable(s.end(this), tableName, columnList);
     }
 }

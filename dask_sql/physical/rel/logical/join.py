@@ -8,7 +8,7 @@ import numpy as np
 import dask.dataframe as dd
 
 from dask_sql.physical.rex import RexConverter
-from dask_sql.java import get_short_java_class
+from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.datacontainer import DataContainer, ColumnContainer
@@ -162,11 +162,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
-        join_condition_type = get_short_java_class(join_condition)
 
-        if join_condition_type == "RexLiteral":
+        if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
             return [], [], [join_condition]
-        if join_condition_type != "RexCall":
+        elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
             raise NotImplementedError("Can not understand join condition.")
 
         # Simplest case: ... ON lhs.a == rhs.b
@@ -211,9 +210,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
         operand_lhs = operands[0]
         operand_rhs = operands[1]
 
-        if (
-            get_short_java_class(operand_lhs) == "RexInputRef"
-            and get_short_java_class(operand_rhs) == "RexInputRef"
+        if isinstance(operand_lhs, org.apache.calcite.rex.RexInputRef) and isinstance(
+            operand_rhs, org.apache.calcite.rex.RexInputRef
         ):
             lhs_index = operand_lhs.getIndex()
             rhs_index = operand_rhs.getIndex()

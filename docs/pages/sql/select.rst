@@ -1,3 +1,5 @@
+.. _select:
+
 Data Retrieval
 ==============
 

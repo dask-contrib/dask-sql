@@ -35,6 +35,7 @@ def test_tables(c):
                 "user_table_inf",
                 "user_table_nan",
                 "string_table",
+                "datetime_table",
             ]
         }
     )

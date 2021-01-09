@@ -117,6 +117,14 @@ class ColumnContainer:
         backend_column = self._frontend_backend_mapping[frontend_column]
         return backend_column
 
+    def get_backend_by_frontend_name(self, column: str) -> str:
+        """
+        Get back the dask column, which is referenced by the
+        frontend (SQL) column with the given name.
+        """
+        backend_column = self._frontend_backend_mapping[column]
+        return backend_column
+
     def make_unique(self, prefix="col"):
         """
         Make sure we have unique column names by calling each column
