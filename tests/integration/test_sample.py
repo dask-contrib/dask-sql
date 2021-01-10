@@ -32,9 +32,9 @@ def test_sample(c, df):
     return_df = c.sql("SELECT * FROM df TABLESAMPLE BERNOULLI (50)")
     return_df = return_df.compute()
 
-    assert len(return_df) > 0 and len(return_df) < len(df)
+    assert len(return_df) >= 0 and len(return_df) <= len(df)
 
     return_df = c.sql("SELECT * FROM df TABLESAMPLE SYSTEM (50)")
     return_df = return_df.compute()
 
-    assert len(return_df) > 0 and len(return_df) < len(df)
+    assert len(return_df) >= 0 and len(return_df) <= len(df)
