@@ -38,4 +38,3 @@ def test_sample(c, df):
     return_df = return_df.compute()
 
     assert len(return_df) > 0 and len(return_df) < len(df)
-
