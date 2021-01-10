@@ -71,23 +71,24 @@ def test_literal_null(c):
 def test_random(c, df):
     result_df = c.sql(
         """
-    SELECT RAND(0) AS "0", RAND(1) AS "1"
+    SELECT RAND(0) AS "0", RAND_INTEGER(1, 10) AS "1"
     """
     )
     result_df = result_df.compute()
 
     # As the seed is fixed, this should always give the same results
-    expected_df = pd.DataFrame({"0": [0.5488135039273248], "1": [0.417022004702574]})
+    expected_df = pd.DataFrame({"0": [0.5488135039273248], "1": [5]})
+    expected_df["1"] = expected_df["1"].astype("Int32")
     assert_frame_equal(result_df, expected_df)
 
     result_df = c.sql(
         """
-    SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < 0.5
+    SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < b
     """
     )
     result_df = result_df.compute()
 
-    assert len(result_df) == 342
+    assert len(result_df) == 665
     assert list(result_df["R"].iloc[:5]) == [
         0.3745401188473625,
         0.9507143064099162,

@@ -468,12 +468,15 @@ class CeilFloorOperation(PredicateBasedOperation):
             )
 
 
-class RandomOperation(Operation):
+class BaseRandomOperation(Operation):
     """
-    Return a random number between 0 and 1 with the random number
+    Return a random number (specified by the given function) with the random number
     generator set to the given seed.
     As we need to know how many random numbers we should generate,
-    we also get the current dataframe as input.
+    we also get the current dataframe as input and use it to
+    create random numbers for each partition separately.
+    To make this deterministic, we use the partition number
+    as additional input to the seed.
     """
 
     needs_dc = True
@@ -488,6 +491,9 @@ class RandomOperation(Operation):
         """This function - in contrast to others in this module - will only ever be called on data frames"""
 
         if seed is None:
+            # This is a problem, because then we would need to be able
+            # to "add" the partition number to an uninitialized
+            # seed, which is not possible (as the seed is multi-dimensional)
             raise NotImplementedError("Default seed is currently not implemented")
 
         @dask.delayed
@@ -497,14 +503,44 @@ class RandomOperation(Operation):
             return pd.Series(random_numbers, index=df.index)
 
         df = dc.df
-        return dd.from_delayed(
+
+        random_series = dd.from_delayed(
             [
                 random_number_with_seed(partition, partition_index + seed)
                 for partition_index, partition in enumerate(df.partitions)
             ],
             divisions=df.divisions,
-            meta=(None, "float64"),
+            meta=("random", "float64"),
         )
+
+        # This part seems to be stupid, but helps us do a very simple
+        # task without going into the (private) internals of Dask:
+        # copy all meta information from the original input dataframe
+        # This is important so that the returned series looks
+        # exactly like coming from the input dataframe
+        return_df = df.assign(random=random_series)["random"]
+
+        return return_df
+
+
+class RandOperation(BaseRandomOperation):
+    """Create a random number between 0 and 1"""
+
+    def __init__(self):
+        super().__init__(random_function=self.rand)
+
+    def rand(self, state, size):
+        return state.random_sample(size=size)
+
+
+class RandIntegerOperation(BaseRandomOperation):
+    """Create a random integer between 0 and high"""
+
+    def __init__(self):
+        super().__init__(random_function=self.rand_integer)
+
+    def rand_integer(self, high, state, size):
+        return state.randint(size=size, low=0, high=high)
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -552,14 +588,8 @@ class RexCallPlugin(BaseRexPlugin):
         "is not false": NotOperation().of(IsFalseOperation()),
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
-        "rand": RandomOperation(
-            random_function=lambda state, size: state.random_sample(size=size)
-        ),
-        "rand_integer": RandomOperation(
-            random_function=lambda high, state, size: state.randint(
-                size=size, low=0, high=high
-            )
-        ),
+        "rand": RandOperation(),
+        "rand_integer": RandIntegerOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
