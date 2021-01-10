@@ -1,16 +1,18 @@
-from datetime import datetime
 import operator
 from functools import reduce
 from typing import Any, Union, Callable
 import re
 import logging
+from dask.base import tokenize
+from dask.dataframe.core import Series
+from dask.highlevelgraph import HighLevelGraph
+from dask.utils import random_state_data
 
 import pandas as pd
 import numpy as np
 import dask.dataframe as dd
 import dask.array as da
 import pandas as pd
-from tzlocal import get_localzone
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -24,39 +26,44 @@ SeriesOrScalar = Union[dd.Series, Any]
 class Operation:
     """Helper wrapper around a function, which is used as operator"""
 
+    # True, if the operation should also get the dataframe passed
+    needs_dc = False
+
     def __init__(self, f: Callable):
         """Init with the given function"""
         self.f = f
 
-    def __call__(self, *operands) -> SeriesOrScalar:
+    def __call__(self, *operands, **kwargs) -> SeriesOrScalar:
         """Call the stored function"""
-        return self.f(*operands)
+        return self.f(*operands, **kwargs)
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
         return Operation(lambda x: self(op(x)))
 
 
-class PredicteBasedOperation(Operation):
+class PredicateBasedOperation(Operation):
     """
     Helper operation to call a function on the input,
     depending if the first arg evaluates, given a predicate function, to true or false
     """
 
-    def __init__(self, predicte: Callable, true_route: Callable, false_route: Callable):
+    def __init__(
+        self, predicate: Callable, true_route: Callable, false_route: Callable
+    ):
         super().__init__(self.apply)
-        self.predicte = predicte
+        self.predicate = predicate
         self.true_route = true_route
         self.false_route = false_route
 
-    def apply(self, *operands):
-        if self.predicte(operands[0]):
-            return self.true_route(*operands)
+    def apply(self, *operands, **kwargs):
+        if self.predicate(operands[0]):
+            return self.true_route(*operands, **kwargs)
 
-        return self.false_route(*operands)
+        return self.false_route(*operands, **kwargs)
 
 
-class TensorScalarOperation(PredicteBasedOperation):
+class TensorScalarOperation(PredicateBasedOperation):
     """
     Helper operation to call a function on the input,
     depending if the first is a dataframe or not
@@ -422,7 +429,7 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
-class CeilFloorOperation(PredicteBasedOperation):
+class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
     """
@@ -462,6 +469,90 @@ class CeilFloorOperation(PredicteBasedOperation):
             raise NotImplementedError(
                 f"{self.round_method} TO {unit} is not (yet) implemented."
             )
+
+
+class BaseRandomOperation(Operation):
+    """
+    Return a random number (specified by the given function) with the random number
+    generator set to the given seed.
+    As we need to know how many random numbers we should generate,
+    we also get the current dataframe as input and use it to
+    create random numbers for each partition separately.
+    To make this deterministic, we use the partition number
+    as additional input to the seed.
+    """
+
+    needs_dc = True
+
+    def random_function(self, partition, random_state, kwargs):
+        """Needs to be implemented in derived classes"""
+        raise NotImplementedError
+
+    def random_frame(self, seed: int, dc: DataContainer, **kwargs) -> dd.Series:
+        """This function - in contrast to others in this module - will only ever be called on data frames"""
+
+        random_state = np.random.RandomState(seed=seed)
+
+        # Idea taken from dask.DataFrame.sample:
+        # initialize a random state for each of the partitions
+        # separately and then create a random series
+        # for each partition
+        df = dc.df
+        name = "sample-" + tokenize(df, random_state)
+
+        state_data = random_state_data(df.npartitions, random_state)
+        dsk = {
+            (name, i): (
+                self.random_function,
+                (df._name, i),
+                np.random.RandomState(state),
+                kwargs,
+            )
+            for i, state in enumerate(state_data)
+        }
+
+        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[df])
+        random_series = Series(graph, name, ("random", "float64"), df.divisions)
+
+        # This part seems to be stupid, but helps us do a very simple
+        # task without going into the (private) internals of Dask:
+        # copy all meta information from the original input dataframe
+        # This is important so that the returned series looks
+        # exactly like coming from the input dataframe
+        return_df = df.assign(random=random_series)["random"]
+        return return_df
+
+
+class RandOperation(BaseRandomOperation):
+    """Create a random number between 0 and 1"""
+
+    def __init__(self):
+        super().__init__(f=self.rand)
+
+    def rand(self, seed: int = None, dc: DataContainer = None):
+        return self.random_frame(seed=seed, dc=dc)
+
+    def random_function(self, partition, random_state, kwargs):
+        return random_state.random_sample(size=len(partition))
+
+
+class RandIntegerOperation(BaseRandomOperation):
+    """Create a random integer between 0 and high"""
+
+    def __init__(self):
+        super().__init__(f=self.rand_integer)
+
+    def rand_integer(
+        self, seed: int = None, high: int = None, dc: DataContainer = None
+    ):
+        # Two possibilities: RAND_INTEGER(seed, high) or RAND_INTEGER(high)
+        if high is None:
+            high = seed
+            seed = None
+        return self.random_frame(seed=seed, high=high, dc=dc)
+
+    def random_function(self, partition, random_state, kwargs):
+        return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -509,6 +600,8 @@ class RexCallPlugin(BaseRexPlugin):
         "is not false": NotOperation().of(IsFalseOperation()),
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
+        "rand": RandOperation(),
+        "rand_integer": RandIntegerOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
@@ -581,6 +674,9 @@ class RexCallPlugin(BaseRexPlugin):
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
         )
-        return operation(*operands)
+        if hasattr(operation, "needs_dc") and operation.needs_dc:
+            return operation(*operands, dc=dc)
+        else:
+            return operation(*operands)
 
         # TODO: We have information on the typing here - we should use it
