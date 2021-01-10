@@ -108,7 +108,7 @@ Special Operations: ``CASE``, ``NOT``, ``IS NULL``, ``IS NOT NULL``, ``IS TRUE``
 Aggregations
 ~~~~~~~~~~~~
 
-``ANY_VALUE``, ``AVG``, ``BIT_AND``, ``BIT_OR``, ``BIT_XOR``, ``COUNT``, ``EVERY``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``SUM``
+``ANY_VALUE``, ``AVG``, ``BIT_AND``, ``BIT_OR``, ``BIT_XOR``, ``COUNT``, ``EVERY``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``STDDEV_POP``, ``STDDEV_SAMP``, ``SUM``, ``VAR_POP``, ``VAR_SAMP``, ``VARIANCE``
 
 .. note::
 
