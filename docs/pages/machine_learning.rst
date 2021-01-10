@@ -106,7 +106,7 @@ and the boolean target ``label``.
     -- by using the first 100 items.
     -- Please note that this is just for a very quick-and-dirty
     -- example - you would probably want to do something
-    -- more advanced here
+    -- more advanced here, maybe with TABLESAMPLE
     CREATE OR REPLACE TABLE training_data AS (
         SELECT * FROM transformed_data
         LIMIT 15

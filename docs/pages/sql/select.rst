@@ -103,13 +103,57 @@ Date operations: ``EXTRACT``, ``YEAR``, ``QUARTER``, ``MONTH``, ``WEEK``, ``DAYO
 
     Due to a `bug/inconsistency <https://issues.apache.org/jira/browse/CALCITE-4313>`_ in Apache Calcite, both the ``CURRENTTIME`` and ``LOCALTIME`` return a time without timezone and are therefore the same functionality.
 
-Special Operations: ``CASE``, ``NOT``, ``IS NULL``, ``IS NOT NULL``, ``IS TRUE``, ``IS NOT TRUE``, ``IS FALSE:``, ``IS NOT FALSE``, ``IS UNKNOWN``, ``IS NOT UNKNOWN``, ``EXISTS``
+Special Operations: ``CASE``, ``NOT``, ``IS NULL``, ``IS NOT NULL``, ``IS TRUE``, ``IS NOT TRUE``, ``IS FALSE:``, ``IS NOT FALSE``, ``IS UNKNOWN``, ``IS NOT UNKNOWN``, ``EXISTS``, ``RAND``, ``RAND_INTEGER``
+
+Example:
+
+.. code-block:: sql
+
+    SELECT
+        SIN(x)
+    FROM "data"
+    WHERE MONTH(t) = 4
+
+.. note::
+
+    It is also possible to implement custom functions. See :ref:`custom`.
 
 Aggregations
 ~~~~~~~~~~~~
 
 ``ANY_VALUE``, ``AVG``, ``BIT_AND``, ``BIT_OR``, ``BIT_XOR``, ``COUNT``, ``EVERY``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``SUM``
 
+Example:
+
+.. code-block:: sql
+
+    SELECT
+        SUM(x)
+    FROM "data"
+    GROUP BY y
+
 .. note::
 
-    It is also possible to implement custom functionality. See :ref:`custom`.
+    It is also possible to implement custom aggregations. See :ref:`custom`.
+
+
+Table Functions
+~~~~~~~~~~~~~~~
+
+``TABLESAMPLE SYSTEM`` and ``TABLESAMPLE BERNOULLI``:
+
+Example:
+
+.. code-block:: sql
+
+    SELECT * FROM "data" TABLESAMPLE BERNOULLI (20) REPEATABLE (42)
+
+``TABLESAMPLE`` allows to draw random samples from the given table and should be the preferred way
+to select samples. ``BERNOULLI`` will select a row in the original table with a probability
+given by the number in the brackets (in percentage). The optional flag ``REPEATABLE`` defines
+the random seed to use.
+``SYSTEM`` is similar, but acts on partitions (so blocks of data) and is therefore much more
+inaccurate and should only ever be used on really large data samples where ``BERNOULLI`` is not
+fast enough (which is very unlikely).
+
+
