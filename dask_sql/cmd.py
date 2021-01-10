@@ -65,7 +65,10 @@ def cmd_loop(
         except EOFError:
             break
 
-        text = text.rstrip(";")
+        text = text.rstrip(";").strip()
+
+        if not text:
+            continue
 
         try:
             df = context.sql(text, return_futures=False)
