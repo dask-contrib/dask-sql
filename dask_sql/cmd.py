@@ -108,7 +108,7 @@ def main():  # pragma: no cover
 
     context = Context()
     if args.load_test_data:
-        df = dask.datasets.timeseries(freq="1d")
+        df = dask.datasets.timeseries(freq="1d").reset_index(drop=False)
         context.create_table("timeseries", df.persist())
 
     cmd_loop(
