@@ -77,7 +77,7 @@ def test_random(c, df):
     result_df = result_df.compute()
 
     # As the seed is fixed, this should always give the same results
-    expected_df = pd.DataFrame({"0": [0.5488135039273248], "1": [5]})
+    expected_df = pd.DataFrame({"0": [0.26183678695392976], "1": [8]})
     expected_df["1"] = expected_df["1"].astype("Int32")
     assert_frame_equal(result_df, expected_df)
 
@@ -88,14 +88,22 @@ def test_random(c, df):
     )
     result_df = result_df.compute()
 
-    assert len(result_df) == 665
+    assert len(result_df) == 659
     assert list(result_df["R"].iloc[:5]) == [
-        0.3745401188473625,
-        0.9507143064099162,
-        0.7319939418114051,
-        0.5986584841970366,
-        0.15601864044243652,
+        0.5276488824980542,
+        0.17861463145673728,
+        0.33764733440490524,
+        0.6590485298464198,
+        0.08554137165307785,
     ]
+
+    # If we do not fix the seed, we can just test if it works at all
+    result_df = c.sql(
+        """
+    SELECT RAND() AS "0", RAND_INTEGER(10) AS "1"
+    """
+    )
+    result_df = result_df.compute()
 
 
 def test_not(c, string_table):

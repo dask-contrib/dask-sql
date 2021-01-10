@@ -3,10 +3,13 @@ from functools import reduce
 from typing import Any, Union, Callable
 import re
 import logging
+from dask.base import tokenize
+from dask.dataframe.core import Series
+from dask.highlevelgraph import HighLevelGraph
+from dask.utils import random_state_data
 
 import pandas as pd
 import numpy as np
-import dask
 import dask.dataframe as dd
 import dask.array as da
 import pandas as pd
@@ -481,37 +484,35 @@ class BaseRandomOperation(Operation):
 
     needs_dc = True
 
-    def __init__(self, random_function):
-        super().__init__(self.random_frame)
-        self.random_function = random_function
+    def random_function(self, partition, random_state, kwargs):
+        """Needs to be implemented in derived classes"""
+        raise NotImplementedError
 
-    def random_frame(
-        self, seed: int = None, *args, dc: DataContainer = None
-    ) -> dd.Series:
+    def random_frame(self, seed: int, dc: DataContainer, **kwargs) -> dd.Series:
         """This function - in contrast to others in this module - will only ever be called on data frames"""
 
-        if seed is None:
-            # This is a problem, because then we would need to be able
-            # to "add" the partition number to an uninitialized
-            # seed, which is not possible (as the seed is multi-dimensional)
-            raise NotImplementedError("Default seed is currently not implemented")
+        random_state = np.random.RandomState(seed=seed)
 
-        @dask.delayed
-        def random_number_with_seed(df, seed):
-            state = np.random.RandomState(seed=seed)
-            random_numbers = self.random_function(*args, state=state, size=len(df))
-            return pd.Series(random_numbers, index=df.index)
-
+        # Idea taken from dask.DataFrame.sample:
+        # initialize a random state for each of the partitions
+        # separately and then create a random series
+        # for each partition
         df = dc.df
+        name = "sample-" + tokenize(df, random_state)
 
-        random_series = dd.from_delayed(
-            [
-                random_number_with_seed(partition, partition_index + seed)
-                for partition_index, partition in enumerate(df.partitions)
-            ],
-            divisions=df.divisions,
-            meta=("random", "float64"),
-        )
+        state_data = random_state_data(df.npartitions, random_state)
+        dsk = {
+            (name, i): (
+                self.random_function,
+                (df._name, i),
+                np.random.RandomState(state),
+                kwargs,
+            )
+            for i, state in enumerate(state_data)
+        }
+
+        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[df])
+        random_series = Series(graph, name, ("random", "float64"), df.divisions)
 
         # This part seems to be stupid, but helps us do a very simple
         # task without going into the (private) internals of Dask:
@@ -519,7 +520,6 @@ class BaseRandomOperation(Operation):
         # This is important so that the returned series looks
         # exactly like coming from the input dataframe
         return_df = df.assign(random=random_series)["random"]
-
         return return_df
 
 
@@ -527,20 +527,32 @@ class RandOperation(BaseRandomOperation):
     """Create a random number between 0 and 1"""
 
     def __init__(self):
-        super().__init__(random_function=self.rand)
+        super().__init__(f=self.rand)
 
-    def rand(self, state, size):
-        return state.random_sample(size=size)
+    def rand(self, seed: int = None, dc: DataContainer = None):
+        return self.random_frame(seed=seed, dc=dc)
+
+    def random_function(self, partition, random_state, kwargs):
+        return random_state.random_sample(size=len(partition))
 
 
 class RandIntegerOperation(BaseRandomOperation):
     """Create a random integer between 0 and high"""
 
     def __init__(self):
-        super().__init__(random_function=self.rand_integer)
+        super().__init__(f=self.rand_integer)
 
-    def rand_integer(self, high, state, size):
-        return state.randint(size=size, low=0, high=high)
+    def rand_integer(
+        self, seed: int = None, high: int = None, dc: DataContainer = None
+    ):
+        # Two possibilities: RAND_INTEGER(seed, high) or RAND_INTEGER(high)
+        if high is None:
+            high = seed
+            seed = None
+        return self.random_frame(seed=seed, high=high, dc=dc)
+
+    def random_function(self, partition, random_state, kwargs):
+        return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
 class RexCallPlugin(BaseRexPlugin):
