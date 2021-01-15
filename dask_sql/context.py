@@ -16,7 +16,8 @@ from dask_sql.java import (
     ValidationException,
     get_java_class,
 )
-from dask_sql.input_utils import to_dc, InputType
+from dask_sql import input_utils
+from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, logical, custom
 from dask_sql.physical.rex import RexConverter, core
@@ -102,14 +103,19 @@ class Context:
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
+        InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.HiveInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.IntakeCatalogInputPlugin, replace=False)
+        # needs to be the last entry, as it only checks for string
+        InputUtil.add_plugin_class(input_utils.LocationInputPlugin, replace=False)
+
     def create_table(
         self,
         table_name: str,
         input_table: InputType,
-        file_format: str = None,
+        format: str = None,
         persist: bool = True,
-        hive_table_name: str = None,
-        hive_schema_name: str = "default",
         **kwargs,
     ):
         """
@@ -124,7 +130,7 @@ class Context:
         The library will then try to load the data using one of
         `dask's read methods <https://docs.dask.org/en/latest/dataframe-create.html>`_.
         If the file format can not be deduced automatically, it is also
-        possible to specify it via the ``file_format`` parameter.
+        possible to specify it via the ``format`` parameter.
         Typical file formats are csv or parquet.
         Any additional parameters will get passed on to the read method.
         Please note that some file formats require additional libraries.
@@ -165,23 +171,23 @@ class Context:
             table_name: (:obj:`str`): Under which name should the new table be addressable
             input_table (:class:`dask.dataframe.DataFrame` or :class:`pandas.DataFrame` or :obj:`str` or :class:`hive.Cursor`):
                 The data frame/location/hive connection to register.
-            file_format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
+            format (:obj:`str`): Only used when passing a string into the ``input`` parameter.
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to false to turn off loading the file data directly into memory.
-            hive_table_name (:obj:`str`): If using input from a hive table, you can specify the
-                hive table name if different from the table_name.
-            hive_schema_name (:obj:`str`): If using input from a hive table, you can specify the
-                hive schema name.
+            **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
-        dc = to_dc(
+        if "file_format" in kwargs:  # pragma: no cover
+            warnings.warn("file_format is renamed to format", DeprecationWarning)
+            format = kwargs.pop("file_format")
+
+        dc = InputUtil.to_dc(
             input_table,
-            file_format=file_format,
+            table_name=table_name,
+            format=format,
             persist=persist,
-            hive_table_name=hive_table_name or table_name,
-            hive_schema_name=hive_schema_name,
             **kwargs,
         )
         self.tables[table_name.lower()] = dc

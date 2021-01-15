@@ -49,7 +49,7 @@ and format.
 For information on how to specify key-value arguments properly, see :ref:`sql`.
 With the ``persist`` parameter, it can be controlled if the data should be cached
 or re-read for every SQL query.
-The additional parameters are passed to the call to ``read_<format>``.
+The additional parameters are passed to the particular data loading functions.
 If you omit the format argument, it will be deduced from the file name extension.
 More ways to load data can be found in :ref:`data_input`.
 

@@ -92,15 +92,15 @@ def test_input_types(temporary_data_file):
     assert_correct_output()
 
     df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, file_format="csv")
+    c.create_table("df", temporary_data_file, format="csv")
     assert_correct_output()
 
     df.to_parquet(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, file_format="parquet")
+    c.create_table("df", temporary_data_file, format="parquet")
     assert_correct_output()
 
     with pytest.raises(AttributeError):
-        c.create_table("df", temporary_data_file, file_format="unknown")
+        c.create_table("df", temporary_data_file, format="unknown")
 
     strangeThing = object()
 

@@ -71,6 +71,11 @@ class Pluggable:
         """Get a plugin with the given name"""
         return Pluggable.__plugins[cls][name]
 
+    @classmethod
+    def get_plugins(cls):
+        """Return all registered plugins"""
+        return list(Pluggable.__plugins[cls].values())
+
 
 class ParsingException(Exception):
     """
