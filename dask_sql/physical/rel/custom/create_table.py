@@ -61,5 +61,5 @@ class CreateTablePlugin(BaseRelPlugin):
             raise AttributeError("Parameters must include a 'location' parameter.")
 
         context.create_table(
-            table_name, location, file_format=format, persist=persist, **kwargs
+            table_name, location, format=format, persist=persist, **kwargs
         )

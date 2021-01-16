@@ -18,6 +18,16 @@ def test_sample(c, df):
 
     assert len(return_df) == 234
 
+    return_df = c.sql("SELECT * FROM df TABLESAMPLE SYSTEM (0.001) REPEATABLE (10)")
+    return_df = return_df.compute()
+
+    assert len(return_df) == 0
+
+    return_df = c.sql("SELECT * FROM df TABLESAMPLE SYSTEM (99.999) REPEATABLE (10)")
+    return_df = return_df.compute()
+
+    assert len(return_df) == len(df)
+
     return_df = c.sql("SELECT * FROM df TABLESAMPLE BERNOULLI (50) REPEATABLE (10)")
     return_df = return_df.compute()
 
@@ -27,6 +37,16 @@ def test_sample(c, df):
     return_df = return_df.compute()
 
     assert len(return_df) == 490
+
+    return_df = c.sql("SELECT * FROM df TABLESAMPLE BERNOULLI (0.001) REPEATABLE (10)")
+    return_df = return_df.compute()
+
+    assert len(return_df) == 0
+
+    return_df = c.sql("SELECT * FROM df TABLESAMPLE BERNOULLI (99.999) REPEATABLE (10)")
+    return_df = return_df.compute()
+
+    assert len(return_df) == len(df)
 
     # Not fixed sample, can only check boundaries
     return_df = c.sql("SELECT * FROM df TABLESAMPLE BERNOULLI (50)")

@@ -53,6 +53,9 @@ class SamplePlugin(BaseRelPlugin):
                 p=[fraction, 1 - fraction],
             )
 
-            df = df.partitions[random_choice]
+            if random_choice.any():
+                df = df.partitions[random_choice]
+            else:
+                df = df.head(0, compute=False)
 
         return DataContainer(df, cc)
