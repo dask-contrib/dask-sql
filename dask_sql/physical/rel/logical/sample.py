@@ -39,7 +39,7 @@ class SamplePlugin(BaseRelPlugin):
 
         parameters = rel.getSamplingParameters()
         is_bernoulli = parameters.isBernoulli()
-        fraction = parameters.getSamplingPercentage()
+        fraction = float(parameters.getSamplingPercentage())
         seed = parameters.getRepeatableSeed() if parameters.isRepeatable() else None
 
         if is_bernoulli:
