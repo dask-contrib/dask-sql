@@ -20,4 +20,3 @@ def test_simple_statement():
 
         return_df = dag["result"].compute().as_pandas()
         assert_frame_equal(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
-
