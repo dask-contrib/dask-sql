@@ -81,9 +81,9 @@ jobs:
       - name: Install sqlalchemy and docker pkg for postgres test
         shell: bash -l {0}
         run: |
-          # explicitly install docker and sqlalchemy package
+          # explicitly install docker, fugue and sqlalchemy package
           conda install sqlalchemy psycopg2 -c conda-forge
-          pip install docker
+          pip install docker fugue
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
