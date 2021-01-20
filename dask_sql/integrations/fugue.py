@@ -62,7 +62,12 @@ def fsql(
     register: bool = False,
     fugue_conf: Any = None,
 ) -> Dict[str, dd.DataFrame]:
-    """Fugue SQL utility function that can consume Context directly
+    """Fugue SQL utility function that can consume Context directly. Fugue SQL is a language
+    extending standard SQL. It makes SQL eligible to describe end to end workflows. It also
+    enables you to invoke python extensions in the SQL like language.
+
+    For more, please read
+    `Fugue SQl Tutorial <https://fugue-tutorials.readthedocs.io/en/latest/tutorials/fugue_sql/index.html/>`_
 
     Args:
         sql: (:obj:`str`): Fugue SQL statement
@@ -72,7 +77,6 @@ def fsql(
         fugue_conf (:obj:`Any`): a dictionary like object containing Fugue specific configs
 
     Example:
-
         .. code-block:: python
             # schema: *
             def median(df:pd.DataFrame) -> pd.DataFrame:
