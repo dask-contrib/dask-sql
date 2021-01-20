@@ -62,6 +62,39 @@ def fsql(
     register: bool = False,
     fugue_conf: Any = None,
 ) -> Dict[str, dd.DataFrame]:
+    """Fugue SQL utility function that can consume Context directly
+
+    Args:
+        sql: (:obj:`str`): Fugue SQL statement
+        ctx (:class:`dask_sql.Context`): The context to operate on, defaults to None
+        register (:obj:`bool`): Whether to register named steps back to the context
+          (if provided), defaults to False
+        fugue_conf (:obj:`Any`): a dictionary like object containing Fugue specific configs
+
+    Example:
+
+        .. code-block:: python
+            # schema: *
+            def median(df:pd.DataFrame) -> pd.DataFrame:
+                df["y"] = df["y"].median()
+                return df.head(1)
+
+            # Create a context with tables df1, df2
+            c = Context()
+            ...
+            result = fsql('''
+            j = SELECT df1.*, df2.x
+                FROM df1 INNER JOIN df2 ON df1.key = df2.key
+                PERSIST  # using persist because j will be used twice
+            TAKE 5 ROWS PREPARTITION BY x PRESORT key
+            PRINT
+            TRANSFORM j PREPARTITION BY x USING median
+            PRINT
+            ''', c, register=True)
+            assert "j" in result
+            assert "j" in c.tables
+
+    """
     _global, _local = get_caller_global_local_vars()
 
     dag = FugueSQLWorkflow()

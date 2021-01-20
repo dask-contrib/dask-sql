@@ -86,9 +86,9 @@ def test_fsql():
 
     fsql(
         """
-    SELECT * FROM df1 WHERE a>0 UNION ALL SELECT * FROM df2 WHERE a>0 PERSIST
-    result1 = TRANSFORM PREPARTITION BY a PRESORT b USING cumsum
-    result2 = TRANSFORM PREPARTITION BY b PRESORT a USING cumsum
+    data = SELECT * FROM df1 WHERE a>0 UNION ALL SELECT * FROM df2 WHERE a>0 PERSIST
+    result1 = TRANSFORM data PREPARTITION BY a PRESORT b USING cumsum
+    result2 = TRANSFORM data PREPARTITION BY b PRESORT a USING cumsum
     PRINT result1, result2
     """,
         c,
