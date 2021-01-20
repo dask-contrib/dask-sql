@@ -1,12 +1,16 @@
 try:
     import fugue
     import fugue_dask
+    from fugue_sql import FugueSQLWorkflow
+    from triad.utils.convert import get_caller_global_local_vars
 except ImportError:  # pragma: no cover
     raise ImportError(
         "Can not load the fugue module. If you want to use this integration, you need to install it."
     )
 
 from dask_sql import Context
+from typing import Any, Dict, Optional
+import dask.dataframe as dd
 
 
 class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):
@@ -50,3 +54,23 @@ class DaskSQLExecutionEngine(fugue_dask.DaskExecutionEngine):
         """Create a new instance."""
         super().__init__(*args, **kwargs)
         self._default_sql_engine = DaskSQLEngine(self)
+
+
+def fsql(
+    sql: str,
+    ctx: Optional[Context] = None,
+    register: bool = False,
+    fugue_conf: Any = None,
+) -> Dict[str, dd.DataFrame]:
+    _global, _local = get_caller_global_local_vars()
+
+    dag = FugueSQLWorkflow()
+    dfs = {} if ctx is None else {k: dag.df(v.df) for k, v in ctx.tables.items()}
+    result = dag._sql(sql, _global, _local, **dfs)
+    dag.run(DaskSQLExecutionEngine(conf=fugue_conf))
+
+    result_dfs = {k: v.result.native for k, v in result.items()}
+    if register and ctx is not None:
+        for k, v in result_dfs.items():
+            ctx.create_table(k, v)
+    return result_dfs
