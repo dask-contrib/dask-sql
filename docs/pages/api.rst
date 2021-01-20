@@ -11,3 +11,5 @@ API Documentation
 
 .. autofunction:: dask_sql.cmd_loop
 
+.. autofunction:: dask_sql.integrations.fugue.fsql
+
