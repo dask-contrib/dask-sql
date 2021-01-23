@@ -144,12 +144,20 @@ class CaseOperation(Operation):
     def __init__(self):
         super().__init__(self.case)
 
-    def case(
-        self, where: SeriesOrScalar, then: SeriesOrScalar, other: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def case(self, *operands) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
         """
+        assert operands
+
+        where = operands[0]
+        then = operands[1]
+
+        if len(operands) > 3:
+            other = self.case(*operands[2:])
+        else:
+            other = operands[2]
+
         if is_frame(then):
             return then.where(where, other=other)
         elif is_frame(other):

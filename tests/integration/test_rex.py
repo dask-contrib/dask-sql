@@ -14,7 +14,7 @@ def test_case(c, df):
         (CASE WHEN a = 3 THEN 1 END) AS "S1",
         (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
         (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
-        (CASE WHEN a = 3 THEN 1 ELSE a END) AS "S4"
+        (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4"
     FROM df
     """
     )
@@ -24,7 +24,9 @@ def test_case(c, df):
     expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else pd.NA)
     expected_df["S2"] = df.a.apply(lambda a: a if a > 0 else 1)
     expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1)
-    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else a)
+    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a).astype(
+        "float64"
+    )
     assert_frame_equal(result_df, expected_df)
 
 
