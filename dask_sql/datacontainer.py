@@ -41,7 +41,9 @@ class ColumnContainer:
         """
         Internal function to copy this container
         """
-        return ColumnContainer(self._frontend_columns, self._frontend_backend_mapping)
+        return ColumnContainer(
+            self._frontend_columns.copy(), self._frontend_backend_mapping.copy()
+        )
 
     def limit_to(self, fields: List[str]) -> ColumnContainer:
         """
@@ -87,7 +89,7 @@ class ColumnContainer:
         """
         The stored frontend columns in the correct order
         """
-        return self._frontend_columns
+        return self._frontend_columns.copy()
 
     def add(
         self, frontend_column: str, backend_column: Union[str, None] = None
@@ -104,7 +106,8 @@ class ColumnContainer:
         cc._frontend_backend_mapping[frontend_column] = str(
             backend_column or frontend_column
         )
-        cc._frontend_columns.append(frontend_column)
+        if frontend_column not in cc._frontend_columns:
+            cc._frontend_columns.append(frontend_column)
 
         return cc
 

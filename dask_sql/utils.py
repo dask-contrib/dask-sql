@@ -5,6 +5,7 @@ from collections import defaultdict
 import re
 from datetime import datetime
 import logging
+from uuid import uuid4
 
 import dask.dataframe as dd
 import numpy as np
@@ -262,3 +263,14 @@ def import_class(name: str) -> type:
     module_path, class_name = name.rsplit(".", 1)
     module = importlib.import_module(module_path)
     return getattr(module, class_name)
+
+
+def new_temporary_column(df: dd.DataFrame) -> str:
+    """Return a new column name which is currently not in use"""
+    while True:
+        col_name = str(uuid4())
+
+        if col_name not in df.columns:
+            return col_name
+        else:  # pragma: no cover
+            continue

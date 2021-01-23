@@ -1,4 +1,6 @@
+from dask_sql.utils import new_temporary_column
 import logging
+from uuid import uuid4
 
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
@@ -47,10 +49,12 @@ class LogicalProjectPlugin(BaseRelPlugin):
                 )
                 new_mappings[key] = backend_column_name
             else:
-                new_columns[key] = RexConverter.convert(expr, dc, context=context)
+                random_name = new_temporary_column(df)
+                new_columns[random_name] = RexConverter.convert(
+                    expr, dc, context=context
+                )
                 logger.debug(f"Adding a new column {key} out of {expr}")
-                cc = cc.add(key, key)
-                new_mappings[key] = key
+                new_mappings[key] = random_name
 
         # Actually add the new columns
         if new_columns:
