@@ -697,7 +697,7 @@ class RexCallPlugin(BaseRexPlugin):
         except KeyError:
             try:
                 operation = context.functions[operator_name]
-            except KeyError:
+            except KeyError:  # pragma: no cover
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
         logger.debug(
