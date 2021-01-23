@@ -1,3 +1,4 @@
+from dask_sql.mappings import sql_to_python_type
 import operator
 from functools import reduce
 from typing import Any, Union, Callable
@@ -29,6 +30,17 @@ class Operation:
     # True, if the operation should also get the dataframe passed
     needs_dc = False
 
+    # True, if the operation should also get the REX
+    needs_rex = False
+
+    @staticmethod
+    def op_needs_dc(op):
+        return hasattr(op, "needs_dc") and op.needs_dc
+
+    @staticmethod
+    def op_needs_rex(op):
+        return hasattr(op, "needs_rex") and op.needs_rex
+
     def __init__(self, f: Callable):
         """Init with the given function"""
         self.f = f
@@ -39,7 +51,11 @@ class Operation:
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
-        return Operation(lambda x: self(op(x)))
+        new_op = Operation(lambda x: self(op(x)))
+        new_op.needs_dc = Operation.op_needs_dc(op)
+        new_op.needs_rex = Operation.op_needs_rex(op)
+
+        return new_op
 
 
 class PredicateBasedOperation(Operation):
@@ -79,8 +95,16 @@ class ReduceOperation(Operation):
 
     def __init__(self, operation: Callable):
         self.operation = operation
+        self.needs_dc = Operation.op_needs_dc(self.operation)
+        self.needs_rex = Operation.op_needs_rex(self.operation)
 
-        super().__init__(lambda *operands: reduce(self.operation, operands))
+        super().__init__(self.reduce)
+
+    def reduce(self, *operands, **kwargs):
+        enriched_with_kwargs = lambda kwargs: (
+            lambda x, y: self.operation(x, y, **kwargs)
+        )
+        return reduce(enriched_with_kwargs(kwargs), operands)
 
 
 class SQLDivisionOperator(Operation):
@@ -92,15 +116,19 @@ class SQLDivisionOperator(Operation):
     (where -1/2 = -1), but truncated division (so -1 / 2 = 0).
     """
 
+    needs_rex = True
+
     def __init__(self):
         super().__init__(self.div)
 
-    def div(self, lhs, rhs):
+    def div(self, lhs, rhs, rex=None):
         result = lhs / rhs
 
-        lhs_float = pd.api.types.is_float_dtype(lhs)
-        rhs_float = pd.api.types.is_float_dtype(rhs)
-        if not lhs_float and not rhs_float:
+        output_type = str(rex.getType())
+        output_type = sql_to_python_type(output_type.upper())
+
+        is_float = pd.api.types.is_float_dtype(output_type)
+        if not is_float:
             result = da.trunc(result)
 
         return result
@@ -588,6 +616,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/": ReduceOperation(operation=SQLDivisionOperator()),
         "*": ReduceOperation(operation=operator.mul),
         # special operations
+        "cast": lambda x: x,
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
@@ -668,15 +697,20 @@ class RexCallPlugin(BaseRexPlugin):
         except KeyError:
             try:
                 operation = context.functions[operator_name]
-            except KeyError:
+            except KeyError:  # pragma: no cover
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
         )
-        if hasattr(operation, "needs_dc") and operation.needs_dc:
-            return operation(*operands, dc=dc)
-        else:
-            return operation(*operands)
+
+        kwargs = {}
+
+        if Operation.op_needs_dc(operation):
+            kwargs["dc"] = dc
+        if Operation.op_needs_rex(operation):
+            kwargs["rex"] = rex
+
+        return operation(*operands, **kwargs)
 
         # TODO: We have information on the typing here - we should use it

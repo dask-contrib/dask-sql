@@ -93,13 +93,6 @@ def test_join_right(c):
     )
 
 
-def test_join_strange(c):
-    with pytest.raises(NotImplementedError):
-        c.sql(
-            "SELECT lhs.a, rhs.b FROM df_simple AS lhs JOIN df_simple AS rhs ON lhs.a = 3",
-        )
-
-
 def test_join_complex(c):
     df = c.sql(
         "SELECT lhs.a, rhs.b FROM df_simple AS lhs JOIN df_simple AS rhs ON lhs.a < rhs.b",
