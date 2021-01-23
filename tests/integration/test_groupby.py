@@ -127,7 +127,8 @@ def test_aggregations(c):
         BIT_AND(b) AS b,
         BIT_OR(b) AS bb,
         MIN(b) AS m,
-        SINGLE_VALUE(b) AS s
+        SINGLE_VALUE(b) AS s,
+        AVG(b) AS a
     FROM user_table_1
     GROUP BY user_id
     """
@@ -142,6 +143,37 @@ def test_aggregations(c):
             "bb": [3, 3, 3],
             "m": [3, 1, 3],
             "s": [3, 3, 3],
+            "a": [3, 2, 3],
+        }
+    )
+    expected_df["a"] = expected_df["a"].astype("float64")
+    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    df = c.sql(
+        """
+    SELECT
+        user_id,
+        EVERY(c = 3) AS e,
+        BIT_AND(c) AS b,
+        BIT_OR(c) AS bb,
+        MIN(c) AS m,
+        SINGLE_VALUE(c) AS s,
+        AVG(c) AS a
+    FROM user_table_2
+    GROUP BY user_id
+    """
+    )
+    df = df.compute()
+
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 4],
+            "e": [False, True, False],
+            "b": [0, 3, 4],
+            "bb": [3, 3, 4],
+            "m": [1, 3, 4],
+            "s": [1, 3, 4],
+            "a": [1.5, 3, 4],
         }
     )
     assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)

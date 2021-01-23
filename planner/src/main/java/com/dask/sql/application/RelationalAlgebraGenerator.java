@@ -11,10 +11,14 @@ import com.dask.sql.schema.DaskSchema;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 import org.apache.calcite.avatica.util.Casing;
+import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
+import org.apache.calcite.config.CalciteConnectionProperty;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
+import org.apache.calcite.plan.Context;
+import org.apache.calcite.plan.Contexts;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgram;
@@ -90,7 +94,7 @@ public class RelationalAlgebraGenerator {
 		final CalciteSchema calciteSchema = CalciteSchema.from(schemaPlus);
 
 		final CalciteCatalogReader calciteCatalogReader = new CalciteCatalogReader(calciteSchema, defaultSchema,
-				new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT), new CalciteConnectionConfigImpl(props));
+				new JavaTypeFactoryImpl(DaskSqlDialect.DASKSQL_TYPE_SYSTEM), new CalciteConnectionConfigImpl(props));
 
 		final List<SqlOperatorTable> sqlOperatorTables = new ArrayList<>();
 		sqlOperatorTables.add(SqlStdOperatorTable.instance());
@@ -102,17 +106,17 @@ public class RelationalAlgebraGenerator {
 
 		SqlOperatorTable operatorTable = SqlOperatorTables.chain(sqlOperatorTables);
 
-		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
-				.executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
+		// Use our defined type system
+		Context defaultContext = Contexts.of(CalciteConnectionConfig.DEFAULT.set(CalciteConnectionProperty.TYPE_SYSTEM,
+				"com.dask.sql.application.DaskSqlDialect#DASKSQL_TYPE_SYSTEM"));
+
+		return Frameworks.newConfigBuilder().context(defaultContext).defaultSchema(schemaPlus)
+				.parserConfig(parserConfig).executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
 	}
 
 	/// Return the default dialect used
 	public SqlDialect getDialect() {
-		// This is basically PostgreSQL, but we would like to keep the casing
-		// of unquoted table identifiers, as this is what pandas/dask
-		// would also do.
-		// See https://github.com/nils-braun/dask-sql/issues/84
-		return new PostgresqlSqlDialect(PostgresqlSqlDialect.DEFAULT_CONTEXT.withUnquotedCasing(Casing.UNCHANGED));
+		return DaskSqlDialect.DEFAULT;
 	}
 
 	/// Get a connection to "connect" to the database.
@@ -146,6 +150,7 @@ public class RelationalAlgebraGenerator {
 				// which is currently not supported by dask-sql
 				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
 				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
+				// TODO: remove AVG
 				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
 
 		return new HepPlanner(program, config.getContext());
