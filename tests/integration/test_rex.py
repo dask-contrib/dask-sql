@@ -126,6 +126,7 @@ def test_operators(c, df):
         """
     SELECT
         a * b AS m,
+        -a AS u,
         a / b AS q,
         a + b AS s,
         a - b AS d,
@@ -142,6 +143,7 @@ def test_operators(c, df):
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["m"] = df["a"] * df["b"]
+    expected_df["u"] = -df["a"]
     expected_df["q"] = df["a"] / df["b"]
     expected_df["s"] = df["a"] + df["b"]
     expected_df["d"] = df["a"] - df["b"]
