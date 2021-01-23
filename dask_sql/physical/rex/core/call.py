@@ -616,6 +616,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/": ReduceOperation(operation=SQLDivisionOperator()),
         "*": ReduceOperation(operation=operator.mul),
         # special operations
+        "cast": lambda x: x,
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
