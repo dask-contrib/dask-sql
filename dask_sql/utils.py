@@ -272,3 +272,5 @@ def new_temporary_column(df: dd.DataFrame) -> str:
 
         if col_name not in df.columns:
             return col_name
+        else:  # pragma: no cover
+            continue
