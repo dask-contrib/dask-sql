@@ -18,20 +18,48 @@ def test_group_by(c):
     assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
-def test_group_by_all(c):
-    df = c.sql(
+def test_group_by_all(c, df):
+    result_df = c.sql(
         """
     SELECT
         SUM(b) AS "S", SUM(2) AS "X"
     FROM user_table_1
     """
     )
-    df = df.compute()
+    result_df = result_df.compute()
 
     expected_df = pd.DataFrame({"S": [10], "X": [8]})
     expected_df["S"] = expected_df["S"].astype("int64")
     expected_df["X"] = expected_df["X"].astype("int32")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal(result_df, expected_df)
+
+    result_df = c.sql(
+        """
+        SELECT
+            SUM(a) AS sum_a,
+            AVG(a) AS avg_a,
+            SUM(b) AS sum_b,
+            AVG(b) AS avg_b,
+            SUM(a)+AVG(b) AS mix_1,
+            SUM(a+b) AS mix_2,
+            AVG(a+b) AS mix_3
+        FROM df
+        """
+    )
+    result_df = result_df.compute()
+
+    expected_df = pd.DataFrame(
+        {
+            "sum_a": [df.a.sum()],
+            "avg_a": [df.a.mean()],
+            "sum_b": [df.b.sum()],
+            "avg_b": [df.b.mean()],
+            "mix_1": [df.a.sum() + df.b.mean()],
+            "mix_2": [(df.a + df.b).sum()],
+            "mix_3": [(df.a + df.b).mean()],
+        }
+    )
+    assert_frame_equal(result_df, expected_df)
 
 
 def test_group_by_filtered(c):

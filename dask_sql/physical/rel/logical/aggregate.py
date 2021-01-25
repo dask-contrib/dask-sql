@@ -2,11 +2,11 @@ import operator
 from collections import defaultdict
 from functools import reduce
 from typing import Callable, Dict, List, Tuple, Union
-import uuid
 import logging
 
 import dask.dataframe as dd
 
+from dask_sql.utils import new_temporary_column
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer, ColumnContainer
 
@@ -111,7 +111,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         ]
 
         # Always keep an additional column around for empty groups and aggregates
-        additional_column_name = str(uuid.uuid4())
+        additional_column_name = new_temporary_column(df)
 
         # NOTE: it might be the case that
         # we do not need this additional
