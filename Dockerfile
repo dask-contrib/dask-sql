@@ -5,9 +5,20 @@ LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
 # Install dependencies for dask-sql
 COPY conda.yaml /opt/dask_sql/
-RUN /opt/conda/bin/conda install \
-    --file /opt/dask_sql/conda.yaml \
-    -c conda-forge
+RUN conda config --add channels conda-forge \
+ && /opt/conda/bin/conda install --freeze-installed \
+        "jpype1>=1.0.2" \
+        "openjdk>=11" \
+        "maven>=3.6.0" \
+        "tzlocal>=2.1" \
+        "fastapi>=0.61.1" \
+        "uvicorn>=0.11.3" \
+        "pyarrow>=0.15.1" \
+        "prompt_toolkit>=3.0.8" \
+        "pygments>=2.7.1" \
+        "dask-ml>=1.7.0" \
+        "scikit-learn<0.24.0" \
+        "intake>=0.6.0"
 
 # Build the java libraries
 COPY setup.py /opt/dask_sql/
