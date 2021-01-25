@@ -93,18 +93,22 @@ class TensorScalarOperation(PredicateBasedOperation):
 class ReduceOperation(Operation):
     """Special operator, which is executed by reducing an operation over the input"""
 
-    def __init__(self, operation: Callable):
+    def __init__(self, operation: Callable, unary_operation: Callable = None):
         self.operation = operation
+        self.unary_operation = unary_operation or operation
         self.needs_dc = Operation.op_needs_dc(self.operation)
         self.needs_rex = Operation.op_needs_rex(self.operation)
 
         super().__init__(self.reduce)
 
     def reduce(self, *operands, **kwargs):
-        enriched_with_kwargs = lambda kwargs: (
-            lambda x, y: self.operation(x, y, **kwargs)
-        )
-        return reduce(enriched_with_kwargs(kwargs), operands)
+        if len(operands) > 1:
+            enriched_with_kwargs = lambda kwargs: (
+                lambda x, y: self.operation(x, y, **kwargs)
+            )
+            return reduce(enriched_with_kwargs(kwargs), operands)
+        else:
+            return self.unary_operation(*operands, **kwargs)
 
 
 class SQLDivisionOperator(Operation):
@@ -140,12 +144,20 @@ class CaseOperation(Operation):
     def __init__(self):
         super().__init__(self.case)
 
-    def case(
-        self, where: SeriesOrScalar, then: SeriesOrScalar, other: SeriesOrScalar,
-    ) -> SeriesOrScalar:
+    def case(self, *operands) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
         """
+        assert operands
+
+        where = operands[0]
+        then = operands[1]
+
+        if len(operands) > 3:
+            other = self.case(*operands[2:])
+        else:
+            other = operands[2]
+
         if is_frame(then):
             return then.where(where, other=other)
         elif is_frame(other):
@@ -611,8 +623,8 @@ class RexCallPlugin(BaseRexPlugin):
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
         "<>": ReduceOperation(operation=operator.ne),
-        "+": ReduceOperation(operation=operator.add),
-        "-": ReduceOperation(operation=operator.sub),
+        "+": ReduceOperation(operation=operator.add, unary_operation=lambda x: x),
+        "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
         "/": ReduceOperation(operation=SQLDivisionOperator()),
         "*": ReduceOperation(operation=operator.mul),
         # special operations
