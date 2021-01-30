@@ -79,6 +79,8 @@ setup(
         "tzlocal>=2.1",
         "prompt_toolkit",
         "pygments",
+        # backport for python versions without importlib.metadata
+        "importlib_metadata; python_version < '3.8.0'",
     ],
     entry_points={
         "console_scripts": [
