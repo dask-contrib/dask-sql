@@ -1,4 +1,4 @@
-python>=3.8.5
+python>=3.7
 dask>=2.19.0
 pandas<1.2.0 # pandas 1.2.0 introduced float NaN dtype,
              # which is currently not working with postgres,
