@@ -1,7 +1,7 @@
-from tests.integration.fixtures import long_table
+from dask_sql.context import Context
 import pytest
 
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 import pandas as pd
 import dask.dataframe as dd
@@ -88,26 +88,144 @@ def test_sort_by_alias(c, user_table_1):
     assert_frame_equal(df_result, df_expected)
 
 
-def test_sort_with_nan(c):
-    with pytest.raises(ValueError):
-        c.sql(
-            """
-        SELECT
-            *
-        FROM user_table_nan
-        ORDER BY c
-        """
-        )
+def test_sort_with_nan():
+    c = Context()
+    df = pd.DataFrame(
+        {"a": [1, 2, float("nan"), 2], "b": [4, float("nan"), 5, float("inf")]}
+    )
+    c.create_table("df", df)
 
-    with pytest.raises(ValueError):
+    df_result = c.sql("SELECT * FROM df ORDER BY a").compute().reset_index(drop=True)
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a NULLS FIRST")
+        .compute()
+        .reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a NULLS LAST").compute().reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a ASC").compute().reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a ASC NULLS FIRST")
+        .compute()
+        .reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a ASC NULLS LAST")
+        .compute()
+        .reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a DESC").compute().reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [float("nan"), 2, 2, 1], "b": [5, float("inf"), float("nan"), 4]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a DESC NULLS FIRST")
+        .compute()
+        .reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [float("nan"), 2, 2, 1], "b": [5, float("inf"), float("nan"), 4]}
+        ),
+    )
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a DESC NULLS LAST")
+        .compute()
+        .reset_index(drop=True)
+    )
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {"a": [2, 2, 1, float("nan")], "b": [float("inf"), float("nan"), 4, 5]}
+        ),
+    )
+
+
+def test_sort_with_nan_more_columns():
+    c = Context()
+    df = pd.DataFrame(
+        {
+            "a": [1, 1, 2, 2, float("nan"), float("nan")],
+            "b": [1, 1, 2, float("nan"), float("inf"), 5],
+            "c": [1, float("nan"), 3, 4, 5, 6],
+        }
+    )
+    c.create_table("df", df)
+
+    df_result = (
         c.sql(
-            """
-        SELECT
-            *
-        FROM user_table_inf
-        ORDER BY c
-        """
+            "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
         )
+        .c.compute()
+        .reset_index(drop=True)
+    )
+    assert_series_equal(
+        df_result, pd.Series([5, 6, float("nan"), 1, 3, 4]), check_names=False
+    )
+
+    df_result = (
+        c.sql(
+            "SELECT * FROM df ORDER BY a ASC NULLS LAST, b DESC NULLS FIRST, c DESC NULLS LAST"
+        )
+        .c.compute()
+        .reset_index(drop=True)
+    )
+    assert_series_equal(
+        df_result, pd.Series([1, float("nan"), 4, 3, 5, 6]), check_names=False
+    )
 
 
 def test_sort_strings(c):
@@ -139,6 +257,11 @@ def test_limit(c, long_table):
     df_result = df_result.compute()
 
     assert_frame_equal(df_result, long_table.iloc[:101])
+
+    df_result = c.sql("SELECT * FROM long_table LIMIT 200")
+    df_result = df_result.compute()
+
+    assert_frame_equal(df_result, long_table.iloc[:200])
 
     df_result = c.sql("SELECT * FROM long_table LIMIT 100")
     df_result = df_result.compute()

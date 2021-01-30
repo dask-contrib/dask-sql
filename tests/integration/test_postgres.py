@@ -127,23 +127,21 @@ def test_join(assert_query_gives_same_result):
 
 
 def test_sort(assert_query_gives_same_result):
-    # TODO: this test fails, as NaNs are sorted differently
-    # in pandas and postgresql
-    # assert_query_gives_same_result(
-    #     """
-    #     SELECT
-    #         user_id, b
-    #     FROM df1
-    #     ORDER BY b, user_id DESC
-    # """
-    # )
+    assert_query_gives_same_result(
+        """
+        SELECT
+            user_id, b
+        FROM df1
+        ORDER BY b NULLS FIRST, user_id DESC NULLS FIRST
+    """
+    )
 
     assert_query_gives_same_result(
         """
         SELECT
             c, d
         FROM df2
-        ORDER BY c, d, user_id
+        ORDER BY c NULLS FIRST, d NULLS FIRST, user_id NULLS FIRST
     """
     )
 
@@ -154,7 +152,7 @@ def test_limit(assert_query_gives_same_result):
         SELECT
             c, d
         FROM df2
-        ORDER BY c, d, user_id
+        ORDER BY c NULLS FIRST, d NULLS FIRST, user_id NULLS FIRST
         LIMIT 10 OFFSET 20
     """
     )
@@ -164,7 +162,7 @@ def test_limit(assert_query_gives_same_result):
         SELECT
             c, d
         FROM df2
-        ORDER BY c, d, user_id
+        ORDER BY c NULLS FIRST, d NULLS FIRST, user_id NULLS FIRST
         LIMIT 200
     """
     )
