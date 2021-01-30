@@ -48,13 +48,14 @@ jobs:
           path: dask_sql/jar/DaskSQL.jar
 
   test:
-    name: "Test (${{ matrix.os }}, java: ${{ matrix.java }})"
+    name: "Test (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
     needs: build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
+        python: [3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -78,6 +79,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install --file conda.yaml -c conda-forge
+          conda install python=${{ matrix.python }}
       - name: Install sqlalchemy and docker pkg for postgres test
         shell: bash -l {0}
         run: |
