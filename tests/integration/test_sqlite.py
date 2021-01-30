@@ -58,7 +58,7 @@ def test_sort(assert_query_gives_same_result):
         SELECT
             user_id, b
         FROM df1
-        ORDER BY b, user_id DESC
+        ORDER BY b NULLS FIRST, user_id DESC NULLS FIRST
     """
     )
 
