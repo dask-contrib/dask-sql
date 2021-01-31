@@ -1,6 +1,6 @@
 try:
     from importlib import metadata
-except ImportError:  # for Python < 3.8
+except ImportError:  # pragma: no cover
     import importlib_metadata as metadata
 
 
