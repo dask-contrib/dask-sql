@@ -26,7 +26,12 @@ class MavenCommand(distutils.cmd.Command):
         """Run the mvn installation command"""
         # We need to explicitely specify the full path to mvn
         # for Windows
-        command = [shutil.which("mvn"), "clean", "install", "-f", "pom.xml"]
+        maven_command = shutil.which("mvn")
+        if not maven_command:
+            raise OSError(
+                "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
+            )
+        command = [maven_command, "clean", "install", "-f", "pom.xml"]
         self.announce(f"Running command: {' '.join(command)}", level=distutils.log.INFO)
 
         subprocess.check_call(command, cwd="planner")
