@@ -4,7 +4,7 @@ pandas<1.2.0 # pandas 1.2.0 introduced float NaN dtype,
              # which is currently not working with postgres,
              # so the test is failing
 jpype1>=1.0.2
-openjdk>=11
+openjdk>=8
 maven>=3.6.0
 pytest>=6.0.1
 pytest-cov>=2.10.1
