@@ -127,7 +127,7 @@ def test_group_by_nan(c):
     )
     df = df.compute()
 
-    expected_df = pd.DataFrame({"c": [3, 1]})
+    expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
     expected_df["c"] = expected_df["c"].astype("object")
     assert_frame_equal(df, expected_df)
 
