@@ -137,9 +137,9 @@ Have a look into `conda.txt` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
-    pip install -e .
+    pip install -e ".[dev]"
 
-This will also compile the Java classes. If there were changes to the Java code, you need to rerun this compilation with
+To compile the Java classes (at the beginning or after changes), run
 
     python setup.py java
 

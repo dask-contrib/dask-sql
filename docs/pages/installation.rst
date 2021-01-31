@@ -67,10 +67,9 @@ After that, you can install the package in development mode
 
 .. code-block:: bash
 
-    pip install -e .
+    pip install -e ".[dev]"
 
-This will also compile the Java classes.
-If there were changes to the Java code, you need to rerun this compilation with
+To compile the Java classes (at the beginning or after changes), run
 
 .. code-block:: bash
 

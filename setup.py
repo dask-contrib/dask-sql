@@ -87,6 +87,18 @@ setup(
         # backport for python versions without importlib.metadata
         "importlib_metadata; python_version < '3.8.0'",
     ],
+    extras_require={
+        "dev": [
+            "pytest>=6.0.1",
+            "pytest-cov>=2.10.1",
+            "mock>=4.0.3",
+            "sphinx>=3.2.1",
+            "pyarrow>=0.15.1",
+            "dask-ml>=1.7.0",
+            "scikit-learn<0.24.0",
+            "intake>=0.6.0",
+        ]
+    },
     entry_points={
         "console_scripts": [
             "dask-sql-server = dask_sql.server.app:main",
