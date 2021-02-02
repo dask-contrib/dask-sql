@@ -199,7 +199,7 @@ def test_filter(assert_query_gives_same_result):
             d
         FROM df2
         WHERE
-            d NOT LIKE '%c'
+            d NOT LIKE '%%c'
     """
     )
 
@@ -209,7 +209,7 @@ def test_filter(assert_query_gives_same_result):
             d
         FROM df2
         WHERE
-            (d NOT LIKE '%c') IS NULL
+            (d NOT LIKE '%%c') IS NULL
     """
     )
 
@@ -220,13 +220,13 @@ def test_string_operations(assert_query_gives_same_result):
         SELECT
             s,
             s || 'hello' || s,
-            s SIMILAR TO '%(b|d)%',
-            s SIMILAR TO '%(B|c)%',
-            s SIMILAR TO '%[a-zA-Z]%',
+            s SIMILAR TO '%%(b|d)%%',
+            s SIMILAR TO '%%(B|c)%%',
+            s SIMILAR TO '%%[a-zA-Z]%%',
             s SIMILAR TO '.*',
-            s LIKE '%(b|d)%',
-            s LIKE '%(B|c)%',
-            s LIKE '%[a-zA-Z]%',
+            s LIKE '%%(b|d)%%',
+            s LIKE '%%(B|c)%%',
+            s LIKE '%%[a-zA-Z]%%',
             s LIKE '.*',
             CHAR_LENGTH(s),
             UPPER(s),
