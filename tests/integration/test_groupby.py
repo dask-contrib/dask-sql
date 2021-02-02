@@ -205,3 +205,16 @@ def test_aggregations(c):
         }
     )
     assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    df = c.sql(
+        """
+    SELECT
+        MAX(a) AS "max",
+        MIN(a) AS "min"
+    FROM string_table
+    """
+    )
+    df = df.compute()
+
+    expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
+    assert_frame_equal(df.reset_index(drop=True), expected_df)
