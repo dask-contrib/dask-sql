@@ -1,5 +1,4 @@
-import pytest
-
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
@@ -50,7 +49,10 @@ def test_analyze(c, df):
     )
 
     # The percentiles are calculated only approximately, therefore we do not use exact matching
-    assert_frame_equal(result_df, expected_df, check_exact=False, atol=1)
+    p = ["25%", "50%", "75%"]
+    result_df.loc[p, :] = result_df.loc[p, :].astype(float).apply(np.ceil)
+    expected_df.loc[p, :] = expected_df.loc[p, :].astype(float).apply(np.ceil)
+    assert_frame_equal(result_df, expected_df, check_exact=False)
 
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR COLUMNS a")
     result_df = result_df.compute()

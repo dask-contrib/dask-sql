@@ -128,8 +128,9 @@ def test_group_by_nan(c):
     df = df.compute()
 
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
-    expected_df["c"] = expected_df["c"].astype("object")
-    assert_frame_equal(df, expected_df)
+    # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
+    # we can not check here
+    assert_frame_equal(df, expected_df, check_dtype=False)
 
     df = c.sql(
         """
