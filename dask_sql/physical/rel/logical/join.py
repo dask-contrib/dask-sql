@@ -100,6 +100,23 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 f"common_{i}": df_rhs_renamed.iloc[:, index]
                 for i, index in enumerate(rhs_on)
             }
+
+            # SQL compatibility: when joining on columns that
+            # contain NULLs, pandas will actually happily
+            # keep those NULLs. That is however not compatible with
+            # SQL, so we get rid of them here
+            if join_type in ["inner", "right"]:
+                df_lhs_filter = reduce(
+                    operator.and_,
+                    [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
+                )
+                df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
+            if join_type in ["inner", "left"]:
+                df_rhs_filter = reduce(
+                    operator.and_,
+                    [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
+                )
+                df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
         else:
             # We are in the complex join case
             # where we have no column to merge on
