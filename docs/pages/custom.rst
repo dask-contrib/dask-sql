@@ -11,7 +11,7 @@ Scalar Functions
 ----------------
 
 A scalar function (such as :math:`x \to x^2`) turns a given column into another column of the same length.
-It can be registered for usage in SQL with the :func:`dask_sql.Context.register_function` method.
+It can be registered for usage in SQL with the :func:`~dask_sql.Context.register_function` method.
 
 Example:
 
@@ -38,7 +38,7 @@ Aggregation Functions
 
 Aggregation functions run on a single column and turn them into a single value.
 This means they can only be used in ``GROUP BY`` aggregations.
-They can be registered with the :func:`dask_sql.Context.register_aggregation` method.
+They can be registered with the :func:`~dask_sql.Context.register_aggregation` method.
 This time however, an instance of a :class:`dask.dataframe.Aggregation` needs to be passed
 instead of a plain function.
 More information on dask aggregations can be found in the

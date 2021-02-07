@@ -3,14 +3,14 @@
 Data Loading and Input
 ======================
 
-Before data can be queried with ``dask-sql``, it needs to be loaded into the dask cluster (or local instance) and registered with the :class:`dask_sql.Context`.
+Before data can be queried with ``dask-sql``, it needs to be loaded into the dask cluster (or local instance) and registered with the :class:`~dask_sql.Context`.
 For this, ``dask-sql`` uses the wide field of possible `input formats  <https://docs.dask.org/en/latest/dataframe-create.html>`_ of ``dask``, plus some additional formats only suitable for `dask-sql`.
 You have multiple possibilities to load input data in ``dask-sql``:
 
 1. Load it via python
 -------------------------------
 
-You can either use already created dask dataframes or create one by using the :func:`create_table` function.
+You can either use already created dask dataframes or create one by using the :func:`~dask_sql.Context.create_table` function.
 Chances are high, there exists already a function to load your favorite format or location (e.g. s3 or hdfs).
 See below for all formats understood by ``dask-sql``.
 Make sure to install required libraries both on the driver and worker machines.
@@ -58,7 +58,7 @@ In ``dask``, you can publish datasets with names into the cluster memory.
 This allows to reuse the same data from multiple clients/users in multiple sessions.
 
 For example, you can publish your data using the ``client.publish_dataset`` function of the ``distributed.Client``,
-and then later register it in the :class:`dask_sql.Context` via SQL:
+and then later register it in the :class:`~dask_sql.Context` via SQL:
 
 .. code-block:: python
 
@@ -93,7 +93,7 @@ Input Formats
 * All formats and locations mentioned in `the Dask docu  <https://docs.dask.org/en/latest/dataframe-create.html>`_, including csv, parquet, json.
   Just pass in the location as string (and possibly the format, e.g. "csv" if it is not clear from the file extension).
   The data can be from local disc or many remote locations (S3, hdfs, Azure Filesystem, http, Google Filesystem, ...) - just prefix the path with the matching protocol.
-  Additional arguments passed to :func:`create_table` or ``CREATE TABLE`` are given to the ``read_<format>`` calls.
+  Additional arguments passed to :func:`~dask_sql.Context.create_table` or ``CREATE TABLE`` are given to the ``read_<format>`` calls.
 
   Example:
 
@@ -113,7 +113,7 @@ Input Formats
     )
 
 * If your data is already in Pandas (or Dask) DataFrames format, you can just use it as it is via the Python API
-  by giving it to :ref:`create_table` directly.
+  by giving it to :func:`~dask_sql.Context.create_table` directly.
 * You can connect ``dask-sql`` to an `intake <https://intake.readthedocs.io/en/latest/index.html>`_ catalog and
   use the data registered there. Assuming you have an intake catalog stored in "catalog.yaml" (can also be
   the URL of an intake server), you can read in a stored table "data_table" either via Python
@@ -161,7 +161,7 @@ Input Formats
     c.create_table("my_data", cursor, hive_table_name="the_name_in_hive")
 
   Again, ``hive_table_name`` is optional and defaults to the table name in ``dask-sql``.
-  You can also control the database used in Hive via the ``hive_schema_name```parameter.
+  You can also control the database used in Hive via the ``hive_schema_name`` parameter.
   Additional arguments are pushed to the internally called ``read_<format>`` functions.
 
 .. note::

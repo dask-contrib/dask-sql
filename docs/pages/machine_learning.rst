@@ -19,7 +19,7 @@ Please also see :ref:`ml` for more information on the SQL statements used on thi
 -------------------------------------------------------------
 
 If you are familiar with Python and the ML ecosystem in Python, this one is probably
-the simplest possibility. You can use the :func:`Context.sql` call as described
+the simplest possibility. You can use the :func:`~dask_sql.Context.sql` call as described
 before to extract the data for your training or ML prediction.
 The result will be a Dask dataframe, which you can either directly feed into your model
 or convert to a pandas dataframe with `.compute()` before.
@@ -49,7 +49,7 @@ automatically. The syntax is similar to the `BigQuery Predict Syntax <https://cl
 This call will first collect the data from the inner ``SELECT`` call (which can be any valid
 ``SELECT`` call, including ``JOIN``, ``WHERE``, ``GROUP BY``, custom tables and views etc.)
 and will then apply the model with the name "my_model" for prediction.
-The model needs to be registered at the context before using :func:`register_model`.
+The model needs to be registered at the context before using :func:`~dask_sql.Context.register_model`.
 
 .. code-block:: python
 
