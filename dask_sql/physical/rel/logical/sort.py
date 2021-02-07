@@ -1,5 +1,3 @@
-from typing import List
-
 import dask
 import dask.dataframe as dd
 
@@ -8,6 +6,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.utils.sort import apply_sort
+from dask_sql.physical.utils.map import map_on_partition_index
 
 
 class LogicalSortPlugin(BaseRelPlugin):
@@ -94,7 +93,6 @@ class LogicalSortPlugin(BaseRelPlugin):
         # its pandas representation at this point and we can calculate the cumsum
         # (which is not possible on the dask object). Recalculating it should not cost
         # us much, as we assume the number of partitions is rather small.
-        @dask.delayed
         def select_from_to(df, partition_index, partition_borders):
             partition_borders = partition_borders.cumsum().to_dict()
             this_partition_border_left = (
@@ -118,9 +116,4 @@ class LogicalSortPlugin(BaseRelPlugin):
 
         # (b) Now we just need to apply the function on every partition
         # We do this via the delayed interface, which seems the easiest one.
-        return dd.from_delayed(
-            [
-                select_from_to(partition, partition_number, partition_borders)
-                for partition_number, partition in enumerate(df.partitions)
-            ]
-        )
+        return map_on_partition_index(df, select_from_to, partition_borders)

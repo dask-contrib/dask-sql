@@ -102,6 +102,7 @@ class Context:
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexOverPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)

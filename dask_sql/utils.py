@@ -1,4 +1,4 @@
-from typing import List
+from typing import Callable, List
 import importlib
 from typing import Any, Dict
 from collections import defaultdict
@@ -274,3 +274,4 @@ def new_temporary_column(df: dd.DataFrame) -> str:
             return col_name
         else:  # pragma: no cover
             continue
+
