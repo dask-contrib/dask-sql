@@ -127,7 +127,7 @@ def test_group_by_nan(c):
     )
     df = df.compute()
 
-    expected_df = pd.DataFrame({"c": [3, 1]})
+    expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
     # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
     # we can not check here
     assert_frame_equal(df, expected_df, check_dtype=False)
@@ -206,3 +206,16 @@ def test_aggregations(c):
         }
     )
     assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    df = c.sql(
+        """
+    SELECT
+        MAX(a) AS "max",
+        MIN(a) AS "min"
+    FROM string_table
+    """
+    )
+    df = df.compute()
+
+    expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
+    assert_frame_equal(df.reset_index(drop=True), expected_df)

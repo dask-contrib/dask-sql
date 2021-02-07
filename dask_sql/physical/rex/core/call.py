@@ -240,6 +240,21 @@ class IsNullOperation(Operation):
         return pd.isna(df) or df is None or np.isnan(df)
 
 
+class IsNotDistinctOperation(Operation):
+    """The is not distinct operator"""
+
+    def __init__(self):
+        super().__init__(self.not_distinct)
+
+    def not_distinct(self, lhs: SeriesOrScalar, rhs: SeriesOrScalar) -> SeriesOrScalar:
+        """
+        Returns true where `lhs` is not distinct from `rhs` (or both are null).
+        """
+        is_null = IsNullOperation()
+
+        return (is_null(lhs) & is_null(rhs)) | (lhs == rhs)
+
+
 class RegexOperation(Operation):
     """An abstract regex operation, which transforms the SQL regex into something python can understand"""
 
@@ -627,6 +642,8 @@ class RexCallPlugin(BaseRexPlugin):
         "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
         "/": ReduceOperation(operation=SQLDivisionOperator()),
         "*": ReduceOperation(operation=operator.mul),
+        "is distinct from": NotOperation().of(IsNotDistinctOperation()),
+        "is not distinct from": IsNotDistinctOperation(),
         # special operations
         "cast": lambda x: x,
         "case": CaseOperation(),

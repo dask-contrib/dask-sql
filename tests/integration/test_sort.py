@@ -228,6 +228,29 @@ def test_sort_with_nan_more_columns():
     )
 
 
+def test_sort_with_nan_many_partitions():
+    c = Context()
+    df = pd.DataFrame({"a": [float("nan"), 1] * 30, "b": [1, 2, 3] * 20,})
+    c.create_table("df", dd.from_pandas(df, npartitions=10))
+
+    df_result = (
+        c.sql("SELECT * FROM df ORDER BY a NULLS FIRST, b ASC NULLS FIRST")
+        .compute()
+        .reset_index(drop=True)
+    )
+
+    assert_frame_equal(
+        df_result,
+        pd.DataFrame(
+            {
+                "a": [float("nan")] * 30 + [1] * 30,
+                "b": [1] * 10 + [2] * 10 + [3] * 10 + [1] * 10 + [2] * 10 + [3] * 10,
+            }
+        ),
+        check_names=False,
+    )
+
+
 def test_sort_strings(c):
     string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
     c.create_table("string_table", string_table)

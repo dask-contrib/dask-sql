@@ -199,13 +199,15 @@ Limitatons
 
 ``dask-sql`` is still in early development, therefore exist some limitations:
 
-* Not all operations and aggregations are implemented already, most prominently: ``WINDOW`` is not implemented so far.
-* ``GROUP BY`` aggregations can not use ``DISTINCT``
+Not all operations and aggregations are implemented already, most prominently: ``WINDOW`` is not implemented so far.
 
 .. note::
 
     Whenever you find a not already implemented operation, keyword
     or functionality, please raise an issue at our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_ with your use-case.
+
+Dask/pandas and SQL treat null-values (or nan) differently on sorting, grouping and joining.
+``dask-sql`` tries to follow the SQL standard as much as possible, so results might be different to what you expect from Dask/pandas.
 
 Apart from those functional limitations, there is a operation which need special care: ``ORDER BY```.
 Normally, ``dask-sql`` calls create a ``dask`` data frame, which gets only computed when you call the ``.compute()`` member.
@@ -218,4 +220,5 @@ Including this operation will trigger a calculation of the full data frame alrea
     The data inside ``dask`` is partitioned, to distribute it over the cluster.
     ``head`` will only return the first N elements from the first partition - even if N is larger than the partition size.
     As a benefit, calling ``.head(N)`` is typically faster than calculating the full data sample with ``.compute()``.
-    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered - but will also need to precalculate the first partition to find out, if it needs to have a look into all data or not.
+    ``LIMIT`` on the other hand will always return the first N elements - no matter on how many partitions they are scattered -
+    but will also need to precalculate the first partition to find out, if it needs to have a look into all data or not.
