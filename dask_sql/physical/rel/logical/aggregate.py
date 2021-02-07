@@ -141,10 +141,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
-            rel,
-            dc,
-            group_columns,
-            context,
+            rel, dc, group_columns, context,
         )
 
         # SQL does not care about the index, but we do not want to have any multiindices
@@ -201,21 +198,13 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         key = None
         aggregations = collected_aggregations.pop(key)
         df_result = self._perform_aggregation(
-            df,
-            None,
-            aggregations,
-            additional_column_name,
-            group_columns,
+            df, None, aggregations, additional_column_name, group_columns,
         )
 
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
-                df,
-                filter_column,
-                aggregations,
-                additional_column_name,
-                group_columns,
+                df, filter_column, aggregations, additional_column_name, group_columns,
             )
 
             # ... and finally concat the new data with the already present columns
