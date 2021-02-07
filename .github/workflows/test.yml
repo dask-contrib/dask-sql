@@ -84,7 +84,7 @@ jobs:
         run: |
           # explicitly install docker, fugue and sqlalchemy package
           conda install sqlalchemy psycopg2 -c conda-forge
-          pip install docker fugue
+          pip install docker "fugue<=0.5.0"
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
