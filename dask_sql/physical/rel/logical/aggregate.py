@@ -141,7 +141,10 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
-            rel, dc, group_columns, context,
+            rel,
+            dc,
+            group_columns,
+            context,
         )
 
         # SQL does not care about the index, but we do not want to have any multiindices
@@ -189,25 +192,26 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         # As the values of the group columns
         # are the same for a single group anyways, we just use the first row
         for col in group_columns:
-            collected_aggregations[(None, None)].append((col, col, "first"))
+            collected_aggregations[None].append((col, col, "first"))
 
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
-        # It is very important to start with the non-filtered
-        # and non-distinct entry. Otherwise we might loose some
-        # entries in the grouped columns
-        key = (None, None)
+        # It is very important to start with the non-filtered entry.
+        # Otherwise we might loose some entries in the grouped columns
+        key = None
         aggregations = collected_aggregations.pop(key)
         df_result = self._perform_aggregation(
-            df, None, None, aggregations, additional_column_name, group_columns,
+            df,
+            None,
+            aggregations,
+            additional_column_name,
+            group_columns,
         )
 
         # Now we can also the the rest
-        for distinct_and_filter, aggregations in collected_aggregations.items():
-            distinct_column, filter_column = distinct_and_filter
+        for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
                 df,
-                distinct_column,
                 filter_column,
                 aggregations,
                 additional_column_name,
@@ -231,12 +235,10 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         output_column_order: List[str],
     ) -> Tuple[Dict[Tuple[str, str], List[Tuple[str, str, Any]]], List[str]]:
         """
-        Collect all aggregations together, which have the same
-        * filter
-        * distinct column
+        Collect all aggregations together, which have the same filter column
         so that the aggregations only need to be done once.
 
-        Returns the aggregations as mapping (distinct_column, filter_column) -> List of Aggregations
+        Returns the aggregations as mapping filter_column -> List of Aggregations
         where the aggregations are in the form (input_col, output_col, aggregation function (or string))
         """
         collected_aggregations = defaultdict(list)
@@ -254,9 +256,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                 raise NotImplementedError("Can not cope with more than one input")
 
             # Extract flags (filtering/distinct)
-            distinct_column = None
-            if expr.isDistinct():
-                distinct_column = input_col
+            if expr.isDistinct():  # pragma: no cover
+                raise ValueError("Apache Calcite should optimize them away!")
 
             filter_column = None
             if expr.hasFilter():
@@ -287,7 +288,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             output_col = str(agg_call.getValue())
 
             # Store the aggregation
-            key = (distinct_column, filter_column)
+            key = filter_column
             value = (input_col, output_col, aggregation_function)
             collected_aggregations[key].append(value)
             output_column_order.append(output_col)
@@ -297,7 +298,6 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     def _perform_aggregation(
         self,
         df: dd.DataFrame,
-        distinct_column: str,
         filter_column: str,
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
@@ -310,19 +310,6 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             tmp_df = tmp_df[filter_expression]
 
             logger.debug(f"Filtered by {filter_column} before aggregation.")
-
-        input_col_override = None
-        if distinct_column:
-            duplicate_free_column_name = new_temporary_column(tmp_df)
-            tmp_df = tmp_df.assign(
-                duplicate_free_column_name=tmp_df[distinct_column].drop_duplicates()
-            )
-            # Use this column as input, not the original column
-            input_col_override = duplicate_free_column_name
-
-            logger.debug(
-                f"Removing duplicates from {distinct_column} for the aggregation."
-            )
 
         # SQL and dask are treating null columns a bit different:
         # SQL will put them to the front, dask will just ignore them
@@ -348,7 +335,6 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         aggregations_dict = defaultdict(dict)
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
-            input_col = input_col_override or input_col
 
             aggregations_dict[input_col][output_col] = aggregation_f
 
