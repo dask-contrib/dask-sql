@@ -13,7 +13,7 @@ As all SQL statements in ``dask-sql`` are eventually converted to Python calls, 
 any custom Python function and library, e.g. Machine Learning libraries. Although it would be possible to
 register custom functions (see :ref:`custom`) for this and use them, it is much more convenient if this functionality
 is already included in the core SQL language.
-These three statements help in training and using models. Every :class:`Context` has a registry for models, which
+These three statements help in training and using models. Every :class:`~dask_sql.Context` has a registry for models, which
 can be used for training or prediction.
 For a full example, see :ref:`machine_learning`.
 
@@ -128,7 +128,7 @@ Predict the target using the given model and dataframe from the ``SELECT`` query
 The return value is the input dataframe with an additional column named
 "target", which contains the predicted values.
 The model needs to be registered at the context before using it in this function,
-either by calling :func:`Context.register_model` explicitly or by training
+either by calling :func:`~dask_sql.Context.register_model` explicitly or by training
 a model using the ``CREATE MODEL`` SQL statement above.
 
 A model can be anything which has a ``predict`` function.

@@ -21,7 +21,7 @@ or by running these lines of code
     cmd_loop()
 
 Some options can be set, e.g. to preload some testdata.
-Have a look into :func:`dask_sql.cmd_loop` or call
+Have a look into :func:`~dask_sql.cmd_loop` or call
 
 .. code-block:: bash
 

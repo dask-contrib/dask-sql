@@ -41,7 +41,7 @@ Read more on the data input part in :ref:`data_input`.
 --------------------
 
 If we want to work with the data in SQL, we need to give the data frame a unique name.
-We do this by registering the data at an instance of a :class:`dask_sql.Context`.
+We do this by registering the data at an instance of a :class:`~dask_sql.Context`.
 Typically, you only have a single context per application.
 
 .. code-block:: python

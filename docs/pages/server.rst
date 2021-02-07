@@ -32,7 +32,7 @@ or by using the created docker image
     docker run --rm -it -p 8080:8080 nbraun/dask-sql
 
 This will spin up a server on port 8080 (by default).
-The port and bind interfaces can be controlled with the ``--port`` and ``--host`` command line arguments (or options to :func:`dask_sql.run_server`).
+The port and bind interfaces can be controlled with the ``--port`` and ``--host`` command line arguments (or options to :func:`~dask_sql.run_server`).
 
 The running server looks similar to a normal presto database to any presto client and can therefore be used
 with any library, e.g. the `presto CLI client <https://prestosql.io/docs/current/installation/cli.html>`_ or
@@ -68,7 +68,7 @@ commands.
 Preregister your own data sources
 ---------------------------------
 
-The python function :func:`dask_sql.run_server` accepts an already created :class:`dask_sql.Context`.
+The python function :func:`~dask_sql.run_server` accepts an already created :class:`~dask_sql.Context`.
 This means you can preload your data sources and register them with a context before starting your server.
 By this, your server will already have data to query:
 
