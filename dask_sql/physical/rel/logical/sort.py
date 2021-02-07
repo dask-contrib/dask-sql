@@ -135,7 +135,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         col = df[first_sort_column]
         is_na = col.isna().persist()
         if is_na.any().compute():
-            df_is_na = df[is_na].reset_index(drop=True)
+            df_is_na = df[is_na].reset_index(drop=True).repartition(1)
             df_not_is_na = (
                 df[~is_na]
                 .set_index(first_sort_column, drop=False)
