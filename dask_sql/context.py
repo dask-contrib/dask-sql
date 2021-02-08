@@ -86,6 +86,7 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalSortPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.LogicalMinusPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
@@ -515,6 +516,10 @@ class Context:
                 nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
                 rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
                 rel_string = str(generator.getRelationalAlgebraString(rel))
+                logger.debug(
+                    f"Non optimised query plan: \n "
+                    f"{str(generator.getRelationalAlgebraString(nonOptimizedRelNode))}"
+                )
         except (ValidationException, SqlParseException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
