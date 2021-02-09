@@ -56,13 +56,11 @@ class LogicalMinusPlugin(BaseRelPlugin):
 
         df = first_df.merge(
             second_df,
-            how='left',
+            how="left",
             indicator=True,
         )
 
-        df = df[
-            df.iloc[:, -1] == "left_only"
-        ].iloc[:, :-1]
+        df = df[df.iloc[:, -1] == "left_only"].iloc[:, :-1]
 
         cc = ColumnContainer(df.columns)
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
