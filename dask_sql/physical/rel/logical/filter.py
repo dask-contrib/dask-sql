@@ -26,6 +26,8 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
         else:
             return df
 
+    # In SQL, a NULL in a boolean is False on filtering
+    filter_condition = filter_condition.fillna(False)
     return df[filter_condition]
 
 
