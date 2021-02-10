@@ -8,6 +8,7 @@ import dask.dataframe as dd
 from datetime import timedelta, datetime, timezone
 
 from dask_sql.java import SqlTypeName
+from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,11 @@ _PYTHON_TO_SQL = {
     pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
+
+if FLOAT_NAN_IMPLEMENTED:
+    _PYTHON_TO_SQL.update(
+        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.FLOAT}
+    )
 
 # Default mapping between SQL types and python types
 # for values

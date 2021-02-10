@@ -1,4 +1,7 @@
+import pandas as pd
 from pandas.testing import assert_frame_equal
+
+from dask_sql._compat import INT_NAN_IMPLEMENTED
 
 
 def test_filter(c, df):
@@ -40,6 +43,19 @@ def test_filter_complicated(c, df):
     return_df = return_df.compute()
 
     expected_df = df[((df["a"] < 3) & ((df["b"] > 1) & (df["b"] < 3)))]
+    assert_frame_equal(
+        return_df, expected_df,
+    )
+
+
+def test_filter_with_nan(c):
+    return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
+    return_df = return_df.compute()
+
+    if INT_NAN_IMPLEMENTED:
+        expected_df = pd.DataFrame({"c": [3]}, dtype="int8")
+    else:
+        expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_frame_equal(
         return_df, expected_df,
     )
