@@ -89,7 +89,15 @@ class HiveInputPlugin(BaseInputPlugin):
             raise AttributeError(f"Do not understand hive's table format {format}")
 
         def _normalize(loc):
-            return os.path.join(loc.lstrip("file:"), "[A-Za-z0-9-]*")
+            if loc.startswith("dbfs:/") and not loc.startswith("dbfs://"):
+                # dask (or better: fsspec) needs to have the URL in a specific form
+                # starting with two // after the protocol
+                loc = f"dbfs://{loc.lstrip('dbfs:')}"
+            # file:// is not a known protocol
+            loc = loc.lstrip("file:")
+            # Only allow files which do not start with . or _
+            # Especially, not allow the _SUCCESS files
+            return os.path.join(loc, "[A-Za-z0-9-]*")
 
         def wrapped_read_function(location, column_information, **kwargs):
             location = _normalize(location)
