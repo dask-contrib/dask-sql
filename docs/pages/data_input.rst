@@ -8,7 +8,7 @@ For this, ``dask-sql`` uses the wide field of possible `input formats  <https://
 You have multiple possibilities to load input data in ``dask-sql``:
 
 1. Load it via python
--------------------------------
+---------------------
 
 You can either use already created dask dataframes or create one by using the :func:`~dask_sql.Context.create_table` function.
 Chances are high, there exists already a function to load your favorite format or location (e.g. s3 or hdfs).
@@ -163,6 +163,26 @@ Input Formats
   Again, ``hive_table_name`` is optional and defaults to the table name in ``dask-sql``.
   You can also control the database used in Hive via the ``hive_schema_name`` parameter.
   Additional arguments are pushed to the internally called ``read_<format>`` functions.
+* Similarly, it is possible to load data from a `Databricks Cluster <https://docs.databricks.com/clusters/index.html>`_ (which is similar to a Hive metastore).
+
+  You need to have the ``databricks-dbapi`` package installed and ``fsspec >= 0.8.7``.
+  The variables ``token``, ``host``, ``port`` and ``http_path`` come from the databricks cluster definition.
+  A token needs to be `generated <https://docs.databricks.com/dev-tools/api/latest/authentication.html>`_ for the accessing user.
+  The remaining information can be found in the JDBC tab of the cluster.
+
+  .. code-block:: python
+
+    from dask_sql import Context
+    from sqlalchemy import create_engine
+
+    c = Context()
+
+    cursor = create_engine(f"databricks+pyhive://token:{token}@{host}:{port}/",
+                           connect_args={"http_path": http_path}).connect()
+
+    c.create_table("my_data", cursor, hive_table_name="schema.table",
+                   storage_options={"instance": host, "token": token})
+
 
 .. note::
 
