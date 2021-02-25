@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import logging
+import traceback
 
 import dask
 from dask_sql import Context
@@ -73,8 +74,8 @@ def cmd_loop(
         try:
             df = context.sql(text, return_futures=False)
             print(df)
-        except Exception as e:
-            print(e)
+        except Exception:
+            traceback.print_exc()
 
 
 def main():  # pragma: no cover
