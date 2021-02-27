@@ -4,6 +4,7 @@ from .hive import HiveInputPlugin
 from .intake import IntakeCatalogInputPlugin
 from .location import LocationInputPlugin
 from .pandas import PandasInputPlugin
+from .sqlalchemy import SqlalchemyHiveInputPlugin
 
 __all__ = [
     InputUtil,
@@ -13,4 +14,5 @@ __all__ = [
     IntakeCatalogInputPlugin,
     LocationInputPlugin,
     PandasInputPlugin,
+    SqlalchemyHiveInputPlugin,
 ]

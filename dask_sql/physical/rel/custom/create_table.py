@@ -52,7 +52,9 @@ class CreateTablePlugin(BaseRelPlugin):
             f"Creating new table with name {table_name} and parameters {kwargs}"
         )
 
-        format = kwargs.pop("format", "csv").lower()
+        format = kwargs.pop("format", None)
+        if format:  # pragma: no cover
+            format = format.lower()
         persist = kwargs.pop("persist", False)
 
         try:

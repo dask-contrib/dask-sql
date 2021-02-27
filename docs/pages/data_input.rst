@@ -127,7 +127,7 @@ Input Formats
 
   or via SQL:
 
-  .. code-block:: python
+  .. code-block:: sql
 
     CREATE TABLE my_data WITH (
         format = 'intake',
@@ -144,8 +144,6 @@ Input Formats
 
   It is both possible to use a `pyhive.hive.Cursor` or an `sqlalchemy` connection.
 
-  Currently, this feature is only accessible via the Python API.
-
   .. code-block:: python
 
     from dask_sql import Context
@@ -160,15 +158,23 @@ Input Formats
 
     c.create_table("my_data", cursor, hive_table_name="the_name_in_hive")
 
+  or in SQL:
+
+  .. code-block:: sql
+
+    CREATE TABLE my_data WITH (
+        location = 'hive://hive-server:10000',
+        hive_table_name = 'the_name_in_hive'
+    )
+
   Again, ``hive_table_name`` is optional and defaults to the table name in ``dask-sql``.
   You can also control the database used in Hive via the ``hive_schema_name`` parameter.
   Additional arguments are pushed to the internally called ``read_<format>`` functions.
 * Similarly, it is possible to load data from a `Databricks Cluster <https://docs.databricks.com/clusters/index.html>`_ (which is similar to a Hive metastore).
 
   You need to have the ``databricks-dbapi`` package installed and ``fsspec >= 0.8.7``.
-  The variables ``token``, ``host``, ``port`` and ``http_path`` come from the databricks cluster definition.
   A token needs to be `generated <https://docs.databricks.com/dev-tools/api/latest/authentication.html>`_ for the accessing user.
-  The remaining information can be found in the JDBC tab of the cluster.
+  The ``host``, ``port`` and ``http_path`` information can be found in the JDBC tab of the cluster.
 
   .. code-block:: python
 
@@ -183,6 +189,21 @@ Input Formats
     c.create_table("my_data", cursor, hive_table_name="schema.table",
                    storage_options={"instance": host, "token": token})
 
+  or in SQL
+
+  .. code-block:: sql
+
+    CREATE TABLE my_data WITH (
+        location = 'databricks+pyhive://token:{token}@{host}:{port}/',
+        connect_args = (
+            http_path = '{http_path}'
+        ),
+        hive_table_name = 'schema.table',
+        storage_options = (
+            instance = '{host}',
+            token = '{token}'
+        )
+    )
 
 .. note::
 
