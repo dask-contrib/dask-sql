@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
 
 jobs:
   push_to_registry:
