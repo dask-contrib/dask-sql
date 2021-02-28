@@ -438,6 +438,47 @@ class Context:
         """
         self.models[model_name] = (model, training_columns)
 
+    def ipython_magic(self):
+        """
+        Register a new ipython/jupyter magic function "sql"
+        which sends its input as string to the :func:`sql` function.
+        After calling this magic function in a Jupyter notebook or
+        an IPython shell, you can write
+
+        .. code-block:: python
+
+            %sql SELECT * from data
+
+        or
+
+        .. code-block:: python
+
+            %%sql
+            SELECT * from data
+
+        instead of
+
+        .. code-block:: python
+
+            c.sql("SELECT 1 + 1")
+
+        """
+        from IPython.core.magic import register_line_cell_magic
+
+        def sql(line, cell=None):
+            if cell is None:
+                # the magic function was called inline
+                cell = line
+                line = None
+
+            # Use any additional parameters passed
+            if not line:
+                line = {}
+            return self.sql(cell, return_futures=False, **line)
+
+        # Register a new magic function
+        register_line_cell_magic(sql)
+
     def _prepare_schema(self):
         """
         Create a schema filled with the dataframes

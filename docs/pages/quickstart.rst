@@ -84,6 +84,19 @@ Now you can go ahead and query the data with normal SQL!
 ``dask-sql`` understands a large fraction of SQL commands, but there are still some missing.
 Have a look into the :ref:`sql` description for more information.
 
+If you are using ``dask-sql`` from a Jupyter notebook, you might be interested in the ``sql`` magic function:
+
+.. code-block:: python
+
+    c.ipython_magic()
+
+    %%sql
+    SELECT
+        name, SUM(x) AS "sum"
+    FROM timeseries
+    WHERE x > 0.5
+    GROUP BY name
+
 .. note::
 
     If you have found an SQL feature, which is currently not supported by ``dask-sql``,
