@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
+import inspect
 
 import dask.dataframe as dd
 import pandas as pd
@@ -455,7 +456,7 @@ class Context:
         """
         self.models[model_name] = (model, training_columns)
 
-    def ipython_magic(self):
+    def ipython_magic(self, auto_include=False):
         """
         Register a new ipython/jupyter magic function "sql"
         which sends its input as string to the :func:`sql` function.
@@ -479,6 +480,21 @@ class Context:
 
             c.sql("SELECT 1 + 1")
 
+        Args:
+            auto_include (:obj:`bool`): If set to true, automatically
+                create a table for every pandas or Dask dataframe in the calling
+                context. That means, if you define a dataframe in your jupyter
+                notebook you can use it with the same name in your sql call.
+
+                .. code-block:: python
+
+                    df = ...
+
+                    # Later, without any calls to create_table
+
+                    %%sql
+                    SELECT * FROM df
+
         """
         from IPython.core.magic import register_line_cell_magic
 
@@ -486,15 +502,18 @@ class Context:
             if cell is None:
                 # the magic function was called inline
                 cell = line
-                line = None
 
-            # Use any additional parameters passed
-            if not line:
-                line = {}
-            return self.sql(cell, return_futures=False, **line)
+            dataframes = {}
+            if auto_include:
+                dataframes = self._get_tables_from_stack()
+
+            return self.sql(cell, return_futures=False, dataframes=dataframes)
 
         # Register a new magic function
-        register_line_cell_magic(sql)
+        magic_func = register_line_cell_magic(sql)
+        magic_func.MAGIC_NO_VAR_EXPAND_ATTR = True
+
+        return magic_func
 
     def _prepare_schema(self):
         """
@@ -618,3 +637,21 @@ class Context:
             return str(s.toSqlString(default_dialect))
         except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
             return str(s)
+
+    def _get_tables_from_stack(self):
+        stack = inspect.stack()
+
+        tables = {}
+
+        # Traverse the stacks from inside to outside
+        for frame_info in stack:
+            for var_name, variable in frame_info.frame.f_locals.items():
+                if var_name.startswith("_"):
+                    continue
+                if not isinstance(variable, (pd.DataFrame, dd.DataFrame)):
+                    continue
+
+                # only set them if not defined in an inner context
+                tables[var_name] = tables.get(var_name, variable)
+
+        return tables
