@@ -347,7 +347,10 @@ class Context:
         self.functions[name] = f
 
     def sql(
-        self, sql: str, return_futures: bool = True
+        self,
+        sql: str,
+        return_futures: bool = True,
+        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -371,11 +374,17 @@ class Context:
             sql (:obj:`str`): The query string to execute
             return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
                 Defaults to returning the dask dataframe.
+            dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
+                to register before executing this query
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
+        if dataframes is not None:
+            for df_name, df in dataframes.items():
+                self.create_table(df_name, df)
+
         rel, select_names, _ = self._get_ral(sql)
 
         dc = RelConverter.convert(rel, context=self)
@@ -400,7 +409,9 @@ class Context:
 
         return df
 
-    def explain(self, sql: str) -> str:
+    def explain(
+        self, sql: str, dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None
+    ) -> str:
         """
         Return the stringified relational algebra that this query will produce
         once triggered (with ``sql()``).
@@ -412,11 +423,17 @@ class Context:
 
         Args:
             sql (:obj:`str`): The query string to use
+            dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
+                to register before executing this query
 
         Returns:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        if dataframes is not None:
+            for df_name, df in dataframes.items():
+                self.create_table(df_name, df)
+
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
