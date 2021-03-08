@@ -478,13 +478,15 @@ class Context:
 
         .. code-block:: python
 
-            c.sql("SELECT 1 + 1")
+            c.sql("SELECT * from data")
 
         Args:
             auto_include (:obj:`bool`): If set to true, automatically
                 create a table for every pandas or Dask dataframe in the calling
                 context. That means, if you define a dataframe in your jupyter
                 notebook you can use it with the same name in your sql call.
+                Use this setting with care as any defined dataframe can
+                easily override tables created via `CREATE TABLE`.
 
                 .. code-block:: python
 
