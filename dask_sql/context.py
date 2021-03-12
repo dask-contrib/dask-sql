@@ -456,7 +456,7 @@ class Context:
         """
         self.models[model_name] = (model, training_columns)
 
-    def ipython_magic(self, auto_include=False):
+    def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
         which sends its input as string to the :func:`sql` function.
@@ -641,6 +641,7 @@ class Context:
             return str(s)
 
     def _get_tables_from_stack(self):
+        """Helper function to return all dask/pandas dataframes from the calling stack"""
         stack = inspect.stack()
 
         tables = {}
