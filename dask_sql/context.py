@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 from collections import namedtuple
 import logging
 import warnings
+import inspect
 
 import dask.dataframe as dd
 import pandas as pd
@@ -347,7 +348,10 @@ class Context:
         self.functions[name] = f
 
     def sql(
-        self, sql: str, return_futures: bool = True
+        self,
+        sql: str,
+        return_futures: bool = True,
+        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -371,11 +375,17 @@ class Context:
             sql (:obj:`str`): The query string to execute
             return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
                 Defaults to returning the dask dataframe.
+            dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
+                to register before executing this query
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
+        if dataframes is not None:
+            for df_name, df in dataframes.items():
+                self.create_table(df_name, df)
+
         rel, select_names, _ = self._get_ral(sql)
 
         dc = RelConverter.convert(rel, context=self)
@@ -400,7 +410,9 @@ class Context:
 
         return df
 
-    def explain(self, sql: str) -> str:
+    def explain(
+        self, sql: str, dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None
+    ) -> str:
         """
         Return the stringified relational algebra that this query will produce
         once triggered (with ``sql()``).
@@ -412,11 +424,17 @@ class Context:
 
         Args:
             sql (:obj:`str`): The query string to use
+            dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
+                to register before executing this query
 
         Returns:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        if dataframes is not None:
+            for df_name, df in dataframes.items():
+                self.create_table(df_name, df)
+
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
@@ -437,6 +455,67 @@ class Context:
                 used during the training.
         """
         self.models[model_name] = (model, training_columns)
+
+    def ipython_magic(self, auto_include=False):  # pragma: no cover
+        """
+        Register a new ipython/jupyter magic function "sql"
+        which sends its input as string to the :func:`sql` function.
+        After calling this magic function in a Jupyter notebook or
+        an IPython shell, you can write
+
+        .. code-block:: python
+
+            %sql SELECT * from data
+
+        or
+
+        .. code-block:: python
+
+            %%sql
+            SELECT * from data
+
+        instead of
+
+        .. code-block:: python
+
+            c.sql("SELECT * from data")
+
+        Args:
+            auto_include (:obj:`bool`): If set to true, automatically
+                create a table for every pandas or Dask dataframe in the calling
+                context. That means, if you define a dataframe in your jupyter
+                notebook you can use it with the same name in your sql call.
+                Use this setting with care as any defined dataframe can
+                easily override tables created via `CREATE TABLE`.
+
+                .. code-block:: python
+
+                    df = ...
+
+                    # Later, without any calls to create_table
+
+                    %%sql
+                    SELECT * FROM df
+
+        """
+        from IPython.core.magic import register_line_cell_magic
+
+        def sql(line, cell=None):
+            if cell is None:
+                # the magic function was called inline
+                cell = line
+
+            dataframes = {}
+            if auto_include:
+                dataframes = self._get_tables_from_stack()
+
+            return self.sql(cell, return_futures=False, dataframes=dataframes)
+
+        # Register a new magic function
+        magic_func = register_line_cell_magic(sql)
+        magic_func.MAGIC_NO_VAR_EXPAND_ATTR = True
+
+        return magic_func
 
     def _prepare_schema(self):
         """
@@ -560,3 +639,22 @@ class Context:
             return str(s.toSqlString(default_dialect))
         except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
             return str(s)
+
+    def _get_tables_from_stack(self):
+        """Helper function to return all dask/pandas dataframes from the calling stack"""
+        stack = inspect.stack()
+
+        tables = {}
+
+        # Traverse the stacks from inside to outside
+        for frame_info in stack:
+            for var_name, variable in frame_info.frame.f_locals.items():
+                if var_name.startswith("_"):
+                    continue
+                if not isinstance(variable, (pd.DataFrame, dd.DataFrame)):
+                    continue
+
+                # only set them if not defined in an inner context
+                tables[var_name] = tables.get(var_name, variable)
+
+        return tables
