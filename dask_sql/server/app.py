@@ -6,8 +6,7 @@ import dask.distributed
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 
-import dask_sql
-from dask_sql import Context
+from dask_sql.context import Context
 from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
 
 app = FastAPI()
@@ -220,9 +219,7 @@ def main():  # pragma: no cover
 
 
 def _init_app(
-    app: FastAPI,
-    context: dask_sql.Context = None,
-    client: dask.distributed.Client = None,
+    app: FastAPI, context: Context = None, client: dask.distributed.Client = None,
 ):
     app.c = context or Context()
     app.future_list = {}

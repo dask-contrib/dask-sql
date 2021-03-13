@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 import dask.dataframe as dd
 
-from dask_sql import Context
+from dask_sql.context import Context
 
 
 class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):
