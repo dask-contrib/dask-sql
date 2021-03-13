@@ -102,8 +102,8 @@ setup(
             "scikit-learn<0.24.0",
             "intake>=0.6.0",
             "pre-commit",
-            "black=19.10b0",
-            "isort=5.7.0",
+            "black==19.10b0",
+            "isort==5.7.0",
         ]
     },
     entry_points={
