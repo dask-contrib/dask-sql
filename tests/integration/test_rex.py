@@ -1,9 +1,9 @@
 from datetime import datetime
 
-import pytest
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-import dask.dataframe as dd
+import pytest
 from pandas.testing import assert_frame_equal
 
 

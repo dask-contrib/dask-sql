@@ -3,8 +3,8 @@ import logging
 import dask.dataframe as dd
 
 from dask_sql.java import get_java_class
-from dask_sql.utils import LoggableDataFrame, Pluggable
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import LoggableDataFrame, Pluggable
 
 logger = logging.getLogger(__name__)
 

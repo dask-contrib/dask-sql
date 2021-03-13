@@ -1,14 +1,14 @@
-from typing import Any
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-import pandas as pd
-import numpy as np
 import dask.array as da
 import dask.dataframe as dd
-from datetime import timedelta, datetime, timezone
+import numpy as np
+import pandas as pd
 
-from dask_sql.java import SqlTypeName
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
+from dask_sql.java import SqlTypeName
 
 logger = logging.getLogger(__name__)
 

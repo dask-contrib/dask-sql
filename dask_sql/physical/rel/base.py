@@ -1,10 +1,10 @@
-from typing import List
 import logging
+from typing import List
 
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.mappings import sql_to_python_type, cast_column_type
+from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 logger = logging.getLogger(__name__)
 

@@ -1,24 +1,23 @@
-from dask_sql.mappings import sql_to_python_type
-import operator
-from functools import reduce
-from typing import Any, Union, Callable
-import re
 import logging
+import operator
+import re
+from functools import reduce
+from typing import Any, Callable, Union
+
+import dask.array as da
+import dask.dataframe as dd
+import numpy as np
+import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-import pandas as pd
-import numpy as np
-import dask.dataframe as dd
-import dask.array as da
-import pandas as pd
-
+from dask_sql.datacontainer import DataContainer
+from dask_sql.mappings import sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.utils import LoggableDataFrame, is_frame, is_datetime, convert_to_datetime
-from dask_sql.datacontainer import DataContainer
+from dask_sql.utils import LoggableDataFrame, convert_to_datetime, is_datetime, is_frame
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]

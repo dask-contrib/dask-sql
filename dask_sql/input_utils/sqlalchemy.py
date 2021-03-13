@@ -1,4 +1,5 @@
 from typing import Any
+
 from dask_sql.input_utils.hive import HiveInputPlugin
 
 

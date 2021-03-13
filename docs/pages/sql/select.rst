@@ -155,5 +155,3 @@ the random seed to use.
 ``SYSTEM`` is similar, but acts on partitions (so blocks of data) and is therefore much more
 inaccurate and should only ever be used on really large data samples where ``BERNOULLI`` is not
 fast enough (which is very unlikely).
-
-

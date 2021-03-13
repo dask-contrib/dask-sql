@@ -3,7 +3,7 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-from dask_sql.mappings import python_to_sql_type, sql_to_python_value, similar_type
+from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 
 def test_python_to_sql():

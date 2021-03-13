@@ -1,10 +1,10 @@
-import logging
 import copy
+import logging
 import uuid
 
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org, com, java
+from dask_sql.java import com, java, org
+from dask_sql.physical.rel.base import BaseRelPlugin
 
 logger = logging.getLogger(__name__)
 

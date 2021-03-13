@@ -1,13 +1,12 @@
-from typing import Union
 import logging
+from typing import Union
 
 import dask.dataframe as dd
 import numpy as np
 
-from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
-
+from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rex import RexConverter
 
 logger = logging.getLogger(__name__)
 

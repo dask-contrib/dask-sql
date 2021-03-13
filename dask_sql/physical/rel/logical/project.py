@@ -1,12 +1,12 @@
-from dask_sql.utils import new_temporary_column
 import logging
 from uuid import uuid4
 
-from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
+from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
+from dask_sql.utils import new_temporary_column
 
 logger = logging.getLogger(__name__)
 

@@ -7,11 +7,11 @@ to the jar file in the package resources.
 """
 import logging
 import os
-import pkg_resources
 import platform
 import warnings
 
 import jpype
+import pkg_resources
 
 logger = logging.getLogger(__name__)
 

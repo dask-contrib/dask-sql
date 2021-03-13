@@ -1,7 +1,7 @@
-import numpy as np
-from pandas.testing import assert_frame_equal
 import dask.dataframe as dd
+import numpy as np
 import pytest
+from pandas.testing import assert_frame_equal
 
 
 def test_custom_function(c, df):

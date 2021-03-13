@@ -1,13 +1,14 @@
-from argparse import ArgumentParser
 import logging
 import traceback
+from argparse import ArgumentParser
 
 import dask
-from dask_sql import Context
 import pandas as pd
 from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 from pygments.lexers.sql import SqlLexer
+
+from dask_sql import Context
 
 
 def cmd_loop(

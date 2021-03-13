@@ -1,5 +1,5 @@
-import pandas as pd
 import dask.dataframe as dd
+import pandas as pd
 
 from dask_sql.input_utils.base import BaseInputPlugin
 
