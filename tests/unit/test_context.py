@@ -1,9 +1,9 @@
-import warnings
 import os
+import warnings
 
-import pytest
 import dask.dataframe as dd
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context

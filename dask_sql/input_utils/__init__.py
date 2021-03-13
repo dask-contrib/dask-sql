@@ -1,4 +1,4 @@
-from .convert import InputUtil, InputType
+from .convert import InputType, InputUtil
 from .dask import DaskInputPlugin
 from .hive import HiveInputPlugin
 from .intake import IntakeCatalogInputPlugin

@@ -8,9 +8,11 @@ except ImportError:  # pragma: no cover
         "Can not load the fugue module. If you want to use this integration, you need to install it."
     )
 
-from dask_sql import Context
 from typing import Any, Dict, Optional
+
 import dask.dataframe as dd
+
+from dask_sql.context import Context
 
 
 class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):

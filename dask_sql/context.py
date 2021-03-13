@@ -1,12 +1,15 @@
-from typing import Any, Callable, Dict, List, Tuple, Union
-from collections import namedtuple
+import inspect
 import logging
 import warnings
-import inspect
+from collections import namedtuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
 
+from dask_sql import input_utils
+from dask_sql.datacontainer import DataContainer
+from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.java import (
     DaskAggregateFunction,
     DaskScalarFunction,
@@ -17,12 +20,9 @@ from dask_sql.java import (
     ValidationException,
     get_java_class,
 )
-from dask_sql import input_utils
-from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.mappings import python_to_sql_type
-from dask_sql.physical.rel import RelConverter, logical, custom
+from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.datacontainer import DataContainer
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)

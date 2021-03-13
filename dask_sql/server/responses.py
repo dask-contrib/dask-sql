@@ -1,9 +1,9 @@
-from typing import List
 import uuid
+from typing import List
 
-from fastapi import Request, FastAPI
 import dask.dataframe as dd
 import numpy as np
+from fastapi import FastAPI, Request
 
 from dask_sql.mappings import python_to_sql_type
 

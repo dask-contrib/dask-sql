@@ -2,9 +2,8 @@ import logging
 
 import numpy as np
 
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
-
+from dask_sql.physical.rel.base import BaseRelPlugin
 
 logger = logging.getLogger(__name__)
 

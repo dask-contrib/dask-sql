@@ -1,15 +1,15 @@
+import logging
 import operator
 from collections import defaultdict
 from functools import reduce
 from typing import Any, Callable, Dict, List, Tuple, Union
-import logging
 
-import pandas as pd
 import dask.dataframe as dd
+import pandas as pd
 
-from dask_sql.utils import new_temporary_column
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.utils import new_temporary_column
 
 logger = logging.getLogger(__name__)
 

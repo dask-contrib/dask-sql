@@ -1,9 +1,9 @@
 import shutil
 import tempfile
-import pytest
 import time
 
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql.context import Context

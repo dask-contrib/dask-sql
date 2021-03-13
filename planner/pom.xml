@@ -97,7 +97,7 @@
 				<version>2.1</version>
 				<executions>
 					<execution>
-						<!-- Extract parser grammar template from Apache Calcite and put 
+						<!-- Extract parser grammar template from Apache Calcite and put
 					  	it under ${project.build.directory} where all freemarker templates are. -->
 						<id>unpack-parser-template</id>
 						<phase>initialize</phase>

@@ -143,6 +143,10 @@ To compile the Java classes (at the beginning or after changes), run
 
     python setup.py java
 
+This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
+
+    pre-commit install
+
 ## Testing
 
 You can run the tests (after installation) with

@@ -1,9 +1,9 @@
-import pandas as pd
 import dask.dataframe as dd
+import pandas as pd
 
-from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import python_to_sql_type
+from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import get_table_from_compound_identifier
 
 

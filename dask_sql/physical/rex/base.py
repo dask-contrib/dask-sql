@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Any, Union
 
 import dask.dataframe as dd
 

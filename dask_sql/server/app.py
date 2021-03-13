@@ -1,14 +1,13 @@
+import logging
 from argparse import ArgumentParser
 from uuid import uuid4
-import logging
 
 import dask.distributed
-from fastapi import FastAPI, Request, HTTPException
 import uvicorn
+from fastapi import FastAPI, HTTPException, Request
 
-from dask_sql import Context
-import dask_sql
-from dask_sql.server.responses import DataResults, QueryResults, ErrorResults
+from dask_sql.context import Context
+from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
@@ -220,9 +219,7 @@ def main():  # pragma: no cover
 
 
 def _init_app(
-    app: FastAPI,
-    context: dask_sql.Context = None,
-    client: dask.distributed.Client = None,
+    app: FastAPI, context: Context = None, client: dask.distributed.Client = None,
 ):
     app.c = context or Context()
     app.future_list = {}

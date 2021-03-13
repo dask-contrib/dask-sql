@@ -1,12 +1,12 @@
-from typing import Union, Any
 import logging
+from typing import Any, Union
 
 import dask.dataframe as dd
 
-from dask_sql.java import get_java_class
-from dask_sql.utils import LoggableDataFrame, Pluggable
-from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
+from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.utils import LoggableDataFrame, Pluggable
 
 logger = logging.getLogger(__name__)
 
