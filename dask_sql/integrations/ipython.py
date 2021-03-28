@@ -31,6 +31,7 @@ KEYWORDS = [
     "distinct",
     "exists",
     "from",
+    "group",
     "having",
     "if",
     "in",
