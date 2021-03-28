@@ -12,13 +12,15 @@
 This allows you to query and transform your data frames using
 common SQL operations and also simply scale up the calculation if you need it.
 
-![dask-sql GIF](./.github/animation.gif)
-
+![SQL + Python](./.github/heart.png)
 
 The goal of this project is similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with a tight integration with Python.
 Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
 Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
+
+
+![dask-sql GIF](./.github/animation.gif)
 
 ---
 
@@ -121,7 +123,7 @@ Create a new conda environment and install the development environment:
 
     conda create -n dask-sql --file conda.txt -c conda-forge
 
-It is not recommended to use `pip` instead of `conda`.
+It is not recommended to use `pip` instead of `conda` for the environment setup.
 If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
 Have a look into `conda.txt` for the rest of the development environment.
 
