@@ -10,23 +10,26 @@
 
 `dask-sql` adds a SQL query layer on top of `pandas` and `Dask`.
 This allows you to query and transform your data frames using
-common SQL operations and also simply scale up the calculation if you need it.
+common SQL operations and also easily scale up the calculation if you need it.
 
-![SQL + Python](./.github/heart.png)
-
-The goal of this project is similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with a tight integration with Python.
-Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+<div align="center">
+    <img src="./.github/heart.png" alt="SQL + Python">
+</div>
 
 Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
+The goal of this project is similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with a tight integration into Python.
+Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
-![dask-sql GIF](./.github/animation.gif)
+<div align="center">
+    <img src="./.github/animation.gif" alt="dask-sql GIF">
+</div>
 
 ---
 
 **NOTE**
 
-`dask-sql` is currently under development and does so far not understand all SQL commands.
+`dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
 We are actively looking for feedback, improvements and contributors!
 
 ---
