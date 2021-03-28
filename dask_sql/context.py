@@ -10,6 +10,7 @@ import pandas as pd
 from dask_sql import input_utils
 from dask_sql.datacontainer import DataContainer
 from dask_sql.input_utils import InputType, InputUtil
+from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
     DaskAggregateFunction,
     DaskScalarFunction,
@@ -498,24 +499,7 @@ class Context:
                     SELECT * FROM df
 
         """
-        from IPython.core.magic import register_line_cell_magic
-
-        def sql(line, cell=None):
-            if cell is None:
-                # the magic function was called inline
-                cell = line
-
-            dataframes = {}
-            if auto_include:
-                dataframes = self._get_tables_from_stack()
-
-            return self.sql(cell, return_futures=False, dataframes=dataframes)
-
-        # Register a new magic function
-        magic_func = register_line_cell_magic(sql)
-        magic_func.MAGIC_NO_VAR_EXPAND_ATTR = True
-
-        return magic_func
+        ipython_integration(self, auto_include=auto_include)
 
     def _prepare_schema(self):
         """
