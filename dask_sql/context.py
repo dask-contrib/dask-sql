@@ -440,7 +440,7 @@ class Context:
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
-    def visualize(self, sql: str, filename="mydask.png") -> None:
+    def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
         """Visualize the computation of the given SQL into the png"""
         result = self.sql(sql, return_futures=True)
         (result,) = optimize(result)
