@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
+from dask.base import optimize
 
 from dask_sql import input_utils
 from dask_sql.datacontainer import DataContainer
@@ -438,6 +439,13 @@ class Context:
 
         _, _, rel_string = self._get_ral(sql)
         return rel_string
+
+    def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
+        """Visualize the computation of the given SQL into the png"""
+        result = self.sql(sql, return_futures=True)
+        (result,) = optimize(result)
+
+        result.visualize(filename)
 
     def register_model(self, model_name: str, model: Any, training_columns: List[str]):
         """
