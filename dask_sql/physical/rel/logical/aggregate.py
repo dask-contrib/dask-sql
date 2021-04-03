@@ -195,11 +195,13 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         # to perform the actual aggregation
         # It is very important to start with the non-filtered entry.
         # Otherwise we might loose some entries in the grouped columns
+        df_result = None
         key = None
-        aggregations = collected_aggregations.pop(key)
-        df_result = self._perform_aggregation(
-            df, None, aggregations, additional_column_name, group_columns,
-        )
+        if key in collected_aggregations:
+            aggregations = collected_aggregations.pop(key)
+            df_result = self._perform_aggregation(
+                df, None, aggregations, additional_column_name, group_columns,
+            )
 
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
@@ -208,9 +210,12 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             )
 
             # ... and finally concat the new data with the already present columns
-            df_result = df_result.assign(
-                **{col: agg_result[col] for col in agg_result.columns}
-            )
+            if df_result is None:
+                df_result = agg_result
+            else:
+                df_result = df_result.assign(
+                    **{col: agg_result[col] for col in agg_result.columns}
+                )
 
         return df_result, output_column_order
 
