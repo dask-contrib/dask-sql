@@ -83,8 +83,8 @@ class ParsingException(Exception):
     exception in a nicer way
     """
 
-    JAVA_MSG_REGEX = "^.*?line (?P<from_line>\d+), column (?P<from_col>\d+)"
-    JAVA_MSG_REGEX += "(?: to line (?P<to_line>\d+), column (?P<to_col>\d+))?"
+    JAVA_MSG_REGEX = r"^.*?line (?P<from_line>\d+), column (?P<from_col>\d+)"
+    JAVA_MSG_REGEX += r"(?: to line (?P<to_line>\d+), column (?P<to_col>\d+))?"
 
     def __init__(self, sql, validation_exception_string):
         """
