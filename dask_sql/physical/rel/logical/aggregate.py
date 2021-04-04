@@ -306,6 +306,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
             logger.debug(f"Filtered by {filter_column} before aggregation.")
 
+        group_columns = [tmp_df[group_column] for group_column in group_columns]
         group_columns_and_nulls = get_groupby_with_nulls_cols(
             tmp_df, group_columns, additional_column_name
         )
