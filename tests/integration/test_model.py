@@ -1,7 +1,6 @@
-from mock import MagicMock
-
 import pytest
 from dask.datasets import timeseries
+from mock import MagicMock
 
 
 def check_trained_model(c):

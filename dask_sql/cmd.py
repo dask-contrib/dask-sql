@@ -1,20 +1,19 @@
-from argparse import ArgumentParser
 import logging
 import traceback
+from argparse import ArgumentParser
 
-import dask
-from dask_sql import Context
 import pandas as pd
+from dask.datasets import timeseries
+from dask.distributed import Client
 from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 from pygments.lexers.sql import SqlLexer
 
+from dask_sql.context import Context
+
 
 def cmd_loop(
-    context: Context = None,
-    client: dask.distributed.Client = None,
-    startup=False,
-    log_level=None,
+    context: Context = None, client: Client = None, startup=False, log_level=None,
 ):  # pragma: no cover
     """
     Run a REPL for answering SQL queries using ``dask-sql``.
@@ -50,7 +49,7 @@ def cmd_loop(
 
     logging.basicConfig(level=log_level)
 
-    client = client or dask.distributed.Client()
+    client = client or Client()
     context = context or Context()
 
     if startup:
@@ -108,11 +107,11 @@ def main():  # pragma: no cover
 
     client = None
     if args.scheduler_address:
-        client = dask.distributed.Client(args.scheduler_address)
+        client = Client(args.scheduler_address)
 
     context = Context()
     if args.load_test_data:
-        df = dask.datasets.timeseries(freq="1d").reset_index(drop=False)
+        df = timeseries(freq="1d").reset_index(drop=False)
         context.create_table("timeseries", df.persist())
 
     cmd_loop(

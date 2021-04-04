@@ -80,3 +80,9 @@ You can run the tests (after installation) with
 .. code-block:: bash
 
     pytest tests
+
+This repository uses pre-commit hooks. To install them, call
+
+.. code-block:: bash
+
+    pre-commit install

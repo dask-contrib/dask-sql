@@ -8,34 +8,36 @@
 [![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab)
 
-`dask-sql` adds a SQL query layer on top of `dask`.
-This allows you to query and transform your dask dataframes using
-common SQL operations.
+`dask-sql` adds a SQL query layer on top of `pandas` and `Dask`.
+This allows you to query and transform your data frames using
+common SQL operations and also easily scale up the calculation if you need it.
 
-The queries will run as normal dask operations, which can be distributed within your dask cluster.
-The goal of this project is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...).
-Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+<div align="center">
+    <img src="./.github/heart.png" alt="SQL + Python">
+</div>
 
 Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
-You can try out `dask-sql` quickly by using the docker command
+The goal of this project is similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with a tight integration into Python.
+Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
 
-    docker run --rm -it -p 8080:8080 nbraun/dask-sql
-
-See information in the SQL server at the end of this page.
+<div align="center">
+    <img src="./.github/animation.gif" alt="dask-sql GIF">
+</div>
 
 ---
 
 **NOTE**
 
-`dask-sql` is currently under development and does so far not understand all SQL commands.
+`dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
 We are actively looking for feedback, improvements and contributors!
 
 ---
 
 ## Example
 
-We use the timeseries random data from `dask.datasets` as an example:
+We use the timeseries random data from `dask.datasets` as an example.
+Any pandas or Dask data frame will work.
 
 ```python
 from dask_sql import Context
@@ -43,9 +45,6 @@ from dask.datasets import timeseries
 
 # Create a context to hold the registered tables
 c = Context()
-
-# If you have a cluster of dask workers,
-# initialize it now
 
 # Load the data and register it in the context
 # This will give the table a name
@@ -74,14 +73,10 @@ result = c.sql("""
     ON
         lhs.name = rhs.max_name AND
         lhs.x = rhs.max_x
-""")
+""", return_futures=False)
 
-# Show the result...
-print(result.compute())
-
-# ... or use it for any other dask calculation
-# (just an example, could also be done via SQL)
-print(result.x.mean().compute())
+# Show the result
+print(result)
 ```
 
 You can also run the CLI `dask-sql` for testing out SQL commands quickly:
@@ -131,7 +126,7 @@ Create a new conda environment and install the development environment:
 
     conda create -n dask-sql --file conda.txt -c conda-forge
 
-It is not recommended to use `pip` instead of `conda`.
+It is not recommended to use `pip` instead of `conda` for the environment setup.
 If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
 Have a look into `conda.txt` for the rest of the development environment.
 
@@ -142,6 +137,10 @@ After that, you can install the package in development mode
 To compile the Java classes (at the beginning or after changes), run
 
     python setup.py java
+
+This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
+
+    pre-commit install
 
 ## Testing
 

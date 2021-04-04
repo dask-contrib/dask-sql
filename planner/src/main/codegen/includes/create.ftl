@@ -74,4 +74,3 @@ SqlDrop SqlDropTable(final Span s, boolean replace) :
         return new SqlDropTable(s.end(this), ifExists, tableName);
     }
 }
-

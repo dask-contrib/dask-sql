@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
 import operator
 from datetime import datetime
+from unittest.mock import MagicMock
 
 import dask.dataframe as dd
 import numpy as np

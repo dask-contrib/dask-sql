@@ -1,8 +1,8 @@
+import ast
+import logging
 import os
 from functools import partial
 from typing import Any, Union
-import ast
-import logging
 
 import dask.dataframe as dd
 
@@ -16,8 +16,8 @@ try:
 except ImportError:
     sqlalchemy = None
 
-from dask_sql.mappings import sql_to_python_type, cast_column_type
 from dask_sql.input_utils.base import BaseInputPlugin
+from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 logger = logging.Logger(__name__)
 

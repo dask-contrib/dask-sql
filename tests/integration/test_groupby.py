@@ -95,6 +95,18 @@ def test_group_by_filtered2(c):
     )
     assert_frame_equal(df, expected_df)
 
+    df = c.sql(
+        """
+    SELECT
+        SUM(b) FILTER (WHERE user_id = 2) AS "S1"
+    FROM user_table_1
+    """
+    )
+    df = df.compute()
+
+    expected_df = pd.DataFrame({"S1": [4]})
+    assert_frame_equal(df, expected_df)
+
 
 def test_group_by_case(c):
     df = c.sql(

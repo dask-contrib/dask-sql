@@ -1,16 +1,16 @@
+import logging
 import operator
 from collections import defaultdict
 from functools import reduce
 from typing import Any, Callable, Dict, List, Tuple, Union
-import logging
 
-import pandas as pd
 import dask.dataframe as dd
+import pandas as pd
 
-from dask_sql.utils import new_temporary_column
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
+from dask_sql.utils import new_temporary_column
 
 logger = logging.getLogger(__name__)
 
@@ -196,11 +196,13 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         # to perform the actual aggregation
         # It is very important to start with the non-filtered entry.
         # Otherwise we might loose some entries in the grouped columns
+        df_result = None
         key = None
-        aggregations = collected_aggregations.pop(key)
-        df_result = self._perform_aggregation(
-            df, None, aggregations, additional_column_name, group_columns,
-        )
+        if key in collected_aggregations:
+            aggregations = collected_aggregations.pop(key)
+            df_result = self._perform_aggregation(
+                df, None, aggregations, additional_column_name, group_columns,
+            )
 
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
@@ -209,9 +211,12 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             )
 
             # ... and finally concat the new data with the already present columns
-            df_result = df_result.assign(
-                **{col: agg_result[col] for col in agg_result.columns}
-            )
+            if df_result is None:
+                df_result = agg_result
+            else:
+                df_result = df_result.assign(
+                    **{col: agg_result[col] for col in agg_result.columns}
+                )
 
         return df_result, output_column_order
 

@@ -1,12 +1,12 @@
-from dask_sql.utils import Pluggable
 import logging
 from typing import Union
 
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.input_utils.base import BaseInputPlugin
+from dask_sql.utils import Pluggable
 
 logger = logging.Logger(__name__)
 

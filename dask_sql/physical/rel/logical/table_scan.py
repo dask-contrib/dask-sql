@@ -1,7 +1,7 @@
 from typing import Dict
 
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
+from dask_sql.physical.rel.base import BaseRelPlugin
 
 
 class LogicalTableScanPlugin(BaseRelPlugin):

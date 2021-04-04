@@ -1,12 +1,15 @@
+from typing import List
+
 import dask
 import dask.dataframe as dd
 
-from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
-from dask_sql.physical.utils.sort import apply_sort
+from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.utils.map import map_on_partition_index
+from dask_sql.physical.utils.sort import apply_sort
+from dask_sql.utils import new_temporary_column
 
 
 class LogicalSortPlugin(BaseRelPlugin):

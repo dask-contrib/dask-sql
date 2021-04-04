@@ -1,19 +1,18 @@
-from typing import Callable, List
 import importlib
-from typing import Any, Dict
-from collections import defaultdict
-import re
-from datetime import datetime
 import logging
+import re
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, Callable, Dict, List
 from uuid import uuid4
 
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-from dask_sql.mappings import sql_to_python_value
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import org, java, com
+from dask_sql.java import com, java, org
+from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
 
@@ -274,4 +273,3 @@ def new_temporary_column(df: dd.DataFrame) -> str:
             return col_name
         else:  # pragma: no cover
             continue
-

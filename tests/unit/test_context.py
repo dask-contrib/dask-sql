@@ -1,9 +1,9 @@
-import warnings
 import os
+import warnings
 
-import pytest
 import dask.dataframe as dd
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
@@ -58,6 +58,19 @@ def test_explain():
         == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}"
     )
 
+    c = Context()
+
+    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
+
+    sql_string = c.explain(
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}
+    )
+
+    assert (
+        sql_string
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, other_df]]){os.linesep}"
+    )
+
 
 def test_sql():
     c = Context()
@@ -67,9 +80,15 @@ def test_sql():
 
     result = c.sql("SELECT * FROM df")
     assert isinstance(result, dd.DataFrame)
+    assert_frame_equal(result.compute(), data_frame.compute())
 
     result = c.sql("SELECT * FROM df", return_futures=False)
     assert isinstance(result, pd.DataFrame)
+    assert_frame_equal(result, data_frame.compute())
+
+    result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
+    assert isinstance(result, dd.DataFrame)
+    assert_frame_equal(result.compute(), data_frame.compute())
 
 
 def test_input_types(temporary_data_file):
@@ -106,3 +125,27 @@ def test_input_types(temporary_data_file):
 
     with pytest.raises(ValueError):
         c.create_table("df", strangeThing)
+
+
+def test_tables_from_stack():
+    c = Context()
+
+    assert not c._get_tables_from_stack()
+
+    df = pd.DataFrame()
+
+    assert "df" in c._get_tables_from_stack()
+
+    def f():
+        df2 = pd.DataFrame()
+
+        assert "df" in c._get_tables_from_stack()
+        assert "df2" in c._get_tables_from_stack()
+
+    f()
+
+    def g():
+        df = pd.DataFrame({"a": [1]})
+
+        assert "df" in c._get_tables_from_stack()
+        assert c._get_tables_from_stack()["df"].columns == ["a"]

@@ -1,10 +1,9 @@
-from dask_sql.context import Context
+import dask.dataframe as dd
+import pandas as pd
 import pytest
-
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-import pandas as pd
-import dask.dataframe as dd
+from dask_sql.context import Context
 
 
 def test_sort(c, user_table_1, df):

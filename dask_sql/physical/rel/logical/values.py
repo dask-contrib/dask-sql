@@ -1,9 +1,9 @@
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.physical.rex import RexConverter
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.physical.rex import RexConverter
 
 
 class LogicalValuesPlugin(BaseRelPlugin):
