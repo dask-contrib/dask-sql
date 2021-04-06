@@ -53,11 +53,6 @@ class SumOperation(OverOperation):
         return partitioned_group[value_col].sum()
 
 
-class SumOperation(OverOperation):
-    def call(self, partitioned_group, value_col):
-        return partitioned_group[value_col].sum()
-
-
 class AvgOperation(OverOperation):
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].mean()
@@ -97,7 +92,7 @@ class RexOverPlugin(BaseRexPlugin):
     OPERATION_MAPPING = {
         "row_number": RowNumberOperation(),
         "$sum0": ExplodedOperation(SumOperation()),
-        "avg": ExplodedOperation(AvgOperation()),
+        # Is replaced by a sum and count by calcite: "avg": ExplodedOperation(AvgOperation()),
         "count": ExplodedOperation(CountOperation()),
         "max": ExplodedOperation(MaxOperation()),
         "min": ExplodedOperation(MinOperation()),
