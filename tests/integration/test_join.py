@@ -183,4 +183,4 @@ def test_join_literal(c):
 
     df_expected = pd.DataFrame({"user_id": [], "b": [], "user_id0": [], "c": []})
 
-    assert_frame_equal(df, df_expected, check_dtype=False)
+    assert_frame_equal(df.reset_index(), df_expected.reset_index(), check_dtype=False)
