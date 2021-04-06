@@ -53,11 +53,6 @@ class SumOperation(OverOperation):
         return partitioned_group[value_col].sum()
 
 
-class AvgOperation(OverOperation):
-    def call(self, partitioned_group, value_col):
-        return partitioned_group[value_col].mean()
-
-
 class CountOperation(OverOperation):
     def call(self, partitioned_group, value_col=None):
         if value_col is None:
