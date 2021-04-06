@@ -23,7 +23,6 @@ including all typical ingredients (such as ``WHERE``, ``GROUP BY``, ``ORDER BY``
 
 .. note::
 
-    ``WINDOW`` is currently not supported.
     If you would like to help, please see [our issue tracker](https://github.com/nils-braun/dask-sql/issues/43).
 
 Example:
@@ -136,6 +135,23 @@ Example:
 
     It is also possible to implement custom aggregations. See :ref:`custom`.
 
+Windowing/Over
+~~~~~~~~~~~~~~
+
+``ROW_NUMBER``, ``SUM``, ``AVG``, ``COUNT``, ``MAX``, ``MIN``, ``SINGLE_VALUE``, ``FIRST_VALUE``, ``LAST_VALUE``
+
+Example:
+
+.. code-block:: sql
+
+    SELECT
+        y,
+        SUM(x) OVER (PARTITION BY z ORDER BY a NULLS FIRST)
+    FROM "data"
+
+.. note::
+
+    Again, it is also possible to implement custom windowing functions.
 
 Table Functions
 ~~~~~~~~~~~~~~~

@@ -199,7 +199,7 @@ Limitatons
 
 ``dask-sql`` is still in early development, therefore exist some limitations:
 
-Not all operations and aggregations are implemented already, most prominently: ``WINDOW`` is not implemented so far.
+Not all operations and aggregations are implemented already.
 
 .. note::
 
