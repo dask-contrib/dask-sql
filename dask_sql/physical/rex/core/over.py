@@ -43,6 +43,44 @@ class FirstValueOperation(OverOperation):
         return partitioned_group[value_col].iloc[0]
 
 
+class LastValueOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].iloc[-1]
+
+
+class SumOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].sum()
+
+
+class SumOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].sum()
+
+
+class AvgOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].mean()
+
+
+class CountOperation(OverOperation):
+    def call(self, partitioned_group, value_col=None):
+        if value_col is None:
+            return partitioned_group.iloc[:, 0].count()
+        else:
+            return partitioned_group[value_col].count()
+
+
+class MaxOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].max()
+
+
+class MinOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].min()
+
+
 class RexOverPlugin(BaseRexPlugin):
     """
     A RexOver is an expression, which calculates a given function over the dataframe
@@ -58,27 +96,14 @@ class RexOverPlugin(BaseRexPlugin):
 
     OPERATION_MAPPING = {
         "row_number": RowNumberOperation(),
-        # "sum": ExplodedOperation(SumOperation()),
-        # "any_value": ExplodedOperation(AnyValueOperation()),
-        # "avg": ExplodedOperation(AnyValueOperation()),
-        # "bit_and": ExplodedOperation(AnyValueOperation()),
-        # "bit_or": ExplodedOperation(AnyValueOperation()),
-        # "bit_xor": ExplodedOperation(AnyValueOperation()),
-        # "count": ExplodedOperation(AnyValueOperation()),
-        # "every": ExplodedOperation(AnyValueOperation()),
-        # "max": ExplodedOperation(AnyValueOperation()),
-        # "min": ExplodedOperation(AnyValueOperation()),
-        # "single_value": ExplodedOperation(AnyValueOperation()),
-        # "rank": RankOperation(),
-        # "dense_rank": DenseRankOperation(),
-        # "percent_rank": PercentRankOperation(),
-        # "cume_dist": CumeDistOperation(),
-        # "ntile": NtileOperation(),
-        # "lag": LagOperation(),
-        # "lead": LeadOperation(),
+        "$sum0": ExplodedOperation(SumOperation()),
+        "avg": ExplodedOperation(AvgOperation()),
+        "count": ExplodedOperation(CountOperation()),
+        "max": ExplodedOperation(MaxOperation()),
+        "min": ExplodedOperation(MinOperation()),
+        "single_value": ExplodedOperation(FirstValueOperation()),
         "first_value": ExplodedOperation(FirstValueOperation()),
-        # "last_value": LastValueOperation(),
-        # "nth_value": NthValueOperation(),
+        "last_value": ExplodedOperation(LastValueOperation()),
     }
 
     def convert(
@@ -120,7 +145,7 @@ class RexOverPlugin(BaseRexPlugin):
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             try:
                 operation = context.functions[operator_name]
             except KeyError:  # pragma: no cover
@@ -284,7 +309,6 @@ class RexOverPlugin(BaseRexPlugin):
             lambda x: x.set_index(index_col, drop=True).sort_values(sort_col),
             meta=df._meta.set_index(index_col),
         )
-        # df = df.set_index(index_col)
         df.divisions = known_divisions
 
         return df
