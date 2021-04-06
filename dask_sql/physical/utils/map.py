@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Any, Callable
 
 import dask
 import dask.dataframe as dd
@@ -13,4 +13,3 @@ def map_on_partition_index(
             for partition_number, partition in enumerate(df.partitions)
         ]
     )
-
