@@ -766,19 +766,20 @@ def test_window_row_number_partition_by():
 #                 a=a,
 #             )
 
-# TODO: Windowing not implemented so far
-# def test_nested_query():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT * FROM (
-#         SELECT *,
-#             ROW_NUMBER() OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS r
-#         FROM a)
-#         WHERE r=1
-#         """,
-#         a=a,
-#     )
+
+def test_nested_query():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT * FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY c ORDER BY b NULLS FIRST, a ASC NULLS LAST) AS r
+        FROM a)
+        WHERE r=1
+        ORDER BY a NULLS LAST, b NULLS LAST, c NULLS LAST
+        """,
+        a=a,
+    )
 
 
 def test_union():
