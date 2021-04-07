@@ -2,7 +2,9 @@ from typing import Any, Union
 
 import dask.dataframe as dd
 
+import dask_sql
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import org
 
 
 class BaseRexPlugin:
@@ -18,7 +20,7 @@ class BaseRexPlugin:
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rex: org.apache.calcite.rex.RexNode,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:

@@ -378,61 +378,61 @@ def test_agg_min_max():
     )
 
 
-# TODO: Except not implemented so far
-# def test_window_row_number():
-#     a = make_rand_df(100, a=int, b=(float, 50))
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS FIRST) AS a1,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS LAST) AS a2,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b ASC NULLS FIRST) AS a3,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b ASC NULLS LAST) AS a4,
-#             ROW_NUMBER() OVER (PARTITION BY a ORDER BY a,b DESC) AS a5
-#         FROM a
-#         """,
-#         a=a,
-#     )
+def test_window_row_number():
+    a = make_rand_df(10, a=int, b=(float, 5))
+    eq_sqlite(
+        """
+        SELECT *,
+            ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS FIRST) AS a1,
+            ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS LAST) AS a2,
+            ROW_NUMBER() OVER (ORDER BY a ASC, b ASC NULLS FIRST) AS a3,
+            ROW_NUMBER() OVER (ORDER BY a ASC, b ASC NULLS LAST) AS a4,
+            ROW_NUMBER() OVER (PARTITION BY a ORDER BY a,b DESC NULLS FIRST) AS a5
+        FROM a
+        ORDER BY a, b NULLS FIRST
+        """,
+        a=a,
+    )
 
-#     a = make_rand_df(
-#         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=float
-#     )
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS FIRST, e) AS a1,
-#             ROW_NUMBER() OVER (ORDER BY a ASC, b DESC NULLS LAST, e) AS a2,
-#             ROW_NUMBER() OVER (PARTITION BY a ORDER BY a,b DESC, e) AS a3,
-#             ROW_NUMBER() OVER (PARTITION BY a,c ORDER BY a,b DESC, e) AS a4
-#         FROM a
-#         """,
-#         a=a,
-#     )
+    a = make_rand_df(100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=float)
+    eq_sqlite(
+        """
+        SELECT *,
+            ROW_NUMBER() OVER (ORDER BY a ASC NULLS LAST, b DESC NULLS FIRST, e) AS a1,
+            ROW_NUMBER() OVER (ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, e) AS a2,
+            ROW_NUMBER() OVER (PARTITION BY a ORDER BY a NULLS FIRST, b DESC NULLS LAST, e) AS a3,
+            ROW_NUMBER() OVER (PARTITION BY a,c ORDER BY a NULLS FIRST, b DESC NULLS LAST, e) AS a4
+        FROM a
+        ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST, d NULLS FIRST, e
+        """,
+        a=a,
+    )
 
-# TODO: Except not implemented so far
-# def test_window_row_number_partition_by():
-#     a = make_rand_df(100, a=int, b=(float, 50))
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             ROW_NUMBER() OVER (PARTITION BY a ORDER BY a,b DESC) AS a5
-#         FROM a
-#         """,
-#         a=a,
-#     )
 
-#     a = make_rand_df(
-#         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=float
-#     )
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             ROW_NUMBER() OVER (PARTITION BY a ORDER BY a,b DESC, e) AS a3,
-#             ROW_NUMBER() OVER (PARTITION BY a,c ORDER BY a,b DESC, e) AS a4
-#         FROM a
-#         """,
-#         a=a,
-#     )
+def test_window_row_number_partition_by():
+    a = make_rand_df(100, a=int, b=(float, 50))
+    eq_sqlite(
+        """
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY a ORDER BY a, b DESC NULLS FIRST) AS a5
+        FROM a
+        ORDER BY a, b NULLS FIRST, a5
+        """,
+        a=a,
+    )
+
+    a = make_rand_df(100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=float)
+    eq_sqlite(
+        """
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY a ORDER BY a NULLS FIRST, b DESC NULLS FIRST, e) AS a3,
+            ROW_NUMBER() OVER (PARTITION BY a,c ORDER BY a NULLS FIRST, b DESC NULLS FIRST, e) AS a4
+        FROM a
+        ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST, d NULLS FIRST, e
+        """,
+        a=a,
+    )
+
 
 # TODO: Except not implemented so far
 # def test_window_ranks():
@@ -766,19 +766,20 @@ def test_agg_min_max():
 #                 a=a,
 #             )
 
-# TODO: Windowing not implemented so far
-# def test_nested_query():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT * FROM (
-#         SELECT *,
-#             ROW_NUMBER() OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS r
-#         FROM a)
-#         WHERE r=1
-#         """,
-#         a=a,
-#     )
+
+def test_nested_query():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT * FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY c ORDER BY b NULLS FIRST, a ASC NULLS LAST) AS r
+        FROM a)
+        WHERE r=1
+        ORDER BY a NULLS LAST, b NULLS LAST, c NULLS LAST
+        """,
+        a=a,
+    )
 
 
 def test_union():

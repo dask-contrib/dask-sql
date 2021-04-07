@@ -9,6 +9,7 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
 
 logger = logging.getLogger(__name__)
@@ -305,24 +306,10 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
             logger.debug(f"Filtered by {filter_column} before aggregation.")
 
-        # SQL and dask are treating null columns a bit different:
-        # SQL will put them to the front, dask will just ignore them
-        # Therefore we use the same trick as fugue does:
-        # we will group by both the NaN and the real column value
-        group_columns_and_nulls = []
-        for group_column in group_columns:
-            # the ~ makes NaN come first
-            is_null_column = ~(tmp_df[group_column].isnull())
-            non_nan_group_column = tmp_df[group_column].fillna(0)
-
-            group_columns_and_nulls += [is_null_column, non_nan_group_column]
-
-        if not group_columns_and_nulls:
-            # This can happen in statements like
-            # SELECT SUM(x) FROM data
-            # without any groupby statement
-            group_columns_and_nulls = [additional_column_name]
-
+        group_columns = [tmp_df[group_column] for group_column in group_columns]
+        group_columns_and_nulls = get_groupby_with_nulls_cols(
+            tmp_df, group_columns, additional_column_name
+        )
         grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
 
         # Convert into the correct format for dask
