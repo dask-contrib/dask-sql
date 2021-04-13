@@ -1,62 +1,57 @@
 dask-sql
 ========
 
-A SQL Engine for dask
+``dask-sql`` is a distributed SQL query engine in Python.
+It allows you to query and transform your data using a mixture of
+common SQL operations and Python code and also scale up the calculation easily
+if you need it.
 
-``dask-sql`` adds a SQL query layer on top of dask.
-This allows you to query and transform your dataframes using common SQL operations and enjoy the fast and scaling processing of ``dask``.
+* **Combine the power of Python and SQL**: load your data with Python, transform it with SQL, enhance it with Python and query it with SQL - or the other way round.
+  With ``dask-sql`` you can mix the well known Python dataframe API of `pandas` and ``Dask`` with common SQL operations, to
+  process your data in exactly the way that is easiest for you.
+* **Infinite Scaling**: using the power of the great ``Dask`` ecosystem, your computations can scale as you need it - from your laptop to your super cluster - without changing any line of SQL code. From k8s to cloud deployments, from batch systems to YARN - if ``Dask`` `supports it <https://docs.dask.org/en/latest/setup.html>`_, so will ``dask-sql``.
+* **Your data - your queries**: Use Python user-defined functions (UDFs) in SQL without any performance drawback and extend your SQL queries with the large number of Python libraries, e.g. machine learning, different complicated input formats, complex statistics.
+* **Easy to install and maintain**: ``dask-sql`` is just a pip/conda install away (or a docker run if you prefer). No need for complicated cluster setups - ``dask-sql`` will run out of the box on your machine and can be easily connected to your computing cluster.
+* **Use SQL from wherever you like**: ``dask-sql`` integrates with your jupyter notebook, your normal Python module or can be used as a standalone SQL server from any BI tool. It even integrates natively with `Apache Hue <https://gethue.com/>`_.
+
 
 Example
 -------
 
-We use the timeseries random data from dask.datasets as an example,
-but any other data (from disk, S3, API, hdfs) can be used.
+For this example, we use some data loaded from disk and query them with a SQL command from our python code.
+Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a large amount of formats (csv, parquet, json,...) and locations (s3, hdfs, gcs,...).
 
 .. code-block:: python
 
+   import dask.dataframe as dd
    from dask_sql import Context
-   from dask.datasets import timeseries
 
    # Create a context to hold the registered tables
    c = Context()
 
-   # If you have a cluster of dask workers,
-   # initialize it now
-
    # Load the data and register it in the context
-   # This will give the table a name
-   df = timeseries()
-   c.create_table("timeseries", df)
+   # This will give the table a name, that we can use in queries
+   df = dd.read_csv("...")
+   c.create_table("my_data", df)
 
-   # Now execute an SQL query. The result is a dask dataframe
-   # The query looks for the id with the highest x for each name
-   # (this is just random test data, but you could think of looking
-   # for outliers in the sensor data)
+   # Now execute a SQL query. The result is again dask dataframe.
    result = c.sql("""
       SELECT
-         lhs.name,
-         lhs.id,
-         lhs.x
+         my_data.name,
+         SUM(my_data.x)
       FROM
-         timeseries AS lhs
-      JOIN
-         (
-            SELECT
-               name AS max_name,
-               MAX(x) AS max_x
-            FROM timeseries
-            GROUP BY name
-         ) AS rhs
-      ON
-         lhs.name = rhs.max_name AND
-         lhs.x = rhs.max_x
+         my_data
+      GROUP BY
+         my_data.name
    """)
+
+   # Show the result
+   print(result)
 
    # Show the result...
    print(result.compute())
 
    # ... or use it for any other dask calculation
-   # (just an example, could also be done via SQL)
    print(result.x.mean().compute())
 
 The API of ``dask-sql`` is very similar to the one from `blazingsql <http://blazingsql.com/>`_,

@@ -1,5 +1,3 @@
-# dask-sql
-
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nils-braun/dask-sql/Test?logo=github)](https://github.com/nils-braun/dask-sql/actions)
@@ -8,18 +6,24 @@
 [![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab)
 
-`dask-sql` adds a SQL query layer on top of `pandas` and `Dask`.
-This allows you to query and transform your data frames using
-common SQL operations and also easily scale up the calculation if you need it.
-
 <div align="center">
     <img src="./.github/heart.png" alt="SQL + Python">
 </div>
 
-Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
+`dask-sql` is a distributed SQL query engine in Python.
+It allows you to query and transform your data using a mixture of
+common SQL operations and Python code and also scale up the calculation easily
+if you need it.
 
-The goal of this project is similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with a tight integration into Python.
-Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+* **Combine the power of Python and SQL**: load your data with Python, transform it with SQL, enhance it with Python and query it with SQL - or the other way round.
+  With `dask-sql` you can mix the well known Python dataframe API of `pandas` and `Dask` with common SQL operations, to
+  process your data in exactly the way that is easiest for you.
+* **Infinite Scaling**: using the power of the great `Dask` ecosystem, your computations can scale as you need it - from your laptop to your super cluster - without changing any line of SQL code. From k8s to cloud deployments, from batch systems to YARN - if `Dask` [supports it](https://docs.dask.org/en/latest/setup.html), so will `dask-sql`.
+* **Your data - your queries**: Use Python user-defined functions (UDFs) in SQL without any performance drawback and extend your SQL queries with the large number of Python libraries, e.g. machine learning, different complicated input formats, complex statistics.
+* **Easy to install and maintain**: `dask-sql` is just a pip/conda install away (or a docker run if you prefer). No need for complicated cluster setups - `dask-sql` will run out of the box on your machine and can be easily connected to your computing cluster.
+* **Use SQL from wherever you like**: `dask-sql` integrates with your jupyter notebook, your normal Python module or can be used as a standalone SQL server from any BI tool. It even integrates natively with [Apache Hue](https://gethue.com/).
+
+Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
 <div align="center">
     <img src="./.github/animation.gif" alt="dask-sql GIF">
@@ -27,63 +31,48 @@ Some ideas for this project are coming from the very great [blazingSQL](https://
 
 ---
 
-**NOTE**
-
-`dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
-We are actively looking for feedback, improvements and contributors!
-
----
-
 ## Example
 
-We use the timeseries random data from `dask.datasets` as an example.
-Any pandas or Dask data frame will work.
+For this example, we use some data loaded from disk and query them with a SQL command from our python code.
+Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a large amount of formats (csv, parquet, json,...) and locations (s3, hdfs, gcs,...).
 
 ```python
+import dask.dataframe as dd
 from dask_sql import Context
-from dask.datasets import timeseries
 
 # Create a context to hold the registered tables
 c = Context()
 
 # Load the data and register it in the context
-# This will give the table a name
-df = timeseries()
-c.create_table("timeseries", df)
+# This will give the table a name, that we can use in queries
+df = dd.read_csv("...")
+c.create_table("my_data", df)
 
-# Now execute an SQL query. The result is a dask dataframe
-# The query looks for the id with the highest x for each name
-# (this is just random test data, but you could think of looking
-# for outliers in the sensor data)
+# Now execute a SQL query. The result is again dask dataframe.
 result = c.sql("""
     SELECT
-        lhs.name,
-        lhs.id,
-        lhs.x
+        my_data.name,
+        SUM(my_data.x)
     FROM
-        timeseries AS lhs
-    JOIN
-        (
-            SELECT
-                name AS max_name,
-                MAX(x) AS max_x
-            FROM timeseries
-            GROUP BY name
-        ) AS rhs
-    ON
-        lhs.name = rhs.max_name AND
-        lhs.x = rhs.max_x
+        my_data
+    GROUP BY
+        my_data.name
 """, return_futures=False)
 
 # Show the result
 print(result)
 ```
 
-You can also run the CLI `dask-sql` for testing out SQL commands quickly:
+## Quickstart
 
-    dask-sql --load-test-data --startup
+Have a look into the [documentation](https://dask-sql.readthedocs.io/en/latest/) or start the example notebook on [binder](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab).
 
-    (dask-sql) > SELECT * FROM timeseries LIMIT 10;
+
+> `dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
+We are actively looking for feedback, improvements and contributors!
+
+If you would like to utilize GPUs for your SQL queries, have a look into the [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+
 
 ## Installation
 
@@ -148,16 +137,6 @@ You can run the tests (after installation) with
 
     pytest tests
 
-## How does it work?
-
-At the core, `dask-sql` does two things:
-
-- translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
-- convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
-
-For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
-After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
-
 ## SQL Server
 
 `dask-sql` comes with a small test implementation for a SQL server.
@@ -189,3 +168,21 @@ Now you can fire simple SQL queries (as no data is loaded by default):
     (1 row)
 
 You can find more information in the [documentation](https://dask-sql.readthedocs.io/en/latest/pages/server.html).
+
+## CLI
+
+You can also run the CLI `dask-sql` for testing out SQL commands quickly:
+
+    dask-sql --load-test-data --startup
+
+    (dask-sql) > SELECT * FROM timeseries LIMIT 10;
+
+## How does it work?
+
+At the core, `dask-sql` does two things:
+
+- translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
+- convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
+
+For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
+After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
