@@ -1,15 +1,48 @@
 import logging
 import traceback
 from argparse import ArgumentParser
+from functools import partial
 
 import pandas as pd
 from dask.datasets import timeseries
 from dask.distributed import Client
-from prompt_toolkit import PromptSession
-from prompt_toolkit.lexers import PygmentsLexer
 from pygments.lexers.sql import SqlLexer
 
+try:
+    # prompt_toolkit version >= 2
+    from prompt_toolkit.lexers import PygmentsLexer
+except ImportError:  # pragma: no cover
+    # prompt_toolkit version < 2
+    from prompt_toolkit.layout.lexers import PygmentsLexer
+
 from dask_sql.context import Context
+
+
+class CompatiblePromptSession:
+    """
+    Session object wrapper for the prompt_toolkit module
+
+    In the version jump from 1 to 2, the prompt_toolkit
+    introduced a PromptSession object.
+    Some environments however (e.g. google collab)
+    still rely on an older prompt_toolkit version,
+    so we try to support both versions
+    with this wrapper object.
+    All it does is export a `prompt` function.
+    """
+
+    def __init__(self, lexer) -> None:  # pragma: no cover
+        try:
+            # Version >= 2.0.1: we can use the session object
+            from prompt_toolkit import PromptSession
+
+            session = PromptSession(lexer=lexer)
+            self.prompt = session.prompt
+        except ImportError:
+            # Version < 2.0: there is no session object
+            from prompt_toolkit.shortcuts import prompt
+
+            self.prompt = partial(prompt, lexer=lexer)
 
 
 def cmd_loop(
@@ -55,7 +88,7 @@ def cmd_loop(
     if startup:
         context.sql("SELECT 1 + 1").compute()
 
-    session = PromptSession(lexer=PygmentsLexer(SqlLexer))
+    session = CompatiblePromptSession(lexer=PygmentsLexer(SqlLexer))
 
     while True:
         try:
