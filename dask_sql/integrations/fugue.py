@@ -1,6 +1,7 @@
 try:
     import fugue
     import fugue_dask
+    from fugue import WorkflowDataFrame, register_execution_engine
     from fugue_sql import FugueSQLWorkflow
     from triad.utils.convert import get_caller_global_local_vars
 except ImportError:  # pragma: no cover
@@ -13,6 +14,10 @@ from typing import Any, Dict, Optional
 import dask.dataframe as dd
 
 from dask_sql.context import Context
+
+register_execution_engine(
+    "dask", lambda conf: DaskSQLExecutionEngine(conf), on_dup="overwrite"
+)
 
 
 class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):
@@ -57,8 +62,12 @@ class DaskSQLExecutionEngine(fugue_dask.DaskExecutionEngine):
         super().__init__(*args, **kwargs)
         self._default_sql_engine = DaskSQLEngine(self)
 
+    @property
+    def default_sql_engine(self) -> fugue.execution.execution_engine.SQLEngine:
+        return self._default_sql_engine
 
-def fsql(
+
+def fsql_dask(
     sql: str,
     ctx: Optional[Context] = None,
     register: bool = False,
@@ -88,7 +97,7 @@ def fsql(
             # Create a context with tables df1, df2
             c = Context()
             ...
-            result = fsql('''
+            result = fsql_dask('''
             j = SELECT df1.*, df2.x
                 FROM df1 INNER JOIN df2 ON df1.key = df2.key
                 PERSIST  # using persist because j will be used twice
@@ -108,7 +117,11 @@ def fsql(
     result = dag._sql(sql, _global, _local, **dfs)
     dag.run(DaskSQLExecutionEngine(conf=fugue_conf))
 
-    result_dfs = {k: v.result.native for k, v in result.items()}
+    result_dfs = {
+        k: v.result.native
+        for k, v in result.items()
+        if isinstance(v, WorkflowDataFrame)
+    }
     if register and ctx is not None:
         for k, v in result_dfs.items():
             ctx.create_table(k, v)
