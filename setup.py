@@ -104,7 +104,8 @@ setup(
             "pre-commit",
             "black==19.10b0",
             "isort==5.7.0",
-        ]
+        ],
+        "fugue": ["fugue[sql]>=0.5.3"],
     },
     entry_points={
         "console_scripts": [
