@@ -224,6 +224,7 @@ class Context:
         name: str,
         parameters: List[Tuple[str, type]],
         return_type: type,
+        replace: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -267,6 +268,7 @@ class Context:
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
+            replace (:obj:`bool`): Do not raise an error if the function is already present
 
         See also:
             :func:`register_aggregation`
@@ -277,7 +279,7 @@ class Context:
         )
 
         name = name.lower()
-        if name in self.functions:
+        if not replace and name in self.functions:
             if self.functions[name] != f:
                 raise ValueError(
                     "Registering different functions with the same name is not allowed"
@@ -290,6 +292,7 @@ class Context:
         name: str,
         parameters: List[Tuple[str, type]],
         return_type: type,
+        replace: bool = False,
     ):
         """
         Register a custom aggregation with the given name.
@@ -333,6 +336,7 @@ class Context:
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
+            replace (:obj:`bool`): Do not raise an error if the function is already present
 
         See also:
             :func:`register_function`
@@ -343,7 +347,7 @@ class Context:
         )
 
         name = name.lower()
-        if name in self.functions:
+        if not replace and name in self.functions:
             if self.functions[name] != f:
                 raise ValueError(
                     "Registering different functions with the same name is not allowed"

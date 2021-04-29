@@ -69,6 +69,9 @@ def test_reregistration(c):
     with pytest.raises(ValueError):
         c.register_function(f, "f", [("x", np.float64)], np.float64)
 
+    # only if we replace it
+    c.register_function(f, "f", [("x", np.float64)], np.float64, replace=True)
+
     fagg = dd.Aggregation("f", lambda x: x.sum(), lambda x: x.sum())
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
     c.register_aggregation(fagg, "fagg", [("x", np.int64)], np.int64)
@@ -77,3 +80,5 @@ def test_reregistration(c):
 
     with pytest.raises(ValueError):
         c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
+
+    c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64, replace=True)
