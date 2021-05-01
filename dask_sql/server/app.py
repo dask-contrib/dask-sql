@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from argparse import ArgumentParser
 from uuid import uuid4
@@ -5,6 +6,8 @@ from uuid import uuid4
 import dask.distributed
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+from nest_asyncio import apply
+from uvicorn import Config, Server
 
 from dask_sql.context import Context
 from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
@@ -98,6 +101,7 @@ def run_server(
     port: int = 8080,
     startup=False,
     log_level=None,
+    blocking: bool = True,
 ):  # pragma: no cover
     """
     Run a HTTP server for answering SQL queries using ``dask-sql``.
@@ -122,6 +126,8 @@ def run_server(
         port (:obj:`int`): The port to listen on (defaults to 8080)
         startup (:obj:`bool`): Whether to wait until Apache Calcite was loaded
         log_level: (:obj:`str`): The log level of the server and dask-sql
+        blocking: (:obj:`bool`): If running in an environment with an event loop (e.g. a jupyter notebook),
+                do not block. The server can be stopped with `context.stop_server()` afterwards.
 
     Example:
         It is possible to run an SQL server by using the CLI script ``dask-sql-server``
@@ -151,13 +157,48 @@ def run_server(
 
         Of course, it is also possible to call the usual ``CREATE TABLE``
         commands.
+
+        If in a jupyter notebook, you should run the following code
+
+        .. code-block:: python
+
+            from dask_sql import Context
+
+            c = Context()
+            c.run_server(blocking=False)
+
+            ...
+
+            c.stop_server()
+
+        Note:
+            When running in a jupyter notebook without blocking,
+            it is not possible to access the SQL server from within the
+            notebook, e.g. using sqlalchemy.
+            Doing so will deadlock infinitely.
+
     """
     _init_app(app, context=context, client=client)
 
     if startup:
         app.c.sql("SELECT 1 + 1").compute()
 
-    uvicorn.run(app, host=host, port=port, log_level=log_level)
+    config = Config(app, host=host, port=port, log_level=log_level)
+    server = Server(config=config)
+
+    loop = asyncio.get_event_loop()
+    if blocking:
+        if loop and loop.is_running():
+            apply(loop=loop)
+
+        server.run()
+    else:
+        if not loop or not loop.is_running():
+            raise AttributeError(
+                "blocking=True needs a running event loop (e.g. in a jupyter notebook)"
+            )
+        loop.create_task(server.serve())
+        context.sql_server = server
 
 
 def main():  # pragma: no cover
@@ -223,4 +264,9 @@ def _init_app(
 ):
     app.c = context or Context()
     app.future_list = {}
-    app.client = client or dask.distributed.Client()
+
+    try:
+        client = client or dask.distributed.Client.current()
+    except ValueError:
+        client = dask.distributed.Client()
+    app.client = client
