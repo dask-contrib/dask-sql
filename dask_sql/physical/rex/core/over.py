@@ -1,13 +1,16 @@
 import logging
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
+from pandas.core.window.indexers import BaseIndexer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.physical.rex.convert import RexConverter
+from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.map import map_on_partition_index
 from dask_sql.physical.utils.sort import sort_partition_func
@@ -22,30 +25,14 @@ class OverOperation:
         return self.call(partitioned_group, *args)
 
 
-class ExplodedOperation(OverOperation):
-    def __init__(self, f):
-        self.unexploded_f = f
-
-    def call(self, partitioned_group, *args):
-        result = self.unexploded_f(partitioned_group, *args)
-        return pd.Series(
-            [result] * len(partitioned_group), index=partitioned_group.index
-        )
-
-
-class RowNumberOperation(OverOperation):
-    def call(self, partitioned_group):
-        return range(1, len(partitioned_group) + 1)
-
-
 class FirstValueOperation(OverOperation):
     def call(self, partitioned_group, value_col):
-        return partitioned_group[value_col].iloc[0]
+        return partitioned_group[value_col].apply(lambda x: x.iloc[0])
 
 
 class LastValueOperation(OverOperation):
     def call(self, partitioned_group, value_col):
-        return partitioned_group[value_col].iloc[-1]
+        return partitioned_group[value_col].apply(lambda x: x.iloc[-1])
 
 
 class SumOperation(OverOperation):
@@ -56,9 +43,9 @@ class SumOperation(OverOperation):
 class CountOperation(OverOperation):
     def call(self, partitioned_group, value_col=None):
         if value_col is None:
-            return partitioned_group.iloc[:, 0].count()
+            return partitioned_group.count().iloc[:, 0].fillna(0)
         else:
-            return partitioned_group[value_col].count()
+            return partitioned_group[value_col].count().fillna(0)
 
 
 class MaxOperation(OverOperation):
@@ -69,6 +56,64 @@ class MaxOperation(OverOperation):
 class MinOperation(OverOperation):
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].min()
+
+
+class BoundDescription:
+    """
+    Small helper class to wrap a org.apache.calcite.rex.RexWindowBounds
+    Java object, as we can not ship it to to the dask workers
+    """
+
+    def __init__(self, java_window: org.apache.calcite.rex.RexWindowBounds):
+        self.is_unbounded = java_window.isUnbounded()
+        self.is_preceding = java_window.isPreceding()
+        self.is_following = java_window.isFollowing()
+        self.is_current_row = java_window.isCurrentRow()
+
+        offset = java_window.getOffset()
+        if offset:
+            self.offset = RexLiteralPlugin().convert(offset, None, None)
+        else:
+            self.offset = None
+
+
+class Indexer(BaseIndexer):
+    """
+    Window description used for complex windows with arbitrary start and end.
+    This class is directly taken from the fugue project.
+    """
+
+    def __init__(self, start: int, end: int):
+        super().__init__(self, start=start, end=end)
+
+    def get_window_bounds(
+        self,
+        num_values: int = 0,
+        min_periods: Optional[int] = None,
+        center: Optional[bool] = None,
+        closed: Optional[str] = None,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if self.start is None:
+            start = np.zeros(num_values, dtype=np.int64)
+        else:
+            start = np.arange(self.start, self.start + num_values, dtype=np.int64)
+            if self.start < 0:
+                start[: -self.start] = 0
+            elif self.start > 0:
+                start[-self.start :] = num_values
+        if self.end is None:
+            end = np.full(num_values, num_values, dtype=np.int64)
+        else:
+            end = np.arange(self.end + 1, self.end + 1 + num_values, dtype=np.int64)
+            if self.end > 0:
+                end[-self.end :] = num_values
+            elif self.end < 0:
+                end[: -self.end] = 0
+            else:  # pragma: no cover
+                raise AssertionError(
+                    "This case should have been handled before! Please report this bug"
+                )
+        return start, end
 
 
 class RexOverPlugin(BaseRexPlugin):
@@ -85,15 +130,16 @@ class RexOverPlugin(BaseRexPlugin):
     class_name = "org.apache.calcite.rex.RexOver"
 
     OPERATION_MAPPING = {
-        "row_number": RowNumberOperation(),
-        "$sum0": ExplodedOperation(SumOperation()),
+        "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
+        "$sum0": SumOperation(),
+        "sum": SumOperation(),
         # Is replaced by a sum and count by calcite: "avg": ExplodedOperation(AvgOperation()),
-        "count": ExplodedOperation(CountOperation()),
-        "max": ExplodedOperation(MaxOperation()),
-        "min": ExplodedOperation(MinOperation()),
-        "single_value": ExplodedOperation(FirstValueOperation()),
-        "first_value": ExplodedOperation(FirstValueOperation()),
-        "last_value": ExplodedOperation(LastValueOperation()),
+        "count": CountOperation(),
+        "max": MaxOperation(),
+        "min": MinOperation(),
+        "single_value": FirstValueOperation(),
+        "first_value": FirstValueOperation(),
+        "last_value": LastValueOperation(),
     }
 
     def convert(
@@ -103,7 +149,6 @@ class RexOverPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> Any:
         window = rex.getWindow()
-        self._assert_simple_window(window)
 
         df = dc.df
         cc = dc.column_container
@@ -143,6 +188,7 @@ class RexOverPlugin(BaseRexPlugin):
 
         logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
 
+        # TODO: can be optimized by re-using already present columns
         operands = [
             RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
         ]
@@ -151,6 +197,7 @@ class RexOverPlugin(BaseRexPlugin):
             df,
             operation,
             operands,
+            window,
             group_columns,
             sort_columns,
             sort_ascending,
@@ -163,20 +210,6 @@ class RexOverPlugin(BaseRexPlugin):
         )
 
         return df[new_column_name]
-
-    def _assert_simple_window(self, window: org.apache.calcite.rex.RexWindow):
-        """Make sure we can actually handle this window type"""
-        lower_bound = window.getLowerBound()
-        RexWindowBounds = org.apache.calcite.rex.RexWindowBounds
-        assert (
-            lower_bound == RexWindowBounds.UNBOUNDED_PRECEDING
-        ), f"Lower window bound type {lower_bound} is not implemented"
-
-        upper_bound = window.getUpperBound()
-        assert upper_bound in [
-            RexWindowBounds.CURRENT_ROW,
-            RexWindowBounds.UNBOUNDED_FOLLOWING,
-        ], f"Lower window bound type {upper_bound} is not implemented"
 
     def _preserve_index_and_sort(
         self, df: dd.DataFrame
@@ -248,6 +281,7 @@ class RexOverPlugin(BaseRexPlugin):
         df: dd.DataFrame,
         f: Callable,
         operands: List[dd.Series],
+        window: org.apache.calcite.rex.RexWindow,
         group_columns: List[str],
         sort_columns: List[str],
         sort_ascending: List[bool],
@@ -262,13 +296,48 @@ class RexOverPlugin(BaseRexPlugin):
         # which is evaluated on the workers
         temporary_operand_columns = temporary_operand_columns.keys()
 
+        # Extract the window definition
+        lower_bound = BoundDescription(window.getLowerBound())
+        upper_bound = BoundDescription(window.getUpperBound())
+
         def map_on_each_group(partitioned_group):
+            # Apply sorting
             if sort_columns:
                 partitioned_group = sort_partition_func(
                     partitioned_group, sort_columns, sort_ascending, sort_null_first
                 )
 
-            column_result = f(partitioned_group, *temporary_operand_columns)
+            if f is None:
+                # This is the row_number operator.
+                # We do not need to do any windowing
+                column_result = range(1, len(partitioned_group) + 1)
+            else:
+                # In all other cases, apply the windowing operation
+                if lower_bound.is_unbounded and upper_bound.is_current_row:
+                    windowed_group = partitioned_group.expanding(min_periods=0)
+                elif lower_bound.is_preceding and upper_bound.is_current_row:
+                    windowed_group = partitioned_group.rolling(
+                        window=lower_bound.offset + 1, min_periods=0,
+                    )
+                else:
+                    lower_offset = (
+                        lower_bound.offset if not lower_bound.is_current_row else 0
+                    )
+                    if lower_bound.is_preceding and lower_offset is not None:
+                        lower_offset *= -1
+                    upper_offset = (
+                        upper_bound.offset if not upper_bound.is_current_row else 0
+                    )
+                    if upper_bound.is_preceding and upper_offset is not None:
+                        upper_offset *= -1
+
+                    indexer = Indexer(lower_offset, upper_offset)
+                    windowed_group = partitioned_group.rolling(
+                        window=indexer, min_periods=0
+                    )
+
+                column_result = f(windowed_group, *temporary_operand_columns)
+
             partitioned_group = partitioned_group.assign(
                 **{new_column_name: column_result}
             )
@@ -277,6 +346,7 @@ class RexOverPlugin(BaseRexPlugin):
 
         new_column_name = new_temporary_column(df)
 
+        # Currently, pandas will always return a float for windowing operations
         meta = df._meta_nonempty.assign(**{new_column_name: 0.0})
         df = df.groupby(group_columns).apply(map_on_each_group, meta=meta)
 
