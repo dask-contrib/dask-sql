@@ -88,7 +88,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     class_name = "org.apache.calcite.rel.logical.LogicalAggregate"
 
     AGGREGATION_MAPPING = {
-        "$sum0": AggregationSpecification("sum", AggregationOnPandas("sum")),
+        "sum": AggregationSpecification("sum", AggregationOnPandas("sum")),
         "any_value": AggregationSpecification(
             dd.Aggregation(
                 "any_value",

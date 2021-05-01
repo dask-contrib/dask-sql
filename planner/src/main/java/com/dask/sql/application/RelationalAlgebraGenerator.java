@@ -4,11 +4,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import com.dask.sql.schema.DaskSchema;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.config.CalciteConnectionProperty;
@@ -194,8 +197,9 @@ public class RelationalAlgebraGenerator {
 	}
 
 	private HepPlanner createHepPlanner(final FrameworkConfig config) {
-		final HepProgram program = new HepProgramBuilder()
-				.addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.JOIN.toRule())
+		final HepProgramBuilder programBuilder = new HepProgramBuilder();
+
+		programBuilder.addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.JOIN.toRule())
 				.addRuleInstance(FilterAggregateTransposeRule.Config.DEFAULT.toRule())
 				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.Config.DEFAULT.toRule())
 				.addRuleInstance(FilterJoinRule.FilterIntoJoinRule.Config.DEFAULT.toRule())
@@ -210,11 +214,19 @@ public class RelationalAlgebraGenerator {
 				// this rule might make sense, but turns a < 1 into a SEARCH expression
 				// which is currently not supported by dask-sql
 				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
-				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
-				// TODO: remove AVG
-				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
+				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule());
 
-		return new HepPlanner(program, config.getContext());
+		// Custom configuration to remove the AVG and SUM functions, which are best
+		// handled by Dask itself
+		// TODO: not really nice Java code...
+		final Set<SqlKind> functionsToRemove = new HashSet<SqlKind>(
+				AggregateReduceFunctionsRule.Config.DEFAULT_FUNCTIONS_TO_REDUCE);
+		functionsToRemove.remove(SqlKind.AVG);
+		functionsToRemove.remove(SqlKind.SUM);
+		programBuilder.addRuleInstance(
+				AggregateReduceFunctionsRule.Config.DEFAULT.withFunctionsToReduce(functionsToRemove).toRule());
+
+		return new HepPlanner(programBuilder.build(), config.getContext());
 	}
 
 }
