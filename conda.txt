@@ -16,6 +16,7 @@ mock>=4.0.3
 sphinx>=3.2.1
 tzlocal>=2.1
 fastapi>=0.61.1
+nest-asyncio>=1.4.3
 uvicorn>=0.11.3
 pyarrow>=0.15.1
 prompt_toolkit>=3.0.8
