@@ -25,6 +25,12 @@ or by running these lines of code
 
     run_server()
 
+or directly with a created context
+
+.. code-block:: python
+
+    c.run_server()
+
 or by using the created docker image
 
 .. code-block:: bash
@@ -123,3 +129,36 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
 The ``dask-sql`` SQL server was successfully tested with `Apache Hue <https://gethue.com/>`_, `Apache Superset <https://superset.apache.org/>`_
 and `Metabase <https://www.metabase.com/>`_.
+
+
+Running from a jupyter notebook
+-------------------------------
+
+If you quickly want to bridge the gap between your jupyter notebook and a BI tool,
+you can run a temporary SQL server from your jupyter notebook.
+
+.. code-block:: python
+
+    # Create a Context and work with it
+    from dask_sql import Context
+    c = Context()
+
+    ...
+
+    # Later create a temporary server
+    c.run_server(blocking=False)
+
+    # Continue working
+
+This allows you to access the same context with all its registered tables
+both in the jupyter notebook as well as by connecting to the SQL server
+started on port 8080 (e.g. with your BI tool).
+
+Once you are done with the SQL server, you can close it with
+
+.. code-block:: python
+
+    c.stop_server()
+
+Please note that this feature should not be used for productive SQL servers,
+but just for quick analyses via an external application.

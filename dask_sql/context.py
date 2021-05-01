@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 import warnings
@@ -7,6 +8,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 import dask.dataframe as dd
 import pandas as pd
 from dask.base import optimize
+from dask.distributed import Client
 
 from dask_sql import input_utils
 from dask_sql.datacontainer import DataContainer
@@ -80,6 +82,8 @@ class Context:
         self.models = {}
         # Name of the root schema (not changable so far)
         self.schema_name = "schema"
+        # A started SQL server (useful for jupyter notebooks)
+        self.sql_server = None
 
         # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.LogicalAggregatePlugin, replace=False)
@@ -513,6 +517,48 @@ class Context:
 
         """
         ipython_integration(self, auto_include=auto_include)
+
+    def run_server(
+        self,
+        client: Client = None,
+        host: str = "0.0.0.0",
+        port: int = 8080,
+        log_level=None,
+        blocking: bool = True,
+    ):  # pragma: no cover
+        """
+        Run a HTTP server for answering SQL queries using ``dask-sql``.
+
+        See :ref:`server` for more information.
+
+        Args:
+            client (:obj:`dask.distributed.Client`): If set, use this dask client instead of a new one.
+            host (:obj:`str`): The host interface to listen on (defaults to all interfaces)
+            port (:obj:`int`): The port to listen on (defaults to 8080)
+            log_level: (:obj:`str`): The log level of the server and dask-sql
+        """
+        from dask_sql.server.app import run_server
+
+        self.stop_server()
+        self.server = run_server(
+            context=self,
+            client=client,
+            host=host,
+            port=port,
+            log_level=log_level,
+            blocking=blocking,
+        )
+
+    def stop_server(self):  # pragma: no cover
+        """
+        Stop a SQL server started by ``run_server`.
+        """
+        if not self.sql_server is None:
+            loop = asyncio.get_event_loop()
+            assert loop
+            loop.create_task(self.sql_server.shutdown())
+
+        self.sql_server = None
 
     def _prepare_schema(self):
         """
