@@ -1,11 +1,14 @@
 import importlib
 import logging
 import re
+import sys
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
 from uuid import uuid4
 
+import cloudpickle
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -273,3 +276,42 @@ def new_temporary_column(df: dd.DataFrame) -> str:
             return col_name
         else:  # pragma: no cover
             continue
+
+
+def make_pickable_without_dask_sql(f):
+    """
+    Helper function turning f into another function which can be deserialized without dask_sql
+
+    When transporting functions from the client to the dask-workers,
+    the are normally pickled. During this process, everything which is "importable"
+    (e.g. references to library function calls or classes) are just replaced by references,
+    to keep the pickled object small. However, in the case of dask-sql we do not assume
+    that the workers also have dask-sql installed, so any usage to dask-sql
+    can not be replaced by a pure reference, but by the actual content of the function/class
+    etc. To reuse as much as possible from the cloudpickle module, we do a very nasty
+    trick here: we remove the dask-sql modules temporarily from the sys.modules,
+    to make it look to cloudpickle as if those modules are not importable.
+    """
+
+    @contextmanager
+    def remove_dask_sql_from_modules():
+        copy_modules = sys.modules.copy()
+        reduced_modules = {
+            key: value
+            for key, value in sys.modules.items()
+            if not key.startswith("dask_sql.")
+        }
+        sys.modules = reduced_modules
+        yield
+        sys.modules = copy_modules
+
+    with remove_dask_sql_from_modules():
+        pickled_f = cloudpickle.dumps(f)
+
+    def wrapped_f(*args, **kwargs):
+        import cloudpickle
+
+        f = cloudpickle.loads(pickled_f)
+        return f(*args, **kwargs)
+
+    return wrapped_f

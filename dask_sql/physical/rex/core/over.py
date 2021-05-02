@@ -1,4 +1,5 @@
 import logging
+from collections import namedtuple
 from typing import Any, Callable, List, Optional, Tuple
 
 import dask.dataframe as dd
@@ -14,7 +15,11 @@ from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.map import map_on_partition_index
 from dask_sql.physical.utils.sort import sort_partition_func
-from dask_sql.utils import LoggableDataFrame, new_temporary_column
+from dask_sql.utils import (
+    LoggableDataFrame,
+    make_pickable_without_dask_sql,
+    new_temporary_column,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,23 +63,36 @@ class MinOperation(OverOperation):
         return partitioned_group[value_col].min()
 
 
-class BoundDescription:
+class BoundDescription(
+    namedtuple(
+        "BoundDescription",
+        ["is_unbounded", "is_preceding", "is_following", "is_current_row", "offset"],
+    )
+):
     """
     Small helper class to wrap a org.apache.calcite.rex.RexWindowBounds
     Java object, as we can not ship it to to the dask workers
     """
 
-    def __init__(self, java_window: org.apache.calcite.rex.RexWindowBounds):
-        self.is_unbounded = java_window.isUnbounded()
-        self.is_preceding = java_window.isPreceding()
-        self.is_following = java_window.isFollowing()
-        self.is_current_row = java_window.isCurrentRow()
+    pass
 
-        offset = java_window.getOffset()
-        if offset:
-            self.offset = RexLiteralPlugin().convert(offset, None, None)
-        else:
-            self.offset = None
+
+def to_bound_description(
+    java_window: org.apache.calcite.rex.RexWindowBounds,
+) -> BoundDescription:
+    offset = java_window.getOffset()
+    if offset:
+        offset = int(RexLiteralPlugin().convert(offset, None, None))
+    else:
+        offset = None
+
+    return BoundDescription(
+        is_unbounded=bool(java_window.isUnbounded()),
+        is_preceding=bool(java_window.isPreceding()),
+        is_following=bool(java_window.isFollowing()),
+        is_current_row=bool(java_window.isCurrentRow()),
+        offset=offset,
+    )
 
 
 class Indexer(BaseIndexer):
@@ -297,9 +315,12 @@ class RexOverPlugin(BaseRexPlugin):
         temporary_operand_columns = temporary_operand_columns.keys()
 
         # Extract the window definition
-        lower_bound = BoundDescription(window.getLowerBound())
-        upper_bound = BoundDescription(window.getUpperBound())
+        lower_bound = to_bound_description(window.getLowerBound())
+        upper_bound = to_bound_description(window.getUpperBound())
 
+        new_column_name = new_temporary_column(df)
+
+        @make_pickable_without_dask_sql
         def map_on_each_group(partitioned_group):
             # Apply sorting
             if sort_columns:
@@ -348,10 +369,9 @@ class RexOverPlugin(BaseRexPlugin):
 
             return partitioned_group
 
-        new_column_name = new_temporary_column(df)
-
         # Currently, pandas will always return a float for windowing operations
         meta = df._meta_nonempty.assign(**{new_column_name: 0.0})
+
         df = df.groupby(group_columns).apply(map_on_each_group, meta=meta)
 
         return df, new_column_name
