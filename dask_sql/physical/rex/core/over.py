@@ -313,9 +313,13 @@ class RexOverPlugin(BaseRexPlugin):
                 column_result = range(1, len(partitioned_group) + 1)
             else:
                 # In all other cases, apply the windowing operation
-                if lower_bound.is_unbounded and upper_bound.is_current_row:
+                if lower_bound.is_unbounded and (
+                    upper_bound.is_current_row or upper_bound.offset == 0
+                ):
                     windowed_group = partitioned_group.expanding(min_periods=0)
-                elif lower_bound.is_preceding and upper_bound.is_current_row:
+                elif lower_bound.is_preceding and (
+                    upper_bound.is_current_row or upper_bound.offset == 0
+                ):
                     windowed_group = partitioned_group.rolling(
                         window=lower_bound.offset + 1, min_periods=0,
                     )
