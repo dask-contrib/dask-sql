@@ -6,6 +6,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, List
+from unittest.mock import patch
 from uuid import uuid4
 
 import cloudpickle
@@ -289,23 +290,30 @@ def make_pickable_without_dask_sql(f):
     that the workers also have dask-sql installed, so any usage to dask-sql
     can not be replaced by a pure reference, but by the actual content of the function/class
     etc. To reuse as much as possible from the cloudpickle module, we do a very nasty
-    trick here: we remove the dask-sql modules temporarily from the sys.modules,
+    trick here: we replace the logic in the cloudpickle module to find out the origin module
     to make it look to cloudpickle as if those modules are not importable.
     """
 
-    @contextmanager
-    def remove_dask_sql_from_modules():
-        copy_modules = sys.modules.copy()
-        reduced_modules = {
-            key: value
-            for key, value in sys.modules.items()
-            if not key.startswith("dask_sql.")
-        }
-        sys.modules = reduced_modules
-        yield
-        sys.modules = copy_modules
+    class WhichModuleReplacement:
+        """Temporary replacement for the _which_module function"""
 
-    with remove_dask_sql_from_modules():
+        def __init__(self, spec):
+            """Store the original function"""
+            self._old_which_module = spec
+
+        def __call__(self, obj, name):
+            """Ask the original _which_module function for the module and return None, if it is the dask_sql one"""
+            module_name = self._old_which_module(obj, name)
+            module_name_root = module_name.split(".", 1)[0]
+            if module_name_root == "dask_sql":
+                return None
+            return module_name
+
+    with patch(
+        "cloudpickle.cloudpickle._whichmodule",
+        spec=True,
+        new_callable=WhichModuleReplacement,
+    ):
         pickled_f = cloudpickle.dumps(f)
 
     def wrapped_f(*args, **kwargs):
