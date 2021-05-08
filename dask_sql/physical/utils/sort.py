@@ -35,12 +35,6 @@ def apply_sort(
 
 
 def sort_partition_func(partition, sort_columns, sort_ascending, sort_null_first):
-    # We are going to add additional columns here
-    # That is not something we would like to do on the
-    # original data. I hope that this does not have
-    # a huge performance impact
-    partition = partition.copy()
-
     # pandas does not allow to sort by NaN first/last
     # differently for different columns. Therefore
     # we split again by NaN
@@ -65,6 +59,8 @@ def sort_partition_func(partition, sort_columns, sort_ascending, sort_null_first
         tmp_ascending += [asc]
 
     partition = partition.sort_values(tmp_columns, ascending=tmp_ascending)
+    for tmp_col in tmp_columns:
+        del partition[tmp_col]
     return partition[original_columns]
 
 
