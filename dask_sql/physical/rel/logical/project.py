@@ -5,7 +5,7 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
+from dask_sql.physical.rex.base import ScalarValue
 from dask_sql.utils import new_temporary_column
 
 logger = logging.getLogger(__name__)
@@ -26,45 +26,59 @@ class LogicalProjectPlugin(BaseRelPlugin):
         # Get the input of the previous step
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        df = dc.df
-        cc = dc.column_container
-
         # Collect all (new) columns
         named_projects = rel.getNamedProjects()
 
         column_names = []
-        new_columns = {}
-        new_mappings = {}
+        mappings = {}
+
+        # side-note: there is a trade-off involved here.
+        # If the result is not a scalar, we add the
+        # column directly within the plugin, therefore
+        # changing the dataframe (and container). We do this
+        # to allow plugins to change more than that, e.g.
+        # to reorder the rows if needed (and more optimal).
+        # That makes OVER much more performant, but also
+        # comes with the tradeoff that columns are now added
+        # sequentially, not all at once. If this is a problem
+        # needs to be studied (as optimization might kick in).
         for expr, key in named_projects:
             key = str(key)
             column_names.append(key)
 
-            # shortcut: if we have a column already, there is no need to re-assign it again
-            # this is only the case if the expr is a RexInputRef
-            if isinstance(expr, org.apache.calcite.rex.RexInputRef):
-                index = expr.getIndex()
-                backend_column_name = cc.get_backend_by_frontend_index(index)
-                logger.debug(
-                    f"Not re-adding the same column {key} (but just referencing it)"
-                )
-                new_mappings[key] = backend_column_name
+            # Let the rex converter to the real magic
+            # we only do some book-keeping here
+            logger.debug(f"Adding a new column {key} out of {expr}")
+            new_column, dc = RexConverter.convert(expr, dc, context=context)
+
+            if isinstance(new_column, ScalarValue):
+                # This is a rare case where we actually want to turn a
+                # scalar value into a full column, so we do
+                # this manually here (and not in the corresponding plugin)
+                df = dc.df
+                cc = dc.column_container
+
+                backend_column_name = new_temporary_column(df)
+                df = df.assign(**{backend_column_name: new_column.get()})
+
+                # Make sure to use the newest df in the next iteration
+                dc = DataContainer(df, cc)
             else:
-                random_name = new_temporary_column(df)
-                new_columns[random_name] = RexConverter.convert(
-                    expr, dc, context=context
-                )
-                logger.debug(f"Adding a new column {key} out of {expr}")
-                new_mappings[key] = random_name
+                # The column is already stored in the dataframe, so
+                # just store the column name.
+                # Important: do not dereference the column here,
+                # as the dataframe might still change (in future iterations)
+                backend_column_name = new_column._column_name
 
-        # Actually add the new columns
-        if new_columns:
-            df = df.assign(**new_columns)
+            mappings[key] = backend_column_name
 
-        # and the new mappings
-        for key, backend_column_name in new_mappings.items():
-            cc = cc.add(key, backend_column_name)
-
-        # Make sure the order is correct
+        # Make sure the order is correct and name the newly added
+        # columns correctly
+        df = dc.df
+        cc = dc.column_container
+        for frontend, backend in mappings.items():
+            # Note: We can not just do a rename, as we might have doubled columns
+            cc = cc.add(frontend, backend)
         cc = cc.limit_to(column_names)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())

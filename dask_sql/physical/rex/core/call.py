@@ -2,7 +2,7 @@ import logging
 import operator
 import re
 from functools import reduce
-from typing import Any, Callable, Union
+from typing import Any, Callable, Tuple, Union
 
 import dask.array as da
 import dask.dataframe as dd
@@ -16,8 +16,19 @@ from dask.utils import random_state_data
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_type
 from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.utils import LoggableDataFrame, convert_to_datetime, is_datetime, is_frame
+from dask_sql.physical.rex.base import (
+    BaseRexPlugin,
+    ColumnReference,
+    OutputColumn,
+    ScalarValue,
+)
+from dask_sql.utils import (
+    LoggableDataFrame,
+    convert_to_datetime,
+    is_datetime,
+    is_frame,
+    new_temporary_column,
+)
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -623,6 +634,9 @@ class RexCallPlugin(BaseRexPlugin):
     Typically, a RexCall has inputs (which can be RexNodes again)
     and calls a function on these inputs.
     The inputs can either be a column or a scalar value.
+    A column is automatically added to the dataframe with a temporary
+    name and then returned (as a reference to this name).
+    A scalar is returned as it is.
     """
 
     class_name = "org.apache.calcite.rex.RexCall"
@@ -710,11 +724,16 @@ class RexCallPlugin(BaseRexPlugin):
         rex: "org.apache.calcite.rex.RexNode",
         dc: DataContainer,
         context: "dask_sql.Context",
-    ) -> SeriesOrScalar:
+    ) -> Tuple[OutputColumn, DataContainer]:
         # Prepare the operands by turning the RexNodes into python expressions
-        operands = [
-            RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
-        ]
+        operands = []
+        for o in rex.getOperands():
+            operand, dc = RexConverter.convert(o, dc, context=context)
+
+            # Important, do not "get" the actual value here already,
+            # as other operands might change the dc
+            # Just store a reference
+            operands.append(operand)
 
         # Now use the operator name in the mapping
         operator_name = str(rex.getOperator().getName())
@@ -739,6 +758,21 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = rex
 
-        return operation(*operands, **kwargs)
+        # Finally, resolve the operand references and calculate the result
+        operands = [operand.get(dc) for operand in operands]
+        result = operation(*operands, **kwargs)
+
+        if is_frame(result):
+            # Add the result_column as a new temporary column
+            df = dc.df
+            cc = dc.column_container
+
+            column_name = new_temporary_column(df)
+            df = df.assign(**{column_name: result})
+
+            dc = DataContainer(df, cc)
+            return ColumnReference(column_name), dc
+        else:
+            return ScalarValue(result), dc
 
         # TODO: We have information on the typing here - we should use it

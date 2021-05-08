@@ -42,15 +42,16 @@ class LogicalFilterPlugin(BaseRelPlugin):
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
-        df = dc.df
-        cc = dc.column_container
-
         # Every logic is handled in the RexConverter
         # we just need to apply it here
         condition = rel.getCondition()
-        df_condition = RexConverter.convert(condition, dc, context=context)
+        df_condition, dc = RexConverter.convert(condition, dc, context=context)
+
+        df_condition = df_condition.get(dc)
+        df = dc.df
         df = filter_or_scalar(df, df_condition)
 
+        cc = dc.column_container
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to convert again
         return DataContainer(df, cc)
