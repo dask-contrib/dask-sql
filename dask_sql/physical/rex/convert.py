@@ -1,10 +1,16 @@
 import logging
-from typing import Tuple
+from typing import List, Tuple
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import get_java_class
-from dask_sql.physical.rex.base import BaseRexPlugin, OutputColumn
-from dask_sql.utils import LoggableDataFrame, Pluggable
+from dask_sql.physical.rex.base import (
+    BaseRexPlugin,
+    ColumnReference,
+    OutputColumn,
+    ScalarValue,
+    SeriesOrScalar,
+)
+from dask_sql.utils import LoggableDataFrame, Pluggable, new_temporary_column
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +84,9 @@ class RexConverter(Pluggable):
             # operations changing dc are done
             yield from [r.get(dc) for r in results]
 
+        Best is to use the shortcut function "convert_and_get_list"
+        in this class.
+
         """
         class_name = get_java_class(rex)
 
@@ -97,3 +106,70 @@ class RexConverter(Pluggable):
             f"Processed REX {rex} into {LoggableDataFrame(column)} of {LoggableDataFrame(dc)}"
         )
         return column, dc
+
+    @classmethod
+    def convert_and_get_list(
+        cls,
+        operands: List["org.apache.calcite.rex.RexNode"],
+        dc: DataContainer,
+        context: "dask_sql.Context",
+    ) -> Tuple[SeriesOrScalar, DataContainer]:
+        """
+        Convert a list of RexNodes and turn them into a list of
+        dd.Series or Scalars.
+
+        As RexPlugins are allowed to change the dataframes,
+        extra care needs to be taken when converting
+        multiple RexNodes, as columns referencing the original
+        dataframe might be outdated (aka misaligned, as the divisions
+        might have changed in between). This convenience
+        function handles this properly by dereferencing
+        the columns only at the end.
+        """
+        column_references = []
+        for o in operands:
+            column_reference, dc = cls.convert(o, dc, context=context)
+
+            column_references.append(column_reference)
+
+        return [c.get(dc) for c in column_references], dc
+
+    @classmethod
+    def convert_to_column_reference(
+        cls,
+        rex: "org.apache.calcite.rex.RexNode",
+        dc: DataContainer,
+        context: "dask_sql.Context",
+    ) -> Tuple[ColumnReference, DataContainer]:
+        """
+        Convert the RexNode and always add the new column.
+
+        RexPlugins can return either a reference to a new column
+        (by first adding the new column and then returning a column reference,
+        which is basically the column name) or a scalar value.
+        Some methods however, need to have the calculation result be added to
+        the dataframe. This function therefore assigns any scalar values
+        directly to the dataframe and also returns a reference to the new column.
+
+        Note: We do not add the newly created column to the
+        DataContainer's column container, as the decision whether this is
+        a temporary column or a frontend column needs to happen
+        somewhere else.
+        """
+        new_column, dc = cls.convert(rex, dc, context=context)
+
+        if isinstance(new_column, ColumnReference):
+            return new_column, dc
+
+        # This is a rare case where we actually want to turn a
+        # scalar value into a full column, so we do
+        # this manually here (and not in the corresponding plugin)
+        df = dc.df
+        cc = dc.column_container
+
+        backend_column_name = new_temporary_column(df)
+        df = df.assign(**{backend_column_name: new_column.get()})
+
+        # We have updated the dataframe, so create a new datacontainer also
+        dc = DataContainer(df, cc)
+        return ColumnReference(backend_column_name), dc

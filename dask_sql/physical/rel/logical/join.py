@@ -170,21 +170,14 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
         if filter_conditions:
-            filter_columns = []
-
-            for filter_condition in filter_conditions:
-                filter_column, dc = RexConverter.convert(
-                    filter_condition, dc, context=context
-                )
-
-                filter_columns.append(filter_column)
+            filter_columns, dc = RexConverter.convert_and_get_list(
+                filter_conditions, dc, context=context
+            )
 
             # Important: make sure to only dereference the filter columns here
             # as filters might change the order of the dataframe (dis-aligning)
             # previously created columns.
-            filter_condition = reduce(
-                operator.and_, [f.get(dc) for f in filter_columns]
-            )
+            filter_condition = reduce(operator.and_, filter_columns)
             logger.debug(f"Additionally applying filter {filter_condition}")
 
             df = dc.df

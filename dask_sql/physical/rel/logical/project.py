@@ -49,28 +49,13 @@ class LogicalProjectPlugin(BaseRelPlugin):
             # Let the rex converter to the real magic
             # we only do some book-keeping here
             logger.debug(f"Adding a new column {key} out of {expr}")
-            new_column, dc = RexConverter.convert(expr, dc, context=context)
+            new_column, dc = RexConverter.convert_to_column_reference(
+                expr, dc, context=context
+            )
 
-            if isinstance(new_column, ScalarValue):
-                # This is a rare case where we actually want to turn a
-                # scalar value into a full column, so we do
-                # this manually here (and not in the corresponding plugin)
-                df = dc.df
-                cc = dc.column_container
-
-                backend_column_name = new_temporary_column(df)
-                df = df.assign(**{backend_column_name: new_column.get()})
-
-                # Make sure to use the newest df in the next iteration
-                dc = DataContainer(df, cc)
-            else:
-                # The column is already stored in the dataframe, so
-                # just store the column name.
-                # Important: do not dereference the column here,
-                # as the dataframe might still change (in future iterations)
-                backend_column_name = new_column._column_name
-
-            mappings[key] = backend_column_name
+            # Important: do not dereference the column here,
+            # as the dataframe might still change (in future iterations)
+            mappings[key] = new_column._column_name
 
         # Make sure the order is correct and name the newly added
         # columns correctly

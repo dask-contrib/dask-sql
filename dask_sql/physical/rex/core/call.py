@@ -21,6 +21,7 @@ from dask_sql.physical.rex.base import (
     ColumnReference,
     OutputColumn,
     ScalarValue,
+    SeriesOrScalar,
 )
 from dask_sql.utils import (
     LoggableDataFrame,
@@ -31,7 +32,6 @@ from dask_sql.utils import (
 )
 
 logger = logging.getLogger(__name__)
-SeriesOrScalar = Union[dd.Series, Any]
 
 
 class Operation:
@@ -726,14 +726,9 @@ class RexCallPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> Tuple[OutputColumn, DataContainer]:
         # Prepare the operands by turning the RexNodes into python expressions
-        operands = []
-        for o in rex.getOperands():
-            operand, dc = RexConverter.convert(o, dc, context=context)
-
-            # Important, do not "get" the actual value here already,
-            # as other operands might change the dc
-            # Just store a reference
-            operands.append(operand)
+        operands, dc = RexConverter.convert_and_get_list(
+            rex.getOperands(), dc, context=context
+        )
 
         # Now use the operator name in the mapping
         operator_name = str(rex.getOperator().getName())
@@ -758,8 +753,7 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = rex
 
-        # Finally, resolve the operand references and calculate the result
-        operands = [operand.get(dc) for operand in operands]
+        # Finally, calculate the result
         result = operation(*operands, **kwargs)
 
         if is_frame(result):

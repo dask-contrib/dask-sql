@@ -6,6 +6,8 @@ import dask_sql
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 
+SeriesOrScalar = Union[dd.Series, Any]
+
 
 class OutputColumn:
     """Return type of all Rex Plugins. Can store a value or a column reference"""
