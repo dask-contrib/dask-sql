@@ -80,7 +80,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # As this is probably non-sense for large tables, but there is no other
         # known solution so far.
         join_condition = rel.getCondition()
-        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+        lhs_on, rhs_on, filter_conditions = self._split_join_condition(join_condition)
 
         logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
 
@@ -169,16 +169,19 @@ class LogicalJoinPlugin(BaseRelPlugin):
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
-        if filter_condition:
-            # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
-            filter_condition = reduce(
-                operator.and_,
-                [
-                    RexConverter.convert(rex, dc, context=context)
-                    for rex in filter_condition
-                ],
+        if filter_conditions:
+            filter_columns, dc = RexConverter.convert_and_get_list(
+                filter_conditions, dc, context=context
             )
+
+            # Important: make sure to only dereference the filter columns here
+            # as filters might change the order of the dataframe (dis-aligning)
+            # previously created columns.
+            filter_condition = reduce(operator.and_, filter_columns)
             logger.debug(f"Additionally applying filter {filter_condition}")
+
+            df = dc.df
+            cc = dc.column_container
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
@@ -250,7 +253,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         if operator_name == "AND":
             lhs_on = []
             rhs_on = []
-            filter_condition = []
+            filter_conditions = []
 
             for operand in operands:
                 try:
@@ -261,10 +264,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 except AssertionError:
                     pass
 
-                filter_condition.append(operand)
+                filter_conditions.append(operand)
 
             if lhs_on and rhs_on:
-                return lhs_on, rhs_on, filter_condition
+                return lhs_on, rhs_on, filter_conditions
 
         return [], [], [join_condition]
 

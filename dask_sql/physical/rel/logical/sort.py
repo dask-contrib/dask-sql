@@ -3,10 +3,11 @@ from typing import List
 import dask
 import dask.dataframe as dd
 
-from dask_sql.datacontainer import DataContainer
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.rex.base import ScalarValue
 from dask_sql.physical.utils.map import map_on_partition_index
 from dask_sql.physical.utils.sort import apply_sort
 from dask_sql.utils import new_temporary_column
@@ -42,20 +43,26 @@ class LogicalSortPlugin(BaseRelPlugin):
 
             df = apply_sort(df, sort_columns, sort_ascending, sort_null_first)
 
+        dc = DataContainer(df, cc)
+
         offset = rel.offset
         if offset:
-            offset = RexConverter.convert(offset, df, context=context)
+            offset, dc = RexConverter.convert(offset, dc, context=context)
+            offset = offset.get(dc)
 
         end = rel.fetch
         if end:
-            end = RexConverter.convert(end, df, context=context)
+            end, dc = RexConverter.convert(end, dc, context=context)
+            end = end.get(dc)
 
             if offset:
                 end += offset
 
+        df = dc.df
         if offset is not None or end is not None:
             df = self._apply_offset(df, offset, end)
 
+        cc = dc.column_container
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again
         return DataContainer(df, cc)
