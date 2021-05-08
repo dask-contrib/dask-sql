@@ -33,17 +33,15 @@ class LogicalValuesPlugin(BaseRelPlugin):
         for rex_expression_row in rex_expression_rows:
             # We convert each of the cells in the row
             # using a RexConverter.
-            cells = []
-            for rex_cell in rex_expression_row:
-                # We explicitely dismiss the returned DataContainer here
-                # There is no input dc, so why should there by an output dc?
-                cell_value, _ = RexConverter.convert(rex_cell, None, context=context)
-                cells.append(cell_value.get())
-
             # As we do not have any information on the
             # column headers, we just name them with
             # their index.
-            rows.append({str(i): cell_value for i, cell_value in enumerate(cells)})
+            rows.append(
+                {
+                    str(i): RexConverter.convert(rex_cell, None, context=context)
+                    for i, rex_cell in enumerate(rex_expression_row)
+                }
+            )
 
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
         # We assume here that when using the values plan, the resulting dataframe will be quite small

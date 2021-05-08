@@ -6,7 +6,7 @@ from dask_sql.utils import new_temporary_column
 
 
 def get_groupby_with_nulls_cols(
-    df: dd.DataFrame, group_columns: List[dd.Series], additional_column_name: str = None
+    df: dd.DataFrame, group_columns: List[str], additional_column_name: str = None
 ):
     """
     SQL and dask are treating null columns a bit different:
