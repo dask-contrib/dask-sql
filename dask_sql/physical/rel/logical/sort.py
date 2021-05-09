@@ -40,6 +40,7 @@ class LogicalSortPlugin(BaseRelPlugin):
             sort_ascending = [x.getDirection() == ASCENDING for x in sort_collation]
             sort_null_first = [x.nullDirection == FIRST for x in sort_collation]
 
+            df = df.persist()
             df = apply_sort(df, sort_columns, sort_ascending, sort_null_first)
 
         offset = rel.offset
@@ -74,6 +75,7 @@ class LogicalSortPlugin(BaseRelPlugin):
         we need to pass the partition number to the selection
         function, which is not possible with normal "map_partitions".
         """
+        df = df.persist()
         if not offset:
             # We do a (hopefully) very quick check: if the first partition
             # is already enough, we will just use this
