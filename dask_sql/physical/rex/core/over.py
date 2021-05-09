@@ -266,6 +266,8 @@ class RexOverPlugin(BaseRexPlugin):
         # which is evaluated on the workers
         temporary_operand_columns = temporary_operand_columns.keys()
 
+        new_column_name = new_temporary_column(df)
+
         @make_pickable_without_dask_sql
         def map_on_each_group(partitioned_group):
             if sort_columns:
@@ -279,8 +281,6 @@ class RexOverPlugin(BaseRexPlugin):
             )
 
             return partitioned_group
-
-        new_column_name = new_temporary_column(df)
 
         meta = df._meta_nonempty.assign(**{new_column_name: 0.0})
         df = df.groupby(group_columns).apply(map_on_each_group, meta=meta)
