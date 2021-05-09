@@ -152,5 +152,8 @@ jobs:
           docker logs dask-worker
 
           pytest tests/integration/test_compatibility.py
+
+          docker kill dask-scheduler
+          docker kill dask-worker
         env:
           DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
