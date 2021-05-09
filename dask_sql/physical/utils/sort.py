@@ -1,6 +1,7 @@
 from typing import List
 
 import dask.dataframe as dd
+import pandas as pd
 
 from dask_sql.utils import new_temporary_column
 
@@ -17,15 +18,18 @@ def apply_sort(
     first_null_first = sort_null_first[0]
 
     # Only sort by first column first
+    # As sorting is rather expensive, we bether persist here
+    df = df.persist()
     df = _sort_first_column(
         df, first_sort_column, first_sort_ascending, first_null_first
     )
 
     # sort the remaining columns if given
     if len(sort_columns) > 1:
+        df = df.persist()
         df = df.map_partitions(
             sort_partition_func,
-            meta=df._meta,
+            meta=df,
             sort_columns=sort_columns,
             sort_ascending=sort_ascending,
             sort_null_first=sort_null_first,
@@ -34,7 +38,15 @@ def apply_sort(
     return df.persist()
 
 
-def sort_partition_func(partition, sort_columns, sort_ascending, sort_null_first):
+def sort_partition_func(
+    partition: pd.DataFrame,
+    sort_columns: List[str],
+    sort_ascending: List[bool],
+    sort_null_first: List[bool],
+):
+    if partition.empty:
+        return partition
+
     # pandas does not allow to sort by NaN first/last
     # differently for different columns. Therefore
     # we split again by NaN
@@ -59,8 +71,10 @@ def sort_partition_func(partition, sort_columns, sort_ascending, sort_null_first
         tmp_ascending += [asc]
 
     partition = partition.sort_values(tmp_columns, ascending=tmp_ascending)
+
     for tmp_col in tmp_columns:
         del partition[tmp_col]
+
     return partition[original_columns]
 
 
