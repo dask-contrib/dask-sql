@@ -209,3 +209,9 @@ def setup_dask_client():
     address = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
     if address:
         client = Client(address)
+
+
+skip_if_external_scheduler = pytest.mark.skipif(
+    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
+    reason="Can not run with external cluster",
+)
