@@ -133,17 +133,23 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda install python=3.7 sqlalchemy psycopg2 --file conda.txt -c conda-forge
+          conda install python=3.7 python-blosc lz4 --file conda.txt -c conda-forge
           pip install docker "fugue[sql]>=0.5.3"
 
           which python
           pip list
           conda list
-      - name: Install Java (again) and test with pytest
+      - name: Test with pytest while running an independent dask cluster
         shell: bash -l {0}
         run: |
-          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.2.4" --name dask-scheduler -d --network=host daskdev/dask:2021.4.1 dask-scheduler
-          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.2.4" --name dask-worker -d --network=host daskdev/dask:2021.4.1 dask-worker 127.0.0.1:8786
+          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.1.5" --name dask-scheduler -d --network=host daskdev/dask:2021.2.0 dask-scheduler
+          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.1.5" --name dask-worker -d --network=host daskdev/dask:2021.2.0 dask-worker 127.0.0.1:8786
+
+          # Wait for installation
+          sleep 20
+
+          docker logs dask-scheduler
+          docker logs dask-worker
 
           pytest tests/integration/test_compatibility.py
         env:
