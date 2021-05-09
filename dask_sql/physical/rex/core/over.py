@@ -11,7 +11,11 @@ from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.map import map_on_partition_index
 from dask_sql.physical.utils.sort import sort_partition_func
-from dask_sql.utils import LoggableDataFrame, new_temporary_column
+from dask_sql.utils import (
+    LoggableDataFrame,
+    make_pickable_without_dask_sql,
+    new_temporary_column,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +266,7 @@ class RexOverPlugin(BaseRexPlugin):
         # which is evaluated on the workers
         temporary_operand_columns = temporary_operand_columns.keys()
 
+        @make_pickable_without_dask_sql
         def map_on_each_group(partitioned_group):
             if sort_columns:
                 partitioned_group = sort_partition_func(
