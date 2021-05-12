@@ -3,15 +3,15 @@ version: '3'
 services:
     dask-scheduler:
         container_name: dask-scheduler
-        image: daskdev/dask:2021.2.0
+        image: daskdev/dask:latest
         command: dask-scheduler
         ports:
             - "8786:8786"
         environment:
-            EXTRA_CONDA_PACKAGES: "pandas=1.1.5"
+            EXTRA_CONDA_PACKAGES: "pandas>=1.2"
     dask-worker:
         container_name: dask-worker
-        image: daskdev/dask:2021.2.0
+        image: daskdev/dask:latest
         command: dask-worker dask-scheduler:8786
         environment:
-            EXTRA_CONDA_PACKAGES: "pandas=1.1.5"
+            EXTRA_CONDA_PACKAGES: "pandas>=1.2"
