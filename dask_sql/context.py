@@ -278,17 +278,14 @@ class Context:
             :func:`register_aggregation`
 
         """
-        self.function_list.append(
-            FunctionDescription(name, parameters, return_type, False)
+        self._register_callable(
+            f,
+            name,
+            aggregation=False,
+            parameters=parameters,
+            return_type=return_type,
+            replace=replace,
         )
-
-        name = name.lower()
-        if not replace and name in self.functions:
-            if self.functions[name] != f:
-                raise ValueError(
-                    "Registering different functions with the same name is not allowed"
-                )
-        self.functions[name] = f
 
     def register_aggregation(
         self,
@@ -346,17 +343,14 @@ class Context:
             :func:`register_function`
 
         """
-        self.function_list.append(
-            FunctionDescription(name, parameters, return_type, True)
+        self._register_callable(
+            f,
+            name,
+            aggregation=True,
+            parameters=parameters,
+            return_type=return_type,
+            replace=replace,
         )
-
-        name = name.lower()
-        if not replace and name in self.functions:
-            if self.functions[name] != f:
-                raise ValueError(
-                    "Registering different functions with the same name is not allowed"
-                )
-        self.functions[name] = f
 
     def sql(
         self,
@@ -701,3 +695,31 @@ class Context:
                 tables[var_name] = tables.get(var_name, variable)
 
         return tables
+
+    def _register_callable(
+        self,
+        f: Any,
+        name: str,
+        aggregation: bool,
+        parameters: List[Tuple[str, type]],
+        return_type: type,
+        replace: bool = False,
+    ):
+        """Helper function to do the function or aggregation registration"""
+        lower_name = name.lower()
+        if lower_name in self.functions:
+            if replace:
+                self.function_list = list(
+                    filter(lambda f: f.name != name, self.function_list)
+                )
+                del self.functions[lower_name]
+
+            elif self.functions[lower_name] != f:
+                raise ValueError(
+                    "Registering different functions with the same name is not allowed"
+                )
+
+        self.function_list.append(
+            FunctionDescription(name, parameters, return_type, aggregation)
+        )
+        self.functions[name] = f
