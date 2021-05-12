@@ -74,14 +74,9 @@ setup(
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=[
-        "dask[dataframe]>=2.19.0,<=2021.2.0",  # dask 2021.3.0 makes
+        "dask[dataframe]>=2.19.0,!=2021.3.0",  # dask 2021.3.0 makes
         # dask-ml fail (see https://github.com/dask/dask-ml/issues/803)
-        # and introduces a different quantile method (which so far
-        # gives unreasonable results)
-        "pandas<1.2.0,>=1.0.0",  # pandas 1.2.0 introduced float NaN dtype,
-        # which is currently not working with dask,
-        # so the test is failing, see https://github.com/dask/dask/issues/7156
-        # below 1.0, there were no nullable ext. types
+        "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
@@ -100,7 +95,7 @@ setup(
             "sphinx>=3.2.1",
             "pyarrow>=0.15.1",
             "dask-ml>=1.7.0",
-            "scikit-learn<0.24.0",
+            "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",
             "black==19.10b0",
