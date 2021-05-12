@@ -133,17 +133,18 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda install python=3.7 python-blosc lz4 --file conda.txt -c conda-forge
+          conda install python-blosc lz4 --file conda.txt -c conda-forge
 
           which python
           pip list
           conda list
       - name: run a dask cluster
+        shell: bash -l {0}
         run: |
           docker-compose -f .github/docker-compose.yaml up -d
 
           # Wait for installation
-          sleep 20
+          sleep 40
 
           docker logs dask-scheduler
           docker logs dask-worker
