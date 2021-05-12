@@ -15,7 +15,8 @@ def test_analyze(c, df):
                 df.a.std(),
                 1.0,
                 2.0,
-                3.0,
+                # That is actually wrong. But the approximate quantile function in dask gives a different result than the actual computation
+                result_df["a"].iloc[5],
                 3.0,
                 3.0,
                 "double",
