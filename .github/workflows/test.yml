@@ -138,21 +138,18 @@ jobs:
           which python
           pip list
           conda list
-      - name: Test with pytest while running an independent dask cluster
-        shell: bash -l {0}
+      - name: run a dask cluster
         run: |
-          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.1.5" --name dask-scheduler -d --network=host daskdev/dask:2021.2.0 dask-scheduler
-          docker run --rm -it -e EXTRA_CONDA_PACKAGES="pandas=1.1.5" --name dask-worker -d --network=host daskdev/dask:2021.2.0 dask-worker 127.0.0.1:8786
+          docker-compose -f .github/docker-compose.yaml up -d
 
           # Wait for installation
           sleep 20
 
           docker logs dask-scheduler
           docker logs dask-worker
-
-          pytest tests/integration/test_compatibility.py
-
-          docker kill dask-scheduler
-          docker kill dask-worker
-        # env:
-        #   DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
+      - name: Test with pytest while running an independent dask cluster
+        shell: bash -l {0}
+        run: |
+          pytest tests
+        env:
+          DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
