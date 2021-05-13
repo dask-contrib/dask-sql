@@ -14,7 +14,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import sql_to_python_type
+from dask_sql.mappings import cast_column_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import (
@@ -177,6 +177,21 @@ class CaseOperation(Operation):
             return tmp.where(where, other=other)
         else:
             return then if where else other
+
+
+class CastOperation(Operation):
+    """The cast operator"""
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.cast)
+
+    def cast(self, operand, rex=None) -> SeriesOrScalar:
+        output_type = str(rex.getType())
+        output_type = sql_to_python_type(output_type.upper())
+
+        return cast_column_type(operand, output_type)
 
 
 class IsFalseOperation(Operation):
@@ -650,7 +665,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is distinct from": NotOperation().of(IsNotDistinctOperation()),
         "is not distinct from": IsNotDistinctOperation(),
         # special operations
-        "cast": lambda x: x,
+        "cast": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
@@ -680,7 +695,7 @@ class RexCallPlugin(BaseRexPlugin):
         "floor": CeilFloorOperation("floor"),
         "log10": Operation(da.log10),
         "ln": Operation(da.log),
-        # "mod": Operation(da.mod), # needs cast
+        "mod": Operation(da.mod),
         "power": Operation(da.power),
         "radians": Operation(da.radians),
         "round": TensorScalarOperation(lambda x, *ops: x.round(*ops), np.round),
