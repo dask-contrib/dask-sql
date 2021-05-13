@@ -30,6 +30,10 @@ def eq_sqlite(sql, **dfs):
     dask_result = c.sql(sql).compute().reset_index(drop=True)
     sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
 
+    # Make sure SQL and Dask use the same "NULL" value
+    dask_result = dask_result.fillna(np.NaN)
+    sqlite_result = sqlite_result.fillna(np.NaN)
+
     assert_frame_equal(dask_result, sqlite_result, check_dtype=False)
 
 
@@ -501,270 +505,263 @@ def test_window_row_number_partition_by():
 #         a=a,
 #     )
 
-# TODO: Except not implemented so far
-# def test_window_sum_avg():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     for func in ["SUM", "AVG"]:
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b) OVER () AS a1,
-#                 {func}(b) OVER (PARTITION BY c) AS a2,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # >= 1.1.0 has bug on these agg function with groupby+rolloing
-#         # https://github.com/pandas-dev/pandas/issues/35557
-#         if pd.__version__ < "1.1":
-#             # irregular windows
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
-#                 FROM a
-#                 """,
-#                 a=a,
-#             )
 
-# TODO: Except not implemented so far
-# def test_window_sum_avg_partition_by():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     for func in ["SUM", "AVG"]:
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # 1.1.0 has bug on these agg function with groupby+rolloing
-#         # https://github.com/pandas-dev/pandas/issues/35557
-#         if pd.__version__ < "1.1":
-#             # irregular windows
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
-#                 FROM a
-#                 """,
-#                 a=a,
-#             )
+def test_window_sum_avg():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    for func in ["SUM", "AVG"]:
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER () AS a1,
+                {func}(b) OVER (PARTITION BY c) AS a2,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
 
-# TODO: Except not implemented so far
-# def test_window_min_max():
-#     for func in ["MIN", "MAX"]:
-#         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b) OVER () AS a1,
-#                 {func}(b) OVER (PARTITION BY c) AS a2,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # < 1.1.0 has bugs on these agg function with rolloing (no group by)
-#         if pd.__version__ >= "1.1":
-#             # irregular windows
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
-#                     {func}(b) OVER (ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
-#                     {func}(b) OVER (ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
-#                 FROM a
-#                 """,
-#                 a=a,
-#             )
-#         # == 1.1.0 has bugs on these agg function with rolloing (with group by)
-#         # https://github.com/pandas-dev/pandas/issues/35557
-#         # < 1.1.0 has bugs on nulls when rolling with forward looking
-#         if pd.__version__ < "1.1":
-#             b = make_rand_df(10, a=float, b=(int, 0), c=(str, 0))
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6
-#                 FROM a
-#                 """,
-#                 a=b,
-#             )
 
-# TODO: Except not implemented so far
-# def test_window_min_max_partition_by():
-#     for func in ["MIN", "MAX"]:
-#         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b) OVER (PARTITION BY c) AS a2,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # >= 1.1.0 has bugs on these agg function with rolloing (with group by)
-#         # https://github.com/pandas-dev/pandas/issues/35557
-#         # < 1.1.0 has bugs on nulls when rolling with forward looking
-#         if pd.__version__ < "1.1":
-#             b = make_rand_df(10, a=float, b=(int, 0), c=(str, 0))
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (PARTITION BY b ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6
-#                 FROM a
-#                 """,
-#                 a=b,
-#             )
+def test_window_sum_avg_partition_by():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    for func in ["SUM", "AVG"]:
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
 
-# TODO: Except not implemented so far
-# def test_window_count():
-#     for func in ["COUNT"]:
-#         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b) OVER () AS a1,
-#                 {func}(b) OVER (PARTITION BY c) AS a2,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6,
 
-#                 {func}(c) OVER () AS b1,
-#                 {func}(c) OVER (PARTITION BY c) AS b2,
-#                 {func}(c) OVER (PARTITION BY c,b) AS b3,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS b6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # < 1.1.0 has bugs on these agg function with rolloing (no group by)
-#         # == 1.1.0 has this bug
-#         # https://github.com/pandas-dev/pandas/issues/35579
-#         if pd.__version__ >= "1.1":
-#             # irregular windows
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a6,
-#                     {func}(b) OVER (PARTITION BY c ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9,
+def test_window_min_max():
+    for func in ["MIN", "MAX"]:
+        a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER () AS a1,
+                {func}(b) OVER (PARTITION BY c) AS a2,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
+                {func}(b) OVER (ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
+                {func}(b) OVER (ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        b = make_rand_df(10, a=float, b=(int, 0), c=(str, 0))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=b,
+        )
 
-#                     {func}(c) OVER (ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b6,
-#                     {func}(c) OVER (PARTITION BY c ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
-#                 FROM a
-#                 """,
-#                 a=a,
-#             )
 
-# TODO: Except not implemented so far
-# def test_window_count_partition_by():
-#     for func in ["COUNT"]:
-#         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#         eq_sqlite(
-#             f"""
-#             SELECT a,b,
-#                 {func}(b) OVER (PARTITION BY c) AS a2,
-#                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-#                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS a6,
+def test_window_min_max_partition_by():
+    for func in ["MIN", "MAX"]:
+        a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY c) AS a2,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        b = make_rand_df(10, a=float, b=(int, 0), c=(str, 0))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=b,
+        )
 
-#                 {func}(c) OVER (PARTITION BY c) AS b2,
-#                 {func}(c) OVER (PARTITION BY c,b) AS b3,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a DESC
-#                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
-#                 {func}(c) OVER (PARTITION BY b ORDER BY a
-#                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-#                     AS b6
-#             FROM a
-#             """,
-#             a=a,
-#         )
-#         # < 1.1.0 has bugs on these agg function with rolloing (no group by)
-#         # == 1.1.0 has this bug
-#         # https://github.com/pandas-dev/pandas/issues/35579
-#         if pd.__version__ >= "1.1":
-#             # irregular windows
-#             eq_sqlite(
-#                 f"""
-#                 SELECT a,b,
-#                     {func}(b) OVER (PARTITION BY c ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9,
 
-#                     {func}(c) OVER (PARTITION BY c ORDER BY a DESC
-#                         ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
-#                 FROM a
-#                 """,
-#                 a=a,
-#             )
+def test_window_count():
+    for func in ["COUNT"]:
+        a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER () AS a1,
+                {func}(b) OVER (PARTITION BY c) AS a2,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
+
+                -- No support for rolling on string types
+                -- {func}(c) OVER () AS b1,
+                -- {func}(c) OVER (PARTITION BY c) AS b2,
+                -- {func}(c) OVER (PARTITION BY c,b) AS b3,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a
+                --     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a DESC
+                --     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a
+                --     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                --     AS b6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a6,
+                {func}(b) OVER (PARTITION BY c ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9 --,
+
+                -- No support for rolling on string types
+                -- {func}(c) OVER (ORDER BY a DESC
+                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b6,
+                -- {func}(c) OVER (PARTITION BY c ORDER BY a DESC
+                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+
+
+def test_window_count_partition_by():
+    for func in ["COUNT"]:
+        a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY c) AS a2,
+                {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6 --,
+
+                -- No support for rolling on string types
+                -- {func}(c) OVER (PARTITION BY c) AS b2,
+                -- {func}(c) OVER (PARTITION BY c,b) AS b3,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a
+                --     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a DESC
+                --     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
+                -- {func}(c) OVER (PARTITION BY b ORDER BY a
+                --     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                --     AS b6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY c ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9 --,
+
+                -- No support for rolling on string types
+                -- {func}(c) OVER (PARTITION BY c ORDER BY a DESC
+                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
 
 
 def test_nested_query():

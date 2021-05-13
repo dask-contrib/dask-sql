@@ -278,7 +278,11 @@ def cast_column_type(
     expected_integer = pd.api.types.is_integer_dtype(expected_type)
     if current_float and expected_integer:
         logger.debug("...truncating...")
-        df[column_name] = da.trunc(df[column_name])
+        # Currently "trunc" can not be applied to NA (the pandas missing value type),
+        # because NA is a different type. It works with np.NaN though.
+        # For our use case, that does not matter, as the conversion to integer later
+        # will convert both NA and np.NaN to NA.
+        df[column_name] = da.trunc(df[column_name].fillna(value=np.NaN))
 
     logger.debug(f"Need to cast {column_name} from {current_type} to {expected_type}")
     df[column_name] = df[column_name].astype(expected_type)
