@@ -311,6 +311,7 @@ def test_math_operations(c, df):
             , FLOOR(b) AS "floor"
             , LOG10(b) AS "log10"
             , LN(b) AS "ln"
+            , MOD(b, 4) AS "mod"
             , POWER(b, 2) AS "power"
             , POWER(b, a) AS "power2"
             , RADIANS(b) AS "radians"
@@ -339,6 +340,7 @@ def test_math_operations(c, df):
     expected_df["floor"] = np.floor(df.b)
     expected_df["log10"] = np.log10(df.b)
     expected_df["ln"] = np.log(df.b)
+    expected_df["mod"] = np.mod(df.b, 4)
     expected_df["power"] = np.power(df.b, 2)
     expected_df["power2"] = np.power(df.b, df.a)
     expected_df["radians"] = df.b / 180 * np.pi
