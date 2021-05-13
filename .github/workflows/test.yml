@@ -73,7 +73,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-${{ matrix.java }}-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v2-${{ matrix.java }}-${{ matrix.python }}-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -137,6 +137,12 @@ jobs:
           key: ${{ runner.os }}-conda-v2-11-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.8
+          mamba-version: "*"
+          channels: conda-forge,defaults
+          channel-priority: true
+          use-only-tar-bz2: true
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
@@ -145,11 +151,11 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda install python-blosc lz4 --file conda.txt -c conda-forge
+          mamba install python=3.8 python-blosc lz4 --file conda.txt -c conda-forge
 
           which python
           pip list
-          conda list
+          mamba list
       - name: run a dask cluster
         shell: bash -l {0}
         run: |
