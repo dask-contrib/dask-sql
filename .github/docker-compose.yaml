@@ -1,0 +1,17 @@
+# Docker-compose setup used during tests
+version: '3'
+services:
+    dask-scheduler:
+        container_name: dask-scheduler
+        image: daskdev/dask:latest
+        command: dask-scheduler
+        ports:
+            - "8786:8786"
+        environment:
+            EXTRA_CONDA_PACKAGES: "pandas>=1.2 numpy=1.20.2 -c conda-forge"
+    dask-worker:
+        container_name: dask-worker
+        image: daskdev/dask:latest
+        command: dask-worker dask-scheduler:8786
+        environment:
+            EXTRA_CONDA_PACKAGES: "pandas>=1.2 numpy=1.20.2 -c conda-forge"

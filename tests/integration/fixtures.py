@@ -5,6 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from dask.distributed import Client
 from pandas.testing import assert_frame_equal
 
 
@@ -200,3 +201,17 @@ def assert_query_gives_same_result(engine):
         assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_dask_client():
+    """Setup a dask client if requested"""
+    address = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
+    if address:
+        client = Client(address)
+
+
+skip_if_external_scheduler = pytest.mark.skipif(
+    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
+    reason="Can not run with external cluster",
+)
