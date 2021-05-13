@@ -17,7 +17,13 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.utils import LoggableDataFrame, convert_to_datetime, is_datetime, is_frame
+from dask_sql.utils import (
+    LoggableDataFrame,
+    convert_to_datetime,
+    is_datetime,
+    is_frame,
+    make_pickable_without_dask_sql,
+)
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -557,7 +563,7 @@ class BaseRandomOperation(Operation):
         state_data = random_state_data(df.npartitions, random_state)
         dsk = {
             (name, i): (
-                self.random_function,
+                make_pickable_without_dask_sql(self.random_function),
                 (df._name, i),
                 np.random.RandomState(state),
                 kwargs,

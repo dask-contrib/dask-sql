@@ -3,7 +3,7 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.utils import new_temporary_column
+from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
 
 
 def apply_sort(
@@ -28,7 +28,7 @@ def apply_sort(
     if len(sort_columns) > 1:
         df = df.persist()
         df = df.map_partitions(
-            sort_partition_func,
+            make_pickable_without_dask_sql(sort_partition_func),
             meta=df,
             sort_columns=sort_columns,
             sort_ascending=sort_ascending,
