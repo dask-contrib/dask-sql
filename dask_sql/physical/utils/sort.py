@@ -47,35 +47,24 @@ def sort_partition_func(
     if partition.empty:
         return partition
 
-    # pandas does not allow to sort by NaN first/last
-    # differently for different columns. Therefore
-    # we split again by NaN
-    original_columns = partition.columns
-    tmp_columns = []
-    tmp_ascending = []
-
-    for col, asc, null_first in zip(sort_columns, sort_ascending, sort_null_first):
-        is_null_col = new_temporary_column(partition)
-        partition[is_null_col] = partition[col].isna()
-        tmp_columns += [is_null_col]
-
+    # Trick: https://github.com/pandas-dev/pandas/issues/17111
+    # to make sorting faster
+    # With that, we can also allow for different NaN-orders by column
+    # For this, we start with the last sort column
+    # and use mergesort when we move to the front
+    for col, asc, null_first in reversed(
+        list(zip(sort_columns, sort_ascending, sort_null_first))
+    ):
         if null_first:
-            tmp_ascending += [False]
+            na_position = "first"
         else:
-            tmp_ascending += [True]
+            na_position = "last"
 
-        filled_nan_col = new_temporary_column(partition)
-        # the actual value does not matter
-        partition[filled_nan_col] = partition[col].fillna(0)
-        tmp_columns += [filled_nan_col]
-        tmp_ascending += [asc]
+        partition = partition.sort_values(
+            by=[col], ascending=asc, na_position=na_position, kind="mergesort"
+        )
 
-    partition = partition.sort_values(tmp_columns, ascending=tmp_ascending)
-
-    for tmp_col in tmp_columns:
-        del partition[tmp_col]
-
-    return partition[original_columns]
+    return partition
 
 
 def _sort_first_column(df, first_sort_column, first_sort_ascending, first_null_first):
