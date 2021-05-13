@@ -255,24 +255,20 @@ def similar_type(lhs: type, rhs: type) -> bool:
     return False
 
 
-def cast_column_type(
-    df: dd.DataFrame, column_name: str, expected_type: type
-) -> dd.DataFrame:
+def cast_column_type(column: dd.Series, expected_type: type) -> dd.Series:
     """
     Cast the type of the given column to the expected type,
     if they are far "enough" away.
     This means, a float will never be converted into a double
     or a tinyint into another int - but a string to an integer etc.
     """
-    current_type = df[column_name].dtype
+    current_type = column.dtype
 
-    logger.debug(
-        f"Column {column_name} has type {current_type}, expecting {expected_type}..."
-    )
+    logger.debug(f"Column has type {current_type}, expecting {expected_type}...")
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
-        return df
+        return column
 
     current_float = pd.api.types.is_float_dtype(current_type)
     expected_integer = pd.api.types.is_integer_dtype(expected_type)
@@ -282,9 +278,9 @@ def cast_column_type(
         # because NA is a different type. It works with np.NaN though.
         # For our use case, that does not matter, as the conversion to integer later
         # will convert both NA and np.NaN to NA.
-        df[column_name] = da.trunc(df[column_name].fillna(value=np.NaN))
+        column = da.trunc(column.fillna(value=np.NaN))
 
-    logger.debug(f"Need to cast {column_name} from {current_type} to {expected_type}")
-    df[column_name] = df[column_name].astype(expected_type)
+    logger.debug(f"Need to cast from {current_type} to {expected_type}")
+    column = column.astype(expected_type)
 
-    return df
+    return column
