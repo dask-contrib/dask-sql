@@ -710,7 +710,7 @@ class Context:
         if lower_name in self.functions:
             if replace:
                 self.function_list = list(
-                    filter(lambda f: f.name != name, self.function_list)
+                    filter(lambda f: f.name.lower() != lower_name, self.function_list)
                 )
                 del self.functions[lower_name]
 
@@ -720,6 +720,9 @@ class Context:
                 )
 
         self.function_list.append(
-            FunctionDescription(name, parameters, return_type, aggregation)
+            FunctionDescription(name.upper(), parameters, return_type, aggregation)
         )
-        self.functions[name] = f
+        self.function_list.append(
+            FunctionDescription(name.lower(), parameters, return_type, aggregation)
+        )
+        self.functions[lower_name] = f
