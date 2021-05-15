@@ -108,7 +108,7 @@ class HiveInputPlugin(BaseInputPlugin):
             df = df.rename(columns=dict(zip(df.columns, column_information.keys())))
 
             for col, expected_type in column_information.items():
-                df[col] = cast_column_type(df[col], expected_type)
+                df = cast_column_type(df, col, expected_type)
 
             return df
 
@@ -146,9 +146,8 @@ class HiveInputPlugin(BaseInputPlugin):
 
                 partition_id = 0
                 for partition_key, partition_type in partition_information.items():
-                    table[partition_key] = cast_column_type(
-                        partition_values[partition_id], partition_type
-                    )
+                    table[partition_key] = partition_values[partition_id]
+                    table = cast_column_type(table, partition_key, partition_type)
 
                     partition_id += 1
 
