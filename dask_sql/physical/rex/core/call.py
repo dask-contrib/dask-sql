@@ -14,7 +14,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import cast_column_type, sql_to_python_type
+from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import (
@@ -191,7 +191,12 @@ class CastOperation(Operation):
         output_type = str(rex.getType())
         output_type = sql_to_python_type(output_type.upper())
 
-        return cast_column_type(operand, output_type)
+        return_column = cast_column_to_type(operand, output_type)
+
+        if return_column is None:
+            return operand
+        else:
+            return return_column
 
 
 class IsFalseOperation(Operation):
