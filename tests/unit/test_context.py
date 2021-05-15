@@ -162,22 +162,30 @@ def test_function_adding():
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 1
-    assert c.function_list[0].name == "f"
+    assert len(c.function_list) == 2
+    assert c.function_list[0].name == "F"
     assert c.function_list[0].parameters == [("x", int)]
     assert c.function_list[0].return_type == float
     assert not c.function_list[0].aggregation
+    assert c.function_list[1].name == "f"
+    assert c.function_list[1].parameters == [("x", int)]
+    assert c.function_list[1].return_type == float
+    assert not c.function_list[1].aggregation
 
     # Without replacement
     c.register_function(f, "f", [("x", float)], int, replace=False)
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", float)]
-    assert c.function_list[1].return_type == int
-    assert not c.function_list[1].aggregation
+    assert len(c.function_list) == 4
+    assert c.function_list[2].name == "F"
+    assert c.function_list[2].parameters == [("x", float)]
+    assert c.function_list[2].return_type == int
+    assert not c.function_list[2].aggregation
+    assert c.function_list[3].name == "f"
+    assert c.function_list[3].parameters == [("x", float)]
+    assert c.function_list[3].return_type == int
+    assert not c.function_list[3].aggregation
 
     # With replacement
     f = lambda x: x + 1
@@ -185,11 +193,15 @@ def test_function_adding():
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 1
-    assert c.function_list[0].name == "f"
+    assert len(c.function_list) == 2
+    assert c.function_list[0].name == "F"
     assert c.function_list[0].parameters == [("x", str)]
     assert c.function_list[0].return_type == str
     assert not c.function_list[0].aggregation
+    assert c.function_list[1].name == "f"
+    assert c.function_list[1].parameters == [("x", str)]
+    assert c.function_list[1].return_type == str
+    assert not c.function_list[1].aggregation
 
 
 def test_aggregation_adding():
@@ -203,22 +215,30 @@ def test_aggregation_adding():
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 1
-    assert c.function_list[0].name == "f"
+    assert len(c.function_list) == 2
+    assert c.function_list[0].name == "F"
     assert c.function_list[0].parameters == [("x", int)]
     assert c.function_list[0].return_type == float
     assert c.function_list[0].aggregation
+    assert c.function_list[1].name == "f"
+    assert c.function_list[1].parameters == [("x", int)]
+    assert c.function_list[1].return_type == float
+    assert c.function_list[1].aggregation
 
     # Without replacement
     c.register_aggregation(f, "f", [("x", float)], int, replace=False)
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", float)]
-    assert c.function_list[1].return_type == int
-    assert c.function_list[1].aggregation
+    assert len(c.function_list) == 4
+    assert c.function_list[2].name == "F"
+    assert c.function_list[2].parameters == [("x", float)]
+    assert c.function_list[2].return_type == int
+    assert c.function_list[2].aggregation
+    assert c.function_list[3].name == "f"
+    assert c.function_list[3].parameters == [("x", float)]
+    assert c.function_list[3].return_type == int
+    assert c.function_list[3].aggregation
 
     # With replacement
     f = lambda x: x + 1
@@ -226,8 +246,12 @@ def test_aggregation_adding():
 
     assert "f" in c.functions
     assert c.functions["f"] == f
-    assert len(c.function_list) == 1
-    assert c.function_list[0].name == "f"
+    assert len(c.function_list) == 2
+    assert c.function_list[0].name == "F"
     assert c.function_list[0].parameters == [("x", str)]
     assert c.function_list[0].return_type == str
     assert c.function_list[0].aggregation
+    assert c.function_list[1].name == "f"
+    assert c.function_list[1].parameters == [("x", str)]
+    assert c.function_list[1].return_type == str
+    assert c.function_list[1].aggregation

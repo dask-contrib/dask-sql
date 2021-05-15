@@ -12,7 +12,7 @@ def test_custom_function(c, df):
 
     return_df = c.sql(
         """
-        SELECT f(a) AS a
+        SELECT F(a) AS a
         FROM df
         """
     )
@@ -30,13 +30,29 @@ def test_multiple_definitions(c, df_simple):
 
     return_df = c.sql(
         """
-        SELECT f(a) AS a, f(b) AS b
+        SELECT F(a) AS a, f(b) AS b
         FROM df_simple
         """
     )
     return_df = return_df.compute()
 
     assert_frame_equal(return_df.reset_index(drop=True), df_simple[["a", "b"]] ** 2)
+
+    def f(x):
+        return x ** 3
+
+    c.register_function(f, "f", [("x", np.float64)], np.float64, replace=True)
+    c.register_function(f, "f", [("x", np.int64)], np.int64)
+
+    return_df = c.sql(
+        """
+        SELECT F(a) AS a, f(b) AS b
+        FROM df_simple
+        """
+    )
+    return_df = return_df.compute()
+
+    assert_frame_equal(return_df.reset_index(drop=True), df_simple[["a", "b"]] ** 3)
 
 
 def test_aggregate_function(c):
@@ -45,7 +61,7 @@ def test_aggregate_function(c):
 
     return_df = c.sql(
         """
-        SELECT fagg(b) AS test, sum(b) AS "S"
+        SELECT FAGG(b) AS test, SUM(b) AS "S"
         FROM df
         """
     )
