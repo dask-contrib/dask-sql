@@ -185,6 +185,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
+        if not collected_aggregations:
+            return df[group_columns].drop_duplicates(), output_column_order
+
         # SQL needs to have a column with the grouped values as the first
         # output column.
         # As the values of the group columns

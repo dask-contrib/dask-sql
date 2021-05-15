@@ -142,7 +142,11 @@ def test_group_by_nan(c):
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
     # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
     # we can not check here
-    assert_frame_equal(df, expected_df, check_dtype=False)
+    assert_frame_equal(
+        df.sort_values("c").reset_index(drop=True),
+        expected_df.sort_values("c").reset_index(drop=True),
+        check_dtype=False,
+    )
 
     df = c.sql(
         """
@@ -156,7 +160,10 @@ def test_group_by_nan(c):
 
     expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
     expected_df["c"] = expected_df["c"].astype("float64")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal(
+        df.sort_values("c").reset_index(drop=True),
+        expected_df.sort_values("c").reset_index(drop=True),
+    )
 
 
 def test_aggregations(c):
