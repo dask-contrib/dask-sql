@@ -111,6 +111,27 @@ def test_groupby(assert_query_gives_same_result):
     """
     )
 
+    assert_query_gives_same_result(
+        """
+        SELECT AVG(c)
+        FROM df2
+    """
+    )
+
+
+def test_calc(assert_query_gives_same_result):
+    assert_query_gives_same_result(
+        """
+        SELECT
+            a + b,
+            a*b,
+            a*5,
+            a / user_id,
+            user_id / a
+        FROM df1
+    """
+    )
+
 
 def test_filter(assert_query_gives_same_result):
     assert_query_gives_same_result(
@@ -130,5 +151,45 @@ def test_filter(assert_query_gives_same_result):
         FROM df2
         WHERE
             d NOT LIKE '%c'
+    """
+    )
+
+    assert_query_gives_same_result(
+        """
+        SELECT
+            d
+        FROM df2
+        WHERE
+            d = 'a'
+    """
+    )
+
+    assert_query_gives_same_result(
+        """
+        SELECT
+            *
+        FROM df1
+        WHERE
+            1 < a AND a < 5
+    """
+    )
+
+    assert_query_gives_same_result(
+        """
+        SELECT
+            *
+        FROM df1
+        WHERE
+            a < 5 AND b < 5
+    """
+    )
+
+    assert_query_gives_same_result(
+        """
+        SELECT
+            *
+        FROM df1
+        WHERE
+            a + b > 5
     """
     )

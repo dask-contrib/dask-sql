@@ -188,6 +188,9 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
+        if not is_frame(operand):
+            return operand
+
         output_type = str(rex.getType())
         output_type = sql_to_python_type(output_type.upper())
 

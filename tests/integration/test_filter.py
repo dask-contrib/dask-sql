@@ -59,3 +59,12 @@ def test_filter_with_nan(c):
     assert_frame_equal(
         return_df, expected_df,
     )
+
+
+def test_string_filter(c, string_table):
+    return_df = c.sql("SELECT * FROM string_table WHERE a = 'a normal string'")
+    return_df = return_df.compute()
+
+    assert_frame_equal(
+        return_df, string_table.head(1),
+    )
