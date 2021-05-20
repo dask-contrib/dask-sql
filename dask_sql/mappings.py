@@ -52,6 +52,7 @@ _SQL_TO_PYTHON_SCALARS = {
     "FLOAT": np.float32,
     "DECIMAL": np.float32,
     "BIGINT": np.int64,
+    "INT": np.int32,  # Although not in the standard, makes compatibility easier
     "INTEGER": np.int32,
     "SMALLINT": np.int16,
     "TINYINT": np.int8,
@@ -156,6 +157,14 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         if str(literal_value) == "None":
             # NULL time
             return pd.NaT  # pragma: no cover
+
+        if isinstance(literal_value, str):
+            if sql_type == "DATE":
+                return datetime.strptime(literal_value, "%Y-%m-%d")
+            elif sql_type.startswith("TIME("):
+                return datetime.strptime(literal_value, "%H:%M:%S %Y")
+            elif sql_type.startswith("TIMESTAMP("):
+                return datetime.strptime(literal_value)
 
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"

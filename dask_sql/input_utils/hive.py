@@ -18,7 +18,7 @@ except ImportError:
     sqlalchemy = None
 
 from dask_sql.input_utils.base import BaseInputPlugin
-from dask_sql.mappings import cast_column_type, sql_to_python_type
+from dask_sql.mappings import cast_column_type, sql_to_python_type, sql_to_python_value
 
 logger = logging.Logger(__name__)
 
@@ -131,15 +131,19 @@ class HiveInputPlugin(BaseInputPlugin):
                     _,
                 ) = parsed
 
+                partition_column_information = {
+                    col: sql_to_python_type(col_type.upper())
+                    for col, col_type in partition_column_information.items()
+                }
+
                 location = partition_table_information["Location"]
                 table = wrapped_read_function(
                     location, partition_column_information, **kwargs
                 )
 
-                # Now add the additional partition columns
-                partition_values = ast.literal_eval(
-                    partition_table_information["Partition Value"]
-                )
+                partition_values = partition_table_information["Partition Value"]
+                partition_values = partition_values[1 : len(partition_values) - 1]
+                partition_values = partition_values.split(",")
 
                 logger.debug(
                     f"Applying additional partition information as columns: {partition_information}"
@@ -147,8 +151,12 @@ class HiveInputPlugin(BaseInputPlugin):
 
                 partition_id = 0
                 for partition_key, partition_type in partition_information.items():
-                    table[partition_key] = partition_values[partition_id]
-                    table = cast_column_type(table, partition_key, partition_type)
+                    value = partition_values[partition_id]
+                    value = sql_to_python_value(partition_type.upper(), value)
+                    table[partition_key] = value
+
+                    # partition_type = sql_to_python_type()
+                    # table = cast_column_type(table, partition_key, partition_type)
 
                     partition_id += 1
 
@@ -166,17 +174,21 @@ class HiveInputPlugin(BaseInputPlugin):
          Wrap anything but digits in quotes. Don't wrap the column name.
         """
         contains_only_digits = re.compile(r"^\d+$")
+        escaped_partition = []
 
-        try:
-            k, v = partition.split("=")
-            if re.match(contains_only_digits, v):
-                escaped_value = v
-            else:
-                escaped_value = f'"{v}"'
-            return f"{k}={escaped_value}"
-        except ValueError:
-            logger.warning(f"{partition} didn't contain a `=`")
-            return partition
+        for partition_part in partition.split("/"):
+            try:
+                k, v = partition_part.split("=")
+                if re.match(contains_only_digits, v):
+                    escaped_value = v
+                else:
+                    escaped_value = f'"{v}"'
+                escaped_partition.append(f"{k}={escaped_value}")
+            except ValueError:
+                logger.warning(f"{partition_part} didn't contain a `=`")
+                escaped_partition.append(partition_part)
+
+        return ",".join(escaped_partition)
 
     def _parse_hive_table_description(
         self,
