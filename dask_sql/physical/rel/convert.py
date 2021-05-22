@@ -1,10 +1,12 @@
-from typing import Dict
+import logging
 
 import dask.dataframe as dd
 
 from dask_sql.java import get_java_class
-from dask_sql.utils import Pluggable
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import LoggableDataFrame, Pluggable
+
+logger = logging.getLogger(__name__)
 
 
 class RelConverter(Pluggable):
@@ -26,6 +28,7 @@ class RelConverter(Pluggable):
     @classmethod
     def add_plugin_class(cls, plugin_class: BaseRelPlugin, replace=True):
         """Convenience function to add a class directly to the plugins"""
+        logger.debug(f"Registering REL plugin for {plugin_class.class_name}")
         cls.add_plugin(plugin_class.class_name, plugin_class(), replace=replace)
 
     @classmethod
@@ -47,5 +50,9 @@ class RelConverter(Pluggable):
                 f"No conversion for class {class_name} available (yet)."
             )
 
+        logger.debug(
+            f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
+        )
         df = plugin_instance.convert(rel, context=context)
+        logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
         return df

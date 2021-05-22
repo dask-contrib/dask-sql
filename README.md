@@ -1,78 +1,78 @@
-# dask-sql
-
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nils-braun/dask-sql/Test?logo=github)](https://github.com/nils-braun/dask-sql/actions)
+[![Read the Docs](https://img.shields.io/readthedocs/dask-sql)](https://dask-sql.readthedocs.io/en/latest/)
 [![Codecov](https://img.shields.io/codecov/c/github/nils-braun/dask-sql?logo=codecov)](https://codecov.io/gh/nils-braun/dask-sql)
 [![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab)
 
-`dask-sql` adds a SQL query layer on top of `dask`.
-This allows you to query and transform your dask dataframes using
-common SQL operations.
+<div align="center">
+    <img src="./.github/heart.png" alt="SQL + Python">
+</div>
 
-The queries will run as normal dask operations, which can be distributed within your dask cluster.
-The goal of this project is therefore similar to what Spark SQL/Hive/Drill/... is for the Hadoop world - but with much less features (so far...).
-Some ideas for this project are coming from the very great [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+`dask-sql` is a distributed SQL query engine in Python.
+It allows you to query and transform your data using a mixture of
+common SQL operations and Python code and also scale up the calculation easily
+if you need it.
 
----
+* **Combine the power of Python and SQL**: load your data with Python, transform it with SQL, enhance it with Python and query it with SQL - or the other way round.
+  With `dask-sql` you can mix the well known Python dataframe API of `pandas` and `Dask` with common SQL operations, to
+  process your data in exactly the way that is easiest for you.
+* **Infinite Scaling**: using the power of the great `Dask` ecosystem, your computations can scale as you need it - from your laptop to your super cluster - without changing any line of SQL code. From k8s to cloud deployments, from batch systems to YARN - if `Dask` [supports it](https://docs.dask.org/en/latest/setup.html), so will `dask-sql`.
+* **Your data - your queries**: Use Python user-defined functions (UDFs) in SQL without any performance drawback and extend your SQL queries with the large number of Python libraries, e.g. machine learning, different complicated input formats, complex statistics.
+* **Easy to install and maintain**: `dask-sql` is just a pip/conda install away (or a docker run if you prefer). No need for complicated cluster setups - `dask-sql` will run out of the box on your machine and can be easily connected to your computing cluster.
+* **Use SQL from wherever you like**: `dask-sql` integrates with your jupyter notebook, your normal Python module or can be used as a standalone SQL server from any BI tool. It even integrates natively with [Apache Hue](https://gethue.com/).
 
-**NOTE**
+Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
-`dask-sql` is currently under development and does so far not understand all SQL commands.
-We are actively looking for feedback, improvements and contributors!
+<div align="center">
+    <img src="./.github/animation.gif" alt="dask-sql GIF">
+</div>
 
 ---
 
 ## Example
 
-We use the timeseries random data from `dask.datasets` as an example:
+For this example, we use some data loaded from disk and query them with a SQL command from our python code.
+Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a large amount of formats (csv, parquet, json,...) and locations (s3, hdfs, gcs,...).
 
 ```python
+import dask.dataframe as dd
 from dask_sql import Context
-from dask.datasets import timeseries
 
 # Create a context to hold the registered tables
 c = Context()
 
-# If you have a cluster of dask workers,
-# initialize it now
-
 # Load the data and register it in the context
-# This will give the table a name
-df = timeseries()
-c.register_dask_table(df, "timeseries")
+# This will give the table a name, that we can use in queries
+df = dd.read_csv("...")
+c.create_table("my_data", df)
 
-# Now execute an SQL query. The result is a dask dataframe
-# The query looks for the id with the highest x for each name
-# (this is just random test data, but you could think of looking
-# for outliers in the sensor data)
+# Now execute a SQL query. The result is again dask dataframe.
 result = c.sql("""
     SELECT
-        lhs.name,
-        lhs.id,
-        lhs.x
+        my_data.name,
+        SUM(my_data.x)
     FROM
-        timeseries AS lhs
-    JOIN
-        (
-            SELECT
-                name AS max_name,
-                MAX(x) AS max_x
-            FROM timeseries
-            GROUP BY name
-        ) AS rhs
-    ON
-        lhs.name = rhs.max_name AND
-        lhs.x = rhs.max_x
-""")
+        my_data
+    GROUP BY
+        my_data.name
+""", return_futures=False)
 
-# Show the result...
-print(result.compute())
-
-# ... or use it for any other dask calculation
-# (just an example, could also be done via SQL)
-print(result.x.mean().compute())
+# Show the result
+print(result)
 ```
+
+## Quickstart
+
+Have a look into the [documentation](https://dask-sql.readthedocs.io/en/latest/) or start the example notebook on [binder](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab).
+
+
+> `dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
+We are actively looking for feedback, improvements and contributors!
+
+If you would like to utilize GPUs for your SQL queries, have a look into the [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
+
 
 ## Installation
 
@@ -113,21 +113,69 @@ If you want to have the newest (unreleased) `dask-sql` version or if you plan to
 
 Create a new conda environment and install the development environment:
 
-    conda create -n dask-sql --file conda.yaml -c conda-forge
+    conda create -n dask-sql --file conda.txt -c conda-forge
+
+It is not recommended to use `pip` instead of `conda` for the environment setup.
+If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
+Have a look into `conda.txt` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
-    pip install -e .
+    pip install -e ".[dev]"
 
-This will also compile the Java classes. If there were changes to the Java code, you need to rerun this compilation with
+To compile the Java classes (at the beginning or after changes), run
 
     python setup.py java
+
+This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
+
+    pre-commit install
 
 ## Testing
 
 You can run the tests (after installation) with
 
     pytest tests
+
+## SQL Server
+
+`dask-sql` comes with a small test implementation for a SQL server.
+Instead of rebuilding a full ODBC driver, we re-use the [presto wire protocol](https://github.com/prestodb/presto/wiki/HTTP-Protocol).
+It is - so far - only a start of the development and missing important concepts, such as
+authentication.
+
+You can test the sql presto server by running (after installation)
+
+    dask-sql-server
+
+or by using the created docker image
+
+    docker run --rm -it -p 8080:8080 nbraun/dask-sql
+
+in one terminal. This will spin up a server on port 8080 (by default)
+that looks similar to a normal presto database to any presto client.
+
+You can test this for example with the default [presto client](https://prestosql.io/docs/current/installation/cli.html):
+
+    presto --server localhost:8080
+
+Now you can fire simple SQL queries (as no data is loaded by default):
+
+    => SELECT 1 + 1;
+     EXPR$0
+    --------
+        2
+    (1 row)
+
+You can find more information in the [documentation](https://dask-sql.readthedocs.io/en/latest/pages/server.html).
+
+## CLI
+
+You can also run the CLI `dask-sql` for testing out SQL commands quickly:
+
+    dask-sql --load-test-data --startup
+
+    (dask-sql) > SELECT * FROM timeseries LIMIT 10;
 
 ## How does it work?
 
@@ -138,29 +186,3 @@ At the core, `dask-sql` does two things:
 
 For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
 After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
-
-## SQL Server
-
-`dask-sql` comes with a small test implementation for a SQL server.
-Instead of rebuilding a full ODBC driver, we re-use the [postgreSQL wire protocol](https://www.postgresql.org/docs/9.3/protocol-flow.html).
-It is - so far - just a proof of concept
-
-You can test the sql postgres server by running
-
-    python dask_sql/server/handler.py
-
-in one terminal. This will spin up a server on port 9876
-that looks similar to a normal postgres database to any postgres client
-(except that you can only do queries, no database creation etc.)
-
-You can test this for example with the default postgres client:
-
-    psql -h localhost -p 9876
-
-Now you can fire simple SQL queries (as no data is loaded by default):
-
-    => SELECT 1 + 1;
-     EXPR$0
-    --------
-        2
-    (1 row)

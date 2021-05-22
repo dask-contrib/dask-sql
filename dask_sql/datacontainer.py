@@ -1,7 +1,6 @@
-from typing import List, Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import dask.dataframe as dd
-
 
 ColumnType = Union[str, int]
 
@@ -41,7 +40,9 @@ class ColumnContainer:
         """
         Internal function to copy this container
         """
-        return ColumnContainer(self._frontend_columns, self._frontend_backend_mapping)
+        return ColumnContainer(
+            self._frontend_columns.copy(), self._frontend_backend_mapping.copy()
+        )
 
     def limit_to(self, fields: List[str]) -> ColumnContainer:
         """
@@ -49,6 +50,9 @@ class ColumnContainer:
         limited to only the ones given as parameter.
         Also uses the order of these as the new column order.
         """
+        if not fields:
+            return self  # pragma: no cover
+
         assert all(f in self._frontend_backend_mapping for f in fields)
         cc = self._copy()
         cc._frontend_columns = [str(x) for x in fields]
@@ -84,7 +88,7 @@ class ColumnContainer:
         """
         The stored frontend columns in the correct order
         """
-        return self._frontend_columns
+        return self._frontend_columns.copy()
 
     def add(
         self, frontend_column: str, backend_column: Union[str, None] = None
@@ -101,7 +105,8 @@ class ColumnContainer:
         cc._frontend_backend_mapping[frontend_column] = str(
             backend_column or frontend_column
         )
-        cc._frontend_columns.append(frontend_column)
+        if frontend_column not in cc._frontend_columns:
+            cc._frontend_columns.append(frontend_column)
 
         return cc
 
@@ -112,6 +117,14 @@ class ColumnContainer:
         """
         frontend_column = self._frontend_columns[index]
         backend_column = self._frontend_backend_mapping[frontend_column]
+        return backend_column
+
+    def get_backend_by_frontend_name(self, column: str) -> str:
+        """
+        Get back the dask column, which is referenced by the
+        frontend (SQL) column with the given name.
+        """
+        backend_column = self._frontend_backend_mapping[column]
         return backend_column
 
     def make_unique(self, prefix="col"):
@@ -156,6 +169,7 @@ class DataContainer:
             **{
                 col_from: self.df[col_to]
                 for col_from, col_to in self.column_container.mapping()
+                if col_from in self.column_container.columns
             }
         )
         return df[self.column_container.columns]

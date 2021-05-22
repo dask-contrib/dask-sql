@@ -1,42 +1,18 @@
+import logging
 import operator
 from collections import defaultdict
 from functools import reduce
-from typing import Callable, Dict, List, Tuple, Union
-import uuid
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
+import pandas as pd
 
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
+from dask_sql.utils import new_temporary_column
 
-
-class GroupDatasetDescription:
-    """
-    Helper class to put dataframes which are filtered according to a specific column
-    into a dictionary.
-    Applying the same filter twice on the same dataframe does not give different
-    dataframes. Therefore we only hash these dataframes according to the column
-    they are filtered by.
-    """
-
-    def __init__(self, df: dd.DataFrame, filtered_column: str = ""):
-        self.df = df
-        self.filtered_column = filtered_column
-
-    def __eq__(self, rhs: "GroupDatasetDescription") -> bool:
-        """They are equal of they are filtered by the same column"""
-        return self.filtered_column == rhs.filtered_column
-
-    def __hash__(self) -> str:
-        return hash(self.filtered_column)
-
-    def __repr__(self) -> str:
-        return f"GroupDatasetDescription({self.filtered_column})"
-
-
-# Description of an aggregation in the form of a mapping
-# input column -> output column -> aggregation
-AggregationDescription = Dict[str, Dict[str, Union[str, dd.Aggregation]]]
+logger = logging.getLogger(__name__)
 
 
 class ReduceAggregation(dd.Aggregation):
@@ -51,6 +27,40 @@ class ReduceAggregation(dd.Aggregation):
         super().__init__(name, series_aggregate, series_aggregate)
 
 
+class AggregationOnPandas(dd.Aggregation):
+    """
+    A special form of an aggregation, which does not apply the given function
+    (given as attribute name) directly to the dask groupby, but
+    via the groupby().apply() method. This is needed to call
+    functions directly on the pandas dataframes, but should be done
+    very carefully (as it is a performance bottleneck).
+    """
+
+    def __init__(self, function_name: str):
+        def _f(s):
+            return s.apply(lambda s0: getattr(s0.dropna(), function_name)())
+
+        super().__init__(function_name, _f, _f)
+
+
+class AggregationSpecification:
+    """
+    Most of the aggregations in SQL are already
+    implemented 1:1 in dask and can just be called via their name
+    (e.g. AVG is the mean). However sometimes those already
+    implemented functions only work well for numerical
+    functions. This small container class therefore
+    can have an additional aggregation function, which is
+    valid for non-numerical types.
+    """
+
+    def __init__(self, numerical_aggregation, non_numerical_aggregation=None):
+        self.numerical_aggregation = numerical_aggregation
+        self.non_numerical_aggregation = (
+            non_numerical_aggregation or numerical_aggregation
+        )
+
+
 class LogicalAggregatePlugin(BaseRelPlugin):
     """
     A LogicalAggregate is used in GROUP BY clauses, but also
@@ -60,31 +70,45 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     group over, in the second case we "cheat" and add a 1-column
     to the dataframe, which allows us to reuse every aggregation
     function we already know of.
+    As NULLs are not groupable in dask, we handle them special
+    by adding a temporary column which is True for all NULL values
+    and False otherwise (and also group by it).
 
     The rest is just a lot of column-name-bookkeeping.
     Fortunately calcite will already make sure, that each
     aggregation function will only every be called with a single input
     column (by splitting the inner calculation to a step before).
+
+    Open TODO: So far we are following the dask default
+    to only have a single partition after the group by (which is usual
+    a reasonable assumption). It would be nice to control
+    these things via HINTs.
     """
 
     class_name = "org.apache.calcite.rel.logical.LogicalAggregate"
 
     AGGREGATION_MAPPING = {
-        "$sum0": "sum",
-        "any_value": dd.Aggregation(
-            "any_value",
-            lambda s: s.sample(n=1).values,
-            lambda s0: s0.sample(n=1).values,
+        "$sum0": AggregationSpecification("sum", AggregationOnPandas("sum")),
+        "any_value": AggregationSpecification(
+            dd.Aggregation(
+                "any_value",
+                lambda s: s.sample(n=1).values,
+                lambda s0: s0.sample(n=1).values,
+            )
         ),
-        "avg": "mean",
-        "bit_and": ReduceAggregation("bit_and", operator.and_),
-        "bit_or": ReduceAggregation("bit_or", operator.or_),
-        "bit_xor": ReduceAggregation("bit_xor", operator.xor),
-        "count": "count",
-        "every": dd.Aggregation("every", lambda s: s.all(), lambda s0: s0.all()),
-        "max": "max",
-        "min": "min",
-        "single_value": "first",
+        "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
+        "bit_and": AggregationSpecification(
+            ReduceAggregation("bit_and", operator.and_)
+        ),
+        "bit_or": AggregationSpecification(ReduceAggregation("bit_or", operator.or_)),
+        "bit_xor": AggregationSpecification(ReduceAggregation("bit_xor", operator.xor)),
+        "count": AggregationSpecification("count"),
+        "every": AggregationSpecification(
+            dd.Aggregation("every", lambda s: s.all(), lambda s0: s0.all())
+        ),
+        "max": AggregationSpecification("max", AggregationOnPandas("max")),
+        "min": AggregationSpecification("min", AggregationOnPandas("min")),
+        "single_value": AggregationSpecification("first"),
     }
 
     def convert(
@@ -107,128 +131,202 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             cc.get_backend_by_frontend_index(i) for i in group_column_indices
         ]
 
-        # Always keep an additional column around for empty groups and aggregates
-        additional_column_name = str(uuid.uuid4())
-
-        # NOTE: it might be the case that
-        # we do not need this additional
-        # column, but hopefully adding a single
-        # column of 1 is not so problematic...
-        df = df.assign(**{additional_column_name: 1})
-        cc = cc.add(additional_column_name)
         dc = DataContainer(df, cc)
-
-        # Collect all aggregates
-        filtered_aggregations, output_column_order = self._collect_aggregations(
-            rel, dc, group_columns, additional_column_name, context
-        )
 
         if not group_columns:
             # There was actually no GROUP BY specified in the SQL
             # Still, this plan can also be used if we need to aggregate something over the full
             # data sample
             # To reuse the code, we just create a new column at the end with a single value
-            # It is important to do this after creating the aggregations,
-            # as we do not want this additional column to be used anywhere
-            group_columns = [additional_column_name]
+            logger.debug("Performing full-table aggregation")
 
-        # Now we can perform the aggregates
-        # We iterate through all pairs of (possible pre-filtered)
-        # dataframes and the aggregations to perform in this data...
-        df_agg = None
-        for filtered_df_desc, aggregation in filtered_aggregations.items():
-            # ... we perform the aggregations ...
-            filtered_df = filtered_df_desc.df
-            filtered_df_agg = filtered_df.groupby(by=group_columns).agg(aggregation)
-
-            # ... fix the column names to a single level ...
-            filtered_df_agg.columns = filtered_df_agg.columns.get_level_values(-1)
-
-            # ... and finally concat the new data with the already present columns
-            if df_agg is None:
-                df_agg = filtered_df_agg
-            else:
-                df_agg = df_agg.assign(
-                    **{col: filtered_df_agg[col] for col in filtered_df_agg.columns}
-                )
+        # Do all aggregates
+        df_result, output_column_order = self._do_aggregations(
+            rel, dc, group_columns, context,
+        )
 
         # SQL does not care about the index, but we do not want to have any multiindices
-        df_agg = df_agg.reset_index(drop=True)
+        df_agg = df_result.reset_index(drop=True)
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
         cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        return DataContainer(df_agg, cc)
+        dc = DataContainer(df_agg, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        return dc
 
-    def _collect_aggregations(
+    def _do_aggregations(
         self,
         rel: "org.apache.calcite.rel.RelNode",
         dc: DataContainer,
         group_columns: List[str],
-        additional_column_name: str,
         context: "dask_sql.Context",
-    ) -> Tuple[
-        Dict[GroupDatasetDescription, AggregationDescription], List[int],
-    ]:
+    ) -> Tuple[dd.DataFrame, List[str]]:
         """
-        Create a mapping of dataframe -> aggregations (in the form input colum, output column, aggregation)
-        and the expected order of output columns.
+        Main functionality: return the result dataframe
+        and the output column order
         """
-        aggregations = defaultdict(lambda: defaultdict(dict))
-        output_column_order = []
         df = dc.df
         cc = dc.column_container
 
-        # SQL needs to copy the old content also. As the values of the group columns
+        # We might need it later.
+        # If not, lets hope that adding a single column should not
+        # be a huge problem...
+        additional_column_name = new_temporary_column(df)
+        df = df.assign(**{additional_column_name: 1})
+
+        # Add an entry for every grouped column, as SQL wants them first
+        output_column_order = group_columns.copy()
+
+        # Collect all aggregations we need to do
+        collected_aggregations, output_column_order = self._collect_aggregations(
+            rel, df, cc, context, additional_column_name, output_column_order
+        )
+
+        if not collected_aggregations:
+            return df[group_columns].drop_duplicates(), output_column_order
+
+        # SQL needs to have a column with the grouped values as the first
+        # output column.
+        # As the values of the group columns
         # are the same for a single group anyways, we just use the first row
         for col in group_columns:
-            aggregations[GroupDatasetDescription(df)][col][col] = "first"
-            output_column_order.append(col)
+            collected_aggregations[None].append((col, col, "first"))
 
-        # Now collect all aggregations
+        # Now we can go ahead and use these grouped aggregations
+        # to perform the actual aggregation
+        # It is very important to start with the non-filtered entry.
+        # Otherwise we might loose some entries in the grouped columns
+        df_result = None
+        key = None
+        if key in collected_aggregations:
+            aggregations = collected_aggregations.pop(key)
+            df_result = self._perform_aggregation(
+                df, None, aggregations, additional_column_name, group_columns,
+            )
+
+        # Now we can also the the rest
+        for filter_column, aggregations in collected_aggregations.items():
+            agg_result = self._perform_aggregation(
+                df, filter_column, aggregations, additional_column_name, group_columns,
+            )
+
+            # ... and finally concat the new data with the already present columns
+            if df_result is None:
+                df_result = agg_result
+            else:
+                df_result = df_result.assign(
+                    **{col: agg_result[col] for col in agg_result.columns}
+                )
+
+        return df_result, output_column_order
+
+    def _collect_aggregations(
+        self,
+        rel: "org.apache.calcite.rel.RelNode",
+        df: dd.DataFrame,
+        cc: ColumnContainer,
+        context: "dask_sql.Context",
+        additional_column_name: str,
+        output_column_order: List[str],
+    ) -> Tuple[Dict[Tuple[str, str], List[Tuple[str, str, Any]]], List[str]]:
+        """
+        Collect all aggregations together, which have the same filter column
+        so that the aggregations only need to be done once.
+
+        Returns the aggregations as mapping filter_column -> List of Aggregations
+        where the aggregations are in the form (input_col, output_col, aggregation function (or string))
+        """
+        collected_aggregations = defaultdict(list)
+
         for agg_call in rel.getNamedAggCalls():
-            output_col = str(agg_call.getValue())
             expr = agg_call.getKey()
 
-            if expr.hasFilter():
-                filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
-                filter_expression = df[filter_column]
-                filtered_df = df[filter_expression]
-
-                grouped_df = GroupDatasetDescription(filtered_df, filter_column)
-            else:
-                grouped_df = GroupDatasetDescription(df)
-
-            if expr.isDistinct():
-                raise NotImplementedError(
-                    "DISTINCT is not implemented (yet)"
-                )  # pragma: no cover
-
-            aggregation_name = str(expr.getAggregation().getName())
-            aggregation_name = aggregation_name.lower()
-            try:
-                aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
-            except KeyError:
-                try:
-                    aggregation_function = context.functions[aggregation_name].f
-                except KeyError:  # pragma: no cover
-                    raise NotImplementedError(
-                        f"Aggregation function {aggregation_name} not implemented (yet)."
-                    )
-
+            # Find out about the input column
             inputs = expr.getArgList()
             if len(inputs) == 1:
                 input_col = cc.get_backend_by_frontend_index(inputs[0])
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
-                raise NotImplementedError(
-                    "Can not cope with more than one input"
-                )  # pragma: no cover
+                raise NotImplementedError("Can not cope with more than one input")
 
-            aggregations[grouped_df][input_col][output_col] = aggregation_function
+            # Extract flags (filtering/distinct)
+            if expr.isDistinct():  # pragma: no cover
+                raise ValueError("Apache Calcite should optimize them away!")
+
+            filter_column = None
+            if expr.hasFilter():
+                filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
+
+            # Find out which aggregation function to use
+            aggregation_name = str(expr.getAggregation().getName())
+            aggregation_name = aggregation_name.lower()
+            try:
+                aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
+            except KeyError:
+                try:
+                    aggregation_function = context.functions[aggregation_name]
+                except KeyError:  # pragma: no cover
+                    raise NotImplementedError(
+                        f"Aggregation function {aggregation_name} not implemented (yet)."
+                    )
+            if isinstance(aggregation_function, AggregationSpecification):
+                dtype = df[input_col].dtype
+                if pd.api.types.is_numeric_dtype(dtype):
+                    aggregation_function = aggregation_function.numerical_aggregation
+                else:
+                    aggregation_function = (
+                        aggregation_function.non_numerical_aggregation
+                    )
+
+            # Finally, extract the output column name
+            output_col = str(agg_call.getValue())
+
+            # Store the aggregation
+            key = filter_column
+            value = (input_col, output_col, aggregation_function)
+            collected_aggregations[key].append(value)
             output_column_order.append(output_col)
 
-        return aggregations, output_column_order
+        return collected_aggregations, output_column_order
+
+    def _perform_aggregation(
+        self,
+        df: dd.DataFrame,
+        filter_column: str,
+        aggregations: List[Tuple[str, str, Any]],
+        additional_column_name: str,
+        group_columns: List[str],
+    ):
+        tmp_df = df
+
+        if filter_column:
+            filter_expression = tmp_df[filter_column]
+            tmp_df = tmp_df[filter_expression]
+
+            logger.debug(f"Filtered by {filter_column} before aggregation.")
+
+        group_columns = [tmp_df[group_column] for group_column in group_columns]
+        group_columns_and_nulls = get_groupby_with_nulls_cols(
+            tmp_df, group_columns, additional_column_name
+        )
+        grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
+
+        # Convert into the correct format for dask
+        aggregations_dict = defaultdict(dict)
+        for aggregation in aggregations:
+            input_col, output_col, aggregation_f = aggregation
+
+            aggregations_dict[input_col][output_col] = aggregation_f
+
+        # Now apply the aggregation
+        logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
+        agg_result = grouped_df.agg(aggregations_dict)
+
+        # ... fix the column names to a single level ...
+        agg_result.columns = agg_result.columns.get_level_values(-1)
+
+        return agg_result

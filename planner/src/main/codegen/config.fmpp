@@ -1,0 +1,100 @@
+# This file defines additional parsers to be used in dask-sql
+# Three things need to be done for implementing a new SQL
+# expression to be understood by dask-sql (or more explicit:
+# Apache Calcite):
+#   1. A class extending SqlCall needs to be implemented
+#      (they can be found in com/dask/sql/parser/)
+#   2. The parsing expression (how the SQL expression looks like)
+#      needs to be implemented in includes/parserImpls.ftl
+#   3. It needs to be added here.
+# The rest happens during compilation, where these files are used
+# for creating the parser class.
+
+data: {
+    # Default taken from the calcite jar (see pom.xml)
+    default: tdd("../default_config.fmpp")
+    parser: {
+      # Defines how the new grammer will be named (after compilation)
+      package: "com.dask.sql.parser",
+      class: "DaskSqlParserImpl",
+
+      # List of import statements.
+      imports: [
+        "org.apache.calcite.util.*",
+        "org.apache.calcite.sql.SqlCreate",
+        "org.apache.calcite.sql.SqlDrop",
+        "java.util.*",
+        "com.dask.sql.parser.SqlAnalyzeTable",
+        "com.dask.sql.parser.SqlCreateModel",
+        "com.dask.sql.parser.SqlCreateTable",
+        "com.dask.sql.parser.SqlCreateTableAs",
+        "com.dask.sql.parser.SqlDropModel",
+        "com.dask.sql.parser.SqlDropTable",
+        "com.dask.sql.parser.SqlKwargs",
+        "com.dask.sql.parser.SqlModelIdentifier",
+        "com.dask.sql.parser.SqlPredictModel"
+        "com.dask.sql.parser.SqlShowColumns",
+        "com.dask.sql.parser.SqlShowSchemas",
+        "com.dask.sql.parser.SqlShowTables"
+      ]
+
+      # List of keywords.
+      keywords: [
+        "ANALYZE"
+        "COLUMNS"
+        "COMPUTE"
+        "IF"
+        "MODEL"
+        "PREDICT"
+        "SCHEMAS"
+        "STATISTICS"
+        "TABLES"
+      ]
+
+      # The keywords can only be used in a specific context,
+      # so we can keep them non-reserved
+      nonReservedKeywordsToAdd: [
+        "ANALYZE"
+        "COLUMNS"
+        "COMPUTE"
+        "IF"
+        "MODEL"
+        "PREDICT"
+        "SCHEMAS"
+        "STATISTICS"
+        "TABLES"
+      ]
+
+      # List of methods for parsing custom SQL statements
+      statementParserMethods: [
+         "SqlAnalyzeTable()"
+         "SqlDescribeTable()"
+         "SqlShowColumns()"
+         "SqlShowSchemas()"
+         "SqlShowTables()"
+         "SqlPredictModel()"
+      ]
+
+      createStatementParserMethods: [
+         "SqlCreateModel"
+         "SqlCreateTable"
+         "SqlCreateView"
+      ]
+
+      dropStatementParserMethods: [
+         "SqlDropModel"
+         "SqlDropTable"
+      ]
+
+      # location of the implementation
+      implementationFiles: [
+        "create.ftl"
+        "model.ftl"
+        "show.ftl"
+        "utils.ftl"
+      ]
+    }
+}
+freemarkerLinks: {
+    includes: includes/
+}

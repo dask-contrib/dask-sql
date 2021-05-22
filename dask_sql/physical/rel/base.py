@@ -1,8 +1,12 @@
-from typing import Dict, List
+import logging
+from typing import List
 
 import dask.dataframe as dd
 
-from dask_sql.datacontainer import ColumnContainer
+from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.mappings import cast_column_type, sql_to_python_type
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRelPlugin:
@@ -20,7 +24,7 @@ class BaseRelPlugin:
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> dd.DataFrame:
         """Base method to implement"""
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     @staticmethod
     def fix_column_to_row_type(
@@ -75,3 +79,33 @@ class BaseRelPlugin:
         from dask_sql.physical.rel.convert import RelConverter
 
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
+
+    @staticmethod
+    def fix_dtype_to_row_type(
+        dc: DataContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
+    ):
+        """
+        Fix the dtype of the given data container (or: the df within it)
+        to the data type given as argument.
+        To prevent unneeded conversions, do only convert if really needed,
+        e.g. if the two types are "similar" enough, do not convert.
+        Similarity involves the same general type (int, float, string etc)
+        but not necessary the size (int64 and int32 are compatible)
+        or the nullability.
+        TODO: we should check the nullability of the SQL type
+        """
+        df = dc.df
+        cc = dc.column_container
+
+        field_types = {
+            int(field.getIndex()): str(field.getType())
+            for field in row_type.getFieldList()
+        }
+
+        for index, field_type in field_types.items():
+            expected_type = sql_to_python_type(field_type)
+            field_name = cc.get_backend_by_frontend_index(index)
+
+            df = cast_column_type(df, field_name, expected_type)
+
+        return DataContainer(df, dc.column_container)

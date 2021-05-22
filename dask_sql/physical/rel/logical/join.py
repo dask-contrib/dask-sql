@@ -1,14 +1,21 @@
-from functools import reduce
+import logging
 import operator
-from typing import Dict, Tuple, List
 import warnings
+from functools import reduce
+from typing import List, Tuple
 
 import dask.dataframe as dd
+import pandas as pd
+from dask.base import tokenize
+from dask.highlevelgraph import HighLevelGraph
 
-from dask_sql.physical.rex import RexConverter
-from dask_sql.java import get_short_java_class
+from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.physical.rel.logical.filter import filter_or_scalar
+from dask_sql.physical.rex import RexConverter
+
+logger = logging.getLogger(__name__)
 
 
 class LogicalJoinPlugin(BaseRelPlugin):
@@ -75,6 +82,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
         join_condition = rel.getCondition()
         lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
+        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
+
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
         # of lhs and rhs put side-by-side (in this order)
@@ -85,36 +94,60 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
         if lhs_on:
-            lhs_columns_to_add = {
-                f"common_{i}": df_lhs_renamed.iloc[:, index]
-                for i, index in enumerate(lhs_on)
-            }
-            rhs_columns_to_add = {
-                f"common_{i}": df_rhs_renamed.iloc[:, index]
-                for i, index in enumerate(rhs_on)
-            }
+            # 5. Now we can finally merge on these columns
+            # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
+            # plus the added columns
+            df = self._join_on_columns(
+                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
+            )
         else:
-            # We are in the complex join case
+            # 5. We are in the complex join case
             # where we have no column to merge on
             # This means we have no other chance than to merge
             # everything with everything...
-            # We add a 1-column to merge on
-            lhs_columns_to_add = {"common": 1}
-            rhs_columns_to_add = {"common": 1}
+
+            # TODO: we should implement a shortcut
+            # for filter conditions that are always false
+
+            def merge_single_partitions(lhs_partition, rhs_partition):
+                # Do a cross join with the two partitions
+                # TODO: it would be nice to apply the filter already here
+                # problem: this would mean we need to ship the rex to the
+                # workers (as this is executed on the workers),
+                # which is definitely not possible (java dependency, JVM start...)
+                lhs_partition = lhs_partition.assign(common=1)
+                rhs_partition = rhs_partition.assign(common=1)
+                merged_data = pd.merge(lhs_partition, rhs_partition, on=["common"])
+
+                return merged_data
+
+            # Iterate nested over all partitions from lhs and rhs and merge them
+            name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
+            dsk = {
+                (name, i * df_rhs_renamed.npartitions + j): (
+                    merge_single_partitions,
+                    (df_lhs_renamed._name, i),
+                    (df_rhs_renamed._name, j),
+                )
+                for i in range(df_lhs_renamed.npartitions)
+                for j in range(df_rhs_renamed.npartitions)
+            }
+
+            graph = HighLevelGraph.from_collections(
+                name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
+            )
+
+            meta = pd.concat(
+                [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
+            )
+            # TODO: Do we know the divisions in any way here?
+            divisions = [None] * (len(dsk) + 1)
+            df = dd.DataFrame(graph, name, meta=meta, divisions=divisions)
 
             warnings.warn(
                 "Need to do a cross-join, which is typically very resource heavy",
                 ResourceWarning,
             )
-
-        df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
-        df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
-        added_columns = list(lhs_columns_to_add.keys())
-
-        # 5. Now we can finally merge on these columns
-        # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
-        # plus the added columns
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
 
         # 6. So the next step is to make sure
         # we have the correct column order (and to remove the temporary join columns)
@@ -132,7 +165,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type)
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
@@ -145,15 +178,63 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     for rex in filter_condition
                 ],
             )
-            df = df[filter_condition]
+            logger.debug(f"Additionally applying filter {filter_condition}")
+            df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
+
+    def _join_on_columns(
+        self,
+        df_lhs_renamed: dd.DataFrame,
+        df_rhs_renamed: dd.DataFrame,
+        lhs_on: List[str],
+        rhs_on: List[str],
+        join_type: str,
+    ) -> dd.DataFrame:
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed.iloc[:, index]
+            for i, index in enumerate(lhs_on)
+        }
+        rhs_columns_to_add = {
+            f"common_{i}": df_rhs_renamed.iloc[:, index]
+            for i, index in enumerate(rhs_on)
+        }
+
+        # SQL compatibility: when joining on columns that
+        # contain NULLs, pandas will actually happily
+        # keep those NULLs. That is however not compatible with
+        # SQL, so we get rid of them here
+        if join_type in ["inner", "right"]:
+            df_lhs_filter = reduce(
+                operator.and_,
+                [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
+            )
+            df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
+        if join_type in ["inner", "left"]:
+            df_rhs_filter = reduce(
+                operator.and_,
+                [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
+            )
+            df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
+
+        df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
+        df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
+        added_columns = list(lhs_columns_to_add.keys())
+
+        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
+
+        return df
 
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
-        assert get_short_java_class(join_condition) == "RexCall"
+
+        if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
+            return [], [], [join_condition]
+        elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
+            raise NotImplementedError("Can not understand join condition.")
 
         # Simplest case: ... ON lhs.a == rhs.b
         try:
@@ -197,9 +278,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
         operand_lhs = operands[0]
         operand_rhs = operands[1]
 
-        if (
-            get_short_java_class(operand_lhs) == "RexInputRef"
-            and get_short_java_class(operand_rhs) == "RexInputRef"
+        if isinstance(operand_lhs, org.apache.calcite.rex.RexInputRef) and isinstance(
+            operand_rhs, org.apache.calcite.rex.RexInputRef
         ):
             lhs_index = operand_lhs.getIndex()
             rhs_index = operand_rhs.getIndex()
@@ -213,4 +293,6 @@ class LogicalJoinPlugin(BaseRelPlugin):
 
             return lhs_index, rhs_index
 
-        raise TypeError("Invalid join condition")  # pragma: no cover
+        raise AssertionError(
+            "Invalid join condition"
+        )  # pragma: no cover. Do not how how it could be triggered.

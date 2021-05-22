@@ -1,8 +1,9 @@
+import pandas as pd
 import pytest
 from dask import dataframe as dd
-import pandas as pd
 
-from dask_sql.utils import is_frame, Pluggable, ParsingException
+from dask_sql.java import _set_or_check_java_home
+from dask_sql.utils import ParsingException, Pluggable, is_frame
 
 
 def test_is_frame_for_frame():
@@ -99,3 +100,10 @@ The problem is probably somewhere here:
     e = ParsingException("SELECT *", "Message",)
 
     assert str(e) == "Message"
+
+
+def test_no_warning():
+    with pytest.warns(None) as warn:
+        _set_or_check_java_home()
+
+    assert not warn

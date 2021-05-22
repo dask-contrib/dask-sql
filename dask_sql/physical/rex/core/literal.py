@@ -1,11 +1,11 @@
 from typing import Any
 
-import numpy as np
 import dask.dataframe as dd
+import numpy as np
 
-from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.mappings import sql_to_python_value
 from dask_sql.datacontainer import DataContainer
+from dask_sql.mappings import sql_to_python_value
+from dask_sql.physical.rex.base import BaseRexPlugin
 
 
 class RexLiteralPlugin(BaseRexPlugin):

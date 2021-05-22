@@ -1,10 +1,8 @@
-from typing import Dict
-
 import dask.dataframe as dd
 
-from dask_sql.physical.rex import RexConverter
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.physical.rex import RexConverter
 
 
 class LogicalUnionPlugin(BaseRelPlugin):
@@ -63,4 +61,6 @@ class LogicalUnionPlugin(BaseRelPlugin):
 
         cc = ColumnContainer(df.columns)
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        return DataContainer(df, cc)
+        dc = DataContainer(df, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        return dc

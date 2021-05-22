@@ -1,11 +1,14 @@
-from typing import Union, Any
+import logging
+from typing import Any, Union
 
 import dask.dataframe as dd
 
-from dask_sql.java import get_java_class
-from dask_sql.utils import Pluggable
-from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
+from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.utils import LoggableDataFrame, Pluggable
+
+logger = logging.getLogger(__name__)
 
 
 class RexConverter(Pluggable):
@@ -27,6 +30,7 @@ class RexConverter(Pluggable):
     @classmethod
     def add_plugin_class(cls, plugin_class: BaseRexPlugin, replace=True):
         """Convenience function to add a class directly to the plugins"""
+        logger.debug(f"Registering REX plugin for {plugin_class.class_name}")
         cls.add_plugin(plugin_class.class_name, plugin_class(), replace=replace)
 
     @classmethod
@@ -51,5 +55,10 @@ class RexConverter(Pluggable):
                 f"No conversion for class {class_name} available (yet)."
             )
 
+        logger.debug(
+            f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
+        )
+
         df = plugin_instance.convert(rex, dc, context=context)
+        logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df

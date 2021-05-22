@@ -1,11 +1,9 @@
-from typing import Dict
-
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.physical.rex import RexConverter
+from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.datacontainer import DataContainer, ColumnContainer
+from dask_sql.physical.rex import RexConverter
 
 
 class LogicalValuesPlugin(BaseRelPlugin):
@@ -47,9 +45,16 @@ class LogicalValuesPlugin(BaseRelPlugin):
 
         # TODO: we explicitely reference pandas and dask here -> might we worth making this more general
         # We assume here that when using the values plan, the resulting dataframe will be quite small
-        df = pd.DataFrame(rows)
+        if rows:
+            df = pd.DataFrame(rows)
+        else:
+            field_names = [str(x) for x in rel.getRowType().getFieldNames()]
+            df = pd.DataFrame(columns=field_names)
+
         df = dd.from_pandas(df, npartitions=1)
         cc = ColumnContainer(df.columns)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        return DataContainer(df, cc)
+        dc = DataContainer(df, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        return dc

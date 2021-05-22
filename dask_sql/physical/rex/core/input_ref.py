@@ -1,7 +1,7 @@
 import dask.dataframe as dd
 
-from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.datacontainer import DataContainer
+from dask_sql.physical.rex.base import BaseRexPlugin
 
 
 class RexInputRefPlugin(BaseRexPlugin):

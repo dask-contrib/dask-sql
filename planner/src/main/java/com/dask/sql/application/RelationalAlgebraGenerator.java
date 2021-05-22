@@ -9,12 +9,14 @@ import java.util.Properties;
 
 import com.dask.sql.schema.DaskSchema;
 import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
-
+import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
+import org.apache.calcite.config.CalciteConnectionProperty;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
+import org.apache.calcite.plan.Context;
+import org.apache.calcite.plan.Contexts;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgram;
@@ -29,9 +31,7 @@ import org.apache.calcite.rel.rules.FilterMergeRule;
 import org.apache.calcite.rel.rules.FilterRemoveIsNotDistinctFromRule;
 import org.apache.calcite.rel.rules.ProjectJoinTransposeRule;
 import org.apache.calcite.rel.rules.ProjectMergeRule;
-import org.apache.calcite.rel.rules.ProjectRemoveRule;
 import org.apache.calcite.rel.rules.ReduceExpressionsRule;
-import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rex.RexExecutorImpl;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
@@ -41,7 +41,9 @@ import org.apache.calcite.sql.fun.SqlLibraryOperatorTableFactory;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.sql.util.ChainedSqlOperatorTable;
+import org.apache.calcite.sql.parser.SqlParser.Config;
+import org.apache.calcite.sql.util.SqlOperatorTables;
+import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Frameworks;
 import org.apache.calcite.tools.Planner;
@@ -56,91 +58,37 @@ import org.apache.calcite.tools.ValidationException;
  * This class is taken (in parts) from the blazingSQL project.
  */
 public class RelationalAlgebraGenerator {
-	/// The created planner
-	private Planner planner;
-	/// The planner for optimized queries
-	private HepPlanner hepPlanner;
+	final Planner planner;
+	final HepPlanner hepPlanner;
 
 	/// Create a new relational algebra generator from a schema
 	public RelationalAlgebraGenerator(final DaskSchema schema) throws ClassNotFoundException, SQLException {
 		// Taken from https://calcite.apache.org/docs/ and blazingSQL
-
-		final CalciteConnection calciteConnection = getCalciteConnection();
-		calciteConnection.setSchema(schema.getName());
-
-		final SchemaPlus rootSchema = calciteConnection.getRootSchema();
-		rootSchema.add(schema.getName(), schema);
-
-		final FrameworkConfig config = getConfig(rootSchema, schema.getName());
-
-		planner = Frameworks.getPlanner(config);
-		hepPlanner = getHepPlanner(config);
-	}
-
-	/// Create the framework config, e.g. containing with SQL dialect we speak
-	private FrameworkConfig getConfig(final SchemaPlus rootSchema, final String schemaName) {
-		final List<String> defaultSchema = new ArrayList<String>();
-		defaultSchema.add(schemaName);
-
-		final Properties props = new Properties();
-		props.setProperty("defaultSchema", schemaName);
-
+		final String schemaName = schema.getName();
+		final SchemaPlus rootSchema = createRootSchema(schema, schemaName);
 		final SchemaPlus schemaPlus = rootSchema.getSubSchema(schemaName);
-		final CalciteSchema calciteSchema = CalciteSchema.from(schemaPlus);
 
-		final CalciteCatalogReader calciteCatalogReader = new CalciteCatalogReader(calciteSchema, defaultSchema,
-				new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT), new CalciteConnectionConfigImpl(props));
+		final JavaTypeFactoryImpl typeFactory = createTypeFactory();
+		final CalciteCatalogReader calciteCatalogReader = createCatalogReader(schemaName, schemaPlus, typeFactory);
+		final SqlOperatorTable operatorTable = createOperatorTable(calciteCatalogReader);
+		final SqlParser.Config parserConfig = createParserConfig();
+		final FrameworkConfig frameworkConfig = createFrameworkConfig(schemaPlus, operatorTable, parserConfig);
 
-		final List<SqlOperatorTable> sqlOperatorTables = new ArrayList<>();
-		sqlOperatorTables.add(SqlStdOperatorTable.instance());
-		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
-		sqlOperatorTables.add(calciteCatalogReader);
-
-		SqlParser.Config parserConfig = getDialect().configureParser(SqlParser.configBuilder()).build();
-		SqlOperatorTable operatorTable = new ChainedSqlOperatorTable(sqlOperatorTables);
-
-		return Frameworks.newConfigBuilder().defaultSchema(schemaPlus).parserConfig(parserConfig)
-				.executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
+		this.planner = createPlanner(frameworkConfig);
+		this.hepPlanner = createHepPlanner(frameworkConfig);
 	}
 
 	/// Return the default dialect used
 	public SqlDialect getDialect() {
-		return PostgresqlSqlDialect.DEFAULT;
-	}
-
-	/// Get a connection to "connect" to the database.
-	private CalciteConnection getCalciteConnection() throws SQLException {
-		// Taken from https://calcite.apache.org/docs/
-		final Properties info = new Properties();
-		info.setProperty("lex", "JAVA");
-
-		final Connection connection = DriverManager.getConnection("jdbc:calcite:", info);
-		return connection.unwrap(CalciteConnection.class);
-	}
-
-	/// get an optimizer hep planner
-	private HepPlanner getHepPlanner(final FrameworkConfig config) {
-		// TODO: check if these rules are sensible
-		// Taken from blazingSQL
-		final HepProgram program = new HepProgramBuilder().addRuleInstance(AggregateExpandDistinctAggregatesRule.JOIN)
-				.addRuleInstance(FilterAggregateTransposeRule.INSTANCE)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.FILTER_ON_JOIN)
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.JOIN).addRuleInstance(ProjectMergeRule.INSTANCE)
-				.addRuleInstance(FilterMergeRule.INSTANCE).addRuleInstance(ProjectJoinTransposeRule.INSTANCE)
-				.addRuleInstance(ProjectRemoveRule.INSTANCE).addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE)
-				.addRuleInstance(ReduceExpressionsRule.FILTER_INSTANCE)
-				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.INSTANCE)
-				.addRuleInstance(AggregateReduceFunctionsRule.INSTANCE).build();
-
-		return new HepPlanner(program, config.getContext());
+		return DaskSqlDialect.DEFAULT;
 	}
 
 	/// Parse a sql string into a sql tree
 	public SqlNode getSqlNode(final String sql) throws SqlParseException {
 		try {
-			return planner.parse(sql);
+			return this.planner.parse(sql);
 		} catch (final SqlParseException e) {
-			planner.close();
+			this.planner.close();
 			throw e;
 		}
 	}
@@ -148,9 +96,9 @@ public class RelationalAlgebraGenerator {
 	/// Validate a sql node
 	public SqlNode getValidatedNode(final SqlNode sqlNode) throws ValidationException {
 		try {
-			return planner.validate(sqlNode);
+			return this.planner.validate(sqlNode);
 		} catch (final ValidationException e) {
-			planner.close();
+			this.planner.close();
 			throw e;
 		}
 	}
@@ -158,23 +106,115 @@ public class RelationalAlgebraGenerator {
 	/// Turn a validated sql node into a rel node
 	public RelNode getRelationalAlgebra(final SqlNode validatedSqlNode) throws RelConversionException {
 		try {
-			return planner.rel(validatedSqlNode).project();
+			return this.planner.rel(validatedSqlNode).project(true);
 		} catch (final RelConversionException e) {
-			planner.close();
+			this.planner.close();
 			throw e;
 		}
 	}
 
 	/// Turn a non-optimized algebra into an optimized one
 	public RelNode getOptimizedRelationalAlgebra(final RelNode nonOptimizedPlan) {
-		hepPlanner.setRoot(nonOptimizedPlan);
-		planner.close();
+		this.hepPlanner.setRoot(nonOptimizedPlan);
+		this.planner.close();
 
-		return hepPlanner.findBestExp();
+		return this.hepPlanner.findBestExp();
 	}
 
 	/// Return the string representation of a rel node
 	public String getRelationalAlgebraString(final RelNode relNode) {
 		return RelOptUtil.toString(relNode);
 	}
+
+	private Planner createPlanner(final FrameworkConfig config) {
+		return Frameworks.getPlanner(config);
+	}
+
+	private JavaTypeFactoryImpl createTypeFactory() {
+		return new JavaTypeFactoryImpl(DaskSqlDialect.DASKSQL_TYPE_SYSTEM);
+	}
+
+	private SchemaPlus createRootSchema(final DaskSchema schema, final String schemaName) throws SQLException {
+		final CalciteConnection calciteConnection = createConnection(schemaName);
+		final SchemaPlus rootSchema = calciteConnection.getRootSchema();
+		rootSchema.add(schemaName, schema);
+		return rootSchema;
+	}
+
+	private CalciteConnection createConnection(final String schemaName) throws SQLException {
+		// Taken from https://calcite.apache.org/docs/
+		final Properties info = new Properties();
+		info.setProperty("lex", "JAVA");
+
+		final Connection connection = DriverManager.getConnection("jdbc:calcite:", info);
+		final CalciteConnection calciteConnection = connection.unwrap(CalciteConnection.class);
+
+		calciteConnection.setSchema(schemaName);
+		return calciteConnection;
+	}
+
+	private CalciteCatalogReader createCatalogReader(final String schemaName, final SchemaPlus schemaPlus,
+			final JavaTypeFactoryImpl typeFactory) {
+		final CalciteSchema calciteSchema = CalciteSchema.from(schemaPlus);
+
+		final Properties props = new Properties();
+		props.setProperty("defaultSchema", schemaName);
+
+		final List<String> defaultSchema = new ArrayList<String>();
+		defaultSchema.add(schemaName);
+
+		final CalciteCatalogReader calciteCatalogReader = new CalciteCatalogReader(calciteSchema, defaultSchema,
+				typeFactory, new CalciteConnectionConfigImpl(props));
+		return calciteCatalogReader;
+	}
+
+	private SqlOperatorTable createOperatorTable(final CalciteCatalogReader calciteCatalogReader) {
+		final List<SqlOperatorTable> sqlOperatorTables = new ArrayList<>();
+		sqlOperatorTables.add(SqlStdOperatorTable.instance());
+		sqlOperatorTables.add(SqlLibraryOperatorTableFactory.INSTANCE.getOperatorTable(SqlLibrary.POSTGRESQL));
+		sqlOperatorTables.add(calciteCatalogReader);
+
+		SqlOperatorTable operatorTable = SqlOperatorTables.chain(sqlOperatorTables);
+		return operatorTable;
+	}
+
+	private Config createParserConfig() {
+		return getDialect().configureParser(SqlParser.Config.DEFAULT).withConformance(SqlConformanceEnum.DEFAULT)
+				.withParserFactory(new DaskSqlParserImplFactory());
+	}
+
+	private FrameworkConfig createFrameworkConfig(final SchemaPlus schemaPlus, SqlOperatorTable operatorTable,
+			final SqlParser.Config parserConfig) {
+		// Use our defined type system
+		final Context defaultContext = Contexts.of(CalciteConnectionConfig.DEFAULT.set(
+				CalciteConnectionProperty.TYPE_SYSTEM, "com.dask.sql.application.DaskSqlDialect#DASKSQL_TYPE_SYSTEM"));
+
+		return Frameworks.newConfigBuilder().context(defaultContext).defaultSchema(schemaPlus)
+				.parserConfig(parserConfig).executor(new RexExecutorImpl(null)).operatorTable(operatorTable).build();
+	}
+
+	private HepPlanner createHepPlanner(final FrameworkConfig config) {
+		final HepProgram program = new HepProgramBuilder()
+				.addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.JOIN.toRule())
+				.addRuleInstance(FilterAggregateTransposeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterJoinRule.FilterIntoJoinRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ProjectMergeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterMergeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ProjectJoinTransposeRule.Config.DEFAULT.toRule())
+				// In principle, not a bad idea. But we need to keep the most
+				// outer project - because otherwise the column name information is lost
+				// in cases such as SELECT x AS a, y AS B FROM df
+				// .addRuleInstance(ProjectRemoveRule.Config.DEFAULT.toRule())
+				.addRuleInstance(ReduceExpressionsRule.ProjectReduceExpressionsRule.Config.DEFAULT.toRule())
+				// this rule might make sense, but turns a < 1 into a SEARCH expression
+				// which is currently not supported by dask-sql
+				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
+				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
+				// TODO: remove AVG
+				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
+
+		return new HepPlanner(program, config.getContext());
+	}
+
 }
