@@ -36,6 +36,7 @@ data: {
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables"
+        "com.dask.sql.parser.SqlShowModels"
       ]
 
       # List of keywords.
@@ -49,6 +50,7 @@ data: {
         "SCHEMAS"
         "STATISTICS"
         "TABLES"
+        "MODELS"
       ]
 
       # The keywords can only be used in a specific context,
@@ -73,6 +75,8 @@ data: {
          "SqlShowSchemas()"
          "SqlShowTables()"
          "SqlPredictModel()"
+         "SqlShowModels()"
+         "SqlDescribeModel()"
       ]
 
       createStatementParserMethods: [

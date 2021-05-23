@@ -5,7 +5,7 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -216,6 +216,22 @@ def get_table_from_compound_identifier(
         return context.tables[tableName]
     except KeyError:
         raise AttributeError(f"Table {tableName} is not defined.")
+
+
+def get_model_from_compound_identifier(
+    context: "dask_sql.Context", components: List[str]
+) -> Tuple:
+    """
+    Helper function to return the correct model
+    from the trained models in the context
+    with the given name
+    """
+    modelName = components[-1]
+
+    try:
+        return context.models[modelName]
+    except KeyError:
+        raise AttributeError(f"Model {modelName} is not defined.")
 
 
 def convert_sql_kwargs(

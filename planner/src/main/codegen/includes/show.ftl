@@ -46,7 +46,7 @@ SqlNode SqlShowColumns() :
     }
 }
 
-// DESCRIBE "table"
+// DESCRIBE TABLE "table"
 SqlNode SqlDescribeTable() :
 {
     final Span s;
@@ -54,13 +54,25 @@ SqlNode SqlDescribeTable() :
     final SqlIdentifier tableName;
 }
 {
-    <DESCRIBE> { s = span(); }
+    <DESCRIBE> { s = span(); } <TABLE>
     tableName = CompoundTableIdentifier()
     {
         return new SqlShowColumns(s.end(this), tableName);
+    }git
+}
+// DESCRIBE MODEL "model_name"
+SqlNode SqlDescribeModel() :
+{
+    final Span s;
+    final SqlIdentifier modelName;
+}
+{
+    <DESCRIBE> { s = span(); } <MODEL>
+    modelName = CompoundTableIdentifier()
+    {
+        return new SqlShowModelParams(s.end(this), modelName);
     }
 }
-
 // ANALYZE TABLE table_identifier COMPUTE STATISTICS [ FOR COLUMNS col [ , ... ] | FOR ALL COLUMNS ]
 SqlNode SqlAnalyzeTable() :
 {
@@ -84,5 +96,17 @@ SqlNode SqlAnalyzeTable() :
     )
     {
         return new SqlAnalyzeTable(s.end(this), tableName, columnList);
+    }
+}
+
+// SHOW MODELS
+SqlNode SqlShowModels() :
+{
+   final Span s;
+}
+{
+    <SHOW> { s = span(); } <MODELS>
+    {
+        return new SqlShowModels(s.end(this));
     }
 }

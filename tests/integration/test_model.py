@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from dask.datasets import timeseries
 from mock import MagicMock
@@ -76,6 +77,51 @@ def test_iterative_and_prediction(c, training_df):
     )
 
     check_trained_model(c)
+
+
+def test_show_models(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model1 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    c.sql(
+        """
+        CREATE MODEL my_model2 WITH (
+            model_class = 'dask_ml.cluster.KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    c.sql(
+        """
+        CREATE MODEL my_model3 WITH (
+            model_class = 'sklearn.linear_model.SGDClassifier',
+            wrap_fit = True,
+            target_column = 'target',
+            fit_kwargs = ( classes = ARRAY [0, 1] )
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    expected = pd.DataFrame(["my_model1", "my_model2", "my_model3"], columns=["Models"])
+    result: pd.DataFrame = c.sql("SHOW MODELS").compute()
+    # test
+    pd.testing.assert_frame_equal(expected, result)
 
 
 def test_wrong_training_or_prediction(c, training_df):
@@ -250,3 +296,55 @@ def test_drop_model(c, training_df):
     c.sql("DROP MODEL IF EXISTS my_model")
 
     assert "my_model" not in c.models
+
+
+def test_describe_model(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model1 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    expected_dict = {
+        "Params": {
+            "estimator": "GradientBoostingClassifier()",
+            "estimator__ccp_alpha": 0.0,
+            "estimator__criterion": "friedman_mse",
+            "estimator__init": None,
+            "estimator__learning_rate": 0.1,
+            "estimator__loss": "deviance",
+            "estimator__max_depth": 3,
+            "estimator__max_features": None,
+            "estimator__max_leaf_nodes": None,
+            "estimator__min_impurity_decrease": 0.0,
+            "estimator__min_impurity_split": None,
+            "estimator__min_samples_leaf": 1,
+            "estimator__min_samples_split": 2,
+            "estimator__min_weight_fraction_leaf": 0.0,
+            "estimator__n_estimators": 100,
+            "estimator__n_iter_no_change": None,
+            "estimator__random_state": None,
+            "estimator__subsample": 1.0,
+            "estimator__tol": 0.0001,
+            "estimator__validation_fraction": 0.1,
+            "estimator__verbose": 0,
+            "estimator__warm_start": False,
+            "scoring": None,
+            "training_columns": ["x", "y"],
+        }
+    }
+
+    # hack for converting model class into string
+    expected_series = pd.DataFrame(expected_dict)["Params"].apply(lambda x: str(x))
+    # test
+    result = (
+        c.sql("DESCRIBE MODEL my_model1").compute()["Params"].apply(lambda x: str(x))
+    )
+    pd.testing.assert_series_equal(expected_series, result)
