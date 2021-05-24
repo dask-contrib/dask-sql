@@ -58,7 +58,7 @@ SqlNode SqlDescribeTable() :
     tableName = CompoundTableIdentifier()
     {
         return new SqlShowColumns(s.end(this), tableName);
-    }git
+    }
 }
 // DESCRIBE MODEL "model_name"
 SqlNode SqlDescribeModel() :
