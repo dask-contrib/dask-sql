@@ -42,6 +42,23 @@ SqlNode SqlPredictModel() :
     )
 }
 
+// EXPORT MODEL "model_name" INTO "file_name"
+SqlNode SqlExportModel() :
+{
+    final Span s;
+    final SqlIdentifier modelName;
+    final SqlIdentifier fileName;
+
+}
+{
+    <EXPORT> { s = span(); } <MODEL>
+    modelName = CompoundTableIdentifier()
+    <INTO>
+    fileName = SimpleIdentifier()
+    {
+        return new SqlExportModel(s.end(this), modelName,fileName);
+    }
+}
 /*
  * Production for
  *   CREATE MODEL name WITH ( key = value ) AS
