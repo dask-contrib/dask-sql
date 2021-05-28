@@ -105,6 +105,8 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
