@@ -301,7 +301,7 @@ def test_drop_model(c, training_df):
 def test_describe_model(c, training_df):
     c.sql(
         """
-        CREATE MODEL my_model1 WITH (
+        CREATE MODEL ex_describe_model WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
@@ -312,39 +312,22 @@ def test_describe_model(c, training_df):
         )
     """
     )
-    expected_dict = {
-        "Params": {
-            "estimator": "GradientBoostingClassifier()",
-            "estimator__ccp_alpha": 0.0,
-            "estimator__criterion": "friedman_mse",
-            "estimator__init": None,
-            "estimator__learning_rate": 0.1,
-            "estimator__loss": "deviance",
-            "estimator__max_depth": 3,
-            "estimator__max_features": None,
-            "estimator__max_leaf_nodes": None,
-            "estimator__min_impurity_decrease": 0.0,
-            "estimator__min_impurity_split": None,
-            "estimator__min_samples_leaf": 1,
-            "estimator__min_samples_split": 2,
-            "estimator__min_weight_fraction_leaf": 0.0,
-            "estimator__n_estimators": 100,
-            "estimator__n_iter_no_change": None,
-            "estimator__random_state": None,
-            "estimator__subsample": 1.0,
-            "estimator__tol": 0.0001,
-            "estimator__validation_fraction": 0.1,
-            "estimator__verbose": 0,
-            "estimator__warm_start": False,
-            "scoring": None,
-            "training_columns": ["x", "y"],
-        }
-    }
 
+    model, training_columns = c.models["ex_describe_model"]
+    expected_dict = model.get_params()
+    expected_dict["training_columns"] = training_columns.tolist()
     # hack for converting model class into string
-    expected_series = pd.DataFrame(expected_dict)["Params"].apply(lambda x: str(x))
+    expected_series = (
+        pd.DataFrame.from_dict(expected_dict, orient="index", columns=["Params"])[
+            "Params"
+        ]
+        .apply(lambda x: str(x))
+        .sort_index()
+    )
     # test
     result = (
-        c.sql("DESCRIBE MODEL my_model1").compute()["Params"].apply(lambda x: str(x))
+        c.sql("DESCRIBE MODEL ex_describe_model")
+        .compute()["Params"]
+        .apply(lambda x: str(x))
     )
     pd.testing.assert_series_equal(expected_series, result)

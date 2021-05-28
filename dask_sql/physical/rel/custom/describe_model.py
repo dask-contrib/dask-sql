@@ -3,12 +3,12 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.utils import get_model_from_compound_identifier
 
 
 class ShowModelParamsPlugin(BaseRelPlugin):
     """
-    Show all Params used to train a given model and training columns.
+    Show all Params used to train a given model along with the columns
+    used for training.
     The SQL is:
 
         DESCRIBE MODEL <model_name>
@@ -21,10 +21,10 @@ class ShowModelParamsPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        components = list(map(str, sql.getTable().names))
-        model, training_columns = get_model_from_compound_identifier(
-            context, components
-        )
+        model_name = str(sql.getModelName().getIdentifier())
+        if model_name not in context.models:
+            raise RuntimeError(f"A model with the name {model_name} is not present.")
+        model, training_columns = context.models[model_name]
         model_params = model.get_params()
         model_params["training_columns"] = training_columns.tolist()
         df = pd.DataFrame.from_dict(model_params, orient="index", columns=["Params"])

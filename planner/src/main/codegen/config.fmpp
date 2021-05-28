@@ -70,13 +70,12 @@ data: {
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
          "SqlAnalyzeTable()"
-         "SqlDescribeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
          "SqlPredictModel()"
          "SqlShowModels()"
-         "SqlDescribeModel()"
+         "SqlDescribeTableOrModel()"
       ]
 
       createStatementParserMethods: [

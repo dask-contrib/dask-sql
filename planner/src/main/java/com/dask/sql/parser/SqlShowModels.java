@@ -1,20 +1,13 @@
 package com.dask.sql.parser;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.SqlNode;
-
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 public class SqlShowModels extends SqlCall {
-    public SqlIdentifier catalog;
-    public SqlNode like;
-
 
     public SqlShowModels(SqlParserPos pos) {
         super(pos);

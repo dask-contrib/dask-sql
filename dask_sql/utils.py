@@ -218,22 +218,6 @@ def get_table_from_compound_identifier(
         raise AttributeError(f"Table {tableName} is not defined.")
 
 
-def get_model_from_compound_identifier(
-    context: "dask_sql.Context", components: List[str]
-) -> Tuple:
-    """
-    Helper function to return the correct model
-    from the trained models in the context
-    with the given name
-    """
-    modelName = components[-1]
-
-    try:
-        return context.models[modelName]
-    except KeyError:
-        raise AttributeError(f"Model {modelName} is not defined.")
-
-
 def convert_sql_kwargs(
     sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
 ) -> Dict[str, Any]:

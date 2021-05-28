@@ -46,33 +46,33 @@ SqlNode SqlShowColumns() :
     }
 }
 
-// DESCRIBE TABLE "table"
-SqlNode SqlDescribeTable() :
+// DESCRIBE <table_name>
+// DESCRIBE TABLE <table_name>
+// DESCRIBE MODEL <model_name>
+SqlNode SqlDescribeTableOrModel() :
 {
     final Span s;
     final SqlIdentifier schemaName;
     final SqlIdentifier tableName;
+    final SqlModelIdentifier modelName;
 }
 {
-    <DESCRIBE> { s = span(); } <TABLE>
-    tableName = CompoundTableIdentifier()
-    {
-        return new SqlShowColumns(s.end(this), tableName);
-    }
+    <DESCRIBE> { s = span(); }
+    (
+        LOOKAHEAD(2)
+        modelName = ModelIdentifier()
+        {
+            return new SqlShowModelParams(s.end(this), modelName);
+        }
+    |
+        [ <TABLE> ]
+        tableName = CompoundTableIdentifier()
+        {
+            return new SqlShowColumns(s.end(this), tableName);
+        }
+    )
 }
-// DESCRIBE MODEL "model_name"
-SqlNode SqlDescribeModel() :
-{
-    final Span s;
-    final SqlIdentifier modelName;
-}
-{
-    <DESCRIBE> { s = span(); } <MODEL>
-    modelName = CompoundTableIdentifier()
-    {
-        return new SqlShowModelParams(s.end(this), modelName);
-    }
-}
+
 // ANALYZE TABLE table_identifier COMPUTE STATISTICS [ FOR COLUMNS col [ , ... ] | FOR ALL COLUMNS ]
 SqlNode SqlAnalyzeTable() :
 {
