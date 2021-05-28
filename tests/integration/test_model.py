@@ -331,3 +331,6 @@ def test_describe_model(c, training_df):
         .apply(lambda x: str(x))
     )
     pd.testing.assert_series_equal(expected_series, result)
+
+    with pytest.raises(RuntimeError):
+        c.sql("DESCRIBE MODEL undefined_model")
