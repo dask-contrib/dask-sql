@@ -6,6 +6,7 @@ from .create_table_as import CreateTableAsPlugin
 from .describe_model import ShowModelParamsPlugin
 from .drop_model import DropModelPlugin
 from .drop_table import DropTablePlugin
+from .export_model import SqlExportModel
 from .predict import PredictModelPlugin
 from .schemas import ShowSchemasPlugin
 from .show_models import ShowModelsPlugin
@@ -24,4 +25,5 @@ __all__ = [
     ShowTablesPlugin,
     ShowModelsPlugin,
     ShowModelParamsPlugin,
+    SqlExportModel,
 ]
