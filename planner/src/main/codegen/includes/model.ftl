@@ -42,22 +42,24 @@ SqlNode SqlPredictModel() :
     )
 }
 
-// EXPORT MODEL "model_name" INTO "file_name"
+// EXPORT MODEL "name" WITH ()
 SqlNode SqlExportModel() :
 {
     final Span s;
-    final SqlIdentifier modelName;
-    final SqlIdentifier fileName;
+    final SqlModelIdentifier modelName;
+    final SqlKwargs kwargs;
 
 }
 {
-    <EXPORT> { s = span(); } <MODEL>
-    modelName = CompoundTableIdentifier()
-    <INTO>
-    fileName = SimpleIdentifier()
+    <EXPORT> { s = span(); }
+    modelName = ModelIdentifier()
+    (
+    <WITH>
+    kwargs = ParenthesizedKeyValueExpressions()
     {
-        return new SqlExportModel(s.end(this), modelName,fileName);
+        return new SqlExportModel(s.end(this), modelName,kwargs);
     }
+    )
 }
 /*
  * Production for
