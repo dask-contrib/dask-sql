@@ -28,6 +28,15 @@ class SqlExportModel(BaseRelPlugin):
         - Mlflow model is a self contained directory full of files which helps to load the
         saved model without any environment Error
         - To reproduce the environment conda.yaml files are produced while saving the model
+        Files saved as part of mlflow model
+            - conda.yaml (packages required to import saved model)
+            - MLmodel (A artifact about model which contains following)
+                - mlflow function which can load this saved model
+                - model was saved timestmap  etc..
+            - model : a ml model itself
+                - sklearn - model.pkl
+                - xgboost - model.xgb
+                - lightgbm - model.lgb
     3. Export into ONNX (open standard ) -
          - Needs input column names and their type to serilizes the model
 
