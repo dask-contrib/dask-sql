@@ -46,7 +46,7 @@ class SqlExportModel(BaseRelPlugin):
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    ):
 
         model_name = str(sql.getModelName().getIdentifier())
         kwargs = convert_sql_kwargs(sql.getKwargs())
@@ -55,13 +55,14 @@ class SqlExportModel(BaseRelPlugin):
         try:
             model, training_columns = context.models[model_name]
         except KeyError:
-            raise AttributeError(f"Model {model_name} is not defined.")
+            raise RuntimeError(f"A model with the name {model_name} is not present.")
 
         if model_serde.lower() == "pickle" or model_serde.lower() == "pkl":
             with open(location, "wb") as pkl_file:
                 pickle.dump(model, pkl_file)
         elif model_serde.lower() == "joblib":
             joblib.dump(model, location)
+        # somewhat Experimental
         elif model_serde.lower() == "mlflow":
             try:
                 import lightgbm
@@ -95,4 +96,4 @@ class SqlExportModel(BaseRelPlugin):
                 f.write(onx.SerializeToString()
             """
 
-            raise NotImplementedError
+            raise NotImplementedError("ONNX format currently not supported")
