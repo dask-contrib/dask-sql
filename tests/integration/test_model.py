@@ -1,3 +1,7 @@
+import os
+import pickle
+
+import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
@@ -334,3 +338,73 @@ def test_describe_model(c, training_df):
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")
+
+
+def test_export_model(c, training_df, tmpdir):
+    with pytest.raises(RuntimeError):
+        c.sql(
+            "EXPORT MODEL not_available_model with "
+            "(model_serde ='pickle',"
+            " location = '/tmp/model.pkl')"
+        )
+
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    # Happy flow
+    temporary_file = tmpdir + "/pickle_model.pkl"
+    c.sql(
+        "EXPORT MODEL my_model with "
+        "(model_serde ='pickle',"
+        " location = '{}')".format(temporary_file)
+    )
+
+    assert (
+        pickle.load(open(str(temporary_file), "rb")).__class__.__name__
+        == "GradientBoostingClassifier"
+    )
+    temporary_file = tmpdir + "/model.joblib"
+    c.sql(
+        "EXPORT MODEL my_model with "
+        "(model_serde ='joblib',"
+        " location = '{}')".format(temporary_file)
+    )
+
+    assert (
+        joblib.load(str(temporary_file)).__class__.__name__
+        == "GradientBoostingClassifier"
+    )
+    try:
+        # Test only when mlflow was installed
+        import mlflow
+
+        temporary_dir = tmpdir + "/mlflow"
+        c.sql(
+            "EXPORT MODEL my_model with "
+            "(model_serde ='mlflow',"
+            " location = '{}')".format(temporary_dir)
+        )
+        assert len(os.listdir(temporary_dir)) == 3
+        assert (
+            mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+            == "GradientBoostingClassifier"
+        )
+    except ImportError as e:
+        print(e)
+
+    with pytest.raises(NotImplementedError):
+        temporary_dir = tmpdir + "/model.onnx"
+        c.sql(
+            "EXPORT MODEL my_model with "
+            "(model_serde ='onnx',"
+            " location = '{}')".format(temporary_dir)
+        )
