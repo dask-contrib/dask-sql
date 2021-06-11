@@ -5,8 +5,17 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from dask.datasets import timeseries
 from dask.distributed import Client
 from pandas.testing import assert_frame_equal
+
+
+@pytest.fixture()
+def training_df(c):
+    df = timeseries(freq="1d").reset_index(drop=True)
+    c.create_table("timeseries", df, persist=True)
+
+    return training_df
 
 
 @pytest.fixture()

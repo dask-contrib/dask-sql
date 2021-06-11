@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-from dask.datasets import timeseries
 from mock import MagicMock
 
 
@@ -16,14 +15,6 @@ def check_trained_model(c):
 
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
-
-
-@pytest.fixture()
-def training_df(c):
-    df = timeseries(freq="1d").reset_index(drop=True)
-    c.create_table("timeseries", df, persist=True)
-
-    return training_df
 
 
 def test_training_and_prediction(c, training_df):
