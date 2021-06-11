@@ -14,7 +14,14 @@ def test_case(c, df):
         (CASE WHEN a = 3 THEN 1 END) AS "S1",
         (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
         (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
-        (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4"
+        (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4",
+        CASE
+            WHEN (a >= 1 AND a < 2) OR (a > 2) THEN CAST('in-between' AS VARCHAR) ELSE CAST('out-of-range' AS VARCHAR)
+        END AS "S5",
+        CASE
+            WHEN (a < 2) OR (3 < a AND a < 4) THEN 42 ELSE 47
+        END AS "S6",
+        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7"
     FROM df
     """
     )
@@ -27,6 +34,11 @@ def test_case(c, df):
     expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a).astype(
         "float64"
     )
+    expected_df["S5"] = df.a.apply(
+        lambda a: "in-between" if ((1 <= a < 2) or (a > 2)) else "out-of-range"
+    )
+    expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
+    expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
     assert_frame_equal(result_df, expected_df)
 
 
