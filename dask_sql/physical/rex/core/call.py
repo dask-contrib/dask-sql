@@ -17,6 +17,7 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.physical.rex.core.literal import SargPythonImplementation
 from dask_sql.utils import (
     LoggableDataFrame,
     convert_to_datetime,
@@ -638,6 +639,31 @@ class RandIntegerOperation(BaseRandomOperation):
         return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
+class SearchOperation(Operation):
+    """
+    Search is a special operation in SQL, which allows to write "range-like"
+    conditions, such like
+
+        (1 < a AND a < 2) OR (4 < a AND a < 6)
+
+    in a more convenient setting.
+    """
+
+    def __init__(self):
+        super().__init__(self.search)
+
+    def search(self, series: dd.Series, sarg: SargPythonImplementation):
+        conditions = [r.filter_on(series) for r in sarg.ranges]
+
+        assert len(conditions) > 0
+
+        if len(conditions) > 1:
+            or_operation = ReduceOperation(operation=operator.or_)
+            return or_operation(*conditions)
+        else:
+            return conditions[0]
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -688,6 +714,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is not unknown": NotOperation().of(IsNullOperation()),
         "rand": RandOperation(),
         "rand_integer": RandIntegerOperation(),
+        "search": SearchOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
