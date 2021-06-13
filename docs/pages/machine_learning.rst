@@ -88,15 +88,15 @@ Have a look into :ref:`ml` for more information.
 
 4. Check Model parameters - Model meta data
 -------------------------------------------
-After the Model was trained, you can inspect and get model details by using following
-sql statements
+After the model was trained, you can inspect and get model details by using the
+following sql statements
 
 .. code-block:: sql
 
-    -- show list of models  which are trained and saved in the context.
+    -- show the list of models  which are trained and stored in the context.
     SHOW MODELS
 
-    -- To get Hyperparameters of the trained MODEL use ,
+    -- To get the hyperparameters of the trained MODEL, use
     -- DESCRIBE MODEL <model_name>.
     DESCRIBE MODEL my_model
 
@@ -104,38 +104,40 @@ sql statements
 5. Export Trained Model
 ------------------------
 Once your model was trained and performs good in your validation dataset,
-you can export the model into a file with supporting model serilization
-format like pickle,joblib,mlflow (framework agnostic serilization format) etc.
+you can export the model into a file with one of the supported model serialization
+formats like pickle, joblib, mlflow (framework-agnostic serialization format), etc.
 
-Currently dask_sql supports pickle,joblib and mlflow
-formats for exporting the trained model which can be deployed as microservices etc
+Currently, dask-sql supports the pickle, joblib and mlflow format for exporting the
+trained model, which can then be deployed as microservices etc
 
 Before training and exporting the models from different framework like
 lightgbm, catboost, please ensure the relevant packages are installed in the
-dask_sql environment otherwise it will raises RuntimeError and if you
-are using mlflow as model_serde ensure mlflow was installed
+dask-sql environment, otherwise it will raise an exception on import and if you
+are using mlflow as format ensure mlflow was installed
 
 
 .. code-block:: sql
 
-
-    -- for pickle model serilization
+    -- for pickle model serialization
     EXPORT MODEL my_model WITH (
-        model_serde ='pickle',
-        location = 'model.pkl')
+        format ='pickle',
+        location = 'model.pkl'
+    )
 
-    -- for joblib model serilization
+    -- for joblib model serialization
     EXPORT MODEL my_model WITH (
-        model_serde ='joblib',
-        location = 'model.pkl')
+        format ='joblib',
+        location = 'model.pkl'
+    )
 
-    -- for mlflow model serilization
+    -- for mlflow model serialization
     EXPORT MODEL my_model WITH (
-        model_serde ='mlflow',
-        location = 'mlflow_dir')
+        format ='mlflow',
+        location = 'mlflow_dir'
+    )
 
     -- Note you can pass more number of key value pairs
-    -- (parameters) which will delegated to respective
+    -- (parameters) which will be delegated to the respective
     -- export functions
 
 
@@ -192,6 +194,6 @@ and the boolean target ``label``.
 
     -- export model
     EXPORT MODEL my_model WITH (
-        model_serde ='pickle',
+        format ='pickle',
         location = 'model.pkl'
     )
