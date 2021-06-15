@@ -64,7 +64,7 @@ class ExportModelPlugin(BaseRelPlugin):
         elif format == "joblib":
             joblib.dump(model, location, **kwargs)
 
-        elif format == "mlflow":
+        elif format == "mlflow":  # pragma: no cover
             try:
                 import mlflow
             except ImportError:
