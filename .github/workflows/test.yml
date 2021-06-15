@@ -95,7 +95,8 @@ jobs:
         shell: bash -l {0}
         run: |
           # explicitly install docker, fugue and sqlalchemy package
-          mamba install sqlalchemy psycopg2 -c conda-forge
+          # Also install ciso8601 (needed by docker) via conda, as the pip installation fails.
+          mamba install sqlalchemy psycopg2 ciso8601 -c conda-forge
           pip install docker "fugue[sql]>=0.5.3"
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
