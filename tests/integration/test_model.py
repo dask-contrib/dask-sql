@@ -433,3 +433,67 @@ def test_mlflow_export(c, training_df, tmpdir):
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "GradientBoostingClassifier"
     )
+
+
+def test_mlflow_export_xgboost(c, training_df, tmpdir):
+    # Test only when mlflow & xgboost was installed
+    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
+            model_class = 'xgboost.XGBClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "mlflow_xgboost")
+    c.sql(
+        """EXPORT MODEL my_model_xgboost with (
+            format = 'mlflow',
+            location = '{}'
+        )""".format(
+            temporary_dir
+        )
+    )
+    assert len(os.listdir(temporary_dir)) == 3
+    assert (
+        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        == "XGBClassifier"
+    )
+
+
+def test_mlflow_export_lightgbm(c, training_df, tmpdir):
+    # Test only when mlflow & lightgbm was installed
+    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    lightgbm = pytest.importorskip("lightgbm", reason="xgboost not installed")
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
+            model_class = 'lightgbm.LGBMClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "mlflow_lightgbm")
+    c.sql(
+        """EXPORT MODEL my_model_lightgbm with (
+            format = 'mlflow',
+            location = '{}'
+        )""".format(
+            temporary_dir
+        )
+    )
+    assert len(os.listdir(temporary_dir)) == 3
+    assert (
+        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        == "LGBMClassifier"
+    )

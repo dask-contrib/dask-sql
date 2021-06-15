@@ -1,3 +1,4 @@
+import logging
 import pickle
 
 import joblib
@@ -6,21 +7,14 @@ import sklearn
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs
 
-try:
-    import xgboost
-except ImportError:
-    xgboost = None
-try:
-    import lightgbm
-except ImportError:
-    lightgbm = None
+logger = logging.getLogger(__name__)
 
 
 class ExportModelPlugin(BaseRelPlugin):
     """
-     Export a trained model into a file using one of th supported model serialization libraries.
+     Export a trained model into a file using one of the supported model serialization libraries.
 
-    Sql:
+    Sql syntax:
         EXPORT MODEL <model_name> WTIH (
             format = "pickle",
             location = "model.pkl"
@@ -37,8 +31,13 @@ class ExportModelPlugin(BaseRelPlugin):
         - To reproduce the environment, conda.yaml files are produced while saving the
         model and stored as part of the mlflow model
 
-    TODO:
-        Add support for Exporting model into ONNX format
+        NOTE:
+        - Since dask-sql expects fit-predict style model (i.e sklearn compatible model),
+            Only sklearn flavoured/sklearn subclassed models are supported as a part of mlflow serialization.
+            i.e only mlflow sklearn flavour was used for all the sklearn compatible models.
+            for example :
+                instead of using xgb.core.Booster consider using xgboost.XGBClassifier
+                since later is sklearn compatible
     """
 
     class_name = "com.dask.sql.parser.SqlExportModel"
@@ -49,13 +48,16 @@ class ExportModelPlugin(BaseRelPlugin):
 
         model_name = str(sql.getModelName().getIdentifier())
         kwargs = convert_sql_kwargs(sql.getKwargs())
-        format = kwargs.pop("format", "pickle").lower()
-        location = kwargs.pop("location", "tmp.pkl")
+        format = kwargs.pop("format", "pickle").lower().strip()
+        location = kwargs.pop("location", "tmp.pkl").strip()
         try:
             model, training_columns = context.models[model_name]
         except KeyError:
             raise RuntimeError(f"A model with the name {model_name} is not present.")
 
+        logger.info(
+            f"Using model serde has {format} and model will be exported to {location}"
+        )
         if format in ["pickle", "pkl"]:
             with open(location, "wb") as pkl_file:
                 pickle.dump(model, pkl_file, **kwargs)
@@ -71,13 +73,9 @@ class ExportModelPlugin(BaseRelPlugin):
                 )
             if isinstance(model, sklearn.base.BaseEstimator):
                 mlflow.sklearn.save_model(model, location, **kwargs)
-            elif xgboost and isinstance(model, xgboost.core.Booster):
-                mlflow.xgboost.save_model(model, location, **kwargs)
-            elif lightgbm and isinstance(model, lightgbm.basic.Booster):
-                mlflow.lightgbm.save_model(model, location, **kwargs)
             else:
                 raise NotImplementedError(
-                    f"mlflow export of type  {model.__class__} is  not implemented (yet)"
+                    f"dask-sql supports only sklearn compatible model i.e fit-predict style model"
                 )
         elif format == "onnx":
             """
@@ -85,5 +83,5 @@ class ExportModelPlugin(BaseRelPlugin):
             any model format into Onnx format, and for every framework,
             need to install respective ONNX converters
             """
-
+            # TODO: Add support for Exporting model into ONNX format
             raise NotImplementedError("ONNX format currently not supported")

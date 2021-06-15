@@ -113,7 +113,11 @@ trained model, which can then be deployed as microservices etc
 Before training and exporting the models from different framework like
 lightgbm, catboost, please ensure the relevant packages are installed in the
 dask-sql environment, otherwise it will raise an exception on import and if you
-are using mlflow as format ensure mlflow was installed
+are using mlflow as format ensure mlflow was installed. Keep in mind that dask-sql supports
+only sklearn compatible model (i.e fit-predict style models) so far, so instead of using
+xgb.core.Booster consider using xgboost.XGBClassifier since later is sklearn compatible
+and used by dask-sql for training, prediction and exporting the model
+through standard sklearn interface
 
 
 .. code-block:: sql
