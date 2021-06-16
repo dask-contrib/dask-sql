@@ -86,6 +86,65 @@ query can be given). The model can than be used in subsequent calls to ``PREDICT
 using the given name.
 Have a look into :ref:`ml` for more information.
 
+4. Check Model parameters - Model meta data
+-------------------------------------------
+After the model was trained, you can inspect and get model details by using the
+following sql statements
+
+.. code-block:: sql
+
+    -- show the list of models  which are trained and stored in the context.
+    SHOW MODELS
+
+    -- To get the hyperparameters of the trained MODEL, use
+    -- DESCRIBE MODEL <model_name>.
+    DESCRIBE MODEL my_model
+
+
+5. Export Trained Model
+------------------------
+Once your model was trained and performs good in your validation dataset,
+you can export the model into a file with one of the supported model serialization
+formats like pickle, joblib, mlflow (framework-agnostic serialization format), etc.
+
+Currently, dask-sql supports the pickle, joblib and mlflow format for exporting the
+trained model, which can then be deployed as microservices etc
+
+Before training and exporting the models from different framework like
+lightgbm, catboost, please ensure the relevant packages are installed in the
+dask-sql environment, otherwise it will raise an exception on import and if you
+are using mlflow as format ensure mlflow was installed. Keep in mind that dask-sql supports
+only sklearn compatible model (i.e fit-predict style models) so far, so instead of using
+xgb.core.Booster consider using xgboost.XGBClassifier since later is sklearn compatible
+and used by dask-sql for training, prediction and exporting the model
+through standard sklearn interface
+
+
+.. code-block:: sql
+
+    -- for pickle model serialization
+    EXPORT MODEL my_model WITH (
+        format ='pickle',
+        location = 'model.pkl'
+    )
+
+    -- for joblib model serialization
+    EXPORT MODEL my_model WITH (
+        format ='joblib',
+        location = 'model.pkl'
+    )
+
+    -- for mlflow model serialization
+    EXPORT MODEL my_model WITH (
+        format ='mlflow',
+        location = 'mlflow_dir'
+    )
+
+    -- Note you can pass more number of key value pairs
+    -- (parameters) which will be delegated to the respective
+    -- export functions
+
+
 Example
 ~~~~~~~
 
@@ -131,4 +190,14 @@ and the boolean target ``label``.
         *, (CASE WHEN target = label THEN True ELSE False END) AS correct
     FROM PREDICT(MODEL my_model,
         SELECT * FROM transformed_data
+    )
+    -- list models
+    SHOW MODELS
+    -- check parameters of the model
+    DESCRIBE MODEL my_model
+
+    -- export model
+    EXPORT MODEL my_model WITH (
+        format ='pickle',
+        location = 'model.pkl'
     )

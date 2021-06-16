@@ -42,6 +42,23 @@ SqlNode SqlPredictModel() :
     )
 }
 
+// EXPORT MODEL "name" WITH ()
+SqlNode SqlExportModel() :
+{
+    final Span s;
+    final SqlModelIdentifier modelName;
+    final SqlKwargs kwargs;
+
+}
+{
+    <EXPORT> { s = span(); }
+    modelName = ModelIdentifier()
+    <WITH>
+    kwargs = ParenthesizedKeyValueExpressions()
+    {
+        return new SqlExportModel(s.end(this), modelName,kwargs);
+    }
+}
 /*
  * Production for
  *   CREATE MODEL name WITH ( key = value ) AS
