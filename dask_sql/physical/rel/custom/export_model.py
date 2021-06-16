@@ -67,7 +67,7 @@ class ExportModelPlugin(BaseRelPlugin):
         elif format == "mlflow":
             try:
                 import mlflow
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise ImportError(
                     f"For export in the mlflow format, you need to have mlflow installed"
                 )

@@ -428,11 +428,36 @@ def test_mlflow_export(c, training_df, tmpdir):
             temporary_dir
         )
     )
+    # for sklearn compatible model
     assert len(os.listdir(temporary_dir)) == 3
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "GradientBoostingClassifier"
     )
+
+    # test for non sklearn compatible model
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS non_sklearn_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "non_sklearn")
+    with pytest.raises(NotImplementedError):
+        c.sql(
+            """EXPORT MODEL non_sklearn_model with (
+                format ='mlflow',
+                location = '{}'
+            )""".format(
+                temporary_dir
+            )
+        )
 
 
 def test_mlflow_export_xgboost(c, training_df, tmpdir):
