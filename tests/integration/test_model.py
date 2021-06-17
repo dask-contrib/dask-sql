@@ -1,5 +1,10 @@
+import os
+import pickle
+
+import joblib
 import pandas as pd
 import pytest
+from dask.datasets import timeseries
 from mock import MagicMock
 
 
@@ -15,6 +20,14 @@ def check_trained_model(c):
 
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
+
+
+@pytest.fixture()
+def training_df(c):
+    df = timeseries(freq="1d").reset_index(drop=True)
+    c.create_table("timeseries", df, persist=True)
+
+    return training_df
 
 
 def test_training_and_prediction(c, training_df):
@@ -325,3 +338,187 @@ def test_describe_model(c, training_df):
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")
+
+
+def test_export_model(c, training_df, tmpdir):
+    with pytest.raises(RuntimeError):
+        c.sql(
+            """EXPORT MODEL not_available_model with (
+                format ='pickle',
+                location = '/tmp/model.pkl'
+            )"""
+        )
+
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    # Happy flow
+    temporary_file = os.path.join(tmpdir, "pickle_model.pkl")
+    c.sql(
+        """EXPORT MODEL my_model with (
+            format ='pickle',
+            location = '{}'
+        )""".format(
+            temporary_file
+        )
+    )
+
+    assert (
+        pickle.load(open(str(temporary_file), "rb")).__class__.__name__
+        == "GradientBoostingClassifier"
+    )
+    temporary_file = os.path.join(tmpdir, "model.joblib")
+    c.sql(
+        """EXPORT MODEL my_model with (
+            format ='joblib',
+            location = '{}'
+        )""".format(
+            temporary_file
+        )
+    )
+
+    assert (
+        joblib.load(str(temporary_file)).__class__.__name__
+        == "GradientBoostingClassifier"
+    )
+
+    with pytest.raises(NotImplementedError):
+        temporary_dir = os.path.join(tmpdir, "model.onnx")
+        c.sql(
+            """EXPORT MODEL my_model with (
+                format ='onnx',
+                location = '{}'
+            )""".format(
+                temporary_dir
+            )
+        )
+
+
+def test_mlflow_export(c, training_df, tmpdir):
+    # Test only when mlflow was installed
+    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "mlflow")
+    c.sql(
+        """EXPORT MODEL my_model with (
+            format ='mlflow',
+            location = '{}'
+        )""".format(
+            temporary_dir
+        )
+    )
+    # for sklearn compatible model
+    assert len(os.listdir(temporary_dir)) == 3
+    assert (
+        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        == "GradientBoostingClassifier"
+    )
+
+    # test for non sklearn compatible model
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS non_sklearn_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "non_sklearn")
+    with pytest.raises(NotImplementedError):
+        c.sql(
+            """EXPORT MODEL non_sklearn_model with (
+                format ='mlflow',
+                location = '{}'
+            )""".format(
+                temporary_dir
+            )
+        )
+
+
+def test_mlflow_export_xgboost(c, training_df, tmpdir):
+    # Test only when mlflow & xgboost was installed
+    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
+            model_class = 'xgboost.XGBClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "mlflow_xgboost")
+    c.sql(
+        """EXPORT MODEL my_model_xgboost with (
+            format = 'mlflow',
+            location = '{}'
+        )""".format(
+            temporary_dir
+        )
+    )
+    assert len(os.listdir(temporary_dir)) == 3
+    assert (
+        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        == "XGBClassifier"
+    )
+
+
+def test_mlflow_export_lightgbm(c, training_df, tmpdir):
+    # Test only when mlflow & lightgbm was installed
+    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    lightgbm = pytest.importorskip("lightgbm", reason="xgboost not installed")
+    c.sql(
+        f"""
+        CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
+            model_class = 'lightgbm.LGBMClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    temporary_dir = os.path.join(tmpdir, "mlflow_lightgbm")
+    c.sql(
+        """EXPORT MODEL my_model_lightgbm with (
+            format = 'mlflow',
+            location = '{}'
+        )""".format(
+            temporary_dir
+        )
+    )
+    assert len(os.listdir(temporary_dir)) == 3
+    assert (
+        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        == "LGBMClassifier"
+    )

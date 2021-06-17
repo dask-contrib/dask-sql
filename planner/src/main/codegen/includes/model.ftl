@@ -53,13 +53,11 @@ SqlNode SqlExportModel() :
 {
     <EXPORT> { s = span(); }
     modelName = ModelIdentifier()
-    (
     <WITH>
     kwargs = ParenthesizedKeyValueExpressions()
     {
         return new SqlExportModel(s.end(this), modelName,kwargs);
     }
-    )
 }
 /*
  * Production for
