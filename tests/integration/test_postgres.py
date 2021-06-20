@@ -250,3 +250,49 @@ def test_string_operations(assert_query_gives_same_result):
         FROM df3
     """
     )
+
+
+def test_statistical_functions(assert_query_gives_same_result):
+
+    # test regr_count
+    assert_query_gives_same_result(
+        """
+        select user_id,regr_count(a,b) from df1 group by user_id
+        """,
+        ["user_id"],
+        check_names=False,
+    )
+
+    assert_query_gives_same_result(
+        """
+        select user_id,regr_sxx(a,b) from df1 group by user_id
+        """,
+        ["user_id"],
+        check_names=False,
+        rtol=1,
+    )
+
+    assert_query_gives_same_result(
+        """
+        select user_id,regr_syy(a,b) from df1 group by user_id
+        """,
+        ["user_id"],
+        check_names=False,
+        rtol=1,
+    )
+
+    assert_query_gives_same_result(
+        """
+        select user_id,COVAR_POP(a,b) from df1 group by user_id
+        """,
+        ["user_id"],
+        check_names=False,
+    )
+
+    assert_query_gives_same_result(
+        """
+        select user_id,COVAR_SAMP(a,b) from df1 group by user_id
+        """,
+        ["user_id"],
+        check_names=False,
+    )

@@ -110,9 +110,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         "max": AggregationSpecification("max", AggregationOnPandas("max")),
         "min": AggregationSpecification("min", AggregationOnPandas("min")),
         "single_value": AggregationSpecification("first"),
-        "regr_count": AggregationSpecification(
-            dd.Aggregation("regr_count", lambda s: s.count(), lambda s0: s0.sum())
-        ),
+        # is null was checked earlier, now only need to compute the sum the non null values
+        "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
     }
 
     def convert(
@@ -254,20 +253,31 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             aggregation_name = aggregation_name.lower()
             # Find out about the input column
             inputs = expr.getArgList()
-            if len(inputs) == 1:
+            if aggregation_name == "regr_count":
+                is_null = IsNullOperation()
+                two_columns_proxy = new_temporary_column(df)
+                if len(inputs) == 1:
+                    # calcite some times gives one input/col to regr_count and
+                    # another col has filter column
+                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
+
+                else:
+                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    col2 = cc.get_backend_by_frontend_index(inputs[1])
+                    # both cols should be not null
+                    df = df.assign(
+                        **{
+                            two_columns_proxy: (
+                                ~is_null(df[col1]) & (~is_null(df[col2]))
+                            )
+                        }
+                    )
+                input_col = two_columns_proxy
+            elif len(inputs) == 1:
                 input_col = cc.get_backend_by_frontend_index(inputs[0])
             elif len(inputs) == 0:
                 input_col = additional_column_name
-            elif aggregation_name == "regr_count":
-                is_null = IsNullOperation()
-                two_columns_proxy = new_temporary_column(df)
-                col1 = cc.get_backend_by_frontend_index(inputs[0])
-                col2 = cc.get_backend_by_frontend_index(inputs[1])
-                # both cols should be not null
-                df = df.assign(
-                    **{two_columns_proxy: (~is_null(df[col1]) & (~is_null(df[col2])))}
-                )
-                input_col = two_columns_proxy
             else:
                 raise NotImplementedError("Can not cope with more than one input")
 
@@ -305,7 +315,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             value = (input_col, output_col, aggregation_function)
             collected_aggregations[key].append(value)
             output_column_order.append(output_col)
-        # mutated df - dono how to avoid this !!!
+
         return collected_aggregations, output_column_order, df
 
     def _perform_aggregation(
