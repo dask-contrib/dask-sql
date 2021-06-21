@@ -19,7 +19,7 @@ def timeseries_df(c):
     pdf.loc[col1_index, "x"] = np.nan
     pdf.loc[col2_index, "y"] = np.nan
     c.create_table("timeseries", pdf, persist=True)
-    return timeseries_df
+    return pdf
 
 
 @pytest.fixture()
