@@ -429,7 +429,6 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
     )
     # for sklearn compatible model
-    assert len(os.listdir(temporary_dir)) == 3
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "GradientBoostingClassifier"
@@ -485,7 +484,6 @@ def test_mlflow_export_xgboost(c, training_df, tmpdir):
             temporary_dir
         )
     )
-    assert len(os.listdir(temporary_dir)) == 3
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "XGBClassifier"
@@ -517,7 +515,6 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
             temporary_dir
         )
     )
-    assert len(os.listdir(temporary_dir)) == 3
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "LGBMClassifier"

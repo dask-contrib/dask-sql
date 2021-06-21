@@ -1,3 +1,3 @@
 import pytest
 
-pytest_plugins = ["tests.integration.fixtures", "distributed.utils_test"]
+pytest_plugins = ["distributed.utils_test", "tests.integration.fixtures"]
