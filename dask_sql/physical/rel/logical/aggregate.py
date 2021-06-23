@@ -9,6 +9,7 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rex.core.call import IsNullOperation
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
 
@@ -109,6 +110,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         "max": AggregationSpecification("max", AggregationOnPandas("max")),
         "min": AggregationSpecification("min", AggregationOnPandas("min")),
         "single_value": AggregationSpecification("first"),
+        # is null was checked earlier, now only need to compute the sum the non null values
+        "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
     }
 
     def convert(
@@ -181,7 +184,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         output_column_order = group_columns.copy()
 
         # Collect all aggregations we need to do
-        collected_aggregations, output_column_order = self._collect_aggregations(
+        collected_aggregations, output_column_order, df = self._collect_aggregations(
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
@@ -231,7 +234,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         context: "dask_sql.Context",
         additional_column_name: str,
         output_column_order: List[str],
-    ) -> Tuple[Dict[Tuple[str, str], List[Tuple[str, str, Any]]], List[str]]:
+    ) -> Tuple[
+        Dict[Tuple[str, str], List[Tuple[str, str, Any]]], List[str], dd.DataFrame
+    ]:
         """
         Collect all aggregations together, which have the same filter column
         so that the aggregations only need to be done once.
@@ -243,10 +248,33 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         for agg_call in rel.getNamedAggCalls():
             expr = agg_call.getKey()
-
+            # Find out which aggregation function to use
+            aggregation_name = str(expr.getAggregation().getName())
+            aggregation_name = aggregation_name.lower()
             # Find out about the input column
             inputs = expr.getArgList()
-            if len(inputs) == 1:
+            if aggregation_name == "regr_count":
+                is_null = IsNullOperation()
+                two_columns_proxy = new_temporary_column(df)
+                if len(inputs) == 1:
+                    # calcite some times gives one input/col to regr_count and
+                    # another col has filter column
+                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
+
+                else:
+                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    col2 = cc.get_backend_by_frontend_index(inputs[1])
+                    # both cols should be not null
+                    df = df.assign(
+                        **{
+                            two_columns_proxy: (
+                                ~is_null(df[col1]) & (~is_null(df[col2]))
+                            )
+                        }
+                    )
+                input_col = two_columns_proxy
+            elif len(inputs) == 1:
                 input_col = cc.get_backend_by_frontend_index(inputs[0])
             elif len(inputs) == 0:
                 input_col = additional_column_name
@@ -261,9 +289,6 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             if expr.hasFilter():
                 filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
 
-            # Find out which aggregation function to use
-            aggregation_name = str(expr.getAggregation().getName())
-            aggregation_name = aggregation_name.lower()
             try:
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
             except KeyError:
@@ -291,7 +316,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             collected_aggregations[key].append(value)
             output_column_order.append(output_col)
 
-        return collected_aggregations, output_column_order
+        return collected_aggregations, output_column_order, df
 
     def _perform_aggregation(
         self,
