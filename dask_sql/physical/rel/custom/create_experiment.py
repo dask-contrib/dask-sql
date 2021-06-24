@@ -61,6 +61,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         tune_fit_kwargs = kwargs.pop("tune_fit_kwargs", {})
         parameters = kwargs.pop("tune_parameters", {})
         experiment_kwargs = kwargs.pop("experiment_kwargs", {})
+        automl_kwargs = kwargs.pop("automl_kwargs", {})
         logger.info(parameters)
         # tune_kwargs = eval(tune_kwargs)
         # print(tune_kwargs)
@@ -68,6 +69,22 @@ class CreateExperimentPlugin(BaseRelPlugin):
         # tune_kwargs = {}
         # for k,v in _tune_kwargs:
         #     tune_kwargs[k] = eval(str(v))
+        # According to dask docs,
+        # https://ml.dask.org/incremental.html wrap_fit doesnt go well hyperparameter optimization
+
+        select_query = context._to_sql_string(select)
+        training_df = context.sql(select_query)
+
+        if target_column:
+            non_target_columns = [
+                col for col in training_df.columns if col != target_column
+            ]
+            X = training_df[non_target_columns]
+            y = training_df[target_column]
+        else:
+            X = training_df
+            y = None
+
         if model_class and experiment_class:
             try:
                 ModelClass = import_class(model_class)
@@ -84,22 +101,6 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             model = ModelClass()
 
-            # According to dask docs,
-            # https://ml.dask.org/incremental.html wrap_fit doesnt go well hyperparameter optimization
-
-            select_query = context._to_sql_string(select)
-            training_df = context.sql(select_query)
-
-            if target_column:
-                non_target_columns = [
-                    col for col in training_df.columns if col != target_column
-                ]
-                X = training_df[non_target_columns]
-                y = training_df[target_column]
-            else:
-                X = training_df
-                y = None
-
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
             logger.info(tune_fit_kwargs)
             search.fit(X, y, **tune_fit_kwargs)
@@ -107,6 +108,13 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 experiment_name + "_" + model_class.rsplit(".")[-1] + "_best_model"
             )
             df = pd.DataFrame(search.cv_results_)
+            df["model_class"] = model_class
+            from dask_ml.wrappers import ParallelPostFit
+
+            context.register_model(
+                model_name, ParallelPostFit(estimator=search.best_estimator_), X.columns
+            )
+
         elif automl_class:
             try:
                 AutoMLClass = import_class(automl_class)
@@ -115,9 +123,23 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
             # implement TPOTClassifier
+            automl = AutoMLClass(**automl_kwargs)
+            # should be avoided if  data doesn't fit in memory
+            automl.fit(X.compute(), y.compute())
+            df = (
+                pd.DataFrame(automl.evaluated_individuals_)
+                .T.reset_index()
+                .rename({"index": "models"}, axis=1)
+            )
+            model_name = "automl_" + automl_class.rsplit(".")[-1]
+            from dask_ml.wrappers import ParallelPostFit
 
-        df["model_class"] = model_class
-        context.register_model(model_name, search.best_estimator_, X.columns)
+            context.register_model(
+                model_name,
+                ParallelPostFit(estimator=automl.fitted_pipeline_),
+                X.columns,
+            )
+
         context.register_experiment(experiment_name, experiment_results=df)
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
