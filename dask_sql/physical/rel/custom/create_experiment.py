@@ -2,6 +2,7 @@ import logging
 
 import dask.dataframe as dd
 import pandas as pd
+from dask_ml.wrappers import ParallelPostFit
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
@@ -53,7 +54,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Parameters must include a 'experiment_class' parameter for tunning {model_class}."
                 )
             experiment_class = kwargs.pop("experiment_class")
-        elif "automl_class" in kwargs:
+        elif "automl_class" in kwargs:  # pragma: no cover
             automl_class = kwargs.pop("automl_class")
 
         target_column = kwargs.pop("target_column", "")
@@ -75,15 +76,16 @@ class CreateExperimentPlugin(BaseRelPlugin):
         select_query = context._to_sql_string(select)
         training_df = context.sql(select_query)
 
-        if target_column:
-            non_target_columns = [
-                col for col in training_df.columns if col != target_column
-            ]
-            X = training_df[non_target_columns]
-            y = training_df[target_column]
-        else:
-            X = training_df
-            y = None
+        if not target_column:
+            raise ValueError(
+                "Unsupervised Algorithm cannot be tunned Automatically,"
+                "Consider providing 'target column'"
+            )
+        non_target_columns = [
+            col for col in training_df.columns if col != target_column
+        ]
+        X = training_df[non_target_columns]
+        y = training_df[target_column]
 
         if model_class and experiment_class:
             try:
@@ -109,13 +111,12 @@ class CreateExperimentPlugin(BaseRelPlugin):
             )
             df = pd.DataFrame(search.cv_results_)
             df["model_class"] = model_class
-            from dask_ml.wrappers import ParallelPostFit
 
             context.register_model(
                 model_name, ParallelPostFit(estimator=search.best_estimator_), X.columns
             )
 
-        elif automl_class:
+        elif automl_class:  # pragma: no cover
             try:
                 AutoMLClass = import_class(automl_class)
             except ImportError:
@@ -132,7 +133,6 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 .rename({"index": "models"}, axis=1)
             )
             model_name = "automl_" + automl_class.rsplit(".")[-1]
-            from dask_ml.wrappers import ParallelPostFit
 
             context.register_model(
                 model_name,
