@@ -529,7 +529,7 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     )
 
 
-def test_ml_experiment(c, training_df):
+def test_ml_experiment(c, client, training_df):
 
     with pytest.raises(
         ValueError,
@@ -593,7 +593,7 @@ def test_ml_experiment(c, training_df):
 
     with pytest.raises(
         ValueError,
-        match="Can not import model that.is.not.a.python.class. Make sure you spelled "
+        match="Can not import tuner that.is.not.a.python.class. Make sure you spelled "
         "it correctly and have installed all packages.",
     ):
         c.sql(
@@ -610,6 +610,25 @@ def test_ml_experiment(c, training_df):
             LIMIT 100
         )
         """
+        )
+    with pytest.raises(
+        ValueError,
+        match="Can not import automl model that.is.not.a.python.class. "
+        "Make sure you spelled "
+        "it correctly and have installed all packages.",
+    ):
+        c.sql(
+            """
+            CREATE EXPERIMENT my_exp64 WITH (
+                automl_class = 'that.is.not.a.python.class',
+                automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True,max_eval_time_mins=1),
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+                LIMIT 100
+            )
+            """
         )
     # happy flow
     c.sql(
@@ -685,7 +704,7 @@ def test_ml_experiment(c, training_df):
 
     with pytest.raises(
         ValueError,
-        match="Unsupervised Algorithm cannot be tunned Automatically,"
+        match="Unsupervised Algorithm cannot be tuned Automatically,"
         "Consider providing 'target column'",
     ):
         c.sql(
@@ -704,13 +723,14 @@ def test_ml_experiment(c, training_df):
         )
 
 
-def test_ml_automl(c, training_df):
-    tpot = pytest.importorskip("tpot", reason="mflow not installed")
+def test_experiment_automl_classifier(c, client, training_df):
+    tpot = pytest.importorskip("tpot", reason="tpot not installed")
+    # currently tested with tpot==
     c.sql(
         """
-        CREATE EXPERIMENT my_exp64 WITH (
+        CREATE EXPERIMENT my_exp1 WITH (
             automl_class = 'tpot.TPOTClassifier',
-            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True,max_eval_time_mins=1),
+            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -722,3 +742,30 @@ def test_ml_automl(c, training_df):
     assert "automl_TPOTClassifier" in c.models, "Best model was not registered"
 
     check_trained_model(c, "automl_TPOTClassifier")
+
+
+def test_experiement_automl_regressor(c, client, training_df):
+    tpot = pytest.importorskip("tpot", reason="tpot not installed")
+    # test regressor
+    c.sql(
+        """
+        CREATE EXPERIMENT my_exp2 WITH (
+            automl_class = 'tpot.TPOTRegressor',
+            automl_kwargs = (population_size = 2,
+            generations=2,
+            cv=2,
+            n_jobs=-1,
+            use_dask=True,
+            max_eval_time_mins=1),
+
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y  AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+    assert "automl_TPOTRegressor" in c.models, "Best model was not registered"
+
+    check_trained_model(c, "automl_TPOTRegressor")
