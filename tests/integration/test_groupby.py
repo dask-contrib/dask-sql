@@ -112,19 +112,17 @@ def test_group_by_case(c):
     df = c.sql(
         """
     SELECT
-        user_id + 1, SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
+        user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
     FROM user_table_1
     GROUP BY user_id + 1
     """
     )
     df = df.compute()
 
-    user_id_column = '"user_table_1"."user_id" + 1'
-
-    expected_df = pd.DataFrame({user_id_column: [2, 3, 4], "S": [1, 1, 1]})
-    expected_df[user_id_column] = expected_df[user_id_column].astype("int64")
+    expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
+    # Do not check dtypes, as pandas versions are inconsistent here
     assert_frame_equal(
-        df.sort_values(user_id_column).reset_index(drop=True), expected_df
+        df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
     )
 
 
