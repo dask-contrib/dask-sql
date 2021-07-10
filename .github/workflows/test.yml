@@ -99,7 +99,7 @@ jobs:
           mamba install sqlalchemy psycopg2 ciso8601 -c conda-forge
           pip install docker "fugue[sql]>=0.5.3"
           pip install mlflow
-          pip install tpot==0.11.6.post1 # xgboost constraint
+          pip install tpot
           pip install dask-ml
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest

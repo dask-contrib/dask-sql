@@ -467,14 +467,14 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
-def test_mlflow_export_xgboost(c, training_df, tmpdir):
+def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
     c.sql(
         f"""
         CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
-            model_class = 'xgboost.XGBClassifier',
+            model_class = 'xgboost.dask.DaskXGBClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -494,14 +494,14 @@ def test_mlflow_export_xgboost(c, training_df, tmpdir):
     )
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
-        == "XGBClassifier"
+        == "DaskXGBClassifier"
     )
 
 
 def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     # Test only when mlflow & lightgbm was installed
     mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
-    lightgbm = pytest.importorskip("lightgbm", reason="xgboost not installed")
+    lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
     c.sql(
         f"""
         CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
