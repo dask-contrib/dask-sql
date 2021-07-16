@@ -553,7 +553,7 @@ def test_ml_experiment(c, client, training_df):
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'experiment_class' "
-        "parameter for tunning sklearn.ensemble.GradientBoostingClassifier.",
+        "parameter for tuning sklearn.ensemble.GradientBoostingClassifier.",
     ):
         c.sql(
             """
@@ -647,11 +647,9 @@ def test_ml_experiment(c, client, training_df):
         """
     )
 
-    assert (
-        "my_exp_GradientBoostingClassifier_best_model" in c.models
-    ), "Best model was not registered"
+    assert "my_exp" in c.models, "Best model was not registered"
 
-    check_trained_model(c, "my_exp_GradientBoostingClassifier_best_model")
+    check_trained_model(c, "my_exp")
 
     with pytest.raises(RuntimeError):
         # my_exp already exists
@@ -728,7 +726,7 @@ def test_experiment_automl_classifier(c, client, training_df):
     # currently tested with tpot==
     c.sql(
         """
-        CREATE EXPERIMENT my_exp1 WITH (
+        CREATE EXPERIMENT my_automl_exp1 WITH (
             automl_class = 'tpot.TPOTClassifier',
             automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True),
             target_column = 'target'
@@ -739,9 +737,9 @@ def test_experiment_automl_classifier(c, client, training_df):
         )
         """
     )
-    assert "automl_TPOTClassifier" in c.models, "Best model was not registered"
+    assert "my_automl_exp1" in c.models, "Best model was not registered"
 
-    check_trained_model(c, "automl_TPOTClassifier")
+    check_trained_model(c, "my_automl_exp1")
 
 
 def test_experiement_automl_regressor(c, client, training_df):
@@ -749,7 +747,7 @@ def test_experiement_automl_regressor(c, client, training_df):
     # test regressor
     c.sql(
         """
-        CREATE EXPERIMENT my_exp2 WITH (
+        CREATE EXPERIMENT my_automl_exp2 WITH (
             automl_class = 'tpot.TPOTRegressor',
             automl_kwargs = (population_size = 2,
             generations=2,
@@ -766,6 +764,6 @@ def test_experiement_automl_regressor(c, client, training_df):
         )
         """
     )
-    assert "automl_TPOTRegressor" in c.models, "Best model was not registered"
+    assert "my_automl_exp2" in c.models, "Best model was not registered"
 
-    check_trained_model(c, "automl_TPOTRegressor")
+    check_trained_model(c, "my_automl_exp2")
