@@ -80,6 +80,8 @@ class Context:
         self.aggregations = {}
         # Storage for the trained models
         self.models = {}
+        # Storage for ML model Experiments
+        self.experiments = {}
         # Name of the root schema (not changable so far)
         self.schema_name = "schema"
         # A started SQL server (useful for jupyter notebooks)
@@ -108,6 +110,7 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -452,6 +455,11 @@ class Context:
         (result,) = optimize(result)
 
         result.visualize(filename)
+
+    def register_experiment(
+        self, experiment_name: str, experiment_results: pd.DataFrame
+    ):
+        self.experiments[experiment_name] = experiment_results
 
     def register_model(self, model_name: str, model: Any, training_columns: List[str]):
         """

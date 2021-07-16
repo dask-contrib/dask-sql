@@ -35,9 +35,10 @@ data: {
         "com.dask.sql.parser.SqlPredictModel"
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
-        "com.dask.sql.parser.SqlShowTables"
-        "com.dask.sql.parser.SqlShowModels"
-        "com.dask.sql.parser.SqlExportModel"
+        "com.dask.sql.parser.SqlShowTables",
+        "com.dask.sql.parser.SqlShowModels",
+        "com.dask.sql.parser.SqlExportModel",
+        "com.dask.sql.parser.SqlCreateExperiment"
       ]
 
       # List of keywords.
@@ -53,6 +54,7 @@ data: {
         "TABLES"
         "MODELS"
         "EXPORT"
+        "EXPERIMENT"
       ]
 
       # The keywords can only be used in a specific context,
@@ -67,6 +69,7 @@ data: {
         "SCHEMAS"
         "STATISTICS"
         "TABLES"
+        "EXPERIMENT"
       ]
 
       # List of methods for parsing custom SQL statements
@@ -85,6 +88,7 @@ data: {
          "SqlCreateModel"
          "SqlCreateTable"
          "SqlCreateView"
+         "SqlCreateExperiment"
       ]
 
       dropStatementParserMethods: [

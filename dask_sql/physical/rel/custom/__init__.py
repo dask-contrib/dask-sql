@@ -1,5 +1,6 @@
 from .analyze import AnalyzeTablePlugin
 from .columns import ShowColumnsPlugin
+from .create_experiment import CreateExperimentPlugin
 from .create_model import CreateModelPlugin
 from .create_table import CreateTablePlugin
 from .create_table_as import CreateTableAsPlugin
@@ -26,4 +27,5 @@ __all__ = [
     ShowModelsPlugin,
     ShowModelParamsPlugin,
     ExportModelPlugin,
+    CreateExperimentPlugin,
 ]

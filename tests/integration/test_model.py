@@ -8,15 +8,23 @@ from dask.datasets import timeseries
 from mock import MagicMock
 
 
-def check_trained_model(c):
-    result_df = c.sql(
-        """
+def check_trained_model(c, model_name=None):
+    if model_name is None:
+        sql = """
         SELECT * FROM PREDICT(
             MODEL my_model,
             SELECT x, y FROM timeseries
         )
         """
-    ).compute()
+    else:
+        sql = f"""
+        SELECT * FROM PREDICT(
+            MODEL {model_name},
+            SELECT x, y FROM timeseries
+        )
+        """
+
+    result_df = c.sql(sql).compute()
 
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
@@ -459,14 +467,14 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
-def test_mlflow_export_xgboost(c, training_df, tmpdir):
+def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
     c.sql(
         f"""
         CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
-            model_class = 'xgboost.XGBClassifier',
+            model_class = 'xgboost.dask.DaskXGBClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -486,14 +494,14 @@ def test_mlflow_export_xgboost(c, training_df, tmpdir):
     )
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
-        == "XGBClassifier"
+        == "DaskXGBClassifier"
     )
 
 
 def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     # Test only when mlflow & lightgbm was installed
     mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
-    lightgbm = pytest.importorskip("lightgbm", reason="xgboost not installed")
+    lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
     c.sql(
         f"""
         CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
@@ -519,3 +527,243 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "LGBMClassifier"
     )
+
+
+def test_ml_experiment(c, client, training_df):
+
+    with pytest.raises(
+        ValueError,
+        match="Parameters must include a 'model_class' " "or 'automl_class' parameter.",
+    ):
+
+        c.sql(
+            """
+        CREATE EXPERIMENT my_exp WITH (
+            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+        )
+    with pytest.raises(
+        ValueError,
+        match="Parameters must include a 'experiment_class' "
+        "parameter for tuning sklearn.ensemble.GradientBoostingClassifier.",
+    ):
+        c.sql(
+            """
+        CREATE EXPERIMENT my_exp WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Can not import model that.is.not.a.python.class. Make sure you spelled "
+        "it correctly and have installed all packages.",
+    ):
+        c.sql(
+            """
+            CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
+            model_class = 'that.is.not.a.python.class',
+            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Can not import tuner that.is.not.a.python.class. Make sure you spelled "
+        "it correctly and have installed all packages.",
+    ):
+        c.sql(
+            """
+            CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
+            model_class =  'sklearn.ensemble.GradientBoostingClassifier',
+            experiment_class = 'that.is.not.a.python.class',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+        )
+    with pytest.raises(
+        ValueError,
+        match="Can not import automl model that.is.not.a.python.class. "
+        "Make sure you spelled "
+        "it correctly and have installed all packages.",
+    ):
+        c.sql(
+            """
+            CREATE EXPERIMENT my_exp64 WITH (
+                automl_class = 'that.is.not.a.python.class',
+                automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True,max_eval_time_mins=1),
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+                LIMIT 100
+            )
+            """
+        )
+    # happy flow
+    c.sql(
+        """
+        CREATE EXPERIMENT my_exp WITH (
+        model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+        experiment_class = 'dask_ml.model_selection.GridSearchCV',
+        tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                           max_depth = ARRAY [3,4,5,10]),
+        target_column = 'target'
+    ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+
+    assert "my_exp" in c.models, "Best model was not registered"
+
+    check_trained_model(c, "my_exp")
+
+    with pytest.raises(RuntimeError):
+        # my_exp already exists
+        c.sql(
+            """
+            CREATE EXPERIMENT my_exp WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+            """
+        )
+    c.sql(
+        """
+        CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+
+        """
+    )
+    c.sql(
+        """
+        CREATE OR REPLACE EXPERIMENT my_exp WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                               max_depth = ARRAY [3,4,5,10]),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Unsupervised Algorithm cannot be tuned Automatically,"
+        "Consider providing 'target column'",
+    ):
+        c.sql(
+            """
+            CREATE EXPERIMENT my_exp1 WITH (
+                model_class = 'dask_ml.cluster.KMeans',
+                experiment_class = 'dask_ml.model_selection.RandomizedSearchCV',
+                tune_parameters = (n_clusters = ARRAY [3,4,16],tol = ARRAY [0.1,0.01,0.001],
+                                   max_iter = ARRAY [3,4,5,10])
+            ) AS (
+                SELECT x, y
+                FROM timeseries
+                LIMIT 100
+            )
+            """
+        )
+
+
+def test_experiment_automl_classifier(c, client, training_df):
+    tpot = pytest.importorskip("tpot", reason="tpot not installed")
+    # currently tested with tpot==
+    c.sql(
+        """
+        CREATE EXPERIMENT my_automl_exp1 WITH (
+            automl_class = 'tpot.TPOTClassifier',
+            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True),
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+    assert "my_automl_exp1" in c.models, "Best model was not registered"
+
+    check_trained_model(c, "my_automl_exp1")
+
+
+def test_experiement_automl_regressor(c, client, training_df):
+    tpot = pytest.importorskip("tpot", reason="tpot not installed")
+    # test regressor
+    c.sql(
+        """
+        CREATE EXPERIMENT my_automl_exp2 WITH (
+            automl_class = 'tpot.TPOTRegressor',
+            automl_kwargs = (population_size = 2,
+            generations=2,
+            cv=2,
+            n_jobs=-1,
+            use_dask=True,
+            max_eval_time_mins=1),
+
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y  AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+    assert "my_automl_exp2" in c.models, "Best model was not registered"
+
+    check_trained_model(c, "my_automl_exp2")
