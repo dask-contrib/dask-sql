@@ -102,15 +102,15 @@ following sql statements
 
 5. Hyperparameter Tuning
 -------------------------
-Wants to increase the performance of your model by tuning the
-parameters ? Use the Hyperparameter tuning directly
+Want to increase the performance of your model by tuning the
+parameters? Use the hyperparameter tuning directly
 in SQL using below SQL syntax, choose different tuners
-from dask_ml package based on memory and compute constraints and
-for more details refer  `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
+from the dask_ml package based on memory and compute constraints and
+for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
 
 .. code-block:: sql
 
- CREATE EXPERIMENT my_exp WITH(
+ CREATE EXPERIMENT my_exp WITH (
     model_class = 'sklearn.ensemble.GradientBoostingClassifier',
     experiment_class = 'dask_ml.model_selection.GridSearchCV',
     tune_parameters = (n_estimators = ARRAY [16, 32, 2],
@@ -126,11 +126,11 @@ for more details refer  `dask ml documentation <https://ml.dask.org/hyper-parame
 
 5.1 Automl in SQL
 -----------------
-Wants to try different models with different parameters in SQL ?, Now you can
-start automl experiment with the help ``tpot`` framework which trains
-and evaluates number of different sklearn compatible models and uses dask for
+Want to try different models with different parameters in SQL? Now you can
+start automl experiments with the help of the ``tpot`` framework which trains
+and evaluates a number of different sklearn compatible models and uses dask for
 distributing the work across the dask clusters.
-use below SQL syntax for automl and for more details refer
+Use below SQL syntax for automl and for more details refer to the
 `tpot automl framework <https://epistasislab.github.io/tpot/>`_
 
 
@@ -152,8 +152,8 @@ use below SQL syntax for automl and for more details refer
             )
 
 After the experiment was completed, both hyperparameter tuner and
-automl experiments stores the best model of the experiment in sql context
-which can be used for prediction.
+automl experiments stores the best model of the experiment in the sql context with
+the name same as the experiment name, which can be used for prediction.
 
 6. Export Trained Model
 ------------------------

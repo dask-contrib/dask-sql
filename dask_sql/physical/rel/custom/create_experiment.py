@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 
 class CreateExperimentPlugin(BaseRelPlugin):
     """
-    Creates /initiate  Experiment for hyperparameter tuning or Automl like behaviour,
-    i.e evaluates model with different hyperparameters and registers the best performing
-    model in the context which can be used for prediction
+    Creates an  Experiment for hyperparameter tuning or automl like behaviour,
+    i.e evaluates models with different hyperparameters and registers the best performing
+    model in the context with the name same as experiment name,
+    which can be used for prediction
 
     sql syntax:
-        CREATE EXPERIMENT <> WITH ( key = value )
+        CREATE EXPERIMENT <name> WITH ( key = value )
             AS <some select query>
 
     OPTIONS:
@@ -119,7 +120,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
             # when model class was provided, must provide experiment_class also for tuning
             if "experiment_class" not in kwargs:
                 raise ValueError(
-                    f"Parameters must include a 'experiment_class' parameter for tunning {model_class}."
+                    f"Parameters must include a 'experiment_class' parameter for tuning {model_class}."
                 )
             experiment_class = kwargs.pop("experiment_class")
         elif "automl_class" in kwargs:
@@ -167,14 +168,13 @@ class CreateExperimentPlugin(BaseRelPlugin):
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
             logger.info(tune_fit_kwargs)
             search.fit(X, y, **tune_fit_kwargs)
-            model_name = (
-                experiment_name + "_" + model_class.rsplit(".")[-1] + "_best_model"
-            )
             df = pd.DataFrame(search.cv_results_)
             df["model_class"] = model_class
 
             context.register_model(
-                model_name, ParallelPostFit(estimator=search.best_estimator_), X.columns
+                experiment_name,
+                ParallelPostFit(estimator=search.best_estimator_),
+                X.columns,
             )
 
         if automl_class:
@@ -193,10 +193,9 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 .T.reset_index()
                 .rename({"index": "models"}, axis=1)
             )
-            model_name = "automl_" + automl_class.rsplit(".")[-1]
 
             context.register_model(
-                model_name,
+                experiment_name,
                 ParallelPostFit(estimator=automl.fitted_pipeline_),
                 X.columns,
             )

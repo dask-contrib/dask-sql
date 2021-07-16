@@ -14,7 +14,7 @@ import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 public class SqlCreateExperiment extends SqlCreate {
-    private static final SqlOperator OPERATOR = new SqlSpecialOperator("CREATE MODEL", SqlKind.OTHER_DDL);
+    private static final SqlOperator OPERATOR = new SqlSpecialOperator("CREATE EXPERIMENT", SqlKind.OTHER_DDL);
 
     final SqlIdentifier experimentName;
     final SqlKwargs kwargs;
