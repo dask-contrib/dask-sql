@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 
 def test_group_by(c):
@@ -112,19 +112,17 @@ def test_group_by_case(c):
     df = c.sql(
         """
     SELECT
-        user_id + 1, SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
+        user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
     FROM user_table_1
     GROUP BY user_id + 1
     """
     )
     df = df.compute()
 
-    user_id_column = '"user_table_1"."user_id" + 1'
-
-    expected_df = pd.DataFrame({user_id_column: [2, 3, 4], "S": [1, 1, 1]})
-    expected_df[user_id_column] = expected_df[user_id_column].astype("int64")
+    expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
+    # Do not check dtypes, as pandas versions are inconsistent here
     assert_frame_equal(
-        df.sort_values(user_id_column).reset_index(drop=True), expected_df
+        df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
     )
 
 
@@ -238,3 +236,112 @@ def test_aggregations(c):
 
     expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
     assert_frame_equal(df.reset_index(drop=True), expected_df)
+
+
+def test_stats_aggregation(c, timeseries_df):
+
+    # # test regr_count
+    regr_count = (
+        c.sql(
+            """
+        SELECT name, count(x) filter (where y is not null) as expected,
+         regr_count(y, x) as calculated from timeseries group by name
+    """
+        )
+        .compute()
+        .fillna(0)
+    )
+
+    assert_series_equal(
+        regr_count["expected"],
+        regr_count["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test regr_syy
+    regr_syy = (
+        c.sql(
+            """
+        SELECT name, (regr_count(y, x)*var_pop(y)) as expected, regr_syy(y, x) as calculated
+        FROM timeseries WHERE x IS NOT NULL AND y IS NOT NULL GROUP BY name
+    """
+        )
+        .compute()
+        .fillna(0)
+    )
+    assert_series_equal(
+        regr_syy["expected"],
+        regr_syy["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test regr_sxx
+    regr_sxx = (
+        c.sql(
+            """
+        SELECT name,(regr_count(y, x)*var_pop(x)) as expected, regr_sxx(y,x) as calculated
+        FROM timeseries WHERE x IS NOT NULL AND y IS NOT NULL GROUP BY name
+    """
+        )
+        .compute()
+        .fillna(0)
+    )
+    assert_series_equal(
+        regr_sxx["expected"],
+        regr_sxx["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test covar_pop
+    covar_pop = (
+        c.sql(
+            """
+        with temp_agg as (
+        select name,avg(y) filter (where x is not null) as avg_y,
+        avg(x) filter (where y is not null) as avg_x
+        from timeseries group by name
+        )
+        select ts.name,sum((y - avg_y) * (x - avg_x)) /regr_count(y, x) as expected,
+                covar_pop(y,x) as calculated from timeseries as ts
+                join temp_agg as ta on ts.name =ta.name
+                group by ts.name
+    """
+        )
+        .compute()
+        .fillna(0)
+    )
+    assert_series_equal(
+        covar_pop["expected"],
+        covar_pop["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test covar_samp
+    covar_samp = (
+        c.sql(
+            """
+        with temp_agg as (
+        select name,avg(y) filter (where x is not null) as avg_y,
+        avg(x) filter (where y is not null) as avg_x
+        from timeseries group by name
+        )
+
+        select ts.name,sum((y - avg_y) * (x - avg_x)) /(regr_count(y, x)-1) as expected,
+                covar_samp(y,x) as calculated from timeseries as ts
+                join temp_agg as ta on ts.name =ta.name
+                group by ts.name
+    """
+        )
+        .compute()
+        .fillna(0)
+    )
+    assert_series_equal(
+        covar_samp["expected"],
+        covar_samp["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )

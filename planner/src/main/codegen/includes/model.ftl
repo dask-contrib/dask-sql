@@ -83,6 +83,30 @@ SqlCreate SqlCreateModel(final Span s, boolean replace) :
     }
 }
 
+/*
+ * Production for
+ *   CREATE EXPERIMENT name WITH ( key = value ) AS
+ */
+SqlCreate SqlCreateExperiment(final Span s, boolean replace) :
+{
+    final boolean ifNotExists;
+    final SqlIdentifier experimentName;
+    final SqlKwargs kwargs;
+    final SqlNode select;
+}
+{
+    <EXPERIMENT>
+    ifNotExists = IfNotExists()
+    experimentName = SimpleIdentifier()
+    <WITH>
+    kwargs = ParenthesizedKeyValueExpressions()
+    <AS>
+    select = OptionallyParenthesizedQuery()
+    {
+        return new SqlCreateExperiment(s.end(this), replace, ifNotExists, experimentName, kwargs, select);
+    }
+}
+
 
 /*
  * Production for

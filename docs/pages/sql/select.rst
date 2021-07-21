@@ -131,6 +131,20 @@ Example:
     FROM "data"
     GROUP BY y
 
+Statistical Aggregation Function which takes two columns as input are follows:
+
+``REGR_COUNT``, ``REGR_SXX``, ``REGR_SYY``, ``COVAR_POP``, ``COVAR_SAMP``
+
+.. code-block:: sql
+
+    SELECT
+        REGR_COUNT(y,x),
+        REGR_SXX(y,x),
+        COVAR_POP(y,x)
+    FROM "data"
+    GROUP BY z
+
+
 .. note::
 
     It is also possible to implement custom aggregations. See :ref:`custom`.

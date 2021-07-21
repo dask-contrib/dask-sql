@@ -100,8 +100,62 @@ following sql statements
     -- DESCRIBE MODEL <model_name>.
     DESCRIBE MODEL my_model
 
+5. Hyperparameter Tuning
+-------------------------
+Want to increase the performance of your model by tuning the
+parameters? Use the hyperparameter tuning directly
+in SQL using below SQL syntax, choose different tuners
+from the dask_ml package based on memory and compute constraints and
+for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
 
-5. Export Trained Model
+.. code-block:: sql
+
+ CREATE EXPERIMENT my_exp WITH (
+    model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+    experiment_class = 'dask_ml.model_selection.GridSearchCV',
+    tune_parameters = (n_estimators = ARRAY [16, 32, 2],
+                    learning_rate = ARRAY [0.1,0.01,0.001],
+                   max_depth = ARRAY [3,4,5,10]
+                   ),
+    target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y > 0 AS target
+        FROM timeseries
+        LIMIT 100
+    )
+
+5.1 Automl in SQL
+-----------------
+Want to try different models with different parameters in SQL? Now you can
+start automl experiments with the help of the ``tpot`` framework which trains
+and evaluates a number of different sklearn compatible models and uses dask for
+distributing the work across the dask clusters.
+Use below SQL syntax for automl and for more details refer to the
+`tpot automl framework <https://epistasislab.github.io/tpot/>`_
+
+
+.. code-block:: sql
+
+    CREATE EXPERIMENT my_exp WITH (
+            automl_class = 'tpot.TPOTClassifier',
+            automl_kwargs = (population_size = 2 ,
+            generations=2,
+            cv=2,
+            n_jobs=-1,
+            use_dask=True,
+            max_eval_time_mins=1),
+            target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+                LIMIT 100
+            )
+
+After the experiment was completed, both hyperparameter tuner and
+automl experiments stores the best model of the experiment in the sql context with
+the name same as the experiment name, which can be used for prediction.
+
+6. Export Trained Model
 ------------------------
 Once your model was trained and performs good in your validation dataset,
 you can export the model into a file with one of the supported model serialization
@@ -195,6 +249,37 @@ and the boolean target ``label``.
     SHOW MODELS
     -- check parameters of the model
     DESCRIBE MODEL my_model
+
+    -- experiment to tune different hyperparameters
+    CREATE EXPERIMENT my_exp WITH(
+    model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+    experiment_class = 'dask_ml.model_selection.GridSearchCV',
+    tune_parameters = (n_estimators = ARRAY [16, 32, 2],
+                    learning_rate = ARRAY [0.1,0.01,0.001],
+                   max_depth = ARRAY [3,4,5,10]
+                   ),
+    target_column = 'label'
+    ) AS (
+        SELECT * FROM training_data
+    )
+
+
+    -- creates experiment with automl framework
+    CREATE EXPERIMENT my_exp WITH (
+            automl_class = 'tpot.TPOTRegressor',
+            automl_kwargs = (population_size = 2 ,
+            generations=2,
+            cv=2,
+            n_jobs=-1,
+            use_dask=True,
+            max_eval_time_mins=1),
+            target_column = 'z'
+            ) AS (
+                SELECT * FROM training_data
+            )
+
+    -- checks the parameter of automl model
+    DESCRIBE MODEL automl_TPOTRegressor
 
     -- export model
     EXPORT MODEL my_model WITH (
