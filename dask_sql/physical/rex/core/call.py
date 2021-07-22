@@ -780,7 +780,7 @@ class RexCallPlugin(BaseRexPlugin):
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
-                operation = context.functions[operator_name]
+                operation = context.schema[context.schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 

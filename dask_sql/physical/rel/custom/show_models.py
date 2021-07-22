@@ -21,7 +21,9 @@ class ShowModelsPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
 
-        df = pd.DataFrame({"Models": list(context.models.keys())})
+        df = pd.DataFrame(
+            {"Models": list(context.schema[context.schema_name].models.keys())}
+        )
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

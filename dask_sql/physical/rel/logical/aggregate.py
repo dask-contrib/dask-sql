@@ -293,7 +293,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
             except KeyError:
                 try:
-                    aggregation_function = context.functions[aggregation_name]
+                    aggregation_function = context.schema[
+                        context.schema_name
+                    ].functions[aggregation_name]
                 except KeyError:  # pragma: no cover
                     raise NotImplementedError(
                         f"Aggregation function {aggregation_name} not implemented (yet)."

@@ -22,9 +22,9 @@ class ShowModelParamsPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         model_name = str(sql.getModelName().getIdentifier())
-        if model_name not in context.models:
+        if model_name not in context.schema[context.schema_name].models:
             raise RuntimeError(f"A model with the name {model_name} is not present.")
-        model, training_columns = context.models[model_name]
+        model, training_columns = context.schema[context.schema_name].models[model_name]
         model_params = model.get_params()
         model_params["training_columns"] = training_columns.tolist()
         df = pd.DataFrame.from_dict(model_params, orient="index", columns=["Params"])

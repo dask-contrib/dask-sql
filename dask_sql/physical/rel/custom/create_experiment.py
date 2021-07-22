@@ -101,7 +101,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         experiment_name = str(sql.getExperimentName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if experiment_name in context.experiments:
+        if experiment_name in context.schema[context.schema_name].experiments:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():

@@ -213,7 +213,7 @@ def get_table_from_compound_identifier(
             raise AttributeError(f"Schema {components[0]} is not defined.")
 
     try:
-        return context.tables[tableName]
+        return context.schema[context.schema_name].tables[tableName]
     except KeyError:
         raise AttributeError(f"Table {tableName} is not defined.")
 

@@ -37,7 +37,8 @@ class LogicalTableScanPlugin(BaseRelPlugin):
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        dc = context.tables[table_name]
+        dc = context.schema[table_names[0]].tables[table_name]
+        # dc = context.tables[table_name]
         df = dc.df
         cc = dc.column_container
 

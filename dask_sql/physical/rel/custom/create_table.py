@@ -38,7 +38,7 @@ class CreateTablePlugin(BaseRelPlugin):
     ) -> DataContainer:
         table_name = str(sql.getTableName())
 
-        if table_name in context.tables:
+        if table_name in context.schema[context.schema_name].tables:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():

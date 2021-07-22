@@ -21,7 +21,7 @@ class DropModelPlugin(BaseRelPlugin):
     ) -> DataContainer:
         model_name = str(sql.getModelName())
 
-        if model_name not in context.models:
+        if model_name not in context.schema[context.schema_name].models:
             if not sql.getIfExists():
                 raise RuntimeError(
                     f"A model with the name {model_name} is not present."
@@ -29,4 +29,4 @@ class DropModelPlugin(BaseRelPlugin):
             else:
                 return
 
-        del context.models[model_name]
+        del context.schema[context.schema_name].models[model_name]

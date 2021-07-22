@@ -195,7 +195,7 @@ def test_correct_argument_passing(c, training_df):
     """
     )
 
-    mocked_model, columns = c.models["my_model"]
+    mocked_model, columns = c.schema[c.schema_name].models["my_model"]
     assert list(columns) == ["x", "y"]
 
     fit_function = mocked_model.fit
@@ -221,7 +221,7 @@ def test_replace_and_error(c, training_df):
     """
     )
 
-    first_mock, _ = c.models["my_model"]
+    first_mock, _ = c.schema[c.schema_name].models["my_model"]
 
     with pytest.raises(RuntimeError):
         c.sql(
@@ -250,7 +250,7 @@ def test_replace_and_error(c, training_df):
     """
     )
 
-    assert c.models["my_model"][0] == first_mock
+    assert c.schema[c.schema_name].models["my_model"][0] == first_mock
 
     c.sql(
         f"""
@@ -265,8 +265,8 @@ def test_replace_and_error(c, training_df):
     """
     )
 
-    assert c.models["my_model"][0] != first_mock
-    second_mock, _ = c.models["my_model"]
+    assert c.schema[c.schema_name].models["my_model"][0] != first_mock
+    second_mock, _ = c.schema[c.schema_name].models["my_model"]
 
     c.sql("DROP MODEL my_model")
 
@@ -283,7 +283,7 @@ def test_replace_and_error(c, training_df):
     """
     )
 
-    assert c.models["my_model"][0] != second_mock
+    assert c.schema[c.schema_name].models["my_model"][0] != second_mock
 
 
 def test_drop_model(c, training_df):
@@ -307,7 +307,7 @@ def test_drop_model(c, training_df):
 
     c.sql("DROP MODEL IF EXISTS my_model")
 
-    assert "my_model" not in c.models
+    assert "my_model" not in c.schema[c.schema_name].models
 
 
 def test_describe_model(c, training_df):
@@ -325,7 +325,7 @@ def test_describe_model(c, training_df):
     """
     )
 
-    model, training_columns = c.models["ex_describe_model"]
+    model, training_columns = c.schema[c.schema_name].models["ex_describe_model"]
     expected_dict = model.get_params()
     expected_dict["training_columns"] = training_columns.tolist()
     # hack for converting model class into string
@@ -647,7 +647,7 @@ def test_ml_experiment(c, client, training_df):
         """
     )
 
-    assert "my_exp" in c.models, "Best model was not registered"
+    assert "my_exp" in c.schema[c.schema_name].models, "Best model was not registered"
 
     check_trained_model(c, "my_exp")
 
@@ -737,7 +737,9 @@ def test_experiment_automl_classifier(c, client, training_df):
         )
         """
     )
-    assert "my_automl_exp1" in c.models, "Best model was not registered"
+    assert (
+        "my_automl_exp1" in c.schema[c.schema_name].models
+    ), "Best model was not registered"
 
     check_trained_model(c, "my_automl_exp1")
 
@@ -764,6 +766,8 @@ def test_experiement_automl_regressor(c, client, training_df):
         )
         """
     )
-    assert "my_automl_exp2" in c.models, "Best model was not registered"
+    assert (
+        "my_automl_exp2" in c.schema[c.schema_name].models
+    ), "Best model was not registered"
 
     check_trained_model(c, "my_automl_exp2")

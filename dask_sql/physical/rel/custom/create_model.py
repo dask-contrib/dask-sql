@@ -108,7 +108,7 @@ class CreateModelPlugin(BaseRelPlugin):
         model_name = str(sql.getModelName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if model_name in context.models:
+        if model_name in context.schema[context.schema_name].models:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():

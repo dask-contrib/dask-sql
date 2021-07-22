@@ -61,7 +61,9 @@ class PredictModelPlugin(BaseRelPlugin):
 
         if model_type == IdentifierType.REFERENCE:
             try:
-                model, training_columns = context.models[model_name]
+                model, training_columns = context.schema[context.schema_name].models[
+                    model_name
+                ]
             except KeyError:
                 raise KeyError(f"No model registered with name {model_name}")
         else:
@@ -79,7 +81,7 @@ class PredictModelPlugin(BaseRelPlugin):
         while True:
             # Make sure to choose a non-used name
             temporary_table = str(uuid.uuid4())
-            if temporary_table not in context.tables:
+            if temporary_table not in context.schema[context.schema_name].tables:
                 break
             else:  # pragma: no cover
                 continue

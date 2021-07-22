@@ -21,7 +21,7 @@ class DropTablePlugin(BaseRelPlugin):
     ) -> DataContainer:
         table_name = str(sql.getTableName())
 
-        if table_name not in context.tables:
+        if table_name not in context.schema[context.schema_name].tables:
             if not sql.getIfExists():
                 raise RuntimeError(
                     f"A table with the name {table_name} is not present."
@@ -29,4 +29,4 @@ class DropTablePlugin(BaseRelPlugin):
             else:
                 return
 
-        del context.tables[table_name]
+        del context.schema[context.schema_name].tables[table_name]

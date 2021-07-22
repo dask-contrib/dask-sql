@@ -51,7 +51,9 @@ class ExportModelPlugin(BaseRelPlugin):
         format = kwargs.pop("format", "pickle").lower().strip()
         location = kwargs.pop("location", "tmp.pkl").strip()
         try:
-            model, training_columns = context.models[model_name]
+            model, training_columns = context.schema[context.schema_name].models[
+                model_name
+            ]
         except KeyError:
             raise RuntimeError(f"A model with the name {model_name} is not present.")
 

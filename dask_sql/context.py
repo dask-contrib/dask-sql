@@ -11,7 +11,7 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer
+from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -30,10 +30,6 @@ from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
-
-FunctionDescription = namedtuple(
-    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
-)
 
 
 class Context:
@@ -72,18 +68,19 @@ class Context:
         Create a new context.
         """
         # Storage for the registered tables
-        self.tables = {}
+        # self.tables = {}
         # Storage for the registered functions
-        self.functions: Dict[str, Callable] = {}
-        self.function_list: List[FunctionDescription] = []
+        # self.functions: Dict[str, Callable] = {}
+        # self.function_list: List[FunctionDescription] = []
         # Storage for the registered aggregations
-        self.aggregations = {}
+        # self.aggregations = {}
         # Storage for the trained models
-        self.models = {}
+        # self.models = {}
         # Storage for ML model Experiments
-        self.experiments = {}
+        # self.experiments = {}
         # Name of the root schema (not changable so far)
         self.schema_name = "schema"
+        self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
@@ -205,7 +202,8 @@ class Context:
             persist=persist,
             **kwargs,
         )
-        self.tables[table_name.lower()] = dc
+        self.schema[self.schema_name].add(table_name.lower(), dc)
+        # self.tables[table_name.lower()] = dc
 
     def register_dask_table(self, df: dd.DataFrame, name: str):
         """
@@ -226,7 +224,8 @@ class Context:
             table_name: (:obj:`str`): Which table to remove.
 
         """
-        del self.tables[table_name]
+        self.schema[self.schema_name].drop("tables", table_name)
+        # del self.tables[table_name]
 
     def register_function(
         self,
@@ -459,7 +458,7 @@ class Context:
     def register_experiment(
         self, experiment_name: str, experiment_results: pd.DataFrame
     ):
-        self.experiments[experiment_name] = experiment_results
+        self.schema[self.schema_name].add(experiment_name.lower(), experiment_results)
 
     def register_model(self, model_name: str, model: Any, training_columns: List[str]):
         """
@@ -477,7 +476,7 @@ class Context:
             training_columns: (list of str): The names of the columns which were
                 used during the training.
         """
-        self.models[model_name] = (model, training_columns)
+        self.schema[self.schema_name].add(model_name.lower(), (model, training_columns))
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
@@ -572,10 +571,10 @@ class Context:
         """
         schema = DaskSchema(self.schema_name)
 
-        if not self.tables:
+        if not self.schema[self.schema_name].tables:
             logger.warning("No tables are registered.")
 
-        for name, dc in self.tables.items():
+        for name, dc in self.schema[self.schema_name].tables.items():
             table = DaskTable(name)
             df = dc.df
             logger.debug(
@@ -589,10 +588,10 @@ class Context:
 
             schema.addTable(table)
 
-        if not self.functions:
+        if not self.schema[self.schema_name].functions:
             logger.debug("No custom functions defined.")
 
-        for function_description in self.function_list:
+        for function_description in self.schema[self.schema_name].function_lists:
             name = function_description.name
             sql_return_type = python_to_sql_type(function_description.return_type)
             if function_description.aggregation:
@@ -718,22 +717,25 @@ class Context:
     ):
         """Helper function to do the function or aggregation registration"""
         lower_name = name.lower()
-        if lower_name in self.functions:
+        if lower_name in self.schema[self.schema_name].functions:
             if replace:
-                self.function_list = list(
-                    filter(lambda f: f.name.lower() != lower_name, self.function_list)
+                self.schema[self.schema_name].function_lists = list(
+                    filter(
+                        lambda f: f.name.lower() != lower_name,
+                        self.schema[self.schema_name].function_lists,
+                    )
                 )
-                del self.functions[lower_name]
+                del self.schema[self.schema_name].functions[lower_name]
 
-            elif self.functions[lower_name] != f:
+            elif self.schema[self.schema_name].functions[lower_name] != f:
                 raise ValueError(
                     "Registering different functions with the same name is not allowed"
                 )
 
-        self.function_list.append(
+        self.schema[self.schema_name].function_lists.append(
             FunctionDescription(name.upper(), parameters, return_type, aggregation)
         )
-        self.function_list.append(
+        self.schema[self.schema_name].function_lists.append(
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
-        self.functions[lower_name] = f
+        self.schema[self.schema_name].functions[lower_name] = f
