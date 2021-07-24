@@ -24,12 +24,10 @@ class ShowTablesPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         schema = str(sql.getSchema()).split(".")[-1]
-        if schema != context.schema_name:
+        if schema not in context.schema:
             raise AttributeError(f"Schema {schema} is not defined.")
 
-        df = pd.DataFrame(
-            {"Table": list(context.schema[context.schema_name].tables.keys())}
-        )
+        df = pd.DataFrame({"Table": list(context.schema[schema].tables.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

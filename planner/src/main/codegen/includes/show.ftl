@@ -110,3 +110,16 @@ SqlNode SqlShowModels() :
         return new SqlShowModels(s.end(this));
     }
 }
+
+SqlNode SqlUseSchema() :
+{
+   final Span s;
+   final SqlIdentifier schemaName;
+}
+{
+    <USE> { s = span(); } <SCHEMA>
+    schemaName = SimpleIdentifier()
+    {
+        return new SqlUseSchema(s.end(this),schemaName);
+    }
+}

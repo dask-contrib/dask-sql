@@ -97,6 +97,7 @@ class Context:
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
@@ -108,6 +109,8 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -454,6 +457,10 @@ class Context:
         (result,) = optimize(result)
 
         result.visualize(filename)
+
+    def create_schema(self, schema_name: str, **kwargs):
+        self.schema[schema_name] = SchemaContainer(schema_name)
+        self.schema_name = schema_name  # point newly created schema
 
     def register_experiment(
         self, experiment_name: str, experiment_results: pd.DataFrame

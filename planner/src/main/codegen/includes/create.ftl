@@ -30,6 +30,21 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
     )
 }
 
+SqlCreate SqlCreateSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifNotExists;
+    final SqlKwargs kwargs;
+}
+{
+    <SCHEMA>
+    ifNotExists = IfNotExists()
+    schemaName = SimpleIdentifier()
+    {
+     return new SqlCreateSchema(s.end(this), replace, ifNotExists, schemaName);
+    }
+}
+
 /*
  * Production for
  *   CREATE VIEW name AS
@@ -72,5 +87,19 @@ SqlDrop SqlDropTable(final Span s, boolean replace) :
     tableName = SimpleIdentifier()
     {
         return new SqlDropTable(s.end(this), ifExists, tableName);
+    }
+}
+
+SqlDrop SqlDropSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifExists;
+}
+{
+    <SCHEMA>
+    ifExists = IfExists()
+    schemaName = SimpleIdentifier()
+    {
+        return new SqlDropSchema(s.end(this), ifExists, schemaName);
     }
 }

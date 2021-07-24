@@ -345,3 +345,42 @@ def test_drop(c):
 
     with pytest.raises(dask_sql.utils.ParsingException):
         c.sql("SELECT a FROM new_table")
+
+
+def test_create_schema(c):
+    c.sql("CREATE SCHEMA new_schema")
+    assert "new_schema" in c.schema
+
+    with pytest.raises(RuntimeError):
+        c.sql("CREATE SCHEMA new_schema")
+
+    c.sql("CREATE OR REPLACE schema new_schema")
+    c.sql("CREATE SCHEMA IF NOT EXISTS new_schema")
+
+
+def test_drop_schema(c):
+    with pytest.raises(RuntimeError):
+        c.sql("DROP SCHEMA new_schema")
+
+    c.sql("DROP SCHEMA IF EXISTS new_schema")
+
+    c.sql(
+        f"""
+        CREATE Schema new_schema
+        """
+    )
+
+    c.sql("DROP SCHEMA IF EXISTS new_schema")
+
+    with pytest.raises(RuntimeError):
+        c.sql("USE SCHEMA new_schema")
+
+    with pytest.raises(RuntimeError):
+        # should allow default schema not be deleted
+        c.sql("DROP SCHEMA schema")
+
+    c.sql("CREATE SCHEMA example")
+    c.sql("USE SCHEMA example")
+    c.sql("DROP SCHEMA example")
+    assert c.schema_name == "schema"
+    assert "example" not in c.schema

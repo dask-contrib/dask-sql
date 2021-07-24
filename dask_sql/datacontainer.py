@@ -196,7 +196,6 @@ class SchemaContainer:
 
     @singledispatchmethod
     def addEntity(self, args, name):
-        print("default")
         self.functions[name] = args
 
     @addEntity.register
