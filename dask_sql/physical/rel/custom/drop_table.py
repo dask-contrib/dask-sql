@@ -19,7 +19,7 @@ class DropTablePlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        table_name = str(sql.getTableName())
+        schema, table_name = context.fqn(sql.getTableName())
 
         if table_name not in context.schema[context.schema_name].tables:
             if not sql.getIfExists():

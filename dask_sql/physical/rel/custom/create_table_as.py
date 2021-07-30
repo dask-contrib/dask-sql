@@ -32,7 +32,7 @@ class CreateTableAsPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        table_name = str(sql.getTableName())
+        schema, table_name = context.fqn(sql.getTableName())
 
         if table_name in context.schema[context.schema_name].tables:
             if sql.getIfNotExists():

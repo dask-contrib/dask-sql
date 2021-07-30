@@ -46,7 +46,7 @@ class ExportModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ):
 
-        model_name = str(sql.getModelName().getIdentifier())
+        schema, model_name = context.fqn(sql.getModelName().getIdentifier())
         kwargs = convert_sql_kwargs(sql.getKwargs())
         format = kwargs.pop("format", "pickle").lower().strip()
         location = kwargs.pop("location", "tmp.pkl").strip()

@@ -49,7 +49,7 @@ class PredictModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         sql_select = sql.getSelect()
-        model_name = str(sql.getModelName().getIdentifier())
+        schema, model_name = context.fqn(sql.getModelName().getIdentifier())
         model_type = sql.getModelName().getIdentifierType()
         select_list = sql.getSelectList()
 

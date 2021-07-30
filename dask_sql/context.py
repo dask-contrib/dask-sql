@@ -571,6 +571,32 @@ class Context:
 
         self.sql_server = None
 
+    def fqn(
+        self, identifier: "org.apache.calcite.sql.SqlIdentifier"
+    ) -> Tuple[str, str]:
+        """
+        Return the fully qualified name of an object, maybe including the schema name.
+
+        Args:
+            identifier (:obj:`str`): The Java identifier of the table or view
+
+        Returns:
+            :obj:`tuple` of :obj:`str`: The fully qualified name of the object
+        """
+        components = [str(n) for n in identifier.names]
+        if len(components) == 2:
+            schema = components[0]
+            name = components[1]
+        elif len(components) == 1:
+            schema = self.schema_name
+            name = components[0]
+        else:
+            raise AttributeError(
+                f"Do not understand the identifier {identifier} (too many components)"
+            )
+
+        return schema, name
+
     def _prepare_schema(self):
         """
         Create a schema filled with the dataframes

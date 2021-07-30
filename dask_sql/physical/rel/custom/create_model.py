@@ -105,7 +105,7 @@ class CreateModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        model_name = str(sql.getModelName())
+        schema, model_name = context.fqn(sql.getModelName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
         if model_name in context.schema[context.schema_name].models:

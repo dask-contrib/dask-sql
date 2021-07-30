@@ -98,7 +98,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        experiment_name = str(sql.getExperimentName())
+        schema, experiment_name = context.fqn(sql.getExperimentName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
         if experiment_name in context.schema[context.schema_name].experiments:
