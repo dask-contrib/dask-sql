@@ -27,8 +27,8 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        schema, name = context.fqn(sql.getTableName())
-        dc = context.tables[name]
+        schema_name, name = context.fqn(sql.getTableName())
+        dc = context.schema[schema_name].tables[name]
         columns = list(map(str, sql.getColumnList()))
 
         if not columns:

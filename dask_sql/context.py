@@ -67,18 +67,7 @@ class Context:
         """
         Create a new context.
         """
-        # Storage for the registered tables
-        # self.tables = {}
-        # Storage for the registered functions
-        # self.functions: Dict[str, Callable] = {}
-        # self.function_list: List[FunctionDescription] = []
-        # Storage for the registered aggregations
-        # self.aggregations = {}
-        # Storage for the trained models
-        # self.models = {}
-        # Storage for ML model Experiments
-        # self.experiments = {}
-        # Name of the root schema (not changable so far)
+        # Name of the root schema
         self.schema_name = "schema"
         self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
@@ -131,6 +120,7 @@ class Context:
         input_table: InputType,
         format: str = None,
         persist: bool = True,
+        schema_name: str = None,
         **kwargs,
     ):
         """
@@ -198,6 +188,8 @@ class Context:
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
 
+        schema_name = schema_name or self.schema_name
+
         dc = InputUtil.to_dc(
             input_table,
             table_name=table_name,
@@ -205,10 +197,9 @@ class Context:
             persist=persist,
             **kwargs,
         )
-        self.schema[self.schema_name].add(table_name.lower(), dc)
-        # self.tables[table_name.lower()] = dc
+        self.schema[schema_name].add(table_name.lower(), dc)
 
-    def register_dask_table(self, df: dd.DataFrame, name: str):
+    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
         Outdated version of :func:`create_table()`.
         """
@@ -216,9 +207,9 @@ class Context:
             "register_dask_table is deprecated, use the more general create_table instead.",
             DeprecationWarning,
         )
-        return self.create_table(name, df)
+        return self.create_table(name, df, *args, **kwargs)
 
-    def drop_table(self, table_name: str):
+    def drop_table(self, table_name: str, schema_name: str = None):
         """
         Remove a table with the given name from the registered tables.
         This will also delete the dataframe.
@@ -227,8 +218,8 @@ class Context:
             table_name: (:obj:`str`): Which table to remove.
 
         """
-        self.schema[self.schema_name].drop("tables", table_name)
-        # del self.tables[table_name]
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].drop("tables", table_name)
 
     def register_function(
         self,
@@ -237,6 +228,7 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
     ):
         """
         Register a custom function with the given name.
@@ -293,6 +285,7 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
         )
 
     def register_aggregation(
@@ -302,6 +295,7 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
     ):
         """
         Register a custom aggregation with the given name.
@@ -358,6 +352,7 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
         )
 
     def sql(
@@ -460,14 +455,24 @@ class Context:
 
     def create_schema(self, schema_name: str, **kwargs):
         self.schema[schema_name] = SchemaContainer(schema_name)
-        self.schema_name = schema_name  # point newly created schema
+        self.schema_name = schema_name
 
     def register_experiment(
-        self, experiment_name: str, experiment_results: pd.DataFrame
+        self,
+        experiment_name: str,
+        experiment_results: pd.DataFrame,
+        schema_name: str = None,
     ):
-        self.schema[self.schema_name].add(experiment_name.lower(), experiment_results)
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].add(experiment_name.lower(), experiment_results)
 
-    def register_model(self, model_name: str, model: Any, training_columns: List[str]):
+    def register_model(
+        self,
+        model_name: str,
+        model: Any,
+        training_columns: List[str],
+        schema_name: str = None,
+    ):
         """
         Add a model to the model registry.
         A model can be anything which has a `.predict` function that transforms
@@ -483,7 +488,8 @@ class Context:
             training_columns: (list of str): The names of the columns which were
                 used during the training.
         """
-        self.schema[self.schema_name].add(model_name.lower(), (model, training_columns))
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].add(model_name.lower(), (model, training_columns))
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """

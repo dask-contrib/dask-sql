@@ -32,13 +32,12 @@ class LogicalTableScanPlugin(BaseRelPlugin):
         # And the first something is fixed to "schema" by the context
         # For us, it makes no difference anyways.
         table_names = [str(n) for n in table.getQualifiedName()]
-        assert table_names[0] == context.schema_name
         assert len(table_names) == 2
+        schema_name = table_names[0]
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        dc = context.schema[table_names[0]].tables[table_name]
-        # dc = context.tables[table_name]
+        dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
 

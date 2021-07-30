@@ -66,11 +66,11 @@ def test_columns(c):
 
 
 def test_wrong_input(c):
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         c.sql('SHOW TABLES FROM "wrong"')

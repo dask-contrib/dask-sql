@@ -19,9 +19,9 @@ class DropModelPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        schema, model_name = context.fqn(sql.getModelName())
+        schema_name, model_name = context.fqn(sql.getModelName())
 
-        if model_name not in context.schema[context.schema_name].models:
+        if model_name not in context.schema[schema_name].models:
             if not sql.getIfExists():
                 raise RuntimeError(
                     f"A model with the name {model_name} is not present."
@@ -29,4 +29,4 @@ class DropModelPlugin(BaseRelPlugin):
             else:
                 return
 
-        del context.schema[context.schema_name].models[model_name]
+        del context.schema[schema_name].models[model_name]

@@ -21,8 +21,8 @@ class ShowColumnsPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        schema, name = context.fqn(sql.getTable())
-        dc = context.tables[name]
+        schema_name, name = context.fqn(sql.getTable())
+        dc = context.schema[schema_name].tables[name]
 
         cols = dc.column_container.columns
         dtypes = list(map(lambda x: str(python_to_sql_type(x)).lower(), dc.df.dtypes))
