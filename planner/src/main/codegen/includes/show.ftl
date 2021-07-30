@@ -26,7 +26,7 @@ SqlNode SqlShowTables() :
 }
 {
     <SHOW> { s = span(); } <TABLES> <FROM>
-    schema = CompoundIdentifier()
+    schema = SimpleIdentifier()
     {
         return new SqlShowTables(s.end(this), schema);
     }

@@ -5,7 +5,7 @@ SqlModelIdentifier ModelIdentifier() :
 }
 {
     <MODEL> { s = span(); }
-    modelName = SimpleIdentifier()
+    modelName = CompoundTableIdentifier()
     {
         return new SqlModelIdentifier(s.end(this), SqlModelIdentifier.IdentifierType.REFERENCE, modelName);
     }
@@ -73,7 +73,7 @@ SqlCreate SqlCreateModel(final Span s, boolean replace) :
 {
     <MODEL>
     ifNotExists = IfNotExists()
-    modelName = SimpleIdentifier()
+    modelName = CompoundTableIdentifier()
     <WITH>
     kwargs = ParenthesizedKeyValueExpressions()
     <AS>
@@ -97,7 +97,7 @@ SqlCreate SqlCreateExperiment(final Span s, boolean replace) :
 {
     <EXPERIMENT>
     ifNotExists = IfNotExists()
-    experimentName = SimpleIdentifier()
+    experimentName = CompoundTableIdentifier()
     <WITH>
     kwargs = ParenthesizedKeyValueExpressions()
     <AS>
@@ -120,7 +120,7 @@ SqlDrop SqlDropModel(final Span s, boolean replace) :
 {
     <MODEL>
     ifExists = IfExists()
-    modelName = SimpleIdentifier()
+    modelName = CompoundTableIdentifier()
     {
         return new SqlDropModel(s.end(this), ifExists, modelName);
     }

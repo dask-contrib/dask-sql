@@ -13,7 +13,7 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
 {
     <TABLE>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     (
         <WITH>
         kwargs = ParenthesizedKeyValueExpressions()
@@ -58,7 +58,7 @@ SqlCreate SqlCreateView(final Span s, boolean replace) :
 {
     <VIEW>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     <AS>
     select = OptionallyParenthesizedQuery()
     {
@@ -84,7 +84,7 @@ SqlDrop SqlDropTable(final Span s, boolean replace) :
         <VIEW>
     )
     ifExists = IfExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     {
         return new SqlDropTable(s.end(this), ifExists, tableName);
     }
