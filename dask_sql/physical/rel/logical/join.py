@@ -1,3 +1,24 @@
+# The MIT License (MIT)
+#
+# Copyright (c) 2021, NVIDIA CORPORATION.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+# the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import logging
 import operator
 import warnings
@@ -117,7 +138,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = pd.merge(lhs_partition, rhs_partition, on=["common"])
+                merged_data = dd.multi.merge(lhs_partition, rhs_partition, on=["common"])
 
                 return merged_data
 
@@ -137,7 +158,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
             )
 
-            meta = pd.concat(
+            meta = dd.dispatch.concat(
                 [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
             )
             # TODO: Do we know the divisions in any way here?
