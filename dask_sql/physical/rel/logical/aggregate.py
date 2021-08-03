@@ -341,15 +341,18 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
 
         # Convert into the correct format for dask
-        aggregations_dict = defaultdict(dict)
+        aggregations_dict = defaultdict(list)
+        input_output_cols = []
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
 
-            aggregations_dict[input_col][output_col] = aggregation_f
+            aggregations_dict[input_col].append(aggregation_f)
+            input_output_cols.append((input_col, output_col))
 
         # Now apply the aggregation
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
         agg_result = grouped_df.agg(aggregations_dict)
+        agg_result.columns = input_output_cols
 
         # ... fix the column names to a single level ...
         agg_result.columns = agg_result.columns.get_level_values(-1)
