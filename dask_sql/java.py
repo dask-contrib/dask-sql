@@ -90,6 +90,9 @@ DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
 DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
 DaskSchema = com.dask.sql.schema.DaskSchema
 RelationalAlgebraGenerator = com.dask.sql.application.RelationalAlgebraGenerator
+RelationalAlgebraGeneratorBuilder = (
+    com.dask.sql.application.RelationalAlgebraGeneratorBuilder
+)
 SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 ValidationException = org.apache.calcite.tools.ValidationException
 SqlParseException = org.apache.calcite.sql.parser.SqlParseException
