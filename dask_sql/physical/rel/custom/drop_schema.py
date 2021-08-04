@@ -28,9 +28,5 @@ class DropSchemaPlugin(BaseRelPlugin):
                 )
             else:
                 return
-        if schema_name == "schema":
-            raise RuntimeError(f"Default Schema `{schema_name}` cannot be deleted")
 
-        del context.schema[schema_name]
-        if context.schema_name == schema_name:
-            context.schema_name = "schema"  # point to default
+        context.drop_schema(schema_name)

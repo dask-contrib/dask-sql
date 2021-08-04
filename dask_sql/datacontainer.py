@@ -183,38 +183,10 @@ class DataContainer:
 
 
 class SchemaContainer:
-    def __init__(self, name="schema"):
+    def __init__(self, name: str):
         self.__name__ = name
         self.tables: Dict[str, DataContainer] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, Callable] = {}
         self.function_lists: List[FunctionDescription] = []
-
-    def add(self, name, args):
-        self.addEntity(args, name)
-
-    @singledispatchmethod
-    def addEntity(self, args, name):
-        self.functions[name] = args
-
-    @addEntity.register
-    def addTable(self, args: DataContainer, name):
-        self.tables[name] = args
-
-    @addEntity.register
-    def addModel(self, args: tuple, name):
-        self.models[name] = args
-
-    @addEntity.register
-    def addExperiments(self, args: pd.DataFrame, name):
-        self.experiments[name] = args
-
-    def drop(self, entity, name):
-        schema = {
-            "tables": self.tables,
-            "experiments": self.experiments,
-            "models": self.models,
-            "functions": self.functions,
-        }
-        del schema[entity][name]

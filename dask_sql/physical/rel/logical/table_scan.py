@@ -29,8 +29,6 @@ class LogicalTableScanPlugin(BaseRelPlugin):
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        # And the first something is fixed to "schema" by the context
-        # For us, it makes no difference anyways.
         table_names = [str(n) for n in table.getQualifiedName()]
         assert len(table_names) == 2
         schema_name = table_names[0]
