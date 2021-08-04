@@ -1,5 +1,4 @@
 from collections import namedtuple
-from functools import singledispatchmethod
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
