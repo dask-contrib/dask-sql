@@ -7,10 +7,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 class ShowSchemasPlugin(BaseRelPlugin):
     """
-    Show all schemas. Please note that dask-sql currently
-    only allows for a single schema (called "schema"),
-    but some external applications need to have this
-    functionality.
+    Show all schemas.
     The SQL is:
 
         SHOW SCHEMAS (FROM ... LIKE ...)

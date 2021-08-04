@@ -773,14 +773,14 @@ class RexCallPlugin(BaseRexPlugin):
         ]
 
         # Now use the operator name in the mapping
-        operator_name = str(rex.getOperator().getName())
+        schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
         operator_name = operator_name.lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
-                operation = context.schema[context.schema_name].functions[operator_name]
+                operation = context.schema[schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 

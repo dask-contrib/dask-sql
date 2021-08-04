@@ -55,7 +55,7 @@ def test_explain():
 
     assert (
         sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}"
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
     )
 
     c = Context()
@@ -68,7 +68,7 @@ def test_explain():
 
     assert (
         sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, other_df]]){os.linesep}"
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
     )
 
 

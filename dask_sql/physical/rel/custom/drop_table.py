@@ -29,4 +29,4 @@ class DropTablePlugin(BaseRelPlugin):
             else:
                 return
 
-        del context.schema[schema_name].tables[table_name]
+        context.drop_table(table_name, schema_name=schema_name)

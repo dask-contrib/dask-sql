@@ -249,7 +249,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         for agg_call in rel.getNamedAggCalls():
             expr = agg_call.getKey()
             # Find out which aggregation function to use
-            aggregation_name = str(expr.getAggregation().getName())
+            schema_name, aggregation_name = context.fqn(
+                expr.getAggregation().getNameAsId()
+            )
             aggregation_name = aggregation_name.lower()
             # Find out about the input column
             inputs = expr.getArgList()
@@ -293,9 +295,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
             except KeyError:
                 try:
-                    aggregation_function = context.schema[
-                        context.schema_name
-                    ].functions[aggregation_name]
+                    aggregation_function = context.schema[schema_name].functions[
+                        aggregation_name
+                    ]
                 except KeyError:  # pragma: no cover
                     raise NotImplementedError(
                         f"Aggregation function {aggregation_name} not implemented (yet)."
