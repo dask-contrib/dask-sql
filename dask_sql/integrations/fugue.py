@@ -113,7 +113,11 @@ def fsql_dask(
     _global, _local = get_caller_global_local_vars()
 
     dag = FugueSQLWorkflow()
-    dfs = {} if ctx is None else {k: dag.df(v.df) for k, v in ctx.tables.items()}
+    dfs = (
+        {}
+        if ctx is None
+        else {k: dag.df(v.df) for k, v in ctx.schema[ctx.schema_name].tables.items()}
+    )
     result = dag._sql(sql, _global, _local, **dfs)
     dag.run(DaskSQLExecutionEngine(conf=fugue_conf))
 

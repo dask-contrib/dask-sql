@@ -11,7 +11,7 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer
+from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -20,6 +20,7 @@ from dask_sql.java import (
     DaskSchema,
     DaskTable,
     RelationalAlgebraGenerator,
+    RelationalAlgebraGeneratorBuilder,
     SqlParseException,
     ValidationException,
     get_java_class,
@@ -30,10 +31,6 @@ from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
-
-FunctionDescription = namedtuple(
-    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
-)
 
 
 class Context:
@@ -67,23 +64,16 @@ class Context:
 
     """
 
+    DEFAULT_SCHEMA_NAME = "root"
+
     def __init__(self):
         """
         Create a new context.
         """
-        # Storage for the registered tables
-        self.tables = {}
-        # Storage for the registered functions
-        self.functions: Dict[str, Callable] = {}
-        self.function_list: List[FunctionDescription] = []
-        # Storage for the registered aggregations
-        self.aggregations = {}
-        # Storage for the trained models
-        self.models = {}
-        # Storage for ML model Experiments
-        self.experiments = {}
-        # Name of the root schema (not changable so far)
-        self.schema_name = "schema"
+        # Name of the root schema
+        self.schema_name = self.DEFAULT_SCHEMA_NAME
+        # All schema information
+        self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
@@ -98,19 +88,22 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -131,6 +124,7 @@ class Context:
         input_table: InputType,
         format: str = None,
         persist: bool = True,
+        schema_name: str = None,
         **kwargs,
     ):
         """
@@ -198,6 +192,8 @@ class Context:
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
 
+        schema_name = schema_name or self.schema_name
+
         dc = InputUtil.to_dc(
             input_table,
             table_name=table_name,
@@ -205,9 +201,9 @@ class Context:
             persist=persist,
             **kwargs,
         )
-        self.tables[table_name.lower()] = dc
+        self.schema[schema_name].tables[table_name.lower()] = dc
 
-    def register_dask_table(self, df: dd.DataFrame, name: str):
+    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
         Outdated version of :func:`create_table()`.
         """
@@ -215,9 +211,9 @@ class Context:
             "register_dask_table is deprecated, use the more general create_table instead.",
             DeprecationWarning,
         )
-        return self.create_table(name, df)
+        return self.create_table(name, df, *args, **kwargs)
 
-    def drop_table(self, table_name: str):
+    def drop_table(self, table_name: str, schema_name: str = None):
         """
         Remove a table with the given name from the registered tables.
         This will also delete the dataframe.
@@ -226,7 +222,25 @@ class Context:
             table_name: (:obj:`str`): Which table to remove.
 
         """
-        del self.tables[table_name]
+        schema_name = schema_name or self.schema_name
+        del self.schema[schema_name].tables[table_name]
+
+    def drop_schema(self, schema_name: str):
+        """
+        Remove a schema with the given name from the registered schemas.
+        This will also delete all tables, functions etc.
+
+        Args:
+            schema_name: (:obj:`str`): Which schema to remove.
+
+        """
+        if schema_name == self.DEFAULT_SCHEMA_NAME:
+            raise RuntimeError(f"Default Schema `{schema_name}` cannot be deleted")
+
+        del self.schema[schema_name]
+
+        if self.schema_name == schema_name:
+            self.schema_name = self.DEFAULT_SCHEMA_NAME
 
     def register_function(
         self,
@@ -235,6 +249,7 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
     ):
         """
         Register a custom function with the given name.
@@ -291,6 +306,7 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
         )
 
     def register_aggregation(
@@ -300,6 +316,7 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
     ):
         """
         Register a custom aggregation with the given name.
@@ -356,6 +373,7 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
         )
 
     def sql(
@@ -456,12 +474,33 @@ class Context:
 
         result.visualize(filename)
 
-    def register_experiment(
-        self, experiment_name: str, experiment_results: pd.DataFrame
-    ):
-        self.experiments[experiment_name] = experiment_results
+    def create_schema(self, schema_name: str):
+        """
+        Create a new schema in the database.
 
-    def register_model(self, model_name: str, model: Any, training_columns: List[str]):
+        Args:
+            schema_name (:obj:`str`): The name of the schema to create
+        """
+        self.schema[schema_name] = SchemaContainer(schema_name)
+
+    def register_experiment(
+        self,
+        experiment_name: str,
+        experiment_results: pd.DataFrame,
+        schema_name: str = None,
+    ):
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].experiments[
+            experiment_name.lower()
+        ] = experiment_results
+
+    def register_model(
+        self,
+        model_name: str,
+        model: Any,
+        training_columns: List[str],
+        schema_name: str = None,
+    ):
         """
         Add a model to the model registry.
         A model can be anything which has a `.predict` function that transforms
@@ -477,7 +516,8 @@ class Context:
             training_columns: (list of str): The names of the columns which were
                 used during the training.
         """
-        self.models[model_name] = (model, training_columns)
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
@@ -565,50 +605,83 @@ class Context:
 
         self.sql_server = None
 
-    def _prepare_schema(self):
+    def fqn(
+        self, identifier: "org.apache.calcite.sql.SqlIdentifier"
+    ) -> Tuple[str, str]:
         """
-        Create a schema filled with the dataframes
-        and functions we have currently in our list
+        Return the fully qualified name of an object, maybe including the schema name.
+
+        Args:
+            identifier (:obj:`str`): The Java identifier of the table or view
+
+        Returns:
+            :obj:`tuple` of :obj:`str`: The fully qualified name of the object
         """
-        schema = DaskSchema(self.schema_name)
-
-        if not self.tables:
-            logger.warning("No tables are registered.")
-
-        for name, dc in self.tables.items():
-            table = DaskTable(name)
-            df = dc.df
-            logger.debug(
-                f"Adding table '{name}' to schema with columns: {list(df.columns)}"
-            )
-            for column in df.columns:
-                data_type = df[column].dtype
-                sql_data_type = python_to_sql_type(data_type)
-
-                table.addColumn(column, sql_data_type)
-
-            schema.addTable(table)
-
-        if not self.functions:
-            logger.debug("No custom functions defined.")
-
-        for function_description in self.function_list:
-            name = function_description.name
-            sql_return_type = python_to_sql_type(function_description.return_type)
-            if function_description.aggregation:
-                logger.debug(f"Adding function '{name}' to schema as aggregation.")
-                dask_function = DaskAggregateFunction(name, sql_return_type)
-            else:
-                logger.debug(f"Adding function '{name}' to schema as scalar function.")
-                dask_function = DaskScalarFunction(name, sql_return_type)
-
-            dask_function = self._add_parameters_from_description(
-                function_description, dask_function
+        components = [str(n) for n in identifier.names]
+        if len(components) == 2:
+            schema = components[0]
+            name = components[1]
+        elif len(components) == 1:
+            schema = self.schema_name
+            name = components[0]
+        else:
+            raise AttributeError(
+                f"Do not understand the identifier {identifier} (too many components)"
             )
 
-            schema.addFunction(dask_function)
+        return schema, name
 
-        return schema
+    def _prepare_schemas(self):
+        """
+        Create a list of schemas filled with the dataframes
+        and functions we have currently in our schema list
+        """
+        schema_list = []
+
+        for schema_name, schema in self.schema.items():
+            java_schema = DaskSchema(schema_name)
+
+            if not schema.tables:
+                logger.warning("No tables are registered.")
+
+            for name, dc in schema.tables.items():
+                table = DaskTable(name)
+                df = dc.df
+                logger.debug(
+                    f"Adding table '{name}' to schema with columns: {list(df.columns)}"
+                )
+                for column in df.columns:
+                    data_type = df[column].dtype
+                    sql_data_type = python_to_sql_type(data_type)
+
+                    table.addColumn(column, sql_data_type)
+
+                java_schema.addTable(table)
+
+            if not schema.functions:
+                logger.debug("No custom functions defined.")
+
+            for function_description in schema.function_lists:
+                name = function_description.name
+                sql_return_type = python_to_sql_type(function_description.return_type)
+                if function_description.aggregation:
+                    logger.debug(f"Adding function '{name}' to schema as aggregation.")
+                    dask_function = DaskAggregateFunction(name, sql_return_type)
+                else:
+                    logger.debug(
+                        f"Adding function '{name}' to schema as scalar function."
+                    )
+                    dask_function = DaskScalarFunction(name, sql_return_type)
+
+                dask_function = self._add_parameters_from_description(
+                    function_description, dask_function
+                )
+
+                java_schema.addFunction(dask_function)
+
+            schema_list.append(java_schema)
+
+        return schema_list
 
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
@@ -623,10 +696,13 @@ class Context:
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
-        schema = self._prepare_schema()
+        schemas = self._prepare_schemas()
 
         # Now create a relational algebra from that
-        generator = RelationalAlgebraGenerator(schema)
+        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name)
+        for schema in schemas:
+            generator_builder.addSchema(schema)
+        generator = generator_builder.build()
         default_dialect = generator.getDialect()
 
         logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
@@ -678,10 +754,7 @@ class Context:
 
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:
-            schema = self._prepare_schema()
-
-            generator = RelationalAlgebraGenerator(schema)
-            default_dialect = generator.getDialect()
+            default_dialect = RelationalAlgebraGenerator.getDialect()
 
         try:
             return str(s.toSqlString(default_dialect))
@@ -715,25 +788,31 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name=None,
     ):
         """Helper function to do the function or aggregation registration"""
-        lower_name = name.lower()
-        if lower_name in self.functions:
-            if replace:
-                self.function_list = list(
-                    filter(lambda f: f.name.lower() != lower_name, self.function_list)
-                )
-                del self.functions[lower_name]
+        schema_name = schema_name or self.schema_name
+        schema = self.schema[schema_name]
 
-            elif self.functions[lower_name] != f:
+        lower_name = name.lower()
+        if lower_name in schema.functions:
+            if replace:
+                schema.function_lists = list(
+                    filter(
+                        lambda f: f.name.lower() != lower_name, schema.function_lists,
+                    )
+                )
+                del schema.functions[lower_name]
+
+            elif schema.functions[lower_name] != f:
                 raise ValueError(
                     "Registering different functions with the same name is not allowed"
                 )
 
-        self.function_list.append(
+        schema.function_lists.append(
             FunctionDescription(name.upper(), parameters, return_type, aggregation)
         )
-        self.function_list.append(
+        schema.function_lists.append(
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
-        self.functions[lower_name] = f
+        schema.functions[lower_name] = f

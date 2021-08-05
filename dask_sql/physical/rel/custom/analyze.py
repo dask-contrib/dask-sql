@@ -4,7 +4,6 @@ import pandas as pd
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.utils import get_table_from_compound_identifier
 
 
 class AnalyzeTablePlugin(BaseRelPlugin):
@@ -28,8 +27,8 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        components = list(map(str, sql.getTableName().names))
-        dc = get_table_from_compound_identifier(context, components)
+        schema_name, name = context.fqn(sql.getTableName())
+        dc = context.schema[schema_name].tables[name]
         columns = list(map(str, sql.getColumnList()))
 
         if not columns:

@@ -75,7 +75,7 @@ def test_fsql():
         register=True,
     )
     assert isinstance(result["x"], dd.DataFrame)
-    assert "x" in c.tables
+    assert "x" in c.schema[c.schema_name].tables
 
     # integration test with fugue transformer extension
     c = Context()
@@ -106,5 +106,5 @@ def test_fsql():
         c,
         register=True,
     )
-    assert "result1" in c.tables
-    assert "result2" in c.tables
+    assert "result1" in c.schema[c.schema_name].tables
+    assert "result2" in c.schema[c.schema_name].tables

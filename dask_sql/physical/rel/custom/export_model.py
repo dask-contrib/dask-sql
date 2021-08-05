@@ -46,12 +46,12 @@ class ExportModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ):
 
-        model_name = str(sql.getModelName().getIdentifier())
+        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
         kwargs = convert_sql_kwargs(sql.getKwargs())
         format = kwargs.pop("format", "pickle").lower().strip()
         location = kwargs.pop("location", "tmp.pkl").strip()
         try:
-            model, training_columns = context.models[model_name]
+            model, training_columns = context.schema[schema_name].models[model_name]
         except KeyError:
             raise RuntimeError(f"A model with the name {model_name} is not present.")
 
