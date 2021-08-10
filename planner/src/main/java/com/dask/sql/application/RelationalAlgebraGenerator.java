@@ -25,6 +25,7 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
 import org.apache.calcite.rel.rules.AggregateReduceFunctionsRule;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.rules.FilterAggregateTransposeRule;
 import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.FilterMergeRule;
@@ -196,24 +197,28 @@ public class RelationalAlgebraGenerator {
 
 	private HepPlanner createHepPlanner(final FrameworkConfig config) {
 		final HepProgram program = new HepProgramBuilder()
-				.addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.JOIN.toRule())
-				.addRuleInstance(FilterAggregateTransposeRule.Config.DEFAULT.toRule())
-				.addRuleInstance(FilterJoinRule.JoinConditionPushRule.Config.DEFAULT.toRule())
-				.addRuleInstance(FilterJoinRule.FilterIntoJoinRule.Config.DEFAULT.toRule())
-				.addRuleInstance(ProjectMergeRule.Config.DEFAULT.toRule())
-				.addRuleInstance(FilterMergeRule.Config.DEFAULT.toRule())
-				.addRuleInstance(ProjectJoinTransposeRule.Config.DEFAULT.toRule())
+				.addRuleInstance(CoreRules.AGGREGATE_PROJECT_MERGE)
+				.addRuleInstance(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS)
+				.addRuleInstance(CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS)
+				.addRuleInstance(CoreRules.AGGREGATE_REDUCE_FUNCTIONS)
+				.addRuleInstance(CoreRules.AGGREGATE_MERGE)
+				.addRuleInstance(CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN)
+				.addRuleInstance(CoreRules.AGGREGATE_JOIN_REMOVE)
+				.addRuleInstance(CoreRules.FILTER_AGGREGATE_TRANSPOSE)
+				.addRuleInstance(CoreRules.JOIN_CONDITION_PUSH)
+				.addRuleInstance(CoreRules.FILTER_INTO_JOIN)
+				.addRuleInstance(CoreRules.PROJECT_MERGE)
+				.addRuleInstance(CoreRules.FILTER_MERGE)
+				.addRuleInstance(CoreRules.PROJECT_JOIN_TRANSPOSE)
 				// In principle, not a bad idea. But we need to keep the most
 				// outer project - because otherwise the column name information is lost
 				// in cases such as SELECT x AS a, y AS B FROM df
 				// .addRuleInstance(ProjectRemoveRule.Config.DEFAULT.toRule())
-				.addRuleInstance(ReduceExpressionsRule.ProjectReduceExpressionsRule.Config.DEFAULT.toRule())
-				// this rule might make sense, but turns a < 1 into a SEARCH expression
-				// which is currently not supported by dask-sql
-				// .addRuleInstance(ReduceExpressionsRule.FilterReduceExpressionsRule.Config.DEFAULT.toRule())
-				.addRuleInstance(FilterRemoveIsNotDistinctFromRule.Config.DEFAULT.toRule())
-				// TODO: remove AVG
-				.addRuleInstance(AggregateReduceFunctionsRule.Config.DEFAULT.toRule()).build();
+				.addRuleInstance(CoreRules.PROJECT_REDUCE_EXPRESSIONS)
+				.addRuleInstance(CoreRules.FILTER_REDUCE_EXPRESSIONS)
+				.addRuleInstance(CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM)
+				.addRuleInstance(CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW)
+				.build();
 
 		return new HepPlanner(program, config.getContext());
 	}
