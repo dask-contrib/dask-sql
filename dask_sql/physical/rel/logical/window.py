@@ -9,7 +9,7 @@ from pandas.core.window.indexers import BaseIndexer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
-from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
@@ -82,6 +82,7 @@ def to_bound_description(
 ) -> BoundDescription:
     offset = java_window.getOffset()
     if offset:
+        print(offset)
         offset = int(RexLiteralPlugin().convert(offset, None, None))
     else:
         offset = None
@@ -134,7 +135,7 @@ class Indexer(BaseIndexer):
         return start, end
 
 
-class RexOverPlugin(BaseRexPlugin):
+class LogicalWindowPlugin(BaseRelPlugin):
     """
     A RexOver is an expression, which calculates a given function over the dataframe
     while first optionally partitoning the data and optionally sorting it.
@@ -145,7 +146,7 @@ class RexOverPlugin(BaseRexPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = "org.apache.calcite.rex.RexOver"
+    class_name = "org.apache.calcite.rel.logical.LogicalWindow"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
@@ -161,22 +162,15 @@ class RexOverPlugin(BaseRexPlugin):
     }
 
     def convert(
-        self,
-        rex: "org.apache.calcite.rex.RexNode",
-        dc: DataContainer,
-        context: "dask_sql.Context",
-    ) -> Any:
-        window = rex.getWindow()
+        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+    ) -> DataContainer:
+        (dc,) = self.assert_inputs(rel, 1, context)
+
+        # TODO
+        window = rel.groups[0]
 
         df = dc.df
         cc = dc.column_container
-
-        # Store the divisions to apply them later again
-        known_divisions = df.divisions
-
-        # Store the index and sort order to apply them later again
-        df, partition_col, index_col, sort_col = self._preserve_index_and_sort(df)
-        dc = DataContainer(df, cc)
 
         # Now extract the groupby and order information
         sort_columns, sort_ascending, sort_null_first = self._extract_ordering(
@@ -192,7 +186,9 @@ class RexOverPlugin(BaseRexPlugin):
         )
 
         # Finally apply the actual function on each group separately
-        operator = rex.getOperator()
+        # TODO
+        agg_call = window.aggCalls[0]
+        operator = agg_call.getOperator()
         operator_name = str(operator.getName())
         operator_name = operator_name.lower()
 
@@ -208,7 +204,7 @@ class RexOverPlugin(BaseRexPlugin):
 
         # TODO: can be optimized by re-using already present columns
         operands = [
-            RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
+            RexConverter.convert(o, dc, context=context) for o in agg_call.getOperands()
         ]
 
         df, new_column_name = self._apply_function_over(
@@ -222,12 +218,14 @@ class RexOverPlugin(BaseRexPlugin):
             sort_null_first,
         )
 
-        # Revert back any sorting and grouping by using the previously stored information
-        df = self._revert_partition_and_order(
-            df, partition_col, index_col, sort_col, known_divisions
-        )
+        # TODO
+        cc = cc.add(rel.getRowType().getFieldNames()[-1], new_column_name)
 
-        return df[new_column_name]
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        dc = DataContainer(df, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+
+        return dc
 
     def _preserve_index_and_sort(
         self, df: dd.DataFrame
@@ -255,15 +253,16 @@ class RexOverPlugin(BaseRexPlugin):
     def _extract_groupby(
         self,
         df: dd.DataFrame,
-        window: org.apache.calcite.rex.RexWindow,
+        window: org.apache.calcite.rel.core.Window.Group,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
-        partition_keys = list(window.partitionKeys)
+        partition_keys = list(window.keys)
         if partition_keys:
             group_columns = [
-                RexConverter.convert(o, dc, context=context) for o in partition_keys
+                df[dc.column_container.get_backend_by_frontend_index(o)]
+                for o in partition_keys
             ]
             group_columns = get_groupby_with_nulls_cols(df, group_columns)
             group_columns = {
@@ -278,11 +277,11 @@ class RexOverPlugin(BaseRexPlugin):
         return df, group_columns
 
     def _extract_ordering(
-        self, window: org.apache.calcite.rex.RexWindow, cc: ColumnContainer
+        self, window: org.apache.calcite.rel.core.Window.Group, cc: ColumnContainer
     ) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
-        order_keys = list(window.orderKeys)
-        sort_columns_indices = [int(i.getKey().getIndex()) for i in order_keys]
+        order_keys = list(window.orderKeys.getFieldCollations())
+        sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
         sort_columns = [
             cc.get_backend_by_frontend_index(i) for i in sort_columns_indices
         ]
@@ -290,7 +289,7 @@ class RexOverPlugin(BaseRexPlugin):
         ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
         FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
         sort_ascending = [x.getDirection() == ASCENDING for x in order_keys]
-        sort_null_first = [x.getNullDirection() == FIRST for x in order_keys]
+        sort_null_first = [x.nullDirection == FIRST for x in order_keys]
 
         return sort_columns, sort_ascending, sort_null_first
 
@@ -299,7 +298,7 @@ class RexOverPlugin(BaseRexPlugin):
         df: dd.DataFrame,
         f: Callable,
         operands: List[dd.Series],
-        window: org.apache.calcite.rex.RexWindow,
+        window: org.apache.calcite.rel.core.Window.Group,
         group_columns: List[str],
         sort_columns: List[str],
         sort_ascending: List[bool],
@@ -315,8 +314,8 @@ class RexOverPlugin(BaseRexPlugin):
         temporary_operand_columns = temporary_operand_columns.keys()
 
         # Extract the window definition
-        lower_bound = to_bound_description(window.getLowerBound())
-        upper_bound = to_bound_description(window.getUpperBound())
+        lower_bound = to_bound_description(window.lowerBound)
+        upper_bound = to_bound_description(window.upperBound)
 
         new_column_name = new_temporary_column(df)
 
@@ -373,6 +372,7 @@ class RexOverPlugin(BaseRexPlugin):
         meta = df._meta_nonempty.assign(**{new_column_name: 0.0})
 
         df = df.groupby(group_columns).apply(map_on_each_group, meta=meta)
+        df = df.drop(columns=temporary_operand_columns)
 
         return df, new_column_name
 

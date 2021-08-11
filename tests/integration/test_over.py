@@ -68,7 +68,10 @@ def test_over_with_different(c, user_table_1):
     )
     for col in ["R1", "R2"]:
         expected_df[col] = expected_df[col].astype("Int64")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal(
+        df.sort_values("user_id").reset_index(drop=True),
+        expected_df.sort_values("user_id").reset_index(drop=True),
+    )
 
 
 def test_over_calls(c):
