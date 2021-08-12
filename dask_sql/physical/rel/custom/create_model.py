@@ -105,10 +105,10 @@ class CreateModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        model_name = str(sql.getModelName())
+        schema_name, model_name = context.fqn(sql.getModelName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if model_name in context.models:
+        if model_name in context.schema[schema_name].models:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():
@@ -162,4 +162,4 @@ class CreateModelPlugin(BaseRelPlugin):
             y = None
 
         model.fit(X, y, **fit_kwargs)
-        context.register_model(model_name, model, X.columns)
+        context.register_model(model_name, model, X.columns, schema_name=schema_name)

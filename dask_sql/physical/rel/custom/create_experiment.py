@@ -98,10 +98,10 @@ class CreateExperimentPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        experiment_name = str(sql.getExperimentName())
+        schema_name, experiment_name = context.fqn(sql.getExperimentName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if experiment_name in context.experiments:
+        if experiment_name in context.schema[schema_name].experiments:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():
@@ -175,6 +175,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 experiment_name,
                 ParallelPostFit(estimator=search.best_estimator_),
                 X.columns,
+                schema_name=schema_name,
             )
 
         if automl_class:
@@ -198,9 +199,12 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 experiment_name,
                 ParallelPostFit(estimator=automl.fitted_pipeline_),
                 X.columns,
+                schema_name=schema_name,
             )
 
-        context.register_experiment(experiment_name, experiment_results=df)
+        context.register_experiment(
+            experiment_name, experiment_results=df, schema_name=schema_name
+        )
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
         return dc

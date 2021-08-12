@@ -1,4 +1,4 @@
-from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.datacontainer import ColumnContainer
 
 
 def test_cc_init():

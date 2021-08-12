@@ -15,16 +15,16 @@ def test_add_remove_tables():
     data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
 
     c.create_table("table", data_frame)
-    assert "table" in c.tables
+    assert "table" in c.schema[c.schema_name].tables
 
     c.drop_table("table")
-    assert "table" not in c.tables
+    assert "table" not in c.schema[c.schema_name].tables
 
     with pytest.raises(KeyError):
         c.drop_table("table")
 
     c.create_table("table", [data_frame])
-    assert "table" in c.tables
+    assert "table" in c.schema[c.schema_name].tables
 
 
 def test_deprecation_warning():
@@ -39,10 +39,10 @@ def test_deprecation_warning():
         assert len(w) == 1
         assert issubclass(w[-1].category, DeprecationWarning)
 
-    assert "table" in c.tables
+    assert "table" in c.schema[c.schema_name].tables
 
     c.drop_table("table")
-    assert "table" not in c.tables
+    assert "table" not in c.schema[c.schema_name].tables
 
 
 def test_explain():
@@ -55,7 +55,7 @@ def test_explain():
 
     assert (
         sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, df]]){os.linesep}"
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
     )
 
     c = Context()
@@ -68,7 +68,7 @@ def test_explain():
 
     assert (
         sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[schema, other_df]]){os.linesep}"
+        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
     )
 
 
@@ -154,104 +154,104 @@ def test_tables_from_stack():
 def test_function_adding():
     c = Context()
 
-    assert not c.function_list
-    assert not c.functions
+    assert not c.schema[c.schema_name].function_lists
+    assert not c.schema[c.schema_name].functions
 
     f = lambda x: x
     c.register_function(f, "f", [("x", int)], float)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[0].name == "F"
-    assert c.function_list[0].parameters == [("x", int)]
-    assert c.function_list[0].return_type == float
-    assert not c.function_list[0].aggregation
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", int)]
-    assert c.function_list[1].return_type == float
-    assert not c.function_list[1].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 2
+    assert c.schema[c.schema_name].function_lists[0].name == "F"
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == float
+    assert not c.schema[c.schema_name].function_lists[0].aggregation
+    assert c.schema[c.schema_name].function_lists[1].name == "f"
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == float
+    assert not c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
     c.register_function(f, "f", [("x", float)], int, replace=False)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 4
-    assert c.function_list[2].name == "F"
-    assert c.function_list[2].parameters == [("x", float)]
-    assert c.function_list[2].return_type == int
-    assert not c.function_list[2].aggregation
-    assert c.function_list[3].name == "f"
-    assert c.function_list[3].parameters == [("x", float)]
-    assert c.function_list[3].return_type == int
-    assert not c.function_list[3].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 4
+    assert c.schema[c.schema_name].function_lists[2].name == "F"
+    assert c.schema[c.schema_name].function_lists[2].parameters == [("x", float)]
+    assert c.schema[c.schema_name].function_lists[2].return_type == int
+    assert not c.schema[c.schema_name].function_lists[2].aggregation
+    assert c.schema[c.schema_name].function_lists[3].name == "f"
+    assert c.schema[c.schema_name].function_lists[3].parameters == [("x", float)]
+    assert c.schema[c.schema_name].function_lists[3].return_type == int
+    assert not c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
     f = lambda x: x + 1
     c.register_function(f, "f", [("x", str)], str, replace=True)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[0].name == "F"
-    assert c.function_list[0].parameters == [("x", str)]
-    assert c.function_list[0].return_type == str
-    assert not c.function_list[0].aggregation
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", str)]
-    assert c.function_list[1].return_type == str
-    assert not c.function_list[1].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 2
+    assert c.schema[c.schema_name].function_lists[0].name == "F"
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == str
+    assert not c.schema[c.schema_name].function_lists[0].aggregation
+    assert c.schema[c.schema_name].function_lists[1].name == "f"
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == str
+    assert not c.schema[c.schema_name].function_lists[1].aggregation
 
 
 def test_aggregation_adding():
     c = Context()
 
-    assert not c.function_list
-    assert not c.functions
+    assert not c.schema[c.schema_name].function_lists
+    assert not c.schema[c.schema_name].functions
 
     f = lambda x: x
     c.register_aggregation(f, "f", [("x", int)], float)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[0].name == "F"
-    assert c.function_list[0].parameters == [("x", int)]
-    assert c.function_list[0].return_type == float
-    assert c.function_list[0].aggregation
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", int)]
-    assert c.function_list[1].return_type == float
-    assert c.function_list[1].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 2
+    assert c.schema[c.schema_name].function_lists[0].name == "F"
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == float
+    assert c.schema[c.schema_name].function_lists[0].aggregation
+    assert c.schema[c.schema_name].function_lists[1].name == "f"
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == float
+    assert c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
     c.register_aggregation(f, "f", [("x", float)], int, replace=False)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 4
-    assert c.function_list[2].name == "F"
-    assert c.function_list[2].parameters == [("x", float)]
-    assert c.function_list[2].return_type == int
-    assert c.function_list[2].aggregation
-    assert c.function_list[3].name == "f"
-    assert c.function_list[3].parameters == [("x", float)]
-    assert c.function_list[3].return_type == int
-    assert c.function_list[3].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 4
+    assert c.schema[c.schema_name].function_lists[2].name == "F"
+    assert c.schema[c.schema_name].function_lists[2].parameters == [("x", float)]
+    assert c.schema[c.schema_name].function_lists[2].return_type == int
+    assert c.schema[c.schema_name].function_lists[2].aggregation
+    assert c.schema[c.schema_name].function_lists[3].name == "f"
+    assert c.schema[c.schema_name].function_lists[3].parameters == [("x", float)]
+    assert c.schema[c.schema_name].function_lists[3].return_type == int
+    assert c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
     f = lambda x: x + 1
     c.register_aggregation(f, "f", [("x", str)], str, replace=True)
 
-    assert "f" in c.functions
-    assert c.functions["f"] == f
-    assert len(c.function_list) == 2
-    assert c.function_list[0].name == "F"
-    assert c.function_list[0].parameters == [("x", str)]
-    assert c.function_list[0].return_type == str
-    assert c.function_list[0].aggregation
-    assert c.function_list[1].name == "f"
-    assert c.function_list[1].parameters == [("x", str)]
-    assert c.function_list[1].return_type == str
-    assert c.function_list[1].aggregation
+    assert "f" in c.schema[c.schema_name].functions
+    assert c.schema[c.schema_name].functions["f"] == f
+    assert len(c.schema[c.schema_name].function_lists) == 2
+    assert c.schema[c.schema_name].function_lists[0].name == "F"
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == str
+    assert c.schema[c.schema_name].function_lists[0].aggregation
+    assert c.schema[c.schema_name].function_lists[1].name == "f"
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == str
+    assert c.schema[c.schema_name].function_lists[1].aggregation
