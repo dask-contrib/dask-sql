@@ -141,7 +141,7 @@ class CreateModelPlugin(BaseRelPlugin):
         if wrap_fit:
             try:
                 from dask_ml.wrappers import Incremental
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise ValueError("Wrapping requires dask-ml to be installed.")
 
             model = Incremental(estimator=model)
@@ -149,7 +149,7 @@ class CreateModelPlugin(BaseRelPlugin):
         if wrap_predict:
             try:
                 from dask_ml.wrappers import ParallelPostFit
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise ValueError("Wrapping requires dask-ml to be installed.")
 
             model = ParallelPostFit(estimator=model)

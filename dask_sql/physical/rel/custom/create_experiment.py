@@ -164,7 +164,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             try:
                 from dask_ml.wrappers import ParallelPostFit
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise ValueError(
                     "dask_ml must be installed to use automl and tune hyperparameters"
                 )
@@ -195,7 +195,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             try:
                 from dask_ml.wrappers import ParallelPostFit
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise ValueError(
                     "dask_ml must be installed to use automl and tune hyperparameters"
                 )
