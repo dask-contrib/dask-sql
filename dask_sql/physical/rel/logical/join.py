@@ -116,7 +116,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = dd.multi.merge(lhs_partition, rhs_partition, on=["common"])
+                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
                 return merged_data
 
