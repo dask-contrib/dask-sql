@@ -2,7 +2,6 @@ import logging
 
 import dask.dataframe as dd
 import pandas as pd
-from dask_ml.wrappers import ParallelPostFit
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
@@ -163,6 +162,13 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import tuner {experiment_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
+            try:
+                from dask_ml.wrappers import ParallelPostFit
+            except ImportError:  # pragma: no cover
+                raise ValueError(
+                    "dask_ml must be installed to use automl and tune hyperparameters"
+                )
+
             model = ModelClass()
 
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
@@ -186,6 +192,14 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 raise ValueError(
                     f"Can not import automl model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
+
+            try:
+                from dask_ml.wrappers import ParallelPostFit
+            except ImportError:  # pragma: no cover
+                raise ValueError(
+                    "dask_ml must be installed to use automl and tune hyperparameters"
+                )
+
             automl = AutoMLClass(**automl_kwargs)
             # should be avoided if  data doesn't fit in memory
             automl.fit(X.compute(), y.compute())
