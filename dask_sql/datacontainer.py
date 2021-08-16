@@ -1,8 +1,14 @@
-from typing import Dict, List, Tuple, Union
+from collections import namedtuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
+import pandas as pd
 
 ColumnType = Union[str, int]
+
+FunctionDescription = namedtuple(
+    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
+)
 
 
 class ColumnContainer:
@@ -173,3 +179,13 @@ class DataContainer:
             }
         )
         return df[self.column_container.columns]
+
+
+class SchemaContainer:
+    def __init__(self, name: str):
+        self.__name__ = name
+        self.tables: Dict[str, DataContainer] = {}
+        self.experiments: Dict[str, pd.DataFrame] = {}
+        self.models: Dict[str, Tuple[Any, List[str]]] = {}
+        self.functions: Dict[str, Callable] = {}
+        self.function_lists: List[FunctionDescription] = []

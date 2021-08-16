@@ -62,16 +62,15 @@ public class RelationalAlgebraGenerator {
 	final HepPlanner hepPlanner;
 
 	/// Create a new relational algebra generator from a schema
-	public RelationalAlgebraGenerator(final DaskSchema schema) throws ClassNotFoundException, SQLException {
+	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas) throws ClassNotFoundException, SQLException {
 		// Taken from https://calcite.apache.org/docs/ and blazingSQL
-		final String schemaName = schema.getName();
-		final SchemaPlus rootSchema = createRootSchema(schema, schemaName);
-		final SchemaPlus schemaPlus = rootSchema.getSubSchema(schemaName);
+		final SchemaPlus rootSchema = createRootSchema(rootSchemaName, schemas);
 
 		final JavaTypeFactoryImpl typeFactory = createTypeFactory();
-		final CalciteCatalogReader calciteCatalogReader = createCatalogReader(schemaName, schemaPlus, typeFactory);
+		final CalciteCatalogReader calciteCatalogReader = createCatalogReader(rootSchemaName, rootSchema, typeFactory);
 		final SqlOperatorTable operatorTable = createOperatorTable(calciteCatalogReader);
 		final SqlParser.Config parserConfig = createParserConfig();
+		final SchemaPlus schemaPlus = rootSchema.getSubSchema(rootSchemaName);
 		final FrameworkConfig frameworkConfig = createFrameworkConfig(schemaPlus, operatorTable, parserConfig);
 
 		this.planner = createPlanner(frameworkConfig);
@@ -79,7 +78,7 @@ public class RelationalAlgebraGenerator {
 	}
 
 	/// Return the default dialect used
-	public SqlDialect getDialect() {
+	static public SqlDialect getDialect() {
 		return DaskSqlDialect.DEFAULT;
 	}
 
@@ -134,10 +133,12 @@ public class RelationalAlgebraGenerator {
 		return new JavaTypeFactoryImpl(DaskSqlDialect.DASKSQL_TYPE_SYSTEM);
 	}
 
-	private SchemaPlus createRootSchema(final DaskSchema schema, final String schemaName) throws SQLException {
-		final CalciteConnection calciteConnection = createConnection(schemaName);
+	private SchemaPlus createRootSchema(final String rootSchemaName, final List<DaskSchema> schemas) throws SQLException {
+		final CalciteConnection calciteConnection = createConnection(rootSchemaName);
 		final SchemaPlus rootSchema = calciteConnection.getRootSchema();
-		rootSchema.add(schemaName, schema);
+		for(DaskSchema schema : schemas) {
+			rootSchema.add(schema.getName(), schema);
+		}
 		return rootSchema;
 	}
 

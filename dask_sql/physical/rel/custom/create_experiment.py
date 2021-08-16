@@ -2,7 +2,6 @@ import logging
 
 import dask.dataframe as dd
 import pandas as pd
-from dask_ml.wrappers import ParallelPostFit
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
@@ -98,10 +97,10 @@ class CreateExperimentPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        experiment_name = str(sql.getExperimentName())
+        schema_name, experiment_name = context.fqn(sql.getExperimentName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if experiment_name in context.experiments:
+        if experiment_name in context.schema[schema_name].experiments:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():
@@ -163,6 +162,13 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import tuner {experiment_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
+            try:
+                from dask_ml.wrappers import ParallelPostFit
+            except ImportError:  # pragma: no cover
+                raise ValueError(
+                    "dask_ml must be installed to use automl and tune hyperparameters"
+                )
+
             model = ModelClass()
 
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
@@ -175,6 +181,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 experiment_name,
                 ParallelPostFit(estimator=search.best_estimator_),
                 X.columns,
+                schema_name=schema_name,
             )
 
         if automl_class:
@@ -185,6 +192,14 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 raise ValueError(
                     f"Can not import automl model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
+
+            try:
+                from dask_ml.wrappers import ParallelPostFit
+            except ImportError:  # pragma: no cover
+                raise ValueError(
+                    "dask_ml must be installed to use automl and tune hyperparameters"
+                )
+
             automl = AutoMLClass(**automl_kwargs)
             # should be avoided if  data doesn't fit in memory
             automl.fit(X.compute(), y.compute())
@@ -198,9 +213,12 @@ class CreateExperimentPlugin(BaseRelPlugin):
                 experiment_name,
                 ParallelPostFit(estimator=automl.fitted_pipeline_),
                 X.columns,
+                schema_name=schema_name,
             )
 
-        context.register_experiment(experiment_name, experiment_results=df)
+        context.register_experiment(
+            experiment_name, experiment_results=df, schema_name=schema_name
+        )
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)
         return dc

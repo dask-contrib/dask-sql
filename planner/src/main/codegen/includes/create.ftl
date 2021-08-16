@@ -13,7 +13,7 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
 {
     <TABLE>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     (
         <WITH>
         kwargs = ParenthesizedKeyValueExpressions()
@@ -30,6 +30,21 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
     )
 }
 
+SqlCreate SqlCreateSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifNotExists;
+    final SqlKwargs kwargs;
+}
+{
+    <SCHEMA>
+    ifNotExists = IfNotExists()
+    schemaName = SimpleIdentifier()
+    {
+     return new SqlCreateSchema(s.end(this), replace, ifNotExists, schemaName);
+    }
+}
+
 /*
  * Production for
  *   CREATE VIEW name AS
@@ -43,7 +58,7 @@ SqlCreate SqlCreateView(final Span s, boolean replace) :
 {
     <VIEW>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     <AS>
     select = OptionallyParenthesizedQuery()
     {
@@ -69,8 +84,22 @@ SqlDrop SqlDropTable(final Span s, boolean replace) :
         <VIEW>
     )
     ifExists = IfExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     {
         return new SqlDropTable(s.end(this), ifExists, tableName);
+    }
+}
+
+SqlDrop SqlDropSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifExists;
+}
+{
+    <SCHEMA>
+    ifExists = IfExists()
+    schemaName = SimpleIdentifier()
+    {
+        return new SqlDropSchema(s.end(this), ifExists, schemaName);
     }
 }

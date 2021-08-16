@@ -5,7 +5,6 @@ from functools import reduce
 from typing import List, Tuple
 
 import dask.dataframe as dd
-import pandas as pd
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
@@ -117,7 +116,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = pd.merge(lhs_partition, rhs_partition, on=["common"])
+                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
                 return merged_data
 
@@ -137,7 +136,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
             )
 
-            meta = pd.concat(
+            meta = dd.dispatch.concat(
                 [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
             )
             # TODO: Do we know the divisions in any way here?
