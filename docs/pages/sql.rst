@@ -6,7 +6,7 @@ SQL Syntax
 ``dask-sql`` understands SQL in (mostly) presto SQL syntax.
 So far, not every valid SQL operator and keyword is already
 implemented in ``dask-sql``, but a large fraction of it.
-Have a look into our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_
+Have a look into our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_
 to find out what is still missing.
 
 ``dask-sql`` understands queries for data retrieval (``SELECT``), queries on metadata information (``SHOW`` and ``DESCRIBE``), queries for table creation (``CREATE TABLE``) and machine learning (``CREATE MODEL`` and ``PREDICT``).
@@ -204,7 +204,7 @@ Not all operations and aggregations are implemented already.
 .. note::
 
     Whenever you find a not already implemented operation, keyword
-    or functionality, please raise an issue at our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_ with your use-case.
+    or functionality, please raise an issue at our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_ with your use-case.
 
 Dask/pandas and SQL treat null-values (or nan) differently on sorting, grouping and joining.
 ``dask-sql`` tries to follow the SQL standard as much as possible, so results might be different to what you expect from Dask/pandas.

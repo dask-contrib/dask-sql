@@ -64,7 +64,7 @@ class HiveInputPlugin(BaseInputPlugin):
         # Extract format information
         if "InputFormat" in storage_information:
             format = storage_information["InputFormat"].split(".")[-1]
-        # databricks format is different, see https://github.com/nils-braun/dask-sql/issues/83
+        # databricks format is different, see https://github.com/dask-contrib/dask-sql/issues/83
         elif "InputFormat" in table_information:
             format = table_information["InputFormat"].split(".")[-1]
         else:

@@ -7,7 +7,7 @@ Machine Learning
 
     Machine Learning support is experimental in ``dask-sql``.
     We encourage you to try it out and report any issues on our
-    `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_.
+    `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.
 
 Both the training as well as the prediction using Machine Learning methods play a crucial role in
 many data analytics applications. ``dask-sql`` supports Machine Learning

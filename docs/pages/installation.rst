@@ -51,7 +51,7 @@ If you want to have the newest (unreleased) ``dask-sql`` version or if you plan 
 
 .. code-block:: bash
 
-    git clone https://github.com/nils-braun/dask-sql.git
+    git clone https://github.com/dask-contrib/dask-sql.git
 
 Create a new conda environment and install the development environment:
 

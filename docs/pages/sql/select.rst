@@ -23,7 +23,7 @@ including all typical ingredients (such as ``WHERE``, ``GROUP BY``, ``ORDER BY``
 
 .. note::
 
-    If you would like to help, please see [our issue tracker](https://github.com/nils-braun/dask-sql/issues/43).
+    If you would like to help, please see [our issue tracker](https://github.com/dask-contrib/dask-sql/issues/43).
 
 Example:
 
