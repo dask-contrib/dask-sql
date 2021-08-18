@@ -1,7 +1,6 @@
 import logging
 import pickle
 
-import joblib
 import sklearn
 
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -62,8 +61,9 @@ class ExportModelPlugin(BaseRelPlugin):
             with open(location, "wb") as pkl_file:
                 pickle.dump(model, pkl_file, **kwargs)
         elif format == "joblib":
-            joblib.dump(model, location, **kwargs)
+            import joblib
 
+            joblib.dump(model, location, **kwargs)
         elif format == "mlflow":
             try:
                 import mlflow
