@@ -1,8 +1,6 @@
 import logging
 import pickle
 
-import sklearn
-
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs
 
@@ -71,7 +69,11 @@ class ExportModelPlugin(BaseRelPlugin):
                 raise ImportError(
                     f"For export in the mlflow format, you need to have mlflow installed"
                 )
-            if isinstance(model, sklearn.base.BaseEstimator):
+            try:
+                import sklearn
+            except ImportError:  # pragma: no cover
+                sklearn = None
+            if sklearn is not None and isinstance(model, sklearn.base.BaseEstimator):
                 mlflow.sklearn.save_model(model, location, **kwargs)
             else:
                 raise NotImplementedError(
