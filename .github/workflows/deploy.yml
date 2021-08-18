@@ -22,6 +22,10 @@ jobs:
           key: ${{ runner.os }}-conda-v1-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: 3.8
       - name: Install dependencies
         shell: bash -l {0}
         run: |
