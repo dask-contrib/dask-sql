@@ -15,7 +15,14 @@ class LocationInputPlugin(BaseInputPlugin):
     ):
         return isinstance(input_item, str)
 
-    def to_dc(self, input_item: Any, table_name: str, format: str = None, gpu: bool = False, **kwargs):
+    def to_dc(
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs
+    ):
 
         if format == "memory":
             client = default_client()

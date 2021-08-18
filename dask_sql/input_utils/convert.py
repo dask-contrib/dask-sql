@@ -61,7 +61,12 @@ class InputUtil(Pluggable):
 
     @classmethod
     def _get_dask_dataframe(
-        cls, input_item: InputType, table_name: str, format: str = None, gpu: bool = False, **kwargs,
+        cls,
+        input_item: InputType,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
     ):
         plugin_list = cls.get_plugins()
 
