@@ -145,7 +145,6 @@ class Indexer(BaseIndexer):
         return start, end
 
 
-@make_pickable_without_dask_sql
 def map_on_each_group(
     partitioned_group: pd.DataFrame,
     sort_columns: List[str],
@@ -312,7 +311,9 @@ class LogicalWindowPlugin(BaseRelPlugin):
         # TODO: That is a bit of a hack. We should really use the real column dtype
         meta = df._meta.assign(**{col: 0.0 for col in newly_created_columns})
 
-        df = df.groupby(group_columns).apply(filled_map, meta=meta)
+        df = df.groupby(group_columns).apply(
+            make_pickable_without_dask_sql(filled_map), meta=meta
+        )
         df = df.drop(columns=temporary_columns).reset_index(drop=True)
 
         dc = DataContainer(df, cc)
