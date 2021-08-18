@@ -21,7 +21,7 @@ class LocationInputPlugin(BaseInputPlugin):
         table_name: str,
         format: str = None,
         gpu: bool = False,
-        **kwargs
+        **kwargs,
     ):
 
         if format == "memory":
