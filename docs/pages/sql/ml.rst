@@ -7,7 +7,7 @@ Machine Learning in SQL
 
     Machine Learning support is experimental in ``dask-sql``.
     We encourage you to try it out and report any issues on our
-    `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_.
+    `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.
 
 As all SQL statements in ``dask-sql`` are eventually converted to Python calls, it is very simple to include
 any custom Python function and library, e.g. Machine Learning libraries. Although it would be possible to
