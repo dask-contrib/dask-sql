@@ -36,6 +36,7 @@ class LocationInputPlugin(BaseInputPlugin):
         try:
             if gpu:
                 import dask_cudf
+
                 read_function = getattr(dask_cudf, f"read_{format}")
             else:
                 read_function = getattr(dd, f"read_{format}")
