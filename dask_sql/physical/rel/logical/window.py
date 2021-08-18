@@ -1,5 +1,6 @@
 import logging
 from collections import namedtuple
+from functools import partial
 from typing import Any, Callable, List, Optional, Tuple
 
 import dask.dataframe as dd
@@ -78,11 +79,15 @@ class BoundDescription(
 
 
 def to_bound_description(
-    java_window: org.apache.calcite.rex.RexWindowBounds,
+    java_window: "org.apache.calcite.rex.RexWindowBounds.RexBoundedWindowBound",
+    constants: List[org.apache.calcite.rex.RexLiteral],
+    constant_count_offset: int,
 ) -> BoundDescription:
     offset = java_window.getOffset()
     if offset:
-        print(offset)
+        if isinstance(offset, org.apache.calcite.rex.RexInputRef):
+            index = offset.getIndex() - constant_count_offset
+            offset = constants[index]
         offset = int(RexLiteralPlugin().convert(offset, None, None))
     else:
         offset = None
@@ -135,6 +140,59 @@ class Indexer(BaseIndexer):
         return start, end
 
 
+@make_pickable_without_dask_sql
+def map_on_each_group(
+    partitioned_group,
+    sort_columns,
+    sort_ascending,
+    sort_null_first,
+    lower_bound,
+    upper_bound,
+    operations,
+):
+    # Apply sorting
+    if sort_columns:
+        partitioned_group = sort_partition_func(
+            partitioned_group, sort_columns, sort_ascending, sort_null_first
+        )
+
+    # Apply the windowing operation
+    if lower_bound.is_unbounded and (
+        upper_bound.is_current_row or upper_bound.offset == 0
+    ):
+        windowed_group = partitioned_group.expanding(min_periods=0)
+    elif lower_bound.is_preceding and (
+        upper_bound.is_current_row or upper_bound.offset == 0
+    ):
+        windowed_group = partitioned_group.rolling(
+            window=lower_bound.offset + 1, min_periods=0,
+        )
+    else:
+        lower_offset = lower_bound.offset if not lower_bound.is_current_row else 0
+        if lower_bound.is_preceding and lower_offset is not None:
+            lower_offset *= -1
+        upper_offset = upper_bound.offset if not upper_bound.is_current_row else 0
+        if upper_bound.is_preceding and upper_offset is not None:
+            upper_offset *= -1
+
+        indexer = Indexer(lower_offset, upper_offset)
+        windowed_group = partitioned_group.rolling(window=indexer, min_periods=0)
+
+    new_columns = {}
+    for f, new_column_name, temporary_operand_columns in operations:
+        if f is None:
+            # This is the row_number operator.
+            # We do not need to do any windowing
+            column_result = range(1, len(partitioned_group) + 1)
+        else:
+            column_result = f(windowed_group, *temporary_operand_columns)
+
+        new_columns[new_column_name] = column_result
+
+    partitioned_group = partitioned_group.assign(**new_columns)
+    return partitioned_group
+
+
 class LogicalWindowPlugin(BaseRelPlugin):
     """
     A RexOver is an expression, which calculates a given function over the dataframe
@@ -166,8 +224,44 @@ class LogicalWindowPlugin(BaseRelPlugin):
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        # TODO
-        window = rel.groups[0]
+        # During optimization, some constants might end up in an internal
+        # constant pool. We need to dereference them here
+        # Unfortunately they are only referenced by their index,
+        # (which come after the real columns), so we need
+        # to always substract the number of real columns
+        constants = list(rel.getConstants())
+        constant_count_offset = len(dc.column_container.columns)
+
+        new_created_columns = []
+        for window in rel.groups:
+            dc, new_columns = self._do_stuff(
+                window, constants, constant_count_offset, dc, context
+            )
+            new_created_columns += new_columns
+
+        # TODO: move this into the _do_stuff function
+        df = dc.df
+        cc = dc.column_container
+
+        field_names = rel.getRowType().getFieldNames()[-len(new_created_columns) :]
+        for column_index, c in enumerate(new_created_columns):
+            cc = cc.add(field_names[column_index], c)
+
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        dc = DataContainer(df, cc)
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+
+        return dc
+
+    def _do_stuff(
+        self,
+        window: org.apache.calcite.rel.core.Window.Group,
+        constants: List[org.apache.calcite.rex.RexLiteral],
+        constant_count_offset: int,
+        dc: DataContainer,
+        context: "dask_sql.Context",
+    ):
+        temporary_columns = []
 
         df = dc.df
         cc = dc.column_container
@@ -184,71 +278,40 @@ class LogicalWindowPlugin(BaseRelPlugin):
         logger.debug(
             f"Before applying the function, partitioning according to {group_columns}."
         )
+        # TODO: optimize by re-using already present columns
+        temporary_columns += group_columns
 
-        # Finally apply the actual function on each group separately
-        # TODO
-        agg_call = window.aggCalls[0]
-        operator = agg_call.getOperator()
-        operator_name = str(operator.getName())
-        operator_name = operator_name.lower()
+        operations, df = self._extract_operations(window, df, dc, context)
+        for _, _, cols in operations:
+            temporary_columns += cols
 
-        try:
-            operation = self.OPERATION_MAPPING[operator_name]
-        except KeyError:  # pragma: no cover
-            try:
-                operation = context.functions[operator_name]
-            except KeyError:  # pragma: no cover
-                raise NotImplementedError(f"{operator_name} not (yet) implemented")
+        newly_created_columns = [new_column for _, new_column, _ in operations]
 
-        logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
-
-        # TODO: can be optimized by re-using already present columns
-        operands = [
-            RexConverter.convert(o, dc, context=context) for o in agg_call.getOperands()
-        ]
-
-        df, new_column_name = self._apply_function_over(
-            df,
-            operation,
-            operands,
-            window,
-            group_columns,
-            sort_columns,
-            sort_ascending,
-            sort_null_first,
+        # Apply the windowing operation
+        filled_map = partial(
+            map_on_each_group,
+            sort_columns=sort_columns,
+            sort_ascending=sort_ascending,
+            sort_null_first=sort_null_first,
+            lower_bound=to_bound_description(
+                window.lowerBound, constants, constant_count_offset
+            ),
+            upper_bound=to_bound_description(
+                window.upperBound, constants, constant_count_offset
+            ),
+            operations=operations,
         )
 
-        # TODO
-        cc = cc.add(rel.getRowType().getFieldNames()[-1], new_column_name)
+        # TODO: That is a bit of a hack. We should really use the real column dtype
+        meta = df._meta.assign(**{col: 0.0 for col in newly_created_columns})
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        df = df.groupby(group_columns).apply(filled_map, meta=meta)
+        df = df.drop(columns=temporary_columns).reset_index(drop=True)
+
+        # TODO: cc is wrong here!
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
 
-        return dc
-
-    def _preserve_index_and_sort(
-        self, df: dd.DataFrame
-    ) -> Tuple[dd.DataFrame, str, str, str]:
-        """Store the partition number, index and sort order separately to make any shuffling reversible"""
-        partition_col, index_col, sort_col = (
-            new_temporary_column(df),
-            new_temporary_column(df),
-            new_temporary_column(df),
-        )
-
-        def store_index_columns(partition, partition_index):
-            return partition.assign(
-                **{
-                    partition_col: partition_index,
-                    index_col: partition.index,
-                    sort_col: range(len(partition)),
-                }
-            )
-
-        df = map_on_partition_index(df, store_index_columns)
-
-        return df, partition_col, index_col, sort_col
+        return dc, newly_created_columns
 
     def _extract_groupby(
         self,
@@ -293,106 +356,40 @@ class LogicalWindowPlugin(BaseRelPlugin):
 
         return sort_columns, sort_ascending, sort_null_first
 
-    def _apply_function_over(
+    def _extract_operations(
         self,
-        df: dd.DataFrame,
-        f: Callable,
-        operands: List[dd.Series],
         window: org.apache.calcite.rel.core.Window.Group,
-        group_columns: List[str],
-        sort_columns: List[str],
-        sort_ascending: List[bool],
-        sort_null_first: List[bool],
-    ) -> Tuple[dd.DataFrame, str]:
-        """Apply the given function over the dataframe, possibly grouped and sorted per group"""
-        temporary_operand_columns = {
-            new_temporary_column(df): operand for operand in operands
-        }
-        df = df.assign(**temporary_operand_columns)
-        # Important: move as few bytes as possible to the pickled function,
-        # which is evaluated on the workers
-        temporary_operand_columns = temporary_operand_columns.keys()
+        df: dd.DataFrame,
+        dc: DataContainer,
+        context: "dask_sql.Context",
+    ) -> List[Tuple[Callable, str, List[str]]]:
+        # Finally apply the actual function on each group separately
+        operations = []
+        for agg_call in window.aggCalls:
+            operator = agg_call.getOperator()
+            operator_name = str(operator.getName())
+            operator_name = operator_name.lower()
 
-        # Extract the window definition
-        lower_bound = to_bound_description(window.lowerBound)
-        upper_bound = to_bound_description(window.upperBound)
+            try:
+                operation = self.OPERATION_MAPPING[operator_name]
+            except KeyError:  # pragma: no cover
+                try:
+                    operation = context.functions[operator_name]
+                except KeyError:  # pragma: no cover
+                    raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
-        new_column_name = new_temporary_column(df)
+            logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
 
-        @make_pickable_without_dask_sql
-        def map_on_each_group(partitioned_group):
-            # Apply sorting
-            if sort_columns:
-                partitioned_group = sort_partition_func(
-                    partitioned_group, sort_columns, sort_ascending, sort_null_first
-                )
+            # TODO: can be optimized by re-using already present columns
+            temporary_operand_columns = {
+                new_temporary_column(df): RexConverter.convert(o, dc, context=context)
+                for o in agg_call.getOperands()
+            }
+            df = df.assign(**temporary_operand_columns)
+            temporary_operand_columns = list(temporary_operand_columns.keys())
 
-            if f is None:
-                # This is the row_number operator.
-                # We do not need to do any windowing
-                column_result = range(1, len(partitioned_group) + 1)
-            else:
-                # In all other cases, apply the windowing operation
-                if lower_bound.is_unbounded and (
-                    upper_bound.is_current_row or upper_bound.offset == 0
-                ):
-                    windowed_group = partitioned_group.expanding(min_periods=0)
-                elif lower_bound.is_preceding and (
-                    upper_bound.is_current_row or upper_bound.offset == 0
-                ):
-                    windowed_group = partitioned_group.rolling(
-                        window=lower_bound.offset + 1, min_periods=0,
-                    )
-                else:
-                    lower_offset = (
-                        lower_bound.offset if not lower_bound.is_current_row else 0
-                    )
-                    if lower_bound.is_preceding and lower_offset is not None:
-                        lower_offset *= -1
-                    upper_offset = (
-                        upper_bound.offset if not upper_bound.is_current_row else 0
-                    )
-                    if upper_bound.is_preceding and upper_offset is not None:
-                        upper_offset *= -1
-
-                    indexer = Indexer(lower_offset, upper_offset)
-                    windowed_group = partitioned_group.rolling(
-                        window=indexer, min_periods=0
-                    )
-
-                column_result = f(windowed_group, *temporary_operand_columns)
-
-            partitioned_group = partitioned_group.assign(
-                **{new_column_name: column_result}
+            operations.append(
+                (operation, new_temporary_column(df), temporary_operand_columns)
             )
 
-            return partitioned_group
-
-        # Currently, pandas will always return a float for windowing operations
-        meta = df._meta_nonempty.assign(**{new_column_name: 0.0})
-
-        df = df.groupby(group_columns).apply(map_on_each_group, meta=meta)
-        df = df.drop(columns=temporary_operand_columns)
-
-        return df, new_column_name
-
-    def _revert_partition_and_order(
-        self,
-        df: dd.DataFrame,
-        partition_col: str,
-        index_col: str,
-        sort_col: str,
-        known_divisions: Any,
-    ) -> dd.DataFrame:
-        """Use the stored information to make revert the shuffling"""
-        from dask.dataframe.shuffle import set_partition
-
-        divisions = tuple(range(len(known_divisions)))
-        df = set_partition(df, partition_col, divisions)
-        df = df.map_partitions(
-            lambda x: x.set_index(index_col, drop=True).sort_values(sort_col),
-            meta=df._meta.set_index(index_col),
-        )
-        df.divisions = known_divisions
-
-        return df
+        return operations, df
