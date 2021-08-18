@@ -83,9 +83,14 @@ def to_bound_description(
     constants: List[org.apache.calcite.rex.RexLiteral],
     constant_count_offset: int,
 ) -> BoundDescription:
+    """Convert the java object "java_window" to a python representation,
+    replacing any literals or references to constants"""
     offset = java_window.getOffset()
     if offset:
         if isinstance(offset, org.apache.calcite.rex.RexInputRef):
+            # For calcite, the constant pool are normal "columns",
+            # starting at (number of real columns + 1).
+            # Here, we do the de-referencing.
             index = offset.getIndex() - constant_count_offset
             offset = constants[index]
         offset = int(RexLiteralPlugin().convert(offset, None, None))
@@ -142,14 +147,15 @@ class Indexer(BaseIndexer):
 
 @make_pickable_without_dask_sql
 def map_on_each_group(
-    partitioned_group,
-    sort_columns,
-    sort_ascending,
-    sort_null_first,
-    lower_bound,
-    upper_bound,
-    operations,
+    partitioned_group: pd.DataFrame,
+    sort_columns: List[str],
+    sort_ascending: List[bool],
+    sort_null_first: List[bool],
+    lower_bound: BoundDescription,
+    upper_bound: BoundDescription,
+    operations: List[Tuple[Callable, str, List[str]]],
 ):
+    """Internal function mapped on each group of the dataframe after partitioning"""
     # Apply sorting
     if sort_columns:
         partitioned_group = sort_partition_func(
@@ -178,6 +184,7 @@ def map_on_each_group(
         indexer = Indexer(lower_offset, upper_offset)
         windowed_group = partitioned_group.rolling(window=indexer, min_periods=0)
 
+    # Calculate the results
     new_columns = {}
     for f, new_column_name, temporary_operand_columns in operations:
         if f is None:
@@ -189,16 +196,17 @@ def map_on_each_group(
 
         new_columns[new_column_name] = column_result
 
+    # Now apply all columns at once
     partitioned_group = partitioned_group.assign(**new_columns)
     return partitioned_group
 
 
 class LogicalWindowPlugin(BaseRelPlugin):
     """
-    A RexOver is an expression, which calculates a given function over the dataframe
+    A LogicalWindow is an expression, which calculates a given function over the dataframe
     while first optionally partitoning the data and optionally sorting it.
 
-    expressions like `F OVER (PARTITION BY x ORDER BY y)` apply f on each
+    Expressions like `F OVER (PARTITION BY x ORDER BY y)` apply f on each
     partition separately and sort by y before applying f. The result of this
     calculation has however the same length as the input dataframe - it is not an aggregation.
     Typical examples include ROW_NUMBER and lagging.
@@ -225,27 +233,25 @@ class LogicalWindowPlugin(BaseRelPlugin):
         (dc,) = self.assert_inputs(rel, 1, context)
 
         # During optimization, some constants might end up in an internal
-        # constant pool. We need to dereference them here
+        # constant pool. We need to dereference them here, as they
+        # are treated as "normal" columns.
         # Unfortunately they are only referenced by their index,
         # (which come after the real columns), so we need
-        # to always substract the number of real columns
+        # to always substract the number of real columns.
         constants = list(rel.getConstants())
         constant_count_offset = len(dc.column_container.columns)
 
-        new_created_columns = []
-        for window in rel.groups:
-            dc, new_columns = self._do_stuff(
-                window, constants, constant_count_offset, dc, context
-            )
-            new_created_columns += new_columns
+        # Output to the right field names right away
+        field_names = rel.getRowType().getFieldNames()
 
-        # TODO: move this into the _do_stuff function
+        for window in rel.groups:
+            dc = self._apply_window(
+                window, constants, constant_count_offset, dc, field_names, context
+            )
+
+        # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
-
-        field_names = rel.getRowType().getFieldNames()[-len(new_created_columns) :]
-        for column_index, c in enumerate(new_created_columns):
-            cc = cc.add(field_names[column_index], c)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
@@ -253,12 +259,13 @@ class LogicalWindowPlugin(BaseRelPlugin):
 
         return dc
 
-    def _do_stuff(
+    def _apply_window(
         self,
         window: org.apache.calcite.rel.core.Window.Group,
         constants: List[org.apache.calcite.rex.RexLiteral],
         constant_count_offset: int,
         dc: DataContainer,
+        field_names: List[str],
         context: "dask_sql.Context",
     ):
         temporary_columns = []
@@ -308,10 +315,17 @@ class LogicalWindowPlugin(BaseRelPlugin):
         df = df.groupby(group_columns).apply(filled_map, meta=meta)
         df = df.drop(columns=temporary_columns).reset_index(drop=True)
 
-        # TODO: cc is wrong here!
         dc = DataContainer(df, cc)
+        df = dc.df
+        cc = dc.column_container
 
-        return dc, newly_created_columns
+        for c in newly_created_columns:
+            # the fields are in the correct order by definition
+            field_name = field_names[len(cc.columns)]
+            cc = cc.add(field_name, c)
+
+        dc = DataContainer(df, cc)
+        return dc
 
     def _extract_groupby(
         self,
