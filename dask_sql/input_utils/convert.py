@@ -37,6 +37,7 @@ class InputUtil(Pluggable):
         table_name: str,
         format: str = None,
         persist: bool = True,
+        gpu: bool = False,
         **kwargs,
     ) -> DataContainer:
         """
@@ -45,7 +46,7 @@ class InputUtil(Pluggable):
         maybe persist them to cluster memory before.
         """
         filled_get_dask_dataframe = lambda *args: cls._get_dask_dataframe(
-            *args, table_name=table_name, format=format, **kwargs,
+            *args, table_name=table_name, format=format, gpu=gpu, **kwargs,
         )
 
         if isinstance(input_item, list):
@@ -60,7 +61,7 @@ class InputUtil(Pluggable):
 
     @classmethod
     def _get_dask_dataframe(
-        cls, input_item: InputType, table_name: str, format: str = None, **kwargs,
+        cls, input_item: InputType, table_name: str, format: str = None, gpu: bool = False, **kwargs,
     ):
         plugin_list = cls.get_plugins()
 
@@ -69,7 +70,7 @@ class InputUtil(Pluggable):
                 input_item, table_name=table_name, format=format, **kwargs
             ):
                 return plugin.to_dc(
-                    input_item, table_name=table_name, format=format, **kwargs
+                    input_item, table_name=table_name, format=format, gpu=gpu, **kwargs
                 )
 
         raise ValueError(f"Do not understand the input type {type(input_item)}")

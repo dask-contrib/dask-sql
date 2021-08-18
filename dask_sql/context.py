@@ -125,6 +125,7 @@ class Context:
         format: str = None,
         persist: bool = True,
         schema_name: str = None,
+        gpu: bool = False,
         **kwargs,
     ):
         """
@@ -199,6 +200,7 @@ class Context:
             table_name=table_name,
             format=format,
             persist=persist,
+            gpu=gpu,
             **kwargs,
         )
         self.schema[schema_name].tables[table_name.lower()] = dc
