@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-${{ matrix.java }}-${{ matrix.python }}-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ matrix.python }}-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -134,7 +134,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-11-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-11-${{ hashFiles('conda.txt') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
