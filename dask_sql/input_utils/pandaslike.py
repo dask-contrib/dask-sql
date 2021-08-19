@@ -3,13 +3,13 @@ import pandas as pd
 
 try:
     import cudf
-except ImportError:
+except ImportError:  # pragma: no cover
     cudf = None
 
 from dask_sql.input_utils.base import BaseInputPlugin
 
 
-class PandasInputPlugin(BaseInputPlugin):
+class PandasLikeInputPlugin(BaseInputPlugin):
     """Input Plugin for Pandas DataFrames, which get converted to dask DataFrames"""
 
     def is_correct_input(
