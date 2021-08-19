@@ -10,7 +10,7 @@ from dask_sql.input_utils.base import BaseInputPlugin
 
 
 class PandasLikeInputPlugin(BaseInputPlugin):
-    """Input Plugin for Pandas DataFrames, which get converted to dask DataFrames"""
+    """Input Plugin for Pandas Like DataFrames, which get converted to dask DataFrames"""
 
     def is_correct_input(
         self, input_item, table_name: str, format: str = None, **kwargs
