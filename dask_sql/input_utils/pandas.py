@@ -22,8 +22,12 @@ class PandasInputPlugin(BaseInputPlugin):
     ):
         npartitions = kwargs.pop("npartitions", 1)
         if gpu:
-            import dask_cudf
+            import cudf, dask_cudf
 
-            return dask_cudf.from_cudf(input_item, npartitions=npartitions, **kwargs)
+            return dask_cudf.from_cudf(
+                cudf.from_pandas(input_item),
+                npartitions=npartitions,
+                **kwargs,
+            )
         else:
             return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
