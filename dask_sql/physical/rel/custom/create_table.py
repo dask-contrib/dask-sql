@@ -62,11 +62,7 @@ class CreateTablePlugin(BaseRelPlugin):
         except KeyError:
             raise AttributeError("Parameters must include a 'location' parameter.")
 
-        try:
-            gpu = kwargs.pop("gpu")
-        except KeyError:
-            gpu = False
-
+        gpu = kwargs.pop("gpu", False)
         context.create_table(
             table_name,
             location,
