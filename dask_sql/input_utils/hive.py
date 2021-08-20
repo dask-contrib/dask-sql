@@ -35,9 +35,7 @@ class HiveInputPlugin(BaseInputPlugin):
 
         return is_sqlalchemy_hive or is_hive_cursor or format == "hive"
 
-    def to_dc(
-        self, input_item: Any, table_name: str, format: str = None, **kwargs
-    ):  # pragma: no cover
+    def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
         table_name = kwargs.pop("hive_table_name", table_name)
         schema = kwargs.pop("hive_schema_name", "default")
 
@@ -165,7 +163,7 @@ class HiveInputPlugin(BaseInputPlugin):
         schema: str,
         table_name: str,
         partition: str = None,
-    ):  # pragma: no cover
+    ):
         """
         Extract all information from the output
         of the DESCRIBE FORMATTED call, which is unfortunately
@@ -238,7 +236,7 @@ class HiveInputPlugin(BaseInputPlugin):
         cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
         schema: str,
         table_name: str,
-    ):  # pragma: no cover
+    ):
         """
         Extract all partition informaton for a given table
         """
@@ -251,7 +249,7 @@ class HiveInputPlugin(BaseInputPlugin):
         self,
         cursor: Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
         sql: str,
-    ):  # pragma: no cover
+    ):
         """
         The pyhive.Cursor and the sqlalchemy connection behave slightly different.
         The former has the fetchall method on the cursor,
