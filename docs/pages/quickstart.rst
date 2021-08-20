@@ -100,4 +100,4 @@ If you are using ``dask-sql`` from a Jupyter notebook, you might be interested i
 .. note::
 
     If you have found an SQL feature, which is currently not supported by ``dask-sql``,
-    please raise an issue on our `issue tracker <https://github.com/nils-braun/dask-sql/issues>`_.
+    please raise an issue on our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.

@@ -3,20 +3,31 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 
+def assert_frame_equal_after_sorting(df, expected_df, columns=None, **kwargs):
+    columns = columns or ["user_id", "b"]
+
+    df = df.sort_values(columns).reset_index(drop=True)
+    expected_df = expected_df.sort_values(columns).reset_index(drop=True)
+    assert_frame_equal(df, expected_df, **kwargs)
+
+
 def test_over_with_sorting(c, user_table_1):
     df = c.sql(
         """
     SELECT
         user_id,
+        b,
         ROW_NUMBER() OVER (ORDER BY user_id, b) AS R
     FROM user_table_1
     """
     )
     df = df.compute()
 
-    expected_df = pd.DataFrame({"user_id": user_table_1.user_id, "R": [3, 1, 2, 4]})
+    expected_df = pd.DataFrame(
+        {"user_id": user_table_1.user_id, "b": user_table_1.b, "R": [3, 1, 2, 4]}
+    )
     expected_df["R"] = expected_df["R"].astype("Int64")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal_after_sorting(df, expected_df, columns=["user_id", "b"])
 
 
 def test_over_with_partitioning(c, user_table_2):
@@ -24,15 +35,18 @@ def test_over_with_partitioning(c, user_table_2):
         """
     SELECT
         user_id,
+        c,
         ROW_NUMBER() OVER (PARTITION BY c) AS R
     FROM user_table_2
     """
     )
     df = df.compute()
 
-    expected_df = pd.DataFrame({"user_id": user_table_2.user_id, "R": [1, 1, 1, 1]})
+    expected_df = pd.DataFrame(
+        {"user_id": user_table_2.user_id, "c": user_table_2.c, "R": [1, 1, 1, 1]}
+    )
     expected_df["R"] = expected_df["R"].astype("Int64")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal_after_sorting(df, expected_df, columns=["user_id", "c"])
 
 
 def test_over_with_grouping_and_sort(c, user_table_1):
@@ -40,15 +54,18 @@ def test_over_with_grouping_and_sort(c, user_table_1):
         """
     SELECT
         user_id,
+        b,
         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY b) AS R
     FROM user_table_1
     """
     )
     df = df.compute()
 
-    expected_df = pd.DataFrame({"user_id": user_table_1.user_id, "R": [2, 1, 1, 1]})
+    expected_df = pd.DataFrame(
+        {"user_id": user_table_1.user_id, "b": user_table_1.b, "R": [2, 1, 1, 1]}
+    )
     expected_df["R"] = expected_df["R"].astype("Int64")
-    assert_frame_equal(df, expected_df)
+    assert_frame_equal_after_sorting(df, expected_df, columns=["user_id", "b"])
 
 
 def test_over_with_different(c, user_table_1):
@@ -56,6 +73,7 @@ def test_over_with_different(c, user_table_1):
         """
     SELECT
         user_id,
+        b,
         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY b) AS R1,
         ROW_NUMBER() OVER (ORDER BY user_id, b) AS R2
     FROM user_table_1
@@ -64,17 +82,25 @@ def test_over_with_different(c, user_table_1):
     df = df.compute()
 
     expected_df = pd.DataFrame(
-        {"user_id": user_table_1.user_id, "R1": [2, 1, 1, 1], "R2": [3, 1, 2, 4],}
+        {
+            "user_id": user_table_1.user_id,
+            "b": user_table_1.b,
+            "R1": [2, 1, 1, 1],
+            "R2": [3, 1, 2, 4],
+        }
     )
     for col in ["R1", "R2"]:
         expected_df[col] = expected_df[col].astype("Int64")
-    assert_frame_equal(df, expected_df)
+
+    assert_frame_equal_after_sorting(df, expected_df, columns=["user_id", "b"])
 
 
-def test_over_calls(c):
+def test_over_calls(c, user_table_1):
     df = c.sql(
         """
     SELECT
+        user_id,
+        b,
         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY b) AS O1,
         FIRST_VALUE(user_id*10 - b) OVER (PARTITION BY user_id ORDER BY b) AS O2,
         SINGLE_VALUE(user_id*10 - b) OVER (PARTITION BY user_id ORDER BY b) AS O3,
@@ -92,6 +118,8 @@ def test_over_calls(c):
 
     expected_df = pd.DataFrame(
         {
+            "user_id": user_table_1.user_id,
+            "b": user_table_1.b,
             "O1": [2, 1, 1, 1],
             "O2": [19, 7, 19, 27],
             "O3": [19, 7, 19, 27],
@@ -105,11 +133,12 @@ def test_over_calls(c):
         }
     )
     for col in expected_df.columns:
-        if col in ["06"]:
+        if col in ["06", "user_id", "b"]:
             continue
         expected_df[col] = expected_df[col].astype("Int64")
-    expected_df["O6"] = expected_df["O6"].astype("float64")
-    assert_frame_equal(df, expected_df)
+    expected_df["O6"] = expected_df["O6"].astype("Float64")
+
+    assert_frame_equal_after_sorting(df, expected_df, columns=["user_id", "b"])
 
 
 def test_over_with_windows(c):
@@ -119,6 +148,7 @@ def test_over_with_windows(c):
     df = c.sql(
         """
     SELECT
+        a,
         SUM(a) OVER (ORDER BY a ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS O1,
         SUM(a) OVER (ORDER BY a ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING) AS O2,
         SUM(a) OVER (ORDER BY a ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS O3,
@@ -136,6 +166,7 @@ def test_over_with_windows(c):
 
     expected_df = pd.DataFrame(
         {
+            "a": df.a,
             "O1": [0, 1, 3, 6, 9],
             "O2": [6, 10, 10, 10, 9],
             "O3": [10, 10, 10, 10, 9],
@@ -149,5 +180,8 @@ def test_over_with_windows(c):
         }
     )
     for col in expected_df.columns:
+        if col in ["a"]:
+            continue
         expected_df[col] = expected_df[col].astype("Int64")
-    assert_frame_equal(df, expected_df)
+
+    assert_frame_equal_after_sorting(df, expected_df, columns=["a"])

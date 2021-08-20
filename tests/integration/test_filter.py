@@ -23,7 +23,7 @@ def test_filter_scalar(c, df):
     return_df = return_df.compute()
 
     expected_df = df.head(0)
-    assert_frame_equal(return_df, expected_df)
+    assert_frame_equal(return_df, expected_df, check_index_type=False)
 
     return_df = c.sql("SELECT * FROM df WHERE (1 = 1)")
     return_df = return_df.compute()
@@ -35,7 +35,7 @@ def test_filter_scalar(c, df):
     return_df = return_df.compute()
 
     expected_df = df.head(0)
-    assert_frame_equal(return_df, expected_df)
+    assert_frame_equal(return_df, expected_df, check_index_type=False)
 
 
 def test_filter_complicated(c, df):

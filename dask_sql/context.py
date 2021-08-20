@@ -86,6 +86,7 @@ class Context:
         RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
         RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.LogicalWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
@@ -108,7 +109,6 @@ class Context:
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexOverPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)
@@ -427,7 +427,7 @@ class Context:
             cc = dc.column_container
             cc = cc.rename(
                 {
-                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
+                    df_col: select_name
                     for df_col, select_name in zip(cc.columns, select_names)
                 }
             )
@@ -711,12 +711,18 @@ class Context:
             sqlNode = generator.getSqlNode(sql)
             sqlNodeClass = get_java_class(sqlNode)
 
-            if sqlNodeClass.startswith("com.dask.sql.parser."):
-                rel = sqlNode
-                rel_string = ""
-            else:
+            select_names = None
+            rel = sqlNode
+            rel_string = ""
+
+            if not sqlNodeClass.startswith("com.dask.sql.parser."):
                 validatedSqlNode = generator.getValidatedNode(sqlNode)
                 nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+                # Optimization might remove some alias projects. Make sure to keep them here.
+                select_names = [
+                    str(name)
+                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
+                ]
                 rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
                 rel_string = str(generator.getRelationalAlgebraString(rel))
         except (ValidationException, SqlParseException) as e:
@@ -741,13 +747,14 @@ class Context:
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
             select_names = [
                 self._to_sql_string(s, default_dialect=default_dialect)
-                for s in sqlNode.getSelectList()
+                if current_name.startswith("EXPR$")
+                else current_name
+                for s, current_name in zip(sqlNode.getSelectList(), select_names)
             ]
         else:
             logger.debug(
                 "Not extracting output column names as the SQL is not a SELECT call"
             )
-            select_names = None
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
