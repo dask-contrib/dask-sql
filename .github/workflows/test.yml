@@ -97,6 +97,8 @@ jobs:
           pip install mlflow
           pip install tpot
           pip install dask-ml
+          docker pull bde2020/hive:2.3.2-postgresql-metastore
+          docker pull bde2020/hive-metastore-postgresql:2.3.0
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
