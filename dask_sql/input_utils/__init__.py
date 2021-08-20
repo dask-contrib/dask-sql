@@ -3,7 +3,7 @@ from .dask import DaskInputPlugin
 from .hive import HiveInputPlugin
 from .intake import IntakeCatalogInputPlugin
 from .location import LocationInputPlugin
-from .pandas import PandasInputPlugin
+from .pandaslike import PandasLikeInputPlugin
 from .sqlalchemy import SqlalchemyHiveInputPlugin
 
 __all__ = [
@@ -13,6 +13,6 @@ __all__ = [
     HiveInputPlugin,
     IntakeCatalogInputPlugin,
     LocationInputPlugin,
-    PandasInputPlugin,
+    PandasLikeInputPlugin,
     SqlalchemyHiveInputPlugin,
 ]
