@@ -13,7 +13,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import sqlalchemy
-except ImportError:
+except ImportError:  # pragma: no cover
     sqlalchemy = None
 
 from dask_sql.input_utils.base import BaseInputPlugin
@@ -63,14 +63,16 @@ class HiveInputPlugin(BaseInputPlugin):
         if "InputFormat" in storage_information:
             format = storage_information["InputFormat"].split(".")[-1]
         # databricks format is different, see https://github.com/dask-contrib/dask-sql/issues/83
-        elif "InputFormat" in table_information:
+        elif "InputFormat" in table_information:  # pragma: no cover
             format = table_information["InputFormat"].split(".")[-1]
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(
                 "Do not understand the output of 'DESCRIBE FORMATTED <table>'"
             )
 
-        if format == "TextInputFormat" or format == "SequenceFileInputFormat":
+        if (
+            format == "TextInputFormat" or format == "SequenceFileInputFormat"
+        ):  # pragma: no cover
             storage_description = storage_information.get("Storage Desc Params", {})
             read_function = partial(
                 dd.read_csv,
@@ -79,15 +81,17 @@ class HiveInputPlugin(BaseInputPlugin):
             )
         elif format == "ParquetInputFormat" or format == "MapredParquetInputFormat":
             read_function = dd.read_parquet
-        elif format == "OrcInputFormat":
+        elif format == "OrcInputFormat":  # pragma: no cover
             read_function = dd.read_orc
-        elif format == "JsonInputFormat":
+        elif format == "JsonInputFormat":  # pragma: no cover
             read_function = dd.read_json
-        else:
+        else:  # pragma: no cover
             raise AttributeError(f"Do not understand hive's table format {format}")
 
         def _normalize(loc):
-            if loc.startswith("dbfs:/") and not loc.startswith("dbfs://"):
+            if loc.startswith("dbfs:/") and not loc.startswith(
+                "dbfs://"
+            ):  # pragma: no cover
                 # dask (or better: fsspec) needs to have the URL in a specific form
                 # starting with two // after the protocol
                 loc = f"dbfs://{loc.lstrip('dbfs:')}"
@@ -109,6 +113,10 @@ class HiveInputPlugin(BaseInputPlugin):
                 # Therefore tell parquet to only read in the columns
                 # we actually care right now
                 kwargs.setdefault("columns", list(column_information.keys()))
+            else:  # pragma: no cover
+                # prevent python to optimize it away and make coverage not respect the
+                # pragma
+                dummy = 0
             df = read_function(location, **kwargs)
 
             logger.debug(f"Applying column information: {column_information}")
@@ -214,7 +222,7 @@ class HiveInputPlugin(BaseInputPlugin):
             elif key == "# Partition Information":
                 mode = "partition"
             elif key.startswith("#"):
-                mode = None
+                mode = None  # pragma: no cover
             elif key:
                 if not value:
                     value = dict()
@@ -230,6 +238,10 @@ class HiveInputPlugin(BaseInputPlugin):
                 elif mode == "partition":
                     partition_information[key] = value
                     last_field = partition_information[key]
+                else:  # pragma: no cover
+                    # prevent python to optimize it away and make coverage not respect the
+                    # pragma
+                    dummy = 0
             elif value and last_field is not None:
                 last_field[value] = value2
 
@@ -268,5 +280,5 @@ class HiveInputPlugin(BaseInputPlugin):
 
         try:
             return result.fetchall()
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             return cursor.fetchall()
