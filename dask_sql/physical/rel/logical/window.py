@@ -93,6 +93,10 @@ def to_bound_description(
             # Here, we do the de-referencing.
             index = offset.getIndex() - constant_count_offset
             offset = constants[index]
+        else:  # pragma: no cover
+            # prevent python to optimize it away and make coverage not respect the
+            # pragma
+            dummy = 0
         offset = int(RexLiteralPlugin().convert(offset, None, None))
     else:
         offset = None
