@@ -90,13 +90,17 @@ jobs:
       - name: Install sqlalchemy and docker pkg for postgres test
         shell: bash -l {0}
         run: |
-          # explicitly install docker, fugue and sqlalchemy package
-          # Also install ciso8601 (needed by docker) via conda, as the pip installation fails.
-          mamba install sqlalchemy pyhive psycopg2 ciso8601 -c conda-forge
-          pip install docker "fugue[sql]>=0.5.3"
-          pip install mlflow
-          pip install tpot
-          pip install dask-ml
+          # explicitly install docker, fugue and other packages
+          mamba install \
+            sqlalchemy>=1.4.23 \
+            pyhive>=0.6.4 \
+            psycopg2>=2.9.1 \
+            ciso8601>=2.2.0 \
+            tpot>=0.11.7 \
+            mlflow>=1.19.0 \
+            docker-py>=5.0.0 \
+            -c conda-forge
+          pip install "fugue[sql]>=0.5.3"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
         if: matrix.os == 'ubuntu-latest'
