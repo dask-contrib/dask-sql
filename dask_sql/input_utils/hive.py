@@ -100,6 +100,15 @@ class HiveInputPlugin(BaseInputPlugin):
         def wrapped_read_function(location, column_information, **kwargs):
             location = _normalize(location)
             logger.debug(f"Reading in hive data from {location}")
+            if format == "ParquetInputFormat" or format == "MapredParquetInputFormat":
+                # Hack needed for parquet files.
+                # If the folder structure is like .../col=3/...
+                # parquet wants to read in the partition information.
+                # However, we add the partition information by ourself
+                # which will lead to problems afterwards
+                # Therefore tell parquet to only read in the columns
+                # we actually care right now
+                kwargs.setdefault("columns", list(column_information.keys()))
             df = read_function(location, **kwargs)
 
             logger.debug(f"Applying column information: {column_information}")
