@@ -35,6 +35,10 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+                "user_table_lk",
+                "user_table_lk2",
+                "user_table_ts",
+                "user_table_pn"
             ]
         }
     )
