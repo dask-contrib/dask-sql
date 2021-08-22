@@ -114,7 +114,12 @@ class LogicalJoinPlugin(BaseRelPlugin):
             # plus the added columns
             # Need the indicator for left/right join
             df = self._join_on_columns(
-                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type, indicator=True
+                df_lhs_renamed, 
+                df_rhs_renamed,
+                lhs_on,
+                rhs_on,
+                join_type, 
+                indicator=True
             )
         else:
             # 5. We are in the complex join case
@@ -245,8 +250,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # Flag obs not matched by inequality
                 df = df.merge(
                     (df.groupby(idx_varname)["filter_condition"].agg("sum") < 1)
-                        .rename("ineq_unmatched")
-                        .to_frame(),
+                    .rename("ineq_unmatched")
+                    .to_frame(),
                     left_on=idx_varname,
                     right_index=True,
                     how="left",
@@ -261,11 +266,13 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # Flag the first obs for each unique left_idx
                 # (or right_idx for right join) in order to remove duplicates
                 df = df.merge(
-                    df[[idx_varname]].drop_duplicates()
-                        .assign(first_elem=True).drop(columns=[idx_varname]),
+                    df[[idx_varname]]
+                    .drop_duplicates()
+                    .assign(first_elem=True)
+                    .drop(columns=[idx_varname]),
                     left_index=True,
                     right_index=True,
-                    how="left"
+                    how="left",
                 )
                 df["first_elem"] = df["first_elem"].fillna(False)
 
@@ -276,9 +283,17 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     | (df["ineq_unmatched"] & df["first_elem"])
                 )
                 # Drop added temporary columns
-                df = df.drop(columns=["left_idx", "right_idx", "_merge",
-                                      "filter_condition", "eq_unmatched",
-                                      "ineq_unmatched", "first_elem"])
+                df = df.drop(
+                    columns=[
+                        "left_idx", 
+                        "right_idx",
+                        "_merge",
+                        "filter_condition",
+                        "eq_unmatched",
+                        "ineq_unmatched",
+                        "first_elem"
+                    ]
+                )
             elif join_type == "inner":
                 filter_condition_all = filter_condition
                 # TODO: Full Join
@@ -299,7 +314,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         lhs_on: List[str],
         rhs_on: List[str],
         join_type: str,
-        indicator: bool = False
+        indicator: bool = False,
     ) -> dd.DataFrame:
         lhs_columns_to_add = {
             f"common_{i}": df_lhs_renamed.iloc[:, index]
@@ -331,7 +346,13 @@ class LogicalJoinPlugin(BaseRelPlugin):
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type, indicator=indicator)
+        df = dd.merge(
+            df_lhs_with_tmp,
+            df_rhs_with_tmp,
+            on=added_columns,
+            how=join_type,
+            indicator=indicator
+        )
 
         return df
 
