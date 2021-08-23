@@ -18,11 +18,21 @@ class IntakeCatalogInputPlugin(BaseInputPlugin):
             isinstance(input_item, intake.catalog.Catalog) or format == "intake"
         )
 
-    def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
+    def to_dc(
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
+    ):
         table_name = kwargs.pop("intake_table_name", table_name)
         catalog_kwargs = kwargs.pop("catalog_kwargs", {})
 
         if isinstance(input_item, str):
             input_item = intake.open_catalog(input_item, **catalog_kwargs)
 
-        return input_item[table_name].to_dask(**kwargs)
+        if gpu:
+            raise Exception("Intake does not support gpu")
+        else:
+            return input_item[table_name].to_dask(**kwargs)
