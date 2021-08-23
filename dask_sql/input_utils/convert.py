@@ -14,7 +14,11 @@ InputType = Union[
     dd.DataFrame,
     pd.DataFrame,
     str,
-    Union["sqlalchemy.engine.base.Connection", "hive.Cursor"],
+    Union[
+        "sqlalchemy.engine.base.Connection",
+        "hive.Cursor",
+        "cudf.core.dataframe.DataFrame",
+    ],
 ]
 
 
