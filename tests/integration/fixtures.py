@@ -86,6 +86,88 @@ def datetime_table():
     )
 
 
+@pytest.fixture
+def user_table_lk():
+    # Link table identified by id and date range (startdate and enddate)
+    # Used for query with both equality and inequality conditions
+    out = pd.DataFrame(
+        [
+            [0, 0, 2, pd.NA, 110, "a1", 1.1, pd.Timestamp("2001-01-01")],
+            [0, 4, 6, pd.NA, 111, "a2", 1.2, pd.Timestamp("2001-02-01")],
+            [1, 2, 5, pd.NA, 112, "a3", np.nan, pd.Timestamp("2001-03-01")],
+            [1, 4, 6, 13, 113, "a4", np.nan, pd.Timestamp("2001-04-01")],
+            [3, 1, 2, 14, 114, "a5", np.nan, pd.NaT],
+            [3, 2, 3, 15, 115, "a6", 1.6, pd.NaT],
+        ],
+        columns=[
+            "id",
+            "startdate",
+            "enddate",
+            "lk_nullint",
+            "lk_int",
+            "lk_str",
+            "lk_float",
+            "lk_date",
+        ],
+    )
+    out["lk_nullint"] = out["lk_nullint"].astype("Int32")
+    out["lk_str"] = out["lk_str"].astype("string")
+    return out
+
+
+@pytest.fixture
+def user_table_lk2(user_table_lk):
+    # Link table identified by only date range (startdate and enddate)
+    # Used for query with inequality conditions
+    return user_table_lk.set_index("id").loc[1].reset_index(drop=True)
+
+
+@pytest.fixture
+def user_table_ts():
+    # A table of time-series data identified by dates
+    out = pd.DataFrame(
+        [
+            [3, pd.NA, 221, "b1", 2.1, pd.Timestamp("2002-01-01")],
+            [4, 22, 222, "b2", np.nan, pd.Timestamp("2002-02-01")],
+            [7, 23, 223, "b3", 2.3, pd.NaT],
+        ],
+        columns=["dates", "ts_nullint", "ts_int", "ts_str", "ts_float", "ts_date"],
+    )
+    out["ts_nullint"] = out["ts_nullint"].astype("Int32")
+    out["ts_str"] = out["ts_str"].astype("string")
+    return out
+
+
+@pytest.fixture
+def user_table_pn():
+    # A panel table identified by id and dates
+    out = pd.DataFrame(
+        [
+            [0, 1, pd.NA, 331, "c1", 3.1, pd.Timestamp("2003-01-01")],
+            [0, 2, pd.NA, 332, "c2", 3.2, pd.Timestamp("2003-02-01")],
+            [0, 3, pd.NA, 333, "c3", 3.3, pd.Timestamp("2003-03-01")],
+            [1, 3, pd.NA, 334, "c4", np.nan, pd.Timestamp("2003-04-01")],
+            [1, 4, 35, 335, "c5", np.nan, pd.Timestamp("2003-05-01")],
+            [2, 1, 36, 336, "c6", np.nan, pd.Timestamp("2003-06-01")],
+            [2, 3, 37, 337, "c7", np.nan, pd.NaT],
+            [3, 2, 38, 338, "c8", 3.8, pd.NaT],
+            [3, 2, 39, 339, "c9", 3.9, pd.NaT],
+        ],
+        columns=[
+            "ids",
+            "dates",
+            "pn_nullint",
+            "pn_int",
+            "pn_str",
+            "pn_float",
+            "pn_date",
+        ],
+    )
+    out["pn_nullint"] = out["pn_nullint"].astype("Int32")
+    out["pn_str"] = out["pn_str"].astype("string")
+    return out
+
+
 @pytest.fixture()
 def c(
     df_simple,
@@ -97,6 +179,10 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    user_table_lk,
+    user_table_lk2,
+    user_table_ts,
+    user_table_pn,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -108,6 +194,10 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "user_table_lk": user_table_lk,
+        "user_table_lk2": user_table_lk2,
+        "user_table_ts": user_table_ts,
+        "user_table_pn": user_table_pn,
     }
 
     # Lazy import, otherwise the pytest framework has problems
