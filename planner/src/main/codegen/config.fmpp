@@ -28,18 +28,15 @@ data: {
         "com.dask.sql.parser.SqlCreateModel",
         "com.dask.sql.parser.SqlCreateTable",
         "com.dask.sql.parser.SqlCreateTableAs",
-        "com.dask.sql.parser.SqlDropModel",
         "com.dask.sql.parser.SqlDropTable",
         "com.dask.sql.parser.SqlKwargs",
-        "com.dask.sql.parser.SqlModelIdentifier",
-        "com.dask.sql.parser.SqlPredictModel"
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
         "com.dask.sql.parser.SqlShowTables",
         "com.dask.sql.parser.SqlShowModels",
-        "com.dask.sql.parser.SqlExportModel",
         "com.dask.sql.parser.SqlCreateExperiment"
         "com.dask.sql.parser.SqlUseSchema"
+        "com.dask.sql.parser.SqlDistributeBy"
       ]
 
       # List of keywords.
@@ -48,8 +45,6 @@ data: {
         "COLUMNS"
         "COMPUTE"
         "IF"
-        "MODEL"
-        "PREDICT"
         "SCHEMAS"
         "USE"
         "STATISTICS"
@@ -57,6 +52,7 @@ data: {
         "MODELS"
         "EXPORT"
         "EXPERIMENT"
+        "DISTRIBUTE_BY"
       ]
 
       # The keywords can only be used in a specific context,
@@ -66,8 +62,6 @@ data: {
         "COLUMNS"
         "COMPUTE"
         "IF"
-        "MODEL"
-        "PREDICT"
         "SCHEMAS"
         "STATISTICS"
         "TABLES"
@@ -80,23 +74,17 @@ data: {
          "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
-         "SqlPredictModel()"
-         "SqlShowModels()"
-         "SqlDescribeTableOrModel()"
-         "SqlExportModel()"
          "SqlUseSchema()"
+         "SqlDistributeBy()"
       ]
 
       createStatementParserMethods: [
-         "SqlCreateModel"
          "SqlCreateTable"
          "SqlCreateView"
-         "SqlCreateExperiment"
          "SqlCreateSchema"
       ]
 
       dropStatementParserMethods: [
-         "SqlDropModel"
          "SqlDropTable"
          "SqlDropSchema"
       ]
@@ -104,9 +92,9 @@ data: {
       # location of the implementation
       implementationFiles: [
         "create.ftl"
-        "model.ftl"
         "show.ftl"
         "utils.ftl"
+        "distribute.ftl"
       ]
     }
 }

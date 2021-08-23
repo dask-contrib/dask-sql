@@ -17,7 +17,7 @@
 		<org.slf4j-version>1.7.29</org.slf4j-version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
-		<org.apache.calcite-version>1.26.0</org.apache.calcite-version>
+		<org.apache.calcite-version>1.27.0</org.apache.calcite-version>
 	</properties>
 
 	<dependencies>
