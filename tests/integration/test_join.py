@@ -192,18 +192,138 @@ def test_join_lricomplex(c):
     # Correct answer
     dfcorrpn = pd.DataFrame(
         [
-            [0, 1, pd.NA, 331, "c1", 3.1, pd.Timestamp("2003-01-01"), 0, 2, pd.NA, 110, "a1", 1.1, pd.Timestamp("2001-01-01")],
-            [0, 2, pd.NA, 332, "c2", 3.2, pd.Timestamp("2003-02-01"), 0, 2, pd.NA, 110, "a1", 1.1, pd.Timestamp("2001-01-01")],
-            [0, 3, pd.NA, 333, "c3", 3.3, pd.Timestamp("2003-03-01"), pd.NA, pd.NA, pd.NA, pd.NA, np.nan, np.nan, pd.NaT],
-            [1, 3, pd.NA, 334, "c4", np.nan, pd.Timestamp("2003-04-01"), 2, 5, pd.NA, 112, "a3", np.nan, pd.Timestamp("2001-03-01")],
-            [1, 4, 35, 335, "c5", np.nan, pd.Timestamp("2003-05-01"), 2, 5, pd.NA, 112, "a3", np.nan, pd.Timestamp("2001-03-01")],
-            [1, 4, 35, 335, "c5", np.nan, pd.Timestamp("2003-05-01"), 4, 6, 13, 113, "a4", np.nan, pd.Timestamp("2001-04-01")],
-            [2, 1, 36, 336, "c6", np.nan, pd.Timestamp("2003-06-01"), pd.NA, pd.NA, pd.NA, pd.NA, np.nan, np.nan, pd.NaT],
-            [2, 3, 37, 337, "c7", np.nan, pd.NaT, pd.NA, pd.NA, pd.NA, pd.NA, np.nan, np.nan, pd.NaT],
+            [
+                0,
+                1,
+                pd.NA,
+                331,
+                "c1",
+                3.1,
+                pd.Timestamp("2003-01-01"),
+                0,
+                2,
+                pd.NA,
+                110,
+                "a1",
+                1.1,
+                pd.Timestamp("2001-01-01")
+            ],
+            [
+                0,
+                2,
+                pd.NA,
+                332,
+                "c2",
+                3.2,
+                pd.Timestamp("2003-02-01"),
+                0,
+                2,
+                pd.NA,
+                110,
+                "a1",
+                1.1,
+                pd.Timestamp("2001-01-01")
+            ],
+            [
+                0,
+                3,
+                pd.NA,
+                333,
+                "c3",
+                3.3,
+                pd.Timestamp("2003-03-01"),
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                np.nan,
+                np.nan,
+                pd.NaT]
+            ,
+            [
+                1,
+                3,
+                pd.NA,
+                334,
+                "c4",
+                np.nan,
+                pd.Timestamp("2003-04-01"),
+                2,
+                5,
+                pd.NA,
+                112,
+                "a3",
+                np.nan,
+                pd.Timestamp("2001-03-01")
+            ],
+            [
+                1,
+                4,
+                35,
+                335,
+                "c5",
+                np.nan,
+                pd.Timestamp("2003-05-01"),
+                2,
+                5,
+                pd.NA,
+                112,
+                "a3",
+                np.nan,
+                pd.Timestamp("2001-03-01")
+            ],
+            [
+                1,
+                4,
+                35,
+                335,
+                "c5",
+                np.nan,
+                pd.Timestamp("2003-05-01"),
+                4,
+                6,
+                13,
+                113,
+                "a4",
+                np.nan,
+                pd.Timestamp("2001-04-01")
+            ],
+            [
+                2,
+                1,
+                36,
+                336,
+                "c6",
+                np.nan,
+                pd.Timestamp("2003-06-01"),
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                np.nan,
+                np.nan,
+                pd.NaT
+            ],
+            [
+                2,
+                3,
+                37,
+                337,
+                "c7",
+                np.nan,
+                pd.NaT,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                np.nan,
+                np.nan,
+                pd.NaT
+            ],
             [3, 2, 38, 338, "c8", 3.8, pd.NaT, 1, 2, 14, 114, "a5", np.nan, pd.NaT],
             [3, 2, 39, 339, "c9", 3.9, pd.NaT, 1, 2, 14, 114, "a5", np.nan, pd.NaT],
             [3, 2, 38, 338, "c8", 3.8, pd.NaT, 2, 3, 15, 115, "a6", 1.6, pd.NaT],
-            [3, 2, 39, 339, "c9", 3.9, pd.NaT, 2, 3, 15, 115, "a6", 1.6, pd.NaT]
+            [3, 2, 39, 339, "c9", 3.9, pd.NaT, 2, 3, 15, 115, "a6", 1.6, pd.NaT],
         ],
         columns=[
             "ids",
@@ -219,7 +339,7 @@ def test_join_lricomplex(c):
             "lk_int",
             "lk_str",
             "lk_float",
-            "lk_date"
+            "lk_date",
         ],
     )
     change_types = {
@@ -229,7 +349,7 @@ def test_join_lricomplex(c):
         "enddate": "Int64",
         "lk_int": "Int64",
         "pn_str": "string",
-        "lk_str": "string"
+        "lk_str": "string",
     }
     for k, v in change_types.items():
         dfcorrpn[k] = dfcorrpn[k].astype(v)
@@ -278,9 +398,9 @@ def test_join_lricomplex(c):
         .assign(
             startdate=lambda x: x["startdate"].astype("int64"),
             enddate=lambda x: x["enddate"].astype("int64"),
-            lk_int=lambda x: x["lk_int"].astype("int64")
+            lk_int=lambda x: x["lk_int"].astype("int64"),
         )
-        .reset_index(drop=True)
+        .reset_index(drop=True),
     )
 
 
@@ -289,10 +409,66 @@ def test_join_lricomplex(c):
     # Correct answer
     dfcorrts = pd.DataFrame(
         [
-            [3, pd.NA, 221, "b1", 2.1, pd.Timestamp("2002-01-01"), 2, 5, pd.NA, 112, "a3", np.nan, pd.Timestamp("2001-03-01")],
-            [4, 22, 222, "b2", np.nan, pd.Timestamp("2002-02-01"), 2, 5, pd.NA, 112, "a3", np.nan, pd.Timestamp("2001-03-01")],
-            [4, 22, 222, "b2", np.nan, pd.Timestamp("2002-02-01"), 4, 6, 13, 113, "a4", np.nan, pd.Timestamp("2001-04-01")],
-            [7, 23, 223, "b3", 2.3, pd.NaT, pd.NA, pd.NA, pd.NA, pd.NA, np.nan, np.nan, pd.NaT],
+            [
+                3,
+                pd.NA,
+                221,
+                "b1",
+                2.1,
+                pd.Timestamp("2002-01-01"),
+                2,
+                5,
+                pd.NA,
+                112,
+                "a3",
+                np.nan,
+                pd.Timestamp("2001-03-01")
+            ],
+            [
+                4,
+                22,
+                222,
+                "b2",
+                np.nan,
+                pd.Timestamp("2002-02-01"),
+                2,
+                5,
+                pd.NA,
+                112,
+                "a3",
+                np.nan,
+                pd.Timestamp("2001-03-01")
+            ],
+            [
+                4,
+                22,
+                222,
+                "b2",
+                np.nan,
+                pd.Timestamp("2002-02-01"),
+                4,
+                6,
+                13,
+                113,
+                "a4",
+                np.nan,
+                pd.Timestamp("2001-04-01")
+            ],
+            [
+                7,
+                23,
+                223,
+                "b3",
+                2.3,
+                pd.NaT,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                np.nan,
+                np.nan,
+                pd.NaT
+            ],
         ],
         columns=[
             "dates", 
@@ -307,7 +483,7 @@ def test_join_lricomplex(c):
             "lk_int",
             "lk_str", 
             "lk_float",
-            "lk_date"
+            "lk_date",
         ],
     )
     change_types = {
@@ -317,7 +493,7 @@ def test_join_lricomplex(c):
         "enddate": "Int64",
         "lk_int": "Int64",
         "lk_str": "string",
-        "ts_str": "string"
+        "ts_str": "string",
     }
     for k, v in change_types.items():
         dfcorrts[k] = dfcorrts[k].astype(v)
@@ -360,8 +536,8 @@ def test_join_lricomplex(c):
         .assign(
             startdate=lambda x: x["startdate"].astype("int64"),
             enddate=lambda x: x["enddate"].astype("int64"),
-            lk_int=lambda x: x["lk_int"].astype("int64")
+            lk_int=lambda x: x["lk_int"].astype("int64"),
         )
-        .reset_index(drop=True)
+        .reset_index(drop=True),
     )
     

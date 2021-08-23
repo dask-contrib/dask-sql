@@ -119,7 +119,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 lhs_on,
                 rhs_on,
                 join_type, 
-                indicator=True
+                indicator=True,
             )
         else:
             # 5. We are in the complex join case
@@ -291,7 +291,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                         "filter_condition",
                         "eq_unmatched",
                         "ineq_unmatched",
-                        "first_elem"
+                        "first_elem",
                     ]
                 )
             elif join_type == "inner":
@@ -351,7 +351,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
             df_rhs_with_tmp,
             on=added_columns,
             how=join_type,
-            indicator=indicator
+            indicator=indicator,
         )
 
         return df
