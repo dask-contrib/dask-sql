@@ -716,8 +716,7 @@ class Context:
             rel_string = ""
 
             if not sqlNodeClass.startswith("com.dask.sql.parser."):
-                validatedSqlNode = generator.getValidatedNode(sqlNode)
-                nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
                 # Optimization might remove some alias projects. Make sure to keep them here.
                 select_names = [
                     str(name)

@@ -3,16 +3,18 @@ package com.dask.sql.schema;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.calcite.DataContext;
 import org.apache.calcite.config.CalciteConnectionConfig;
-import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.plan.RelOptTable;
+import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.plan.RelOptTable.ToRelContext;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.logical.LogicalTableScan;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
-import org.apache.calcite.rex.RexNode;
-import org.apache.calcite.schema.ProjectableFilterableTable;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.Statistic;
 import org.apache.calcite.schema.Statistics;
+import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.type.SqlTypeName;
@@ -23,7 +25,7 @@ import org.apache.calcite.util.Pair;
  *
  * Basically just a list of columns, each column being a column name and a type.
  */
-public class DaskTable implements ProjectableFilterableTable {
+public class DaskTable implements TranslatableTable {
 	// List of columns (name, column type)
 	private final ArrayList<Pair<String, SqlTypeName>> tableColumns;
 	// Name of this table
@@ -83,12 +85,9 @@ public class DaskTable implements ProjectableFilterableTable {
 		throw new AssertionError("This should not be called!");
 	}
 
-	/**
-	 * calcite method: normally, this would return the actual data - but we do not
-	 * use the computation engine from calcite
-	 */
 	@Override
-	public Enumerable<Object[]> scan(final DataContext root, final List<RexNode> filters, final int[] projects) {
-		return null;
+	public RelNode toRel(ToRelContext context, RelOptTable relOptTable) {
+		RelTraitSet traitSet = context.getCluster().traitSet();
+		return new LogicalTableScan(context.getCluster(), traitSet, context.getTableHints(), relOptTable);
 	}
 }
