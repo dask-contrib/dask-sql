@@ -32,7 +32,7 @@ class IntakeCatalogInputPlugin(BaseInputPlugin):
         if isinstance(input_item, str):
             input_item = intake.open_catalog(input_item, **catalog_kwargs)
 
-        if gpu:
+        if gpu:  # pragma: no cover
             raise Exception("Intake does not support gpu")
         else:
             return input_item[table_name].to_dask(**kwargs)

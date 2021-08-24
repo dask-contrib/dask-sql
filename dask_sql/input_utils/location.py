@@ -34,7 +34,7 @@ class LocationInputPlugin(BaseInputPlugin):
             format = extension.lstrip(".")
 
         try:
-            if gpu:
+            if gpu:  # pragma: no cover
                 import dask_cudf
 
                 read_function = getattr(dask_cudf, f"read_{format}")

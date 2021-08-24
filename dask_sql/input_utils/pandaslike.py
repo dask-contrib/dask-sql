@@ -27,7 +27,7 @@ class PandasLikeInputPlugin(BaseInputPlugin):
         **kwargs,
     ):
         npartitions = kwargs.pop("npartitions", 1)
-        if gpu:
+        if gpu:  # pragma: no cover
             import dask_cudf
 
             return dask_cudf.from_cudf(
