@@ -2,7 +2,7 @@ import { FC } from "react";
 import FooterTitle from "./footerTitle";
 import FooterItem from "./footerItem";
 
-interface FooterProps {}
+interface FooterProps { }
 
 const Footer: FC<FooterProps> = () => (
   <footer className="bg-white">
@@ -16,10 +16,10 @@ const Footer: FC<FooterProps> = () => (
             new Map([
               [
                 "ReadMe",
-                "https://github.com/nils-braun/dask-sql/blob/main/README.md",
+                "https://github.com/dask-contrib/dask-sql/blob/main/README.md",
               ],
-              ["Code", "https://github.com/nils-braun/dask-sql/"],
-              ["Contribute", "https://github.com/nils-braun/dask-sql/pulls"],
+              ["Code", "https://github.com/dask-contrib/dask-sql/"],
+              ["Contribute", "https://github.com/dask-contrib/dask-sql/pulls"],
             ])
           }
         />
@@ -38,10 +38,10 @@ const Footer: FC<FooterProps> = () => (
           title="Issues"
           links={
             new Map([
-              ["List", "https://github.com/nils-braun/dask-sql/issues"],
+              ["List", "https://github.com/dask-contrib/dask-sql/issues"],
               [
                 "Create",
-                "https://github.com/nils-braun/dask-sql/issues/new/choose",
+                "https://github.com/dask-contrib/dask-sql/issues/new/choose",
               ],
             ])
           }

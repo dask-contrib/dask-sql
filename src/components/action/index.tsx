@@ -58,7 +58,7 @@ const Action: FC<ActionProps> = () => (
       </div>
       <div className="mt-10">
         <a
-          href="https://github.com/nils-braun/dask-sql"
+          href="https://github.com/dask-contrib/dask-sql"
           className="bg-blue-500 hover:bg-blue-600 text-2xl text-white font-bold p-4 rounded shadow"
         >
           Find out more
