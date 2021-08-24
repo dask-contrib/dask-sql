@@ -3,7 +3,7 @@ SqlNode SqlDistributeBy():
     final Span s;
     final List<SqlNode> selectList;
     final SqlIdentifier tableName;
-    final List<SqlIdentifier> distributeList;
+    final List<SqlNode> distributeList;
     final SqlNode stmt;
 }
 {
@@ -12,9 +12,9 @@ SqlNode SqlDistributeBy():
         <SELECT>
         { s = span(); }
         selectList = SelectList()
-        <FROM> tableName = CompoundTableIdentifier() <DISTRIBUTE> <BY> distributeList = ColumnIdentifierList()
+        <FROM> tableName = CompoundTableIdentifier() <DISTRIBUTE> <BY> distributeList = SelectList()
         {
-            return new SqlDistributeBy(s.end(this), selectList, tableName);
+            return new SqlDistributeBy(s.end(this), selectList, tableName, distributeList);
         }
     |
         stmt = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)

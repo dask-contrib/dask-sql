@@ -2,6 +2,7 @@ package com.dask.sql.parser;
 
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.util.ImmutableNullableList;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
@@ -14,18 +15,25 @@ public class SqlDistributeBy
         @Override
         public SqlCall createCall(@Nullable SqlLiteral functionQualifier,
                                             SqlParserPos pos, @Nullable SqlNode... operands) {
-            return new SqlDistributeBy(pos, (List<SqlNode>) operands[0], (SqlIdentifier) operands[1]);
+            return new SqlDistributeBy(pos,
+                    (List<SqlNode>) operands[0],
+                    (SqlIdentifier) operands[1],
+                    (List<SqlNode>) operands[2]);
         }
     };
 
     public final List<SqlNode> selectList;
+    public final SqlNodeList distributeList;
     public final SqlIdentifier tableName;
 
-    //public SqlDistributeBy(SqlParserPos pos, SqlNode query, SqlNodeList orderList) {
-    public SqlDistributeBy(SqlParserPos pos, List<SqlNode> selectList, SqlIdentifier tableName) {
+    public SqlDistributeBy(SqlParserPos pos,
+                           List<SqlNode> selectList,
+                           SqlIdentifier tableName,
+                           List<SqlNode> orderList) {
         super(pos);
         this.selectList = selectList;
         this.tableName = tableName;
+        this.distributeList = new SqlNodeList(orderList, pos);
     }
 
     @Override
@@ -36,8 +44,7 @@ public class SqlDistributeBy
     @SuppressWarnings("nullness")
     @Override
     public List<SqlNode> getOperandList() {
-        //return ImmutableNullableList.of(query, orderList);
-        throw new UnsupportedOperationException();
+        return ImmutableNullableList.of(distributeList);
     }
 
     /** Definition of {@code DISTRIBUTE BY} operator. */
