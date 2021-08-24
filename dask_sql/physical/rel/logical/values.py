@@ -6,9 +6,9 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
 
-class LogicalValuesPlugin(BaseRelPlugin):
+class DaskValuesPlugin(BaseRelPlugin):
     """
-    A LogicalValue is a table just consisting of
+    A DaskValue is a table just consisting of
     raw values (nothing database-dependent).
     For example
 
@@ -20,7 +20,7 @@ class LogicalValuesPlugin(BaseRelPlugin):
     data samples.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalValues"
+    class_name = "com.dask.sql.nodes.DaskValues"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

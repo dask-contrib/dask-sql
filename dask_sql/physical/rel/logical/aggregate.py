@@ -62,9 +62,9 @@ class AggregationSpecification:
         )
 
 
-class LogicalAggregatePlugin(BaseRelPlugin):
+class DaskAggregatePlugin(BaseRelPlugin):
     """
-    A LogicalAggregate is used in GROUP BY clauses, but also
+    A DaskAggregate is used in GROUP BY clauses, but also
     when aggregating a function over the full dataset.
 
     In the first case we need to find out which columns we need to
@@ -86,7 +86,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalAggregate"
+    class_name = "com.dask.sql.nodes.DaskAggregate"
 
     AGGREGATION_MAPPING = {
         "$sum0": AggregationSpecification("sum", AggregationOnPandas("sum")),

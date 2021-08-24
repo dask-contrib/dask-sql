@@ -53,9 +53,8 @@ def test_explain():
 
     sql_string = c.explain("SELECT * FROM df")
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
+    assert sql_string.startswith(
+        f"DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {{100.0 rows, 101.0 cpu, 0.0 io}}, id = "
     )
 
     c = Context()
@@ -66,9 +65,8 @@ def test_explain():
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}
     )
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
+    assert sql_string.startswith(
+        f"DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {{100.0 rows, 101.0 cpu, 0.0 io}}, id = "
     )
 
 

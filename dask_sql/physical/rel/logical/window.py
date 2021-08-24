@@ -204,9 +204,9 @@ def map_on_each_group(
     return partitioned_group
 
 
-class LogicalWindowPlugin(BaseRelPlugin):
+class DaskWindowPlugin(BaseRelPlugin):
     """
-    A LogicalWindow is an expression, which calculates a given function over the dataframe
+    A DaskWindow is an expression, which calculates a given function over the dataframe
     while first optionally partitoning the data and optionally sorting it.
 
     Expressions like `F OVER (PARTITION BY x ORDER BY y)` apply f on each
@@ -215,7 +215,7 @@ class LogicalWindowPlugin(BaseRelPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalWindow"
+    class_name = "com.dask.sql.nodes.DaskWindow"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately

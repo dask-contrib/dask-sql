@@ -36,7 +36,7 @@ public class RelationalAlgebraGenerator {
 		this.parser = new DaskSqlParser();
 	}
 
-	public SqlDialect getDialect() {
+	static public SqlDialect getDialect() {
 		return DaskSqlDialect.DEFAULT;
 	}
 
