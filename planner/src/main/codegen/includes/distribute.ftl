@@ -1,18 +1,20 @@
-/*lNode SqlDistributeBy() :
--
+SqlNode SqlDistributeBy():
+{
     final Span s;
     final List<SqlNode> selectList;
+    final SqlIdentifier tableName;
+    final List<SqlIdentifier> distributeList;
     final SqlNode stmt;
 }
 {
     (
-        LOOKAHEAD(<SELECT> SelectList() <FROM> <DISTRIBUTE_BY>)
+        LOOKAHEAD(<SELECT> SelectList() <FROM> tableName = CompoundTableIdentifier() <DISTRIBUTE> <BY>)
         <SELECT>
         { s = span(); }
         selectList = SelectList()
-        <FROM> <DISTRIBUTE_BY>
+        <FROM> tableName = CompoundTableIdentifier() <DISTRIBUTE> <BY> distributeList = ColumnIdentifierList()
         {
-            return new SqlDistributeBy(s.end(this));
+            return new SqlDistributeBy(s.end(this), selectList, tableName);
         }
     |
         stmt = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
@@ -20,4 +22,4 @@
             return stmt;
         }
     )
-}14 4RQZ2325890-gjjyuhr00fzAs3 qaw534332
+}

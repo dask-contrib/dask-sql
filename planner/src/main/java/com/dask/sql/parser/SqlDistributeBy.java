@@ -14,19 +14,18 @@ public class SqlDistributeBy
         @Override
         public SqlCall createCall(@Nullable SqlLiteral functionQualifier,
                                             SqlParserPos pos, @Nullable SqlNode... operands) {
-            //return new SqlDistributeBy(pos, operands[0], (SqlNodeList) operands[1]);
-            return new SqlDistributeBy(pos);
+            return new SqlDistributeBy(pos, (List<SqlNode>) operands[0], (SqlIdentifier) operands[1]);
         }
     };
 
-//    public final SqlNode query;
-//    public final SqlNodeList orderList;
+    public final List<SqlNode> selectList;
+    public final SqlIdentifier tableName;
 
     //public SqlDistributeBy(SqlParserPos pos, SqlNode query, SqlNodeList orderList) {
-    public SqlDistributeBy(SqlParserPos pos) {
+    public SqlDistributeBy(SqlParserPos pos, List<SqlNode> selectList, SqlIdentifier tableName) {
         super(pos);
-//        this.query = query;
-//        this.orderList = orderList;
+        this.selectList = selectList;
+        this.tableName = tableName;
     }
 
     @Override
@@ -45,7 +44,7 @@ public class SqlDistributeBy
     private static class Operator extends SqlSpecialOperator {
         private Operator() {
             // NOTE:  make precedence lower then SELECT to avoid extra parens
-            super("DISTRIBUTE_BY", SqlKind.ORDER_BY, 0);
+            super("DISTRIBUTE BY", SqlKind.ORDER_BY, 0);
         }
 
         @Override public SqlSyntax getSyntax() {
@@ -57,11 +56,23 @@ public class SqlDistributeBy
                 SqlCall call,
                 int leftPrec,
                 int rightPrec) {
+
             SqlDistributeBy distributeBy = (SqlDistributeBy) call;
             final SqlWriter.Frame frame =
                     writer.startList(SqlWriter.FrameTypeEnum.ORDER_BY);
             //distributeBy.query.unparse(writer, getLeftPrec(), getRightPrec());
             writer.endList(frame);
+
+//            orderBy.query.unparse(writer, getLeftPrec(), getRightPrec());
+//            if (orderBy.orderList != SqlNodeList.EMPTY) {
+//                writer.sep(getName());
+//                writer.list(SqlWriter.FrameTypeEnum.ORDER_BY_LIST, SqlWriter.COMMA,
+//                        orderBy.orderList);
+//            }
+//            if (orderBy.offset != null || orderBy.fetch != null) {
+//                writer.fetchOffset(orderBy.fetch, orderBy.offset);
+//            }
+//            writer.endList(frame);
         }
     }
 }
