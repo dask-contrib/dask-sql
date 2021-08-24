@@ -46,12 +46,11 @@ public class RelationalAlgebraGenerator {
 	}
 
 	public RelNode getRelationalAlgebra(final SqlNode sqlNode) throws RelConversionException {
-		RelNode root = sqlToRelConverter.convert(sqlNode);
-		return this.program.runUntilOptimization(root);
+		return sqlToRelConverter.convert(sqlNode);
 	}
 
 	public RelNode getOptimizedRelationalAlgebra(final RelNode rel) {
-		return this.program.runOptimization(rel);
+		return this.program.run(rel);
 	}
 
 	/// Return the string representation of a rel node

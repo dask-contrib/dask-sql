@@ -20,8 +20,7 @@ import org.apache.calcite.tools.Programs;
 import org.apache.calcite.tools.RelBuilder;
 
 public class DaskProgram {
-    private final Program beforeOptimizationProgram;
-    private final Program optimizationProgram;
+    private final Program mainProgram;
 
     public DaskProgram(RelOptPlanner planner) {
         final DecorrelateProgram decorrelateProgram = new DecorrelateProgram();
@@ -30,21 +29,13 @@ public class DaskProgram {
         final ConvertProgram convertProgram = new ConvertProgram(planner);
         final OptimizeProgram volcanoProgram = new OptimizeProgram(planner);
 
-        this.beforeOptimizationProgram = Programs.sequence(decorrelateProgram, trimProgram, preOptimizeProgram);
-        this.optimizationProgram = Programs.sequence(convertProgram, volcanoProgram);
+        this.mainProgram = Programs.sequence(decorrelateProgram, trimProgram, preOptimizeProgram, convertProgram,
+                volcanoProgram);
     }
 
-    public RelNode runUntilOptimization(RelNode rel) {
-        return run(this.beforeOptimizationProgram, rel);
-    }
-
-    public RelNode runOptimization(RelNode rel) {
-        return run(this.optimizationProgram, rel);
-    }
-
-    private RelNode run(Program program, RelNode rel) {
+    public RelNode run(RelNode rel) {
         final RelTraitSet desiredTraits = rel.getTraitSet().replace(DaskRel.CONVENTION).simplify();
-        return program.run(null, rel, desiredTraits, List.of(), List.of());
+        return this.mainProgram.run(null, rel, desiredTraits, List.of(), List.of());
     }
 
     private static interface DaskProgramWrapper extends Program {
@@ -76,12 +67,9 @@ public class DaskProgram {
         @Override
         public RelNode run(RelOptPlanner planner, RelNode rel, RelTraitSet requiredOutputTraits,
                 List<RelOptMaterialization> materializations, List<RelOptLattice> lattices) {
-            List<RelOptRule> rules = List.of(CoreRules.AGGREGATE_PROJECT_MERGE,
-                    CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS, CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS,
-                    CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
-                    CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
-                    CoreRules.FILTER_AGGREGATE_TRANSPOSE, CoreRules.JOIN_CONDITION_PUSH, CoreRules.FILTER_INTO_JOIN,
-                    CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE, CoreRules.PROJECT_JOIN_TRANSPOSE,
+            List<RelOptRule> rules = List.of(CoreRules.AGGREGATE_PROJECT_MERGE, CoreRules.AGGREGATE_REDUCE_FUNCTIONS,
+                    CoreRules.AGGREGATE_MERGE, CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN,
+                    CoreRules.AGGREGATE_JOIN_REMOVE, CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE,
                     CoreRules.PROJECT_REMOVE, CoreRules.PROJECT_REDUCE_EXPRESSIONS, CoreRules.FILTER_REDUCE_EXPRESSIONS,
                     CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM, CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
             Program preOptimizeProgram = Programs.hep(rules, true, DefaultRelMetadataProvider.INSTANCE);

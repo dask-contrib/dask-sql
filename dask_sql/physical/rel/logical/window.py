@@ -247,7 +247,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
 
-        for window in rel.groups:
+        for window in rel.getGroups():
             dc = self._apply_window(
                 window, constants, constant_count_offset, dc, field_names, context
             )
@@ -281,7 +281,7 @@ class DaskWindowPlugin(BaseRelPlugin):
             window, cc
         )
         logger.debug(
-            "Before applying the function, sorting according to {sort_columns}."
+            f"Before applying the function, sorting according to {sort_columns}."
         )
 
         df, group_columns = self._extract_groupby(df, window, dc, context)
@@ -296,6 +296,8 @@ class DaskWindowPlugin(BaseRelPlugin):
             temporary_columns += cols
 
         newly_created_columns = [new_column for _, new_column, _ in operations]
+
+        logger.debug(f"Will create {newly_created_columns} new columns")
 
         # Apply the windowing operation
         filled_map = partial(
@@ -318,6 +320,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         df = df.groupby(group_columns).apply(
             make_pickable_without_dask_sql(filled_map), meta=meta
         )
+        logger.debug(
+            f"Having created a dataframe {LoggableDataFrame(df)} after windowing. Will now drop {temporary_columns}."
+        )
         df = df.drop(columns=temporary_columns).reset_index(drop=True)
 
         dc = DataContainer(df, cc)
@@ -330,6 +335,9 @@ class DaskWindowPlugin(BaseRelPlugin):
             cc = cc.add(field_name, c)
 
         dc = DataContainer(df, cc)
+        logger.debug(
+            f"Removed unneeded columns and registered new ones: {LoggableDataFrame(dc)}."
+        )
         return dc
 
     def _extract_groupby(

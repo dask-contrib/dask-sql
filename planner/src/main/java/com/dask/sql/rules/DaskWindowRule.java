@@ -26,10 +26,7 @@ public class DaskWindowRule extends ConverterRule {
         RelNode transformedInput = convert(window.getInput(),
                 window.getInput().getTraitSet().replace(DaskRel.CONVENTION));
 
-        for (Group group : window.groups) {
-            transformedInput = DaskWindow.create(window.getCluster(), traitSet, transformedInput, window.getConstants(),
-                    window.getRowType(), group);
-        }
-        return transformedInput;
+        return DaskWindow.create(window.getCluster(), traitSet, transformedInput, window.getConstants(),
+                window.getRowType(), window.groups);
     }
 }

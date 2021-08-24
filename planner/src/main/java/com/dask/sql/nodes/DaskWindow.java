@@ -12,28 +12,27 @@ import org.apache.calcite.rex.RexLiteral;
 
 public class DaskWindow extends Window implements DaskRel {
     public DaskWindow(RelOptCluster cluster, RelTraitSet traitSet, RelNode input, List<RexLiteral> constants,
-            RelDataType rowType, Group group) {
-        super(cluster, traitSet, input, constants, rowType, List.of(group));
+            RelDataType rowType, List<Group> groups) {
+        super(cluster, traitSet, input, constants, rowType, groups);
     }
 
-    public Group getGroup() {
-        return this.groups.get(0);
+    public List<Group> getGroups() {
+        return this.groups;
     }
 
     @Override
     public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-        return copy(traitSet, sole(inputs), this.getConstants(), this.getRowType(), List.of(this.getGroup()));
+        return copy(traitSet, sole(inputs), this.getConstants(), this.getRowType(), this.getGroups());
     }
 
     public Window copy(RelTraitSet traitSet, RelNode input, List<RexLiteral> constants, RelDataType rowType,
             List<Group> groups) {
-        assert groups.size() == 1;
-        return DaskWindow.create(getCluster(), traitSet, input, constants, rowType, groups.get(0));
+        return DaskWindow.create(getCluster(), traitSet, input, constants, rowType, groups);
     }
 
     public static DaskWindow create(RelOptCluster cluster, RelTraitSet traits, RelNode input,
-            List<RexLiteral> constants, RelDataType rowType, Group group) {
+            List<RexLiteral> constants, RelDataType rowType, List<Group> groups) {
         assert traits.getConvention() == DaskRel.CONVENTION;
-        return new DaskWindow(cluster, traits, input, constants, rowType, group);
+        return new DaskWindow(cluster, traits, input, constants, rowType, groups);
     }
 }
