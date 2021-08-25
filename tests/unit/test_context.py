@@ -7,6 +7,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
+from dask_sql.datacontainer import Statistics
 
 
 def test_add_remove_tables():
@@ -55,6 +56,14 @@ def test_explain():
 
     assert sql_string.startswith(
         f"DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {{100.0 rows, 101.0 cpu, 0.0 io}}, id = "
+    )
+
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+
+    sql_string = c.explain("SELECT * FROM df")
+
+    assert sql_string.startswith(
+        f"DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {{1337.0 rows, 1338.0 cpu, 0.0 io}}, id = "
     )
 
     c = Context()

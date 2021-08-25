@@ -30,11 +30,19 @@ public class DaskTable implements TranslatableTable {
 	private final ArrayList<Pair<String, SqlTypeName>> tableColumns;
 	// Name of this table
 	private final String name;
+	// Any statistics information we have
+	private final DaskStatistics statistics;
+
+	/// Construct a new table with the given name and estimated row count
+	public DaskTable(final String name, final Double rowCount) {
+		this.name = name;
+		this.tableColumns = new ArrayList<Pair<String, SqlTypeName>>();
+		this.statistics = new DaskStatistics(rowCount);
+	}
 
 	/// Construct a new table with the given name
 	public DaskTable(final String name) {
-		this.name = name;
-		this.tableColumns = new ArrayList<Pair<String, SqlTypeName>>();
+		this(name, null);
 	}
 
 	/// Add a column with the given type
@@ -63,7 +71,7 @@ public class DaskTable implements TranslatableTable {
 	/// calcite method: statistics of this table (not implemented)
 	@Override
 	public Statistic getStatistic() {
-		return Statistics.UNKNOWN;
+		return this.statistics;
 	}
 
 	/// calcite method: the type -> it is a table
@@ -89,5 +97,18 @@ public class DaskTable implements TranslatableTable {
 	public RelNode toRel(ToRelContext context, RelOptTable relOptTable) {
 		RelTraitSet traitSet = context.getCluster().traitSet();
 		return new LogicalTableScan(context.getCluster(), traitSet, context.getTableHints(), relOptTable);
+	}
+
+	private final class DaskStatistics implements Statistic {
+		private final Double rowCount;
+
+		public DaskStatistics(final Double rowCount) {
+			this.rowCount = rowCount;
+		}
+
+		@Override
+		public Double getRowCount() {
+			return this.rowCount;
+		}
 	}
 }

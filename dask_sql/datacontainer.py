@@ -181,10 +181,22 @@ class DataContainer:
         return df[self.column_container.columns]
 
 
+class Statistics:
+    """
+    Statistics are used during the cost-based optimization.
+    Currently, only the row count is supported, more
+    properties might follow. It needs to be provided by the user.
+    """
+
+    def __init__(self, row_count: int) -> None:
+        self.row_count = row_count
+
+
 class SchemaContainer:
     def __init__(self, name: str):
         self.__name__ = name
         self.tables: Dict[str, DataContainer] = {}
+        self.statistics: Dict[str, Statistics] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, Callable] = {}

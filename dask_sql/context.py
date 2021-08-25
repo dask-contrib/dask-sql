@@ -11,7 +11,12 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
+from dask_sql.datacontainer import (
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+    Statistics,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import com, get_java_class, org
@@ -116,6 +121,7 @@ class Context:
         format: str = None,
         persist: bool = True,
         schema_name: str = None,
+        statistics: Statistics = None,
         **kwargs,
     ):
         """
@@ -176,6 +182,9 @@ class Context:
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to false to turn off loading the file data directly into memory.
+            schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
+                statistics are provided, we will just assume 100 rows.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -193,6 +202,8 @@ class Context:
             **kwargs,
         )
         self.schema[schema_name].tables[table_name.lower()] = dc
+        if statistics:
+            self.schema[schema_name].statistics[table_name.lower()] = statistics
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -641,7 +652,14 @@ class Context:
                 logger.warning("No tables are registered.")
 
             for name, dc in schema.tables.items():
-                table = DaskTable(name)
+                row_count = (
+                    schema.statistics[name].row_count
+                    if name in schema.statistics
+                    else None
+                )
+                if row_count is not None:
+                    row_count = float(row_count)
+                table = DaskTable(name, row_count)
                 df = dc.df
                 logger.debug(
                     f"Adding table '{name}' to schema with columns: {list(df.columns)}"
