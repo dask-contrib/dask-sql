@@ -43,7 +43,7 @@ public class DaskSqlToRelConverter {
         final CalciteCatalogReader calciteCatalogReader = createCatalogReader(rootSchemaName, rootSchema, typeFactory);
         final SqlValidator validator = createValidator(typeFactory, calciteCatalogReader);
         final RelOptCluster cluster = RelOptCluster.create(optimizer, new RexBuilder(typeFactory));
-        final SqlToRelConverter.Config config = SqlToRelConverter.config().withTrimUnusedFields(true).withExpand(false);
+        final SqlToRelConverter.Config config = SqlToRelConverter.config().withTrimUnusedFields(true).withExpand(true);
 
         this.sqlToRelConverter = new SqlToRelConverter(null, validator, calciteCatalogReader, cluster,
                 StandardConvertletTable.INSTANCE, config);
