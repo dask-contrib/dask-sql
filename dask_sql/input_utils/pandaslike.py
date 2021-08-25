@@ -18,6 +18,25 @@ class PandasLikeInputPlugin(BaseInputPlugin):
         is_cudf_type = cudf and isinstance(input_item, cudf.DataFrame)
         return is_cudf_type or isinstance(input_item, pd.DataFrame) or format == "dask"
 
-    def to_dc(self, input_item, table_name: str, format: str = None, **kwargs):
+    def to_dc(
+        self,
+        input_item,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
+    ):
         npartitions = kwargs.pop("npartitions", 1)
-        return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
+        if gpu:  # pragma: no cover
+            import dask_cudf
+
+            if isinstance(input_item, pd.DataFrame):
+                return dask_cudf.from_cudf(
+                    cudf.from_pandas(input_item), npartitions=npartitions, **kwargs,
+                )
+            else:
+                return dask_cudf.from_cudf(
+                    input_item, npartitions=npartitions, **kwargs,
+                )
+        else:
+            return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
