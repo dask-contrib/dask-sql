@@ -122,6 +122,7 @@ class Context:
         persist: bool = True,
         schema_name: str = None,
         statistics: Statistics = None,
+        gpu: bool = False,
         **kwargs,
     ):
         """
@@ -185,6 +186,8 @@ class Context:
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
             statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
                 statistics are provided, we will just assume 100 rows.
+            gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
+                Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -199,6 +202,7 @@ class Context:
             table_name=table_name,
             format=format,
             persist=persist,
+            gpu=gpu,
             **kwargs,
         )
         self.schema[schema_name].tables[table_name.lower()] = dc
