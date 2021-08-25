@@ -18,8 +18,16 @@ import org.apache.calcite.rel.rules.DateRangeRules;
 import org.apache.calcite.rel.rules.JoinPushThroughJoinRule;
 import org.apache.calcite.rel.rules.PruneEmptyRules;
 
+/**
+ * DaskPlanner is a cost-based optimizer based on the Calcite VolcanoPlanner.
+ *
+ * Its only difference to the raw Volcano planner, are the predefined rules (for
+ * converting logical into dask nodes and some basic core rules so far), as well
+ * as the null executor.
+ */
 public class DaskPlanner extends VolcanoPlanner {
     public DaskPlanner() {
+        // Allow transformation between logical and dask nodes
         addRule(DaskAggregateRule.INSTANCE);
         addRule(DaskFilterRule.INSTANCE);
         addRule(DaskJoinRule.INSTANCE);
@@ -31,7 +39,7 @@ public class DaskPlanner extends VolcanoPlanner {
         addRule(DaskValuesRule.INSTANCE);
         addRule(DaskWindowRule.INSTANCE);
 
-        // TODO
+        // Set of core rules
         addRule(PruneEmptyRules.UNION_INSTANCE);
         addRule(PruneEmptyRules.INTERSECT_INSTANCE);
         addRule(PruneEmptyRules.MINUS_INSTANCE);

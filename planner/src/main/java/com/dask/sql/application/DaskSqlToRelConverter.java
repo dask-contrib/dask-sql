@@ -32,6 +32,11 @@ import org.apache.calcite.sql.validate.SqlValidatorImpl;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
 
+/**
+ * DaskSqlToRelConverter turns a tree of SqlNodes into a first, suboptimal
+ * version of relational algebra nodes. It needs to know about all the tables
+ * and schemas, therefore the configuration looks a bit more complicated.
+ */
 public class DaskSqlToRelConverter {
     private final SqlToRelConverter sqlToRelConverter;
 

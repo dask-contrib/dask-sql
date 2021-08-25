@@ -6,6 +6,10 @@ import java.util.List;
 
 import com.dask.sql.schema.DaskSchema;
 
+/**
+ * RelationalAlgebraGeneratorBuilder is a Builder-pattern to make creating a
+ * RelationalAlgebraGenerator easier from Python.
+ */
 public class RelationalAlgebraGeneratorBuilder {
 	private final String rootSchemaName;
 	private final List<DaskSchema> schemas;

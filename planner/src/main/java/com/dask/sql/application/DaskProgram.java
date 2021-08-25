@@ -19,18 +19,27 @@ import org.apache.calcite.tools.Program;
 import org.apache.calcite.tools.Programs;
 import org.apache.calcite.tools.RelBuilder;
 
+/**
+ * DaskProgram is the optimization program which is executed on a tree of
+ * relational algebras.
+ *
+ * It consists of five steps: decorrelation, trimming (removing unneeded
+ * fields), executing a fixed set of rules, converting into the correct trait
+ * (which means in our case: from logical to dask) and finally a cost-based
+ * optimization.
+ */
 public class DaskProgram {
     private final Program mainProgram;
 
     public DaskProgram(RelOptPlanner planner) {
         final DecorrelateProgram decorrelateProgram = new DecorrelateProgram();
         final TrimFieldsProgram trimProgram = new TrimFieldsProgram();
-        final PreOptimizationProgram preOptimizeProgram = new PreOptimizationProgram();
+        final FixedRulesProgram fixedRulesProgram = new FixedRulesProgram();
         final ConvertProgram convertProgram = new ConvertProgram(planner);
-        final OptimizeProgram volcanoProgram = new OptimizeProgram(planner);
+        final CostBasedOptimizationProgram costBasedOptimizationProgram = new CostBasedOptimizationProgram(planner);
 
-        this.mainProgram = Programs.sequence(decorrelateProgram, trimProgram, preOptimizeProgram, convertProgram,
-                volcanoProgram);
+        this.mainProgram = Programs.sequence(decorrelateProgram, trimProgram, fixedRulesProgram, convertProgram,
+                costBasedOptimizationProgram);
     }
 
     public RelNode run(RelNode rel) {
@@ -38,6 +47,10 @@ public class DaskProgram {
         return this.mainProgram.run(null, rel, desiredTraits, List.of(), List.of());
     }
 
+    /**
+     * DaskProgramWrapper is a helper for auto-filling unneeded arguments in
+     * Programs
+     */
     private static interface DaskProgramWrapper extends Program {
         public RelNode run(RelNode rel, RelTraitSet relTraitSet);
 
@@ -48,6 +61,9 @@ public class DaskProgram {
         }
     }
 
+    /**
+     * DecorrelateProgram decorrelates a query, by tunring them into e.g. JOINs
+     */
     private static class DecorrelateProgram implements DaskProgramWrapper {
         @Override
         public RelNode run(RelNode rel, RelTraitSet relTraitSet) {
@@ -56,6 +72,9 @@ public class DaskProgram {
         }
     }
 
+    /**
+     * TrimFieldsProgram removes unneeded fields from the REL steps
+     */
     private static class TrimFieldsProgram implements DaskProgramWrapper {
         public RelNode run(RelNode rel, RelTraitSet relTraitSet) {
             final RelBuilder relBuilder = RelFactories.LOGICAL_BUILDER.create(rel.getCluster(), null);
@@ -63,23 +82,31 @@ public class DaskProgram {
         }
     }
 
-    private static class PreOptimizationProgram implements Program {
+    /**
+     * FixedRulesProgram applies a fixed set of conversion rules, which we always
+     */
+    private static class FixedRulesProgram implements Program {
+        static private final List<RelOptRule> RULES = List.of(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
+                CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS, CoreRules.AGGREGATE_PROJECT_MERGE,
+                CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
+                CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
+                CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE, CoreRules.PROJECT_REMOVE,
+                CoreRules.PROJECT_REDUCE_EXPRESSIONS, CoreRules.FILTER_REDUCE_EXPRESSIONS,
+                CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM, CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
+
         @Override
         public RelNode run(RelOptPlanner planner, RelNode rel, RelTraitSet requiredOutputTraits,
                 List<RelOptMaterialization> materializations, List<RelOptLattice> lattices) {
 
-            List<RelOptRule> rules = List.of(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
-                    CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS, CoreRules.AGGREGATE_PROJECT_MERGE,
-                    CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
-                    CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
-                    CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE, CoreRules.PROJECT_REMOVE,
-                    CoreRules.PROJECT_REDUCE_EXPRESSIONS, CoreRules.FILTER_REDUCE_EXPRESSIONS,
-                    CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM, CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
-            Program preOptimizeProgram = Programs.hep(rules, true, DefaultRelMetadataProvider.INSTANCE);
-            return preOptimizeProgram.run(planner, rel, requiredOutputTraits, materializations, lattices);
+            Program fixedRulesProgram = Programs.hep(RULES, true, DefaultRelMetadataProvider.INSTANCE);
+            return fixedRulesProgram.run(planner, rel, requiredOutputTraits, materializations, lattices);
         }
     }
 
+    /**
+     * ConvertProgram marks the rel as "to-be-converted-into-the-dask-trait" by the
+     * upcoming volcano planner.
+     */
     private static class ConvertProgram implements DaskProgramWrapper {
         private RelOptPlanner planner;
 
@@ -100,10 +127,14 @@ public class DaskProgram {
         }
     }
 
-    private static class OptimizeProgram implements DaskProgramWrapper {
+    /**
+     * CostBasedOptimizationProgram applies a cost-based optimization, which can
+     * take the size of the inputs into account (not implemented now).
+     */
+    private static class CostBasedOptimizationProgram implements DaskProgramWrapper {
         private RelOptPlanner planner;
 
-        public OptimizeProgram(RelOptPlanner planner) {
+        public CostBasedOptimizationProgram(RelOptPlanner planner) {
             this.planner = planner;
         }
 

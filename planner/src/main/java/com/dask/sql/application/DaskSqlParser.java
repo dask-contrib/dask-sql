@@ -5,6 +5,10 @@ import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.validate.SqlConformanceEnum;
 
+/**
+ * DaskSqlParser can turn a SQL string into a tree of SqlNodes. It uses the
+ * SqlParser from calcite for this.
+ */
 public class DaskSqlParser {
     private static SqlParser.Config DEFAULT_CONFIG = DaskSqlDialect.DEFAULT.configureParser(SqlParser.Config.DEFAULT)
             .withConformance(SqlConformanceEnum.DEFAULT).withParserFactory(new DaskSqlParserImplFactory());
