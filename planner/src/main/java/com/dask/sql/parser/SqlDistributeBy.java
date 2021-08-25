@@ -82,4 +82,16 @@ public class SqlDistributeBy
 //            writer.endList(frame);
         }
     }
+
+    public List<SqlNode> getSelectList() {
+        return selectList;
+    }
+
+    public SqlNodeList getDistributeList() {
+        return distributeList;
+    }
+
+    public SqlIdentifier getTableName() {
+        return tableName;
+    }
 }
