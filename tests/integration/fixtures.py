@@ -224,7 +224,9 @@ def temporary_data_file():
 
 
 @pytest.fixture()
-def assert_query_gives_same_result(engine):
+def assert_query_gives_same_result(
+    engine, user_table_lk, user_table_lk2, user_table_ts, user_table_pn,
+):
     np.random.seed(42)
 
     df1 = dd.from_pandas(
@@ -281,12 +283,22 @@ def assert_query_gives_same_result(engine):
     c.create_table("df1", df1)
     c.create_table("df2", df2)
     c.create_table("df3", df3)
+    c.create_table("user_table_ts", user_table_ts)
+    c.create_table("user_table_pn", user_table_pn)
+    c.create_table("user_table_lk", user_table_lk)
+    c.create_table("user_table_lk2", user_table_lk2)
 
     df1.compute().to_sql("df1", engine, index=False, if_exists="replace")
     df2.compute().to_sql("df2", engine, index=False, if_exists="replace")
     df3.compute().to_sql("df3", engine, index=False, if_exists="replace")
+    user_table_ts.to_sql("user_table_ts", engine, index=False, if_exists="replace")
+    user_table_pn.to_sql("user_table_pn", engine, index=False, if_exists="replace")
+    user_table_lk.to_sql("user_table_lk", engine, index=False, if_exists="replace")
+    user_table_lk2.to_sql("user_table_lk2", engine, index=False, if_exists="replace")
 
-    def _assert_query_gives_same_result(query, sort_columns=None, **kwargs):
+    def _assert_query_gives_same_result(
+        query, sort_columns=None, force_dtype=None, check_dtype=False, **kwargs,
+    ):
         sql_result = pd.read_sql_query(query, engine)
         dask_result = c.sql(query).compute()
 
@@ -301,7 +313,15 @@ def assert_query_gives_same_result(engine):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
+        # Change dtypes
+        if force_dtype == "sql":
+            for col, dtype in sql_result.dtypes.iteritems():
+                dask_result[col] = dask_result[col].astype(dtype)
+        elif force_dtype == "dask":
+            for col, dtype in dask_result.dtypes.iteritems():
+                sql_result[col] = sql_result[col].astype(dtype)
+
+        assert_frame_equal(sql_result, dask_result, check_dtype=check_dtype, **kwargs)
 
     return _assert_query_gives_same_result
 
