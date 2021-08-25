@@ -30,8 +30,13 @@ class PandasLikeInputPlugin(BaseInputPlugin):
         if gpu:  # pragma: no cover
             import dask_cudf
 
-            return dask_cudf.from_cudf(
-                cudf.from_pandas(input_item), npartitions=npartitions, **kwargs,
-            )
+            if isinstance(input_item, pd.DataFrame):
+                return dask_cudf.from_cudf(
+                    cudf.from_pandas(input_item), npartitions=npartitions, **kwargs,
+                )
+            else:
+                return dask_cudf.from_cudf(
+                    input_item, npartitions=npartitions, **kwargs,
+                )
         else:
             return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
