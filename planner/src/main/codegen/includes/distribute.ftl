@@ -14,7 +14,7 @@ SqlNode SqlDistributeBy():
         selectList = SelectList()
         <FROM> tableName = CompoundTableIdentifier() <DISTRIBUTE> <BY> distributeList = SelectList()
         {
-            return new SqlDistributeBy(s.end(this), selectList, tableName, distributeList);
+            return new SqlDistributeBy(s.end(this), new SqlNodeList(selectList, Span.of(selectList).pos()), tableName, new SqlNodeList(distributeList, Span.of(distributeList).pos()));
         }
     |
         stmt = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
