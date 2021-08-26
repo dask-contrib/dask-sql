@@ -1,5 +1,6 @@
 package com.dask.sql.application;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.dask.sql.nodes.DaskRel;
@@ -44,7 +45,7 @@ public class DaskProgram {
 
     public RelNode run(RelNode rel) {
         final RelTraitSet desiredTraits = rel.getTraitSet().replace(DaskRel.CONVENTION).simplify();
-        return this.mainProgram.run(null, rel, desiredTraits, List.of(), List.of());
+        return this.mainProgram.run(null, rel, desiredTraits, Arrays.asList(), Arrays.asList());
     }
 
     /**
@@ -86,7 +87,7 @@ public class DaskProgram {
      * FixedRulesProgram applies a fixed set of conversion rules, which we always
      */
     private static class FixedRulesProgram implements Program {
-        static private final List<RelOptRule> RULES = List.of(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
+        static private final List<RelOptRule> RULES = Arrays.asList(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
                 CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS, CoreRules.AGGREGATE_PROJECT_MERGE,
                 CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
                 CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
