@@ -14,7 +14,7 @@ data: {
     # Default taken from the calcite jar (see pom.xml)
     default: tdd("../default_config.fmpp")
     parser: {
-      # Defines how the new grammer will be named (after compilation)
+      # Defines how the new grammar will be named (after compilation)
       package: "com.dask.sql.parser",
       class: "DaskSqlParserImpl",
 
