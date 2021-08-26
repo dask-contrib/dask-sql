@@ -162,12 +162,13 @@ class IntDivisionOperator(Operation):
         # For some reasons, Calcite decides to represent
         # 1000µs as 1000µs * 1000 / 1000
         # We do not need to truncate in this case
+        # So far, I did not spot any other occurrence
+        # of this function.
         if isinstance(result, datetime.timedelta):
             return result
-
-        result = da.trunc(result)
-
-        return result
+        else:  # pragma: no cover
+            result = da.trunc(result)
+            return result
 
 
 class CaseOperation(Operation):
@@ -215,7 +216,7 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):
+        if not is_frame(operand):  # pragma: no cover
             return operand
 
         output_type = str(rex.getType())

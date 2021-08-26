@@ -33,8 +33,7 @@ class DaskLimitPlugin(BaseRelPlugin):
             if offset:
                 end += offset
 
-        if offset is not None or end is not None:
-            df = self._apply_offset(df, offset, end)
+        df = self._apply_offset(df, offset, end)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again

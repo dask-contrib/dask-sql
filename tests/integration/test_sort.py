@@ -304,3 +304,8 @@ def test_limit(c, long_table):
     df_result = df_result.compute()
 
     assert_frame_equal(df_result, long_table.iloc[101 : 101 + 101])
+
+    df_result = c.sql("SELECT * FROM long_table OFFSET 101")
+    df_result = df_result.compute()
+
+    assert_frame_equal(df_result, long_table.iloc[101:])
