@@ -35,7 +35,17 @@ class HiveInputPlugin(BaseInputPlugin):
 
         return is_sqlalchemy_hive or is_hive_cursor or format == "hive"
 
-    def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
+    def to_dc(
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
+    ):
+        if gpu:  # pragma: no cover
+            raise Exception("Hive does not support gpu")
+
         table_name = kwargs.pop("hive_table_name", table_name)
         schema = kwargs.pop("hive_schema_name", "default")
 
