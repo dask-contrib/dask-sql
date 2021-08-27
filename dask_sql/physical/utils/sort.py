@@ -5,6 +5,15 @@ import pandas as pd
 
 from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
 
+def multi_col_sort(
+    df: dd.DataFrame,
+    sort_columns: List[str],
+    sort_ascending: List[bool],
+    sort_null_first: List[bool],
+) -> dd.DataFrame:
+
+    df = df.sort_values(sort_columns)
+    return df.persist()
 
 def apply_sort(
     df: dd.DataFrame,
@@ -12,6 +21,19 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
+
+    # Try fast path for multi-column sorting before falling back to
+    # sort_partition_func.  Tools like dask-cudf have a limited but fast
+    # multi-column sort implementation.  We check if any sorting/null sorting
+    # is required.  If so, we fall back to default sorting implementation
+    if any(sort_null_first) is False and all(sort_ascending) is True:
+        try:
+            return multi_col_sort(df, sort_columns, sort_ascending,
+                    sort_null_first)
+        except NotImplementedError:
+            pass
+
+
     # Split the first column. We need to handle this one with set_index
     first_sort_column = sort_columns[0]
     first_sort_ascending = sort_ascending[0]
