@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-
 pytest.importorskip("dask_ml")
+
 
 def check_trained_model(c, model_name=None):
     if model_name is None:
