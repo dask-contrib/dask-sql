@@ -78,12 +78,11 @@ data: {
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
+         "ExpressionOrPredict()"
          "SqlAnalyzeTable()"
          "SqlShowColumns()"
          "SqlShowSchemas()"
          "SqlShowTables()"
-         "SqlDistributeBy()"
-         "SqlPredictModel()"
          "SqlShowModels()"
          "SqlDescribeTableOrModel()"
          "SqlExportModel()"
@@ -111,6 +110,7 @@ data: {
         "show.ftl"
         "utils.ftl"
         "distribute.ftl"
+        "root.ftl"
       ]
     }
 }
