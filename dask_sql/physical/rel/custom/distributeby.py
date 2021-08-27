@@ -1,3 +1,4 @@
+from dask_sql.utils import LoggableDataFrame
 import logging
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
@@ -20,18 +21,17 @@ class DistributeByPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        select_list = sql.getSelectList().toString().replace("`", "")
-        table = sql.getTableName()
-        distribute_list = sql.getDistributeList().toString().replace("`", "")
+        select = sql.getSelect()
+        distribute_list = [str(col) for col in sql.getDistributeList()]
 
-        # Hardcoded testing here, need to make changes to Java grammar parser to remove this.
-        select_query = context._to_sql_string(
-            "SELECT " + str(select_list) + " FROM " + str(table)
-        )
-        df = context.sql(select_query)
+        sql_select_query = context._to_sql_string(select)
+        df = context.sql(sql_select_query)
+        logger.debug(f"Extracted sub-dataframe as {LoggableDataFrame(df)}")
+
+        logger.debug(f"Will now shuffle according to {distribute_list}")
 
         # Perform the distribute by operation via a Dask shuffle
-        df = df.shuffle(str(distribute_list))
+        df = df.shuffle(distribute_list)
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(df, cc)

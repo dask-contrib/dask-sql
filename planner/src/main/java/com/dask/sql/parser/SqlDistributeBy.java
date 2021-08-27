@@ -8,31 +8,20 @@ import java.util.List;
 public class SqlDistributeBy
         extends SqlCall {
 
-    public final SqlNodeList selectList;
     public final SqlNodeList distributeList;
-    public final SqlIdentifier tableName;
+    final SqlNode select;
 
     public SqlDistributeBy(SqlParserPos pos,
-                           SqlNodeList selectList,
-                           SqlIdentifier tableName,
+                           SqlNode select,
                            SqlNodeList distributeList) {
         super(pos);
-        this.selectList = selectList;
-        this.tableName = tableName;
+        this.select = select;
         this.distributeList = distributeList;
     }
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword("SELECT");
-
-        final SqlNodeList selectClause = this.selectList != null ? this.selectList
-                : SqlNodeList.of(SqlIdentifier.star(SqlParserPos.ZERO));
-        writer.list(SqlWriter.FrameTypeEnum.SELECT_LIST, SqlWriter.COMMA, selectClause);
-
-        writer.keyword("FROM");
-        writer.keyword(this.tableName.getSimple());
-
+        this.select.unparse(writer, leftPrec, rightPrec);
         writer.keyword("DISTRIBUTE BY");
         writer.list(SqlWriter.FrameTypeEnum.ORDER_BY_LIST, SqlWriter.COMMA, this.distributeList);
     }
@@ -48,15 +37,11 @@ public class SqlDistributeBy
         throw new UnsupportedOperationException();
     }
 
-    public List<SqlNode> getSelectList() {
-        return selectList;
+    public SqlNode getSelect() {
+        return this.select;
     }
 
     public SqlNodeList getDistributeList() {
-        return distributeList;
-    }
-
-    public SqlIdentifier getTableName() {
-        return tableName;
+        return this.distributeList;
     }
 }
