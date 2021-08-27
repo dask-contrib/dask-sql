@@ -5,6 +5,7 @@ import pandas as pd
 
 from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
 
+
 def multi_col_sort(
     df: dd.DataFrame,
     sort_columns: List[str],
@@ -14,6 +15,7 @@ def multi_col_sort(
 
     df = df.sort_values(sort_columns)
     return df.persist()
+
 
 def apply_sort(
     df: dd.DataFrame,
@@ -28,11 +30,9 @@ def apply_sort(
     # is required.  If so, we fall back to default sorting implementation
     if any(sort_null_first) is False and all(sort_ascending) is True:
         try:
-            return multi_col_sort(df, sort_columns, sort_ascending,
-                    sort_null_first)
+            return multi_col_sort(df, sort_columns, sort_ascending, sort_null_first)
         except NotImplementedError:
             pass
-
 
     # Split the first column. We need to handle this one with set_index
     first_sort_column = sort_columns[0]
