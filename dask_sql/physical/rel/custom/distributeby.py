@@ -1,9 +1,9 @@
-from dask_sql.utils import LoggableDataFrame
 import logging
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import LoggableDataFrame
 
 logger = logging.getLogger(__name__)
 
