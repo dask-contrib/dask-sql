@@ -78,39 +78,42 @@ data: {
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
-         "ExpressionOrPredict()"
-         "SqlAnalyzeTable()"
-         "SqlShowColumns()"
-         "SqlShowSchemas()"
-         "SqlShowTables()"
-         "SqlShowModels()"
-         "SqlDescribeTableOrModel()"
-         "SqlExportModel()"
-         "SqlUseSchema()"
+         "SqlAnalyzeTable()",
+         "SqlShowColumns()",
+         "SqlShowSchemas()",
+         "SqlShowTables()",
+         "SqlShowModels()",
+         "SqlDescribeTableOrModel()",
+         "SqlExportModel()",
+         "SqlUseSchema()",
+         # has to go to the bottom, otherwise
+         # its catch-all ExpressionOrQuery will
+         # be the default parsing branch
+         "ExpressionOrPredict()",
       ]
 
       createStatementParserMethods: [
-         "SqlCreateModel"
-         "SqlCreateTable"
-         "SqlCreateView"
-         "SqlCreateExperiment"
-         "SqlCreateSchema"
+         "SqlCreateModel",
+         "SqlCreateTable",
+         "SqlCreateView",
+         "SqlCreateExperiment",
+         "SqlCreateSchema",
       ]
 
       dropStatementParserMethods: [
-         "SqlDropModel"
-         "SqlDropTable"
-         "SqlDropSchema"
+         "SqlDropModel",
+         "SqlDropTable",
+         "SqlDropSchema",
       ]
 
       # location of the implementation
       implementationFiles: [
-        "create.ftl"
-        "model.ftl"
-        "show.ftl"
-        "utils.ftl"
-        "distribute.ftl"
-        "root.ftl"
+        "create.ftl",
+        "model.ftl",
+        "show.ftl",
+        "utils.ftl",
+        "distribute.ftl",
+        "root.ftl",
       ]
     }
 }
