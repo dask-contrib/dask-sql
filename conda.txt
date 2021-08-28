@@ -7,6 +7,7 @@ openjdk>=8
 maven>=3.6.0
 pytest>=6.0.1
 pytest-cov>=2.10.1
+pytest-xdist
 mock>=4.0.3
 sphinx>=3.2.1
 tzlocal>=2.1
