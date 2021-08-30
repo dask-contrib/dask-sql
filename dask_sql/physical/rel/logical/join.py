@@ -5,9 +5,6 @@ from functools import reduce
 from typing import List, Tuple
 
 import dask.dataframe as dd
-
-# Need pd.NA
-import pandas as pd
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
@@ -95,32 +92,12 @@ class LogicalJoinPlugin(BaseRelPlugin):
         # 4. dask can only merge on the same column names.
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
-        # Add two columns (1,2,...) to keep track of observations in left and
-        # right tables. They must be at the end of the columns since
-        # _join_on_columns needs the relative order of columns (lhs_on and rhs_on)
-        # Only dask-supported functions are used (assign and cumsum) so that a
-        # compute() is not triggered.
-        df_lhs_renamed = df_lhs_renamed.assign(left_idx=1)
-        df_lhs_renamed = df_lhs_renamed.assign(
-            left_idx=df_lhs_renamed["left_idx"].cumsum()
-        )
-        df_rhs_renamed = df_rhs_renamed.assign(right_idx=1)
-        df_rhs_renamed = df_rhs_renamed.assign(
-            right_idx=df_rhs_renamed["right_idx"].cumsum()
-        )
-
         if lhs_on:
             # 5. Now we can finally merge on these columns
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
-            # Need the indicator for left/right join
             df = self._join_on_columns(
-                df_lhs_renamed,
-                df_rhs_renamed,
-                lhs_on,
-                rhs_on,
-                join_type,
-                indicator=True,
+                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
             )
         else:
             # 5. We are in the complex join case
@@ -139,7 +116,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
+                # Need to drop "common" here, otherwise metadata mismatches
+                merged_data = lhs_partition.merge(rhs_partition, on=["common"]).drop(
+                    columns=["common"]
+                )
 
                 return merged_data
 
@@ -171,28 +151,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 ResourceWarning,
             )
 
-            # Add _merge to be consistent with the case lhs_on=True
-            df["_merge"] = "both"
-            df["_merge"] = df["_merge"].astype("category")
-        # Put newly added columns to the end
-        df = df[
-            df.columns.drop("left_idx").insert(
-                df.columns.get_loc("right_idx") - 1, "left_idx"
-            )
-        ]
-
-        # Completely reset index to uniquely identify each row since there
-        # could be duplicates. (Yeah. It may be better to inform users that
-        # index will break. After all, it is expected to be broken since the
-        # number of rows changes.
-        df = df.assign(uniqid=1)
-        df = df.assign(uniqid=df["uniqid"].cumsum()).set_index("uniqid")
-
         # 6. So the next step is to make sure
         # we have the correct column order (and to remove the temporary join columns)
-        # Need to exclude temporary columns left_idx and right_idx
-        correct_column_order = list(df_lhs_renamed.columns.drop("left_idx")) + list(
-            df_rhs_renamed.columns.drop("right_idx")
+        correct_column_order = list(df_lhs_renamed.columns) + list(
+            df_rhs_renamed.columns
         )
         cc = ColumnContainer(df.columns).limit_to(correct_column_order)
 
@@ -218,92 +180,22 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     for rex in filter_condition
                 ],
             )
-            # Three cases to deal with inequality conditions (left join as an example):
-            # Case 1 [eq_unmatched] (Not matched by equality):
-            #     Left-only from equality join (_merge=='left_only')
-            #     => Keep all
-            # Case 2 [ineq_unmatched] (Not matched by inequality):
-            #     For unique left_idx, there are no True in filter_condition
-            #     => Set values from right/left table to missing (NaN or NaT)
-            #     => Keep 1 copy and drop duplicates over left_idx (there could
-            #         be duplicates now due to equality match).
-            # Case 3 (Matched by inequality):
-            #     For unique left_idx, there are 1 or more True in filter_condition
-            #     => Keep obs with True in filter_condition
-            # This has to be added to df since partition will break the groupby
-            df["filter_condition"] = filter_condition
-            if join_type in ["left", "right"]:
-                # ----- Case 1 (Not matched by equality)
-                if join_type == "left":
-                    # Flag obs unmatched in equality join
-                    df["eq_unmatched"] = df["_merge"] == "left_only"
-                    idx_varname = "left_idx"
-                    other_varpre = "rhs_"
-                else:
-                    # Flag obs unmatched in equality join
-                    df["eq_unmatched"] = df["_merge"] == "right_only"
-                    idx_varname = "right_idx"
-                    other_varpre = "lhs_"
-
-                # ----- Case 2 (Not matched by inequality)
-
-                # Set NA (pd.NA)
-                # Flag obs not matched by inequality
+            logger.debug(f"Additionally applying filter {filter_condition}")
+            df = filter_or_scalar(df, filter_condition)
+            # make sure we recover any lost rows in case of left, right or outer joins
+            if join_type in ["left", "outer"]:
                 df = df.merge(
-                    (df.groupby(idx_varname)["filter_condition"].agg("sum") < 1)
-                    .rename("ineq_unmatched")
-                    .to_frame(),
-                    left_on=idx_varname,
-                    right_index=True,
-                    how="left",
+                    df_lhs_renamed, on=list(df_lhs_renamed.columns), how="right"
                 )
-                # Assign pd.NA
-                for v in df.columns[df.columns.str.startswith(other_varpre)]:
-                    df[v] = df[v].mask(
-                        df["ineq_unmatched"] & (~df["eq_unmatched"]), pd.NA
-                    )
-
-                # Drop duplicates
-                # Flag the first obs for each unique left_idx
-                # (or right_idx for right join) in order to remove duplicates
+            elif join_type in ["right", "outer"]:
                 df = df.merge(
-                    df[[idx_varname]]
-                    .drop_duplicates()
-                    .assign(first_elem=True)
-                    .drop(columns=[idx_varname]),
-                    left_index=True,
-                    right_index=True,
-                    how="left",
+                    df_rhs_renamed, on=list(df_rhs_renamed.columns), how="right"
                 )
-                df["first_elem"] = df["first_elem"].fillna(False)
-
-                # ----- The full condition to keep observations
-                filter_condition_all = (
-                    df["filter_condition"]
-                    | df["eq_unmatched"]
-                    | (df["ineq_unmatched"] & df["first_elem"])
-                )
-                # Drop added temporary columns
-                df = df.drop(
-                    columns=[
-                        "left_idx",
-                        "right_idx",
-                        "_merge",
-                        "filter_condition",
-                        "eq_unmatched",
-                        "ineq_unmatched",
-                        "first_elem",
-                    ]
-                )
-            elif join_type == "inner":
-                filter_condition_all = filter_condition
-                # TODO: Full Join
-
-            logger.debug(f"Additionally applying filter {filter_condition_all}")
-            df = filter_or_scalar(df, filter_condition_all)
-            # Reset index (maybe notify users that dask-sql may break index)
-            df = df.reset_index(drop=True)
             dc = DataContainer(df, cc)
+            # Caveat: columns of int may be casted to float if NaN is introduced
+            # for unmatched rows. Since we don't know which column would be casted
+            # without triggering compute(), we have to either leave it alone, or
+            # forcibly cast all int to nullable int.
 
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
@@ -315,7 +207,6 @@ class LogicalJoinPlugin(BaseRelPlugin):
         lhs_on: List[str],
         rhs_on: List[str],
         join_type: str,
-        indicator: bool = False,
     ) -> dd.DataFrame:
         lhs_columns_to_add = {
             f"common_{i}": df_lhs_renamed.iloc[:, index]
@@ -347,13 +238,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(
-            df_lhs_with_tmp,
-            df_rhs_with_tmp,
-            on=added_columns,
-            how=join_type,
-            indicator=indicator,
-        )
+        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
 
         return df
 
