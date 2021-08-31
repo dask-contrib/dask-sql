@@ -1,6 +1,7 @@
 from typing import List
 
 import dask.dataframe as dd
+import dask_cudf
 import pandas as pd
 
 from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
@@ -28,10 +29,14 @@ def apply_sort(
     # sort_partition_func.  Tools like dask-cudf have a limited but fast
     # multi-column sort implementation.  We check if any sorting/null sorting
     # is required.  If so, we fall back to default sorting implementation
-    if any(sort_null_first) is False and all(sort_ascending) is True:
+    if (
+        isinstance(df, dask_cudf.DataFrame)
+        and all(sort_ascending)
+        and not any(sort_null_first)
+    ):
         try:
             return multi_col_sort(df, sort_columns, sort_ascending, sort_null_first)
-        except NotImplementedError:
+        except ValueError:
             pass
 
     # Split the first column. We need to handle this one with set_index
