@@ -246,8 +246,14 @@ def test_sort_with_nan_many_partitions():
                 "b": [1] * 10 + [2] * 10 + [3] * 10 + [1] * 10 + [2] * 10 + [3] * 10,
             }
         ),
-        check_names=False,
     )
+
+    df = pd.DataFrame({"a": [float("nan"), 1] * 30})
+    c.create_table("df", dd.from_pandas(df, npartitions=10))
+
+    df_result = c.sql("SELECT * FROM df ORDER BY a").compute().reset_index(drop=True)
+
+    assert_frame_equal(df_result, pd.DataFrame({"a": [1] * 30 + [float("nan")] * 30,}))
 
 
 def test_sort_strings(c):

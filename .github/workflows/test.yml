@@ -115,7 +115,9 @@ jobs:
           # This needs to happen in the same
           # shell, because otherwise the JAVA_HOME
           # will be wrong on windows
-          pytest --junitxml=junit/test-results.xml --cov-report=xml tests
+          # The --dist loadfile makes sure, that tests are distributed according to their file
+          # this is especially important to not run the docker-fixtures more than once
+          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
         uses: actions/upload-artifact@v1
         with:

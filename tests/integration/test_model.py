@@ -5,7 +5,8 @@ import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from mock import MagicMock
+
+pytest.importorskip("dask_ml")
 
 
 def check_trained_model(c, model_name=None):
