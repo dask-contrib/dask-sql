@@ -1,12 +1,15 @@
 import logging
+import os
 import sys
+import tempfile
 import traceback
 from argparse import ArgumentParser
 from functools import partial
+from typing import Union
 
 import pandas as pd
 from dask.datasets import timeseries
-from dask.distributed import Client
+from dask.distributed import Client, as_completed
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
@@ -41,9 +44,12 @@ class CompatiblePromptSession:
     """
 
     def __init__(self, lexer) -> None:  # pragma: no cover
+        # make sure everytime dask-sql  uses same history file
         kwargs = {
             "lexer": lexer,
-            "history": FileHistory("dask-sql-history"),
+            "history": FileHistory(
+                os.path.join(tempfile.gettempdir(), "dask-sql-history")
+            ),
             "auto_suggest": AutoSuggestFromHistory(),
             "completer": meta_command_completer,
         }
@@ -60,61 +66,84 @@ class CompatiblePromptSession:
             self.prompt = partial(prompt, **kwargs)
 
 
-def display_markdown(content, **kwargs):
+def _display_markdown(content, **kwargs):
     df = pd.DataFrame(content, **kwargs)
     print(df.to_markdown(tablefmt="fancy_grid"))
-    return True
 
 
-def parse_meta_command(sql):
+def _parse_meta_command(sql):
     command, _, arg = sql.partition(" ")
-    command = command.strip().replace("+", "")
     return command, arg.strip()
 
 
-def meta_commands(sql: str, context: Context, client: Client) -> bool:
+def _meta_commands(sql: str, context: Context, client: Client) -> Union[bool, Client]:
     """
      parses metacommands and prints their result
      returns True if meta commands detected
     """
-    cmd, schema_name = parse_meta_command(sql)
-    if schema_name == "":
-        schema_name = context.schema_name
-    if cmd == "\d?":
-        available_commands = [
-            ["\l", "List Schemas"],
-            ["\d?]", "Show Commands"],
-            ["\conninfo", "Show Dask Cluster info"],
-            ["\dt [schema]", "List tables"],
-            ["\df [schema]", "List functions"],
-            ["\dm [schema]", "List models"],
-            ["\de [schema]", "List experiments"],
-            ["quit", "Quits dask-sql-cli"],
-        ]
-        return display_markdown(available_commands, columns=["Commands", "Describtion"])
+    cmd, schema_name = _parse_meta_command(sql)
+    available_commands = [
+        ["\l", "List Schemas"],
+        ["\d?, help, ?", "Show Available Commands"],
+        ["\conninfo", "Show Dask Cluster info"],
+        ["\dt [schema]", "List tables"],
+        ["\df [schema]", "List functions"],
+        ["\dm [schema]", "List models"],
+        ["\de [schema]", "List experiments"],
+        ["\dss [schema]", "Switch schema"],
+        ["\dsc [dask scheduler address]", "Switch Dask Cluster"],
+        ["quit", "Quits dask-sql-cli"],
+    ]
+    if cmd == "\dsc":
+        # Switch Dask cluster
+        _, scheduler_address = _parse_meta_command(sql)
+        client = Client(scheduler_address)
+        return client  # pragma: no cover
+    schema_name = schema_name or context.schema_name
+    if cmd == "\d?" or cmd == "help" or cmd == "?":
+        _display_markdown(available_commands, columns=["Commands", "Describtion"])
     elif cmd == "\l":
-        return display_markdown(context.schema.keys())
+        _display_markdown(context.schema.keys(), columns=["Schemas"])
     elif cmd == "\dt":
-        return display_markdown(context.schema[schema_name].tables.keys())
+        _display_markdown(context.schema[schema_name].tables.keys(), columns=["Tables"])
     elif cmd == "\df":
-        return display_markdown(context.schema[schema_name].functions.keys())
+        _display_markdown(
+            context.schema[schema_name].functions.keys(), columns=["Functions"]
+        )
     elif cmd == "\de":
-        return display_markdown(context.schema[schema_name].experiments.keys())
+        _display_markdown(
+            context.schema[schema_name].experiments.keys(), columns=["Experiments"]
+        )
     elif cmd == "\dm":
-        return display_markdown(context.schema[schema_name].models.keys())
+        _display_markdown(context.schema[schema_name].models.keys(), columns=["Models"])
     elif cmd == "\conninfo":
-        print("Dask cluster info")
         cluster_info = [
             ["Dask scheduler", client.scheduler.__dict__["addr"]],
             ["Dask Dashboard", client.dashboard_link],
             ["Cluster status", client.status],
             ["Dask Workers", len(client.cluster.workers)],
         ]
-        return display_markdown(cluster_info, columns=["components", "value"])
+        _display_markdown(
+            cluster_info, columns=["components", "value"]
+        )  # pragma: no cover
+    elif cmd == "\dss":
+        if schema_name in context.schema:
+            context.schema_name = schema_name
+        else:
+            print(f"Schema {schema_name} not avaialble")
     elif cmd == "quit":
         print("Quiting dask-sql ...")
+        client.close()  # for safer side
         sys.exit()
-    return False
+    elif cmd.startswith("\\"):
+        print(
+            f"The meta command {cmd} not available, please use commands from below list"
+        )
+        _display_markdown(available_commands, columns=["Commands", "Describtion"])
+    else:
+        # nothing detected probably not a meta command
+        return False
+    return True
 
 
 def cmd_loop(
@@ -166,7 +195,7 @@ def cmd_loop(
         try:
             text = session.prompt("(dask-sql) > ")
         except KeyboardInterrupt:
-            sys.exit()
+            continue
         except EOFError:
             break
 
@@ -175,20 +204,24 @@ def cmd_loop(
         if not text:
             continue
 
-        meta_command_detected = meta_commands(text, context=context, client=client)
-
-        def sqlCaller(text):
-            """
-            This function is for showing progress bar
-            """
-            yield context.sql(text, return_futures=False)
+        meta_command_detected = _meta_commands(text, context=context, client=client)
+        if isinstance(meta_command_detected, Client):
+            client = meta_command_detected
 
         if not meta_command_detected:
             try:
-                with ProgressBar() as pb:
-                    for df in pb(sqlCaller(text), total=1, label="Executing"):
-                        if df is not None:  # some sql commands returns None
-                            print(df.to_markdown(tablefmt="fancy_grid"))
+                df = context.sql(text, return_futures=True)
+                if df is not None:  # some sql commands returns None
+                    df = df.persist()
+                    # Now turn it into a list of futures
+                    futures = client.futures_of(df)
+                    with ProgressBar() as pb:
+                        for _ in pb(
+                            as_completed(futures), total=len(futures), label="Executing"
+                        ):
+                            continue
+                        df = df.compute()
+                        print(df.to_markdown(tablefmt="fancy_grid"))
 
             except Exception:
                 traceback.print_exc()
