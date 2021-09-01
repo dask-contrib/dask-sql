@@ -1,14 +1,19 @@
 from time import sleep
 
 import pytest
-from fastapi.testclient import TestClient
 
 from dask_sql.server.app import _init_app, app
+
+# needed for the testclient
+pytest.importorskip("requests")
 
 
 @pytest.fixture(scope="module")
 def app_client():
     _init_app(app)
+
+    # late import for the importskip
+    from fastapi.testclient import TestClient
 
     yield TestClient(app)
 
