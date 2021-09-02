@@ -1,7 +1,6 @@
 from typing import Any
 
 import dask.dataframe as dd
-import numpy as np
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import com, org

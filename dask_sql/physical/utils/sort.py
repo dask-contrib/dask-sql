@@ -3,7 +3,7 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
+from dask_sql.utils import make_pickable_without_dask_sql
 
 
 def apply_sort(

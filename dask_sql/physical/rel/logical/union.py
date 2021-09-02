@@ -2,7 +2,6 @@ import dask.dataframe as dd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.physical.rex import RexConverter
 
 
 class LogicalUnionPlugin(BaseRelPlugin):

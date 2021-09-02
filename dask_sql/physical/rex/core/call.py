@@ -476,7 +476,6 @@ class ExtractOperation(Operation):
         super().__init__(self.extract)
 
     def extract(self, what, df: SeriesOrScalar):
-        input_df = df
         df = convert_to_datetime(df)
 
         if what == "CENTURY":
@@ -522,7 +521,7 @@ class CeilFloorOperation(PredicateBasedOperation):
         assert round_method in {
             "ceil",
             "floor",
-        }, f"Round method can only be either ceil or floor"
+        }, "Round method can only be either ceil or floor"
 
         super().__init__(
             is_datetime,  # if the series is dt type

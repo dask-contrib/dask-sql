@@ -2,7 +2,7 @@ import logging
 import operator
 from collections import defaultdict
 from functools import reduce
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple
 
 import dask.dataframe as dd
 import pandas as pd

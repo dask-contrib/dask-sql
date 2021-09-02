@@ -1,4 +1,4 @@
-from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 
