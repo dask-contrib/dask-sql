@@ -9,6 +9,11 @@ from dask.datasets import timeseries
 from dask.distributed import Client
 from pandas.testing import assert_frame_equal
 
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
+
 
 @pytest.fixture()
 def timeseries_df(c):
@@ -117,6 +122,9 @@ def c(
     for df_name, df in dfs.items():
         dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
+        if dask_cudf is not None:
+            cudf_df = dask_cudf.from_dask_dataframe(dask_df)
+            c.create_table("cudf_" + df_name, cudf_df)
 
     yield c
 

@@ -28,7 +28,6 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
-
     # Try fast path for multi-column sorting before falling back to
     # sort_partition_func.  Tools like dask-cudf have a limited but fast
     # multi-column sort implementation.  We check if any sorting/null sorting
