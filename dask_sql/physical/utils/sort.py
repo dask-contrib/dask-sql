@@ -3,23 +3,12 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.utils import make_pickable_without_dask_sql, new_temporary_column
+from dask_sql.utils import make_pickable_without_dask_sql
 
 try:
     import dask_cudf
 except ImportError:
     dask_cudf = None
-
-
-def multi_col_sort(
-    df: dd.DataFrame,
-    sort_columns: List[str],
-    sort_ascending: List[bool],
-    sort_null_first: List[bool],
-) -> dd.DataFrame:
-
-    df = df.sort_values(sort_columns)
-    return df.persist()
 
 
 def apply_sort(
@@ -39,7 +28,8 @@ def apply_sort(
         and not any(sort_null_first)
     ):
         try:
-            return multi_col_sort(df, sort_columns, sort_ascending, sort_null_first)
+            df = df.sort_values(sort_columns)
+            return df.persist()
         except ValueError:
             pass
 
