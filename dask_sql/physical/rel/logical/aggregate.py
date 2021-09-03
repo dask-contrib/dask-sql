@@ -304,7 +304,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                     )
             if isinstance(aggregation_function, AggregationSpecification):
                 dtype = df[input_col].dtype
-                if pd.api.types.is_numeric_dtype(dtype):
+                if pd.api.types.is_numeric_dtype(dtype) or pd.api.types.is_datetime64_any_dtype(dtype):
                     aggregation_function = aggregation_function.numerical_aggregation
                 else:
                     aggregation_function = (
