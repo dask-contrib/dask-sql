@@ -67,9 +67,11 @@ class AggregationSpecification:
         if pd.api.types.is_numeric_dtype(dtype):
             return numeric_agg
 
-        # Todo: Add Categorical and String Checks
+        # Todo: Add Categorical when support comes to dask-sql
         if numeric_agg in ["min", "max", "first"]:
-            if pd.api.types.is_datetime64_any_dtype(dtype):
+            if pd.api.types.is_datetime64_any_dtype(
+                dtype
+            ) or pd.api.types.is_string_dtype(dtype):
                 return numeric_agg
 
         return self.non_numerical_aggregation
