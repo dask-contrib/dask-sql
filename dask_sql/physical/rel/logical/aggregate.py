@@ -61,6 +61,19 @@ class AggregationSpecification:
             non_numerical_aggregation or numerical_aggregation
         )
 
+    def get_dtype_relevant_aggregation(self, dtype):
+        numeric_agg = self.numerical_aggregation
+
+        if pd.api.types.is_numeric_dtype(dtype):
+            return numeric_agg
+
+        # Todo: Add Categorical and String Checks
+        if numeric_agg in ["min", "max", "first"]:
+            if pd.api.types.is_datetime64_any_dtype(dtype):
+                return numeric_agg
+
+        return self.non_numerical_aggregation
+
 
 class LogicalAggregatePlugin(BaseRelPlugin):
     """
@@ -304,12 +317,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                     )
             if isinstance(aggregation_function, AggregationSpecification):
                 dtype = df[input_col].dtype
-                if pd.api.types.is_numeric_dtype(dtype) or pd.api.types.is_datetime64_any_dtype(dtype):
-                    aggregation_function = aggregation_function.numerical_aggregation
-                else:
-                    aggregation_function = (
-                        aggregation_function.non_numerical_aggregation
-                    )
+                aggregation_function = aggregation_function.get_dtype_relevant_aggregation(
+                    dtype
+                )
 
             # Finally, extract the output column name
             output_col = str(agg_call.getValue())
