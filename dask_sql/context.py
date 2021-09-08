@@ -112,7 +112,7 @@ class Context:
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
-        InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.HiveInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.IntakeCatalogInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.SqlalchemyHiveInputPlugin, replace=False)
@@ -126,6 +126,7 @@ class Context:
         format: str = None,
         persist: bool = True,
         schema_name: str = None,
+        gpu: bool = False,
         **kwargs,
     ):
         """
@@ -200,6 +201,7 @@ class Context:
             table_name=table_name,
             format=format,
             persist=persist,
+            gpu=gpu,
             **kwargs,
         )
         self.schema[schema_name].tables[table_name.lower()] = dc

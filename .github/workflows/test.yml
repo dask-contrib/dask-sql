@@ -90,13 +90,19 @@ jobs:
       - name: Install sqlalchemy and docker pkg for postgres test
         shell: bash -l {0}
         run: |
-          # explicitly install docker, fugue and sqlalchemy package
-          # Also install ciso8601 (needed by docker) via conda, as the pip installation fails.
-          mamba install sqlalchemy psycopg2 ciso8601 -c conda-forge
-          pip install docker "fugue[sql]>=0.5.3"
-          pip install mlflow
-          pip install tpot
-          pip install dask-ml
+          # explicitly install docker, fugue and other packages
+          mamba install \
+            sqlalchemy>=1.4.23 \
+            pyhive>=0.6.4 \
+            psycopg2>=2.9.1 \
+            ciso8601>=2.2.0 \
+            tpot>=0.11.7 \
+            mlflow>=1.19.0 \
+            docker-py>=5.0.0 \
+            -c conda-forge
+          pip install "fugue[sql]>=0.5.3"
+          docker pull bde2020/hive:2.3.2-postgresql-metastore
+          docker pull bde2020/hive-metastore-postgresql:2.3.0
         if: matrix.os == 'ubuntu-latest'
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
@@ -109,7 +115,9 @@ jobs:
           # This needs to happen in the same
           # shell, because otherwise the JAVA_HOME
           # will be wrong on windows
-          pytest --junitxml=junit/test-results.xml --cov-report=xml tests
+          # The --dist loadfile makes sure, that tests are distributed according to their file
+          # this is especially important to not run the docker-fixtures more than once
+          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
         uses: actions/upload-artifact@v1
         with:
@@ -118,7 +126,10 @@ jobs:
         # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
   test_independent:
     name: "Test in a dask cluster"
     needs: build

@@ -15,7 +15,14 @@ class LocationInputPlugin(BaseInputPlugin):
     ):
         return isinstance(input_item, str)
 
-    def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
+    def to_dc(
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
+    ):
 
         if format == "memory":
             client = default_client()
@@ -27,7 +34,12 @@ class LocationInputPlugin(BaseInputPlugin):
             format = extension.lstrip(".")
 
         try:
-            read_function = getattr(dd, f"read_{format}")
+            if gpu:  # pragma: no cover
+                import dask_cudf
+
+                read_function = getattr(dask_cudf, f"read_{format}")
+            else:
+                read_function = getattr(dd, f"read_{format}")
         except AttributeError:
             raise AttributeError(f"Can not read files of format {format}")
 
