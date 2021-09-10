@@ -28,7 +28,7 @@ def apply_sort(
         and not any(sort_null_first)
     ):
         try:
-            df = df.sort_values(sort_columns)
+            df = df.sort_values(sort_columns, ignore_index=True)
             return df.persist()
         except ValueError:
             pass

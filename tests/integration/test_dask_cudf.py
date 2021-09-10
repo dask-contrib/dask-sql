@@ -1,8 +1,8 @@
-import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 pytest.importorskip("dask_cudf")
+
+from cudf.testing._utils import assert_eq
 
 
 def test_cudf_order_by(c):
@@ -13,10 +13,18 @@ def test_cudf_order_by(c):
     FROM cudf_user_table_1
     ORDER BY user_id
     """
-    )
-    df = df.compute().to_pandas()
+    ).compute()
 
-    expected_df = pd.DataFrame(
-        {"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]}
-    ).sort_values(by="user_id")
-    assert_frame_equal(df, expected_df)
+    expected_df = (
+        c.sql(
+            """
+    SELECT
+        *
+    FROM cudf_user_table_1
+    """
+        )
+        .sort_values(by="user_id", ignore_index=True)
+        .compute()
+    )
+
+    assert_eq(df, expected_df)
