@@ -150,6 +150,11 @@ def hive_cursor():
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_parted])
 
         yield cursor
+    except docker.errors.ImageNotFound:
+        pytest.skip(
+            "Hive testing requires 'bde2020/hive:2.3.2-postgresql-metastore' and "
+            "'bde2020/hive-metastore-postgresql:2.3.0' docker images"
+        )
     finally:
         # Now clean up: remove the containers and the network and the folders
         for container in [hive_server, hive_metastore, hive_postgres]:
