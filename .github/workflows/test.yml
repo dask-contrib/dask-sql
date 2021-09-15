@@ -26,17 +26,18 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: 3.8
+          activate-environment: dask-sql
       - name: Install dependencies and build the jar
         shell: bash -l {0}
         run: |
-          mamba install --file conda.txt -c conda-forge
+          mamba env update -f continuous_integration/environment-3.8-dev.yaml
           which python
           pip list
           mamba list
@@ -71,36 +72,23 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ matrix.python }}-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ hashFiles('continuous_integration/environment-${{ matrix.python }}-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-${{ matrix.python }}-dev.yaml
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
           name: jar
           path: dask_sql/jar/
-      - name: Install dependencies
+      - name: Pull docker images for postgres test
         shell: bash -l {0}
         run: |
-          mamba install python=${{ matrix.python }} --file conda.txt -c conda-forge
-      - name: Install sqlalchemy and docker pkg for postgres test
-        shell: bash -l {0}
-        run: |
-          # explicitly install docker, fugue and other packages
-          mamba install \
-            sqlalchemy>=1.4.23 \
-            pyhive>=0.6.4 \
-            psycopg2>=2.9.1 \
-            ciso8601>=2.2.0 \
-            tpot>=0.11.7 \
-            mlflow>=1.19.0 \
-            docker-py>=5.0.0 \
-            -c conda-forge
-          pip install "fugue[sql]>=0.5.3"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
         if: matrix.os == 'ubuntu-latest'
@@ -145,13 +133,15 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-11-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v3-11-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: 3.8
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-dev.yaml
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
@@ -160,7 +150,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          mamba install python=3.8 python-blosc lz4 --file conda.txt -c conda-forge
+          mamba install python-blosc lz4 -c conda-forge
 
           which python
           pip list
@@ -196,7 +186,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-11-${{ hashFiles('conda.txt') }}
+          key: ${{ runner.os }}-conda-v2-11-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
