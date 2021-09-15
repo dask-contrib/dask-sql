@@ -97,7 +97,7 @@ jobs:
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
         run: |
-          mamba install openjdk=${{ matrix.java }}
+          mamba install openjdk=${{ matrix.java }} --force-reinstall
           which python
           pip list
           mamba list
