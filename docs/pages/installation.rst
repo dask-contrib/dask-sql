@@ -57,11 +57,11 @@ Create a new conda environment and install the development environment:
 
 .. code-block:: bash
 
-    conda create -n dask-sql --file conda.txt -c conda-forge
+    conda env create -f continuous_integration/environment-3.8-dev.yaml
 
 It is not recommended to use ``pip`` instead of ``conda``.
 If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
-Have a look into ``conda.txt`` for the rest of the development environment.
+Have a look into ``environment-3.8-dev.yaml`` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
