@@ -56,6 +56,8 @@ jobs:
     name: "Test (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
     needs: build
     runs-on: ${{ matrix.os }}
+    env:
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     strategy:
       matrix:
         java: [8, 11]
@@ -72,7 +74,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ hashFiles('continuous_integration/environment-${{ matrix.python }}-dev.yaml') }}
+          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ hashFiles(env.CONDA_FILE) }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -80,7 +82,7 @@ jobs:
           use-mamba: true
           python-version: ${{ matrix.python }}
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+          environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
