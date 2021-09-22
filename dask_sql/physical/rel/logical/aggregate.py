@@ -64,7 +64,7 @@ class AggregationSpecification:
 
     def __init__(self, native_aggregation, custom_aggregation=None):
         self.native_aggregation = native_aggregation
-        self.custom_aggregation = native_aggregation or custom_aggregation
+        self.custom_aggregation = custom_aggregation or native_aggregation
 
     def get_supported_aggregation(self, series):
         native_agg = self.native_aggregation
@@ -80,7 +80,7 @@ class AggregationSpecification:
 
             if pd.api.types.is_string_dtype(series.dtype):
                 ## If dask_cudf strings dtype return native aggregation
-                if isinstance(series, dask_cudf.Series):
+                if dask_cudf is not None and isinstance(series, dask_cudf.Series):
                     return native_agg
 
                 ## If pandas StringDtype return native aggregation
@@ -88,8 +88,6 @@ class AggregationSpecification:
                     series.dtype, pd.StringDtype
                 ):
                     return native_agg
-
-                return native_agg
 
         return self.custom_aggregation
 
