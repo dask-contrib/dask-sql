@@ -56,10 +56,10 @@ class AggregationSpecification:
     Most of the aggregations in SQL are already
     implemented 1:1 in dask and can just be called via their name
     (e.g. AVG is the mean). However sometimes those
-    implemented functions only work well for some built-in datatypes.
+    implemented functions only work well for some datatypes.
     This small container class therefore
-    can have an additional aggregation function, which is
-    valid for non-supported built-in types.
+    can have an custom aggregation function, which is
+    valid for not supported dtypes.
     """
 
     def __init__(self, built_in_aggregation, custom_aggregation=None):
