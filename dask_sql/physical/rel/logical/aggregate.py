@@ -56,39 +56,39 @@ class AggregationSpecification:
     Most of the aggregations in SQL are already
     implemented 1:1 in dask and can just be called via their name
     (e.g. AVG is the mean). However sometimes those
-    implemented functions only work well for some native data types.
+    implemented functions only work well for some built-in datatypes.
     This small container class therefore
     can have an additional aggregation function, which is
-    valid for non-supported native types.
+    valid for non-supported built-in types.
     """
 
-    def __init__(self, native_aggregation, custom_aggregation=None):
-        self.native_aggregation = native_aggregation
-        self.custom_aggregation = custom_aggregation or native_aggregation
+    def __init__(self, built_in_aggregation, custom_aggregation=None):
+        self.built_in_aggregation = built_in_aggregation
+        self.custom_aggregation = custom_aggregation or built_in_aggregation
 
     def get_supported_aggregation(self, series):
-        native_agg = self.native_aggregation
+        built_in_aggregation = self.built_in_aggregation
 
         # native_aggreagations work well for all numeric types
         if pd.api.types.is_numeric_dtype(series.dtype):
-            return native_agg
+            return built_in_aggregation
 
         # Todo: Add Categorical when support comes to dask-sql
-        if native_agg in ["min", "max"]:
+        if built_in_aggregation in ["min", "max"]:
             if pd.api.types.is_datetime64_any_dtype(series.dtype):
-                return native_agg
+                return built_in_aggregation
 
             if pd.api.types.is_string_dtype(series.dtype):
                 ## If dask_cudf strings dtype return native aggregation
                 if dask_cudf is not None and isinstance(series, dask_cudf.Series):
-                    return native_agg
+                    return built_in_aggregation
 
                 ## If pandas StringDtype native aggregation works
                 ## and with ObjectDtype and Nulls native aggregation can fail
                 if isinstance(series, dd.Series) and isinstance(
                     series.dtype, pd.StringDtype
                 ):
-                    return native_agg
+                    return built_in_aggregation
 
         return self.custom_aggregation
 
