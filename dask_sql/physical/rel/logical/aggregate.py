@@ -83,7 +83,8 @@ class AggregationSpecification:
                 if dask_cudf is not None and isinstance(series, dask_cudf.Series):
                     return native_agg
 
-                ## If pandas StringDtype return native aggregation
+                ## If pandas StringDtype native aggregation works
+                ## and with ObjectDtype and Nulls native aggregation can fail
                 if isinstance(series, dd.Series) and isinstance(
                     series.dtype, pd.StringDtype
                 ):
