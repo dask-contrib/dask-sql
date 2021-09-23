@@ -54,6 +54,11 @@ def make_rand_df(size: int, **kwargs):
             r = [f"ssssss{x}" for x in range(10)]
             c = np.random.randint(10, size=size)
             s = np.array([r[x] for x in c])
+        elif dt is pd.StringDtype:
+            r = [f"ssssss{x}" for x in range(10)]
+            c = np.random.randint(10, size=size)
+            s = np.array([r[x] for x in c])
+            s = pd.array(s, dtype="string")
         elif dt is datetime:
             rt = [datetime(2020, 1, 1) + timedelta(days=x) for x in range(10)]
             c = np.random.randint(10, size=size)
@@ -337,7 +342,13 @@ def test_agg_sum_avg():
 
 def test_agg_min_max_no_group_by():
     a = make_rand_df(
-        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+        100,
+        a=(int, 50),
+        b=(str, 50),
+        c=(int, 30),
+        d=(str, 40),
+        e=(float, 40),
+        f=(pd.StringDtype, 40),
     )
     eq_sqlite(
         """
@@ -352,6 +363,8 @@ def test_agg_min_max_no_group_by():
             MAX(d) AS max_d,
             MIN(e) AS min_e,
             MAX(e) AS max_e,
+            MIN(f) as min_f,
+            MAX(f) as max_f,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a
@@ -362,7 +375,13 @@ def test_agg_min_max_no_group_by():
 
 def test_agg_min_max():
     a = make_rand_df(
-        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+        100,
+        a=(int, 50),
+        b=(str, 50),
+        c=(int, 30),
+        d=(str, 40),
+        e=(float, 40),
+        f=(pd.StringDtype, 40),
     )
     eq_sqlite(
         """
@@ -374,6 +393,8 @@ def test_agg_min_max():
             MAX(d) AS max_d,
             MIN(e) AS min_e,
             MAX(e) AS max_e,
+            MIN(f) AS min_f,
+            MAX(f) AS max_f,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a GROUP BY a, b
