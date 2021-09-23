@@ -19,6 +19,14 @@ from pandas.testing import assert_frame_equal
 from dask_sql import Context
 
 
+def cast_datetime_to_string(df):
+    cols = df.select_dtypes(include=["datetime64[ns]"]).columns
+    # Casting to object first as
+    # directly converting to string looses second precision
+    df[cols] = df[cols].astype("object").astype("string")
+    return df
+
+
 def eq_sqlite(sql, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
@@ -29,6 +37,10 @@ def eq_sqlite(sql, **dfs):
 
     dask_result = c.sql(sql).compute().reset_index(drop=True)
     sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
+
+    # casting to object to ensure equality with sql-lite
+    # which returns object dtype for datetime inputs
+    dask_result = cast_datetime_to_string(dask_result)
 
     # Make sure SQL and Dask use the same "NULL" value
     dask_result = dask_result.fillna(np.NaN)
@@ -349,6 +361,7 @@ def test_agg_min_max_no_group_by():
         d=(str, 40),
         e=(float, 40),
         f=(pd.StringDtype, 40),
+        g=(datetime, 40),
     )
     eq_sqlite(
         """
@@ -365,6 +378,8 @@ def test_agg_min_max_no_group_by():
             MAX(e) AS max_e,
             MIN(f) as min_f,
             MAX(f) as max_f,
+            MIN(g) as min_g,
+            MAX(g) as max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a
@@ -382,6 +397,7 @@ def test_agg_min_max():
         d=(str, 40),
         e=(float, 40),
         f=(pd.StringDtype, 40),
+        g=(datetime, 40),
     )
     eq_sqlite(
         """
@@ -395,6 +411,8 @@ def test_agg_min_max():
             MAX(e) AS max_e,
             MIN(f) AS min_f,
             MAX(f) AS max_f,
+            MIN(g) AS min_g,
+            MAX(g) AS max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a GROUP BY a, b
