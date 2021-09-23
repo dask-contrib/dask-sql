@@ -74,7 +74,7 @@ class AggregationSpecification:
             return native_agg
 
         # Todo: Add Categorical when support comes to dask-sql
-        if native_agg in ["min", "max", "first"]:
+        if native_agg in ["min", "max"]:
             if pd.api.types.is_datetime64_any_dtype(series.dtype):
                 return native_agg
 
