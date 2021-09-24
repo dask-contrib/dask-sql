@@ -36,7 +36,21 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     assert_frame_equal(result_df, df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=[
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="dataframes on memory currently aren't being converted to dask-cudf"
+                ),
+            ],
+        ),
+    ],
+)
 def test_cluster_memory(client, c, df, gpu):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
 
@@ -57,6 +71,9 @@ def test_cluster_memory(client, c, df, gpu):
         SELECT * FROM new_table
     """
     ).compute()
+
+    if gpu:
+        return_df = return_df.to_pandas()
 
     assert_frame_equal(df, return_df)
 
