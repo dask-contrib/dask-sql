@@ -16,6 +16,7 @@ export PARALLEL_LEVEL=${PARALLEL_LEVEL:-4}
 
 # Set home to the job's workspace
 export HOME="$WORKSPACE"
+export JAVA_HOME="$WORKSPACE"
 
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"
@@ -48,7 +49,7 @@ python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"
-python setup.py java -eX
+python setup.py java
 
 gpuci_logger "Check Python version"
 python --version
