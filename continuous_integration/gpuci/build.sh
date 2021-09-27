@@ -35,7 +35,7 @@ nvidia-smi
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
-conda activate dask
+conda activate dask_sql
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
