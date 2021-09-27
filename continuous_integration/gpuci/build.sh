@@ -16,7 +16,9 @@ export PARALLEL_LEVEL=${PARALLEL_LEVEL:-4}
 
 # Set home to the job's workspace
 export HOME="$WORKSPACE"
-export JAVA_HOME="$WORKSPACE"
+
+# specify maven options
+export MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.m2/repository"
 
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"
@@ -37,9 +39,6 @@ nvidia-smi
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
-
-# gpuci_logger "Force reinstall openjdk"
-# gpuci_mamba_retry install -y "openjdk>=8" --force-reinstall
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
