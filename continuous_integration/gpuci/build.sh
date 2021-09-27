@@ -37,8 +37,8 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
-gpuci_logger "Force reinstall openjdk"
-gpuci_mamba_retry install -y "openjdk>=8" --force-reinstall
+# gpuci_logger "Force reinstall openjdk"
+# gpuci_mamba_retry install -y "openjdk>=8" --force-reinstall
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
@@ -48,7 +48,7 @@ python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"
-python setup.py java
+python setup.py -eX java
 
 gpuci_logger "Check Python version"
 python --version
