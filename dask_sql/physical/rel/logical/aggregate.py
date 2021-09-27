@@ -8,11 +8,9 @@ import dask.dataframe as dd
 import pandas as pd
 
 try:
-    import cudf
     import dask_cudf
 except ImportError:
     dask_cudf = None
-    cudf = None
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -69,7 +67,7 @@ class AggregationSpecification:
     def get_supported_aggregation(self, series):
         built_in_aggregation = self.built_in_aggregation
 
-        # native_aggreagations work well for all numeric types
+        # built-in_aggreagations work well for numeric types
         if pd.api.types.is_numeric_dtype(series.dtype):
             return built_in_aggregation
 
@@ -79,12 +77,12 @@ class AggregationSpecification:
                 return built_in_aggregation
 
             if pd.api.types.is_string_dtype(series.dtype):
-                ## If dask_cudf strings dtype return native aggregation
+                # If dask_cudf strings dtype, return built-in aggregation
                 if dask_cudf is not None and isinstance(series, dask_cudf.Series):
                     return built_in_aggregation
 
-                ## If pandas StringDtype native aggregation works
-                ## and with ObjectDtype and Nulls native aggregation can fail
+                # With pandas StringDtype built-in aggregations work
+                # while with pandas ObjectDtype and Nulls built-in aggregations fail
                 if isinstance(series, dd.Series) and isinstance(
                     series.dtype, pd.StringDtype
                 ):
