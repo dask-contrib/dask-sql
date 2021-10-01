@@ -34,14 +34,15 @@ jobs:
           use-mamba: true
           python-version: 3.8
           activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
           use-only-tar-bz2: true
       - name: Install dependencies and build the jar
         shell: bash -l {0}
         run: |
-          mamba env update -f continuous_integration/environment-3.8-jdk11-dev.yaml
-          which python
-          pip list
-          mamba list
+          # mamba env update -f continuous_integration/environment-3.8-jdk11-dev.yaml
+          # which python
+          # pip list
+          # mamba list
 
           # This needs to happen in the same
           # shell, because otherwise the JAVA_HOME
@@ -100,10 +101,10 @@ jobs:
       - name: Install Java (again) and test with pytest
         shell: bash -l {0}
         run: |
-          mamba install openjdk=${{ matrix.java }} --force-reinstall
-          which python
-          pip list
-          mamba list
+          # mamba install openjdk=${{ matrix.java }} --force-reinstall
+          # which python
+          # pip list
+          # mamba list
 
           # This needs to happen in the same
           # shell, because otherwise the JAVA_HOME
