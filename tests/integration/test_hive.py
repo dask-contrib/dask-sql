@@ -1,4 +1,5 @@
 import shutil
+import sys
 import tempfile
 import time
 
@@ -8,10 +9,11 @@ from pandas.testing import assert_frame_equal
 
 from dask_sql.context import Context
 
-# skip the test if the docker or sqlalchemy package is not installed
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="hive testing not supported on Windows"
+)
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
-
 pytest.importorskip("pyhive")
 
 
