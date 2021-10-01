@@ -88,9 +88,10 @@ jobs:
         with:
           name: jar
           path: dask_sql/jar/
-      - name: Pull docker images for postgres test
+      - name: Install hive testing dependencies
         shell: bash -l {0}
         run: |
+          mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
         if: matrix.os == 'ubuntu-latest'

@@ -32,7 +32,6 @@ dependencies:
 - pytest-xdist
 - pytest>=6.0.1
 - python=3.7
-- sasl>=0.3.1
 - scikit-learn>=0.24.2
 - sphinx>=3.2.1
 - tpot>=0.11.7
