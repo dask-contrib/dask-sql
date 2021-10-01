@@ -21,12 +21,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-maven-v1-11-${{ hashFiles('**/pom.xml') }}
       - name: Cache downloaded conda packages
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles('continuous_integration/environment-3.8-jdk11-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies and build the jar
         shell: bash -l {0}
         run: |
-          mamba env update -f continuous_integration/environment-3.8-dev.yaml
+          mamba env update -f continuous_integration/environment-3.8-jdk11-dev.yaml
           which python
           pip list
           mamba list
@@ -57,7 +57,7 @@ jobs:
     needs: build
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
     strategy:
       matrix:
         java: [8, 11]
@@ -74,7 +74,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-${{ matrix.java }}-${{ hashFiles(env.CONDA_FILE) }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles(env.CONDA_FILE) }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -135,7 +135,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v3-11-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles('continuous_integration/environment-3.8-jdk11-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -143,7 +143,7 @@ jobs:
           use-mamba: true
           python-version: 3.8
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-dev.yaml
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
@@ -188,7 +188,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-v2-11-${{ hashFiles('continuous_integration/environment-3.8-dev.yaml') }}
+          key: ${{ runner.os }}-conda-v3-${{ hashFiles('continuous_integration/environment-3.8-jdk11-dev.yaml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
