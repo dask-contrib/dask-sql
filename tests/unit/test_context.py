@@ -8,13 +8,21 @@ from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
 
+try:
+    import cudf
+    import dask_cudf
+except ImportError:
+    cudf = None
+    dask_cudf = None
 
-def test_add_remove_tables():
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_add_remove_tables(gpu):
     c = Context()
 
     data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
 
-    c.create_table("table", data_frame)
+    c.create_table("table", data_frame, gpu=gpu)
     assert "table" in c.schema[c.schema_name].tables
 
     c.drop_table("table")
@@ -23,13 +31,17 @@ def test_add_remove_tables():
     with pytest.raises(KeyError):
         c.drop_table("table")
 
-    c.create_table("table", [data_frame])
+    c.create_table("table", [data_frame], gpu=gpu)
     assert "table" in c.schema[c.schema_name].tables
 
 
-def test_deprecation_warning():
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_deprecation_warning(gpu):
     c = Context()
     data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
+
+    if gpu:
+        data_frame = dask_cudf.from_dask_dataframe(data_frame)
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
@@ -45,11 +57,12 @@ def test_deprecation_warning():
     assert "table" not in c.schema[c.schema_name].tables
 
 
-def test_explain():
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_explain(gpu):
     c = Context()
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", data_frame)
+    c.create_table("df", data_frame, gpu=gpu)
 
     sql_string = c.explain("SELECT * FROM df")
 
@@ -62,6 +75,9 @@ def test_explain():
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 
+    if gpu:
+        data_frame = dask_cudf.from_dask_dataframe(data_frame)
+
     sql_string = c.explain(
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}
     )
@@ -72,83 +88,90 @@ def test_explain():
     )
 
 
-def test_sql():
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_sql(gpu):
     c = Context()
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", data_frame)
+    c.create_table("df", data_frame, gpu=gpu)
 
     result = c.sql("SELECT * FROM df")
-    assert isinstance(result, dd.DataFrame)
-    assert_frame_equal(result.compute(), data_frame.compute())
+    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
+    dd.assert_eq(result, data_frame)
 
     result = c.sql("SELECT * FROM df", return_futures=False)
-    assert isinstance(result, pd.DataFrame)
-    assert_frame_equal(result, data_frame.compute())
+    assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
+    dd.assert_eq(result, data_frame)
 
+    if gpu:
+        data_frame = dask_cudf.from_dask_dataframe(data_frame)
     result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
-    assert isinstance(result, dd.DataFrame)
-    assert_frame_equal(result.compute(), data_frame.compute())
+    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
+    dd.assert_eq(result, data_frame)
 
 
-def test_input_types(temporary_data_file):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_input_types(temporary_data_file, gpu):
     c = Context()
     df = pd.DataFrame({"a": [1, 2, 3]})
 
-    def assert_correct_output():
+    def assert_correct_output(gpu):
         result = c.sql("SELECT * FROM df")
-        assert isinstance(result, dd.DataFrame)
-        assert_frame_equal(result.compute(), df)
+        assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
+        dd.assert_eq(result, df)
 
-    c.create_table("df", df)
-    assert_correct_output()
+    c.create_table("df", df, gpu=gpu)
+    assert_correct_output(gpu=gpu)
 
-    c.create_table("df", dd.from_pandas(df, npartitions=1))
-    assert_correct_output()
-
-    df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file)
-    assert_correct_output()
+    c.create_table("df", dd.from_pandas(df, npartitions=1), gpu=gpu)
+    assert_correct_output(gpu=gpu)
 
     df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, format="csv")
-    assert_correct_output()
+    c.create_table("df", temporary_data_file, gpu=True)
+    assert_correct_output(gpu=gpu)
+
+    df.to_csv(temporary_data_file, index=False)
+    c.create_table("df", temporary_data_file, format="csv", gpu=gpu)
+    assert_correct_output(gpu=gpu)
 
     df.to_parquet(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, format="parquet")
-    assert_correct_output()
+    c.create_table("df", temporary_data_file, format="parquet", gpu=gpu)
+    assert_correct_output(gpu=gpu)
 
     with pytest.raises(AttributeError):
-        c.create_table("df", temporary_data_file, format="unknown")
+        c.create_table("df", temporary_data_file, format="unknown", gpu=gpu)
 
     strangeThing = object()
 
     with pytest.raises(ValueError):
-        c.create_table("df", strangeThing)
+        c.create_table("df", strangeThing, gpu=gpu)
 
 
-def test_tables_from_stack():
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_tables_from_stack(gpu):
     c = Context()
 
     assert not c._get_tables_from_stack()
 
-    df = pd.DataFrame()
+    df = pd.DataFrame() if not gpu else cudf.DataFrame()
 
     assert "df" in c._get_tables_from_stack()
 
-    def f():
-        df2 = pd.DataFrame()
+    def f(gpu):
+        df2 = pd.DataFrame() if not gpu else cudf.DataFrame()
 
         assert "df" in c._get_tables_from_stack()
         assert "df2" in c._get_tables_from_stack()
 
-    f()
+    f(gpu=gpu)
 
-    def g():
-        df = pd.DataFrame({"a": [1]})
+    def g(gpu=gpu):
+        df = pd.DataFrame({"a": [1]}) if not gpu else cudf.DataFrame({"a": [1]})
 
         assert "df" in c._get_tables_from_stack()
         assert c._get_tables_from_stack()["df"].columns == ["a"]
+
+    g(gpu=gpu)
 
 
 def test_function_adding():
