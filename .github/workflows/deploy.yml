@@ -28,6 +28,7 @@ jobs:
           python-version: 3.8
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+          use-only-tar-bz2: true
       - name: Install dependencies
         shell: bash -l {0}
         run: |

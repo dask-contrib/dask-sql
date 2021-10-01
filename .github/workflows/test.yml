@@ -34,6 +34,7 @@ jobs:
           use-mamba: true
           python-version: 3.8
           activate-environment: dask-sql
+          use-only-tar-bz2: true
       - name: Install dependencies and build the jar
         shell: bash -l {0}
         run: |
@@ -83,6 +84,7 @@ jobs:
           python-version: ${{ matrix.python }}
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+          use-only-tar-bz2: true
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
@@ -145,6 +147,7 @@ jobs:
           python-version: 3.8
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+          use-only-tar-bz2: true
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
