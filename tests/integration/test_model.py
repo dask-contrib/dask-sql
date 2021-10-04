@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 
 import joblib
 import pandas as pd
@@ -468,6 +469,10 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows is not officially supported for dask/xgboost",
+)
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")

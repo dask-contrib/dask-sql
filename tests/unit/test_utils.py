@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import pytest
 from dask import dataframe as dd
@@ -102,6 +104,9 @@ The problem is probably somewhere here:
     assert str(e) == "Message"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="JAVA_HOME will often be incorrect on Windows"
+)
 def test_no_warning():
     with pytest.warns(None) as warn:
         _set_or_check_java_home()
