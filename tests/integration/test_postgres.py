@@ -10,12 +10,14 @@ def engine():
     client = docker.from_env()
 
     network = client.networks.create("dask-sql", driver="bridge")
+    # For local test, you may need to add ports={"5432/tcp": "5432"} to expose port
     postgres = client.containers.run(
         "postgres:latest",
         detach=True,
         remove=True,
         network="dask-sql",
         environment={"POSTGRES_HOST_AUTH_METHOD": "trust"},
+        # ports={"5432/tcp": "5432"},
     )
 
     try:
@@ -32,6 +34,8 @@ def engine():
         # get the address and create the connection
         postgres.reload()
         address = postgres.attrs["NetworkSettings"]["Networks"]["dask-sql"]["IPAddress"]
+        # For local test, you may need to assign address = "localhost"
+        # address = "localhost"
         port = 5432
 
         engine = sqlalchemy.create_engine(
@@ -123,6 +127,86 @@ def test_join(assert_query_gives_same_result):
         JOIN df2 ON df1.user_id = df2.user_id
     """,
         ["user_id", "a", "b", "user_id_2", "c", "d"],
+    )
+
+
+def test_join_lricomplex(
+    assert_query_gives_same_result,
+    engine,
+    user_table_ts,
+    user_table_pn,
+    user_table_lk,
+    user_table_lk2,
+    c,
+):
+    # ---------- Panel data
+    # Left Join
+    assert_query_gives_same_result(
+        """
+        select a.*, b.startdate, b.lk_nullint, b.lk_int
+        from user_table_pn a left join user_table_lk b
+        on a.ids=b.id and b.startdate<=a.dates
+        """,
+        ["ids", "dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
+    )
+    # Right Join
+    assert_query_gives_same_result(
+        """
+        select b.*, a.startdate, a.lk_nullint, a.lk_int
+        from user_table_lk a right join user_table_pn b
+        on b.ids=a.id and a.startdate<=b.dates
+        """,
+        ["ids", "dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
+    )
+    # Inner Join
+    assert_query_gives_same_result(
+        """
+        select a.*, b.startdate, b.lk_nullint, b.lk_int
+        from user_table_pn a inner join user_table_lk b
+        on a.ids=b.id and b.startdate<=a.dates
+        """,
+        ["ids", "dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
+    )
+
+    # ---------- Time-series data
+    # Left Join
+    assert_query_gives_same_result(
+        """
+        select a.*, b.startdate, b.lk_nullint, b.lk_int
+        from user_table_ts a left join user_table_lk2 b
+        on b.startdate<=a.dates
+        """,
+        ["dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
+    )
+    # Right Join
+    assert_query_gives_same_result(
+        """
+        select b.*, a.startdate, a.lk_nullint, a.lk_int
+        from user_table_lk2 a right join user_table_ts b
+        on a.startdate<=b.dates
+        """,
+        ["dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
+    )
+    # Inner Join
+    assert_query_gives_same_result(
+        """
+        select a.*, b.startdate, b.lk_nullint, b.lk_int
+        from user_table_ts a inner join user_table_lk2 b
+        on b.startdate<=a.dates
+        """,
+        ["dates", "startdate"],
+        force_dtype="dask",
+        check_dtype=True,
     )
 
 

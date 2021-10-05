@@ -116,7 +116,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
+                # Need to drop "common" here, otherwise metadata mismatches
+                merged_data = lhs_partition.merge(rhs_partition, on=["common"]).drop(
+                    columns=["common"]
+                )
 
                 return merged_data
 
@@ -179,7 +182,20 @@ class LogicalJoinPlugin(BaseRelPlugin):
             )
             logger.debug(f"Additionally applying filter {filter_condition}")
             df = filter_or_scalar(df, filter_condition)
+            # make sure we recover any lost rows in case of left, right or outer joins
+            if join_type in ["left", "outer"]:
+                df = df.merge(
+                    df_lhs_renamed, on=list(df_lhs_renamed.columns), how="right"
+                )
+            elif join_type in ["right", "outer"]:
+                df = df.merge(
+                    df_rhs_renamed, on=list(df_rhs_renamed.columns), how="right"
+                )
             dc = DataContainer(df, cc)
+            # Caveat: columns of int may be casted to float if NaN is introduced
+            # for unmatched rows. Since we don't know which column would be casted
+            # without triggering compute(), we have to either leave it alone, or
+            # forcibly cast all int to nullable int.
 
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
