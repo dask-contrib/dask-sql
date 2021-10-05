@@ -252,6 +252,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
+        row_udf: bool = False
     ):
         """
         Register a custom function with the given name.
@@ -309,6 +310,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
+            row_udf=row_udf
         )
 
     def register_aggregation(
@@ -662,7 +664,6 @@ class Context:
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
-
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = python_to_sql_type(function_description.return_type)
@@ -798,25 +799,33 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
+        row_udf: bool = None
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
 
-        lower_name = name.lower()
-        if lower_name in schema.functions:
-            if replace:
-                schema.function_lists = list(
-                    filter(
-                        lambda f: f.name.lower() != lower_name, schema.function_lists,
+        def update_registry(fname, registry, replace, schema):
+            if fname in registry:
+                if replace:
+                    schema.function_lists = list(
+                        filter(
+                            lambda f: f.name.lower() != lower_name, schema.function_lists,
+                        )
                     )
-                )
-                del schema.functions[lower_name]
+                    del registry[lower_name]
 
-            elif schema.functions[lower_name] != f:
-                raise ValueError(
-                    "Registering different functions with the same name is not allowed"
-                )
+                elif registry[lower_name] != f:
+                    raise ValueError(
+                        "Registering different functions with the same name is not allowed"
+                    )
+
+        lower_name = name.lower()
+        if not row_udf:
+            update_registry(lower_name, schema.functions, replace, schema)
+        else:
+            update_registry(lower_name, schema.row_functions, replace, schema)
+
 
         schema.function_lists.append(
             FunctionDescription(name.upper(), parameters, return_type, aggregation)
@@ -824,4 +833,7 @@ class Context:
         schema.function_lists.append(
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
-        schema.functions[lower_name] = f
+        if not row_udf:
+            schema.functions[lower_name] = f
+        else:
+            schema.row_functions[lower_name] = f

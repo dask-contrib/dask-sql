@@ -775,14 +775,18 @@ class RexCallPlugin(BaseRexPlugin):
         # Now use the operator name in the mapping
         schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
         operator_name = operator_name.lower()
-
+        row_udf = False
         try:
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
                 operation = context.schema[schema_name].functions[operator_name]
-            except KeyError:  # pragma: no cover
-                raise NotImplementedError(f"{operator_name} not (yet) implemented")
+            except KeyError:
+                try:
+                    operation = context.schema[schema_name].row_functions[operator_name]
+                    row_udf = True
+                except KeyError:  # pragma: no cover
+                    raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
@@ -795,6 +799,12 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = rex
 
-        return operation(*operands, **kwargs)
-
+        if not row_udf:
+            return operation(*operands, **kwargs)
+        else:
+            df = operands[0].to_frame()
+            for operand in operands[1:]:
+                df[operand.name] = operand
+            result = df.apply(operation, axis=1)          
+            return result  
         # TODO: We have information on the typing here - we should use it

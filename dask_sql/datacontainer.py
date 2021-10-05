@@ -188,4 +188,5 @@ class SchemaContainer:
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, Callable] = {}
+        self.row_functions: Dict[str, Callable] = {}
         self.function_lists: List[FunctionDescription] = []
