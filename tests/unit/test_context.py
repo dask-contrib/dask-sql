@@ -151,7 +151,7 @@ def test_input_types(temporary_data_file, gpu):
     assert_correct_output(gpu=gpu)
 
     df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, gpu=True)
+    c.create_table("df", temporary_data_file, gpu=gpu)
     assert_correct_output(gpu=gpu)
 
     df.to_csv(temporary_data_file, index=False)
