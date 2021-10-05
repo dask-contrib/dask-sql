@@ -20,6 +20,23 @@ def test_custom_function(c, df):
 
     assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
 
+def test_custom_function_row(c, df):
+    def f(row):
+        return row['a'] ** 2
+
+    c.register_function(f, "f", [("x", np.float64)], np.float64, row_udf=True)
+
+    return_df = c.sql(
+        """
+        SELECT F(a) AS a
+        FROM df
+        """
+    )
+    return_df = return_df.compute()
+
+    assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
+
+
 
 def test_multiple_definitions(c, df_simple):
     def f(x):
