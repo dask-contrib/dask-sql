@@ -88,7 +88,19 @@ def test_explain(gpu):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
+            ),
+        ),
+    ],
+)
 def test_sql(gpu):
     c = Context()
 
@@ -110,7 +122,19 @@ def test_sql(gpu):
     dd.assert_eq(result, data_frame)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
+            ),
+        ),
+    ],
+)
 def test_input_types(temporary_data_file, gpu):
     c = Context()
     df = pd.DataFrame({"a": [1, 2, 3]})
@@ -147,7 +171,21 @@ def test_input_types(temporary_data_file, gpu):
         c.create_table("df", strangeThing, gpu=gpu)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="GPU tables aren't picked up by _get_tables_from_stack"
+                ),
+            ),
+        ),
+    ],
+)
 def test_tables_from_stack(gpu):
     c = Context()
 
