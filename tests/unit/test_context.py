@@ -48,8 +48,7 @@ def test_deprecation_warning(gpu):
 
         c.register_dask_table(data_frame, "table")
 
-        for warning in w:
-            print(warning.message)
+        assert [warning.message for warning in w] == []
 
         assert len(w) == 1
         assert issubclass(w[-1].category, DeprecationWarning)
