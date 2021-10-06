@@ -2,6 +2,8 @@ from typing import List
 
 import dask.dataframe as dd
 import pandas as pd
+from dask.array.routines import isin
+from dask.utils import M
 
 from dask_sql.utils import make_pickable_without_dask_sql
 
@@ -17,6 +19,30 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
+    # single partition cases for cudf/pandas
+    if df.npartitions == 1:
+        if dask_cudf is not None and isinstance(df, dask_cudf.DataFrame):
+            if (all(sort_ascending) or not any(sort_ascending)) and not any(
+                sort_null_first[1:]
+            ):
+                return df.map_partitions(
+                    M.sort_values,
+                    by=sort_columns,
+                    ascending=all(sort_ascending),
+                    na_position="first" if sort_null_first[0] else "last",
+                )
+            if not any(sort_null_first):
+                return df.map_partitions(
+                    M.sort_values, by=sort_columns, ascending=sort_ascending
+                )
+        elif not any(sort_null_first[1:]):
+            return df.map_partitions(
+                M.sort_values,
+                by=sort_columns,
+                ascending=sort_ascending,
+                na_position="first" if sort_null_first[0] else "last",
+            )
+
     # Try fast path for multi-column sorting before falling back to
     # sort_partition_func.  Tools like dask-cudf have a limited but fast
     # multi-column sort implementation.  We check if any sorting/null sorting
