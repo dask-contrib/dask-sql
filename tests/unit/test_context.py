@@ -44,11 +44,9 @@ def test_deprecation_warning(gpu):
         data_frame = dask_cudf.from_dask_dataframe(data_frame)
 
     with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+        warnings.simplefilter("always", category=DeprecationWarning)
 
         c.register_dask_table(data_frame, "table")
-
-        assert [warning.message for warning in w] == []
 
         assert len(w) == 1
         assert issubclass(w[-1].category, DeprecationWarning)
