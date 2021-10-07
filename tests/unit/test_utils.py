@@ -104,7 +104,7 @@ The problem is probably somewhere here:
     assert str(e) == "Message"
 
 
-@pytest.mark.skipif(
+@pytest.mark.xfail(
     sys.platform == "win32", reason="JAVA_HOME will often be incorrect on Windows"
 )
 def test_no_warning():

@@ -469,7 +469,7 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
-@pytest.mark.skipif(
+@pytest.mark.xfail(
     sys.platform == "win32",
     reason="Windows is not officially supported for dask/xgboost",
 )
