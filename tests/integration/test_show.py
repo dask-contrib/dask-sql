@@ -3,9 +3,9 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 try:
-    import dask_cudf
+    import cudf
 except ImportError:
-    dask_cudf = None
+    cudf = None
 
 
 def test_schemas(c):
@@ -41,26 +41,20 @@ def test_tables(c):
                 "string_table",
                 "datetime_table",
             ]
-            if dask_cudf is None
+            if cudf is None
             else [
-                "df_simple",
-                "cudf_df_simple",
                 "df",
-                "cudf_df",
+                "df_simple",
                 "user_table_1",
-                "cudf_user_table_1",
                 "user_table_2",
-                "cudf_user_table_2",
                 "long_table",
-                "cudf_long_table",
                 "user_table_inf",
-                "cudf_user_table_inf",
                 "user_table_nan",
-                "cudf_user_table_nan",
                 "string_table",
-                "cudf_string_table",
                 "datetime_table",
-                "cudf_datetime_table",
+                "gpu_user_table_1",
+                "gpu_df",
+                "gpu_long_table",
             ]
         }
     )
