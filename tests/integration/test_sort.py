@@ -164,7 +164,7 @@ def test_sort_with_nan():
     assert_frame_equal(
         df_result,
         pd.DataFrame(
-            {"a": [float("nan"), 2, 2, 1], "b": [5, float("inf"), float("nan"), 4]}
+            {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
         ),
     )
 
@@ -176,7 +176,7 @@ def test_sort_with_nan():
     assert_frame_equal(
         df_result,
         pd.DataFrame(
-            {"a": [float("nan"), 2, 2, 1], "b": [5, float("inf"), float("nan"), 4]}
+            {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
         ),
     )
 
@@ -188,7 +188,7 @@ def test_sort_with_nan():
     assert_frame_equal(
         df_result,
         pd.DataFrame(
-            {"a": [2, 2, 1, float("nan")], "b": [float("inf"), float("nan"), 4, 5]}
+            {"a": [2, 2, 1, float("nan")], "b": [float("nan"), float("inf"), 4, 5]}
         ),
     )
 
