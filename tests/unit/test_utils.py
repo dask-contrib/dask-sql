@@ -1,5 +1,3 @@
-import sys
-
 import pandas as pd
 import pytest
 from dask import dataframe as dd
