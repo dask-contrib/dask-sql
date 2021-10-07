@@ -767,7 +767,7 @@ class Context:
         try:
             return str(s.toSqlString(default_dialect))
         # Have not seen any instance so far, but better be safe than sorry
-        except:  # noqa: E722; pragma: no cover
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):

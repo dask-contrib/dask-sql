@@ -158,7 +158,7 @@ def hive_cursor():
 
             try:
                 container.kill()
-            except:
+            except Exception:
                 pass
 
             container.remove()

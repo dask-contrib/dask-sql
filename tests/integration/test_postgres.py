@@ -38,7 +38,7 @@ def engine():
             f"postgresql+psycopg2://postgres@{address}:{port}/postgres"
         )
         yield engine
-    except:
+    except Exception:
         postgres.kill()
         network.remove()
 
