@@ -2,7 +2,6 @@ from typing import List
 
 import dask.dataframe as dd
 import pandas as pd
-from dask.array.routines import isin
 from dask.utils import M
 
 from dask_sql.utils import make_pickable_without_dask_sql
