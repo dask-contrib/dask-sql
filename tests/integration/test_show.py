@@ -2,6 +2,11 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 
 def test_schemas(c):
     df = c.sql("SHOW SCHEMAS")
@@ -35,6 +40,21 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+            ]
+            if cudf is None
+            else [
+                "df",
+                "df_simple",
+                "user_table_1",
+                "user_table_2",
+                "long_table",
+                "user_table_inf",
+                "user_table_nan",
+                "string_table",
+                "datetime_table",
+                "gpu_user_table_1",
+                "gpu_df",
+                "gpu_long_table",
             ]
         }
     )
