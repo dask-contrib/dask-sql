@@ -4,7 +4,7 @@ FROM daskdev/dask:latest
 LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
 # Install dependencies for dask-sql
-COPY conda.txt /opt/dask_sql/
+COPY docker/conda.txt /opt/dask_sql/
 RUN conda config --add channels conda-forge \
     && /opt/conda/bin/conda install --freeze-installed \
     "jpype1>=1.0.2" \
