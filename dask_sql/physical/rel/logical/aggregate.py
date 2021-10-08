@@ -2,7 +2,7 @@ import logging
 import operator
 from collections import defaultdict
 from functools import reduce
-from typing import Any, Callable, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple
 
 import dask.dataframe as dd
 import pandas as pd
@@ -12,6 +12,10 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.core.call import IsNullOperation
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 

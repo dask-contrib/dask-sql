@@ -1,7 +1,7 @@
 import logging
 from collections import namedtuple
 from functools import partial
-from typing import Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 import dask.dataframe as dd
 import numpy as np
@@ -20,6 +20,9 @@ from dask_sql.utils import (
     make_pickable_without_dask_sql,
     new_temporary_column,
 )
+
+if TYPE_CHECKING:
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 

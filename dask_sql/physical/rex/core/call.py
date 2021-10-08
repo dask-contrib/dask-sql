@@ -2,7 +2,7 @@ import logging
 import operator
 import re
 from functools import reduce
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
 import dask.dataframe as dd
@@ -25,6 +25,10 @@ from dask_sql.utils import (
     is_frame,
     make_pickable_without_dask_sql,
 )
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]

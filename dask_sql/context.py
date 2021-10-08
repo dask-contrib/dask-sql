@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -28,6 +28,9 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
+
+if TYPE_CHECKING:
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 

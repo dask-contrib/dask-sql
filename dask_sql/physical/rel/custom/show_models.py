@@ -1,8 +1,14 @@
+from typing import TYPE_CHECKING
+
 import dask.dataframe as dd
 import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 
 class ShowModelsPlugin(BaseRelPlugin):

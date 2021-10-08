@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 
@@ -6,6 +6,9 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.java import com, org
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
 
 
 class SargPythonImplementation:
