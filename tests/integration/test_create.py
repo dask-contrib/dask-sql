@@ -55,7 +55,7 @@ def test_cluster_memory(client, c, df, gpu):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
 
     c.sql(
-        """
+        f"""
         CREATE TABLE
             new_table
         WITH (
