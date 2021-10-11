@@ -7,6 +7,7 @@ try:
     import cudf
     import dask_cudf
 except ImportError:
+    cudf = None
     dask_cudf = None
 
 
