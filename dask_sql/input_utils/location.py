@@ -2,9 +2,16 @@ import os
 from typing import Any
 
 import dask.dataframe as dd
+import pandas as pd
 from distributed.client import default_client
 
 from dask_sql.input_utils.base import BaseInputPlugin
+
+try:
+    import cudf
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 
 
 class LocationInputPlugin(BaseInputPlugin):
@@ -23,20 +30,31 @@ class LocationInputPlugin(BaseInputPlugin):
         gpu: bool = False,
         **kwargs,
     ):
-
+        if gpu and not dask_cudf:  # pragma: no cover
+            raise ModuleNotFoundError(
+                "Setting `gpu=True` for table creation requires dask_cudf"
+            )
         if format == "memory":
             client = default_client()
-            return client.get_dataset(input_item, **kwargs)
+            df = client.get_dataset(input_item, **kwargs)
 
+            if gpu:  # pragma: no cover
+                if isinstance(df, pd.DataFrame):
+                    npartitions = kwargs.pop("npartitions", 1)
+                    df = dask_cudf.from_dask_dataframe(
+                        cudf.from_pandas(df), npartitions=npartitions, **kwargs
+                    )
+                elif isinstance(df, dd.DataFrame) and not isinstance(
+                    df, dask_cudf.DataFrame
+                ):
+                    df = dask_cudf.from_dask_dataframe(df, **kwargs)
+            return df
         if not format:
             _, extension = os.path.splitext(input_item)
 
             format = extension.lstrip(".")
-
         try:
             if gpu:  # pragma: no cover
-                import dask_cudf
-
                 read_function = getattr(dask_cudf, f"read_{format}")
             else:
                 read_function = getattr(dd, f"read_{format}")

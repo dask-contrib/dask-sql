@@ -1,12 +1,13 @@
 import dask.dataframe as dd
 import pandas as pd
 
+from dask_sql.input_utils.base import BaseInputPlugin
+
 try:
     import cudf
-except ImportError:  # pragma: no cover
-    cudf = None
-
-from dask_sql.input_utils.base import BaseInputPlugin
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 
 
 class PandasLikeInputPlugin(BaseInputPlugin):
@@ -28,7 +29,10 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     ):
         npartitions = kwargs.pop("npartitions", 1)
         if gpu:  # pragma: no cover
-            import dask_cudf
+            if not dask_cudf:
+                raise ModuleNotFoundError(
+                    "Setting `gpu=True` for table creation requires dask_cudf"
+                )
 
             if isinstance(input_item, pd.DataFrame):
                 return dask_cudf.from_cudf(

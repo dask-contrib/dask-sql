@@ -16,8 +16,16 @@ class SqlalchemyHiveInputPlugin(HiveInputPlugin):
         return correct_prefix
 
     def to_dc(
-        self, input_item: Any, table_name: str, format: str = None, **kwargs
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs
     ):  # pragma: no cover
+        if gpu:
+            raise Exception("Hive does not support gpu")
+
         import sqlalchemy
 
         engine_kwargs = {}

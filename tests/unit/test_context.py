@@ -86,17 +86,7 @@ def test_explain(gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
-        ),
-    ],
+    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu,),],
 )
 def test_sql(gpu):
     c = Context()
@@ -120,17 +110,7 @@ def test_sql(gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
-        ),
-    ],
+    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu,),],
 )
 def test_input_types(temporary_data_file, gpu):
     c = Context()
