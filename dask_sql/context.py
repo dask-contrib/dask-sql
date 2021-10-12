@@ -186,7 +186,7 @@ class Context:
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
-                Set to false to turn off loading the file data directly into memory.
+                Set to true to turn on loading the file data directly into memory.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
