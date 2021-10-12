@@ -18,7 +18,6 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
-    breakpoint()
     # if we have a single partition, we can sometimes sort with map_partitions
     if df.npartitions == 1:
         if dask_cudf is not None and isinstance(df, dask_cudf.DataFrame):
