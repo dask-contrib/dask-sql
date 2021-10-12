@@ -768,6 +768,7 @@ class RexCallPlugin(BaseRexPlugin):
         "truncate": Operation(da.trunc),
         # string operations
         "||": ReduceOperation(operation=operator.add),
+        "concat": ReduceOperation(operation=operator.add),
         "char_length": TensorScalarOperation(lambda x: x.str.len(), lambda x: len(x)),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),

@@ -119,7 +119,7 @@ class Context:
         table_name: str,
         input_table: InputType,
         format: str = None,
-        persist: bool = True,
+        persist: bool = False,
         schema_name: str = None,
         statistics: Statistics = None,
         gpu: bool = False,
@@ -141,8 +141,9 @@ class Context:
         Typical file formats are csv or parquet.
         Any additional parameters will get passed on to the read method.
         Please note that some file formats require additional libraries.
-        By default, the data will be loaded directly into the memory
-        of the nodes. If you do not want that, set persist to False.
+        By default, the data will be lazily loaded. If you would like to
+        load the data directly into memory you can do so by setting
+        persist=True.
 
         See :ref:`data_input` for more information.
 
@@ -182,7 +183,7 @@ class Context:
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
-                Set to false to turn off loading the file data directly into memory.
+                Set to true to turn on loading the file data directly into memory.
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
             statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
                 statistics are provided, we will just assume 100 rows.

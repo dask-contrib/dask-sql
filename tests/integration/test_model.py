@@ -1,11 +1,13 @@
 import os
 import pickle
+import sys
 
 import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from mock import MagicMock
+
+pytest.importorskip("dask_ml")
 
 
 def check_trained_model(c, model_name=None):
@@ -413,7 +415,7 @@ def test_export_model(c, training_df, tmpdir):
 
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
-    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
 
     c.sql(
         f"""
@@ -467,9 +469,13 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
+@pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="Windows is not officially supported for dask/xgboost",
+)
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
-    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
     c.sql(
         f"""
@@ -500,7 +506,7 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
 
 def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     # Test only when mlflow & lightgbm was installed
-    mlflow = pytest.importorskip("mlflow", reason="mflow not installed")
+    mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
     c.sql(
         f"""

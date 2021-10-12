@@ -19,6 +19,14 @@ from pandas.testing import assert_frame_equal
 from dask_sql import Context
 
 
+def cast_datetime_to_string(df):
+    cols = df.select_dtypes(include=["datetime64[ns]"]).columns
+    # Casting to object first as
+    # directly converting to string looses second precision
+    df[cols] = df[cols].astype("object").astype("string")
+    return df
+
+
 def eq_sqlite(sql, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
@@ -29,6 +37,10 @@ def eq_sqlite(sql, **dfs):
 
     dask_result = c.sql(sql).compute().reset_index(drop=True)
     sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
+
+    # casting to object to ensure equality with sql-lite
+    # which returns object dtype for datetime inputs
+    dask_result = cast_datetime_to_string(dask_result)
 
     # Make sure SQL and Dask use the same "NULL" value
     dask_result = dask_result.fillna(np.NaN)
@@ -54,6 +66,11 @@ def make_rand_df(size: int, **kwargs):
             r = [f"ssssss{x}" for x in range(10)]
             c = np.random.randint(10, size=size)
             s = np.array([r[x] for x in c])
+        elif dt is pd.StringDtype:
+            r = [f"ssssss{x}" for x in range(10)]
+            c = np.random.randint(10, size=size)
+            s = np.array([r[x] for x in c])
+            s = pd.array(s, dtype="string")
         elif dt is datetime:
             rt = [datetime(2020, 1, 1) + timedelta(days=x) for x in range(10)]
             c = np.random.randint(10, size=size)
@@ -337,7 +354,14 @@ def test_agg_sum_avg():
 
 def test_agg_min_max_no_group_by():
     a = make_rand_df(
-        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+        100,
+        a=(int, 50),
+        b=(str, 50),
+        c=(int, 30),
+        d=(str, 40),
+        e=(float, 40),
+        f=(pd.StringDtype, 40),
+        g=(datetime, 40),
     )
     eq_sqlite(
         """
@@ -352,6 +376,10 @@ def test_agg_min_max_no_group_by():
             MAX(d) AS max_d,
             MIN(e) AS min_e,
             MAX(e) AS max_e,
+            MIN(f) as min_f,
+            MAX(f) as max_f,
+            MIN(g) as min_g,
+            MAX(g) as max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a
@@ -362,7 +390,14 @@ def test_agg_min_max_no_group_by():
 
 def test_agg_min_max():
     a = make_rand_df(
-        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+        100,
+        a=(int, 50),
+        b=(str, 50),
+        c=(int, 30),
+        d=(str, 40),
+        e=(float, 40),
+        f=(pd.StringDtype, 40),
+        g=(datetime, 40),
     )
     eq_sqlite(
         """
@@ -374,6 +409,10 @@ def test_agg_min_max():
             MAX(d) AS max_d,
             MIN(e) AS min_e,
             MAX(e) AS max_e,
+            MIN(f) AS min_f,
+            MAX(f) AS max_f,
+            MIN(g) AS min_g,
+            MAX(g) AS max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
         FROM a GROUP BY a, b

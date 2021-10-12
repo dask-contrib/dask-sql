@@ -1,6 +1,10 @@
+import sys
+
 import pytest
 
-# skip the test if the docker package is not installed
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="postgres testing not supported on Windows"
+)
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
