@@ -9,6 +9,11 @@ from dask.datasets import timeseries
 from dask.distributed import Client
 from pandas.testing import assert_frame_equal
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 
 @pytest.fixture()
 def timeseries_df(c):
@@ -87,6 +92,21 @@ def datetime_table():
 
 
 @pytest.fixture()
+def gpu_user_table_1(user_table_1):
+    return cudf.from_pandas(user_table_1) if cudf else None
+
+
+@pytest.fixture()
+def gpu_df(df):
+    return cudf.from_pandas(df) if cudf else None
+
+
+@pytest.fixture()
+def gpu_long_table(long_table):
+    return cudf.from_pandas(long_table) if cudf else None
+
+
+@pytest.fixture()
 def c(
     df_simple,
     df,
@@ -97,6 +117,9 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    gpu_user_table_1,
+    gpu_df,
+    gpu_long_table,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -108,6 +131,9 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "gpu_user_table_1": gpu_user_table_1,
+        "gpu_df": gpu_df,
+        "gpu_long_table": gpu_long_table,
     }
 
     # Lazy import, otherwise the pytest framework has problems
@@ -115,6 +141,8 @@ def c(
 
     c = Context()
     for df_name, df in dfs.items():
+        if df is None:
+            continue
         dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
 
