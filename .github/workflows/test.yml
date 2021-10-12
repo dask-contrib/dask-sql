@@ -9,6 +9,12 @@ on:
       - main
   pull_request:
 
+# When this workflow is queued, automatically cancel any previous running
+# or pending jobs from the same branch
+concurrency:
+  group: test-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test

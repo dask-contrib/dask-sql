@@ -8,6 +8,8 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
