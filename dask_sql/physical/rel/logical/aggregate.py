@@ -67,7 +67,7 @@ class AggregationSpecification:
     def get_supported_aggregation(self, series):
         built_in_aggregation = self.built_in_aggregation
 
-        # built-in_aggreagations work well for numeric types
+        # built-in aggregations work well for numeric types
         if pd.api.types.is_numeric_dtype(series.dtype):
             return built_in_aggregation
 
