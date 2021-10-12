@@ -8,8 +8,7 @@ from tests.integration.fixtures import skip_if_external_scheduler
 
 
 @skip_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_create_from_csv(c, df, temporary_data_file, gpu):
+def test_create_from_csv(c, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
     c.sql(
@@ -18,8 +17,7 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
             new_table
         WITH (
             location = '{temporary_data_file}',
-            format = 'csv',
-            gpu = {gpu}
+            format = 'csv'
         )
     """
     )
@@ -30,28 +28,10 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     """
     ).compute()
 
-    if gpu:
-        result_df = result_df.to_pandas()
-
     assert_frame_equal(result_df, df)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=[
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="dataframes on memory currently aren't being converted to dask-cudf"
-                ),
-            ],
-        ),
-    ],
-)
-def test_cluster_memory(client, c, df, gpu):
+def test_cluster_memory(client, c, df):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
 
     c.sql(
@@ -60,8 +40,7 @@ def test_cluster_memory(client, c, df, gpu):
             new_table
         WITH (
             location = 'df',
-            format = 'memory',
-            gpu = {gpu}
+            format = 'memory'
         )
     """
     )
@@ -72,15 +51,11 @@ def test_cluster_memory(client, c, df, gpu):
     """
     ).compute()
 
-    if gpu:
-        return_df = return_df.to_pandas()
-
     assert_frame_equal(df, return_df)
 
 
 @skip_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
+def test_create_from_csv_persist(c, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
     c.sql(
@@ -90,8 +65,7 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
         WITH (
             location = '{temporary_data_file}',
             format = 'csv',
-            persist = True,
-            gpu = {gpu}
+            persist = True
         )
     """
     )
@@ -101,9 +75,6 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
         SELECT * FROM new_table
     """
     ).compute()
-
-    if gpu:
-        return_df = return_df.to_pandas()
 
     assert_frame_equal(df, return_df)
 
@@ -172,20 +143,7 @@ def test_create_from_query(c, df):
 
 
 @skip_if_external_scheduler
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="to_pandas() changes int precision"),
-            ),
-        ),
-    ],
-)
-def test_view_table_persist(c, temporary_data_file, df, gpu):
+def test_view_table_persist(c, temporary_data_file, df):
     df.to_csv(temporary_data_file, index=False)
     c.sql(
         f"""
@@ -193,8 +151,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
             new_table
         WITH (
             location = '{temporary_data_file}',
-            format = 'csv',
-            gpu = {gpu}
+            format = 'csv'
         )
     """
     )
@@ -220,27 +177,21 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     """
     )
 
-    from_view = c.sql("SELECT c FROM count_view").compute()
-    from_table = c.sql("SELECT c FROM count_table").compute()
-
-    if gpu:
-        from_view = from_view.to_pandas()
-        from_table = from_table.to_pandas()
-
-    assert_frame_equal(from_view, pd.DataFrame({"c": [700]}))
-    assert_frame_equal(from_table, pd.DataFrame({"c": [700]}))
+    assert_frame_equal(
+        c.sql("SELECT c FROM count_view").compute(), pd.DataFrame({"c": [700]})
+    )
+    assert_frame_equal(
+        c.sql("SELECT c FROM count_table").compute(), pd.DataFrame({"c": [700]})
+    )
 
     df.iloc[:10].to_csv(temporary_data_file, index=False)
 
-    from_view = c.sql("SELECT c FROM count_view").compute()
-    from_table = c.sql("SELECT c FROM count_table").compute()
-
-    if gpu:
-        from_view = from_view.to_pandas()
-        from_table = from_table.to_pandas()
-
-    assert_frame_equal(from_view, pd.DataFrame({"c": [10]}))
-    assert_frame_equal(from_table, pd.DataFrame({"c": [700]}))
+    assert_frame_equal(
+        c.sql("SELECT c FROM count_view").compute(), pd.DataFrame({"c": [10]})
+    )
+    assert_frame_equal(
+        c.sql("SELECT c FROM count_table").compute(), pd.DataFrame({"c": [700]})
+    )
 
 
 def test_replace_and_error(c, temporary_data_file, df):
