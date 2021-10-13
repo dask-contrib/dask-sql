@@ -228,15 +228,15 @@ def test_like(c, string_table, gpu):
         df = df.to_pandas()
     assert_frame_equal(df, string_table.iloc[[1]])
 
-    # df = c.sql(
-    #     f"""
-    #     SELECT * FROM {input_table}
-    #     WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
-    #     """
-    # ).compute()
-    # if gpu:
-    #     df = df.to_pandas()
-    # assert_frame_equal(df, string_table.iloc[[2]])
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
+        """
+    ).compute()
+    if gpu:
+        df = df.to_pandas()
+    assert_frame_equal(df, string_table.iloc[[2]])
 
     df = c.sql(
         f"""
