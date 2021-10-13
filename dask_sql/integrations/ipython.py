@@ -1,8 +1,11 @@
 import json
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 from dask_sql.mappings import _SQL_TO_PYTHON_FRAMES
 from dask_sql.physical.rex.core import RexCallPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
 
 # JS snippet to use the created mime type highlighthing
 _JS_ENABLE_DASK_SQL = r"""
@@ -128,6 +131,6 @@ def _register_syntax_highlighting():  # pragma: no cover
     display.display_javascript(js + _JS_ENABLE_DASK_SQL, raw=True)
 
 
-def _create_set(l: List[str]) -> Dict[str, bool]:  # pragma: no cover
+def _create_set(keys: List[str]) -> Dict[str, bool]:  # pragma: no cover
     """Small helper function to turn a list into the correct format for codemirror"""
-    return {key: True for key in l}
+    return {key: True for key in keys}

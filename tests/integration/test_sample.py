@@ -1,6 +1,3 @@
-from pandas.testing import assert_frame_equal
-
-
 def test_sample(c, df):
     # Fixed sample, check absolute numbers
     return_df = c.sql("SELECT * FROM df TABLESAMPLE SYSTEM (20) REPEATABLE (10)")
