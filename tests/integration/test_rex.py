@@ -261,7 +261,7 @@ def test_like(c, string_table, gpu):
     string_table2 = xd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
     c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
     df = c.sql(
-        f"""
+        """
         SELECT * FROM string_table2
         WHERE b LIKE 'b'
     """
