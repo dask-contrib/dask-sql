@@ -406,9 +406,15 @@ def test_subqueries(c, user_table_1, user_table_2):
     )
 
 
-def test_string_functions(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_functions(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
     df = c.sql(
-        """
+        f"""
         SELECT
             a || 'hello' || a AS a,
             CONCAT(a, 'hello', a) as b,
@@ -432,9 +438,13 @@ def test_string_functions(c):
             INITCAP(UPPER(a)) AS t,
             INITCAP(LOWER(a)) AS u
         FROM
-            string_table
+            {input_table}
         """
     ).compute()
+
+    if gpu:
+        df = df.to_pandas()
+        df = df.astype({"c": "int64", "f": "int64", "g": "int64"})
 
     expected_df = pd.DataFrame(
         {
