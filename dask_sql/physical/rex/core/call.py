@@ -2,7 +2,7 @@ import logging
 import operator
 import re
 from functools import reduce
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
 import dask.dataframe as dd
@@ -25,6 +25,10 @@ from dask_sql.utils import (
     is_frame,
     make_pickable_without_dask_sql,
 )
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -476,7 +480,6 @@ class ExtractOperation(Operation):
         super().__init__(self.extract)
 
     def extract(self, what, df: SeriesOrScalar):
-        input_df = df
         df = convert_to_datetime(df)
 
         if what == "CENTURY":
@@ -522,7 +525,7 @@ class CeilFloorOperation(PredicateBasedOperation):
         assert round_method in {
             "ceil",
             "floor",
-        }, f"Round method can only be either ceil or floor"
+        }, "Round method can only be either ceil or floor"
 
         super().__init__(
             is_datetime,  # if the series is dt type

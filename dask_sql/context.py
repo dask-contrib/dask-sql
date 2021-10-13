@@ -2,8 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -29,6 +28,9 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
+
+if TYPE_CHECKING:
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -601,7 +603,7 @@ class Context:
         """
         Stop a SQL server started by ``run_server`.
         """
-        if not self.sql_server is None:
+        if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
             loop.create_task(self.sql_server.shutdown())
@@ -768,7 +770,8 @@ class Context:
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
+        # Have not seen any instance so far, but better be safe than sorry
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):

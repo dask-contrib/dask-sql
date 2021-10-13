@@ -255,7 +255,7 @@ def test_replace_and_error(c, training_df):
     assert c.schema[c.schema_name].models["my_model"][0] == first_mock
 
     c.sql(
-        f"""
+        """
         CREATE OR REPLACE MODEL my_model WITH (
             model_class = 'mock.MagicMock',
             target_column = 'target'
@@ -273,7 +273,7 @@ def test_replace_and_error(c, training_df):
     c.sql("DROP MODEL my_model")
 
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model WITH (
             model_class = 'mock.MagicMock',
             target_column = 'target'
@@ -295,7 +295,7 @@ def test_drop_model(c, training_df):
     c.sql("DROP MODEL IF EXISTS my_model")
 
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model WITH (
             model_class = 'mock.MagicMock',
             target_column = 'target'
@@ -360,7 +360,7 @@ def test_export_model(c, training_df, tmpdir):
         )
 
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
             target_column = 'target'
@@ -418,7 +418,7 @@ def test_mlflow_export(c, training_df, tmpdir):
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
 
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
             target_column = 'target'
@@ -446,7 +446,7 @@ def test_mlflow_export(c, training_df, tmpdir):
 
     # test for non sklearn compatible model
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS non_sklearn_model WITH (
             model_class = 'mock.MagicMock',
             target_column = 'target'
@@ -478,7 +478,7 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
             model_class = 'xgboost.dask.DaskXGBClassifier',
             target_column = 'target'
@@ -509,7 +509,7 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
     c.sql(
-        f"""
+        """
         CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
             model_class = 'lightgbm.LGBMClassifier',
             target_column = 'target'

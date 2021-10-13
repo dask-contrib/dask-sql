@@ -126,7 +126,7 @@ class HiveInputPlugin(BaseInputPlugin):
             else:  # pragma: no cover
                 # prevent python to optimize it away and make coverage not respect the
                 # pragma
-                dummy = 0
+                dummy = 0  # noqa: F841
             df = read_function(location, **kwargs)
 
             logger.debug(f"Applying column information: {column_information}")
@@ -251,7 +251,7 @@ class HiveInputPlugin(BaseInputPlugin):
                 else:  # pragma: no cover
                     # prevent python to optimize it away and make coverage not respect the
                     # pragma
-                    dummy = 0
+                    dummy = 0  # noqa: F841
             elif value and last_field is not None:
                 last_field[value] = value2
 
