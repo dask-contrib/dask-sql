@@ -185,7 +185,7 @@ def test_operators(c, df):
             marks=(
                 pytest.mark.gpu,
                 pytest.mark.xfail(
-                    reason="a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r' results in an incorrect output with cuDF"
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cudf/issues/9434"
                 ),
             ),
         ),
