@@ -252,7 +252,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
-        row_udf: bool = False
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -310,7 +310,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
-            row_udf=row_udf
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -799,7 +799,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
-        row_udf: bool = None
+        row_udf: bool = None,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
@@ -825,7 +825,6 @@ class Context:
             update_registry(lower_name, schema.functions, replace, schema)
         else:
             update_registry(lower_name, schema.row_functions, replace, schema)
-
 
         schema.function_lists.append(
             FunctionDescription(name.upper(), parameters, return_type, aggregation)

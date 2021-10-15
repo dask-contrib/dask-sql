@@ -805,6 +805,6 @@ class RexCallPlugin(BaseRexPlugin):
             df = operands[0].to_frame()
             for operand in operands[1:]:
                 df[operand.name] = operand
-            result = df.apply(operation, axis=1)          
-            return result  
+            result = df.apply(operation, axis=1)
+            return result
         # TODO: We have information on the typing here - we should use it
