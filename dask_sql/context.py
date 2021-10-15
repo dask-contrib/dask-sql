@@ -810,12 +810,12 @@ class Context:
                 if replace:
                     schema.function_lists = list(
                         filter(
-                            lambda f: f.name.lower() != lower_name, schema.function_lists,
+                            lambda f: f.name.lower() != fname, schema.function_lists,
                         )
                     )
-                    del registry[lower_name]
+                    del registry[fname]
 
-                elif registry[lower_name] != f:
+                elif registry[fname] != f:
                     raise ValueError(
                         "Registering different functions with the same name is not allowed"
                     )
