@@ -183,6 +183,15 @@ class DataContainer:
 
 class UDF:
     def __init__(self, func, row_udf: bool):
+        """
+        Helper class that handles different types of UDFs and manages
+        how they should be mapped to dask operations. Two versions of
+        UDFs are supported - when `row_udf=False`, the UDF is treated
+        as expecting series-like objects as arguments and will simply
+        run those through the function. When `row_udf=True` a row udf
+        is expected and should be written to expect a dictlike object
+        containing scalars
+        """
         self.row_udf = row_udf
         self.func = func
 
