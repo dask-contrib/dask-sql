@@ -10,7 +10,12 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -255,6 +260,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -312,6 +318,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -665,7 +672,6 @@ class Context:
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
-
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = python_to_sql_type(function_description.return_type)
@@ -802,10 +808,14 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
+
+        if not aggregation:
+            f = UDF(f, row_udf)
 
         lower_name = name.lower()
         if lower_name in schema.functions:
