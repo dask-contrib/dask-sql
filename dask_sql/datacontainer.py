@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
