@@ -1,0 +1,22 @@
+name: Build and publish nightly
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Compute nightly version suffix
+      run: |
+        echo "VERSION_SUFFIX=`date +%y%m%d`" >> $GITHUB_ENV
+    - name: Build and publish nightly to Dask channel
+      uses: maxibor/conda-package-publish-action@v1.1
+      with:
+        subDir: "continuous_integration/recipe"
+        AnacondaToken: ${{ secrets.DASK_CONDA_TOKEN }}

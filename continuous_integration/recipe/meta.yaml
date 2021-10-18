@@ -1,0 +1,49 @@
+{% set name = "dask-sql" %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev') + environ.get('VERSION_SUFFIX', '') %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  git_url: ../..
+
+build:
+  noarch: python
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  script: {{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  build:
+    - maven >=3.6.0
+  host:
+    - pip
+    - python >=3.6
+    - setuptools_scm
+  run:
+    - python >=3.6
+    - dask >=2.19.0,!=2021.3.0
+    - pandas >=1.0.0
+    - jpype1 >=1.0.2
+    - openjdk >=8
+    - fastapi >=0.61.1
+    - uvicorn >=0.11.3
+    - tzlocal >=2.1
+    - prompt_toolkit >=3.0.8
+    - pygments >=2.7.3
+    - nest-asyncio >=1.0.0
+
+test:
+  imports:
+    - dask_sql
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  home: http://github.com/nils-braun/dask-sql/
+  summary: SQL Query Layer for dask
+  license: MIT
+  license_file: LICENSE.txt
