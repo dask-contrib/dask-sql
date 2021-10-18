@@ -11,7 +11,12 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -799,32 +804,29 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
-        row_udf: bool = None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
 
-        def update_registry(fname, registry, replace, schema):
-            if fname in registry:
-                if replace:
-                    schema.function_lists = list(
-                        filter(
-                            lambda f: f.name.lower() != fname, schema.function_lists,
-                        )
-                    )
-                    del registry[fname]
-
-                elif registry[fname] != f:
-                    raise ValueError(
-                        "Registering different functions with the same name is not allowed"
-                    )
+        if not aggregation:
+            f = UDF(f, row_udf)
 
         lower_name = name.lower()
-        if not row_udf:
-            update_registry(lower_name, schema.functions, replace, schema)
-        else:
-            update_registry(lower_name, schema.row_functions, replace, schema)
+        if lower_name in schema.functions:
+            if replace:
+                schema.function_lists = list(
+                    filter(
+                        lambda f: f.name.lower() != lower_name, schema.function_lists,
+                    )
+                )
+                del schema.functions[lower_name]
+
+            elif schema.functions[lower_name] != f:
+                raise ValueError(
+                    "Registering different functions with the same name is not allowed"
+                )
 
         schema.function_lists.append(
             FunctionDescription(name.upper(), parameters, return_type, aggregation)
@@ -832,7 +834,4 @@ class Context:
         schema.function_lists.append(
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
-        if not row_udf:
-            schema.functions[lower_name] = f
-        else:
-            schema.row_functions[lower_name] = f
+        schema.functions[lower_name] = f
