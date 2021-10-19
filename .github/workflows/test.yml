@@ -105,7 +105,8 @@ jobs:
         with:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
-  test_independent:
+
+  cluster:
     name: "Test in a dask cluster"
     needs: build
     runs-on: ubuntu-latest
@@ -153,7 +154,8 @@ jobs:
           pytest tests
         env:
           DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
-  test_import:
+
+  import:
     name: "Test importing with bare requirements"
     needs: build
     runs-on: ubuntu-latest
@@ -188,3 +190,27 @@ jobs:
         shell: bash -l {0}
         run: |
           python -c "import dask_sql; print('ok')"
+
+  conda:
+    name: "Test building the conda package"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: 3.8
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install conda-build
+
+          which python
+          pip list
+          mamba list
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          mamba build continuous_integration/recipe --no-anaconda-upload
