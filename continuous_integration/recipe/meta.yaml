@@ -37,8 +37,6 @@ requirements:
     - nest-asyncio >=1.0.0
 
 test:
-  imports:
-    - dask_sql
   commands:
     - pip check
   requires:
