@@ -212,10 +212,10 @@ jobs:
           which python
           pip list
           mamba list
-      - name: Compute nightly version suffix
-        run: |
-          echo "VERSION_SUFFIX=`date +%y%m%d`" >> $GITHUB_ENV
       - name: Build conda package
         shell: bash -l {0}
         run: |
+          # suffix for nightly package versions
+          export VERSION_SUFFIX=`date +%y%m%d`
+
           mamba build continuous_integration/recipe --no-anaconda-upload
