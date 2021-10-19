@@ -213,7 +213,6 @@ jobs:
           pip list
           mamba list
       - name: Build conda package
-        if: ${{ github.event_name != 'push' || github.repository != 'dask-contrib/dask-sql' }}
         shell: bash -l {0}
         run: |
           # suffix for nightly package versions
