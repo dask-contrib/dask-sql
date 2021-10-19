@@ -220,22 +220,16 @@ jobs:
           export VERSION_SUFFIX=`date +%y%m%d`
 
           conda build continuous_integration/recipe --no-anaconda-upload
-      - name: Build conda package
-        shell: bash -l {0}
-        run: |
-          # suffix for nightly package versions
-          export VERSION_SUFFIX=`date +%y%m%d`
-
-          mamba build continuous_integration/recipe \
-                      --no-anaconda-upload \
-                      --output-folder .
-      - name: Upload conda package
+      - name: Build and upload conda package
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dask-contrib/dask-sql' }}
         shell: bash -l {0}
         env:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
         run: |
-          # install anaconda for upload
-          mamba install anaconda
+          # suffix for nightly package versions
+          export VERSION_SUFFIX=`date +%y%m%d`
 
-          anaconda upload --label dev noarch/*.tar.bz
+          # set conda to upload after building
+          conda config --set anaconda_upload yes
+          
+          conda build continuous_integration/recipe --label dev
