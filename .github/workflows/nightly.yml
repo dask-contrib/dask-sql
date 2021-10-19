@@ -14,10 +14,12 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build and publish conda package
       shell: bash -l {0}
+      env:
+        DASK_CONDA_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
       run: |
         # suffix for nightly package versions
         export VERSION_SUFFIX=`date +%y%m%d`
 
         mamba build continuous_integration/recipe \
-                    --token ${{ secrets.DASK_CONDA_TOKEN }} \
+                    --token $DASK_CONDA_TOKEN \
                     --label dev
