@@ -213,23 +213,21 @@ jobs:
           pip list
           mamba list
       - name: Build conda package
-        if: ${{ github.event_name != 'push' || github.repository != 'dask-contrib/dask-sql' }}
         shell: bash -l {0}
         run: |
           # suffix for nightly package versions
           export VERSION_SUFFIX=`date +%y%m%d`
 
-          mamba build continuous_integration/recipe --no-anaconda-upload
-      - name: Build and upload conda package
+          mamba build continuous_integration/recipe \
+                      --no-anaconda-upload \
+                      --output-folder .
+      - name: Upload conda package
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dask-contrib/dask-sql' }}
         shell: bash -l {0}
         env:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
         run: |
-          # suffix for nightly package versions
-          export VERSION_SUFFIX=`date +%y%m%d`
+          # install anaconda for upload
+          mamba install anaconda-client
 
-          # set conda to upload after building
-          conda config --set anaconda_upload yes
-          
-          mamba build continuous_integration/recipe --label dev
+          anaconda upload --label dev noarch/*.tar.bz
