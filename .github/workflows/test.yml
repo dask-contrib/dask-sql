@@ -236,6 +236,6 @@ jobs:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
         run: |
           # install anaconda for upload
-          pip install anaconda
+          mamba install anaconda
 
           anaconda upload --label dev noarch/*.tar.bz
