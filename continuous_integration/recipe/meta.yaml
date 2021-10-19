@@ -45,7 +45,7 @@ test:
     - pip
 
 about:
-  home: http://github.com/nils-braun/dask-sql/
+  home: https://github.com/dask-contrib/dask-sql
   summary: SQL Query Layer for dask
   license: MIT
   license_file: LICENSE.txt
