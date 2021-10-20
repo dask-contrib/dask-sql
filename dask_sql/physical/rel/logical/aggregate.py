@@ -2,16 +2,25 @@ import logging
 import operator
 from collections import defaultdict
 from functools import reduce
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple
 
 import dask.dataframe as dd
 import pandas as pd
+
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.core.call import IsNullOperation
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -48,18 +57,42 @@ class AggregationSpecification:
     """
     Most of the aggregations in SQL are already
     implemented 1:1 in dask and can just be called via their name
-    (e.g. AVG is the mean). However sometimes those already
-    implemented functions only work well for numerical
-    functions. This small container class therefore
-    can have an additional aggregation function, which is
-    valid for non-numerical types.
+    (e.g. AVG is the mean). However sometimes those
+    implemented functions only work well for some datatypes.
+    This small container class therefore
+    can have an custom aggregation function, which is
+    valid for not supported dtypes.
     """
 
-    def __init__(self, numerical_aggregation, non_numerical_aggregation=None):
-        self.numerical_aggregation = numerical_aggregation
-        self.non_numerical_aggregation = (
-            non_numerical_aggregation or numerical_aggregation
-        )
+    def __init__(self, built_in_aggregation, custom_aggregation=None):
+        self.built_in_aggregation = built_in_aggregation
+        self.custom_aggregation = custom_aggregation or built_in_aggregation
+
+    def get_supported_aggregation(self, series):
+        built_in_aggregation = self.built_in_aggregation
+
+        # built-in aggregations work well for numeric types
+        if pd.api.types.is_numeric_dtype(series.dtype):
+            return built_in_aggregation
+
+        # Todo: Add Categorical when support comes to dask-sql
+        if built_in_aggregation in ["min", "max"]:
+            if pd.api.types.is_datetime64_any_dtype(series.dtype):
+                return built_in_aggregation
+
+            if pd.api.types.is_string_dtype(series.dtype):
+                # If dask_cudf strings dtype, return built-in aggregation
+                if dask_cudf is not None and isinstance(series, dask_cudf.Series):
+                    return built_in_aggregation
+
+                # With pandas StringDtype built-in aggregations work
+                # while with pandas ObjectDtype and Nulls built-in aggregations fail
+                if isinstance(series, dd.Series) and isinstance(
+                    series.dtype, pd.StringDtype
+                ):
+                    return built_in_aggregation
+
+        return self.custom_aggregation
 
 
 class LogicalAggregatePlugin(BaseRelPlugin):
@@ -303,13 +336,9 @@ class LogicalAggregatePlugin(BaseRelPlugin):
                         f"Aggregation function {aggregation_name} not implemented (yet)."
                     )
             if isinstance(aggregation_function, AggregationSpecification):
-                dtype = df[input_col].dtype
-                if pd.api.types.is_numeric_dtype(dtype):
-                    aggregation_function = aggregation_function.numerical_aggregation
-                else:
-                    aggregation_function = (
-                        aggregation_function.non_numerical_aggregation
-                    )
+                aggregation_function = aggregation_function.get_supported_aggregation(
+                    df[input_col]
+                )
 
             # Finally, extract the output column name
             output_col = str(agg_call.getValue())

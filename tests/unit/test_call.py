@@ -68,11 +68,11 @@ def test_is_true():
         check_names=False,
     )
 
-    assert op(1) == True
-    assert op(0) == False
-    assert op(None) == False
-    assert op(np.NaN) == False
-    assert op(pd.NA) == False
+    assert op(1)
+    assert not op(0)
+    assert not op(None)
+    assert not op(np.NaN)
+    assert not op(pd.NA)
 
 
 def test_is_false():
@@ -87,40 +87,40 @@ def test_is_false():
         check_names=False,
     )
 
-    assert op(1) == False
-    assert op(0) == True
-    assert op(None) == False
-    assert op(np.NaN) == False
-    assert op(pd.NA) == False
+    assert not op(1)
+    assert op(0)
+    assert not op(None)
+    assert not op(np.NaN)
+    assert not op(pd.NA)
 
 
 def test_like():
     op = call.LikeOperation()
 
-    assert op("a string", r"%a%") == True
-    assert op("another string", r"a%") == True
-    assert op("another string", r"s%") == False
+    assert op("a string", r"%a%")
+    assert op("another string", r"a%")
+    assert not op("another string", r"s%")
 
     op = call.SimilarOperation()
-    assert op("normal", r"n[a-z]rm_l") == True
-    assert op("not normal", r"n[a-z]rm_l") == False
+    assert op("normal", r"n[a-z]rm_l")
+    assert not op("not normal", r"n[a-z]rm_l")
 
 
 def test_not():
     op = call.NotOperation()
 
-    assert op(False) == True
-    assert op(True) == False
+    assert op(False)
+    assert not op(True)
 
-    assert op(3) == False
+    assert not op(3)
 
 
 def test_nan():
     op = call.IsNullOperation()
 
-    assert op(None) == True
-    assert op(np.NaN) == True
-    assert op(pd.NA) == True
+    assert op(None)
+    assert op(np.NaN)
+    assert op(pd.NA)
     assert_series_equal(
         op(pd.Series(["a", None, "c"])), pd.Series([False, True, False])
     )
