@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 from dask_sql.context import Context
 
 meta_command_completer = WordCompleter(
-    ["\l", "\d?", "\dt", "\df", "\de", "\dm", "\conninfo", "quit"]
+    ["\\l", "\\d?", "\\dt", "\\df", "\\de", "\\dm", "\\conninfo", "quit"]
 )
 
 
@@ -83,63 +83,63 @@ def _meta_commands(sql: str, context: Context, client: Client) -> Union[bool, Cl
     """
     cmd, schema_name = _parse_meta_command(sql)
     available_commands = [
-        ["\l", "List Schemas"],
-        ["\d?, help, ?", "Show Available Commands"],
-        ["\conninfo", "Show Dask Cluster info"],
-        ["\dt [schema]", "List tables"],
-        ["\df [schema]", "List functions"],
-        ["\dm [schema]", "List models"],
-        ["\de [schema]", "List experiments"],
-        ["\dss [schema]", "Switch schema"],
-        ["\dsc [dask scheduler address]", "Switch Dask Cluster"],
+        ["\\l", "List schemas"],
+        ["\\d?, help, ?", "Show available commands"],
+        ["\\conninfo", "Show Dask cluster info"],
+        ["\\dt [schema]", "List tables"],
+        ["\\df [schema]", "List functions"],
+        ["\\dm [schema]", "List models"],
+        ["\\de [schema]", "List experiments"],
+        ["\\dss [schema]", "Switch schema"],
+        ["\\dsc [dask scheduler address]", "Switch Dask cluster"],
         ["quit", "Quits dask-sql-cli"],
     ]
-    if cmd == "\dsc":
+    if cmd == "\\dsc":
         # Switch Dask cluster
         _, scheduler_address = _parse_meta_command(sql)
         client = Client(scheduler_address)
         return client  # pragma: no cover
     schema_name = schema_name or context.schema_name
-    if cmd == "\d?" or cmd == "help" or cmd == "?":
-        _display_markdown(available_commands, columns=["Commands", "Describtion"])
-    elif cmd == "\l":
+    if cmd == "\\d?" or cmd == "help" or cmd == "?":
+        _display_markdown(available_commands, columns=["Commands", "Description"])
+    elif cmd == "\\l":
         _display_markdown(context.schema.keys(), columns=["Schemas"])
-    elif cmd == "\dt":
+    elif cmd == "\\dt":
         _display_markdown(context.schema[schema_name].tables.keys(), columns=["Tables"])
-    elif cmd == "\df":
+    elif cmd == "\\df":
         _display_markdown(
             context.schema[schema_name].functions.keys(), columns=["Functions"]
         )
-    elif cmd == "\de":
+    elif cmd == "\\de":
         _display_markdown(
             context.schema[schema_name].experiments.keys(), columns=["Experiments"]
         )
-    elif cmd == "\dm":
+    elif cmd == "\\dm":
         _display_markdown(context.schema[schema_name].models.keys(), columns=["Models"])
-    elif cmd == "\conninfo":
+    elif cmd == "\\conninfo":
         cluster_info = [
             ["Dask scheduler", client.scheduler.__dict__["addr"]],
-            ["Dask Dashboard", client.dashboard_link],
+            ["Dask dashboard", client.dashboard_link],
             ["Cluster status", client.status],
-            ["Dask Workers", len(client.cluster.workers)],
+            ["Dask workers", len(client.cluster.workers)],
         ]
         _display_markdown(
             cluster_info, columns=["components", "value"]
         )  # pragma: no cover
-    elif cmd == "\dss":
+    elif cmd == "\\dss":
         if schema_name in context.schema:
             context.schema_name = schema_name
         else:
-            print(f"Schema {schema_name} not avaialble")
+            print(f"Schema {schema_name} not available")
     elif cmd == "quit":
-        print("Quiting dask-sql ...")
+        print("Quitting dask-sql ...")
         client.close()  # for safer side
         sys.exit()
     elif cmd.startswith("\\"):
         print(
             f"The meta command {cmd} not available, please use commands from below list"
         )
-        _display_markdown(available_commands, columns=["Commands", "Describtion"])
+        _display_markdown(available_commands, columns=["Commands", "Description"])
     else:
         # nothing detected probably not a meta command
         return False
