@@ -15,7 +15,6 @@ except ImportError:
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.core.call import IsNullOperation
-from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
@@ -366,12 +365,12 @@ class LogicalAggregatePlugin(BaseRelPlugin):
             tmp_df = tmp_df[filter_expression]
 
             logger.debug(f"Filtered by {filter_column} before aggregation.")
+        if additional_column_name is None:
+            additional_column_name = new_temporary_column(df)
+        if not group_columns:
+            group_columns = [additional_column_name]
 
-        group_columns = [tmp_df[group_column] for group_column in group_columns]
-        group_columns_and_nulls = get_groupby_with_nulls_cols(
-            tmp_df, group_columns, additional_column_name
-        )
-        grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
+        grouped_df = tmp_df.groupby(by=group_columns, dropna=False)
 
         # Convert into the correct format for dask
         aggregations_dict = defaultdict(dict)
@@ -386,5 +385,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # ... fix the column names to a single level ...
         agg_result.columns = agg_result.columns.get_level_values(-1)
+
+        # TODO: if we want to move nulls to the front of the dataframe,
+        # we should probably do it here
 
         return agg_result
