@@ -1,14 +1,15 @@
+import dask.dataframe as dd
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-fugue_sql = pytest.importorskip("fugue_sql")
-import dask.dataframe as dd
-
 from dask_sql import Context
 
+fugue_sql = pytest.importorskip("fugue_sql")
+
 # needs to be imported after the check for fugue
-from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
+if fugue_sql:
+    from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
 
 
 def test_simple_statement():

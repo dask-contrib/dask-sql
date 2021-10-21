@@ -1,7 +1,7 @@
 import logging
 from collections import namedtuple
 from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 import dask.dataframe as dd
 import numpy as np
@@ -14,13 +14,15 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
-from dask_sql.physical.utils.map import map_on_partition_index
 from dask_sql.physical.utils.sort import sort_partition_func
 from dask_sql.utils import (
     LoggableDataFrame,
     make_pickable_without_dask_sql,
     new_temporary_column,
 )
+
+if TYPE_CHECKING:
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +98,7 @@ def to_bound_description(
         else:  # pragma: no cover
             # prevent python to optimize it away and make coverage not respect the
             # pragma
-            dummy = 0
+            dummy = 0  # noqa: F841
         offset = int(RexLiteralPlugin().convert(offset, None, None))
     else:
         offset = None

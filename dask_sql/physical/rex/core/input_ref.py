@@ -1,7 +1,13 @@
+from typing import TYPE_CHECKING
+
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 
 class RexInputRefPlugin(BaseRexPlugin):

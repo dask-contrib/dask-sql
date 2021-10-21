@@ -2,8 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -11,7 +10,12 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -29,6 +33,9 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
+
+if TYPE_CHECKING:
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +131,7 @@ class Context:
         table_name: str,
         input_table: InputType,
         format: str = None,
-        persist: bool = True,
+        persist: bool = False,
         schema_name: str = None,
         gpu: bool = False,
         **kwargs,
@@ -145,8 +152,9 @@ class Context:
         Typical file formats are csv or parquet.
         Any additional parameters will get passed on to the read method.
         Please note that some file formats require additional libraries.
-        By default, the data will be loaded directly into the memory
-        of the nodes. If you do not want that, set persist to False.
+        By default, the data will be lazily loaded. If you would like to
+        load the data directly into memory you can do so by setting
+        persist=True.
 
         See :ref:`data_input` for more information.
 
@@ -186,7 +194,7 @@ class Context:
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
-                Set to false to turn off loading the file data directly into memory.
+                Set to true to turn on loading the file data directly into memory.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -253,6 +261,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -310,6 +319,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -601,7 +611,7 @@ class Context:
         """
         Stop a SQL server started by ``run_server`.
         """
-        if not self.sql_server is None:
+        if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
             loop.create_task(self.sql_server.shutdown())
@@ -663,7 +673,6 @@ class Context:
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
-
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = python_to_sql_type(function_description.return_type)
@@ -768,7 +777,8 @@ class Context:
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
+        # Have not seen any instance so far, but better be safe than sorry
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):
@@ -799,10 +809,14 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
+
+        if not aggregation:
+            f = UDF(f, row_udf)
 
         lower_name = name.lower()
         if lower_name in schema.functions:

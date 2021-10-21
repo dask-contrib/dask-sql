@@ -83,6 +83,7 @@ setup(
         "tzlocal>=2.1",
         "prompt_toolkit",
         "pygments",
+        "tabulate",
         "nest-asyncio",
         # backport for python versions without importlib.metadata
         "importlib_metadata; python_version < '3.8.0'",

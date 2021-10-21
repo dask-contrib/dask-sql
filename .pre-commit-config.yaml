@@ -4,6 +4,11 @@ repos:
     hooks:
       - id: black
         language_version: python3
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+      - id: flake8
+        language_version: python3
   - repo: https://github.com/pycqa/isort
     rev: 5.7.0
     hooks:
@@ -17,4 +22,5 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: ^continuous_integration/recipe/
       - id: check-added-large-files
