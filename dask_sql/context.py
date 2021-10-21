@@ -297,14 +297,31 @@ class Context:
 
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
+        
+        Example of overwriting two functions with the same name:
+            This example registers a different function "f", which
+            calculates the floor division of an integer and applies
+            it to the column ``x``. It also shows how to overwrite
+            the previous function with the replace parameter. 
 
+            .. code-block:: python
+
+                def f(x):
+                    return x // 2
+
+                c.register_function(f, "f", [("x", np.int64)], np.int64, replace=True)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+                
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Do not raise an error if the function is already present
+            replace (:obj:`bool`): Raises an error if the function is already present. If you want to overwrite
+            a function, set the value to True; otherwise, the default value is False.
 
         See also:
             :func:`register_aggregation`
