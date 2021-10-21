@@ -119,12 +119,12 @@ def test_random(c, df):
     result_df = result_df.compute()
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_not(c, string_table, gpu):
-    if gpu:
-        input_table = "gpu_string_table"
-    else:
-        input_table = "string_table"
+@pytest.mark.parametrize(
+    "input_table",
+    ["string_table", pytest.param("gpu_string_table", marks=pytest.mark.gpu),],
+)
+def test_not(c, input_table, request):
+    string_table = request.getfixturevalue(input_table)
     df = c.sql(
         f"""
     SELECT
@@ -134,11 +134,9 @@ def test_not(c, string_table, gpu):
     """
     )
     df = df.compute()
-    if gpu:
-        df = df.to_pandas()
 
     expected_df = string_table[~string_table.a.str.contains("normal")]
-    assert_frame_equal(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_operators(c, df):
@@ -177,10 +175,11 @@ def test_operators(c, df):
 
 
 @pytest.mark.parametrize(
-    "gpu",
+    "input_table,gpu",
     [
-        False,
+        ("string_table", False),
         pytest.param(
+            "gpu_string_table",
             True,
             marks=(
                 pytest.mark.gpu,
@@ -191,12 +190,11 @@ def test_operators(c, df):
         ),
     ],
 )
-def test_like(c, string_table, gpu):
+def test_like(c, input_table, gpu, request):
+    string_table = request.getfixturevalue(input_table)
     if gpu:
-        input_table = "gpu_string_table"
         xd = pytest.importorskip("cudf")
     else:
-        input_table = "string_table"
         xd = pd
 
     df = c.sql(
@@ -205,9 +203,8 @@ def test_like(c, string_table, gpu):
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-    assert_frame_equal(df, string_table.iloc[[0]])
+
+    dd.assert_eq(df, string_table.iloc[[0]])
 
     df = c.sql(
         f"""
@@ -224,9 +221,8 @@ def test_like(c, string_table, gpu):
         WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
     """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-    assert_frame_equal(df, string_table.iloc[[1]])
+
+    dd.assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
         f"""
@@ -234,9 +230,8 @@ def test_like(c, string_table, gpu):
         WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-    assert_frame_equal(df, string_table.iloc[[2]])
+
+    dd.assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
         f"""
@@ -244,9 +239,8 @@ def test_like(c, string_table, gpu):
         WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
     """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-    assert_frame_equal(df, string_table.iloc[[2]])
+
+    dd.assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
         f"""
@@ -254,9 +248,8 @@ def test_like(c, string_table, gpu):
         WHERE a LIKE '%_' ESCAPE 'r'
     """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-    assert_frame_equal(df, string_table)
+
+    dd.assert_eq(df, string_table)
 
     string_table2 = xd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
     c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
@@ -266,10 +259,8 @@ def test_like(c, string_table, gpu):
         WHERE b LIKE 'b'
     """
     ).compute()
-    if gpu:
-        df = df.to_pandas()
-        string_table2 = string_table2.to_pandas()
-    assert_frame_equal(df, string_table2.iloc[[1]])
+
+    dd.assert_eq(df, string_table2.iloc[[1]])
 
 
 def test_null(c):
