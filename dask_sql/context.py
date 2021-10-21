@@ -815,7 +815,7 @@ class Context:
         schema = self.schema[schema_name]
 
         if not aggregation:
-            f = UDF(f, row_udf)
+            f = UDF(f, row_udf, return_type)
 
         lower_name = name.lower()
         if lower_name in schema.functions:

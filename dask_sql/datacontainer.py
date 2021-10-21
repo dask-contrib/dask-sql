@@ -182,7 +182,7 @@ class DataContainer:
 
 
 class UDF:
-    def __init__(self, func, row_udf: bool):
+    def __init__(self, func, row_udf: bool, return_type=None):
         """
         Helper class that handles different types of UDFs and manages
         how they should be mapped to dask operations. Two versions of
@@ -194,13 +194,14 @@ class UDF:
         """
         self.row_udf = row_udf
         self.func = func
+        self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):
         if self.row_udf:
             df = args[0].to_frame()
             for operand in args[1:]:
                 df[operand.name] = operand
-            result = df.apply(self.func, axis=1)
+            result = df.apply(self.func, axis=1, meta=self.meta)
         else:
             result = self.func(*args, **kwargs)
         return result
