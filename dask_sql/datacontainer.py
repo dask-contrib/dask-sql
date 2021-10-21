@@ -171,12 +171,15 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        return self.df[
+        df = self.df[
             [
                 self.column_container._frontend_backend_mapping[out_col]
                 for out_col in self.column_container.columns
             ]
-        ].rename(columns={v: k for k, v in self.column_container.mapping()})
+        ]
+        df.columns = self.column_container.columns
+
+        return df
 
 
 class UDF:
