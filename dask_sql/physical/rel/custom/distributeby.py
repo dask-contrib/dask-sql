@@ -1,9 +1,13 @@
 import logging
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
