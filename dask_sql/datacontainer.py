@@ -195,6 +195,9 @@ class UDF:
         """
         self.row_udf = row_udf
         self.func = func
+
+        if return_type is None:
+            raise ValueError("Return type must be provided")
         self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):

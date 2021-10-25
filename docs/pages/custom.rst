@@ -43,8 +43,7 @@ These functions may be registered as above and flagged as row UDFs using the `ro
     def f(row):
         return row['a'] + row['b']
 
-    # todo - fix the api
-    c.register_function(f, "f", [], None, row_udf=True)
+    c.register_function(f, "f", [("a", np.int64), ("b", np.int64)], np.int64, row_udf=True)
     c.sql("SELECT f(a, b) FROM data")
 
 ** Note: Row UDFs use `apply` which may have unpredictable performance characteristics, depending on the function and dataframe library **
