@@ -274,8 +274,10 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please note that you can always only have one function with the same name;
-        no matter if it is an aggregation or scalar function.
+        Please keep in mind that you can only have one function with the same name, 
+        regardless of whether it is an aggregation or a scalar function. However, 
+        if you register two functions with the same name, the last one registered 
+        will take precedence over the first one.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
