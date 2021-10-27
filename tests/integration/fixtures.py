@@ -107,6 +107,11 @@ def gpu_long_table(long_table):
 
 
 @pytest.fixture()
+def gpu_string_table(string_table):
+    return cudf.from_pandas(string_table) if cudf else None
+
+
+@pytest.fixture()
 def c(
     df_simple,
     df,
@@ -120,6 +125,7 @@ def c(
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
+    gpu_string_table,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -134,6 +140,7 @@ def c(
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
+        "gpu_string_table": gpu_string_table,
     }
 
     # Lazy import, otherwise the pytest framework has problems
