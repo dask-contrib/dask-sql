@@ -224,3 +224,30 @@ class SchemaContainer:
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
+        self.config: ConfigContainer = ConfigContainer()
+
+
+class ConfigContainer:
+    """
+    Helper class that contains configuration options required for specific operations
+    Eg: dask groupby aggregate operations can be configured via with the `split_out` option
+    to determine number of output partitions or the `split_every` option to determine
+    the number of partitions used during the groupby tree reduction step.
+    """
+
+    def __init__(self):
+        self.config_dict = {
+            "dask.groupby.aggregate.split_out": 1,
+            "dask.groupby.aggregate.split_every": None,
+        }
+
+    def set_config(self, config_options: Union[Tuple[str, Any], Dict[str, Any]]):
+        if isinstance(config_options, tuple):
+            config_options = [config_options]
+        self.config_dict.update(config_options)
+
+    def get_groupby_aggregate_configs(self):
+        return {
+            "split_out": self.config_dict.get("dask.groupby.aggregate.split_out"),
+            "split_every": self.config_dict.get("dask.groupby.aggregate.split_every"),
+        }
