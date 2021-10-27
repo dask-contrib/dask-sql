@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import inspect
 import logging
 import warnings
@@ -112,6 +113,8 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -494,6 +497,29 @@ class Context:
             schema_name (:obj:`str`): The name of the schema to create
         """
         self.schema[schema_name] = SchemaContainer(schema_name)
+
+    def alter_schema(self, old_schema_name, new_schema_name):
+        """
+        Alter schema
+
+        Args:
+         old_schema_name:
+         new_schema_name:
+        """
+        self.schema[new_schema_name] = copy.deepcopy(self.schema[old_schema_name])
+        del self.schema[old_schema_name]
+
+    def alter_table(self, old_table_name, new_table_name):
+        """
+        Alter Table
+        Args:
+        old_table_name:
+        new_table_name:
+        """
+        self.schema[self.schema_name].tables[new_table_name] = copy.deepcopy(
+            self.schema[self.schema_name].tables[old_table_name]
+        )
+        del self.schema[self.schema_name].tables[old_table_name]
 
     def register_experiment(
         self,
