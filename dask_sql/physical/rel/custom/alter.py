@@ -32,7 +32,9 @@ class AlterSchemaPlugin(BaseRelPlugin):
         old_schema_name = str(sql.getOldSchemaName())
         new_schema_name = str(sql.getNewSchemaName())
 
-        print(old_schema_name, new_schema_name)
+        logger.info(
+            f"changing schema name from `{old_schema_name}` to `{new_schema_name}`"
+        )
         if old_schema_name not in context.schema:
             raise RuntimeError(
                 f"Schema {old_schema_name} was not found, Available schemas are - {context.schema.keys()}"

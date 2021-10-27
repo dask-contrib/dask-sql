@@ -503,8 +503,8 @@ class Context:
         Alter schema
 
         Args:
-         old_schema_name:
-         new_schema_name:
+             old_schema_name:
+             new_schema_name:
         """
         self.schema[new_schema_name] = copy.deepcopy(self.schema[old_schema_name])
         del self.schema[old_schema_name]
@@ -512,9 +512,10 @@ class Context:
     def alter_table(self, old_table_name, new_table_name):
         """
         Alter Table
+
         Args:
-        old_table_name:
-        new_table_name:
+            old_table_name:
+            new_table_name:
         """
         self.schema[self.schema_name].tables[new_table_name] = copy.deepcopy(
             self.schema[self.schema_name].tables[old_table_name]
