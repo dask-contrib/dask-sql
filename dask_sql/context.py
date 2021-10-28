@@ -274,9 +274,9 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please keep in mind that you can only have one function with the same name, 
-        regardless of whether it is an aggregation or a scalar function. However, 
-        if you register two functions with the same name, the last one registered 
+        Please keep in mind that you can only have one function with the same name,
+        regardless of whether it is an aggregation or a scalar function. However,
+        if you register two functions with the same name, the last one registered
         will take precedence over the first one.
 
         For the registration, you need to supply both the
@@ -299,12 +299,12 @@ class Context:
 
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
-        
+
         Example of overwriting two functions with the same name:
             This example registers a different function "f", which
             calculates the floor division of an integer and applies
             it to the column ``x``. It also shows how to overwrite
-            the previous function with the replace parameter. 
+            the previous function with the replace parameter.
 
             .. code-block:: python
 
@@ -315,7 +315,7 @@ class Context:
 
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
-                
+
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
@@ -848,7 +848,7 @@ class Context:
 
             elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    "Registering multiple functions with the same name is only permitted when the parameter \"replace=True\" is used."
+                    'Registering multiple functions with the same name is only permitted when the parameter "replace=True" is used.'
                 )
 
         schema.function_lists.append(
