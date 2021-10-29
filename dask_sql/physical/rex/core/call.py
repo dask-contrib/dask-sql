@@ -1,3 +1,4 @@
+import datetime
 import logging
 import operator
 import re
@@ -642,6 +643,32 @@ class RandIntegerOperation(BaseRandomOperation):
         return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
+class IntDivisionOperator(Operation):
+    """
+    Truncated integer division (so -1 / 2 = 0).
+    This is only used for internal calculations,
+    which are created by Calcite.
+    """
+
+    def __init__(self):
+        super().__init__(self.div)
+
+    def div(self, lhs, rhs):
+        result = lhs / rhs
+
+        # Specialized code for literals like "1000µs"
+        # For some reasons, Calcite decides to represent
+        # 1000µs as 1000µs * 1000 / 1000
+        # We do not need to truncate in this case
+        # So far, I did not spot any other occurrence
+        # of this function.
+        if isinstance(result, datetime.timedelta):
+            return result
+        else:  # pragma: no cover
+            result = da.trunc(result)
+            return result
+
+
 class SearchOperation(Operation):
     """
     Search is a special operation in SQL, which allows to write "range-like"
@@ -701,8 +728,10 @@ class RexCallPlugin(BaseRexPlugin):
         "*": ReduceOperation(operation=operator.mul),
         "is distinct from": NotOperation().of(IsNotDistinctOperation()),
         "is not distinct from": IsNotDistinctOperation(),
+        "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
+        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
