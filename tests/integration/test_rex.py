@@ -608,3 +608,65 @@ def test_date_functions(c):
             FROM df
             """
         ).compute()
+
+
+def test_timestampdiff(c):
+    # single value test
+    query = (
+        "SELECT timestampdiff(SECOND, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res0,"
+        "timestampdiff(MINUTE, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res1,"
+        "timestampdiff(HOUR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res2,"
+        "timestampdiff(DAY, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res3,"
+        "timestampdiff(MONTH, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res4,"
+        "timestampdiff(YEAR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res5"
+    )
+
+    df = c.sql(query).compute()
+    assert df["res0"][0] == 7776000
+    assert df["res1"][0] == 129600
+    assert df["res2"][0] == 2160
+    assert df["res3"][0] == 90
+    assert df["res4"][0] == 2
+    assert df["res5"][0] == 0
+
+    # dataframe test
+
+    test = pd.DataFrame(
+        {
+            "a": ["2002-06-05 00:00:00", "2002-09-01 00:00:00", "2002-12-03 00:00:00"],
+            "b": ["2002-06-07 00:00:00", "2003-06-05 00:00:00", "2002-06-05 00:00:00"],
+        }
+    )
+
+    c.create_table("test", test)
+    query = (
+        "SELECT timestampdiff(MICROSECOND, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as ms,"
+        "timestampdiff(SECOND, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as sec,"
+        "timestampdiff(MINUTE, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as minn,"
+        "timestampdiff(HOUR, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as hr,"
+        "timestampdiff(DAY, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as dayy "
+        "FROM test"
+    )
+
+    ddf = c.sql(query).compute()
+
+    expected_df = pd.DataFrame(
+        {
+            "ms": {0: -1001308160, 1: -1242226688, 2: 424075264},
+            "sec": {0: -172800, 1: -23932800, 2: 15638400},
+            "minn": {0: -2880, 1: -398880, 2: 260640},
+            "hr": {0: -48, 1: -6648, 2: 4344},
+            "dayy": {0: -2, 1: -277, 2: 181},
+        }
+    )
+
+    assert_frame_equal(ddf, expected_df, check_dtype=False)
+
+    # as of now year and month was not working
+    query = (
+        "SELECT timestampdiff(MONTH, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as monthh,"
+        "timestampdiff(YEAR, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as yearr "
+        "FROM test"
+    )
+    with pytest.raises(Exception):
+        ddf = c.sql(query).compute()
