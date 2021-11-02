@@ -38,6 +38,31 @@ def test_custom_function_row(c, df):
     assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
 
 
+@pytest.mark.parametrize(
+    "retty",
+    [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
+)
+def test_custom_function_row_return_types(c, df, retty):
+    def f(row):
+        return row["a"] ** 2
+
+    if retty is None:
+        with pytest.raises(ValueError):
+            c.register_function(f, "f", [("x", np.float64)], retty, row_udf=True)
+        return
+
+    c.register_function(f, "f", [("x", np.float64)], retty, row_udf=True)
+    return_df = c.sql(
+        """
+        SELECT F(a) AS a
+        FROM df
+        """
+    )
+    return_df = return_df.compute()
+    expectation = (df[["a"]] ** 2).astype(retty)
+    assert_frame_equal(return_df.reset_index(drop=True), expectation)
+
+
 def test_multiple_definitions(c, df_simple):
     def f(x):
         return x ** 2
