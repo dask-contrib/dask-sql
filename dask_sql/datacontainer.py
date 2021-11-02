@@ -196,7 +196,7 @@ class UDF:
         self.row_udf = row_udf
         self.func = func
 
-        if row_udf and return_type is None:
+        if return_type is None:
             # These UDFs go through apply and without providing
             # a return type, dask will attempt to guess it, and
             # dask might be wrong.
