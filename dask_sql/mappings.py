@@ -288,6 +288,7 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
 
     current_float = pd.api.types.is_float_dtype(current_type)
     expected_integer = pd.api.types.is_integer_dtype(expected_type)
+    current_timedelta_type = pd.api.types.is_timedelta64_dtype(current_type)
     if current_float and expected_integer:
         logger.debug("...truncating...")
         # Currently "trunc" can not be applied to NA (the pandas missing value type),
@@ -296,5 +297,10 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         # will convert both NA and np.NaN to NA.
         col = da.trunc(col.fillna(value=np.NaN))
 
+    if current_timedelta_type and expected_integer:
+        res = col.dt.total_seconds() * 1000
+    else:
+        res = col.astype(expected_type)
+
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    return col.astype(expected_type)
+    return res

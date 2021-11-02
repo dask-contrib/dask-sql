@@ -201,7 +201,28 @@ class CastOperation(Operation):
         output_type = sql_to_python_type(output_type.upper())
 
         return_column = cast_column_to_type(operand, output_type)
+        if return_column is None:
+            return operand
+        else:
+            return return_column
 
+
+class ReinterpretOperation(Operation):
+    """The cast operator"""
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.cast)
+
+    def cast(self, operand, rex=None) -> SeriesOrScalar:
+        if not is_frame(operand):
+            return operand
+
+        output_type = str(rex.getType())
+        output_type = sql_to_python_type(output_type.upper())
+
+        return_column = cast_column_to_type(operand, output_type)
         if return_column is None:
             return operand
         else:
@@ -731,7 +752,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
-        "reinterpret": CastOperation(),
+        "reinterpret": ReinterpretOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
