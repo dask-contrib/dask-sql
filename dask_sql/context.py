@@ -9,8 +9,8 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
-try
-    import dask_cuda
+try:
+    import dask_cuda # noqa: F401
 except: ImportError: # pragma: no cover
     pass
 
