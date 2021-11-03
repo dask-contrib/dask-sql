@@ -10,8 +10,8 @@ from dask.base import optimize
 from dask.distributed import Client
 
 try:
-    import dask_cuda # noqa: F401
-except ImportError: # pragma: no cover
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
     pass
 
 from dask_sql import input_utils
