@@ -9,15 +9,7 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_sql import input_utils
-from dask_sql.datacontainer import (
-    UDF,
-    DataContainer,
-    FunctionDescription,
-    SchemaContainer,
-)
-from dask_sql.input_utils import InputType, InputUtil
-from dask_sql.integrations.ipython import ipython_integration
+# START - This import block must occur before any other dask_sql imports or a segfault will occur.
 from dask_sql.java import (
     DaskAggregateFunction,
     DaskScalarFunction,
@@ -29,13 +21,24 @@ from dask_sql.java import (
     ValidationException,
     get_java_class,
 )
+
+if TYPE_CHECKING:
+    from dask_sql.java import org
+# END - This import block must occur before any other dask_sql imports or a segfault will occur.
+
+from dask_sql import input_utils
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+)
+from dask_sql.input_utils import InputType, InputUtil
+from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
-
-if TYPE_CHECKING:
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
