@@ -51,22 +51,6 @@ SqlKwargs ParenthesizedKeyValueExpressions() :
     }
 }
 
-
-SqlNode ExpressionOrPredict() :
-{
-    final SqlNode e;
-}
-{
-    (
-        e = SqlPredictModel()
-    |
-        e = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
-    )
-    {
-        return e;
-    }
-}
-
 /*
  * A query, optionally in parenthesis.
  * As we might want to replace the query with

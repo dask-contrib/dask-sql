@@ -17,29 +17,20 @@ SqlNode SqlPredictModel() :
     final List<SqlNode> selectList;
     final SqlModelIdentifier model;
     final SqlNode select;
-    final SqlNode stmt;
 }
 {
-    (
-        LOOKAHEAD(<SELECT> SelectList() <FROM> <PREDICT>)
-        <SELECT>
-        { s = span(); }
-        selectList = SelectList()
-        <FROM> <PREDICT>
-        <LPAREN>
-        model = ModelIdentifier()
-        <COMMA>
-        select = OptionallyParenthesizedQuery()
-        <RPAREN>
-        {
-            return new SqlPredictModel(s.end(this), new SqlNodeList(selectList, Span.of(selectList).pos()), model, select);
-        }
-    |
-        stmt = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
-        {
-            return stmt;
-        }
-    )
+    <SELECT>
+    { s = span(); }
+    selectList = SelectList()
+    <FROM> <PREDICT>
+    <LPAREN>
+    model = ModelIdentifier()
+    <COMMA>
+    select = OptionallyParenthesizedQuery()
+    <RPAREN>
+    {
+        return new SqlPredictModel(s.end(this), new SqlNodeList(selectList, Span.of(selectList).pos()), model, select);
+    }
 }
 
 // EXPORT MODEL "name" WITH ()
