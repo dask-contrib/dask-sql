@@ -4,21 +4,20 @@ import pytest
 
 try:
     import cudf
-    import dask_cudf
 except ImportError:
     cudf = None
-    dask_cudf = None
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_distribute_by(c, gpu):
-    df = pd.DataFrame({"id": [0, 1, 2, 1, 2, 3], "val": [0, 1, 2, 1, 2, 3]})
 
     if gpu:
-        gdf = cudf.from_pandas(df)
-        ddf = dask_cudf.from_cudf(df, npartitions=2)
+        xd = cudf
     else:
-        ddf = dd.from_pandas(df, npartitions=2)
+        xd = pd
+
+    df = xd.DataFrame({"id": [0, 1, 2, 1, 2, 3], "val": [0, 1, 2, 1, 2, 3]})
+    ddf = dd.from_pandas(df, npartitions=2)
 
     c.create_table("test", ddf)
     partitioned_ddf = c.sql(
