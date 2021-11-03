@@ -30,4 +30,9 @@ def test_distribute_by(c, gpu):
     )
     part_0_ids = partitioned_ddf.get_partition(0).compute().id.unique()
     part_1_ids = partitioned_ddf.get_partition(1).compute().id.unique()
+
+    if gpu:
+        part_0_ids = part_0_ids.to_pandas()
+        part_1_ids = part_1_ids.to_pandas()
+
     assert bool(set(part_0_ids) & set(part_1_ids)) is False
