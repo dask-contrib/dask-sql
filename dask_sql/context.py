@@ -8,7 +8,11 @@ import dask.dataframe as dd
 import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
-import dask_cuda
+
+try
+    import dask_cuda
+except: ImportError: # pragma: no cover
+    pass
 
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
