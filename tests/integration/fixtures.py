@@ -19,11 +19,11 @@ try:
 except ImportError:
     dask_cudf = None
 
-from dask_sql.context import Context
+try:
+    from dask_cuda import LocalCUDACluster
+except ImportError:
+    dask_cuda = None
 
-# fmt: off
-from dask_cuda import LocalCUDACluster  # noqa: F401
-# fmt: on
 
 @pytest.fixture()
 def timeseries_df(c):
@@ -154,6 +154,7 @@ def c(
     }
 
     # Lazy import, otherwise the pytest framework has problems
+    from dask_sql.context import Context
 
     c = Context()
     for df_name, df in dfs.items():
