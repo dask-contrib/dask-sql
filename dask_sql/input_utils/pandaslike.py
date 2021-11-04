@@ -5,10 +5,8 @@ from dask_sql.input_utils.base import BaseInputPlugin
 
 try:
     import cudf
-    import dask_cudf
 except ImportError:
     cudf = None
-    dask_cudf = None
 
 
 class PandasLikeInputPlugin(BaseInputPlugin):
@@ -30,18 +28,12 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     ):
         npartitions = kwargs.pop("npartitions", 1)
         if gpu:  # pragma: no cover
-            if not dask_cudf:
+            if not cudf:
                 raise ModuleNotFoundError(
-                    "Setting `gpu=True` for table creation requires dask_cudf"
+                    "Setting `gpu=True` for table creation requires cudf"
                 )
 
             if isinstance(input_item, pd.DataFrame):
-                return dask_cudf.from_cudf(
-                    cudf.from_pandas(input_item), npartitions=npartitions, **kwargs,
-                )
-            else:
-                return dask_cudf.from_cudf(
-                    input_item, npartitions=npartitions, **kwargs,
-                )
-        else:
-            return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
+                input_item = cudf.from_pandas(input_item)
+
+        return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
