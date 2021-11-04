@@ -163,7 +163,8 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         dt = datetime.fromtimestamp(
             int(literal_value.getTimeInMillis()) / 1000, timezone.utc
         )
-
+        if sql_type == "DATE":
+            return dt.date()
         return dt
 
     elif sql_type.startswith("DECIMAL("):

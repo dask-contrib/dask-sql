@@ -115,3 +115,13 @@ def test_timezones(c, datetime_table):
     result_df = result_df.compute()
 
     assert_frame_equal(result_df, datetime_table)
+
+
+def test_date_casting(c, datetime_table):
+    # check date casting
+    query = "SELECT cast(timezone as date) as date1,cast(utc_timezone as date) as date2 FROM datetime_table "
+    result_df = c.sql(query).compute().astype(str)
+    expected_df = pd.DataFrame(
+        {"date1": ["2014-08-01"] * 3, "date2": ["2014-08-01"] * 3}
+    )
+    assert_frame_equal(result_df, expected_df, check_dtype=False)

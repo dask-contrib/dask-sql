@@ -196,14 +196,16 @@ class CastOperation(Operation):
         if not is_frame(operand):
             return operand
 
-        output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
-
-        return_column = cast_column_to_type(operand, output_type)
+        sql_output_type = str(rex.getType())
+        python_output_type = sql_to_python_type(sql_output_type.upper())
+        return_column = cast_column_to_type(operand, python_output_type)
 
         if return_column is None:
             return operand
         else:
+            # handle datetime type specially
+            if sql_output_type == "DATE":
+                return_column = return_column.dt.date
             return return_column
 
 

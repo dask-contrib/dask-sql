@@ -68,3 +68,14 @@ def test_string_filter(c, string_table):
     assert_frame_equal(
         return_df, string_table.head(1),
     )
+
+
+def test_datetime_filter(c):
+    df = pd.DataFrame(
+        {"d_date": ["2001-08-01", "2001-08-02", "2001-08-03"], "val": [1, 2, 3]}
+    )
+    c.create_table("datetime_tbl1", df)
+    query = "SELECT val, d_date FROM datetime_tbl1 WHERE CAST(d_date as date) IN (date '2001-08-01', date '2001-08-03')"
+    result_df = c.sql(query).compute().reset_index(drop=True)
+    expected_df = pd.DataFrame({"val": [1, 3], "d_date": ["2001-08-01", "2001-08-03"]})
+    assert_frame_equal(result_df, expected_df, check_dtype=False)
