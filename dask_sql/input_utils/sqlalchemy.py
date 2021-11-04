@@ -24,7 +24,7 @@ class SqlalchemyHiveInputPlugin(HiveInputPlugin):
         **kwargs
     ):  # pragma: no cover
         if gpu:
-            raise Exception("Hive does not support gpu")
+            raise NotImplementedError("Hive does not support gpu")
 
         import sqlalchemy
 

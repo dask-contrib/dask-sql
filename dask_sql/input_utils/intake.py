@@ -27,7 +27,7 @@ class IntakeCatalogInputPlugin(BaseInputPlugin):
         **kwargs,
     ):
         if gpu:  # pragma: no cover
-            raise Exception("Intake does not support gpu")
+            raise NotImplementedError("Intake does not support gpu")
 
         table_name = kwargs.pop("intake_table_name", table_name)
         catalog_kwargs = kwargs.pop("catalog_kwargs", {})
