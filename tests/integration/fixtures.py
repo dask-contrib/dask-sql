@@ -20,7 +20,7 @@ except ImportError:
     dask_cudf = None
 
 try:
-    from dask_cuda import LocalCUDACluster
+    from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     dask_cuda = None
 
