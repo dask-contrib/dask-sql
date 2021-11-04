@@ -54,7 +54,7 @@ def apply_sort(
         and not any(sort_null_first)
     ):
         try:
-            return df.sort_values(sort_columns, ignore_index=True)
+            return df.sort_values(sort_columns, ignore_index=True).persist()
         except ValueError:
             pass
 
@@ -65,20 +65,19 @@ def apply_sort(
         by=sort_columns[0],
         ascending=sort_ascending[0],
         na_position="first" if sort_null_first[0] else "last",
-    )
+    ).persist()
 
     # sort the remaining columns if given
     if len(sort_columns) > 1:
-        df = df.persist()
         df = df.map_partitions(
             make_pickable_without_dask_sql(sort_partition_func),
             meta=df,
             sort_columns=sort_columns,
             sort_ascending=sort_ascending,
             sort_null_first=sort_null_first,
-        )
+        ).persist()
 
-    return df.persist()
+    return df
 
 
 def sort_partition_func(
