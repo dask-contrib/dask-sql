@@ -25,7 +25,7 @@ def apply_sort(
             by=sort_columns,
             ascending=sort_ascending,
             na_position="first" if sort_null_first[0] else "last",
-        )
+        ).persist()
 
     # dask-cudf only supports ascending sort / nulls last:
     # https://github.com/rapidsai/cudf/pull/9250
