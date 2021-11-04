@@ -14,10 +14,16 @@ try:
 except ImportError:
     cudf = None
 
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 
 from dask_sql.context import Context
 
+# fmt: off
 from dask_cuda import LocalCUDACluster  # noqa: F401
+# fmt: on
 
 @pytest.fixture()
 def timeseries_df(c):
