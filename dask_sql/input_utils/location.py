@@ -2,7 +2,6 @@ import os
 from typing import Any
 
 import dask.dataframe as dd
-import pandas as pd
 from distributed.client import default_client
 
 from dask_sql.input_utils.base import BaseInputPlugin
