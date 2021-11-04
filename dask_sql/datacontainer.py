@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -171,14 +171,55 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        df = self.df.assign(
-            **{
-                col_from: self.df[col_to]
-                for col_from, col_to in self.column_container.mapping()
-                if col_from in self.column_container.columns
-            }
-        )
-        return df[self.column_container.columns]
+        df = self.df[
+            [
+                self.column_container._frontend_backend_mapping[out_col]
+                for out_col in self.column_container.columns
+            ]
+        ]
+        df.columns = self.column_container.columns
+
+        return df
+
+
+class UDF:
+    def __init__(self, func, row_udf: bool, return_type=None):
+        """
+        Helper class that handles different types of UDFs and manages
+        how they should be mapped to dask operations. Two versions of
+        UDFs are supported - when `row_udf=False`, the UDF is treated
+        as expecting series-like objects as arguments and will simply
+        run those through the function. When `row_udf=True` a row udf
+        is expected and should be written to expect a dictlike object
+        containing scalars
+        """
+        self.row_udf = row_udf
+        self.func = func
+
+        if return_type is None:
+            # These UDFs go through apply and without providing
+            # a return type, dask will attempt to guess it, and
+            # dask might be wrong.
+            raise ValueError("Return type must be provided")
+        self.meta = (None, return_type)
+
+    def __call__(self, *args, **kwargs):
+        if self.row_udf:
+            df = args[0].to_frame()
+            for operand in args[1:]:
+                df[operand.name] = operand
+            result = df.apply(self.func, axis=1, meta=self.meta).astype(self.meta[1])
+        else:
+            result = self.func(*args, **kwargs)
+        return result
+
+    def __eq__(self, other):
+        if isinstance(other, UDF):
+            return self.func == other.func and self.row_udf == other.row_udf
+        return NotImplemented
+
+    def __hash__(self):
+        return (self.func, self.row_udf).__hash__()
 
 
 class SchemaContainer:
@@ -187,5 +228,5 @@ class SchemaContainer:
         self.tables: Dict[str, DataContainer] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
-        self.functions: Dict[str, Callable] = {}
+        self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []

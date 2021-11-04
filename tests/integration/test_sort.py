@@ -216,23 +216,50 @@ def test_sort_with_nan_more_columns(gpu):
     )
     c.create_table("df", df)
 
-    df_result = (
-        c.sql(
-            "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
-        )
-        .c.compute()
-        .reset_index(drop=True)
+    df_result = c.sql(
+        "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
     )
-    dd.assert_eq(df_result, xd.Series([5, 6, float("nan"), 1, 3, 4]), check_names=False)
+    dd.assert_eq(
+        df_result,
+        xd.DataFrame(
+            {
+                "a": [float("nan"), float("nan"), 1, 1, 2, 2],
+                "b": [float("inf"), 5, 1, 1, 2, float("nan")],
+                "c": [5, 6, float("nan"), 1, 3, 4],
+            }
+        ),
+        check_index=False,
+    )
 
-    df_result = (
-        c.sql(
-            "SELECT * FROM df ORDER BY a ASC NULLS LAST, b DESC NULLS FIRST, c DESC NULLS LAST"
-        )
-        .c.compute()
-        .reset_index(drop=True)
+    df_result = c.sql(
+        "SELECT * FROM df ORDER BY a ASC NULLS LAST, b DESC NULLS FIRST, c DESC NULLS LAST"
     )
-    dd.assert_eq(df_result, xd.Series([1, float("nan"), 4, 3, 5, 6]), check_names=False)
+    dd.assert_eq(
+        df_result,
+        xd.DataFrame(
+            {
+                "a": [1, 1, 2, 2, float("nan"), float("nan")],
+                "b": [1, 1, float("nan"), 2, float("inf"), 5],
+                "c": [1, float("nan"), 4, 3, 5, 6],
+            }
+        ),
+        check_index=False,
+    )
+
+    df_result = c.sql(
+        "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c DESC NULLS LAST"
+    )
+    dd.assert_eq(
+        df_result,
+        xd.DataFrame(
+            {
+                "a": [float("nan"), float("nan"), 1, 1, 2, 2],
+                "b": [float("inf"), 5, 1, 1, 2, float("nan")],
+                "c": [5, 6, 1, float("nan"), 3, 4],
+            }
+        ),
+        check_index=False,
+    )
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])

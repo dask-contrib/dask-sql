@@ -54,7 +54,6 @@ class RelConverter(Pluggable):
             raise NotImplementedError(
                 f"No conversion for class {class_name} available (yet)."
             )
-
         logger.debug(
             f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
         )

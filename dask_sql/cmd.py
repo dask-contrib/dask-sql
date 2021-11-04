@@ -1,11 +1,19 @@
 import logging
+import os
+import sys
+import tempfile
 import traceback
 from argparse import ArgumentParser
 from functools import partial
+from typing import Union
 
 import pandas as pd
 from dask.datasets import timeseries
-from dask.distributed import Client
+from dask.distributed import Client, as_completed
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.shortcuts import ProgressBar
 from pygments.lexers.sql import SqlLexer
 
 try:
@@ -16,6 +24,10 @@ except ImportError:  # pragma: no cover
     from prompt_toolkit.layout.lexers import PygmentsLexer
 
 from dask_sql.context import Context
+
+meta_command_completer = WordCompleter(
+    ["\\l", "\\d?", "\\dt", "\\df", "\\de", "\\dm", "\\conninfo", "quit"]
+)
 
 
 class CompatiblePromptSession:
@@ -32,17 +44,106 @@ class CompatiblePromptSession:
     """
 
     def __init__(self, lexer) -> None:  # pragma: no cover
+        # make sure everytime dask-sql  uses same history file
+        kwargs = {
+            "lexer": lexer,
+            "history": FileHistory(
+                os.path.join(tempfile.gettempdir(), "dask-sql-history")
+            ),
+            "auto_suggest": AutoSuggestFromHistory(),
+            "completer": meta_command_completer,
+        }
         try:
             # Version >= 2.0.1: we can use the session object
             from prompt_toolkit import PromptSession
 
-            session = PromptSession(lexer=lexer)
+            session = PromptSession(**kwargs)
             self.prompt = session.prompt
         except ImportError:
             # Version < 2.0: there is no session object
             from prompt_toolkit.shortcuts import prompt
 
-            self.prompt = partial(prompt, lexer=lexer)
+            self.prompt = partial(prompt, **kwargs)
+
+
+def _display_markdown(content, **kwargs):
+    df = pd.DataFrame(content, **kwargs)
+    print(df.to_markdown(tablefmt="fancy_grid"))
+
+
+def _parse_meta_command(sql):
+    command, _, arg = sql.partition(" ")
+    return command, arg.strip()
+
+
+def _meta_commands(sql: str, context: Context, client: Client) -> Union[bool, Client]:
+    """
+     parses metacommands and prints their result
+     returns True if meta commands detected
+    """
+    cmd, schema_name = _parse_meta_command(sql)
+    available_commands = [
+        ["\\l", "List schemas"],
+        ["\\d?, help, ?", "Show available commands"],
+        ["\\conninfo", "Show Dask cluster info"],
+        ["\\dt [schema]", "List tables"],
+        ["\\df [schema]", "List functions"],
+        ["\\dm [schema]", "List models"],
+        ["\\de [schema]", "List experiments"],
+        ["\\dss [schema]", "Switch schema"],
+        ["\\dsc [dask scheduler address]", "Switch Dask cluster"],
+        ["quit", "Quits dask-sql-cli"],
+    ]
+    if cmd == "\\dsc":
+        # Switch Dask cluster
+        _, scheduler_address = _parse_meta_command(sql)
+        client = Client(scheduler_address)
+        return client  # pragma: no cover
+    schema_name = schema_name or context.schema_name
+    if cmd == "\\d?" or cmd == "help" or cmd == "?":
+        _display_markdown(available_commands, columns=["Commands", "Description"])
+    elif cmd == "\\l":
+        _display_markdown(context.schema.keys(), columns=["Schemas"])
+    elif cmd == "\\dt":
+        _display_markdown(context.schema[schema_name].tables.keys(), columns=["Tables"])
+    elif cmd == "\\df":
+        _display_markdown(
+            context.schema[schema_name].functions.keys(), columns=["Functions"]
+        )
+    elif cmd == "\\de":
+        _display_markdown(
+            context.schema[schema_name].experiments.keys(), columns=["Experiments"]
+        )
+    elif cmd == "\\dm":
+        _display_markdown(context.schema[schema_name].models.keys(), columns=["Models"])
+    elif cmd == "\\conninfo":
+        cluster_info = [
+            ["Dask scheduler", client.scheduler.__dict__["addr"]],
+            ["Dask dashboard", client.dashboard_link],
+            ["Cluster status", client.status],
+            ["Dask workers", len(client.cluster.workers)],
+        ]
+        _display_markdown(
+            cluster_info, columns=["components", "value"]
+        )  # pragma: no cover
+    elif cmd == "\\dss":
+        if schema_name in context.schema:
+            context.schema_name = schema_name
+        else:
+            print(f"Schema {schema_name} not available")
+    elif cmd == "quit":
+        print("Quitting dask-sql ...")
+        client.close()  # for safer side
+        sys.exit()
+    elif cmd.startswith("\\"):
+        print(
+            f"The meta command {cmd} not available, please use commands from below list"
+        )
+        _display_markdown(available_commands, columns=["Commands", "Description"])
+    else:
+        # nothing detected probably not a meta command
+        return False
+    return True
 
 
 def cmd_loop(
@@ -103,11 +204,27 @@ def cmd_loop(
         if not text:
             continue
 
-        try:
-            df = context.sql(text, return_futures=False)
-            print(df)
-        except Exception:
-            traceback.print_exc()
+        meta_command_detected = _meta_commands(text, context=context, client=client)
+        if isinstance(meta_command_detected, Client):
+            client = meta_command_detected
+
+        if not meta_command_detected:
+            try:
+                df = context.sql(text, return_futures=True)
+                if df is not None:  # some sql commands returns None
+                    df = df.persist()
+                    # Now turn it into a list of futures
+                    futures = client.futures_of(df)
+                    with ProgressBar() as pb:
+                        for _ in pb(
+                            as_completed(futures), total=len(futures), label="Executing"
+                        ):
+                            continue
+                        df = df.compute()
+                        print(df.to_markdown(tablefmt="fancy_grid"))
+
+            except Exception:
+                traceback.print_exc()
 
 
 def main():  # pragma: no cover

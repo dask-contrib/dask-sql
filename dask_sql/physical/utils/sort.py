@@ -19,30 +19,13 @@ def apply_sort(
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
     # if we have a single partition, we can sometimes sort with map_partitions
-    if df.npartitions == 1:
-        if dask_cudf is not None and isinstance(df, dask_cudf.DataFrame):
-            # cudf only supports null positioning if `ascending` is a single boolean:
-            # https://github.com/rapidsai/cudf/issues/9400
-            if (all(sort_ascending) or not any(sort_ascending)) and not any(
-                sort_null_first[1:]
-            ):
-                return df.map_partitions(
-                    M.sort_values,
-                    by=sort_columns,
-                    ascending=all(sort_ascending),
-                    na_position="first" if sort_null_first[0] else "last",
-                )
-            if not any(sort_null_first):
-                return df.map_partitions(
-                    M.sort_values, by=sort_columns, ascending=sort_ascending
-                )
-        elif not any(sort_null_first[1:]):
-            return df.map_partitions(
-                M.sort_values,
-                by=sort_columns,
-                ascending=sort_ascending,
-                na_position="first" if sort_null_first[0] else "last",
-            )
+    if df.npartitions == 1 and (all(sort_null_first) or not any(sort_null_first)):
+        return df.map_partitions(
+            M.sort_values,
+            by=sort_columns,
+            ascending=sort_ascending,
+            na_position="first" if sort_null_first[0] else "last",
+        )
 
     # dask-cudf only supports ascending sort / nulls last:
     # https://github.com/rapidsai/cudf/pull/9250

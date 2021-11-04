@@ -800,5 +800,4 @@ class RexCallPlugin(BaseRexPlugin):
             kwargs["rex"] = rex
 
         return operation(*operands, **kwargs)
-
         # TODO: We have information on the typing here - we should use it
