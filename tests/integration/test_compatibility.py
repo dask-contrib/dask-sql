@@ -239,7 +239,15 @@ def test_join_left():
 def test_join_cross():
     a = make_rand_df(10, a=(int, 4), b=(str, 4), c=(float, 4))
     b = make_rand_df(20, dd=(float, 1), aa=(int, 1), bb=(str, 1))
-    eq_sqlite("SELECT * FROM a CROSS JOIN b", a=a, b=b)
+    eq_sqlite(
+        """
+        SELECT * FROM a
+            CROSS JOIN b
+        ORDER BY a.a NULLS FIRST, a.b NULLS FIRST, a.c NULLS FIRST, dd NULLS FIRST
+        """,
+        a=a,
+        b=b,
+    )
 
 
 def test_join_multi():

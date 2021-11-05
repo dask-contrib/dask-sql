@@ -121,7 +121,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 rhs_partition = rhs_partition.assign(common=1)
                 merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
-                return merged_data
+                return merged_data.drop(columns=["common"])
 
             # Iterate nested over all partitions from lhs and rhs and merge them
             name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
