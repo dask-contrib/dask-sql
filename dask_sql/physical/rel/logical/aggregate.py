@@ -233,7 +233,13 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         groupby_agg_options = context.schema[
             context.schema_name
-        ].config.get_groupby_aggregate_configs()
+        ].config.get_config_by_prefix("dask.groupby.aggregate")
+        # Update the config string to only include the actual param value
+        # i.e. dask.groupby.aggregate.split_out -> split_out
+        for config_key in list(groupby_agg_options.keys()):
+            groupby_agg_options[
+                config_key.rpartition(".")[2]
+            ] = groupby_agg_options.pop(config_key)
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
         # It is very important to start with the non-filtered entry.

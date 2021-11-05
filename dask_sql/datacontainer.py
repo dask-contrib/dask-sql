@@ -236,24 +236,82 @@ class SchemaContainer:
 class ConfigContainer:
     """
     Helper class that contains configuration options required for specific operations
-    Eg: dask groupby aggregate operations can be configured via with the `split_out` option
-    to determine number of output partitions or the `split_every` option to determine
-    the number of partitions used during the groupby tree reduction step.
+    Configurations are stored in a dictionary where keys strings are delimited by `.`
+    for easier nested access of multiple configurations
+    Example:
+        Dask groupby aggregate operations can be configured via with the `split_out` option
+        to determine number of output partitions or the `split_every` option to determine
+        the number of partitions used during the groupby tree reduction step.
     """
 
     def __init__(self):
         self.config_dict = {
-            "dask.groupby.aggregate.split_out": 1,
-            "dask.groupby.aggregate.split_every": None,
+            # Do not set defaults here unless needed
+            # This mantains the list of configuration options supported that can be set
+            # "dask.groupby.aggregate.split_out": 1,
+            # "dask.groupby.aggregate.split_every": None,
         }
 
     def set_config(self, config_options: Union[Tuple[str, Any], Dict[str, Any]]):
+        """
+        Accepts either a tuple of (config, val) or a dictionary containing multiple
+        {config1: val1, config2: val2} pairs and updates the schema config with these values
+        """
         if isinstance(config_options, tuple):
             config_options = [config_options]
         self.config_dict.update(config_options)
 
-    def get_groupby_aggregate_configs(self):
-        return {
-            "split_out": self.config_dict.get("dask.groupby.aggregate.split_out"),
-            "split_every": self.config_dict.get("dask.groupby.aggregate.split_every"),
-        }
+    def drop_config(self, config_str: Union[str, List[str]]):
+        if isinstance(config_str, str):
+            config_str = [config_str]
+        for config_key in config_str:
+            self.config_dict.pop(config_key)
+
+    def get_config_by_prefix(self, config_prefix: str):
+        """
+        Returns all configuration options matching the prefix in `config_prefix`
+
+        Example:
+            . code-block:: python
+
+            from dask_sql.datacontainer import ConfigContainer
+
+            sql_config = ConfigContainer()
+            sql_config.set_config(
+                {
+                 "dask.groupby.aggregate.split_out":1,
+                 "dask.groupby.aggregate.split_every": 1,
+                 "dask.sort.persist": True,
+                }
+            )
+
+            sql_config.get_config_by_prefix("dask.groupby")
+            # Returns {
+            #   "dask.groupby.aggregate.split_out":1,
+            #   "dask.groupby.aggregate.split_every":1
+            # }
+
+            sql_config.get_config_by_prefix("dask")
+            # Returns {
+            #   "dask.groupby.aggregate.split_out":1,
+            #   "dask.groupby.aggregate.split_every":1,
+            #   "dask.sort.persistpersist": True
+            #   }
+
+            sql_config.get_config_by_prefix("dask.sort")
+            # Returns {"dask.sort.persist": True}
+
+            sql_config.get_config_by_prefix("missing.key")
+            sql_config.get_config_by_prefix(None)
+            # Both return {}
+
+        """
+        return (
+            {
+                key: val
+                for key, val in self.config_dict.items()
+                if key.startswith(config_prefix)
+            }
+            if config_prefix
+            else {}
+        )

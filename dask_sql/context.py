@@ -545,6 +545,15 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].config.set_config(config_options)
 
+    def drop_config(
+        self, config_str: Union[str, List[str]], schema_name: str = None,
+    ):
+        """
+        Drop user set configuration options from schema
+        """
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].config.drop_config(config_str)
+
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
