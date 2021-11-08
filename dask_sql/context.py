@@ -34,11 +34,10 @@ from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
-# try:
-#    import dask_cuda  # noqa: F401
-# except ImportError:  # pragma: no cover
-#    pass
-#
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
 
 
 if TYPE_CHECKING:

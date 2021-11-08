@@ -11,18 +11,12 @@ from pandas.testing import assert_frame_equal
 
 try:
     import cudf
-except ImportError:
-    cudf = None
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
-try:
+    # importing to check for JVM segfault
+    import dask_cudf  # noqa: F401
     from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
-    dask_cuda = None
+    cudf = None
 
 
 @pytest.fixture()
