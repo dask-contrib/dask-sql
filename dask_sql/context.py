@@ -276,9 +276,10 @@ class Context:
             FROM df
 
         Please keep in mind that you can only have one function with the same name,
-        regardless of whether it is an aggregation or a scalar function. However,
-        if you register two functions with the same name, the last one registered
-        will take precedence over the first one.
+        regardless of whether it is an aggregation or a scalar function. By default,
+        attempting to register two functions with the same name will raise an error;
+        setting `replace=True` will give precedence to the most recently registered
+        function.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
@@ -323,8 +324,8 @@ class Context:
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Raises an error if the function is already present. If you want to overwrite
-            a function, set the value to True; otherwise, the default value is False.
+            replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
+            present; instead, replace the original function. Default is `False`.
 
         See also:
             :func:`register_aggregation`
