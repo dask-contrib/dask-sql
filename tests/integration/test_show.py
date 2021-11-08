@@ -55,6 +55,7 @@ def test_tables(c):
                 "gpu_user_table_1",
                 "gpu_df",
                 "gpu_long_table",
+                "gpu_string_table",
             ]
         }
     )

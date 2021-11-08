@@ -171,18 +171,19 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        df = self.df.assign(
-            **{
-                col_from: self.df[col_to]
-                for col_from, col_to in self.column_container.mapping()
-                if col_from in self.column_container.columns
-            }
-        )
-        return df[self.column_container.columns]
+        df = self.df[
+            [
+                self.column_container._frontend_backend_mapping[out_col]
+                for out_col in self.column_container.columns
+            ]
+        ]
+        df.columns = self.column_container.columns
+
+        return df
 
 
 class UDF:
-    def __init__(self, func, row_udf: bool):
+    def __init__(self, func, row_udf: bool, return_type=None):
         """
         Helper class that handles different types of UDFs and manages
         how they should be mapped to dask operations. Two versions of
@@ -195,12 +196,19 @@ class UDF:
         self.row_udf = row_udf
         self.func = func
 
+        if return_type is None:
+            # These UDFs go through apply and without providing
+            # a return type, dask will attempt to guess it, and
+            # dask might be wrong.
+            raise ValueError("Return type must be provided")
+        self.meta = (None, return_type)
+
     def __call__(self, *args, **kwargs):
         if self.row_udf:
             df = args[0].to_frame()
             for operand in args[1:]:
                 df[operand.name] = operand
-            result = df.apply(self.func, axis=1)
+            result = df.apply(self.func, axis=1, meta=self.meta).astype(self.meta[1])
         else:
             result = self.func(*args, **kwargs)
         return result
