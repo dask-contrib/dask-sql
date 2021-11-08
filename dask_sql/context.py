@@ -848,7 +848,7 @@ class Context:
 
             elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    'Registering multiple functions with the same name is only permitted when the parameter "replace=True" is used.'
+                    "Registering multiple functions with the same name is only permitted if replace=True"
                 )
 
         schema.function_lists.append(
