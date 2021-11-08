@@ -9,6 +9,11 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
     UDF,
@@ -33,12 +38,6 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
-
-try:
-    import dask_cuda  # noqa: F401
-except ImportError:  # pragma: no cover
-    pass
-
 
 if TYPE_CHECKING:
     from dask_sql.java import org
