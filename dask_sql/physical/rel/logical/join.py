@@ -140,7 +140,11 @@ class LogicalJoinPlugin(BaseRelPlugin):
             )
 
             meta = dd.dispatch.concat(
-                [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
+                [
+                    df_lhs_renamed._meta_nonempty.assign(common=1),
+                    df_rhs_renamed._meta_nonempty,
+                ],
+                axis=1,
             )
             # TODO: Do we know the divisions in any way here?
             divisions = [None] * (len(dsk) + 1)

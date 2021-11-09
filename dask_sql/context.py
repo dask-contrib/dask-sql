@@ -9,6 +9,11 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
     UDF,
@@ -112,6 +117,7 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -815,7 +821,7 @@ class Context:
         schema = self.schema[schema_name]
 
         if not aggregation:
-            f = UDF(f, row_udf)
+            f = UDF(f, row_udf, return_type)
 
         lower_name = name.lower()
         if lower_name in schema.functions:
