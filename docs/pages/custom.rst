@@ -34,7 +34,7 @@ After registration, the function can be used as any other usual SQL function:
 Scalar functions can have one or more input parameters and can combine columns and literal values.
 
 Row-Wise Pandas UDFs
-----------------
+--------------------
 In some cases it may be easier to write custom functions which process a dict like row object, such as those consumed by ``pandas.DataFrame.apply``.
 These functions may be registered as above and flagged as row UDFs using the `row_udf` keyword argument:
 

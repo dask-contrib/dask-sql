@@ -8,7 +8,7 @@ dependencies:
 - black=19.10b0
 - ciso8601>=2.2.0
 - dask-ml>=1.7.0
-- dask>=2.19.0,!=2021.3.0  # dask 2021.3.0 makes dask-ml fail (see https://github.com/dask/dask-ml/issues/803)
+- dask>=2021.10.0
 - fastapi>=0.61.1
 - fs>=2.4.11
 - intake>=0.6.0

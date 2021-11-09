@@ -6,6 +6,7 @@ from .create_schema import CreateSchemaPlugin
 from .create_table import CreateTablePlugin
 from .create_table_as import CreateTableAsPlugin
 from .describe_model import ShowModelParamsPlugin
+from .distributeby import DistributeByPlugin
 from .drop_model import DropModelPlugin
 from .drop_schema import DropSchemaPlugin
 from .drop_table import DropTablePlugin
@@ -34,4 +35,5 @@ __all__ = [
     ShowSchemasPlugin,
     ShowTablesPlugin,
     SwitchSchemaPlugin,
+    DistributeByPlugin,
 ]

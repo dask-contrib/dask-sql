@@ -1,6 +1,5 @@
 python>=3.7
-dask>=2.19.0,!=2021.3.0  # dask 2021.3.0 makes
-                         # dask-ml fail (see https://github.com/dask/dask-ml/issues/803)
+dask>=2021.10.0
 pandas>=1.0.0  # below 1.0, there were no nullable ext. types
 jpype1>=1.0.2
 openjdk>=8
