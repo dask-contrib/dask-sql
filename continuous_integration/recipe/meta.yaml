@@ -25,7 +25,7 @@ requirements:
     - setuptools_scm
   run:
     - python >=3.6
-    - dask >=2021.10.0
+    - dask ==2021.10.0
     - pandas >=1.0.0
     - jpype1 >=1.0.2
     - openjdk >=8
