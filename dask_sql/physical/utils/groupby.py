@@ -20,7 +20,7 @@ def get_groupby_with_nulls_cols(
     group_columns_and_nulls = []
     for group_column in group_columns:
         # the ~ makes NaN come first
-        is_null_column = ~(group_column.isnull())
+        is_null_column = group_column.isnull()
         non_nan_group_column = group_column.fillna(0)
 
         group_columns_and_nulls += [is_null_column, non_nan_group_column]
