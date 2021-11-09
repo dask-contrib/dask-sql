@@ -195,6 +195,12 @@ class UDF:
         """
         self.row_udf = row_udf
         self.func = func
+
+        if return_type is None:
+            # These UDFs go through apply and without providing
+            # a return type, dask will attempt to guess it, and
+            # dask might be wrong.
+            raise ValueError("Return type must be provided")
         self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):
@@ -202,7 +208,7 @@ class UDF:
             df = args[0].to_frame()
             for operand in args[1:]:
                 df[operand.name] = operand
-            result = df.apply(self.func, axis=1, meta=self.meta)
+            result = df.apply(self.func, axis=1, meta=self.meta).astype(self.meta[1])
         else:
             result = self.func(*args, **kwargs)
         return result
