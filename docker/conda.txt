@@ -1,5 +1,5 @@
 python>=3.7
-dask==2021.10.0
+dask>=2021.10.0
 pandas>=1.0.0  # below 1.0, there were no nullable ext. types
 jpype1>=1.0.2
 openjdk>=8
