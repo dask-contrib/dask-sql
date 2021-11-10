@@ -106,6 +106,53 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  test-latest:
+    name: "Test latest dask/distributed (ubuntu-latest, java: 11, python: 3.8)"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: ${{ matrix.python }}
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+      - name: Download the pre-build jar
+        uses: actions/download-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/
+      - name: Install hive testing dependencies for Linux
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge sasl>=0.3.1
+          docker pull bde2020/hive:2.3.2-postgresql-metastore
+          docker pull bde2020/hive-metastore-postgresql:2.3.0
+      - name: Install latest dask/distributed
+        shell: bash -l {0}
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+      - name: Test with pytest
+        shell: bash -l {0}
+        run: |
+          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v1
+        with:
+          name: pytest-results-latest
+          path: junit/test-results.xml
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
+
   cluster:
     name: "Test in a dask cluster"
     needs: build
