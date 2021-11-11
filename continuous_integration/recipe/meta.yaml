@@ -29,7 +29,7 @@ requirements:
     - setuptools-scm
   run:
     - python
-    - dask ==2021.10.0
+    - dask >=2021.10.0
     - pandas >=1.0.0
     - jpype1 >=1.0.2
     - openjdk >=8
