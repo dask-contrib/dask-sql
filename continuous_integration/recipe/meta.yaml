@@ -23,7 +23,7 @@ requirements:
     - maven >=3.6.0
   host:
     - pip
-    - python {{ py_version }}
+    - python
     - setuptools-scm
   run:
     - python
