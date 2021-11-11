@@ -1,3 +1,5 @@
+import operator
+
 import dask.dataframe as dd
 import numpy as np
 import pytest
@@ -60,6 +62,30 @@ def test_custom_function_row_return_types(c, df, retty):
     )
     return_df = return_df.compute()
     expectation = (df[["a"]] ** 2).astype(retty)
+    assert_frame_equal(return_df.reset_index(drop=True), expectation)
+
+
+# Test row UDFs with two args
+@pytest.mark.parametrize("k", [1, 1.5, True])
+@pytest.mark.parametrize(
+    "op", [operator.add, operator.sub, operator.mul, operator.truediv]
+)
+@pytest.mark.parametrize("retty", [np.int64, np.float64, np.bool_])
+def test_custom_function_row_args(c, df, k, op, retty):
+    const_type = np.dtype(type(k)).type
+
+    def f(row, k):
+        return op(row["a"], k)
+
+    c.register_function(
+        f, "f", [("a", np.int64), ("k", const_type)], retty, row_udf=True
+    )
+
+    statement = f"SELECT F(a, {k}) as a from df"
+
+    return_df = c.sql(statement)
+    return_df = return_df.compute()
+    expectation = op(df[["a"]], k).astype(retty)
     assert_frame_equal(return_df.reset_index(drop=True), expectation)
 
 
