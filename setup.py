@@ -61,7 +61,7 @@ sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else
 
 setup(
     name="dask_sql",
-    description="Dask SQL",
+    description="SQL query layer for Dask",
     url="http://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
     maintainer_email="nilslennartbraun@gmail.com",
