@@ -15,7 +15,7 @@ build:
   entry_points:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
-  string: py{{ python }}{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ python.replace(".", "") }}{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
