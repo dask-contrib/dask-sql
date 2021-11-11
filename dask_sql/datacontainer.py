@@ -205,10 +205,19 @@ class UDF:
 
     def __call__(self, *args, **kwargs):
         if self.row_udf:
-            df = args[0].to_frame()
-            for operand in args[1:]:
-                df[operand.name] = operand
-            result = df.apply(self.func, axis=1, meta=self.meta).astype(self.meta[1])
+            column_args = []
+            scalar_args = []
+            for operand in args:
+                if isinstance(operand, dd.Series):
+                    column_args.append(operand)
+                else:
+                    scalar_args.append(operand)
+                df = column_args[0].to_frame()
+                for col in column_args[1:]:
+                    df[col.name] = operand
+            result = df.apply(
+                self.func, axis=1, args=tuple(scalar_args), meta=self.meta
+            ).astype(self.meta[1])
         else:
             result = self.func(*args, **kwargs)
         return result
