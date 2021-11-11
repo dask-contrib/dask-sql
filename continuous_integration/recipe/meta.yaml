@@ -1,6 +1,5 @@
 {% set name = "dask-sql" %}
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev') + environ.get('VERSION_SUFFIX', '') %}
-{% set py_version=environ.get('CONDA_PY', 36) %}
 
 
 package:
@@ -17,7 +16,7 @@ build:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
   noarch: python
-  string: py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ py_version.replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
@@ -25,7 +24,7 @@ requirements:
     - maven >=3.6.0
   host:
     - pip
-    - python
+    - python {{ py_version }}
     - setuptools-scm
   run:
     - python
