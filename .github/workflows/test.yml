@@ -24,9 +24,7 @@ jobs:
   detect-ci-trigger:
     name: Check for upstream dev Dask trigger phrase
     runs-on: ubuntu-latest
-    if: |
-      github.repository == 'dask-contrib/dask-sql'
-      && (github.event_name == 'push' || github.event_name == 'pull_request')
+    if: github.repository == 'dask-contrib/dask-sql'
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
@@ -100,15 +98,15 @@ jobs:
           name: jar
           path: dask_sql/jar/
       - name: Install hive testing dependencies for Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
-        if: matrix.os == 'ubuntu-latest'
       - name: Set proper JAVA_HOME for Windows
+        if: matrix.os == 'windows-latest'
         run: |
           echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
-        if: matrix.os == 'windows-latest'
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
@@ -118,12 +116,11 @@ jobs:
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: pytest-results
           path: junit/test-results.xml
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
@@ -249,7 +246,10 @@ jobs:
                       --no-anaconda-upload \
                       --output-folder .
       - name: Upload conda package
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dask-contrib/dask-sql' }}
+        if: |
+          github.event_name == 'push'
+          && github.ref == 'refs/heads/main'
+          && github.repository == 'dask-contrib/dask-sql'
         env:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
         run: |
