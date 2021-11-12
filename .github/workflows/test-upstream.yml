@@ -111,7 +111,7 @@ jobs:
 
   report-failures:
     name: Open issue for upstream dev failures
-    needs: test
+    needs: test-dev
     if: |
       failure()
       && github.event_name == 'schedule'
