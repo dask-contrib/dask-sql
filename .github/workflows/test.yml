@@ -57,6 +57,7 @@ jobs:
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
     strategy:
+      fail-fast: false
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
