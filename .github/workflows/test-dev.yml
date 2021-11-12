@@ -103,8 +103,8 @@ jobs:
           && github.repository == 'dask-contrib/dask-sql'
         uses: actions/upload-artifact@v2
         with:
-          name: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ os.java }}-log
-          path: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ os.java }}-log
+          name: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ matrix.java }}-log
+          path: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ matrix.java }}-log
           retention-days: 5
 
   report-failures:
