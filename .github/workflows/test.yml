@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   detect-ci-trigger:
-    name: detect upstream-dev ci trigger
+    name: Check for upstream dev Dask trigger phrase
     runs-on: ubuntu-latest
     if: |
       github.repository == 'dask-contrib/dask-sql'
