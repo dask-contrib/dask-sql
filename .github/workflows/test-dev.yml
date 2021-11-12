@@ -1,4 +1,4 @@
-name: Scheduled testing
+name: Nightly upstream testing
 on:
   schedule:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
@@ -8,7 +8,7 @@ jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
     # the future deployable
-    name: "Build the jar on ubuntu"
+    name: Build the jar on ubuntu
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -2,7 +2,7 @@
 # Test the main branch and every pull request by
 # 1. building the jar on ubuntu
 # 2. testing code (using the build jar) on ubuntu and windows, with different java versions
-name: Test
+name: Test Python package
 on:
   push:
     branches:
@@ -39,7 +39,7 @@ jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
     # the future deployable
-    name: "Build the jar on ubuntu"
+    name: Build the jar on ubuntu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -56,7 +56,7 @@ jobs:
           python-version: 3.8
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
-      - name: Install dependencies and build the jar
+      - name: Build the jar
         run: |
           python setup.py java
       - name: Upload the jar

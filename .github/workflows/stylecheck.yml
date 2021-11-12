@@ -1,5 +1,5 @@
 ---
-name: Python Style Check
+name: Python style check
 on: [pull_request]
 
 # When this workflow is queued, automatically cancel any previous running
@@ -10,6 +10,7 @@ concurrency:
 
 jobs:
   pre-commit:
+    name: Run pre-commit hooks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
