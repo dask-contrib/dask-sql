@@ -10,6 +10,9 @@ jobs:
     # the future deployable
     name: "Build the jar on ubuntu"
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -26,7 +29,6 @@ jobs:
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Install dependencies and build the jar
-        shell: bash -l {0}
         run: |
           python setup.py java
       - name: Upload the jar
