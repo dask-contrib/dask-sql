@@ -1,15 +1,19 @@
-name: Upload Python Package
+name: Upload Python package
 
 on:
   release:
     types: [created]
 
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   deploy:
-    name: Deploy
+    name: Build and upload Python package
     runs-on: ubuntu-latest
     if: github.repository == 'dask-contrib/dask-sql'
-
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -26,17 +30,14 @@ jobs:
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Install dependencies
-        shell: bash -l {0}
         run: |
           pip install setuptools wheel twine
           which python
           pip list
           conda list
       - name: Build jar
-        shell: bash -l {0}
         run: python setup.py java
-      - name: Build and publish
-        shell: bash -l {0}
+      - name: Build and publish package
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
