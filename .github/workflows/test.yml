@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   detect-ci-trigger:
-    name: Check for upstream dev Dask trigger phrase
+    name: Check for upstream trigger phrase
     runs-on: ubuntu-latest
     if: github.repository == 'dask-contrib/dask-sql'
     outputs:
