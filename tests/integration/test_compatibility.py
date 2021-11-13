@@ -928,3 +928,11 @@ def test_integration_1():
         """,
         a=a,
     )
+
+
+def test_query_case_sensitivity():
+    c = Context()
+    df = pd.DataFrame({"id": [0, 1]})
+
+    c.create_table("test", df)
+    c.sql("select ID from test")

@@ -182,6 +182,7 @@ public class RelationalAlgebraGenerator {
 
 	private Config createParserConfig() {
 		return getDialect().configureParser(SqlParser.Config.DEFAULT).withConformance(SqlConformanceEnum.DEFAULT)
+				.withCaseSensitive(false)
 				.withParserFactory(new DaskSqlParserImplFactory());
 	}
 
