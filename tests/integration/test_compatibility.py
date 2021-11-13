@@ -940,4 +940,4 @@ def test_query_case_sensitivity():
     try:
         c.sql("select ID from test")
     except ParsingException as pe:
-        assert False, f"Queries should be case insensitve but raised exception {pe}"
+        assert False, f"Queries should be case in-sensitve but raised exception {pe}"
