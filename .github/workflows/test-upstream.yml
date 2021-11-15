@@ -10,6 +10,7 @@ jobs:
     # the future deployable
     name: Build the jar on ubuntu
     runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
     defaults:
       run:
         shell: bash -l {0}
