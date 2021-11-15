@@ -77,6 +77,8 @@ class DataResults(QueryResults):
 
     @staticmethod
     def get_data_description(df):
+        if hasattr(df, "to_pandas"):
+            df = df.to_pandas()
         return [
             DataResults.convert_row(row)
             for row in df.itertuples(index=False, name=None)

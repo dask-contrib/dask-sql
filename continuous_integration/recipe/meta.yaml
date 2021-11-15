@@ -1,6 +1,5 @@
 {% set name = "dask-sql" %}
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev') + environ.get('VERSION_SUFFIX', '') %}
-{% set py_version=environ.get('CONDA_PY', 36) %}
 
 
 package:
@@ -11,9 +10,12 @@ source:
   git_url: ../..
 
 build:
-  noarch: python
   number: {{ GIT_DESCRIBE_NUMBER }}
-  string: py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  skip: true   # [py2k]
+  entry_points:
+    - dask-sql-server = dask_sql.server.app:main
+    - dask-sql = dask_sql.cmd:main
+  string: py{{ python | replace(".", "") }}{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
@@ -21,30 +23,42 @@ requirements:
     - maven >=3.6.0
   host:
     - pip
-    - python >=3.6
-    - setuptools_scm
+    - python
+    - setuptools-scm
   run:
-    - python >=3.6
-    - dask >=2.19.0,!=2021.3.0
+    - python
+    - dask >=2021.10.0
     - pandas >=1.0.0
     - jpype1 >=1.0.2
     - openjdk >=8
     - fastapi >=0.61.1
     - uvicorn >=0.11.3
     - tzlocal >=2.1
-    - prompt_toolkit >=3.0.8
-    - pygments >=2.7.3
-    - nest-asyncio >=1.0.0
-    - tabulate >=0.8.9
+    - prompt-toolkit
+    - pygments
+    - nest-asyncio
+    - tabulate
+    - importlib-metadata  # [py<38]
 
 test:
+  imports:
+    - dask_sql
   commands:
     - pip check
+    - dask-sql-server --help
+    - dask-sql --help
   requires:
     - pip
 
 about:
-  home: https://github.com/dask-contrib/dask-sql
-  summary: SQL Query Layer for dask
+  home: https://github.com/dask-contrib/dask-sql/
+  summary: SQL query layer for Dask
   license: MIT
   license_file: LICENSE.txt
+
+extra:
+  recipe-maintainers:
+    - quasiben
+    - galipremsagar
+    - charlesbluca
+    - nils-braun

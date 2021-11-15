@@ -19,7 +19,7 @@ dependencies:
 - mlflow>=1.19.0
 - mock>=4.0.3
 - nest-asyncio>=1.4.3
-- openjdk=8
+- openjdk=11
 - pandas>=1.0.0  # below 1.0, there were no nullable ext. types
 - pip=20.2.4
 - pre-commit>=2.11.1
@@ -31,7 +31,7 @@ dependencies:
 - pytest-cov>=2.10.1
 - pytest-xdist
 - pytest>=6.0.1
-- python=3.7
+- python=3.9
 - scikit-learn>=0.24.2
 - sphinx>=3.2.1
 - tpot>=0.11.7

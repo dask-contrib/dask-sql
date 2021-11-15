@@ -9,6 +9,11 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
     UDF,

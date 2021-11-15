@@ -11,6 +11,10 @@ from pandas.testing import assert_frame_equal
 
 try:
     import cudf
+
+    # importing to check for JVM segfault
+    import dask_cudf  # noqa: F401
+    from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     cudf = None
 
