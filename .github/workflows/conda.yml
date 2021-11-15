@@ -32,7 +32,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          mamba install conda-build conda-verify
+          mamba install boa conda-verify
 
           which python
           pip list
@@ -42,9 +42,9 @@ jobs:
           # suffix for nightly package versions
           export VERSION_SUFFIX=a`date +%y%m%d`
 
-          mamba build continuous_integration/recipe \
-                      --no-anaconda-upload \
-                      --output-folder .
+          conda mambabuild continuous_integration/recipe \
+                           --no-anaconda-upload \
+                           --output-folder .
       - name: Upload conda package
         if: |
           github.event_name == 'push'
