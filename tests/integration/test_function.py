@@ -65,7 +65,7 @@ def test_custom_function_row_return_types(c, df, retty):
     assert_frame_equal(return_df.reset_index(drop=True), expectation)
 
 
-# Test row UDFs with one args
+# Test row UDFs with one arg
 @pytest.mark.parametrize("k", [1, 1.5, True])
 @pytest.mark.parametrize(
     "op", [operator.add, operator.sub, operator.mul, operator.truediv]
@@ -89,7 +89,7 @@ def test_custom_function_row_args(c, df, k, op, retty):
     assert_frame_equal(return_df.reset_index(drop=True), expectation)
 
 
-# Test row UDFs with one args
+# Test row UDFs with two args
 @pytest.mark.parametrize("k2", [1, 1.5, True])
 @pytest.mark.parametrize("k1", [1, 1.5, True])
 @pytest.mark.parametrize(

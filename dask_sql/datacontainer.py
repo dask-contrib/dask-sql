@@ -212,7 +212,7 @@ class UDF:
                     column_args.append(operand)
                 else:
                     scalar_args.append(operand)
-                df = column_args[0].to_frame()
+            df = column_args[0].to_frame()
             for col in column_args[1:]:
                 df[col.name] = col
             result = df.apply(
