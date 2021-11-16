@@ -48,6 +48,17 @@ These functions may be registered as above and flagged as row UDFs using the `ro
 
 ** Note: Row UDFs use `apply` which may have unpredictable performance characteristics, depending on the function and dataframe library **
 
+UDFs written in this way can also be extended to accept scalar arguments along with the incoming row:
+
+.. code-block:: python
+
+    def f(row, k):
+        return row['a'] + k
+
+    c.register_function(f, "f", [("a", np.int64), ("k", np.int64)], np.int64, row_udf=True)
+    c.sql("SELECT f(a, 42) FROM data")
+
+
 Aggregation Functions
 ---------------------
 
