@@ -280,8 +280,11 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please note that you can always only have one function with the same name;
-        no matter if it is an aggregation or scalar function.
+        Please keep in mind that you can only have one function with the same name,
+        regardless of whether it is an aggregation or a scalar function. By default,
+        attempting to register two functions with the same name will raise an error;
+        setting `replace=True` will give precedence to the most recently registered
+        function.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
@@ -304,13 +307,30 @@ class Context:
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
 
+        Example of overwriting two functions with the same name:
+            This example registers a different function "f", which
+            calculates the floor division of an integer and applies
+            it to the column ``x``. It also shows how to overwrite
+            the previous function with the replace parameter.
+
+            .. code-block:: python
+
+                def f(x):
+                    return x // 2
+
+                c.register_function(f, "f", [("x", np.int64)], np.int64, replace=True)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Do not raise an error if the function is already present
+            replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
+            present; instead, replace the original function. Default is `False`.
 
         See also:
             :func:`register_aggregation`
@@ -835,7 +855,7 @@ class Context:
 
             elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    "Registering different functions with the same name is not allowed"
+                    "Registering multiple functions with the same name is only permitted if replace=True"
                 )
 
         schema.function_lists.append(
