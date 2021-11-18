@@ -22,6 +22,22 @@ Install the package from the ``conda-forge`` channel:
 .. code-block:: bash
 
     conda install dask-sql -c conda-forge
+ 
+With ``GPU Support``
+--------------
+Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages:
+
+.. code-block:: bash
+
+    conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge -y cudatoolkit=11.2 cudf=21.12 ucx-py ucx-proc=*=gpu
+    conda activate rapids-env 
+    
+Install the package from the ``conda-forge`` channel:
+
+.. code-block:: bash
+
+    conda install -c dask/label/dev -c conda-forge dask-sql
+
 
 With ``pip``
 ------------
