@@ -295,7 +295,7 @@ class ConfigContainer:
             # Returns {
             #   "dask.groupby.aggregate.split_out":1,
             #   "dask.groupby.aggregate.split_every":1,
-            #   "dask.sort.persistpersist": True
+            #   "dask.sort.persist": True
             #   }
 
             sql_config.get_config_by_prefix("dask.sort")
