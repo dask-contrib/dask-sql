@@ -261,10 +261,10 @@ class ConfigContainer:
             config_options = [config_options]
         self.config_dict.update(config_options)
 
-    def drop_config(self, config_str: Union[str, List[str]]):
-        if isinstance(config_str, str):
-            config_str = [config_str]
-        for config_key in config_str:
+    def drop_config(self, config_strs: Union[str, List[str]]):
+        if isinstance(config_strs, str):
+            config_strs = [config_strs]
+        for config_key in config_strs:
             self.config_dict.pop(config_key)
 
     def get_config_by_prefix(self, config_prefix: str):

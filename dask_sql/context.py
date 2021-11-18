@@ -540,19 +540,61 @@ class Context:
         Add configuration options to a schema.
         A configuration option could be used to set the behavior of certain configurirable operations.
 
-        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions
+        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
+
+        Args:
+            config_options (:obj:`Tuple[str,val]` or :obj:`Dict[str,val]`): config_option and value to set
+            schema_name (:obj:`str`): Optionally select schema for setting configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(("dask.groupby.aggregate.split_out", 1))
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+
         """
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].config.set_config(config_options)
 
     def drop_config(
-        self, config_str: Union[str, List[str]], schema_name: str = None,
+        self, config_strs: Union[str, List[str]], schema_name: str = None,
     ):
         """
         Drop user set configuration options from schema
+
+        Args:
+            config_strs (:obj:`str` or :obj:`List[str]`): config key or keys to drop
+            schema_name (:obj:`str`): Optionally select schema for dropping configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+                c.drop_config(
+                    [
+                        "dask.groupby.aggregate.split_out",
+                        "dask.groupby.aggregate.split_every",
+                    ]
+                )
         """
         schema_name = schema_name or self.schema_name
-        self.schema[schema_name].config.drop_config(config_str)
+        self.schema[schema_name].config.drop_config(config_strs)
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
