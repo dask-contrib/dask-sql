@@ -170,7 +170,7 @@ class CreateModelPlugin(BaseRelPlugin):
             except ImportError:  # pragma: no cover
                 raise ValueError("Wrapping requires dask-ml to be installed.")
 
-            model = ParallelPostFit(estimator=model, meta=meta)
+            model = ParallelPostFit(estimator=model, predict_meta=meta)
 
         if target_column:
             non_target_columns = [
