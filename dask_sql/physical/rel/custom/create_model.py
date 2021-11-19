@@ -153,22 +153,21 @@ class CreateModelPlugin(BaseRelPlugin):
         select_query = context._to_sql_string(select)
         training_df = context.sql(select_query)
 
-        try:
-            import cudf
-            import dask_cudf
-
-            if isinstance(training_df, dask_cudf.DataFrame):
-                meta = cudf.Series([1])
-            else:
-                meta = None
-        except ImportError:
-            meta = None
-
         if wrap_predict:
             try:
                 from dask_ml.wrappers import ParallelPostFit
             except ImportError:  # pragma: no cover
                 raise ValueError("Wrapping requires dask-ml to be installed.")
+
+            meta = None
+            try:
+                import cudf
+                import dask_cudf
+
+                if isinstance(training_df, dask_cudf.DataFrame):
+                    meta = cudf.Series([1])
+            except ImportError:
+                pass
 
             model = ParallelPostFit(estimator=model, predict_meta=meta)
 
