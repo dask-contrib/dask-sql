@@ -716,7 +716,8 @@ class Context:
         schemas = self._prepare_schemas()
 
         # Now create a relational algebra from that
-        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name)
+        # TODO: Hardcoded for now with False, will use https://github.com/dask-contrib/dask-sql/pull/286 when merged
+        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name, False)
         for schema in schemas:
             generator_builder.addSchema(schema)
         generator = generator_builder.build()
