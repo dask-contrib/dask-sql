@@ -25,6 +25,11 @@ Install the package from the ``conda-forge`` channel:
  
 Experimental GPU support
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+- GPU support is currently  tied to the `RAPIDS <https://rapids.ai/>`_  libraries.
+- It is in development and generally requires the latest cuDF nightlies.
+- It is experimental, so users should expect some bugs or undefined behavior.
+
 Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages:
 
 .. code-block:: bash
