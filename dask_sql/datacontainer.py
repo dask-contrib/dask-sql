@@ -272,38 +272,38 @@ class ConfigContainer:
         Returns all configuration options matching the prefix in `config_prefix`
 
         Example:
-            . code-block:: python
+            .. code-block:: python
 
-            from dask_sql.datacontainer import ConfigContainer
+                from dask_sql.datacontainer import ConfigContainer
 
-            sql_config = ConfigContainer()
-            sql_config.set_config(
-                {
-                 "dask.groupby.aggregate.split_out":1,
-                 "dask.groupby.aggregate.split_every": 1,
-                 "dask.sort.persist": True,
-                }
-            )
+                sql_config = ConfigContainer()
+                sql_config.set_config(
+                    {
+                     "dask.groupby.aggregate.split_out":1,
+                     "dask.groupby.aggregate.split_every": 1,
+                     "dask.sort.persist": True,
+                    }
+                )
 
-            sql_config.get_config_by_prefix("dask.groupby")
-            # Returns {
-            #   "dask.groupby.aggregate.split_out":1,
-            #   "dask.groupby.aggregate.split_every":1
-            # }
+                sql_config.get_config_by_prefix("dask.groupby")
+                # Returns {
+                #   "dask.groupby.aggregate.split_out": 1,
+                #   "dask.groupby.aggregate.split_every": 1
+                # }
 
-            sql_config.get_config_by_prefix("dask")
-            # Returns {
-            #   "dask.groupby.aggregate.split_out":1,
-            #   "dask.groupby.aggregate.split_every":1,
-            #   "dask.sort.persist": True
-            #   }
+                sql_config.get_config_by_prefix("dask")
+                # Returns {
+                #   "dask.groupby.aggregate.split_out": 1,
+                #   "dask.groupby.aggregate.split_every": 1,
+                #   "dask.sort.persist": True
+                #   }
 
-            sql_config.get_config_by_prefix("dask.sort")
-            # Returns {"dask.sort.persist": True}
+                sql_config.get_config_by_prefix("dask.sort")
+                # Returns {"dask.sort.persist": True}
 
-            sql_config.get_config_by_prefix("missing.key")
-            sql_config.get_config_by_prefix(None)
-            # Both return {}
+                sql_config.get_config_by_prefix("missing.key")
+                sql_config.get_config_by_prefix(None)
+                # Both return {}
 
         """
         return (
