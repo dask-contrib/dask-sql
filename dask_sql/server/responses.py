@@ -1,9 +1,8 @@
 import uuid
-from typing import List
 
 import dask.dataframe as dd
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import Request
 
 from dask_sql.mappings import python_to_sql_type
 
@@ -78,6 +77,8 @@ class DataResults(QueryResults):
 
     @staticmethod
     def get_data_description(df):
+        if hasattr(df, "to_pandas"):
+            df = df.to_pandas()
         return [
             DataResults.convert_row(row)
             for row in df.itertuples(index=False, name=None)

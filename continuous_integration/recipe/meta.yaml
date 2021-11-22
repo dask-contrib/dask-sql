@@ -1,0 +1,64 @@
+{% set name = "dask-sql" %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev') + environ.get('VERSION_SUFFIX', '') %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  git_url: ../..
+
+build:
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  skip: true   # [py2k]
+  entry_points:
+    - dask-sql-server = dask_sql.server.app:main
+    - dask-sql = dask_sql.cmd:main
+  string: py{{ python | replace(".", "") }}{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  script: {{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  build:
+    - maven >=3.6.0
+  host:
+    - pip
+    - python
+    - setuptools-scm
+  run:
+    - python
+    - dask >=2021.10.0
+    - pandas >=1.0.0
+    - jpype1 >=1.0.2
+    - openjdk >=8
+    - fastapi >=0.61.1
+    - uvicorn >=0.11.3
+    - tzlocal >=2.1
+    - prompt-toolkit
+    - pygments
+    - nest-asyncio
+    - tabulate
+    - importlib-metadata  # [py<38]
+
+test:
+  imports:
+    - dask_sql
+  commands:
+    - pip check
+    - dask-sql-server --help
+    - dask-sql --help
+  requires:
+    - pip
+
+about:
+  home: https://github.com/dask-contrib/dask-sql/
+  summary: SQL query layer for Dask
+  license: MIT
+  license_file: LICENSE.txt
+
+extra:
+  recipe-maintainers:
+    - quasiben
+    - galipremsagar
+    - charlesbluca
+    - nils-braun

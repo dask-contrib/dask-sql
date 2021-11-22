@@ -1,8 +1,13 @@
 import logging
 import pickle
+from typing import TYPE_CHECKING
 
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +72,7 @@ class ExportModelPlugin(BaseRelPlugin):
                 import mlflow
             except ImportError:  # pragma: no cover
                 raise ImportError(
-                    f"For export in the mlflow format, you need to have mlflow installed"
+                    "For export in the mlflow format, you need to have mlflow installed"
                 )
             try:
                 import sklearn
@@ -77,7 +82,7 @@ class ExportModelPlugin(BaseRelPlugin):
                 mlflow.sklearn.save_model(model, location, **kwargs)
             else:
                 raise NotImplementedError(
-                    f"dask-sql supports only sklearn compatible model i.e fit-predict style model"
+                    "dask-sql supports only sklearn compatible model i.e fit-predict style model"
                 )
         elif format == "onnx":
             """

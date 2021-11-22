@@ -1,0 +1,191 @@
+name: Nightly upstream testing
+on:
+  schedule:
+    - cron: "0 0 * * *" # Daily “At 00:00” UTC
+  workflow_dispatch: # allows you to trigger the workflow run manually
+
+jobs:
+  build:
+    # This build step should be similar to the deploy build, to make sure we actually test
+    # the future deployable
+    name: Build the jar on ubuntu
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: 3.8
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+      - name: Install dependencies and build the jar
+        run: |
+          python setup.py java
+      - name: Upload the jar
+        uses: actions/upload-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/DaskSQL.jar
+
+  test-dev:
+    name: "Test upstream dev (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
+    needs: build
+    runs-on: ${{ matrix.os }}
+    env:
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [8, 11]
+        os: [ubuntu-latest, windows-latest]
+        python: [3.7, 3.8, 3.9]
+    outputs:
+      artifacts_availability: ${{ steps.status.outputs.ARTIFACTS_AVAILABLE }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags.
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: ${{ matrix.python }}
+          activate-environment: dask-sql
+          environment-file: ${{ env.CONDA_FILE }}
+      - name: Download the pre-build jar
+        uses: actions/download-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/
+      - name: Install hive testing dependencies for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mamba install -c conda-forge sasl>=0.3.1
+          docker pull bde2020/hive:2.3.2-postgresql-metastore
+          docker pull bde2020/hive-metastore-postgresql:2.3.0
+      - name: Set proper JAVA_HOME for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
+      - name: Install upstream dev Dask
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+      - name: Test with pytest
+        if: success()
+        run: |
+          set -euo pipefail
+          pytest -n auto tests --dist loadfile | tee output-${{ matrix.python-version }}-log || (
+              echo '::set-output name=ARTIFACTS_AVAILABLE::true' && false
+          )
+      - name: Upload artifacts
+        if: |
+          failure()
+          && steps.status.outcome == 'failure'
+          && github.event_name == 'schedule'
+          && github.repository == 'dask-contrib/dask-sql'
+        uses: actions/upload-artifact@v2
+        with:
+          name: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ matrix.java }}-log
+          path: output-${{ matrix.os }}-py${{ matrix.python }}-jdk${{ matrix.java }}-log
+          retention-days: 5
+
+  report-failures:
+    name: Open issue for upstream dev failures
+    needs: test-dev
+    if: |
+      failure()
+      && github.event_name == 'schedule'
+      && needs.upstream-dev.outputs.artifacts_availability == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - uses: actions/download-artifact@v2
+        with:
+          path: /tmp/workspace/logs
+      - name: Move all log files into a single directory
+        run: |
+          rsync -a /tmp/workspace/logs/output-*/ ./logs
+          ls -R ./logs
+      - name: Parse logs
+        run: |
+          shopt -s globstar
+          python .github/workflows/parse_logs.py logs/**/*-log
+      - name: Report failures
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const pytest_logs = fs.readFileSync('pytest-logs.txt', 'utf8');
+            const title = "⚠️ Nightly upstream-dev CI failed ⚠️"
+            const workflow_url = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            const issue_body = `[Workflow Run URL](${workflow_url})\n${pytest_logs}`
+
+            // Run GraphQL query against GitHub API to find the most recent open issue used for reporting failures
+            const query = `query($owner:String!, $name:String!, $creator:String!, $label:String!){
+              repository(owner: $owner, name: $name) {
+                issues(first: 1, states: OPEN, filterBy: {createdBy: $creator, labels: [$label]}, orderBy: {field: CREATED_AT, direction: DESC}) {
+                  edges {
+                    node {
+                      body
+                      id
+                      number
+                    }
+                  }
+                }
+              }
+            }`;
+
+            const variables = {
+                owner: context.repo.owner,
+                name: context.repo.repo,
+                label: 'CI',
+                creator: "github-actions[bot]"
+            }
+            const result = await github.graphql(query, variables)
+
+            // If no issue is open, create a new issue,
+            // else update the body of the existing issue.
+            if (result.repository.issues.edges.length === 0) {
+                github.rest.issues.create({
+                    owner: variables.owner,
+                    repo: variables.name,
+                    body: issue_body,
+                    title: title,
+                    labels: [variables.label]
+                })
+            } else {
+                github.rest.issues.update({
+                    owner: variables.owner,
+                    repo: variables.name,
+                    issue_number: result.repository.issues.edges[0].node.number,
+                    body: issue_body
+                })
+            }

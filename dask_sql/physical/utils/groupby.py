@@ -23,6 +23,9 @@ def get_groupby_with_nulls_cols(
         is_null_column = ~(group_column.isnull())
         non_nan_group_column = group_column.fillna(0)
 
+        # split_out doesn't work if both columns have the same name
+        is_null_column.name = f"{is_null_column.name}_{new_temporary_column(df)}"
+
         group_columns_and_nulls += [is_null_column, non_nan_group_column]
 
     if not group_columns_and_nulls:

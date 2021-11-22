@@ -55,7 +55,7 @@ try:  # pragma: no cover
     from pyarrow.hdfs import _maybe_set_hadoop_classpath
 
     _maybe_set_hadoop_classpath()
-except:  # pragma: no cover
+except Exception:  # pragma: no cover
     pass
 
 # Define how to run the java virtual machine.

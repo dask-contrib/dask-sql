@@ -2,7 +2,6 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections import namedtuple
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
@@ -10,8 +9,14 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
+    UDF,
     DataContainer,
     FunctionDescription,
     SchemaContainer,
@@ -101,6 +106,7 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -257,6 +263,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -270,8 +277,11 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please note that you can always only have one function with the same name;
-        no matter if it is an aggregation or scalar function.
+        Please keep in mind that you can only have one function with the same name,
+        regardless of whether it is an aggregation or a scalar function. By default,
+        attempting to register two functions with the same name will raise an error;
+        setting `replace=True` will give precedence to the most recently registered
+        function.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
@@ -294,13 +304,30 @@ class Context:
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
 
+        Example of overwriting two functions with the same name:
+            This example registers a different function "f", which
+            calculates the floor division of an integer and applies
+            it to the column ``x``. It also shows how to overwrite
+            the previous function with the replace parameter.
+
+            .. code-block:: python
+
+                def f(x):
+                    return x // 2
+
+                c.register_function(f, "f", [("x", np.int64)], np.int64, replace=True)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Do not raise an error if the function is already present
+            replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
+            present; instead, replace the original function. Default is `False`.
 
         See also:
             :func:`register_aggregation`
@@ -314,6 +341,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -605,7 +633,7 @@ class Context:
         """
         Stop a SQL server started by ``run_server`.
         """
-        if not self.sql_server is None:
+        if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
             loop.create_task(self.sql_server.shutdown())
@@ -679,7 +707,6 @@ class Context:
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
-
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = python_to_sql_type(function_description.return_type)
@@ -793,7 +820,8 @@ class Context:
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
+        # Have not seen any instance so far, but better be safe than sorry
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):
@@ -824,10 +852,14 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
+
+        if not aggregation:
+            f = UDF(f, row_udf, return_type)
 
         lower_name = name.lower()
         if lower_name in schema.functions:
@@ -841,7 +873,7 @@ class Context:
 
             elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    "Registering different functions with the same name is not allowed"
+                    "Registering multiple functions with the same name is only permitted if replace=True"
                 )
 
         schema.function_lists.append(

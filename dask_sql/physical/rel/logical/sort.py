@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.utils.sort import apply_sort
+
+if TYPE_CHECKING:
+    import dask_sql
 
 
 class DaskSortPlugin(BaseRelPlugin):

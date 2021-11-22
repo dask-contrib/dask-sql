@@ -1,10 +1,15 @@
 import logging
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
 from dask_sql.java import get_java_class
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +54,6 @@ class RelConverter(Pluggable):
             raise NotImplementedError(
                 f"No conversion for class {class_name} available (yet)."
             )
-
         logger.debug(
             f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
         )

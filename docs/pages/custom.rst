@@ -33,6 +33,32 @@ After registration, the function can be used as any other usual SQL function:
 
 Scalar functions can have one or more input parameters and can combine columns and literal values.
 
+Row-Wise Pandas UDFs
+--------------------
+In some cases it may be easier to write custom functions which process a dict like row object, such as those consumed by ``pandas.DataFrame.apply``.
+These functions may be registered as above and flagged as row UDFs using the `row_udf` keyword argument:
+
+.. code-block:: python
+
+    def f(row):
+        return row['a'] + row['b']
+
+    c.register_function(f, "f", [("a", np.int64), ("b", np.int64)], np.int64, row_udf=True)
+    c.sql("SELECT f(a, b) FROM data")
+
+** Note: Row UDFs use `apply` which may have unpredictable performance characteristics, depending on the function and dataframe library **
+
+UDFs written in this way can also be extended to accept scalar arguments along with the incoming row:
+
+.. code-block:: python
+
+    def f(row, k):
+        return row['a'] + k
+
+    c.register_function(f, "f", [("a", np.int64), ("k", np.int64)], np.int64, row_udf=True)
+    c.sql("SELECT f(a, 42) FROM data")
+
+
 Aggregation Functions
 ---------------------
 

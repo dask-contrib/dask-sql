@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 import dask.dataframe as dd
 import numpy as np
@@ -7,6 +7,10 @@ import numpy as np
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 

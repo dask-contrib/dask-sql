@@ -1,7 +1,11 @@
-from typing import Dict
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 
 class DaskTableScanPlugin(BaseRelPlugin):
