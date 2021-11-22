@@ -23,8 +23,8 @@ Install the package from the ``conda-forge`` channel:
 
     conda install dask-sql -c conda-forge
  
-With ``GPU Support``
---------------
+Experimental GPU support
+^^^^^^^^^^^^^^^^^^^^^^^^
 Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages:
 
 .. code-block:: bash
