@@ -304,9 +304,7 @@ def test_agg_count():
             COUNT(DISTINCT d) AS cd_d,
             COUNT(e) AS c_e,
             COUNT(DISTINCT a) AS cd_e
-        FROM a GROUP BY a, b ORDER BY
-            a NULLS FIRST,
-            b NULLS FIRST
+        FROM a GROUP BY a, b
         """,
         a=a,
     )
@@ -356,9 +354,7 @@ def test_agg_sum_avg():
             AVG(e) AS avg_e,
             SUM(a)+AVG(e) AS mix_1,
             SUM(a+e) AS mix_2
-        FROM a GROUP BY a, b ORDER BY
-            a NULLS FIRST,
-            b NULLS FIRST
+        FROM a GROUP BY a,b
         """,
         a=a,
     )
@@ -427,9 +423,7 @@ def test_agg_min_max():
             MAX(g) AS max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
-        FROM a GROUP BY a, b ORDER BY
-            a NULLS FIRST,
-            b NULLS FIRST
+        FROM a GROUP BY a, b
         """,
         a=a,
     )
