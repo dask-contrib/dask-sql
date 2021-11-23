@@ -34,7 +34,8 @@ Create a new conda environment or use an existing one to install RAPIDS with the
 
 .. code-block:: bash
 
-    conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge -y cudatoolkit=11.2 cudf=21.12 ucx-py ucx-proc=*=gpu
+    conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge \
+        cudf=22.02 dask-cudf=22.02 ucx-py ucx-proc=*=gpu python=3.8 cudatoolkit=11.2
     conda activate rapids-env
 
 Install the stable package from the ``conda-forge`` channel:
