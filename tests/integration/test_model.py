@@ -104,12 +104,30 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
     # check_trained_model(c)
 
 
-def test_xgboost_training_prediction(c, gpu_training_df, client):
+def test_dask_xgboost_training_prediction(c, gpu_training_df, client):
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
 
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'xgboost.dask.DaskXGBRegressor',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+def test_xgboost_training_prediction(c, gpu_training_df, client):
+    xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'xgboost.XGBRegressor',
+        wrap_predict = True,
         target_column = 'target',
         tree_method= 'gpu_hist'
     ) AS (
