@@ -7,7 +7,7 @@ dependencies:
 - antlr4-python3-runtime>=4.9.2
 - black=19.10b0
 - ciso8601>=2.2.0
-- dask-ml>=1.7.0
+- dask-ml>=2021.11.16
 - dask>=2021.10.0
 - fastapi>=0.61.1
 - fs>=2.4.11

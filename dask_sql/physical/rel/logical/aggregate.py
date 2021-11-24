@@ -231,6 +231,15 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         for col in group_columns:
             collected_aggregations[None].append((col, col, "first"))
 
+        groupby_agg_options = context.schema[
+            context.schema_name
+        ].config.get_config_by_prefix("dask.groupby.aggregate")
+        # Update the config string to only include the actual param value
+        # i.e. dask.groupby.aggregate.split_out -> split_out
+        for config_key in list(groupby_agg_options.keys()):
+            groupby_agg_options[
+                config_key.rpartition(".")[2]
+            ] = groupby_agg_options.pop(config_key)
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
         # It is very important to start with the non-filtered entry.
@@ -240,13 +249,23 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         if key in collected_aggregations:
             aggregations = collected_aggregations.pop(key)
             df_result = self._perform_aggregation(
-                df, None, aggregations, additional_column_name, group_columns,
+                df,
+                None,
+                aggregations,
+                additional_column_name,
+                group_columns,
+                groupby_agg_options,
             )
 
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
-                df, filter_column, aggregations, additional_column_name, group_columns,
+                df,
+                filter_column,
+                aggregations,
+                additional_column_name,
+                group_columns,
+                groupby_agg_options,
             )
 
             # ... and finally concat the new data with the already present columns
@@ -358,6 +377,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
         group_columns: List[str],
+        groupby_agg_options: Dict[str, Any] = {},
     ):
         tmp_df = df
 
@@ -396,7 +416,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
-        agg_result = grouped_df.agg(aggregations_dict)
+        agg_result = grouped_df.agg(aggregations_dict, **groupby_agg_options)
 
         # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
