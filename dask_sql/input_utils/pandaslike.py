@@ -15,8 +15,10 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     def is_correct_input(
         self, input_item, table_name: str, format: str = None, **kwargs
     ):
-        is_cudf_type = cudf and isinstance(input_item, cudf.DataFrame)
-        return is_cudf_type or isinstance(input_item, pd.DataFrame) or format == "dask"
+        return (
+            dd.utils.is_dataframe_like(input_item)
+            and not isinstance(input_item, dd.DataFrame)
+        ) or format == "dask"
 
     def to_dc(
         self,
