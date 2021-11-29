@@ -5,6 +5,12 @@ import dask.dataframe as dd
 from distributed.client import default_client
 
 from dask_sql.input_utils.base import BaseInputPlugin
+from dask_sql.input_utils.convert import InputUtil
+
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 
 
 class LocationInputPlugin(BaseInputPlugin):
@@ -23,20 +29,25 @@ class LocationInputPlugin(BaseInputPlugin):
         gpu: bool = False,
         **kwargs,
     ):
-
         if format == "memory":
             client = default_client()
-            return client.get_dataset(input_item, **kwargs)
+            df = client.get_dataset(input_item, **kwargs)
 
+            plugin_list = InputUtil.get_plugins()
+
+            for plugin in plugin_list:
+                if plugin.is_correct_input(df, table_name, format, **kwargs):
+                    return plugin.to_dc(df, table_name, format, gpu, **kwargs)
         if not format:
             _, extension = os.path.splitext(input_item)
 
             format = extension.lstrip(".")
-
         try:
             if gpu:  # pragma: no cover
-                import dask_cudf
-
+                if not dask_cudf:
+                    raise ModuleNotFoundError(
+                        "Setting `gpu=True` for table creation requires dask-cudf"
+                    )
                 read_function = getattr(dask_cudf, f"read_{format}")
             else:
                 read_function = getattr(dd, f"read_{format}")
