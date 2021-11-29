@@ -41,10 +41,13 @@ env
 venv
 
 # IDE
+.idea
 .vscode
 planner/.classpath
 planner/.project
 planner/.settings/
+planner/.idea
+planner/*.iml
 
 # project specific
 planner/dependency-reduced-pom.xml

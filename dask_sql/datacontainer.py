@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -171,14 +171,64 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        df = self.df.assign(
-            **{
-                col_from: self.df[col_to]
-                for col_from, col_to in self.column_container.mapping()
-                if col_from in self.column_container.columns
-            }
-        )
-        return df[self.column_container.columns]
+        df = self.df[
+            [
+                self.column_container._frontend_backend_mapping[out_col]
+                for out_col in self.column_container.columns
+            ]
+        ]
+        df.columns = self.column_container.columns
+
+        return df
+
+
+class UDF:
+    def __init__(self, func, row_udf: bool, return_type=None):
+        """
+        Helper class that handles different types of UDFs and manages
+        how they should be mapped to dask operations. Two versions of
+        UDFs are supported - when `row_udf=False`, the UDF is treated
+        as expecting series-like objects as arguments and will simply
+        run those through the function. When `row_udf=True` a row udf
+        is expected and should be written to expect a dictlike object
+        containing scalars
+        """
+        self.row_udf = row_udf
+        self.func = func
+
+        if return_type is None:
+            # These UDFs go through apply and without providing
+            # a return type, dask will attempt to guess it, and
+            # dask might be wrong.
+            raise ValueError("Return type must be provided")
+        self.meta = (None, return_type)
+
+    def __call__(self, *args, **kwargs):
+        if self.row_udf:
+            column_args = []
+            scalar_args = []
+            for operand in args:
+                if isinstance(operand, dd.Series):
+                    column_args.append(operand)
+                else:
+                    scalar_args.append(operand)
+            df = column_args[0].to_frame()
+            for col in column_args[1:]:
+                df[col.name] = col
+            result = df.apply(
+                self.func, axis=1, args=tuple(scalar_args), meta=self.meta
+            ).astype(self.meta[1])
+        else:
+            result = self.func(*args, **kwargs)
+        return result
+
+    def __eq__(self, other):
+        if isinstance(other, UDF):
+            return self.func == other.func and self.row_udf == other.row_udf
+        return NotImplemented
+
+    def __hash__(self):
+        return (self.func, self.row_udf).__hash__()
 
 
 class SchemaContainer:
@@ -187,5 +237,90 @@ class SchemaContainer:
         self.tables: Dict[str, DataContainer] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
-        self.functions: Dict[str, Callable] = {}
+        self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
+        self.config: ConfigContainer = ConfigContainer()
+
+
+class ConfigContainer:
+    """
+    Helper class that contains configuration options required for specific operations
+    Configurations are stored in a dictionary where keys strings are delimited by `.`
+    for easier nested access of multiple configurations
+    Example:
+        Dask groupby aggregate operations can be configured via with the `split_out` option
+        to determine number of output partitions or the `split_every` option to determine
+        the number of partitions used during the groupby tree reduction step.
+    """
+
+    def __init__(self):
+        self.config_dict = {
+            # Do not set defaults here unless needed
+            # This mantains the list of configuration options supported that can be set
+            # "dask.groupby.aggregate.split_out": 1,
+            # "dask.groupby.aggregate.split_every": None,
+        }
+
+    def set_config(self, config_options: Union[Tuple[str, Any], Dict[str, Any]]):
+        """
+        Accepts either a tuple of (config, val) or a dictionary containing multiple
+        {config1: val1, config2: val2} pairs and updates the schema config with these values
+        """
+        if isinstance(config_options, tuple):
+            config_options = [config_options]
+        self.config_dict.update(config_options)
+
+    def drop_config(self, config_strs: Union[str, List[str]]):
+        if isinstance(config_strs, str):
+            config_strs = [config_strs]
+        for config_key in config_strs:
+            self.config_dict.pop(config_key)
+
+    def get_config_by_prefix(self, config_prefix: str):
+        """
+        Returns all configuration options matching the prefix in `config_prefix`
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql.datacontainer import ConfigContainer
+
+                sql_config = ConfigContainer()
+                sql_config.set_config(
+                    {
+                     "dask.groupby.aggregate.split_out":1,
+                     "dask.groupby.aggregate.split_every": 1,
+                     "dask.sort.persist": True,
+                    }
+                )
+
+                sql_config.get_config_by_prefix("dask.groupby")
+                # Returns {
+                #   "dask.groupby.aggregate.split_out": 1,
+                #   "dask.groupby.aggregate.split_every": 1
+                # }
+
+                sql_config.get_config_by_prefix("dask")
+                # Returns {
+                #   "dask.groupby.aggregate.split_out": 1,
+                #   "dask.groupby.aggregate.split_every": 1,
+                #   "dask.sort.persist": True
+                #   }
+
+                sql_config.get_config_by_prefix("dask.sort")
+                # Returns {"dask.sort.persist": True}
+
+                sql_config.get_config_by_prefix("missing.key")
+                sql_config.get_config_by_prefix(None)
+                # Both return {}
+
+        """
+        return (
+            {
+                key: val
+                for key, val in self.config_dict.items()
+                if key.startswith(config_prefix)
+            }
+            if config_prefix
+            else {}
+        )

@@ -61,8 +61,8 @@ sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else
 
 setup(
     name="dask_sql",
-    description="Dask SQL",
-    url="http://github.com/dask-contrib/dask-sql/",
+    description="SQL query layer for Dask",
+    url="https://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
     maintainer_email="nilslennartbraun@gmail.com",
     license="MIT",
@@ -74,8 +74,7 @@ setup(
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2.19.0,!=2021.3.0",  # dask 2021.3.0 makes
-        # dask-ml fail (see https://github.com/dask/dask-ml/issues/803)
+        "dask[dataframe,distributed]>=2021.10.0",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
@@ -83,6 +82,7 @@ setup(
         "tzlocal>=2.1",
         "prompt_toolkit",
         "pygments",
+        "tabulate",
         "nest-asyncio",
         # backport for python versions without importlib.metadata
         "importlib_metadata; python_version < '3.8.0'",
@@ -94,7 +94,7 @@ setup(
             "mock>=4.0.3",
             "sphinx>=3.2.1",
             "pyarrow>=0.15.1",
-            "dask-ml>=1.7.0",
+            "dask-ml>=2021.11.16",
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",

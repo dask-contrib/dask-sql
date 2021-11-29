@@ -99,7 +99,7 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
 def test_wrong_create(c):
     with pytest.raises(AttributeError):
         c.sql(
-            f"""
+            """
             CREATE TABLE
                 new_table
             WITH (
@@ -110,7 +110,7 @@ def test_wrong_create(c):
 
     with pytest.raises(AttributeError):
         c.sql(
-            f"""
+            """
             CREATE TABLE
                 new_table
             WITH (
@@ -123,7 +123,7 @@ def test_wrong_create(c):
 
 def test_create_from_query(c, df):
     c.sql(
-        f"""
+        """
         CREATE OR REPLACE TABLE
             new_table
         AS (
@@ -141,7 +141,7 @@ def test_create_from_query(c, df):
     assert_frame_equal(df, return_df)
 
     c.sql(
-        f"""
+        """
         CREATE OR REPLACE VIEW
             new_table
         AS (
@@ -190,7 +190,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     # Views should change, when the original data changes
     # Tables should not change, when the original data changes
     c.sql(
-        f"""
+        """
         CREATE VIEW
             count_view
         AS (
@@ -199,7 +199,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     """
     )
     c.sql(
-        f"""
+        """
         CREATE TABLE
             count_table
         AS (
@@ -233,7 +233,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
 
 def test_replace_and_error(c, temporary_data_file, df):
     c.sql(
-        f"""
+        """
         CREATE TABLE
             new_table
         AS (
@@ -250,7 +250,7 @@ def test_replace_and_error(c, temporary_data_file, df):
 
     with pytest.raises(RuntimeError):
         c.sql(
-            f"""
+            """
             CREATE TABLE
                 new_table
             AS (
@@ -260,7 +260,7 @@ def test_replace_and_error(c, temporary_data_file, df):
         )
 
     c.sql(
-        f"""
+        """
         CREATE TABLE IF NOT EXISTS
             new_table
         AS (
@@ -276,7 +276,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     c.sql(
-        f"""
+        """
         CREATE OR REPLACE TABLE
             new_table
         AS (
@@ -297,7 +297,7 @@ def test_replace_and_error(c, temporary_data_file, df):
         c.sql("SELECT a FROM new_table")
 
     c.sql(
-        f"""
+        """
         CREATE TABLE IF NOT EXISTS
             new_table
         AS (
@@ -369,7 +369,7 @@ def test_drop(c):
     c.sql("DROP TABLE IF EXISTS new_table")
 
     c.sql(
-        f"""
+        """
         CREATE TABLE
             new_table
         AS (

@@ -4,7 +4,6 @@ import warnings
 import dask.dataframe as dd
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
 
@@ -199,7 +198,7 @@ def test_function_adding():
     c.register_function(f, "f", [("x", int)], float)
 
     assert "f" in c.schema[c.schema_name].functions
-    assert c.schema[c.schema_name].functions["f"] == f
+    assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int)]
@@ -214,7 +213,7 @@ def test_function_adding():
     c.register_function(f, "f", [("x", float)], int, replace=False)
 
     assert "f" in c.schema[c.schema_name].functions
-    assert c.schema[c.schema_name].functions["f"] == f
+    assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 4
     assert c.schema[c.schema_name].function_lists[2].name == "F"
     assert c.schema[c.schema_name].function_lists[2].parameters == [("x", float)]
@@ -230,7 +229,7 @@ def test_function_adding():
     c.register_function(f, "f", [("x", str)], str, replace=True)
 
     assert "f" in c.schema[c.schema_name].functions
-    assert c.schema[c.schema_name].functions["f"] == f
+    assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str)]

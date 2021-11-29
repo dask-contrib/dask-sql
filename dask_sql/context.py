@@ -2,16 +2,25 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections import namedtuple
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer, FunctionDescription, SchemaContainer
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import (
@@ -29,6 +38,9 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
+
+if TYPE_CHECKING:
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +117,7 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -123,7 +136,7 @@ class Context:
         table_name: str,
         input_table: InputType,
         format: str = None,
-        persist: bool = True,
+        persist: bool = False,
         schema_name: str = None,
         gpu: bool = False,
         **kwargs,
@@ -144,8 +157,9 @@ class Context:
         Typical file formats are csv or parquet.
         Any additional parameters will get passed on to the read method.
         Please note that some file formats require additional libraries.
-        By default, the data will be loaded directly into the memory
-        of the nodes. If you do not want that, set persist to False.
+        By default, the data will be lazily loaded. If you would like to
+        load the data directly into memory you can do so by setting
+        persist=True.
 
         See :ref:`data_input` for more information.
 
@@ -185,7 +199,7 @@ class Context:
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
-                Set to false to turn off loading the file data directly into memory.
+                Set to true to turn on loading the file data directly into memory.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -252,6 +266,7 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -265,8 +280,11 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please note that you can always only have one function with the same name;
-        no matter if it is an aggregation or scalar function.
+        Please keep in mind that you can only have one function with the same name,
+        regardless of whether it is an aggregation or a scalar function. By default,
+        attempting to register two functions with the same name will raise an error;
+        setting `replace=True` will give precedence to the most recently registered
+        function.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
@@ -289,13 +307,30 @@ class Context:
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
 
+        Example of overwriting two functions with the same name:
+            This example registers a different function "f", which
+            calculates the floor division of an integer and applies
+            it to the column ``x``. It also shows how to overwrite
+            the previous function with the replace parameter.
+
+            .. code-block:: python
+
+                def f(x):
+                    return x // 2
+
+                c.register_function(f, "f", [("x", np.int64)], np.int64, replace=True)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
                 Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Do not raise an error if the function is already present
+            replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
+            present; instead, replace the original function. Default is `False`.
 
         See also:
             :func:`register_aggregation`
@@ -309,6 +344,7 @@ class Context:
             return_type=return_type,
             replace=replace,
             schema_name=schema_name,
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -521,6 +557,71 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
+    def set_config(
+        self,
+        config_options: Union[Tuple[str, Any], Dict[str, Any]],
+        schema_name: str = None,
+    ):
+        """
+        Add configuration options to a schema.
+        A configuration option could be used to set the behavior of certain configurirable operations.
+
+        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
+
+        Args:
+            config_options (:obj:`Tuple[str,val]` or :obj:`Dict[str,val]`): config_option and value to set
+            schema_name (:obj:`str`): Optionally select schema for setting configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(("dask.groupby.aggregate.split_out", 1))
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+
+        """
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].config.set_config(config_options)
+
+    def drop_config(
+        self, config_strs: Union[str, List[str]], schema_name: str = None,
+    ):
+        """
+        Drop user set configuration options from schema
+
+        Args:
+            config_strs (:obj:`str` or :obj:`List[str]`): config key or keys to drop
+            schema_name (:obj:`str`): Optionally select schema for dropping configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+                c.drop_config(
+                    [
+                        "dask.groupby.aggregate.split_out",
+                        "dask.groupby.aggregate.split_every",
+                    ]
+                )
+        """
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].config.drop_config(config_strs)
+
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
@@ -600,7 +701,7 @@ class Context:
         """
         Stop a SQL server started by ``run_server`.
         """
-        if not self.sql_server is None:
+        if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
             loop.create_task(self.sql_server.shutdown())
@@ -662,7 +763,6 @@ class Context:
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
-
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = python_to_sql_type(function_description.return_type)
@@ -767,7 +867,8 @@ class Context:
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
+        # Have not seen any instance so far, but better be safe than sorry
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):
@@ -798,10 +899,14 @@ class Context:
         return_type: type,
         replace: bool = False,
         schema_name=None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
+
+        if not aggregation:
+            f = UDF(f, row_udf, return_type)
 
         lower_name = name.lower()
         if lower_name in schema.functions:
@@ -815,7 +920,7 @@ class Context:
 
             elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    "Registering different functions with the same name is not allowed"
+                    "Registering multiple functions with the same name is only permitted if replace=True"
                 )
 
         schema.function_lists.append(

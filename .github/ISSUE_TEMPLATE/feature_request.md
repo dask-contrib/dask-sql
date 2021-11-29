@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for dask-sql
 title: "[ENH]"
-labels: "enhancement"
+labels: "enhancement, needs triage"
 assignees: ''
 
 ---

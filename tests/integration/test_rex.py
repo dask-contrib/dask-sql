@@ -119,19 +119,24 @@ def test_random(c, df):
     result_df = result_df.compute()
 
 
-def test_not(c, string_table):
+@pytest.mark.parametrize(
+    "input_table",
+    ["string_table", pytest.param("gpu_string_table", marks=pytest.mark.gpu),],
+)
+def test_not(c, input_table, request):
+    string_table = request.getfixturevalue(input_table)
     df = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM string_table
+    FROM {input_table}
     WHERE NOT a LIKE '%normal%'
     """
     )
     df = df.compute()
 
     expected_df = string_table[~string_table.a.str.contains("normal")]
-    assert_frame_equal(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_operators(c, df):
@@ -169,19 +174,41 @@ def test_operators(c, df):
     assert_frame_equal(result_df, expected_df)
 
 
-def test_like(c, string_table):
+@pytest.mark.parametrize(
+    "input_table,gpu",
+    [
+        ("string_table", False),
+        pytest.param(
+            "gpu_string_table",
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cudf/issues/9434"
+                ),
+            ),
+        ),
+    ],
+)
+def test_like(c, input_table, gpu, request):
+    string_table = request.getfixturevalue(input_table)
+    if gpu:
+        xd = pytest.importorskip("cudf")
+    else:
+        xd = pd
+
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     ).compute()
 
-    assert_frame_equal(df, string_table.iloc[[0]])
+    dd.assert_eq(df, string_table.iloc[[0]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
     ).compute()
@@ -189,42 +216,42 @@ def test_like(c, string_table):
     assert len(df) == 0
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
     """
     ).compute()
 
-    assert_frame_equal(df, string_table.iloc[[1]])
+    dd.assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
     ).compute()
 
-    assert_frame_equal(df, string_table.iloc[[2]])
+    dd.assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
     """
     ).compute()
 
-    assert_frame_equal(df, string_table.iloc[[2]])
+    dd.assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '%_' ESCAPE 'r'
     """
     ).compute()
 
-    assert_frame_equal(df, string_table)
+    dd.assert_eq(df, string_table)
 
-    string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
+    string_table2 = xd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
     c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
     df = c.sql(
         """
@@ -233,7 +260,7 @@ def test_like(c, string_table):
     """
     ).compute()
 
-    assert_frame_equal(df, string_table2.iloc[[1]])
+    dd.assert_eq(df, string_table2.iloc[[1]])
 
 
 def test_null(c):
@@ -406,57 +433,69 @@ def test_subqueries(c, user_table_1, user_table_2):
     )
 
 
-def test_string_functions(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_functions(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
     df = c.sql(
-        """
+        f"""
         SELECT
             a || 'hello' || a AS a,
-            CHAR_LENGTH(a) AS b,
-            UPPER(a) AS c,
-            LOWER(a) AS d,
-            POSITION('a' IN a FROM 4) AS e,
-            POSITION('ZL' IN a) AS f,
-            TRIM('a' FROM a) AS g,
-            TRIM(BOTH 'a' FROM a) AS h,
-            TRIM(LEADING 'a' FROM a) AS i,
-            TRIM(TRAILING 'a' FROM a) AS j,
-            OVERLAY(a PLACING 'XXX' FROM -1) AS k,
-            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS l,
-            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS m,
-            SUBSTRING(a FROM -1) AS n,
-            SUBSTRING(a FROM 10) AS o,
-            SUBSTRING(a FROM 2) AS p,
-            SUBSTRING(a FROM 2 FOR 2) AS q,
-            INITCAP(a) AS r,
-            INITCAP(UPPER(a)) AS s,
-            INITCAP(LOWER(a)) AS t
+            CONCAT(a, 'hello', a) as b,
+            CHAR_LENGTH(a) AS c,
+            UPPER(a) AS d,
+            LOWER(a) AS e,
+            POSITION('a' IN a FROM 4) AS f,
+            POSITION('ZL' IN a) AS g,
+            TRIM('a' FROM a) AS h,
+            TRIM(BOTH 'a' FROM a) AS i,
+            TRIM(LEADING 'a' FROM a) AS j,
+            TRIM(TRAILING 'a' FROM a) AS k,
+            OVERLAY(a PLACING 'XXX' FROM -1) AS l,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS m,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS n,
+            SUBSTRING(a FROM -1) AS o,
+            SUBSTRING(a FROM 10) AS p,
+            SUBSTRING(a FROM 2) AS q,
+            SUBSTRING(a FROM 2 FOR 2) AS r,
+            INITCAP(a) AS s,
+            INITCAP(UPPER(a)) AS t,
+            INITCAP(LOWER(a)) AS u
         FROM
-            string_table
+            {input_table}
         """
     ).compute()
+
+    if gpu:
+        df = df.to_pandas()
+        df = df.astype({"c": "int64", "f": "int64", "g": "int64"})
 
     expected_df = pd.DataFrame(
         {
             "a": ["a normal stringhelloa normal string"],
-            "b": [15],
-            "c": ["A NORMAL STRING"],
-            "d": ["a normal string"],
-            "e": [7],
-            "f": [0],
-            "g": [" normal string"],
+            "b": ["a normal stringhelloa normal string"],
+            "c": [15],
+            "d": ["A NORMAL STRING"],
+            "e": ["a normal string"],
+            "f": [7],
+            "g": [0],
             "h": [" normal string"],
             "i": [" normal string"],
-            "j": ["a normal string"],
-            "k": ["XXXormal string"],
-            "l": ["aXXXmal string"],
-            "m": ["aXXXnormal string"],
-            "n": ["a normal string"],
-            "o": ["string"],
-            "p": [" normal string"],
-            "q": [" n"],
-            "r": ["A Normal String"],
+            "j": [" normal string"],
+            "k": ["a normal string"],
+            "l": ["XXXormal string"],
+            "m": ["aXXXmal string"],
+            "n": ["aXXXnormal string"],
+            "o": ["a normal string"],
+            "p": ["string"],
+            "q": [" normal string"],
+            "r": [" n"],
             "s": ["A Normal String"],
             "t": ["A Normal String"],
+            "u": ["A Normal String"],
         }
     )
 
