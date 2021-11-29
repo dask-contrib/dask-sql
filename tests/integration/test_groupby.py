@@ -375,16 +375,27 @@ def test_groupby_split_out(c, input_table, split_out, request):
     c.drop_config("dask.groupby.aggregate.split_out")
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-@pytest.mark.parametrize("split_every,expected_keys", [(2, 154), (3, 148), (4, 144)])
+@pytest.mark.parametrize(
+    "gpu,split_every,expected_keys",
+    [
+        (False, 2, 74),
+        (False, 3, 68),
+        (False, 4, 64),
+        pytest.param(True, 2, 91, marks=pytest.mark.gpu),
+        pytest.param(True, 3, 85, marks=pytest.mark.gpu),
+        pytest.param(True, 4, 81, marks=pytest.mark.gpu),
+    ],
+)
 def test_groupby_split_every(c, gpu, split_every, expected_keys):
     xd = pytest.importorskip("cudf") if gpu else pd
     input_ddf = dd.from_pandas(
         xd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
         npartitions=16,
     )  # Need an input with multiple partitions to demonstrate split_every
+
     c.create_table("split_every_input", input_ddf)
     c.set_config(("dask.groupby.aggregate.split_every", split_every))
+
     df = c.sql(
         """
         SELECT
@@ -397,10 +408,12 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
         input_ddf.groupby(by="user_id")
         .agg({"b": "sum"}, split_every=split_every)
         .reset_index(drop=False)
+        .rename(columns={"b": "S"})
+        .sort_values("user_id")
     )
-    expected_df = expected_df.rename(columns={"b": "S"})
-    expected_df = expected_df.sort_values("user_id")
+
     assert len(df.dask.keys()) == expected_keys
-    dd.assert_eq(df.compute().sort_values("user_id"), expected_df, check_index=False)
+    dd.assert_eq(df, expected_df, check_index=False)
+
     c.drop_config("dask.groupby.aggregate.split_every")
     c.drop_table("split_every_input")

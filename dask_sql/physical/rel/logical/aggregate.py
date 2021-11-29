@@ -381,30 +381,44 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     ):
         tmp_df = df
 
+        # format aggregations for Dask; also check if we can use fast path for
+        # groupby, which is only supported if we are not using any custom aggregations
+        aggregations_dict = defaultdict(dict)
+        fast_groupby = True
+        for aggregation in aggregations:
+            input_col, output_col, aggregation_f = aggregation
+            aggregations_dict[input_col][output_col] = aggregation_f
+            if not isinstance(aggregation_f, str):
+                fast_groupby = False
+
+        # filter dataframe if specified
         if filter_column:
             filter_expression = tmp_df[filter_column]
             tmp_df = tmp_df[filter_expression]
-
             logger.debug(f"Filtered by {filter_column} before aggregation.")
 
-        group_columns = [tmp_df[group_column] for group_column in group_columns]
-        group_columns_and_nulls = get_groupby_with_nulls_cols(
-            tmp_df, group_columns, additional_column_name
-        )
-        grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
+        # we might need a temporary column name if no groupby columns are specified
+        if additional_column_name is None:
+            additional_column_name = new_temporary_column(df)
 
-        # Convert into the correct format for dask
-        aggregations_dict = defaultdict(dict)
-        for aggregation in aggregations:
-            input_col, output_col, aggregation_f = aggregation
+        # perform groupby operation; if we are using custom aggreagations, we must handle
+        # null values manually (this is slow)
+        if fast_groupby:
+            grouped_df = tmp_df.groupby(
+                by=(group_columns or [additional_column_name]), dropna=False
+            )
+        else:
+            group_columns = [tmp_df[group_column] for group_column in group_columns]
+            group_columns_and_nulls = get_groupby_with_nulls_cols(
+                tmp_df, group_columns, additional_column_name
+            )
+            grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
 
-            aggregations_dict[input_col][output_col] = aggregation_f
-
-        # Now apply the aggregation
+        # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
         agg_result = grouped_df.agg(aggregations_dict, **groupby_agg_options)
 
-        # ... fix the column names to a single level ...
+        # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
 
         return agg_result
