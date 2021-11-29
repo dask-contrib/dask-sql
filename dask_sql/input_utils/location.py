@@ -5,8 +5,7 @@ import dask.dataframe as dd
 from distributed.client import default_client
 
 from dask_sql.input_utils.base import BaseInputPlugin
-from dask_sql.input_utils.dask import DaskInputPlugin
-from dask_sql.input_utils.pandaslike import PandasLikeInputPlugin
+from dask_sql.input_utils.convert import InputUtil
 
 try:
     import dask_cudf
@@ -34,7 +33,9 @@ class LocationInputPlugin(BaseInputPlugin):
             client = default_client()
             df = client.get_dataset(input_item, **kwargs)
 
-            for plugin in [DaskInputPlugin(), PandasLikeInputPlugin()]:
+            plugin_list = InputUtil.get_plugins()
+
+            for plugin in plugin_list:
                 if plugin.is_correct_input(df, table_name, format, **kwargs):
                     return plugin.to_dc(df, table_name, format, gpu, **kwargs)
         if not format:
