@@ -882,7 +882,7 @@ class Context:
             for var_name, variable in frame_info.frame.f_locals.items():
                 if var_name.startswith("_"):
                     continue
-                if not isinstance(variable, (pd.DataFrame, dd.DataFrame)):
+                if not dd.utils.is_dataframe_like(variable):
                     continue
 
                 # only set them if not defined in an inner context
