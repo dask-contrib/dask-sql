@@ -63,7 +63,7 @@ def test_explain(gpu):
     sql_string = c.explain("SELECT * FROM df")
 
     assert sql_string.startswith(
-        "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {{100.0 rows, 101.0 cpu, 0.0 io}}, id = "
+        "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
     c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
@@ -71,7 +71,7 @@ def test_explain(gpu):
     sql_string = c.explain("SELECT * FROM df")
 
     assert sql_string.startswith(
-        "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {{1337.0 rows, 1338.0 cpu, 0.0 io}}, id = "
+        "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
     )
 
     c = Context()
@@ -86,7 +86,7 @@ def test_explain(gpu):
     )
 
     assert sql_string.startswith(
-        "DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {{100.0 rows, 101.0 cpu, 0.0 io}}, id = "
+        "DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
 
