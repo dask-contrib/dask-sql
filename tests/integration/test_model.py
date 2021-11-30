@@ -7,6 +7,17 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
+from tests.integration.fixtures import skip_if_external_scheduler
+
+try:
+    import cuml
+    import dask_cudf
+    import xgboost
+except ImportError:
+    cuml = None
+    xgboost = None
+    dask_cudf = None
+
 pytest.importorskip("dask_ml")
 
 
@@ -46,8 +57,8 @@ def training_df(c):
 @pytest.fixture()
 def gpu_training_df(c):
     cudf = pytest.importorskip("cudf")
-    df = timeseries(freq="1d")
-    df = df.map_partitions(cudf.from_pandas).reset_index(drop=True)
+    df = timeseries(freq="1d").reset_index(drop=True)
+    df = dask_cudf.from_dask_dataframe(df)
     c.create_table("timeseries", input_table=df)
     return None
 
@@ -70,8 +81,8 @@ def test_training_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+@pytest.mark.gpu
 def test_cuml_training_and_prediction(c, gpu_training_df):
-    cuml = pytest.importorskip("cuml", reason="cuml not installed")
     model_query = """
         CREATE OR REPLACE MODEL my_model WITH (
             model_class = 'cuml.linear_model.LogisticRegression',
@@ -87,8 +98,9 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
     check_trained_model(c)
 
 
+@pytest.mark.gpu
+@skip_if_external_scheduler
 def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
-    cuml = pytest.importorskip("cuml", reason="cuml not installed")
 
     model_query = """
         CREATE OR REPLACE MODEL my_model WITH (
@@ -103,9 +115,9 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
     check_trained_model(c)
 
 
+@skip_if_external_scheduler
+@pytest.mark.gpu
 def test_dask_xgboost_training_prediction(c, gpu_training_df, client):
-    xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
-
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'xgboost.dask.DaskXGBRegressor',
@@ -120,9 +132,8 @@ def test_dask_xgboost_training_prediction(c, gpu_training_df, client):
     check_trained_model(c)
 
 
-def test_xgboost_training_prediction(c, gpu_training_df, client):
-    xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
-
+@pytest.mark.gpu
+def test_xgboost_training_prediction(c, gpu_training_df):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'xgboost.XGBRegressor',
