@@ -1,4 +1,3 @@
-import copy
 import logging
 import uuid
 from typing import TYPE_CHECKING
@@ -88,8 +87,7 @@ class PredictModelPlugin(BaseRelPlugin):
             else:  # pragma: no cover
                 continue
 
-        tmp_context = copy.deepcopy(context)
-        tmp_context.create_table(temporary_table, predicted_df)
+        context.create_table(temporary_table, predicted_df)
 
         sql_ns = org.apache.calcite.sql
         pos = sql.getParserPosition()
@@ -112,8 +110,9 @@ class PredictModelPlugin(BaseRelPlugin):
             None,  # hints
         )
 
-        sql_outer_query = tmp_context._to_sql_string(outer_select)
-        df = tmp_context.sql(sql_outer_query)
+        sql_outer_query = context._to_sql_string(outer_select)
+        df = context.sql(sql_outer_query)
+        context.drop_table(temporary_table)
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(df, cc)

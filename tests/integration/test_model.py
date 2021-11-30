@@ -26,8 +26,11 @@ def check_trained_model(c, model_name=None):
         )
         """
 
+    tables_before = c.schema["root"].tables.keys()
     result_df = c.sql(sql).compute()
 
+    # assert that there are no additional tables in context from prediction
+    assert tables_before == c.schema["root"].tables.keys()
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
 
@@ -97,11 +100,7 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
         )
         """
     c.sql(model_query)
-    # TODO:
-    # currently failing due to lack of deep-copy in
-    # cuml.linear_model.linear_regression_mg.LinearRegressionMG
-    # Still triaging
-    # check_trained_model(c)
+    check_trained_model(c)
 
 
 def test_dask_xgboost_training_prediction(c, gpu_training_df, client):

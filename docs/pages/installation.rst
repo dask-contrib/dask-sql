@@ -23,6 +23,34 @@ Install the package from the ``conda-forge`` channel:
 
     conda install dask-sql -c conda-forge
 
+Experimental GPU support
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+- GPU support is currently tied to the `RAPIDS <https://rapids.ai/>`_  libraries.
+- It is in development and generally requires the latest `cuDF/Dask-cuDF <https://docs.rapids.ai/api/cudf/legacy/10min.html>`_ nightlies.
+- It is experimental, so users should expect some bugs or undefined behavior.
+
+Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages:
+
+.. code-block:: bash
+
+    conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge \
+        cudf=22.02 dask-cudf=22.02 ucx-py ucx-proc=*=gpu python=3.8 cudatoolkit=11.2
+    conda activate rapids-env
+
+Install the stable package from the ``conda-forge`` channel:
+
+.. code-block:: bash
+
+    conda install -c conda-forge dask-sql
+
+Or the latest nightly from the ``dask`` channel (currently only available for Linux-based operating systems):
+
+.. code-block:: bash
+
+    conda install -c dask/label/dev dask-sql
+
+
 With ``pip``
 ------------
 
