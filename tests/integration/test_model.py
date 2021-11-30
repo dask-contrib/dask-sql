@@ -26,8 +26,11 @@ def check_trained_model(c, model_name=None):
         )
         """
 
+    tables_before = c.schema["root"].tables.keys()
     result_df = c.sql(sql).compute()
 
+    # assert that there are no additional tables in context from prediction
+    assert tables_before == c.schema["root"].tables.keys()
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
 
