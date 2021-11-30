@@ -56,9 +56,10 @@ def training_df(c):
 
 @pytest.fixture()
 def gpu_training_df(c):
-    df = timeseries(freq="1d").reset_index(drop=True)
-    df = dask_cudf.from_dask_dataframe(df)
-    c.create_table("timeseries", input_table=df)
+    if dask_cudf:
+        df = timeseries(freq="1d").reset_index(drop=True)
+        df = dask_cudf.from_dask_dataframe(df)
+        c.create_table("timeseries", input_table=df)
     return None
 
 
