@@ -10,6 +10,7 @@ jobs:
     # the future deployable
     name: Build the jar on ubuntu
     runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
     defaults:
       run:
         shell: bash -l {0}
@@ -51,7 +52,7 @@ jobs:
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
-        python: [3.7, 3.8]
+        python: [3.7, 3.8, 3.9]
     outputs:
       artifacts_availability: ${{ steps.status.outputs.ARTIFACTS_AVAILABLE }}
     steps:
