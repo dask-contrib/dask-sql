@@ -18,7 +18,8 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
-    # if we have a single partition, we can sometimes sort with map_partitions
+    # pandas / cudf sort_values supports list of ascending and
+    # single null position:
     if df.npartitions == 1 and (all(sort_null_first) or not any(sort_null_first)):
         return df.map_partitions(
             M.sort_values,
@@ -27,17 +28,23 @@ def apply_sort(
             na_position="first" if sort_null_first[0] else "last",
         ).persist()
 
-    # dask-cudf only supports ascending sort / nulls last:
-    # https://github.com/rapidsai/cudf/pull/9250
-    # https://github.com/rapidsai/cudf/pull/9264
+    # dask single-column / dask-cudf multi-column sort_values
+    # supports only single ascending and single null position:
     if (
-        dask_cudf is not None
-        and isinstance(df, dask_cudf.DataFrame)
-        and all(sort_ascending)
-        and not any(sort_null_first)
+        (
+            (dask_cudf is not None and isinstance(df, dask_cudf.DataFrame))
+            or len(sort_columns) == 1
+        )
+        and (not any(sort_ascending) or all(sort_ascending))
+        and (not any(sort_null_first) or all(sort_null_first))
     ):
         try:
-            return df.sort_values(sort_columns, ignore_index=True).persist()
+            return df.sort_values(
+                by=sort_columns,
+                ascending=sort_ascending[0],
+                na_position="first" if sort_null_first[0] else "last",
+                ignore_index=True,
+            ).persist()
         except ValueError:
             pass
 
