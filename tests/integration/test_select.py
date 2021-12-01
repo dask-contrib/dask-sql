@@ -80,7 +80,7 @@ def test_select_of_select(c, df):
 
 
 def test_select_of_select_with_casing(c, df):
-    c.set_config("dask.sql.identifier.ignore_case", False)
+    c.set_config(("dask.sql.identifier.ignore_case", False))
     result_df = c.sql(
         """
         SELECT AAA, aaa, aAa
