@@ -256,21 +256,21 @@ def assert_query_gives_same_result(engine):
     return _assert_query_gives_same_result
 
 
-@pytest.fixture(scope="module")
-def cluster():
+def gpu_cluster():
     if LocalCUDACluster is None:
         pytest.skip("dask_cuda not installed")
+        return None
 
-    cluster = LocalCUDACluster(protocol="tcp", scheduler_port=0)
+    cluster = LocalCUDACluster(protocol="tcp")
     yield cluster
     cluster.close()
 
 
-@pytest.fixture(scope="module")
-def client(cluster):
-    client = Client(cluster)
-    yield client
-    client.close()
+def gpu_client(gpu_cluster):
+    if gpu_cluster:
+        client = Client(gpu_cluster)
+        yield client
+        client.close()
 
 
 @pytest.fixture(scope="session", autouse=True)

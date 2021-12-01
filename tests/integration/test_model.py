@@ -100,7 +100,7 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
 
 @pytest.mark.gpu
 @skip_if_external_scheduler
-def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
+def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
 
     model_query = """
         CREATE OR REPLACE MODEL my_model WITH (
@@ -117,7 +117,7 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, client):
 
 @skip_if_external_scheduler
 @pytest.mark.gpu
-def test_dask_xgboost_training_prediction(c, gpu_training_df, client):
+def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'xgboost.dask.DaskXGBRegressor',
