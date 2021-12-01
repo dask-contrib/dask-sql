@@ -939,7 +939,7 @@ def test_integration_1():
 
 def test_query_case_sensitivity():
     c = Context()
-    c.set_config("dask.sql.identifier.ignore_case", True)
+    c.set_config(("dask.sql.identifier.case.sensitive", False))
     df = pd.DataFrame({"id": [0, 1]})
 
     c.create_table("test", df)
