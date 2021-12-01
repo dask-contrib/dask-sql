@@ -801,8 +801,18 @@ class Context:
         schemas = self._prepare_schemas()
 
         # Now create a relational algebra from that
-        # TODO: Hardcoded for now with False, will use https://github.com/dask-contrib/dask-sql/pull/286 when merged
-        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name, False)
+        ignore_case = self.schema[self.schema_name].config.get_config_by_prefix(
+            "dask.sql.identifier.ignore_case"
+        )
+        ignore_case = (
+            False
+            if ignore_case == {}
+            else ignore_case["dask.sql.identifier.ignore_case"]
+        )
+
+        generator_builder = RelationalAlgebraGeneratorBuilder(
+            self.schema_name, ignore_case
+        )
         for schema in schemas:
             generator_builder.addSchema(schema)
         generator = generator_builder.build()
