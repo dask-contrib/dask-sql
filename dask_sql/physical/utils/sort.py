@@ -33,8 +33,8 @@ def apply_sort(
     if len(sort_columns) == 1 or (
         dask_cudf is not None
         and isinstance(df, dask_cudf.DataFrame)
-        and (not any(sort_ascending) or all(sort_ascending))
-        and (not any(sort_null_first) or all(sort_null_first))
+        and len(set(sort_ascending)) == 1
+        and len(set(sort_null_first)) == 1
     ):
         try:
             return df.sort_values(
