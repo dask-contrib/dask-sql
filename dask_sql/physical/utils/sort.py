@@ -18,9 +18,14 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
-    # pandas / cudf sort_values supports list of ascending and
-    # single null position:
-    if df.npartitions == 1 and (all(sort_null_first) or not any(sort_null_first)):
+    # when sort_values doesn't support lists of ascending / null
+    # position booleans, we can still do the sort provided that
+    # the list(s) are homogeneous:
+    single_ascending = len(set(sort_ascending)) == 1
+    single_null_first = len(set(sort_null_first)) == 1
+
+    # pandas / cudf don't support lists of null positions
+    if df.npartitions == 1 and single_null_first:
         return df.map_partitions(
             M.sort_values,
             by=sort_columns,
@@ -28,13 +33,12 @@ def apply_sort(
             na_position="first" if sort_null_first[0] else "last",
         ).persist()
 
-    # dask single-column / dask-cudf multi-column sort_values
-    # supports only single ascending and single null position:
+    # dask / dask-cudf don't support lists of ascending / null positions
     if len(sort_columns) == 1 or (
         dask_cudf is not None
         and isinstance(df, dask_cudf.DataFrame)
-        and len(set(sort_ascending)) == 1
-        and len(set(sort_null_first)) == 1
+        and single_ascending
+        and single_null_first
     ):
         try:
             return df.sort_values(
