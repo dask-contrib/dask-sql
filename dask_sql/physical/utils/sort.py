@@ -30,11 +30,9 @@ def apply_sort(
 
     # dask single-column / dask-cudf multi-column sort_values
     # supports only single ascending and single null position:
-    if (
-        (
-            (dask_cudf is not None and isinstance(df, dask_cudf.DataFrame))
-            or len(sort_columns) == 1
-        )
+    if len(sort_columns) == 1 or (
+        dask_cudf is not None
+        and isinstance(df, dask_cudf.DataFrame)
         and (not any(sort_ascending) or all(sort_ascending))
         and (not any(sort_null_first) or all(sort_null_first))
     ):
