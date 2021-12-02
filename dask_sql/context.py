@@ -810,8 +810,6 @@ class Context:
             else case_sensitive["dask.sql.identifier.case.sensitive"]
         )
 
-        print("Case sensitive: " + str(case_sensitive))
-
         generator_builder = RelationalAlgebraGeneratorBuilder(
             self.schema_name, case_sensitive
         )
