@@ -41,13 +41,13 @@ gpuci_logger "Activate conda env"
 conda activate dask_sql
 
 gpuci_logger "Install dask"
-python -m pip install git+https://github.com/dask/dask
+python -m pip install git+https://github.com/dask/dask --use-feature=2020-resolver
 
 gpuci_logger "Install distributed"
-python -m pip install git+https://github.com/dask/distributed
+python -m pip install git+https://github.com/dask/distributed --use-feature=2020-resolver
 
 gpuci_logger "Install dask-sql"
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 python setup.py java
 
 gpuci_logger "Check Python version"
