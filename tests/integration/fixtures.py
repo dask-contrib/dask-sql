@@ -1,22 +1,18 @@
 import os
 import tempfile
 
+import cudf
 import dask.dataframe as dd
+
+# importing to check for JVM segfault
+import dask_cudf  # noqa: F401
 import numpy as np
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
 from dask.distributed import Client
+from dask_cuda import LocalCUDACluster  # noqa: F401
 from pandas.testing import assert_frame_equal
-
-try:
-    import cudf
-
-    # importing to check for JVM segfault
-    import dask_cudf  # noqa: F401
-    from dask_cuda import LocalCUDACluster  # noqa: F401
-except ImportError:
-    cudf = None
 
 
 @pytest.fixture()
