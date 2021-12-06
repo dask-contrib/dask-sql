@@ -256,6 +256,7 @@ def assert_query_gives_same_result(engine):
     return _assert_query_gives_same_result
 
 
+@pytest.fixture()
 def gpu_cluster():
     if LocalCUDACluster is None:
         pytest.skip("dask_cuda not installed")
@@ -266,6 +267,7 @@ def gpu_cluster():
     cluster.close()
 
 
+@pytest.fixture()
 def gpu_client(gpu_cluster):
     if gpu_cluster:
         client = Client(gpu_cluster)
