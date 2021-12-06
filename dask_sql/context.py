@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import inspect
 import logging
 import warnings
@@ -512,8 +511,7 @@ class Context:
              old_schema_name:
              new_schema_name:
         """
-        self.schema[new_schema_name] = copy.deepcopy(self.schema[old_schema_name])
-        del self.schema[old_schema_name]
+        self.schema[new_schema_name] = self.schema.pop(old_schema_name)
 
     def alter_table(self, old_table_name, new_table_name):
         """
@@ -523,10 +521,9 @@ class Context:
             old_table_name:
             new_table_name:
         """
-        self.schema[self.schema_name].tables[new_table_name] = copy.deepcopy(
-            self.schema[self.schema_name].tables[old_table_name]
-        )
-        del self.schema[self.schema_name].tables[old_table_name]
+        self.schema[self.schema_name].tables[new_table_name] = self.schema[
+            self.schema_name
+        ].tables.pop(old_table_name)
 
     def register_experiment(
         self,
