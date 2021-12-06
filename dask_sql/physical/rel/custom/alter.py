@@ -66,6 +66,9 @@ class AlterTablePlugin(BaseRelPlugin):
         old_table_name = str(sql.getOldTableName())
         new_table_name = str(sql.getNewTableName())
 
+        logger.info(
+            f"changing table name from `{old_table_name}` to `{new_table_name}`"
+        )
         if old_table_name not in context.schema[context.schema_name].tables:
             if not sql.getIfExists():
                 raise RuntimeError(
