@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from dask import delayed
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -134,6 +136,19 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", False)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
+        select_query = context._to_sql_string(select)
+        training_df = context.sql(select_query)
+
+        if target_column:
+            non_target_columns = [
+                col for col in training_df.columns if col != target_column
+            ]
+            X = training_df[non_target_columns]
+            y = training_df[target_column]
+        else:
+            X = training_df
+            y = None
+
         try:
             ModelClass = import_class(model_class)
         except ImportError:
@@ -156,20 +171,21 @@ class CreateModelPlugin(BaseRelPlugin):
             except ImportError:  # pragma: no cover
                 raise ValueError("Wrapping requires dask-ml to be installed.")
 
+            # When `wrap_predict` is set to True we train on single partition frames
+            # because this is only useful for non dask distributed models
+            # Training via delayed fit ensures that we dont have to transfer
+            # data back to the client for training
+
+            X_d = X.repartition(npartitions=1).to_delayed()
+            if y is not None:
+                y_d = y.repartition(npartitions=1).to_delayed()
+            else:
+                y_d = None
+
+            delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
+            model = delayed_model[0].compute()
             model = ParallelPostFit(estimator=model)
 
-        select_query = context._to_sql_string(select)
-        training_df = context.sql(select_query)
-
-        if target_column:
-            non_target_columns = [
-                col for col in training_df.columns if col != target_column
-            ]
-            X = training_df[non_target_columns]
-            y = training_df[target_column]
         else:
-            X = training_df
-            y = None
-
-        model.fit(X, y, **fit_kwargs)
+            model.fit(X, y, **fit_kwargs)
         context.register_model(model_name, model, X.columns, schema_name=schema_name)

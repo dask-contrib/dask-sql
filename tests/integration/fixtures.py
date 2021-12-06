@@ -17,6 +17,7 @@ try:
     from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     cudf = None
+    LocalCUDACluster = None
 
 
 @pytest.fixture()
@@ -253,6 +254,25 @@ def assert_query_gives_same_result(engine):
         assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
+
+
+@pytest.fixture()
+def gpu_cluster():
+    if LocalCUDACluster is None:
+        pytest.skip("dask_cuda not installed")
+        return None
+
+    cluster = LocalCUDACluster(protocol="tcp")
+    yield cluster
+    cluster.close()
+
+
+@pytest.fixture()
+def gpu_client(gpu_cluster):
+    if gpu_cluster:
+        client = Client(gpu_cluster)
+        yield client
+        client.close()
 
 
 @pytest.fixture(scope="session", autouse=True)
