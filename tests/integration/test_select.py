@@ -80,7 +80,6 @@ def test_select_of_select(c, df):
 
 
 def test_select_of_select_with_casing(c, df):
-    c.set_config(("dask.sql.identifier.case.sensitive", True))
     result_df = c.sql(
         """
         SELECT AAA, aaa, aAa
@@ -97,7 +96,6 @@ def test_select_of_select_with_casing(c, df):
         {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
     )
 
-    c.drop_config("dask.sql.identifier.case.sensitive")
     assert_frame_equal(result_df, expected_df)
 
 
