@@ -36,7 +36,7 @@ class AlterSchemaPlugin(BaseRelPlugin):
             f"changing schema name from `{old_schema_name}` to `{new_schema_name}`"
         )
         if old_schema_name not in context.schema:
-            raise RuntimeError(
+            raise KeyError(
                 f"Schema {old_schema_name} was not found, available schemas are - {context.schema.keys()}"
             )
         context.alter_schema(
@@ -71,7 +71,7 @@ class AlterTablePlugin(BaseRelPlugin):
         )
         if old_table_name not in context.schema[context.schema_name].tables:
             if not sql.getIfExists():
-                raise RuntimeError(
+                raise KeyError(
                     f"Table {old_table_name} was not found, available tables in {context.schema_name} are "
                     f"- {context.schema[context.schema_name].tables.keys()}"
                 )
