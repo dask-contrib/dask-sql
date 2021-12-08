@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
 import dask.array as da
@@ -160,9 +160,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
 
-        dt = datetime.fromtimestamp(
-            int(literal_value.getTimeInMillis()) / 1000, timezone.utc
-        )
+        dt = pd.Timestamp(literal_value.getTimeInMillis(), unit="ms")
 
         return dt
 
