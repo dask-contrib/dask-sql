@@ -49,6 +49,7 @@ planner/.project
 planner/.settings/
 planner/.idea
 planner/*.iml
+*.swp
 
 # project specific
 planner/dependency-reduced-pom.xml
