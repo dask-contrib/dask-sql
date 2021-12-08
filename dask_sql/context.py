@@ -117,6 +117,8 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
@@ -520,6 +522,28 @@ class Context:
             schema_name (:obj:`str`): The name of the schema to create
         """
         self.schema[schema_name] = SchemaContainer(schema_name)
+
+    def alter_schema(self, old_schema_name, new_schema_name):
+        """
+        Alter schema
+
+        Args:
+             old_schema_name:
+             new_schema_name:
+        """
+        self.schema[new_schema_name] = self.schema.pop(old_schema_name)
+
+    def alter_table(self, old_table_name, new_table_name):
+        """
+        Alter Table
+
+        Args:
+            old_table_name:
+            new_table_name:
+        """
+        self.schema[self.schema_name].tables[new_table_name] = self.schema[
+            self.schema_name
+        ].tables.pop(old_table_name)
 
     def register_experiment(
         self,

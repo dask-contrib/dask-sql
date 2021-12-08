@@ -1,3 +1,4 @@
+from .alter import AlterSchemaPlugin, AlterTablePlugin
 from .analyze import AnalyzeTablePlugin
 from .columns import ShowColumnsPlugin
 from .create_experiment import CreateExperimentPlugin
@@ -35,5 +36,7 @@ __all__ = [
     ShowSchemasPlugin,
     ShowTablesPlugin,
     SwitchSchemaPlugin,
+    AlterSchemaPlugin,
+    AlterTablePlugin,
     DistributeByPlugin,
 ]

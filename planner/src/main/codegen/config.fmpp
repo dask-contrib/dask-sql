@@ -40,6 +40,8 @@ data: {
         "com.dask.sql.parser.SqlShowModels",
         "com.dask.sql.parser.SqlExportModel",
         "com.dask.sql.parser.SqlCreateExperiment",
+        "com.dask.sql.parser.SqlAlterSchema",
+        "com.dask.sql.parser.SqlAlterTable",
         "com.dask.sql.parser.SqlUseSchema"
       ]
 
@@ -58,6 +60,7 @@ data: {
         "MODELS"
         "EXPORT"
         "EXPERIMENT"
+        "RENAME"
         "DISTRIBUTE"
       ]
 
@@ -73,7 +76,9 @@ data: {
         "SCHEMAS"
         "STATISTICS"
         "TABLES"
+        "RENAME"
         "EXPERIMENT"
+
       ]
 
       # List of methods for parsing custom SQL statements
@@ -86,11 +91,14 @@ data: {
          "SqlDescribeTableOrModel()",
          "SqlExportModel()",
          "SqlUseSchema()",
+         "SqlAlterSchema()",
+         "SqlAlterTable()",
          # has to go to the bottom, otherwise
          # its catch-all ExpressionOrQuery will
          # be the default parsing branch
          "ExpressionOrPredict()",
       ]
+
 
       createStatementParserMethods: [
          "SqlCreateModel",
