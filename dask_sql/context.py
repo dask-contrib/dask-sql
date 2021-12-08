@@ -800,8 +800,16 @@ class Context:
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
 
-        # Now create a relational algebra from that
-        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name)
+        # True if the SQL query should be case sensitive and False otherwise
+        case_sensitive = (
+            self.schema[self.schema_name]
+            .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
+            .get("dask.sql.identifier.case.sensitive", True)
+        )
+
+        generator_builder = RelationalAlgebraGeneratorBuilder(
+            self.schema_name, case_sensitive
+        )
         for schema in schemas:
             generator_builder.addSchema(schema)
         generator = generator_builder.build()

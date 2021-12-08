@@ -63,14 +63,14 @@ public class RelationalAlgebraGenerator {
 	final HepPlanner hepPlanner;
 
 	/// Create a new relational algebra generator from a schema
-	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas) throws ClassNotFoundException, SQLException {
+	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas, final boolean case_sensitive) throws ClassNotFoundException, SQLException {
 		// Taken from https://calcite.apache.org/docs/ and blazingSQL
 		final SchemaPlus rootSchema = createRootSchema(rootSchemaName, schemas);
 
 		final JavaTypeFactoryImpl typeFactory = createTypeFactory();
 		final CalciteCatalogReader calciteCatalogReader = createCatalogReader(rootSchemaName, rootSchema, typeFactory);
 		final SqlOperatorTable operatorTable = createOperatorTable(calciteCatalogReader);
-		final SqlParser.Config parserConfig = createParserConfig();
+		final SqlParser.Config parserConfig = createParserConfig(case_sensitive);
 		final SchemaPlus schemaPlus = rootSchema.getSubSchema(rootSchemaName);
 		final FrameworkConfig frameworkConfig = createFrameworkConfig(schemaPlus, operatorTable, parserConfig);
 
@@ -180,8 +180,9 @@ public class RelationalAlgebraGenerator {
 		return operatorTable;
 	}
 
-	private Config createParserConfig() {
+	private Config createParserConfig(boolean case_sensitive) {
 		return getDialect().configureParser(SqlParser.Config.DEFAULT).withConformance(SqlConformanceEnum.DEFAULT)
+				.withCaseSensitive(case_sensitive)
 				.withParserFactory(new DaskSqlParserImplFactory());
 	}
 
