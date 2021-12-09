@@ -1,4 +1,6 @@
+import dask.dataframe as dd
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
@@ -68,3 +70,45 @@ def test_string_filter(c, string_table):
     assert_frame_equal(
         return_df, string_table.head(1),
     )
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_date_filter(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    return_df = c.sql(
+        f"""
+        SELECT * FROM {input_table} WHERE
+            CAST(timezone AS DATE) > DATE '2014-08-01'
+        """
+    )
+    return_df = return_df.compute()
+
+    expected_df = datetime_table[
+        datetime_table["timezone"].astype("<M8[ns]").dt.date.astype("<M8[ns]")
+        > pd.Timestamp("2014-08-01")
+    ]
+    dd.assert_eq(return_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_timestamp_filter(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    return_df = c.sql(
+        f"""
+        SELECT * FROM {input_table} WHERE
+            CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00'
+        """
+    )
+    return_df = return_df.compute()
+
+    expected_df = datetime_table[
+        datetime_table["timezone"].astype("<M8[ns]")
+        >= pd.Timestamp("2014-08-01 23:00:00")
+    ]
+    dd.assert_eq(return_df, expected_df)

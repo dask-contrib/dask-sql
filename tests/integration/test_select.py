@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
@@ -116,3 +117,47 @@ def test_timezones(c, datetime_table):
     result_df = result_df.compute()
 
     assert_frame_equal(result_df, datetime_table)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_date_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS DATE) AS timezone,
+            CAST(no_timezone AS DATE) AS no_timezone,
+            CAST(utc_timezone AS DATE) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+    result_df = result_df.compute()
+
+    expected_df = datetime_table.apply(
+        lambda x: x.astype("<M8[ns]").dt.date.astype("<M8[ns]")
+    )
+    dd.assert_eq(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_timestamp_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS TIMESTAMP) AS timezone,
+            CAST(no_timezone AS TIMESTAMP) AS no_timezone,
+            CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+    result_df = result_df.compute()
+
+    expected_df = datetime_table.astype("<M8[ns]")
+    dd.assert_eq(result_df, expected_df)
