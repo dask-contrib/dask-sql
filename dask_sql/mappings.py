@@ -285,7 +285,7 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
-        return col
+        return None
 
     current_float = pd.api.types.is_float_dtype(current_type)
     expected_integer = pd.api.types.is_integer_dtype(expected_type)

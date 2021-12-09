@@ -201,6 +201,9 @@ class CastOperation(Operation):
 
         return_column = cast_column_to_type(operand, python_type)
 
+        if return_column is None:
+            return_column = operand
+
         # TODO: ideally we don't want to directly access the datetime dates,
         # but Pandas can't truncate timezone datetimes and cuDF can't
         # truncate datetimes
