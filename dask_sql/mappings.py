@@ -77,7 +77,9 @@ _SQL_TO_PYTHON_FRAMES = {
     "VARCHAR": pd.StringDtype(),
     "CHAR": pd.StringDtype(),
     "STRING": pd.StringDtype(),  # Although not in the standard, makes compatibility easier
-    "DATE": np.dtype("<M8[ns]"),
+    "DATE": np.dtype(
+        "<M8[ns]"
+    ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
     "TIMESTAMP": np.dtype("<M8[ns]"),
     "NULL": type(None),
 }
@@ -160,10 +162,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
 
-        dt = pd.Timestamp(literal_value.getTimeInMillis(), unit="ms")
+        dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
 
-        return dt
-
+        if sql_type == "DATE":
+            return dt.astype("<M8[D]")
+        return dt.astype("<M8[ns]")
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
@@ -282,7 +285,7 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
-        return None
+        return col
 
     current_float = pd.api.types.is_float_dtype(current_type)
     expected_integer = pd.api.types.is_integer_dtype(expected_type)
