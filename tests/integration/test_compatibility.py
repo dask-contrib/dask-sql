@@ -17,6 +17,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
+from dask_sql.utils import ParsingException
 
 
 def cast_datetime_to_string(df):
@@ -304,7 +305,9 @@ def test_agg_count():
             COUNT(DISTINCT d) AS cd_d,
             COUNT(e) AS c_e,
             COUNT(DISTINCT a) AS cd_e
-        FROM a GROUP BY a, b
+        FROM a GROUP BY a, b ORDER BY
+            a NULLS FIRST,
+            b NULLS FIRST
         """,
         a=a,
     )
@@ -354,7 +357,9 @@ def test_agg_sum_avg():
             AVG(e) AS avg_e,
             SUM(a)+AVG(e) AS mix_1,
             SUM(a+e) AS mix_2
-        FROM a GROUP BY a,b
+        FROM a GROUP BY a, b ORDER BY
+            a NULLS FIRST,
+            b NULLS FIRST
         """,
         a=a,
     )
@@ -423,7 +428,9 @@ def test_agg_min_max():
             MAX(g) AS max_g,
             MIN(a+e) AS mix_1,
             MIN(a)+MIN(e) AS mix_2
-        FROM a GROUP BY a, b
+        FROM a GROUP BY a, b ORDER BY
+            a NULLS FIRST,
+            b NULLS FIRST
         """,
         a=a,
     )
@@ -928,3 +935,16 @@ def test_integration_1():
         """,
         a=a,
     )
+
+
+def test_query_case_sensitivity():
+    c = Context()
+    c.set_config(("dask.sql.identifier.case.sensitive", False))
+    df = pd.DataFrame({"id": [0, 1]})
+
+    c.create_table("test", df)
+
+    try:
+        c.sql("select ID from test")
+    except ParsingException as pe:
+        assert False, f"Queries should be case insensitve but raised exception {pe}"

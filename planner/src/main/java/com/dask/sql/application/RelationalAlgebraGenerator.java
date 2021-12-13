@@ -25,11 +25,11 @@ public class RelationalAlgebraGenerator {
 	final private DaskProgram program;
 	final private DaskSqlParser parser;
 
-	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas) throws SQLException {
+	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas, final boolean case_sensitive) throws SQLException {
 		this.planner = new DaskPlanner();
 		this.sqlToRelConverter = new DaskSqlToRelConverter(this.planner, rootSchemaName, schemas);
 		this.program = new DaskProgram(this.planner);
-		this.parser = new DaskSqlParser();
+		this.parser = new DaskSqlParser(case_sensitive);
 	}
 
 	static public SqlDialect getDialect() {

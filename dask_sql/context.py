@@ -106,6 +106,8 @@ class Context:
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
         RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
@@ -518,6 +520,28 @@ class Context:
         """
         self.schema[schema_name] = SchemaContainer(schema_name)
 
+    def alter_schema(self, old_schema_name, new_schema_name):
+        """
+        Alter schema
+
+        Args:
+             old_schema_name:
+             new_schema_name:
+        """
+        self.schema[new_schema_name] = self.schema.pop(old_schema_name)
+
+    def alter_table(self, old_table_name, new_table_name):
+        """
+        Alter Table
+
+        Args:
+            old_table_name:
+            new_table_name:
+        """
+        self.schema[self.schema_name].tables[new_table_name] = self.schema[
+            self.schema_name
+        ].tables.pop(old_table_name)
+
     def register_experiment(
         self,
         experiment_name: str,
@@ -553,6 +577,71 @@ class Context:
         """
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
+
+    def set_config(
+        self,
+        config_options: Union[Tuple[str, Any], Dict[str, Any]],
+        schema_name: str = None,
+    ):
+        """
+        Add configuration options to a schema.
+        A configuration option could be used to set the behavior of certain configurirable operations.
+
+        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
+
+        Args:
+            config_options (:obj:`Tuple[str,val]` or :obj:`Dict[str,val]`): config_option and value to set
+            schema_name (:obj:`str`): Optionally select schema for setting configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(("dask.groupby.aggregate.split_out", 1))
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+
+        """
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].config.set_config(config_options)
+
+    def drop_config(
+        self, config_strs: Union[str, List[str]], schema_name: str = None,
+    ):
+        """
+        Drop user set configuration options from schema
+
+        Args:
+            config_strs (:obj:`str` or :obj:`List[str]`): config key or keys to drop
+            schema_name (:obj:`str`): Optionally select schema for dropping configs
+
+        Example:
+            .. code-block:: python
+
+                from dask_sql import Context
+
+                c = Context()
+                c.set_config(
+                    {
+                        "dask.groupby.aggregate.split_out": 2,
+                        "dask.groupby.aggregate.split_every": 4,
+                    }
+                )
+                c.drop_config(
+                    [
+                        "dask.groupby.aggregate.split_out",
+                        "dask.groupby.aggregate.split_every",
+                    ]
+                )
+        """
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].config.drop_config(config_strs)
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
@@ -748,8 +837,16 @@ class Context:
             com.dask.sql.application.RelationalAlgebraGeneratorBuilder
         )
 
-        # Now create a relational algebra from that
-        generator_builder = RelationalAlgebraGeneratorBuilder(self.schema_name)
+        # True if the SQL query should be case sensitive and False otherwise
+        case_sensitive = (
+            self.schema[self.schema_name]
+            .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
+            .get("dask.sql.identifier.case.sensitive", True)
+        )
+
+        generator_builder = RelationalAlgebraGeneratorBuilder(
+            self.schema_name, case_sensitive
+        )
         for schema in schemas:
             generator_builder.addSchema(schema)
         generator = generator_builder.build()
@@ -835,7 +932,7 @@ class Context:
             for var_name, variable in frame_info.frame.f_locals.items():
                 if var_name.startswith("_"):
                     continue
-                if not isinstance(variable, (pd.DataFrame, dd.DataFrame)):
+                if not dd.utils.is_dataframe_like(variable):
                     continue
 
                 # only set them if not defined in an inner context

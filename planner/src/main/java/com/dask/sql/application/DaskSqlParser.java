@@ -10,11 +10,17 @@ import org.apache.calcite.sql.validate.SqlConformanceEnum;
  * SqlParser from calcite for this.
  */
 public class DaskSqlParser {
-    private static SqlParser.Config DEFAULT_CONFIG = DaskSqlDialect.DEFAULT.configureParser(SqlParser.Config.DEFAULT)
-            .withConformance(SqlConformanceEnum.DEFAULT).withParserFactory(new DaskSqlParserImplFactory());
+    final boolean case_sensitive;
 
-    public DaskSqlParser() {
+    private SqlParser.Config DEFAULT_CONFIG;
 
+    public DaskSqlParser(final boolean case_sensitive_value) {
+        case_sensitive = case_sensitive_value;
+
+        DEFAULT_CONFIG = DaskSqlDialect.DEFAULT.configureParser(SqlParser.Config.DEFAULT)
+            .withConformance(SqlConformanceEnum.DEFAULT)
+            .withCaseSensitive(case_sensitive)
+            .withParserFactory(new DaskSqlParserImplFactory());
     }
 
     public SqlNode parse(String sql) throws SqlParseException {

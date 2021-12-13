@@ -91,17 +91,7 @@ def test_explain(gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
-        ),
-    ],
+    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu,),],
 )
 def test_sql(gpu):
     c = Context()
@@ -125,17 +115,7 @@ def test_sql(gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
-        ),
-    ],
+    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu,),],
 )
 def test_input_types(temporary_data_file, gpu):
     c = Context()
@@ -174,19 +154,7 @@ def test_input_types(temporary_data_file, gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="GPU tables aren't picked up by _get_tables_from_stack"
-                ),
-            ),
-        ),
-    ],
+    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu),],
 )
 def test_tables_from_stack(gpu):
     c = Context()
@@ -318,3 +286,28 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
     assert c.schema[c.schema_name].function_lists[1].return_type == str
     assert c.schema[c.schema_name].function_lists[1].aggregation
+
+
+def test_alter_schema(c):
+    c.create_schema("test_schema")
+    c.sql("ALTER SCHEMA test_schema RENAME TO prod_schema")
+    assert "prod_schema" in c.schema
+
+    with pytest.raises(KeyError):
+        c.sql("ALTER SCHEMA MARVEL RENAME TO DC")
+
+    del c.schema["prod_schema"]
+
+
+def test_alter_table(c, df_simple):
+    c.create_table("maths", df_simple)
+    c.sql("ALTER TABLE maths RENAME TO physics")
+    assert "physics" in c.schema[c.schema_name].tables
+
+    with pytest.raises(KeyError):
+        c.sql("ALTER TABLE four_legs RENAME TO two_legs")
+
+    c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
+
+    print(c.schema[c.schema_name].tables)
+    del c.schema[c.schema_name].tables["physics"]
