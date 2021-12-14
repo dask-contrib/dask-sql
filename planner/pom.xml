@@ -14,10 +14,11 @@
 		<project.reporting.outputEncoding>${sourceEncoding}</project.reporting.outputEncoding>
 
 		<java.version>1.8</java.version>
+		<log4j.version>2.15.0</log4j.version>
 		<org.slf4j-version>1.7.29</org.slf4j-version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
-		<org.apache.calcite-version>1.26.0</org.apache.calcite-version>
+		<org.apache.calcite-version>1.29.0</org.apache.calcite-version>
 	</properties>
 
 	<dependencies>
@@ -45,7 +46,7 @@
 		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
+			<version>${log4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>net.java.dev.javacc</groupId>
