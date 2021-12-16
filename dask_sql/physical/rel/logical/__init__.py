@@ -6,6 +6,7 @@ from .sample import SamplePlugin
 from .sort import LogicalSortPlugin
 from .table_scan import LogicalTableScanPlugin
 from .union import LogicalUnionPlugin
+from .minus import LogicalMinusPlugin
 from .values import LogicalValuesPlugin
 from .window import LogicalWindowPlugin
 
@@ -17,6 +18,7 @@ __all__ = [
     LogicalSortPlugin,
     LogicalTableScanPlugin,
     LogicalUnionPlugin,
+    LogicalMinusPlugin,
     LogicalValuesPlugin,
     LogicalWindowPlugin,
     SamplePlugin,
