@@ -182,6 +182,8 @@ class LoggableDataFrame:
         df = self.df
         if isinstance(df, pd.Series) or isinstance(df, dd.Series):
             return f"Series: {(df.name, df.dtype)}"
+        if isinstance(df, pd.DataFrame) or isinstance(df, dd.DataFrame):
+            return f"DataFrame: {[(col, dtype) for col, dtype in zip(df.columns, df.dtypes)]}"
 
         elif isinstance(df, DataContainer):
             cols = df.column_container.columns

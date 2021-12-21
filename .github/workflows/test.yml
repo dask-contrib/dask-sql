@@ -122,6 +122,7 @@ jobs:
           name: pytest-results
           path: junit/test-results.xml
       - name: Upload coverage to Codecov
+        if: github.repository == 'dask-contrib/dask-sql'
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true

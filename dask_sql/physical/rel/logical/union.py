@@ -10,13 +10,13 @@ if TYPE_CHECKING:
     from dask_sql.java import org
 
 
-class LogicalUnionPlugin(BaseRelPlugin):
+class DaskUnionPlugin(BaseRelPlugin):
     """
-    LogicalUnion is used on UNION clauses.
+    DaskUnion is used on UNION clauses.
     It just concatonates the two data frames.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalUnion"
+    class_name = "com.dask.sql.nodes.DaskUnion"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
