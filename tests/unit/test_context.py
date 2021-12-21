@@ -1,4 +1,3 @@
-import os
 import warnings
 
 import dask.dataframe as dd
@@ -6,6 +5,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.datacontainer import Statistics
 
 try:
     import cudf
@@ -62,9 +62,16 @@ def test_explain(gpu):
 
     sql_string = c.explain("SELECT * FROM df")
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
+    )
+
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+
+    sql_string = c.explain("SELECT * FROM df")
+
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
     )
 
     c = Context()
@@ -78,9 +85,8 @@ def test_explain(gpu):
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}
     )
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
 

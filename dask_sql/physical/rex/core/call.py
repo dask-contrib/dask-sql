@@ -1,3 +1,4 @@
+import datetime
 import logging
 import operator
 import re
@@ -148,6 +149,32 @@ class SQLDivisionOperator(Operation):
         return result
 
 
+class IntDivisionOperator(Operation):
+    """
+    Truncated integer division (so -1 / 2 = 0).
+    This is only used for internal calculations,
+    which are created by Calcite.
+    """
+
+    def __init__(self):
+        super().__init__(self.div)
+
+    def div(self, lhs, rhs):
+        result = lhs / rhs
+
+        # Specialized code for literals like "1000µs"
+        # For some reasons, Calcite decides to represent
+        # 1000µs as 1000µs * 1000 / 1000
+        # We do not need to truncate in this case
+        # So far, I did not spot any other occurrence
+        # of this function.
+        if isinstance(result, datetime.timedelta):
+            return result
+        else:  # pragma: no cover
+            result = da.trunc(result)
+            return result
+
+
 class CaseOperation(Operation):
     """The case operator (basically an if then else)"""
 
@@ -193,7 +220,7 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):
+        if not is_frame(operand):  # pragma: no cover
             return operand
 
         output_type = str(rex.getType())
@@ -701,6 +728,7 @@ class RexCallPlugin(BaseRexPlugin):
         "*": ReduceOperation(operation=operator.mul),
         "is distinct from": NotOperation().of(IsNotDistinctOperation()),
         "is not distinct from": IsNotDistinctOperation(),
+        "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
         "case": CaseOperation(),

@@ -206,9 +206,9 @@ def map_on_each_group(
     return partitioned_group
 
 
-class LogicalWindowPlugin(BaseRelPlugin):
+class DaskWindowPlugin(BaseRelPlugin):
     """
-    A LogicalWindow is an expression, which calculates a given function over the dataframe
+    A DaskWindow is an expression, which calculates a given function over the dataframe
     while first optionally partitoning the data and optionally sorting it.
 
     Expressions like `F OVER (PARTITION BY x ORDER BY y)` apply f on each
@@ -217,7 +217,7 @@ class LogicalWindowPlugin(BaseRelPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalWindow"
+    class_name = "com.dask.sql.nodes.DaskWindow"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
@@ -249,7 +249,7 @@ class LogicalWindowPlugin(BaseRelPlugin):
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
 
-        for window in rel.groups:
+        for window in rel.getGroups():
             dc = self._apply_window(
                 window, constants, constant_count_offset, dc, field_names, context
             )
@@ -283,7 +283,7 @@ class LogicalWindowPlugin(BaseRelPlugin):
             window, cc
         )
         logger.debug(
-            "Before applying the function, sorting according to {sort_columns}."
+            f"Before applying the function, sorting according to {sort_columns}."
         )
 
         df, group_columns = self._extract_groupby(df, window, dc, context)
@@ -298,6 +298,8 @@ class LogicalWindowPlugin(BaseRelPlugin):
             temporary_columns += cols
 
         newly_created_columns = [new_column for _, new_column, _ in operations]
+
+        logger.debug(f"Will create {newly_created_columns} new columns")
 
         # Apply the windowing operation
         filled_map = partial(
@@ -320,6 +322,9 @@ class LogicalWindowPlugin(BaseRelPlugin):
         df = df.groupby(group_columns).apply(
             make_pickable_without_dask_sql(filled_map), meta=meta
         )
+        logger.debug(
+            f"Having created a dataframe {LoggableDataFrame(df)} after windowing. Will now drop {temporary_columns}."
+        )
         df = df.drop(columns=temporary_columns).reset_index(drop=True)
 
         dc = DataContainer(df, cc)
@@ -332,6 +337,9 @@ class LogicalWindowPlugin(BaseRelPlugin):
             cc = cc.add(field_name, c)
 
         dc = DataContainer(df, cc)
+        logger.debug(
+            f"Removed unneeded columns and registered new ones: {LoggableDataFrame(dc)}."
+        )
         return dc
 
     def _extract_groupby(

@@ -34,13 +34,13 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
     return df[filter_condition]
 
 
-class LogicalFilterPlugin(BaseRelPlugin):
+class DaskFilterPlugin(BaseRelPlugin):
     """
-    LogicalFilter is used on WHERE clauses.
+    DaskFilter is used on WHERE clauses.
     We just evaluate the filter (which is of type RexNode) and apply it
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalFilter"
+    class_name = "com.dask.sql.nodes.DaskFilter"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

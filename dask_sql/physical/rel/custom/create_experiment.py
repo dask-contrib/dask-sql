@@ -5,12 +5,12 @@ import dask.dataframe as dd
 import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -20,27 +20,15 @@ from dask_sql.datacontainer import (
     DataContainer,
     FunctionDescription,
     SchemaContainer,
+    Statistics,
 )
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
-from dask_sql.java import (
-    DaskAggregateFunction,
-    DaskScalarFunction,
-    DaskSchema,
-    DaskTable,
-    RelationalAlgebraGenerator,
-    RelationalAlgebraGeneratorBuilder,
-    SqlParseException,
-    ValidationException,
-    get_java_class,
-)
+from dask_sql.java import com, get_java_class, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
-
-if TYPE_CHECKING:
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +78,16 @@ class Context:
         self.sql_server = None
 
         # Register any default plugins, if nothing was registered before.
-        RelConverter.add_plugin_class(logical.LogicalAggregatePlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalFilterPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalJoinPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalProjectPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalSortPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalWindowPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskProjectPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskTableScanPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
@@ -140,6 +129,7 @@ class Context:
         format: str = None,
         persist: bool = False,
         schema_name: str = None,
+        statistics: Statistics = None,
         gpu: bool = False,
         **kwargs,
     ):
@@ -202,6 +192,11 @@ class Context:
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to true to turn on loading the file data directly into memory.
+            schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
+                statistics are provided, we will just assume 100 rows.
+            gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
+                Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -220,6 +215,8 @@ class Context:
             **kwargs,
         )
         self.schema[schema_name].tables[table_name.lower()] = dc
+        if statistics:
+            self.schema[schema_name].statistics[table_name.lower()] = statistics
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -765,6 +762,11 @@ class Context:
         """
         schema_list = []
 
+        DaskTable = com.dask.sql.schema.DaskTable
+        DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
+        DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
+        DaskSchema = com.dask.sql.schema.DaskSchema
+
         for schema_name, schema in self.schema.items():
             java_schema = DaskSchema(schema_name)
 
@@ -772,7 +774,14 @@ class Context:
                 logger.warning("No tables are registered.")
 
             for name, dc in schema.tables.items():
-                table = DaskTable(name)
+                row_count = (
+                    schema.statistics[name].row_count
+                    if name in schema.statistics
+                    else None
+                )
+                if row_count is not None:
+                    row_count = float(row_count)
+                table = DaskTable(name, row_count)
                 df = dc.df
                 logger.debug(
                     f"Adding table '{name}' to schema with columns: {list(df.columns)}"
@@ -824,6 +833,10 @@ class Context:
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
 
+        RelationalAlgebraGeneratorBuilder = (
+            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
+        )
+
         # True if the SQL query should be case sensitive and False otherwise
         case_sensitive = (
             self.schema[self.schema_name]
@@ -835,11 +848,15 @@ class Context:
             self.schema_name, case_sensitive
         )
         for schema in schemas:
-            generator_builder.addSchema(schema)
+            generator_builder = generator_builder.addSchema(schema)
         generator = generator_builder.build()
         default_dialect = generator.getDialect()
 
         logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+
+        ValidationException = org.apache.calcite.tools.ValidationException
+        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
+        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
         try:
             sqlNode = generator.getSqlNode(sql)
@@ -850,8 +867,7 @@ class Context:
             rel_string = ""
 
             if not sqlNodeClass.startswith("com.dask.sql.parser."):
-                validatedSqlNode = generator.getValidatedNode(sqlNode)
-                nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
                 # Optimization might remove some alias projects. Make sure to keep them here.
                 select_names = [
                     str(name)
@@ -859,7 +875,7 @@ class Context:
                 ]
                 rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
                 rel_string = str(generator.getRelationalAlgebraString(rel))
-        except (ValidationException, SqlParseException) as e:
+        except (ValidationException, SqlParseException, CalciteContextException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
             # as this would print the full java stack trace
@@ -895,7 +911,9 @@ class Context:
 
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:
-            default_dialect = RelationalAlgebraGenerator.getDialect()
+            default_dialect = (
+                com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
+            )
 
         try:
             return str(s.toSqlString(default_dialect))

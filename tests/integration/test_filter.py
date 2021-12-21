@@ -53,7 +53,7 @@ def test_filter_with_nan(c):
     return_df = return_df.compute()
 
     if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="int8")
+        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
     else:
         expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_frame_equal(
