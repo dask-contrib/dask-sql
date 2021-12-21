@@ -20,16 +20,19 @@ import org.apache.calcite.tools.ValidationException;
  * out of SQL query strings or throws an exception.
  */
 public class RelationalAlgebraGenerator {
+
 	final private DaskPlanner planner;
 	final private DaskSqlToRelConverter sqlToRelConverter;
 	final private DaskProgram program;
 	final private DaskSqlParser parser;
 
-	public RelationalAlgebraGenerator(final String rootSchemaName, final List<DaskSchema> schemas, final boolean case_sensitive) throws SQLException {
+	public RelationalAlgebraGenerator(final String rootSchemaName,
+									  final List<DaskSchema> schemas,
+									  final boolean case_sensitive) throws SQLException {
 		this.planner = new DaskPlanner();
-		this.sqlToRelConverter = new DaskSqlToRelConverter(this.planner, rootSchemaName, schemas);
+		this.sqlToRelConverter = new DaskSqlToRelConverter(this.planner, rootSchemaName, schemas, case_sensitive);
 		this.program = new DaskProgram(this.planner);
-		this.parser = new DaskSqlParser(case_sensitive);
+		this.parser = new DaskSqlParser();
 	}
 
 	static public SqlDialect getDialect() {

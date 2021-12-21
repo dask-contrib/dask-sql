@@ -39,13 +39,15 @@ import org.apache.calcite.sql2rel.StandardConvertletTable;
  */
 public class DaskSqlToRelConverter {
     private final SqlToRelConverter sqlToRelConverter;
+    private final boolean caseSensitive;
 
     public DaskSqlToRelConverter(final RelOptPlanner optimizer, final String rootSchemaName,
-            final List<DaskSchema> schemas) throws SQLException {
+                                 final List<DaskSchema> schemas, boolean caseSensitive) throws SQLException {
+        this.caseSensitive = caseSensitive;
         final SchemaPlus rootSchema = createRootSchema(rootSchemaName, schemas);
 
         final JavaTypeFactoryImpl typeFactory = createTypeFactory();
-        final CalciteCatalogReader calciteCatalogReader = createCatalogReader(rootSchemaName, rootSchema, typeFactory);
+        final CalciteCatalogReader calciteCatalogReader = createCatalogReader(rootSchemaName, rootSchema, typeFactory, this.caseSensitive);
         final SqlValidator validator = createValidator(typeFactory, calciteCatalogReader);
         final RelOptCluster cluster = RelOptCluster.create(optimizer, new RexBuilder(typeFactory));
         final SqlToRelConverter.Config config = SqlToRelConverter.config().withTrimUnusedFields(true).withExpand(true);
@@ -99,11 +101,12 @@ public class DaskSqlToRelConverter {
     }
 
     private CalciteCatalogReader createCatalogReader(final String schemaName, final SchemaPlus schemaPlus,
-            final JavaTypeFactoryImpl typeFactory) throws SQLException {
+            final JavaTypeFactoryImpl typeFactory, final boolean caseSensitive) throws SQLException {
         final CalciteSchema calciteSchema = CalciteSchema.from(schemaPlus);
 
         final Properties props = new Properties();
         props.setProperty("defaultSchema", schemaName);
+        props.setProperty("caseSensitive", String.valueOf(caseSensitive));
 
         final List<String> defaultSchema = new ArrayList<String>();
         defaultSchema.add(schemaName);

@@ -13,7 +13,7 @@ import com.dask.sql.schema.DaskSchema;
 public class RelationalAlgebraGeneratorBuilder {
 	private final String rootSchemaName;
 	private final List<DaskSchema> schemas;
-	private final boolean case_sensitive; // True if case should be ignored when comparing SQLNode(s)
+	private final boolean case_sensitive; // False if case should be ignored when comparing SQLNode(s)
 
 	public RelationalAlgebraGeneratorBuilder(final String rootSchemaName, final boolean case_sensitive) {
 		this.rootSchemaName = rootSchemaName;
@@ -27,6 +27,6 @@ public class RelationalAlgebraGeneratorBuilder {
 	}
 
 	public RelationalAlgebraGenerator build() throws ClassNotFoundException, SQLException {
-		return new RelationalAlgebraGenerator(rootSchemaName, schemas, case_sensitive);
+		return new RelationalAlgebraGenerator(rootSchemaName, schemas, this.case_sensitive);
 	}
 }

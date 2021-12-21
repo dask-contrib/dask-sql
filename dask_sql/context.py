@@ -848,7 +848,7 @@ class Context:
             self.schema_name, case_sensitive
         )
         for schema in schemas:
-            generator_builder.addSchema(schema)
+            generator_builder = generator_builder.addSchema(schema)
         generator = generator_builder.build()
         default_dialect = generator.getDialect()
 
