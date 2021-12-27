@@ -29,43 +29,128 @@
 			<version>${org.apache.calcite-version}</version>
 			<type>jar</type>
 		</dependency>
+
+		<!-- BEGIN - Calcite Dependencies -->
 		<dependency>
 			<groupId>org.apache.calcite</groupId>
 			<artifactId>calcite-linq4j</artifactId>
 			<version>${org.apache.calcite-version}</version>
-			<type>jar</type>
 		</dependency>
 		<dependency>
-			<groupId>org.immutables</groupId>
-			<artifactId>value</artifactId>
-			<version>2.2.10</version>
+			<groupId>com.esri.geometry</groupId>
+			<artifactId>esri-geometry-api</artifactId>
+			<version>2.2.0</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.calcite.avatica</groupId>
-			<artifactId>avatica</artifactId>
-			<version>${org.apache.calcite.avatica-version}</version>
-			<type>jar</type>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.errorprone</groupId>
+			<artifactId>error_prone_annotations</artifactId>
+			<version>2.5.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>30.1.1-jre</version>
+			<version>29.0-jre</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
-			<version>${log4j.version}</version>
+			<groupId>org.apache.calcite.avatica</groupId>
+			<artifactId>avatica-core</artifactId>
+			<version>1.20.0</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>${log4j.version}</version>
+			<groupId>org.apiguardian</groupId>
+			<artifactId>apiguardian-api</artifactId>
+			<version>1.1.0</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-slf4j-impl</artifactId>
-			<version>${log4j.version}</version>
+			<groupId>org.checkerframework</groupId>
+			<artifactId>checker-qual</artifactId>
+			<version>3.10.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.25</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-yaml</artifactId>
+			<version>2.10.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.uzaygezen</groupId>
+			<artifactId>uzaygezen-core</artifactId>
+			<version>0.2</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>log4j</artifactId>
+					<groupId>log4j</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.jayway.jsonpath</groupId>
+			<artifactId>json-path</artifactId>
+			<version>2.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.yahoo.datasketches</groupId>
+			<artifactId>sketches-core</artifactId>
+			<version>0.9.0</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.13</version>
+		</dependency>
+		<dependency>
+			<groupId>net.hydromatic</groupId>
+			<artifactId>aggdesigner-algorithm</artifactId>
+			<version>6.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.8</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.4</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.janino</groupId>
+			<artifactId>commons-compiler</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.janino</groupId>
+			<artifactId>janino</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<!-- END - Calcite Dependencies -->
+
 		<dependency>
 			<groupId>net.java.dev.javacc</groupId>
 			<artifactId>javacc</artifactId>

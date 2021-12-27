@@ -79,7 +79,8 @@ public class DaskProgram {
     private static class TrimFieldsProgram implements DaskProgramWrapper {
         public RelNode run(RelNode rel, RelTraitSet relTraitSet) {
             final RelBuilder relBuilder = RelFactories.LOGICAL_BUILDER.create(rel.getCluster(), null);
-            return new RelFieldTrimmer(null, relBuilder).trim(rel);
+            RelFieldTrimmer trimmer = new RelFieldTrimmer(null, relBuilder);
+            return trimmer.trim(rel);
         }
     }
 
