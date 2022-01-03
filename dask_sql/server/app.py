@@ -11,6 +11,7 @@ from uvicorn import Config, Server
 
 from dask_sql.context import Context
 from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
+from dask_sql.server.presto_jdbc import adjust_for_presto_sql, create_meta_data
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
@@ -74,6 +75,8 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
+        # required for JDBC Driver
+        sql = adjust_for_presto_sql(sql)
         df = request.app.c.sql(sql)
 
         if df is None:
@@ -179,6 +182,7 @@ def run_server(
 
     """
     _init_app(app, context=context, client=client)
+    create_meta_data(context)
 
     if startup:
         app.c.sql("SELECT 1 + 1").compute()
