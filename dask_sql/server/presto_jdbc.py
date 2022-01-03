@@ -102,9 +102,6 @@ def create_meta_data(c: Context):
                     )
                 )
 
-                # print(f'col {df[column].name} {df[column].dtype}')
-                # print(f'crow dtypes {crow.dtypes}')
-                # print(f'columns dtypes {columns.dtypes}')
 
     schemas = pd.DataFrame(schema_rows)
     c.create_table("schemas", schemas, schema_name=system_schema)
