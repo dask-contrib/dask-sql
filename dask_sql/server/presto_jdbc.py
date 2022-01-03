@@ -7,27 +7,6 @@ from dask_sql.context import Context
 logger = logging.getLogger(__name__)
 
 
-def adjust_for_presto_sql(sql: str):
-    """
-    Call this to adjust SQL to work with prestodb JDBC driver at the start of /v1/statement
-    For instance:
-
-        try:
-            sql = (await request.body()).decode().strip()  \n
-            **sql = adjust_for_presto_sql(sql)**  \n
-            df = request.app.c.sql(sql)
-
-    :param sql: str
-    :return: str
-    """
-    if sql.find("system.jdbc") > 0:
-        # Catalog not supported and the '.' will cause queries to fail so replace with '_'
-        sql = sql.replace("system.jdbc", "system_jdbc")
-        logger.info(f"presto sql={sql}")
-
-    return sql
-
-
 def create_meta_data(c: Context):
     """
     Creates the schema, table and column data for prestodb JDBC driver so that data can be viewed
@@ -102,7 +81,6 @@ def create_meta_data(c: Context):
                     )
                 )
 
-
     schemas = pd.DataFrame(schema_rows)
     c.create_table("schemas", schemas, schema_name=system_schema)
     tables = pd.DataFrame(table_rows)
@@ -110,7 +88,7 @@ def create_meta_data(c: Context):
     columns = pd.DataFrame(column_rows)
     c.create_table("columns", columns, schema_name=system_schema)
 
-    logger.info("jdbc meta data ready")
+    logger.info(f"jdbc meta data ready for {len(table_rows)} tables")
 
 
 def create_catalog_row(catalog: str = ""):

@@ -2,8 +2,8 @@ from time import sleep
 
 import pytest
 
-from dask_sql.server.app import _init_app, app
 from dask_sql import Context
+from dask_sql.server.app import _init_app, app
 
 # needed for the testclient
 pytest.importorskip("requests")

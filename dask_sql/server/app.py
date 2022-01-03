@@ -10,8 +10,8 @@ from nest_asyncio import apply
 from uvicorn import Config, Server
 
 from dask_sql.context import Context
+from dask_sql.server.presto_jdbc import create_meta_data
 from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
-from dask_sql.server.presto_jdbc import adjust_for_presto_sql, create_meta_data
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
@@ -75,7 +75,15 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
-        # required for JDBC driver compatibility
+        # required for Prestodb JDBC driver compatibility
+        # The driver sends a Catalog called system which is not supported by dask_sql
+        # and the '.' will cause queries to fail so we replace with '_'
+        # In parallel to this create_meta_data(context) creates a schema called
+        # system_jdbc which contains tables compatible with the Prestodb Driver
+        # Note1: Trinodb driver (a fork of Prestodb) unfortunately doesn't work with dask_sql
+        # as it has different http headers
+        # Note2: For a JDBC request to succeed create_meta_data(context) needs to be enabled
+        # and called after all user tables have been created in order to create the JDBC metadata
         sql = sql.replace("system.jdbc", "system_jdbc")
         df = request.app.c.sql(sql)
 
@@ -105,6 +113,7 @@ def run_server(
     startup=False,
     log_level=None,
     blocking: bool = True,
+    jdbc_metadata: bool = False,
 ):  # pragma: no cover
     """
     Run a HTTP server for answering SQL queries using ``dask-sql``.
@@ -131,6 +140,8 @@ def run_server(
         log_level: (:obj:`str`): The log level of the server and dask-sql
         blocking: (:obj:`bool`): If running in an environment with an event loop (e.g. a jupyter notebook),
                 do not block. The server can be stopped with `context.stop_server()` afterwards.
+        jdbc_metadata: (:obj:`bool`): If enabled create JDBC metadata tables using schemas and tables in
+                the current dask_sql context
 
     Example:
         It is possible to run an SQL server by using the CLI script ``dask-sql-server``
@@ -182,7 +193,8 @@ def run_server(
 
     """
     _init_app(app, context=context, client=client)
-    create_meta_data(context)
+    if jdbc_metadata:
+        create_meta_data(context)
 
     if startup:
         app.c.sql("SELECT 1 + 1").compute()

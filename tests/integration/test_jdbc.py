@@ -1,10 +1,10 @@
 from time import sleep
 
+import pandas as pd
 import pytest
 
-from dask_sql.server.app import _init_app, app
 from dask_sql import Context
-import pandas as pd
+from dask_sql.server.app import _init_app, app
 from dask_sql.server.presto_jdbc import create_meta_data
 
 # needed for the testclient
@@ -20,7 +20,7 @@ def c():
     c.create_schema(schema)
     row = create_table_row()
     tables = pd.DataFrame().append(row, ignore_index=True)
-    tables = tables.astype({'AN_INT': 'int64'})
+    tables = tables.astype({"AN_INT": "int64"})
     c.create_table(table, tables, schema_name=schema)
 
     yield c
@@ -45,13 +45,13 @@ def test_jdbc_has_schema(app_client, c):
 
     check_data(app_client)
 
-    response = app_client.post("/v1/statement", data="SELECT * from system.jdbc.schemas")
+    response = app_client.post(
+        "/v1/statement", data="SELECT * from system.jdbc.schemas"
+    )
     assert response.status_code == 200
     result = get_result_or_error(app_client, response)
 
-    assert "columns" in result
-    assert "data" in result
-    assert "error" not in result
+    assert_result(result, 2, 3)
     assert result["columns"] == [
         {
             "name": "TABLE_CATALOG",
@@ -62,9 +62,8 @@ def test_jdbc_has_schema(app_client, c):
             "name": "TABLE_SCHEM",
             "type": "varchar",
             "typeSignature": {"rawType": "varchar", "arguments": []},
-        }
+        },
     ]
-    assert len(result["data"]) == 3
     assert result["data"] == [
         ["", "root"],
         ["", "a_schema"],
@@ -80,14 +79,12 @@ def test_jdbc_has_table(app_client, c):
     assert response.status_code == 200
     result = get_result_or_error(app_client, response)
 
-    assert "columns" in result
-    assert "data" in result
-    assert len(result["data"]) == 4
+    assert_result(result, 10, 4)
     assert result["data"] == [
-        ['', 'a_schema', 'a_table', '', '', '', '', '', '', ''],
-        ['', 'system_jdbc', 'schemas', '', '', '', '', '', '', ''],
-        ['', 'system_jdbc', 'tables', '', '', '', '', '', '', ''],
-        ['', 'system_jdbc', 'columns', '', '', '', '', '', '', '']
+        ["", "a_schema", "a_table", "", "", "", "", "", "", ""],
+        ["", "system_jdbc", "schemas", "", "", "", "", "", "", ""],
+        ["", "system_jdbc", "tables", "", "", "", "", "", "", ""],
+        ["", "system_jdbc", "columns", "", "", "", "", "", "", ""],
     ]
 
 
@@ -95,18 +92,102 @@ def test_jdbc_has_columns(app_client, c):
     create_meta_data(c)
     check_data(app_client)
 
-    response = app_client.post("/v1/statement", data=f"SELECT * from system.jdbc.columns where TABLE_NAME = '{table}'")
+    response = app_client.post(
+        "/v1/statement",
+        data=f"SELECT * from system.jdbc.columns where TABLE_NAME = '{table}'",
+    )
     assert response.status_code == 200
     result = get_result_or_error(app_client, response)
 
+    assert_result(result, 24, 3)
+    assert result["data"] == [
+        [
+            "",
+            "a_schema",
+            "a_table",
+            "A_STR",
+            "VARCHAR",
+            "VARCHAR",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "VARCHAR",
+            "",
+            "",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "",
+            "a_schema",
+            "a_table",
+            "AN_INT",
+            "INTEGER",
+            "INTEGER",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "INTEGER",
+            "",
+            "",
+            "2",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "",
+            "a_schema",
+            "a_table",
+            "A_FLOAT",
+            "FLOAT",
+            "FLOAT",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "FLOAT",
+            "",
+            "",
+            "3",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+    ]
+
+
+def assert_result(result, col_len, data_len):
     assert "columns" in result
     assert "data" in result
-    assert len(result["data"]) == 3
-    assert result["data"] == [
-        ['', 'a_schema', 'a_table', 'A_STR', 'VARCHAR', 'VARCHAR', '', '', '', '', '', '', '', 'VARCHAR', '', '', '1', '', '', '', '', '', '', ''],
-        ['', 'a_schema', 'a_table', 'AN_INT', 'INTEGER', 'INTEGER', '', '', '', '', '', '', '', 'INTEGER', '', '', '2', '', '', '', '', '', '', ''],
-        ['', 'a_schema', 'a_table', 'A_FLOAT', 'FLOAT', 'FLOAT', '', '', '', '', '', '', '', 'FLOAT', '', '', '3', '', '', '', '', '', '', ''],
-    ]
+    assert "error" not in result
+    assert len(result["columns"]) == col_len
+    assert len(result["data"]) == data_len
 
 
 def create_table_row(a_str: str = "any", an_int: int = 1, a_float: float = 1.1):
