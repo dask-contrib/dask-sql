@@ -75,8 +75,8 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
-        # required for JDBC Driver
-        sql = adjust_for_presto_sql(sql)
+        # required for JDBC driver compatibility
+        sql = sql.replace("system.jdbc", "system_jdbc")
         df = request.app.c.sql(sql)
 
         if df is None:
