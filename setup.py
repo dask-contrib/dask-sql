@@ -84,6 +84,7 @@ setup(
         "pygments",
         "tabulate",
         "nest-asyncio",
+        "nvtx>=0.2.1"
         # backport for python versions without importlib.metadata
         "importlib_metadata; python_version < '3.8.0'",
     ],
