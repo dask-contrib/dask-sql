@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
+from nvtx import annotate
 
 ColumnType = Union[str, int]
 
@@ -26,6 +27,7 @@ class ColumnContainer:
     to prevent unnecessary renames.
     """
 
+    @annotate("COLUMN_CONTAINER_INIT", color="green", domain="dask_sql_python")
     def __init__(
         self,
         frontend_columns: List[str],
@@ -42,6 +44,7 @@ class ColumnContainer:
         else:
             self._frontend_backend_mapping = frontend_backend_mapping
 
+    @annotate("COLUMN_CONTAINER__COPY", color="green", domain="dask_sql_python")
     def _copy(self) -> ColumnContainer:
         """
         Internal function to copy this container
@@ -50,6 +53,7 @@ class ColumnContainer:
             self._frontend_columns.copy(), self._frontend_backend_mapping.copy()
         )
 
+    @annotate("COLUMN_CONTAINER_LIMIT_TO", color="green", domain="dask_sql_python")
     def limit_to(self, fields: List[str]) -> ColumnContainer:
         """
         Create a new ColumnContainer, which has frontend columns
@@ -64,6 +68,7 @@ class ColumnContainer:
         cc._frontend_columns = [str(x) for x in fields]
         return cc
 
+    @annotate("COLUMN_CONTAINER_RENAME", color="green", domain="dask_sql_python")
     def rename(self, columns: Dict[str, str]) -> ColumnContainer:
         """
         Return a new ColumnContainer where the frontend columns
@@ -83,12 +88,14 @@ class ColumnContainer:
 
         return cc
 
+    @annotate("COLUMN_CONTAINER_MAPPING", color="green", domain="dask_sql_python")
     def mapping(self) -> List[Tuple[str, ColumnType]]:
         """
         The mapping from frontend columns to backend columns.
         """
         return list(self._frontend_backend_mapping.items())
 
+    @annotate("COLUMN_CONTAINER_COLUMNS", color="green", domain="dask_sql_python")
     @property
     def columns(self) -> List[str]:
         """
@@ -96,6 +103,7 @@ class ColumnContainer:
         """
         return self._frontend_columns.copy()
 
+    @annotate("COLUMN_CONTAINER_ADD", color="green", domain="dask_sql_python")
     def add(
         self, frontend_column: str, backend_column: Union[str, None] = None
     ) -> ColumnContainer:
@@ -116,6 +124,11 @@ class ColumnContainer:
 
         return cc
 
+    @annotate(
+        "COLUMN_CONTAINER_GET_BACKEND_BY_FRONTEND_INDEX",
+        color="green",
+        domain="dask_sql_python",
+    )
     def get_backend_by_frontend_index(self, index: int) -> str:
         """
         Get back the dask column, which is referenced by the
@@ -125,6 +138,11 @@ class ColumnContainer:
         backend_column = self._frontend_backend_mapping[frontend_column]
         return backend_column
 
+    @annotate(
+        "COLUMN_CONTAINER_GET_BACKEND_BY_FRONTEND_NAME",
+        color="green",
+        domain="dask_sql_python",
+    )
     def get_backend_by_frontend_name(self, column: str) -> str:
         """
         Get back the dask column, which is referenced by the
@@ -133,6 +151,7 @@ class ColumnContainer:
         backend_column = self._frontend_backend_mapping[column]
         return backend_column
 
+    @annotate("COLUMN_CONTAINER_MAKE_UNIQUE", color="green", domain="dask_sql_python")
     def make_unique(self, prefix="col"):
         """
         Make sure we have unique column names by calling each column
@@ -161,10 +180,12 @@ class DataContainer:
     and "backend" (what dask has).
     """
 
+    @annotate("DATACONTAINER_INIT", color="green", domain="dask_sql_python")
     def __init__(self, df: dd.DataFrame, column_container: ColumnContainer):
         self.df = df
         self.column_container = column_container
 
+    @annotate("DATACONTAINER_ASSIGN", color="green", domain="dask_sql_python")
     def assign(self) -> dd.DataFrame:
         """
         Combine the column mapping with the actual data and return
@@ -183,6 +204,7 @@ class DataContainer:
 
 
 class UDF:
+    @annotate("UDF_INIT", color="green", domain="dask_sql_python")
     def __init__(self, func, row_udf: bool, return_type=None):
         """
         Helper class that handles different types of UDFs and manages
@@ -203,6 +225,7 @@ class UDF:
             raise ValueError("Return type must be provided")
         self.meta = (None, return_type)
 
+    @annotate("UDF__CALL_", color="green", domain="dask_sql_python")
     def __call__(self, *args, **kwargs):
         if self.row_udf:
             column_args = []
@@ -222,11 +245,13 @@ class UDF:
             result = self.func(*args, **kwargs)
         return result
 
+    @annotate("UDF_EQ", color="green", domain="dask_sql_python")
     def __eq__(self, other):
         if isinstance(other, UDF):
             return self.func == other.func and self.row_udf == other.row_udf
         return NotImplemented
 
+    @annotate("UDF_HASH", color="green", domain="dask_sql_python")
     def __hash__(self):
         return (self.func, self.row_udf).__hash__()
 
@@ -238,11 +263,13 @@ class Statistics:
     properties might follow. It needs to be provided by the user.
     """
 
+    @annotate("STATISTICS_INIT", color="green", domain="dask_sql_python")
     def __init__(self, row_count: int) -> None:
         self.row_count = row_count
 
 
 class SchemaContainer:
+    @annotate("SCHEMACONTAINER_INIT", color="green", domain="dask_sql_python")
     def __init__(self, name: str):
         self.__name__ = name
         self.tables: Dict[str, DataContainer] = {}
@@ -265,6 +292,7 @@ class ConfigContainer:
         the number of partitions used during the groupby tree reduction step.
     """
 
+    @annotate("CONFIGCONTAINER_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         self.config_dict = {
             # Do not set defaults here unless needed
@@ -273,6 +301,7 @@ class ConfigContainer:
             # "dask.groupby.aggregate.split_every": None,
         }
 
+    @annotate("CONFIGCONTAINER_SET_CONFIG", color="green", domain="dask_sql_python")
     def set_config(self, config_options: Union[Tuple[str, Any], Dict[str, Any]]):
         """
         Accepts either a tuple of (config, val) or a dictionary containing multiple
@@ -282,12 +311,16 @@ class ConfigContainer:
             config_options = [config_options]
         self.config_dict.update(config_options)
 
+    @annotate("CONFIGCONTAINER_DROP_CONFIG", color="green", domain="dask_sql_python")
     def drop_config(self, config_strs: Union[str, List[str]]):
         if isinstance(config_strs, str):
             config_strs = [config_strs]
         for config_key in config_strs:
             self.config_dict.pop(config_key)
 
+    @annotate(
+        "CONFIGCONTAINER_GET_CONFIG_BY_PREFIX", color="green", domain="dask_sql_python"
+    )
     def get_config_by_prefix(self, config_prefix: str):
         """
         Returns all configuration options matching the prefix in `config_prefix`

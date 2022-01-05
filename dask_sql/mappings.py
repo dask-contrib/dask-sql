@@ -6,6 +6,7 @@ import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from nvtx import annotate
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 from dask_sql.java import org
@@ -83,6 +84,7 @@ _SQL_TO_PYTHON_FRAMES = {
 }
 
 
+@annotate("PYTHON_TO_SQL_TYPE", color="green", domain="dask_sql_python")
 def python_to_sql_type(python_type):
     """Mapping between python and SQL types."""
 
@@ -100,6 +102,7 @@ def python_to_sql_type(python_type):
         )
 
 
+@annotate("SQL_TO_PYTHON_VALUE", color="green", domain="dask_sql_python")
 def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     """Mapping between SQL and python values (of correct type)."""
     # In most of the cases, we turn the value first into a string.
@@ -190,6 +193,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     return python_type(literal_value)
 
 
+@annotate("SQL_TO_PYTHON_TYPE", color="green", domain="dask_sql_python")
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
@@ -215,6 +219,7 @@ def sql_to_python_type(sql_type: str) -> type:
             )
 
 
+@annotate("SIMILAR_TYPE", color="green", domain="dask_sql_python")
 def similar_type(lhs: type, rhs: type) -> bool:
     """
     Measure simularity between types.
@@ -255,6 +260,7 @@ def similar_type(lhs: type, rhs: type) -> bool:
     return False
 
 
+@annotate("CAST_COLUMN_TYPE", color="green", domain="dask_sql_python")
 def cast_column_type(
     df: dd.DataFrame, column_name: str, expected_type: type
 ) -> dd.DataFrame:
@@ -278,6 +284,7 @@ def cast_column_type(
     return df
 
 
+@annotate("CAST_COLUMN_TO_TYPE", color="green", domain="dask_sql_python")
 def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype

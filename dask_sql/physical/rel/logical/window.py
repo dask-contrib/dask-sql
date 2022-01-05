@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from nvtx import annotate
 from pandas.core.window.indexers import BaseIndexer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
@@ -28,27 +29,32 @@ logger = logging.getLogger(__name__)
 
 
 class OverOperation:
+    @annotate("OVER_OPERATION__CALL__", color="green", domain="dask_sql_python")
     def __call__(self, partitioned_group, *args) -> pd.Series:
         """Call the stored function"""
         return self.call(partitioned_group, *args)
 
 
 class FirstValueOperation(OverOperation):
+    @annotate("FIRST_VALUE_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].apply(lambda x: x.iloc[0])
 
 
 class LastValueOperation(OverOperation):
+    @annotate("LAST_VALUE_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].apply(lambda x: x.iloc[-1])
 
 
 class SumOperation(OverOperation):
+    @annotate("SUM_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].sum()
 
 
 class CountOperation(OverOperation):
+    @annotate("COUNT_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col=None):
         if value_col is None:
             return partitioned_group.count().iloc[:, 0].fillna(0)
@@ -57,11 +63,13 @@ class CountOperation(OverOperation):
 
 
 class MaxOperation(OverOperation):
+    @annotate("MAX_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].max()
 
 
 class MinOperation(OverOperation):
+    @annotate("MIN_OPERATION_CALL", color="green", domain="dask_sql_python")
     def call(self, partitioned_group, value_col):
         return partitioned_group[value_col].min()
 
@@ -80,6 +88,7 @@ class BoundDescription(
     pass
 
 
+@annotate("WINDOW_TO_BOUND_DESCRIPTION", color="green", domain="dask_sql_python")
 def to_bound_description(
     java_window: "org.apache.calcite.rex.RexWindowBounds.RexBoundedWindowBound",
     constants: List[org.apache.calcite.rex.RexLiteral],
@@ -118,9 +127,11 @@ class Indexer(BaseIndexer):
     This class is directly taken from the fugue project.
     """
 
+    @annotate("INDEXER_INIT", color="green", domain="dask_sql_python")
     def __init__(self, start: int, end: int):
         super().__init__(self, start=start, end=end)
 
+    @annotate("INDEXER_GET_WINDOW_BOUNDS", color="green", domain="dask_sql_python")
     def get_window_bounds(
         self,
         num_values: int = 0,
@@ -151,6 +162,7 @@ class Indexer(BaseIndexer):
         return start, end
 
 
+@annotate("WINDOW_MAP_ON_EACH_GROUP", color="green", domain="dask_sql_python")
 def map_on_each_group(
     partitioned_group: pd.DataFrame,
     sort_columns: List[str],
@@ -232,6 +244,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         "last_value": LastValueOperation(),
     }
 
+    @annotate("DASK_WINDOW_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
@@ -264,6 +277,9 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         return dc
 
+    @annotate(
+        "DASK_WINDOW_PLUGIN__APPLY_WINDOW", color="green", domain="dask_sql_python"
+    )
     def _apply_window(
         self,
         window: org.apache.calcite.rel.core.Window.Group,
@@ -342,6 +358,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         )
         return dc
 
+    @annotate(
+        "DASK_WINDOW_PLUGIN__EXTRACT_GROUPBY", color="green", domain="dask_sql_python"
+    )
     def _extract_groupby(
         self,
         df: dd.DataFrame,
@@ -368,6 +387,9 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         return df, group_columns
 
+    @annotate(
+        "DASK_WINDOW_PLUGIN__EXTRACT_ORDERING", color="green", domain="dask_sql_python"
+    )
     def _extract_ordering(
         self, window: org.apache.calcite.rel.core.Window.Group, cc: ColumnContainer
     ) -> Tuple[str, str, str]:
@@ -385,6 +407,11 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         return sort_columns, sort_ascending, sort_null_first
 
+    @annotate(
+        "DASK_WINDOW_PLUGIN__EXTRACT_OPERATIONS",
+        color="green",
+        domain="dask_sql_python",
+    )
     def _extract_operations(
         self,
         window: org.apache.calcite.rel.core.Window.Group,

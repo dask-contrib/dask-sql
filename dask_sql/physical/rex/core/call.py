@@ -13,6 +13,7 @@ from dask.base import tokenize
 from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
@@ -44,22 +45,27 @@ class Operation:
     # True, if the operation should also get the REX
     needs_rex = False
 
+    @annotate("OPERATION_OP_NEEDS_DC", color="green", domain="dask_sql_python")
     @staticmethod
     def op_needs_dc(op):
         return hasattr(op, "needs_dc") and op.needs_dc
 
+    @annotate("OPERATION_OP_NEEDS_REX", color="green", domain="dask_sql_python")
     @staticmethod
     def op_needs_rex(op):
         return hasattr(op, "needs_rex") and op.needs_rex
 
+    @annotate("OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, f: Callable):
         """Init with the given function"""
         self.f = f
 
+    @annotate("OPERATION__CALL__", color="green", domain="dask_sql_python")
     def __call__(self, *operands, **kwargs) -> SeriesOrScalar:
         """Call the stored function"""
         return self.f(*operands, **kwargs)
 
+    @annotate("OPERATION_OF", color="green", domain="dask_sql_python")
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
         new_op = Operation(lambda x: self(op(x)))
@@ -75,6 +81,9 @@ class PredicateBasedOperation(Operation):
     depending if the first arg evaluates, given a predicate function, to true or false
     """
 
+    @annotate(
+        "PREDICATE_BASED_OPERATIION_INIT", color="green", domain="dask_sql_python"
+    )
     def __init__(
         self, predicate: Callable, true_route: Callable, false_route: Callable
     ):
@@ -83,6 +92,9 @@ class PredicateBasedOperation(Operation):
         self.true_route = true_route
         self.false_route = false_route
 
+    @annotate(
+        "PREDICATE_BASED_OPERATIION_APPLY", color="green", domain="dask_sql_python"
+    )
     def apply(self, *operands, **kwargs):
         if self.predicate(operands[0]):
             return self.true_route(*operands, **kwargs)
@@ -96,6 +108,7 @@ class TensorScalarOperation(PredicateBasedOperation):
     depending if the first is a dataframe or not
     """
 
+    @annotate("TENSOR_SCALAR_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, tensor_f: Callable, scalar_f: Callable = None):
         """Init with the given operation"""
         super().__init__(is_frame, tensor_f, scalar_f)
@@ -104,6 +117,7 @@ class TensorScalarOperation(PredicateBasedOperation):
 class ReduceOperation(Operation):
     """Special operator, which is executed by reducing an operation over the input"""
 
+    @annotate("REDUCE_OPERATIION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, operation: Callable, unary_operation: Callable = None):
         self.operation = operation
         self.unary_operation = unary_operation or operation
@@ -112,6 +126,7 @@ class ReduceOperation(Operation):
 
         super().__init__(self.reduce)
 
+    @annotate("REDUCE_OPERATIION_REDUCE", color="green", domain="dask_sql_python")
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
             enriched_with_kwargs = lambda kwargs: (
@@ -133,9 +148,11 @@ class SQLDivisionOperator(Operation):
 
     needs_rex = True
 
+    @annotate("SQL_DIVISION_OPERATOR_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.div)
 
+    @annotate("SQL_DIVISION_OPERATOR_DIV", color="green", domain="dask_sql_python")
     def div(self, lhs, rhs, rex=None):
         result = lhs / rhs
 
@@ -156,9 +173,11 @@ class IntDivisionOperator(Operation):
     which are created by Calcite.
     """
 
+    @annotate("INT_DIVISION_OPERATOR_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.div)
 
+    @annotate("INT_DIVISION_OPERATOR_DIV", color="green", domain="dask_sql_python")
     def div(self, lhs, rhs):
         result = lhs / rhs
 
@@ -178,9 +197,11 @@ class IntDivisionOperator(Operation):
 class CaseOperation(Operation):
     """The case operator (basically an if then else)"""
 
+    @annotate("CASE_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.case)
 
+    @annotate("CASE_OPERATION_CASE", color="green", domain="dask_sql_python")
     def case(self, *operands) -> SeriesOrScalar:
         """
         Returns `then` where `where`, else `other`.
@@ -216,9 +237,11 @@ class CastOperation(Operation):
 
     needs_rex = True
 
+    @annotate("CAST_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.cast)
 
+    @annotate("CAST_OPERATION_CAST", color="green", domain="dask_sql_python")
     def cast(self, operand, rex=None) -> SeriesOrScalar:
         if not is_frame(operand):  # pragma: no cover
             return operand
@@ -237,9 +260,11 @@ class CastOperation(Operation):
 class IsFalseOperation(Operation):
     """The is false operator"""
 
+    @annotate("IS_FALSE_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.false_)
 
+    @annotate("IS_FALSE_OPERATION_FALSE_", color="green", domain="dask_sql_python")
     def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
@@ -254,9 +279,11 @@ class IsFalseOperation(Operation):
 class IsTrueOperation(Operation):
     """The is true operator"""
 
+    @annotate("IS_TRUE_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.true_)
 
+    @annotate("IS_TRUE_OPERATION_TRUE_", color="green", domain="dask_sql_python")
     def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
@@ -271,9 +298,11 @@ class IsTrueOperation(Operation):
 class NotOperation(Operation):
     """The not operator"""
 
+    @annotate("NOT_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.not_)
 
+    @annotate("NOT_OPERATION_NOT_", color="green", domain="dask_sql_python")
     def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
@@ -287,9 +316,11 @@ class NotOperation(Operation):
 class IsNullOperation(Operation):
     """The is null operator"""
 
+    @annotate("IS_NULL_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.null)
 
+    @annotate("IS_NULL_OPERATION_NULL", color="green", domain="dask_sql_python")
     def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
@@ -303,9 +334,15 @@ class IsNullOperation(Operation):
 class IsNotDistinctOperation(Operation):
     """The is not distinct operator"""
 
+    @annotate("IS_NOT_DISTINCT_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.not_distinct)
 
+    @annotate(
+        "IS_NOT_DISTINCT_OPERATION_NOT_DISTINCT",
+        color="green",
+        domain="dask_sql_python",
+    )
     def not_distinct(self, lhs: SeriesOrScalar, rhs: SeriesOrScalar) -> SeriesOrScalar:
         """
         Returns true where `lhs` is not distinct from `rhs` (or both are null).
@@ -318,9 +355,11 @@ class IsNotDistinctOperation(Operation):
 class RegexOperation(Operation):
     """An abstract regex operation, which transforms the SQL regex into something python can understand"""
 
+    @annotate("REGEX_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.regex)
 
+    @annotate("REGEX_OPERATION_REGEX", color="green", domain="dask_sql_python")
     def regex(
         self, test: SeriesOrScalar, regex: str, escape: str = None,
     ) -> SeriesOrScalar:
@@ -419,9 +458,11 @@ class SimilarOperation(RegexOperation):
 class PositionOperation(Operation):
     """The position operator (get the position of a string)"""
 
+    @annotate("POSITION_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.position)
 
+    @annotate("POSITION_OPERATION_POSITION", color="green", domain="dask_sql_python")
     def position(self, search, s, start=None):
         """Attention: SQL starts counting at 1"""
         if is_frame(s):
@@ -438,9 +479,11 @@ class PositionOperation(Operation):
 class SubStringOperation(Operation):
     """The substring operator (get a slice of a string)"""
 
+    @annotate("SUB_STRING_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.substring)
 
+    @annotate("SUB_STRING_OPERATION_SUBSTRING", color="green", domain="dask_sql_python")
     def substring(self, s, start, length=None):
         """Attention: SQL starts counting at 1"""
         if start <= 0:
@@ -461,9 +504,11 @@ class SubStringOperation(Operation):
 class TrimOperation(Operation):
     """The trim operator (remove occurrences left and right of a string)"""
 
+    @annotate("TRIM_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.trim)
 
+    @annotate("TRIM_OPERATION_TRIM", color="green", domain="dask_sql_python")
     def trim(self, flags, search, s):
         if is_frame(s):
             s = s.str
@@ -481,9 +526,11 @@ class TrimOperation(Operation):
 class OverlayOperation(Operation):
     """The overlay operator (replace string according to positions)"""
 
+    @annotate("OVERLAY_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.overlay)
 
+    @annotate("OVERLAY_OPERATION_OVERLAY", color="green", domain="dask_sql_python")
     def overlay(self, s, replace, start, length=None):
         """Attention: SQL starts counting at 1"""
         if start <= 0:
@@ -503,9 +550,11 @@ class OverlayOperation(Operation):
 
 
 class ExtractOperation(Operation):
+    @annotate("EXTRACT_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.extract)
 
+    @annotate("EXTRACT_OPERATION_EXTRACT", color="green", domain="dask_sql_python")
     def extract(self, what, df: SeriesOrScalar):
         df = convert_to_datetime(df)
 
@@ -548,6 +597,7 @@ class CeilFloorOperation(PredicateBasedOperation):
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
     """
 
+    @annotate("CEIL_FLOOR_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, round_method: str):
         assert round_method in {
             "ceil",
@@ -562,6 +612,9 @@ class CeilFloorOperation(PredicateBasedOperation):
 
         self.round_method = round_method
 
+    @annotate(
+        "CEIL_FLOOR_OPERATION__ROUND_DATETIME", color="green", domain="dask_sql_python"
+    )
     def _round_datetime(self, *operands):
         df, unit = operands
 
@@ -598,10 +651,14 @@ class BaseRandomOperation(Operation):
 
     needs_dc = True
 
+    @annotate("BASE_RANDOM_OPERATION_INIT", color="green", domain="dask_sql_python")
     def random_function(self, partition, random_state, kwargs):
         """Needs to be implemented in derived classes"""
         raise NotImplementedError
 
+    @annotate(
+        "BASE_RANDOM_OPERATION_RANDOM_FRAME", color="green", domain="dask_sql_python"
+    )
     def random_frame(self, seed: int, dc: DataContainer, **kwargs) -> dd.Series:
         """This function - in contrast to others in this module - will only ever be called on data frames"""
 
@@ -640,12 +697,15 @@ class BaseRandomOperation(Operation):
 class RandOperation(BaseRandomOperation):
     """Create a random number between 0 and 1"""
 
+    @annotate("RAND_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(f=self.rand)
 
+    @annotate("RAND_OPERATION_RAND", color="green", domain="dask_sql_python")
     def rand(self, seed: int = None, dc: DataContainer = None):
         return self.random_frame(seed=seed, dc=dc)
 
+    @annotate("RAND_OPERATION_RANDOM_FUNCTION", color="green", domain="dask_sql_python")
     def random_function(self, partition, random_state, kwargs):
         return random_state.random_sample(size=len(partition))
 
@@ -653,9 +713,13 @@ class RandOperation(BaseRandomOperation):
 class RandIntegerOperation(BaseRandomOperation):
     """Create a random integer between 0 and high"""
 
+    @annotate("RAND_INTEGER_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(f=self.rand_integer)
 
+    @annotate(
+        "RAND_INTEGER_OPERATION_RAND_INTEGER", color="green", domain="dask_sql_python"
+    )
     def rand_integer(
         self, seed: int = None, high: int = None, dc: DataContainer = None
     ):
@@ -665,6 +729,11 @@ class RandIntegerOperation(BaseRandomOperation):
             seed = None
         return self.random_frame(seed=seed, high=high, dc=dc)
 
+    @annotate(
+        "RAND_INTEGER_OPERATION_RANDOM_FUNCTION",
+        color="green",
+        domain="dask_sql_python",
+    )
     def random_function(self, partition, random_state, kwargs):
         return random_state.randint(size=len(partition), low=0, **kwargs)
 
@@ -679,9 +748,11 @@ class SearchOperation(Operation):
     in a more convenient setting.
     """
 
+    @annotate("SEARCH_OPERATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         super().__init__(self.search)
 
+    @annotate("SEARCH_OPERATION_SEARCH", color="green", domain="dask_sql_python")
     def search(self, series: dd.Series, sarg: SargPythonImplementation):
         conditions = [r.filter_on(series) for r in sarg.ranges]
 
@@ -793,6 +864,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
     }
 
+    @annotate("REX_CALL_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",

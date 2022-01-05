@@ -11,6 +11,7 @@ import cloudpickle
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import com, java, org
@@ -19,6 +20,7 @@ from dask_sql.mappings import sql_to_python_value
 logger = logging.getLogger(__name__)
 
 
+@annotate("IS_FRAME", color="green", domain="dask_sql_python")
 def is_frame(df):
     """
     Check if something is a dataframe (and not a scalar or none)
@@ -31,6 +33,7 @@ def is_frame(df):
     )
 
 
+@annotate("IS_DATETIME", color="green", domain="dask_sql_python")
 def is_datetime(obj):
     """
     Check if a scalar or a series is of datetime type
@@ -38,6 +41,7 @@ def is_datetime(obj):
     return pd.api.types.is_datetime64_any_dtype(obj) or isinstance(obj, datetime)
 
 
+@annotate("CONVERT_TO_DATETIME", color="green", domain="dask_sql_python")
 def convert_to_datetime(df):
     """
     Covert a scalar or a series to datetime type
@@ -60,6 +64,7 @@ class Pluggable:
 
     __plugins = defaultdict(dict)
 
+    @annotate("PLUGGABLE_ADD_PLUGIN", color="green", domain="dask_sql_python")
     @classmethod
     def add_plugin(cls, name, plugin, replace=True):
         """Add a plugin with the given name"""
@@ -68,11 +73,13 @@ class Pluggable:
 
         Pluggable.__plugins[cls][name] = plugin
 
+    @annotate("PLUGGABLE_GET_PLUGIN", color="green", domain="dask_sql_python")
     @classmethod
     def get_plugin(cls, name):
         """Get a plugin with the given name"""
         return Pluggable.__plugins[cls][name]
 
+    @annotate("PLUGGABLE_GET_PLUGINS", color="green", domain="dask_sql_python")
     @classmethod
     def get_plugins(cls):
         """Return all registered plugins"""
@@ -195,6 +202,7 @@ class LoggableDataFrame:
         return f"Literal: {df}"
 
 
+@annotate("CONVERT_SQL_KWARGS", color="green", domain="dask_sql_python")
 def convert_sql_kwargs(
     sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
 ) -> Dict[str, Any]:
@@ -235,6 +243,7 @@ def convert_sql_kwargs(
     return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
 
 
+@annotate("IMPORT_CLASS", color="green", domain="dask_sql_python")
 def import_class(name: str) -> type:
     """
     Import a class with the given name by loading the module
@@ -245,6 +254,7 @@ def import_class(name: str) -> type:
     return getattr(module, class_name)
 
 
+@annotate("NEW_TEMPORARY_COLUMN", color="green", domain="dask_sql_python")
 def new_temporary_column(df: dd.DataFrame) -> str:
     """Return a new column name which is currently not in use"""
     while True:
@@ -256,6 +266,7 @@ def new_temporary_column(df: dd.DataFrame) -> str:
             continue
 
 
+@annotate("MAKE_PICKABLE_WITHOUT_DASK_SQL", color="green", domain="dask_sql_python")
 def make_pickable_without_dask_sql(f):
     """
     Helper function turning f into another function which can be deserialized without dask_sql

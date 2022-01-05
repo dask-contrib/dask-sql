@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple
 
 import dask.dataframe as dd
 import pandas as pd
+from nvtx import annotate
 
 try:
     import dask_cudf
@@ -31,6 +32,7 @@ class ReduceAggregation(dd.Aggregation):
     on all elements in a group with "reduce".
     """
 
+    @annotate("REDUCE_AGGREGATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, name: str, operation: Callable):
         series_aggregate = lambda s: s.aggregate(lambda x: reduce(operation, x))
 
@@ -46,6 +48,7 @@ class AggregationOnPandas(dd.Aggregation):
     very carefully (as it is a performance bottleneck).
     """
 
+    @annotate("AGGREGATION_ON_PANDAS_INIT", color="green", domain="dask_sql_python")
     def __init__(self, function_name: str):
         def _f(s):
             return s.apply(lambda s0: getattr(s0.dropna(), function_name)())
@@ -64,10 +67,16 @@ class AggregationSpecification:
     valid for not supported dtypes.
     """
 
+    @annotate("AGGREGATION_SPECIFICATION_INIT", color="green", domain="dask_sql_python")
     def __init__(self, built_in_aggregation, custom_aggregation=None):
         self.built_in_aggregation = built_in_aggregation
         self.custom_aggregation = custom_aggregation or built_in_aggregation
 
+    @annotate(
+        "AGGREGATION_SPECIFICATION_GET_SUPPORTED_AGGREGATION",
+        color="green",
+        domain="dask_sql_python",
+    )
     def get_supported_aggregation(self, series):
         built_in_aggregation = self.built_in_aggregation
 
@@ -147,6 +156,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
     }
 
+    @annotate("DASK_AGGREGATE_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
@@ -193,6 +203,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
 
+    @annotate(
+        "DASK_AGGREGATE_PLUGIN__DO_AGGREGATIONS",
+        color="green",
+        domain="dask_sql_python",
+    )
     def _do_aggregations(
         self,
         rel: "org.apache.calcite.rel.RelNode",
@@ -278,6 +293,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         return df_result, output_column_order
 
+    @annotate(
+        "DASK_AGGREGATE_PLUGIN__COLLECT_AGGREGATIONS",
+        color="green",
+        domain="dask_sql_python",
+    )
     def _collect_aggregations(
         self,
         rel: "org.apache.calcite.rel.RelNode",
@@ -370,6 +390,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         return collected_aggregations, output_column_order, df
 
+    @annotate(
+        "DASK_AGGREGATE_PLUGIN__PERFORM_AGGREGATION",
+        color="green",
+        domain="dask_sql_python",
+    )
     def _perform_aggregation(
         self,
         df: dd.DataFrame,

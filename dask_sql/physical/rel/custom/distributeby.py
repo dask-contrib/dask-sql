@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame
@@ -22,6 +24,7 @@ class DistributeByPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlDistributeBy"
 
+    @annotate("DISTRIBUTE_BY_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:

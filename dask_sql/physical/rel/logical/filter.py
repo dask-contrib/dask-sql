@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Union
 
 import dask.dataframe as dd
 import numpy as np
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@annotate("FILTER_OR_SCALAR", color="green", domain="dask_sql_python")
 def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Series]):
     """
     Some (complex) SQL queries can lead to a strange condition which is always true or false.
@@ -42,6 +44,7 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.nodes.DaskFilter"
 
+    @annotate("DASK_FILTER_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:

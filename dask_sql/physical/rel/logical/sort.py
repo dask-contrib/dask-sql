@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -16,6 +18,7 @@ class DaskSortPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.nodes.DaskSort"
 
+    @annotate("DASK_SORT_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:

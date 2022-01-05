@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
+from nvtx import annotate
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import python_to_sql_type
@@ -24,6 +25,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlShowColumns"
 
+    @annotate("SHOW_COLUMNS_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:

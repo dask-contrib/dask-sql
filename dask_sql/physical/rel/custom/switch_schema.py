@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -20,6 +22,7 @@ class SwitchSchemaPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlUseSchema"
 
+    @annotate("SWITCH_SCHEMA_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:

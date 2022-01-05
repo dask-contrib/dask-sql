@@ -12,10 +12,12 @@ import warnings
 
 import jpype
 import pkg_resources
+from nvtx import annotate
 
 logger = logging.getLogger(__name__)
 
 
+@annotate("SET_OR_CHECK_JAVA_HOME", color="green", domain="dask_sql_python")
 def _set_or_check_java_home():
     """
     We have some assumptions on the JAVA_HOME, namely our jvm comes from
@@ -86,6 +88,7 @@ org = jpype.JPackage("org")
 java = jpype.JPackage("java")
 
 
+@annotate("GET_JAVA_CLASS", color="green", domain="dask_sql_python")
 def get_java_class(instance):
     """Get the stringified class name of a java object"""
     return str(instance.getClass().getName())

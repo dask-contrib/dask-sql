@@ -1,10 +1,12 @@
 from typing import List
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 from dask_sql.utils import new_temporary_column
 
 
+@annotate("GROUPBY_GET_GROUPBY_WITH_NULL_COLS", color="green", domain="dask_sql_python")
 def get_groupby_with_nulls_cols(
     df: dd.DataFrame, group_columns: List[str], additional_column_name: str = None
 ):

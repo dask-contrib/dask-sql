@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Union
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 import dask_sql
 from dask_sql.datacontainer import DataContainer
@@ -20,6 +21,7 @@ class BaseRexPlugin:
 
     class_name = None
 
+    @annotate("BASE_REX_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",

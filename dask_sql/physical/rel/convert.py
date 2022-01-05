@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 from dask_sql.java import get_java_class
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -30,12 +31,14 @@ class RelConverter(Pluggable):
     to do the actual conversion.
     """
 
+    @annotate("REL_CONVERTER_ADD_PLUGIN_CLASS", color="green", domain="dask_sql_python")
     @classmethod
     def add_plugin_class(cls, plugin_class: BaseRelPlugin, replace=True):
         """Convenience function to add a class directly to the plugins"""
         logger.debug(f"Registering REL plugin for {plugin_class.class_name}")
         cls.add_plugin(plugin_class.class_name, plugin_class(), replace=replace)
 
+    @annotate("REL_CONVERTER_CONVERT", color="green", domain="dask_sql_python")
     @classmethod
     def convert(
         cls, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

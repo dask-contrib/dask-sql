@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -26,6 +28,7 @@ class AlterSchemaPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterSchema"
 
+    @annotate("ALTERSCHEMAPLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ):
@@ -60,6 +63,7 @@ class AlterTablePlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterTable"
 
+    @annotate("ALTERTABLEPLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ):

@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
+from nvtx import annotate
 
 try:
     import dask_cuda  # noqa: F401
@@ -66,6 +67,7 @@ class Context:
 
     DEFAULT_SCHEMA_NAME = "root"
 
+    @annotate("CONTEXT_INIT", color="green", domain="dask_sql_python")
     def __init__(self):
         """
         Create a new context.
@@ -122,6 +124,7 @@ class Context:
         # needs to be the last entry, as it only checks for string
         InputUtil.add_plugin_class(input_utils.LocationInputPlugin, replace=False)
 
+    @annotate("CONTEXT_CREATE_TABLE", color="green", domain="dask_sql_python")
     def create_table(
         self,
         table_name: str,
@@ -218,6 +221,7 @@ class Context:
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
 
+    @annotate("CONTEXT_REGISTER_DASK_TABLE", color="green", domain="dask_sql_python")
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
         Outdated version of :func:`create_table()`.
@@ -228,6 +232,7 @@ class Context:
         )
         return self.create_table(name, df, *args, **kwargs)
 
+    @annotate("CONTEXT_DROP_TABLE", color="green", domain="dask_sql_python")
     def drop_table(self, table_name: str, schema_name: str = None):
         """
         Remove a table with the given name from the registered tables.
@@ -240,6 +245,7 @@ class Context:
         schema_name = schema_name or self.schema_name
         del self.schema[schema_name].tables[table_name]
 
+    @annotate("CONTEXT_DROP_SCHEMA", color="green", domain="dask_sql_python")
     def drop_schema(self, schema_name: str):
         """
         Remove a schema with the given name from the registered schemas.
@@ -257,6 +263,7 @@ class Context:
         if self.schema_name == schema_name:
             self.schema_name = self.DEFAULT_SCHEMA_NAME
 
+    @annotate("CONTEXT_REGISTER_FUNCTION", color="green", domain="dask_sql_python")
     def register_function(
         self,
         f: Callable,
@@ -346,6 +353,7 @@ class Context:
             row_udf=row_udf,
         )
 
+    @annotate("CONTEXT_REGISTER_AGGREGATION", color="green", domain="dask_sql_python")
     def register_aggregation(
         self,
         f: dd.Aggregation,
@@ -413,6 +421,7 @@ class Context:
             schema_name=schema_name,
         )
 
+    @annotate("CONTEXT_SQL", color="green", domain="dask_sql_python")
     def sql(
         self,
         sql: str,
@@ -476,6 +485,7 @@ class Context:
 
         return df
 
+    @annotate("CONTEXT_EXPLAIN", color="green", domain="dask_sql_python")
     def explain(
         self, sql: str, dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None
     ) -> str:
@@ -504,6 +514,7 @@ class Context:
         _, _, rel_string = self._get_ral(sql)
         return rel_string
 
+    @annotate("CONTEXT_VISUALIZE", color="green", domain="dask_sql_python")
     def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
         """Visualize the computation of the given SQL into the png"""
         result = self.sql(sql, return_futures=True)
@@ -511,6 +522,7 @@ class Context:
 
         result.visualize(filename)
 
+    @annotate("CONTEXT_CREATE_SCHEMA", color="green", domain="dask_sql_python")
     def create_schema(self, schema_name: str):
         """
         Create a new schema in the database.
@@ -520,6 +532,7 @@ class Context:
         """
         self.schema[schema_name] = SchemaContainer(schema_name)
 
+    @annotate("CONTEXT_ALTER_SCHEMA", color="green", domain="dask_sql_python")
     def alter_schema(self, old_schema_name, new_schema_name):
         """
         Alter schema
@@ -530,6 +543,7 @@ class Context:
         """
         self.schema[new_schema_name] = self.schema.pop(old_schema_name)
 
+    @annotate("CONTEXT_ALTER_TABLE", color="green", domain="dask_sql_python")
     def alter_table(self, old_table_name, new_table_name):
         """
         Alter Table
@@ -542,6 +556,7 @@ class Context:
             self.schema_name
         ].tables.pop(old_table_name)
 
+    @annotate("CONTEXT_REGISTER_EXPERIMENT", color="green", domain="dask_sql_python")
     def register_experiment(
         self,
         experiment_name: str,
@@ -553,6 +568,7 @@ class Context:
             experiment_name.lower()
         ] = experiment_results
 
+    @annotate("CONTEXT_REGISTER_MODEL", color="green", domain="dask_sql_python")
     def register_model(
         self,
         model_name: str,
@@ -578,6 +594,7 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
+    @annotate("CONTEXT_SET_CONFIG", color="green", domain="dask_sql_python")
     def set_config(
         self,
         config_options: Union[Tuple[str, Any], Dict[str, Any]],
@@ -611,6 +628,7 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].config.set_config(config_options)
 
+    @annotate("CONTEXT_DROP_CONFIG", color="green", domain="dask_sql_python")
     def drop_config(
         self, config_strs: Union[str, List[str]], schema_name: str = None,
     ):
@@ -643,6 +661,7 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].config.drop_config(config_strs)
 
+    @annotate("CONTEXT_IPYTHON_MAGIC", color="green", domain="dask_sql_python")
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
@@ -687,6 +706,7 @@ class Context:
         """
         ipython_integration(self, auto_include=auto_include)
 
+    @annotate("CONTEXT_RUN_SERVER", color="green", domain="dask_sql_python")
     def run_server(
         self,
         client: Client = None,
@@ -718,6 +738,7 @@ class Context:
             blocking=blocking,
         )
 
+    @annotate("CONTEXT_STOP_SERVER", color="green", domain="dask_sql_python")
     def stop_server(self):  # pragma: no cover
         """
         Stop a SQL server started by ``run_server`.
@@ -729,6 +750,7 @@ class Context:
 
         self.sql_server = None
 
+    @annotate("CONTEXT_FQN", color="green", domain="dask_sql_python")
     def fqn(
         self, identifier: "org.apache.calcite.sql.SqlIdentifier"
     ) -> Tuple[str, str]:
@@ -755,6 +777,7 @@ class Context:
 
         return schema, name
 
+    @annotate("CONTEXT__PREPARE_SCHEMAS", color="green", domain="dask_sql_python")
     def _prepare_schemas(self):
         """
         Create a list of schemas filled with the dataframes
@@ -818,6 +841,11 @@ class Context:
 
         return schema_list
 
+    @annotate(
+        "CONTEXT__ADD_PARAMETERS_FROM_DESCRIPTIONS",
+        color="green",
+        domain="dask_sql_python",
+    )
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
         for parameter in function_description.parameters:
@@ -828,6 +856,7 @@ class Context:
 
         return dask_function
 
+    @annotate("CONTEXT__GET_RAL", color="green", domain="dask_sql_python")
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
@@ -909,6 +938,7 @@ class Context:
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
 
+    @annotate("CONTEXT__TO_SQL_STRING", color="green", domain="dask_sql_python")
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:
             default_dialect = (
@@ -921,6 +951,7 @@ class Context:
         except Exception:  # pragma: no cover
             return str(s)
 
+    @annotate("CONTEXT__GET_TABLES_FROM_STACK", color="green", domain="dask_sql_python")
     def _get_tables_from_stack(self):
         """Helper function to return all dask/pandas dataframes from the calling stack"""
         stack = inspect.stack()
@@ -940,6 +971,7 @@ class Context:
 
         return tables
 
+    @annotate("CONTEXT__REGISTER_CALLABLE", color="green", domain="dask_sql_python")
     def _register_callable(
         self,
         f: Any,

@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
@@ -20,6 +22,7 @@ class DropSchemaPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlDropSchema"
 
+    @annotate("DROP_SCHEMA_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ):

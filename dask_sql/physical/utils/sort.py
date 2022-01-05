@@ -3,6 +3,7 @@ from typing import List
 import dask.dataframe as dd
 import pandas as pd
 from dask.utils import M
+from nvtx import annotate
 
 from dask_sql.utils import make_pickable_without_dask_sql
 
@@ -12,6 +13,7 @@ except ImportError:
     dask_cudf = None
 
 
+@annotate("SORT_APPLY_SORT", color="green", domain="dask_sql_python")
 def apply_sort(
     df: dd.DataFrame,
     sort_columns: List[str],
@@ -72,6 +74,7 @@ def apply_sort(
     return df
 
 
+@annotate("SORT_SORT_PARTITION_FUNC", color="green", domain="dask_sql_python")
 def sort_partition_func(
     partition: pd.DataFrame,
     sort_columns: List[str],

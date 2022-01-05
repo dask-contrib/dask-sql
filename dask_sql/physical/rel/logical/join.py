@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, List, Tuple
 import dask.dataframe as dd
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
+from nvtx import annotate
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
@@ -45,6 +46,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "FULL": "outer",
     }
 
+    @annotate("DASK_JOIN_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
@@ -191,6 +193,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
 
+    @annotate(
+        "DASK_JOIN_PLUGIN__JOIN_ON_COLUMNS", color="green", domain="dask_sql_python"
+    )
     def _join_on_columns(
         self,
         df_lhs_renamed: dd.DataFrame,
@@ -233,6 +238,11 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         return df
 
+    @annotate(
+        "DASK_JOIN_PLUGIN__SPLIT_JOIN_CONDITION",
+        color="green",
+        domain="dask_sql_python",
+    )
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
@@ -274,6 +284,9 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         return [], [], [join_condition]
 
+    @annotate(
+        "DASK_JOIN_PLUGIN__EXTRACT_LHS_RHS", color="green", domain="dask_sql_python"
+    )
     def _extract_lhs_rhs(self, rex):
         operator_name = str(rex.getOperator().getName())
         assert operator_name == "="

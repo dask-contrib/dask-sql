@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -20,6 +21,7 @@ class DaskLimitPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.nodes.DaskLimit"
 
+    @annotate("DASK_LIMIT_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:
@@ -44,6 +46,9 @@ class DaskLimitPlugin(BaseRelPlugin):
         # No column type has changed, so no need to cast again
         return DataContainer(df, cc)
 
+    @annotate(
+        "DASK_LIMIT_PLUGIN__APPLY_OFFSET", color="green", domain="dask_sql_python"
+    )
     def _apply_offset(self, df: dd.DataFrame, offset: int, end: int) -> dd.DataFrame:
         """
         Limit the dataframe to the window [offset, end].

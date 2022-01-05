@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -19,6 +20,7 @@ class RexInputRefPlugin(BaseRexPlugin):
 
     class_name = "org.apache.calcite.rex.RexInputRef"
 
+    @annotate("REX_INPUT_REF_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",

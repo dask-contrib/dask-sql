@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -21,6 +23,7 @@ class DropModelPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlDropModel"
 
+    @annotate("DROP_MODEL_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:

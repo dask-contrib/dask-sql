@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
+from nvtx import annotate
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -28,6 +29,7 @@ class DaskValuesPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.nodes.DaskValues"
 
+    @annotate("DASK_VALUES_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
     ) -> DataContainer:

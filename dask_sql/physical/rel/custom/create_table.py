@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
+from nvtx import annotate
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs
@@ -38,6 +40,7 @@ class CreateTablePlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlCreateTable"
 
+    @annotate("CREATE_TABLE_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:

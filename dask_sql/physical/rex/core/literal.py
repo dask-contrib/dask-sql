@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
+from nvtx import annotate
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import com, org
@@ -22,6 +23,11 @@ class SargPythonImplementation:
     class Range:
         """Helper class to represent one of the ranges in a Sarg object"""
 
+        @annotate(
+            "SARG_PYTHON_IMPLEMENTATION_RANGE_INIT",
+            color="green",
+            domain="dask_sql_python",
+        )
         def __init__(self, range: com.google.common.collect.Range, literal_type: str):
             self.lower_endpoint = None
             self.lower_open = True
@@ -43,6 +49,11 @@ class SargPythonImplementation:
                     range.upperBoundType() == com.google.common.collect.BoundType.OPEN
                 )
 
+        @annotate(
+            "SARG_PYTHON_IMPLEMENTATION_RANGE_FILTER_ON",
+            color="green",
+            domain="dask_sql_python",
+        )
         def filter_on(self, series: dd.Series):
             lower_condition = True
             if self.lower_endpoint is not None:
@@ -60,15 +71,26 @@ class SargPythonImplementation:
 
             return lower_condition & upper_condition
 
+        @annotate(
+            "SARG_PYTHON_IMPLEMENTATION_RANGE_REPR",
+            color="green",
+            domain="dask_sql_python",
+        )
         def __repr__(self) -> str:
             return f"Range {self.lower_endpoint} - {self.upper_endpoint}"
 
+    @annotate(
+        "SARG_PYTHON_IMPLEMENTATION_INIT", color="green", domain="dask_sql_python"
+    )
     def __init__(self, java_sarg: org.apache.calcite.util.Sarg, literal_type: str):
         self.ranges = [
             SargPythonImplementation.Range(r, literal_type)
             for r in java_sarg.rangeSet.asRanges()
         ]
 
+    @annotate(
+        "SARG_PYTHON_IMPLEMENTATION_REPR", color="green", domain="dask_sql_python"
+    )
     def __repr__(self) -> str:
         return ",".join(map(str, self.ranges))
 
@@ -85,6 +107,7 @@ class RexLiteralPlugin(BaseRexPlugin):
 
     class_name = "org.apache.calcite.rex.RexLiteral"
 
+    @annotate("REX_LITERAL_PLUGIN_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         self,
         rex: "org.apache.calcite.rex.RexNode",
