@@ -37,6 +37,7 @@ requirements:
     - prompt-toolkit
     - pygments
     - nest-asyncio
+    - nvtx>=0.2.1
     - tabulate
     - importlib-metadata  # [py<38]
 
