@@ -45,13 +45,13 @@ class Operation:
     # True, if the operation should also get the REX
     needs_rex = False
 
-    @annotate("OPERATION_OP_NEEDS_DC", color="green", domain="dask_sql_python")
     @staticmethod
+    @annotate("OPERATION_OP_NEEDS_DC", color="green", domain="dask_sql_python")
     def op_needs_dc(op):
         return hasattr(op, "needs_dc") and op.needs_dc
 
-    @annotate("OPERATION_OP_NEEDS_REX", color="green", domain="dask_sql_python")
     @staticmethod
+    @annotate("OPERATION_OP_NEEDS_REX", color="green", domain="dask_sql_python")
     def op_needs_rex(op):
         return hasattr(op, "needs_rex") and op.needs_rex
 

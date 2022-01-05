@@ -32,15 +32,15 @@ class RexConverter(Pluggable):
     to do the actual conversion.
     """
 
-    @annotate("REX_CONVERTER_ADD_PLUGIN_CLASS", color="green", domain="dask_sql_python")
     @classmethod
+    @annotate("REX_CONVERTER_ADD_PLUGIN_CLASS", color="green", domain="dask_sql_python")
     def add_plugin_class(cls, plugin_class: BaseRexPlugin, replace=True):
         """Convenience function to add a class directly to the plugins"""
         logger.debug(f"Registering REX plugin for {plugin_class.class_name}")
         cls.add_plugin(plugin_class.class_name, plugin_class(), replace=replace)
 
-    @annotate("REX_CONVERTER_CONVERT", color="green", domain="dask_sql_python")
     @classmethod
+    @annotate("REX_CONVERTER_CONVERT", color="green", domain="dask_sql_python")
     def convert(
         cls,
         rex: "org.apache.calcite.rex.RexNode",

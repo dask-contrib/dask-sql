@@ -841,12 +841,12 @@ class Context:
 
         return schema_list
 
+    @staticmethod
     @annotate(
         "CONTEXT__ADD_PARAMETERS_FROM_DESCRIPTIONS",
         color="green",
         domain="dask_sql_python",
     )
-    @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
         for parameter in function_description.parameters:
             param_name, param_type = parameter

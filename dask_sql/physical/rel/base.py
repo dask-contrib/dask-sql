@@ -32,12 +32,12 @@ class BaseRelPlugin:
         """Base method to implement"""
         raise NotImplementedError
 
+    @staticmethod
     @annotate(
         "BASE_REL_PLUGIN_FIX_COLUMN_TO_ROW_TYPE",
         color="green",
         domain="dask_sql_python",
     )
-    @staticmethod
     def fix_column_to_row_type(
         cc: ColumnContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
     ) -> ColumnContainer:
@@ -56,12 +56,12 @@ class BaseRelPlugin:
         # TODO: We can also check for the types here and do any conversions if needed
         return cc.limit_to(field_names)
 
+    @staticmethod
     @annotate(
         "BASE_REL_PLUGIN_CHECK_COLUMNS_FROM_ROW_TYPE",
         color="green",
         domain="dask_sql_python",
     )
-    @staticmethod
     def check_columns_from_row_type(
         df: dd.DataFrame, row_type: "org.apache.calcite.rel.type.RelDataType"
     ):
@@ -76,8 +76,8 @@ class BaseRelPlugin:
 
         # TODO: similar to self.fix_column_to_row_type, we should check for the types
 
-    @annotate("BASE_REL_PLUGIN_ASSERT_INPUTS", color="green", domain="dask_sql_python")
     @staticmethod
+    @annotate("BASE_REL_PLUGIN_ASSERT_INPUTS", color="green", domain="dask_sql_python")
     def assert_inputs(
         rel: "org.apache.calcite.rel.RelNode",
         n: int = 1,
@@ -99,10 +99,10 @@ class BaseRelPlugin:
 
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
+    @staticmethod
     @annotate(
         "BASE_REL_PLUGIN_FIX_DTYPE_TO_ROW_TYPE", color="green", domain="dask_sql_python"
     )
-    @staticmethod
     def fix_dtype_to_row_type(
         dc: DataContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
     ):

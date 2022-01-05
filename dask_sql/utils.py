@@ -64,8 +64,8 @@ class Pluggable:
 
     __plugins = defaultdict(dict)
 
-    @annotate("PLUGGABLE_ADD_PLUGIN", color="green", domain="dask_sql_python")
     @classmethod
+    @annotate("PLUGGABLE_ADD_PLUGIN", color="green", domain="dask_sql_python")
     def add_plugin(cls, name, plugin, replace=True):
         """Add a plugin with the given name"""
         if not replace and name in Pluggable.__plugins[cls]:
@@ -73,14 +73,14 @@ class Pluggable:
 
         Pluggable.__plugins[cls][name] = plugin
 
-    @annotate("PLUGGABLE_GET_PLUGIN", color="green", domain="dask_sql_python")
     @classmethod
+    @annotate("PLUGGABLE_GET_PLUGIN", color="green", domain="dask_sql_python")
     def get_plugin(cls, name):
         """Get a plugin with the given name"""
         return Pluggable.__plugins[cls][name]
 
-    @annotate("PLUGGABLE_GET_PLUGINS", color="green", domain="dask_sql_python")
     @classmethod
+    @annotate("PLUGGABLE_GET_PLUGINS", color="green", domain="dask_sql_python")
     def get_plugins(cls):
         """Return all registered plugins"""
         return list(Pluggable.__plugins[cls].values())

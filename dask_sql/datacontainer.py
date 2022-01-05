@@ -95,8 +95,8 @@ class ColumnContainer:
         """
         return list(self._frontend_backend_mapping.items())
 
-    @annotate("COLUMN_CONTAINER_COLUMNS", color="green", domain="dask_sql_python")
     @property
+    @annotate("COLUMN_CONTAINER_COLUMNS", color="green", domain="dask_sql_python")
     def columns(self) -> List[str]:
         """
         The stored frontend columns in the correct order
