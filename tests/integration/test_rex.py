@@ -7,6 +7,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 
+@pytest.mark.xfail
 def test_case(c, df):
     result_df = c.sql(
         """
