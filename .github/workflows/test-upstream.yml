@@ -10,7 +10,7 @@ jobs:
     # the future deployable
     name: Build the jar on ubuntu
     runs-on: ubuntu-latest
-    # if: github.repository == 'dask-contrib/dask-sql'
+    if: github.repository == 'dask-contrib/dask-sql'
     defaults:
       run:
         shell: bash -l {0}
@@ -92,7 +92,7 @@ jobs:
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
-          pytest -m gpu --rungpu --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
+          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
 
   report-failures:
     name: Open issue for upstream dev failures
