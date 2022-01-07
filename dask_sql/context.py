@@ -868,12 +868,28 @@ class Context:
 
             if not sqlNodeClass.startswith("com.dask.sql.parser."):
                 nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
-                # Optimization might remove some alias projects. Make sure to keep them here.
-                select_names = [
-                    str(name)
-                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
-                ]
-                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+
+                # True if DaskProgram for SQL optimization should be ran and False otherwise
+                cbo_enabled = (
+                    self.schema[self.schema_name]
+                    .config.get_config_by_prefix("dask.sql.cbo.enabled")
+                    .get("dask.sql.cbo.enabled", True)
+                )
+
+                if cbo_enabled:
+                    # Optimization might remove some alias projects. Make sure to keep them here.
+                    select_names = [
+                        str(name)
+                        for name in nonOptimizedRelNode.getRowType().getFieldNames()
+                    ]
+                    rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                else:
+                    # CBO should not be ran so use the original Relational Algebra
+                    logger.warning(
+                        "Dask-SQL Cost Base Optimization is disabled and will not run"
+                    )
+                    rel = nonOptimizedRelNode
+
                 rel_string = str(generator.getRelationalAlgebraString(rel))
         except (ValidationException, SqlParseException, CalciteContextException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
