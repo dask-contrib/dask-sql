@@ -862,12 +862,21 @@ class Context:
             sqlNode = generator.getSqlNode(sql)
             sqlNodeClass = get_java_class(sqlNode)
 
+            print(f"Sql Node Class: {sqlNodeClass}")
+
             select_names = None
             rel = sqlNode
             rel_string = ""
 
             if not sqlNodeClass.startswith("com.dask.sql.parser."):
                 nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
+                print(f"NonOptimized Type {type(nonOptimizedRelNode)}")
+
+                # Optimization might remove some alias projects. Make sure to keep them here.
+                select_names = [
+                    str(name)
+                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
+                ]
 
                 # True if DaskProgram for SQL optimization should be ran and False otherwise
                 cbo_enabled = (
@@ -877,11 +886,6 @@ class Context:
                 )
 
                 if cbo_enabled:
-                    # Optimization might remove some alias projects. Make sure to keep them here.
-                    select_names = [
-                        str(name)
-                        for name in nonOptimizedRelNode.getRowType().getFieldNames()
-                    ]
                     rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
                 else:
                     # CBO should not be ran so use the original Relational Algebra
@@ -889,6 +893,8 @@ class Context:
                         "Dask-SQL Cost Base Optimization is disabled and will not run"
                     )
                     rel = nonOptimizedRelNode
+
+                print(f"Rel Type {type(rel)}")
 
                 rel_string = str(generator.getRelationalAlgebraString(rel))
         except (ValidationException, SqlParseException, CalciteContextException) as e:
@@ -911,6 +917,8 @@ class Context:
             sqlNodeClass = get_java_class(sqlNode)
 
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
+            print(f"Select List: {sqlNode.getSelectList()}")
+            print(f"Select Names: {select_names}")
             select_names = [
                 self._to_sql_string(s, default_dialect=default_dialect)
                 if current_name.startswith("EXPR$")

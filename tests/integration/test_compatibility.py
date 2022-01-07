@@ -948,3 +948,12 @@ def test_query_case_sensitivity():
         c.sql("select ID from test")
     except ParsingException as pe:
         assert False, f"Queries should be case insensitve but raised exception {pe}"
+
+
+def test_disabling_cbo():
+    c = Context()
+    c.set_config(("dask.sql.cbo.enabled", False))
+    df = pd.DataFrame({"id": [0, 1]})
+
+    c.create_table("test", df)
+    c.sql("select id from test")
