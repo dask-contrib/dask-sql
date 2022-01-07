@@ -215,7 +215,7 @@ def convert_sql_kwargs(
             }
 
             operator = operator_mapping[str(value.getOperator())]
-            operands = [convert_literal(o) for o in value.getOperands()]
+            operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
         elif isinstance(value, com.dask.sql.parser.SqlKwargs):
