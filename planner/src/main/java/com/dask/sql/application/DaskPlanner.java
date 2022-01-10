@@ -55,7 +55,6 @@ public class DaskPlanner extends VolcanoPlanner {
         addRule(CoreRules.PROJECT_FILTER_TRANSPOSE);
         addRule(CoreRules.FILTER_PROJECT_TRANSPOSE);
         addRule(CoreRules.FILTER_INTO_JOIN);
-        addRule(CoreRules.JOIN_CONDITION_PUSH);
         addRule(CoreRules.JOIN_PUSH_EXPRESSIONS);
         addRule(CoreRules.FILTER_AGGREGATE_TRANSPOSE);
         addRule(CoreRules.PROJECT_WINDOW_TRANSPOSE);
