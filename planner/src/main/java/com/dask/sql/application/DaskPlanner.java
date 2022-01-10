@@ -11,6 +11,10 @@ import com.dask.sql.rules.DaskUnionRule;
 import com.dask.sql.rules.DaskValuesRule;
 import com.dask.sql.rules.DaskWindowRule;
 
+import org.apache.calcite.config.CalciteConnectionConfig;
+import org.apache.calcite.config.CalciteConnectionProperty;
+import org.apache.calcite.plan.Context;
+import org.apache.calcite.plan.Contexts;
 import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.rel.rules.CoreRules;
@@ -26,6 +30,9 @@ import org.apache.calcite.rel.rules.PruneEmptyRules;
  * as the null executor.
  */
 public class DaskPlanner extends VolcanoPlanner {
+
+    private final Context defaultContext;
+
     public DaskPlanner() {
         // Allow transformation between logical and dask nodes
         addRule(DaskAggregateRule.INSTANCE);
@@ -73,5 +80,13 @@ public class DaskPlanner extends VolcanoPlanner {
 
         // We do not want to execute any SQL
         setExecutor(null);
+
+        // Use our defined type system and create a default CalciteConfigContext
+        defaultContext = Contexts.of(CalciteConnectionConfig.DEFAULT.set(
+                CalciteConnectionProperty.TYPE_SYSTEM, "com.dask.sql.application.DaskSqlDialect#DASKSQL_TYPE_SYSTEM"));
+    }
+
+    public Context getContext() {
+        return defaultContext;
     }
 }
