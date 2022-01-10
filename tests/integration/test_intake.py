@@ -4,7 +4,7 @@ import tempfile
 
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+from dask.dataframe.utils import assert_eq
 
 from dask_sql.context import Context
 
@@ -40,10 +40,10 @@ def intake_catalog_location():
 
 
 def check_read_table(c):
-    result_df = c.sql("SELECT * FROM df").compute().reset_index(drop=True)
-    df = pd.DataFrame({"a": [1], "b": [1.5]})
+    result_df = c.sql("SELECT * FROM df").reset_index(drop=True)
+    expected_df = pd.DataFrame({"a": [1], "b": [1.5]})
 
-    assert_frame_equal(df, result_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_intake_catalog(intake_catalog_location):

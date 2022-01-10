@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+from dask.dataframe.utils import assert_eq
 
 
 def test_analyze(c, df):
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
-    result_df = result_df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -53,9 +52,9 @@ def test_analyze(c, df):
     p = ["25%", "50%", "75%"]
     result_df.loc[p, :] = result_df.loc[p, :].astype(float).apply(np.ceil)
     expected_df.loc[p, :] = expected_df.loc[p, :].astype(float).apply(np.ceil)
-    assert_frame_equal(result_df, expected_df, check_exact=False)
+    assert_eq(result_df, expected_df, check_exact=False)
 
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR COLUMNS a")
-    result_df = result_df.compute()
+    result_df = result_df
 
-    assert_frame_equal(result_df, expected_df[["a"]])
+    assert_eq(result_df, expected_df[["a"]])

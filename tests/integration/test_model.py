@@ -5,6 +5,7 @@ import sys
 import joblib
 import pandas as pd
 import pytest
+from dask.dataframe.utils import assert_eq
 from dask.datasets import timeseries
 
 from tests.integration.fixtures import skip_if_external_scheduler
@@ -223,10 +224,10 @@ def test_show_models(c, training_df):
         )
     """
     )
+    result = c.sql("SHOW MODELS")
     expected = pd.DataFrame(["my_model1", "my_model2", "my_model3"], columns=["Models"])
-    result: pd.DataFrame = c.sql("SHOW MODELS").compute()
-    # test
-    pd.testing.assert_frame_equal(expected, result)
+
+    assert_eq(result, expected)
 
 
 def test_wrong_training_or_prediction(c, training_df):

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+from dask.dataframe.utils import assert_eq
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
@@ -36,7 +36,7 @@ def eq_sqlite(sql, **dfs):
         c.create_table(name, df)
         df.to_sql(name, engine, index=False)
 
-    dask_result = c.sql(sql).compute().reset_index(drop=True)
+    dask_result = c.sql(sql).reset_index(drop=True)
     sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
 
     # casting to object to ensure equality with sql-lite
@@ -47,7 +47,7 @@ def eq_sqlite(sql, **dfs):
     dask_result = dask_result.fillna(np.NaN)
     sqlite_result = sqlite_result.fillna(np.NaN)
 
-    assert_frame_equal(dask_result, sqlite_result, check_dtype=False)
+    assert_eq(dask_result, sqlite_result, check_dtype=False)
 
 
 def make_rand_df(size: int, **kwargs):

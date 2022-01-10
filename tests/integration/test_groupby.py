@@ -1,12 +1,11 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask import dataframe as dd
-from pandas.testing import assert_frame_equal, assert_series_equal
 
 
 def test_group_by(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id, SUM(b) AS "S"
@@ -14,10 +13,9 @@ def test_group_by(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"user_id": [1, 2, 3], "S": [3, 4, 3]})
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
 def test_group_by_all(c, df):
@@ -28,12 +26,11 @@ def test_group_by_all(c, df):
     FROM user_table_1
     """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame({"S": [10], "X": [8]})
     expected_df["S"] = expected_df["S"].astype("int64")
     expected_df["X"] = expected_df["X"].astype("int32")
-    assert_frame_equal(result_df, expected_df)
+
+    dd.assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
@@ -48,8 +45,6 @@ def test_group_by_all(c, df):
         FROM df
         """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame(
         {
             "sum_a": [df.a.sum()],
@@ -61,11 +56,12 @@ def test_group_by_all(c, df):
             "mix_3": [(df.a + df.b).mean()],
         }
     )
-    assert_frame_equal(result_df, expected_df)
+
+    dd.assert_eq(result_df, expected_df)
 
 
 def test_group_by_filtered(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         SUM(b) FILTER (WHERE user_id = 2) AS "S1",
@@ -73,14 +69,11 @@ def test_group_by_filtered(c):
     FROM user_table_1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"S1": [4], "S2": [10]}, dtype="int64")
-    assert_frame_equal(df, expected_df)
 
+    dd.assert_eq(return_df, expected_df)
 
-def test_group_by_filtered2(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -90,28 +83,25 @@ def test_group_by_filtered2(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame(
         {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3],},
     )
-    assert_frame_equal(df, expected_df)
 
-    df = c.sql(
+    dd.assert_eq(return_df, expected_df)
+
+    return_df = c.sql(
         """
     SELECT
         SUM(b) FILTER (WHERE user_id = 2) AS "S1"
     FROM user_table_1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"S1": [4]})
-    assert_frame_equal(df, expected_df)
+    dd.assert_eq(return_df, expected_df)
 
 
 def test_group_by_case(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
@@ -119,17 +109,18 @@ def test_group_by_case(c):
     GROUP BY user_id + 1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
+
     # Do not check dtypes, as pandas versions are inconsistent here
-    assert_frame_equal(
-        df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
+    dd.assert_eq(
+        return_df.sort_values("A").reset_index(drop=True),
+        expected_df,
+        check_dtype=False,
     )
 
 
 def test_group_by_nan(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         c
@@ -137,18 +128,17 @@ def test_group_by_nan(c):
     GROUP BY c
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
+
     # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
-    # we can not check here
-    assert_frame_equal(
-        df.sort_values("c").reset_index(drop=True),
+    # we cannot check here
+    dd.assert_eq(
+        return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
         check_dtype=False,
     )
 
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         c
@@ -156,18 +146,17 @@ def test_group_by_nan(c):
     GROUP BY c
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
     expected_df["c"] = expected_df["c"].astype("float64")
-    assert_frame_equal(
-        df.sort_values("c").reset_index(drop=True),
+
+    dd.assert_eq(
+        return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
     )
 
 
 def test_aggregations(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -181,8 +170,6 @@ def test_aggregations(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 3],
@@ -195,9 +182,10 @@ def test_aggregations(c):
         }
     )
     expected_df["a"] = expected_df["a"].astype("float64")
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
 
-    df = c.sql(
+    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -211,7 +199,6 @@ def test_aggregations(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -224,9 +211,9 @@ def test_aggregations(c):
             "a": [1.5, 3, 4],
         }
     )
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         MAX(a) AS "max",
@@ -234,27 +221,25 @@ def test_aggregations(c):
     FROM string_table
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
-    assert_frame_equal(df.reset_index(drop=True), expected_df)
+
+    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-def test_stats_aggregation(c, timeseries_df):
-
-    # # test regr_count
-    regr_count = (
-        c.sql(
-            """
-        SELECT name, count(x) filter (where y is not null) as expected,
-         regr_count(y, x) as calculated from timeseries group by name
+def test_stats_aggregation(c):
+    # test regr_count
+    regr_count = c.sql(
+        """
+    SELECT
+        name,
+        COUNT(x) FILTER (WHERE y IS NOT NULL) AS expected,
+        REGR_COUNT(y, x) AS calculated
+    FROM timeseries
+    GROUP BY name
     """
-        )
-        .compute()
-        .fillna(0)
-    )
+    ).fillna(0)
 
-    assert_series_equal(
+    dd.assert_eq(
         regr_count["expected"],
         regr_count["calculated"],
         check_dtype=False,
@@ -262,17 +247,19 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
     # test regr_syy
-    regr_syy = (
-        c.sql(
-            """
-        SELECT name, (regr_count(y, x)*var_pop(y)) as expected, regr_syy(y, x) as calculated
-        FROM timeseries WHERE x IS NOT NULL AND y IS NOT NULL GROUP BY name
+    regr_syy = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(y)) AS expected,
+        REGR_SYY(y, x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
     """
-        )
-        .compute()
-        .fillna(0)
-    )
-    assert_series_equal(
+    ).fillna(0)
+
+    dd.assert_eq(
         regr_syy["expected"],
         regr_syy["calculated"],
         check_dtype=False,
@@ -280,17 +267,19 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
     # test regr_sxx
-    regr_sxx = (
-        c.sql(
-            """
-        SELECT name,(regr_count(y, x)*var_pop(x)) as expected, regr_sxx(y,x) as calculated
-        FROM timeseries WHERE x IS NOT NULL AND y IS NOT NULL GROUP BY name
+    regr_sxx = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(x)) AS expected,
+        REGR_SXX(y,x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
     """
-        )
-        .compute()
-        .fillna(0)
-    )
-    assert_series_equal(
+    ).fillna(0)
+
+    dd.assert_eq(
         regr_sxx["expected"],
         regr_sxx["calculated"],
         check_dtype=False,
@@ -298,24 +287,26 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
     # test covar_pop
-    covar_pop = (
-        c.sql(
-            """
-        with temp_agg as (
-        select name,avg(y) filter (where x is not null) as avg_y,
-        avg(x) filter (where y is not null) as avg_x
-        from timeseries group by name
-        )
-        select ts.name,sum((y - avg_y) * (x - avg_x)) /regr_count(y, x) as expected,
-                covar_pop(y,x) as calculated from timeseries as ts
-                join temp_agg as ta on ts.name =ta.name
-                group by ts.name
+    covar_pop = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x,
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / REGR_COUNT(y, x) AS expected,
+        COVAR_POP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
     """
-        )
-        .compute()
-        .fillna(0)
-    )
-    assert_series_equal(
+    ).fillna(0)
+
+    dd.assert_eq(
         covar_pop["expected"],
         covar_pop["calculated"],
         check_dtype=False,
@@ -323,25 +314,26 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
     # test covar_samp
-    covar_samp = (
-        c.sql(
-            """
-        with temp_agg as (
-        select name,avg(y) filter (where x is not null) as avg_y,
-        avg(x) filter (where y is not null) as avg_x
-        from timeseries group by name
-        )
-
-        select ts.name,sum((y - avg_y) * (x - avg_x)) /(regr_count(y, x)-1) as expected,
-                covar_samp(y,x) as calculated from timeseries as ts
-                join temp_agg as ta on ts.name =ta.name
-                group by ts.name
+    covar_samp = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x,
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / (REGR_COUNT(y, x) - 1) as expected,
+        COVAR_SAMP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
     """
-        )
-        .compute()
-        .fillna(0)
-    )
-    assert_series_equal(
+    ).fillna(0)
+
+    dd.assert_eq(
         covar_samp["expected"],
         covar_samp["calculated"],
         check_dtype=False,
@@ -355,9 +347,11 @@ def test_stats_aggregation(c, timeseries_df):
 )
 @pytest.mark.parametrize("split_out", [None, 2, 4])
 def test_groupby_split_out(c, input_table, split_out, request):
-    user_table = request.getfixturevalue(input_table)
     c.set_config(("dask.groupby.aggregate.split_out", split_out))
-    df = c.sql(
+
+    user_table = request.getfixturevalue(input_table)
+
+    return_df = c.sql(
         f"""
         SELECT
         user_id, SUM(b) AS "S"
@@ -366,12 +360,16 @@ def test_groupby_split_out(c, input_table, split_out, request):
         """
     )
     expected_df = (
-        user_table.groupby(by="user_id").agg({"b": "sum"}).reset_index(drop=False)
+        user_table.groupby(by="user_id")
+        .agg({"b": "sum"})
+        .reset_index(drop=False)
+        .rename(columns={"b": "S"})
+        .sort_values("user_id")
     )
-    expected_df = expected_df.rename(columns={"b": "S"})
-    expected_df = expected_df.sort_values("user_id")
-    assert df.npartitions == split_out if split_out else 1
-    dd.assert_eq(df.compute().sort_values("user_id"), expected_df, check_index=False)
+
+    assert return_df.npartitions == split_out if split_out else 1
+    dd.assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
+
     c.drop_config("dask.groupby.aggregate.split_out")
 
 
@@ -396,7 +394,7 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
     c.create_table("split_every_input", input_ddf)
     c.set_config(("dask.groupby.aggregate.split_every", split_every))
 
-    df = c.sql(
+    return_df = c.sql(
         """
         SELECT
         user_id, SUM(b) AS "S"
@@ -412,8 +410,8 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
         .sort_values("user_id")
     )
 
-    assert len(df.dask.keys()) == expected_keys
-    dd.assert_eq(df, expected_df, check_index=False)
+    assert len(return_df.dask.keys()) == expected_keys
+    dd.assert_eq(return_df, expected_df, check_index=False)
 
     c.drop_config("dask.groupby.aggregate.split_every")
     c.drop_table("split_every_input")
