@@ -64,11 +64,11 @@ def test_string_filter(c, string_table):
 
 def test_filter_datetime(c):
     df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
-
     df["dt"] = pd.to_datetime(df)
 
     c.create_table("datetime_test", df)
-    actual_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
+
+    return_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
     expected_df = df[df["year"] < 2016]
 
-    assert_frame_equal(expected_df, actual_df)
+    assert_eq(return_df, expected_df)
