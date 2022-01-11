@@ -183,3 +183,23 @@ def test_join_literal(c):
     df_expected = pd.DataFrame({"user_id": [], "b": [], "user_id0": [], "c": []})
 
     assert_frame_equal(df.reset_index(), df_expected.reset_index(), check_dtype=False)
+
+
+def test_conditional_join(c):
+    df1 = pd.DataFrame({"a": [1, 2, 2], "b": ["x", "y", "z"]})
+    df2 = pd.DataFrame({"c": [2, 3, 5], "d": ["i", "j", "k"]})
+
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
+
+    query = """
+        SELECT
+                a
+            FROM df1
+            INNER JOIN df2 ON
+            (
+                a = c
+                AND b IS NOT NULL
+            )
+    """
+    ddf = c.sql(query)
