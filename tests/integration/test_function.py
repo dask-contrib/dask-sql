@@ -13,7 +13,7 @@ def test_custom_function(c, df):
 
     return_df = c.sql("SELECT F(a) AS a FROM df")
 
-    dd.assert_eq(return_df.reset_index(drop=True), df[["a"]] ** 2)
+    dd.assert_eq(return_df, df[["a"]] ** 2)
 
 
 def test_custom_function_row(c, df):
@@ -24,7 +24,7 @@ def test_custom_function_row(c, df):
 
     return_df = c.sql("SELECT F(a) AS a FROM df")
 
-    dd.assert_eq(return_df.reset_index(drop=True), df[["a"]] ** 2)
+    dd.assert_eq(return_df, df[["a"]] ** 2)
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ def test_custom_function_row_return_types(c, df, retty):
 
     return_df = c.sql("SELECT F(a) AS a FROM df")
 
-    dd.assert_eq(return_df.reset_index(drop=True), (df[["a"]] ** 2).astype(retty))
+    dd.assert_eq(return_df, (df[["a"]] ** 2).astype(retty))
 
 
 # Test row UDFs with one arg
@@ -66,7 +66,7 @@ def test_custom_function_row_args(c, df, k, op, retty):
     return_df = c.sql(f"SELECT F(a, {k}) as a from df")
     expected_df = op(df[["a"]], k).astype(retty)
 
-    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
+    dd.assert_eq(return_df, expected_df)
 
 
 # Test row UDFs with two args
@@ -97,7 +97,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     return_df = c.sql(f"SELECT F(a, {k1}, {k2}) as a from df")
     expected_df = op(op(df[["a"]], k1), k2).astype(retty)
 
-    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
+    dd.assert_eq(return_df, expected_df)
 
 
 def test_multiple_definitions(c, df_simple):
@@ -115,7 +115,7 @@ def test_multiple_definitions(c, df_simple):
     )
     expected_df = df_simple[["a", "b"]] ** 2
 
-    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
+    dd.assert_eq(return_df, expected_df)
 
     def f(x):
         return x ** 3
@@ -131,7 +131,7 @@ def test_multiple_definitions(c, df_simple):
     )
     expected_df = df_simple[["a", "b"]] ** 3
 
-    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
+    dd.assert_eq(return_df, expected_df)
 
 
 def test_aggregate_function(c):

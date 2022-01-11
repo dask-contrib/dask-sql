@@ -16,10 +16,7 @@ def test_join(c):
         {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
 
-    assert_eq(
-        return_df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-        expected_df,
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_inner(c):
@@ -35,10 +32,7 @@ def test_join_inner(c):
         {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
 
-    assert_eq(
-        return_df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-        expected_df,
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_outer(c):
@@ -60,9 +54,7 @@ def test_join_outer(c):
         }
     )
 
-    assert_eq(
-        return_df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_left(c):
@@ -84,10 +76,7 @@ def test_join_left(c):
         }
     )
 
-    assert_eq(
-        return_df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-        expected_df,
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_right(c):
@@ -109,10 +98,7 @@ def test_join_right(c):
         }
     )
 
-    assert_eq(
-        return_df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
-        expected_df,
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_complex(c):
@@ -128,7 +114,7 @@ def test_join_complex(c):
         {"a": [1, 1, 1, 2, 2, 3], "b": [1.1, 2.2, 3.3, 2.2, 3.3, 3.3]}
     )
 
-    assert_eq(return_df.sort_values(["a", "b"]).reset_index(drop=True), expected_df)
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
@@ -142,7 +128,7 @@ def test_join_complex(c):
         {"a": [1, 1, 2], "b": [1.1, 1.1, 2.2], "a0": [2, 3, 3], "b0": [2.2, 3.3, 3.3],}
     )
 
-    assert_eq(return_df.sort_values(["a", "b0"]).reset_index(drop=True), expected_df)
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
@@ -156,7 +142,7 @@ def test_join_complex(c):
         {"user_id": [2, 2], "b": [1, 3], "user_id0": [2, 2], "c": [3, 3]}
     )
 
-    assert_eq(return_df.sort_values("b").reset_index(drop=True), expected_df)
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_join_literal(c):
@@ -177,10 +163,7 @@ def test_join_literal(c):
         }
     )
 
-    assert_eq(
-        return_df.sort_values(["b", "user_id", "user_id0"]).reset_index(drop=True),
-        expected_df,
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
@@ -192,4 +175,4 @@ def test_join_literal(c):
     )
     expected_df = pd.DataFrame({"user_id": [], "b": [], "user_id0": [], "c": []})
 
-    assert_eq(return_df.reset_index(), expected_df.reset_index(), check_dtype=False)
+    assert_eq(return_df, expected_df, check_dtype=False, check_index=False)

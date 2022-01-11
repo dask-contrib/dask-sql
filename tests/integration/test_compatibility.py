@@ -21,7 +21,7 @@ from dask_sql.utils import ParsingException
 
 
 def cast_datetime_to_string(df):
-    cols = df.select_dtypes(include=["datetime64[ns]"]).columns
+    cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
     # Casting to object first as
     # directly converting to string looses second precision
     df[cols] = df[cols].astype("object").astype("string")
