@@ -111,53 +111,20 @@ def test_timezones(c, datetime_table):
     assert_eq(result_df, datetime_table)
 
 
-def test_limit(c, long_table):
-    assert_eq(c.sql("SELECT * FROM long_table LIMIT 101"), long_table.iloc[:101])
+@pytest.mark.parametrize(
+    "input_table",
+    ["long_table", pytest.param("gpu_long_table", marks=pytest.mark.gpu),],
+)
+@pytest.mark.parametrize(
+    "limit,offset",
+    [(101, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
+)
+def test_limit(c, input_table, limit, offset, request):
+    long_table = request.getfixturevalue(input_table)
 
-    assert_eq(c.sql("SELECT * FROM long_table LIMIT 200"), long_table.iloc[:200])
+    if not limit:
+        query = f"SELECT * FROM long_table OFFSET {offset}"
+    else:
+        query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
 
-    assert_eq(c.sql("SELECT * FROM long_table LIMIT 100"), long_table.iloc[:100])
-
-    assert_eq(
-        c.sql("SELECT * FROM long_table LIMIT 100 OFFSET 99"),
-        long_table.iloc[99 : 99 + 100],
-    )
-
-    assert_eq(
-        c.sql("SELECT * FROM long_table LIMIT 100 OFFSET 100"),
-        long_table.iloc[100 : 100 + 100],
-    )
-
-    assert_eq(
-        c.sql("SELECT * FROM long_table LIMIT 101 OFFSET 101"),
-        long_table.iloc[101 : 101 + 101],
-    )
-
-    assert_eq(c.sql("SELECT * FROM long_table OFFSET 101"), long_table.iloc[101:])
-
-
-@pytest.mark.gpu
-def test_limit_gpu(c, gpu_long_table):
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 101")
-
-    assert_eq(df_result, gpu_long_table.iloc[:101])
-
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 200")
-
-    assert_eq(df_result, gpu_long_table.iloc[:200])
-
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 100")
-
-    assert_eq(df_result, gpu_long_table.iloc[:100])
-
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 100 OFFSET 99")
-
-    assert_eq(df_result, gpu_long_table.iloc[99 : 99 + 100])
-
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 100 OFFSET 100")
-
-    assert_eq(df_result, gpu_long_table.iloc[100 : 100 + 100])
-
-    df_result = c.sql("SELECT * FROM gpu_long_table LIMIT 101 OFFSET 101")
-
-    assert_eq(df_result, gpu_long_table.iloc[101 : 101 + 101])
+    assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
