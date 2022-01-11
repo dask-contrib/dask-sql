@@ -181,18 +181,18 @@ def test_select(hive_cursor):
     c = Context()
     c.create_table("df", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df").reset_index(drop=True)
+    result_df = c.sql("SELECT * FROM df")
     expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
 
-    assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_select_partitions(hive_cursor):
     c = Context()
     c.create_table("df_part", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df_part").reset_index(drop=True)
+    result_df = c.sql("SELECT * FROM df_part")
     expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
     expected_df["j"] = expected_df["j"].astype("int64")
 
-    assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df, check_index=False)

@@ -5,7 +5,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.datasets import timeseries
 from dask.distributed import Client
 from pandas.testing import assert_frame_equal
 
@@ -18,18 +17,6 @@ try:
 except ImportError:
     cudf = None
     LocalCUDACluster = None
-
-
-@pytest.fixture()
-def timeseries_df(c):
-    pdf = timeseries(freq="1d").compute().reset_index(drop=True)
-    # impute nans in pandas dataframe
-    col1_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.2))
-    col2_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.3))
-    pdf.loc[col1_index, "x"] = np.nan
-    pdf.loc[col2_index, "y"] = np.nan
-    c.create_table("timeseries", pdf, persist=True)
-    return pdf
 
 
 @pytest.fixture()
