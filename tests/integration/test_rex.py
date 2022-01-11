@@ -4,7 +4,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+from dask.dataframe.utils import assert_eq
 
 
 @pytest.mark.xfail(
@@ -28,8 +28,6 @@ def test_case(c, df):
     FROM df
     """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame(index=df.index)
     expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else pd.NA)
     expected_df["S2"] = df.a.apply(lambda a: a if a > 0 else 1)
@@ -40,8 +38,9 @@ def test_case(c, df):
     )
     expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
+
     # Do not check dtypes, as pandas versions are inconsistent here
-    assert_frame_equal(result_df, expected_df, check_dtype=False)
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_literals(c):
@@ -68,7 +67,7 @@ def test_literals(c):
             "IN": [pd.to_timedelta("1d")],
         }
     )
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_literal_null(c):
@@ -81,7 +80,7 @@ def test_literal_null(c):
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
     expected_df["I"] = expected_df["I"].astype("Int32")
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_random(c, df):
@@ -95,7 +94,7 @@ def test_random(c, df):
     # As the seed is fixed, this should always give the same results
     expected_df = pd.DataFrame({"0": [0.26183678695392976], "1": [8]})
     expected_df["1"] = expected_df["1"].astype("Int32")
-    assert_frame_equal(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
@@ -174,7 +173,7 @@ def test_operators(c, df):
     expected_df["l"] = df["a"] < df["b"]
     expected_df["le"] = df["a"] <= df["b"]
     expected_df["n"] = df["a"] != df["b"]
-    assert_frame_equal(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -280,7 +279,7 @@ def test_null(c):
     expected_df["nn"] = [True, False, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, True, False]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
     df = c.sql(
         """
@@ -295,7 +294,7 @@ def test_null(c):
     expected_df["nn"] = [True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, False, False]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_boolean_operations(c):
@@ -331,7 +330,7 @@ def test_boolean_operations(c):
     expected_df["nt"] = expected_df["nt"].astype("boolean")
     expected_df["nf"] = expected_df["nf"].astype("boolean")
     expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_math_operations(c, df):
@@ -391,7 +390,7 @@ def test_math_operations(c, df):
     expected_df["sin"] = np.sin(df.b)
     expected_df["tan"] = np.tan(df.b)
     expected_df["truncate"] = np.trunc(df.b)
-    assert_frame_equal(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_integer_div(c, df_simple):
@@ -411,7 +410,7 @@ def test_integer_div(c, df_simple):
     expected_df["b"] = [0, 1, 1]
     expected_df["b"] = expected_df["b"].astype("Int64")
     expected_df["c"] = [1.0, 0.5, 0.333333]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_subqueries(c, user_table_1, user_table_2):
@@ -430,7 +429,7 @@ def test_subqueries(c, user_table_1, user_table_2):
     """
     ).compute()
 
-    assert_frame_equal(
+    assert_eq(
         df.reset_index(drop=True),
         user_table_2[user_table_2.c.isin(user_table_1.b)].reset_index(drop=True),
     )
@@ -502,7 +501,7 @@ def test_string_functions(c, gpu):
         }
     )
 
-    assert_frame_equal(
+    assert_eq(
         df.head(1), expected_df,
     )
 
@@ -602,7 +601,7 @@ def test_date_functions(c):
         }
     )
 
-    assert_frame_equal(df, expected_df, check_dtype=False)
+    assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
     with pytest.raises(NotImplementedError):

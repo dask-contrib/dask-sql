@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+from dask.dataframe.utils import assert_eq
 
 try:
     import cudf
@@ -9,25 +9,19 @@ except ImportError:
 
 
 def test_schemas(c):
-    df = c.sql("SHOW SCHEMAS")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
 
-    assert_frame_equal(df, expected_df)
+    assert_eq(result_df, expected_df)
 
-    df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
     expected_df = pd.DataFrame({"Schema": ["information_schema"]})
 
-    assert_frame_equal(df.reset_index(drop=True), expected_df.reset_index(drop=True))
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_tables(c):
-    df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
-    df = df.compute()
-
+    result_df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
     expected_df = pd.DataFrame(
         {
             "Table": [
@@ -60,16 +54,11 @@ def test_tables(c):
         }
     )
 
-    assert_frame_equal(
-        df.sort_values("Table").reset_index(drop=True),
-        expected_df.sort_values("Table").reset_index(drop=True),
-    )
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_columns(c):
-    df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
-    df = df.compute()
-
+    result_df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
     expected_df = pd.DataFrame(
         {
             "Column": ["user_id", "b",],
@@ -79,11 +68,11 @@ def test_columns(c):
         }
     )
 
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    assert_eq(result_df, expected_df)
 
-    df = c.sql('SHOW COLUMNS FROM "user_table_1"')
-    df = df.compute()
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    result_df = c.sql('SHOW COLUMNS FROM "user_table_1"')
+
+    assert_eq(result_df, expected_df)
 
 
 def test_wrong_input(c):
