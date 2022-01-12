@@ -143,9 +143,9 @@ def test_aggregate_function(c):
         SELECT FAGG(b) AS test, SUM(b) AS "S"
         FROM df
         """
-    ).compute()
+    )
 
-    assert (return_df["test"] == return_df["S"]).all()
+    dd.assert_eq(return_df["test"], return_df["S"], check_names=False)
 
 
 def test_reregistration(c):

@@ -68,7 +68,7 @@ def test_filter_datetime(c):
 
     c.create_table("datetime_test", df)
 
-    return_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
+    return_df = c.sql("select * from datetime_test where year(dt) < 2016")
     expected_df = df[df["year"] < 2016]
 
     assert_eq(return_df, expected_df)
