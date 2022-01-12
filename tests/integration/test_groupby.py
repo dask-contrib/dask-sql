@@ -401,13 +401,12 @@ def test_groupby_split_out(c, input_table, split_out, request):
     ],
 )
 def test_groupby_split_every(c, gpu, split_every, expected_keys):
-    xd = pytest.importorskip("cudf") if gpu else pd
     input_ddf = dd.from_pandas(
-        xd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
+        pd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
         npartitions=16,
     )  # Need an input with multiple partitions to demonstrate split_every
 
-    c.create_table("split_every_input", input_ddf)
+    c.create_table("split_every_input", input_ddf, gpu=gpu)
     c.set_config(("dask.groupby.aggregate.split_every", split_every))
 
     return_df = c.sql(

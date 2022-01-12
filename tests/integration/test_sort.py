@@ -73,21 +73,16 @@ def test_sort_by_alias(c, user_table_1):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan(gpu):
-    if gpu:
-        xd = pytest.importorskip("cudf")
-    else:
-        xd = pd
-
     c = Context()
-    df = xd.DataFrame(
+    df = pd.DataFrame(
         {"a": [1, 2, float("nan"), 2], "b": [4, float("nan"), 5, float("inf")]}
     )
-    c.create_table("df", df)
+    c.create_table("df", df, gpu=gpu)
 
     df_result = c.sql("SELECT * FROM df ORDER BY a")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
         ),
         check_index=False,
@@ -96,7 +91,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS FIRST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
         ),
         check_index=False,
@@ -105,7 +100,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS LAST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
         ),
         check_index=False,
@@ -114,7 +109,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
         ),
         check_index=False,
@@ -123,7 +118,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC NULLS FIRST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
         ),
         check_index=False,
@@ -132,7 +127,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC NULLS LAST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
         ),
         check_index=False,
@@ -141,7 +136,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
         ),
         check_index=False,
@@ -150,7 +145,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC NULLS FIRST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
         ),
         check_index=False,
@@ -159,7 +154,7 @@ def test_sort_with_nan(gpu):
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC NULLS LAST")
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {"a": [2, 2, 1, float("nan")], "b": [float("nan"), float("inf"), 4, 5]}
         ),
         check_index=False,
@@ -168,27 +163,22 @@ def test_sort_with_nan(gpu):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan_more_columns(gpu):
-    if gpu:
-        xd = pytest.importorskip("cudf")
-    else:
-        xd = pd
-
     c = Context()
-    df = xd.DataFrame(
+    df = pd.DataFrame(
         {
             "a": [1, 1, 2, 2, float("nan"), float("nan")],
             "b": [1, 1, 2, float("nan"), float("inf"), 5],
             "c": [1, float("nan"), 3, 4, 5, 6],
         }
     )
-    c.create_table("df", df)
+    c.create_table("df", df, gpu=gpu)
 
     df_result = c.sql(
         "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
     )
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {
                 "a": [float("nan"), float("nan"), 1, 1, 2, 2],
                 "b": [float("inf"), 5, 1, 1, 2, float("nan")],
@@ -203,7 +193,7 @@ def test_sort_with_nan_more_columns(gpu):
     )
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {
                 "a": [1, 1, 2, 2, float("nan"), float("nan")],
                 "b": [1, 1, float("nan"), 2, float("inf"), 5],
@@ -218,7 +208,7 @@ def test_sort_with_nan_more_columns(gpu):
     )
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {
                 "a": [float("nan"), float("nan"), 1, 1, 2, 2],
                 "b": [float("inf"), 5, 1, 1, 2, float("nan")],
@@ -231,20 +221,15 @@ def test_sort_with_nan_more_columns(gpu):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan_many_partitions(gpu):
-    if gpu:
-        xd = pytest.importorskip("cudf")
-    else:
-        xd = pd
-
     c = Context()
-    df = xd.DataFrame({"a": [float("nan"), 1] * 30, "b": [1, 2, 3] * 20,})
-    c.create_table("df", dd.from_pandas(df, npartitions=10))
+    df = pd.DataFrame({"a": [float("nan"), 1] * 30, "b": [1, 2, 3] * 20,})
+    c.create_table("df", dd.from_pandas(df, npartitions=10), gpu=gpu)
 
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS FIRST, b ASC NULLS FIRST")
 
     dd.assert_eq(
         df_result,
-        xd.DataFrame(
+        pd.DataFrame(
             {
                 "a": [float("nan")] * 30 + [1] * 30,
                 "b": [1] * 10 + [2] * 10 + [3] * 10 + [1] * 10 + [2] * 10 + [3] * 10,
@@ -253,27 +238,22 @@ def test_sort_with_nan_many_partitions(gpu):
         check_index=False,
     )
 
-    df = xd.DataFrame({"a": [float("nan"), 1] * 30})
+    df = pd.DataFrame({"a": [float("nan"), 1] * 30})
     c.create_table("df", dd.from_pandas(df, npartitions=10))
 
     df_result = c.sql("SELECT * FROM df ORDER BY a")
 
     dd.assert_eq(
         df_result,
-        xd.DataFrame({"a": [1] * 30 + [float("nan")] * 30,}),
+        pd.DataFrame({"a": [1] * 30 + [float("nan")] * 30,}),
         check_index=False,
     )
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_strings(c, gpu):
-    if gpu:
-        xd = pytest.importorskip("cudf")
-    else:
-        xd = pd
-
-    string_table = xd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
-    c.create_table("string_table", string_table)
+    string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
+    c.create_table("string_table", string_table, gpu=gpu)
 
     df_result = c.sql(
         """

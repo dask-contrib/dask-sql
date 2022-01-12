@@ -66,7 +66,7 @@ def test_explain(gpu):
         "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
-    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337), gpu=gpu)
 
     sql_string = c.explain("SELECT * FROM df")
 
@@ -100,17 +100,17 @@ def test_sql(gpu):
     c.create_table("df", data_frame, gpu=gpu)
 
     result = c.sql("SELECT * FROM df")
-    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
+    assert isinstance(result, dd.DataFrame)
     dd.assert_eq(result, data_frame)
 
     result = c.sql("SELECT * FROM df", return_futures=False)
-    assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
+    assert not isinstance(result, dd.DataFrame)
     dd.assert_eq(result, data_frame)
 
     if gpu:
         data_frame = dask_cudf.from_dask_dataframe(data_frame)
     result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
-    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
+    assert isinstance(result, dd.DataFrame)
     dd.assert_eq(result, data_frame)
 
 

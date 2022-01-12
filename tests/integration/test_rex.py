@@ -4,7 +4,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.dataframe.utils import assert_eq
 
 
 @pytest.mark.xfail(
@@ -40,7 +39,7 @@ def test_case(c, df):
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
 
     # Do not check dtypes, as pandas versions are inconsistent here
-    assert_eq(result_df, expected_df, check_dtype=False)
+    dd.assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_literals(c):
@@ -54,7 +53,6 @@ def test_literals(c):
                     INTERVAL '1' DAY AS "IN"
         """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -67,7 +65,7 @@ def test_literals(c):
             "IN": [pd.to_timedelta("1d")],
         }
     )
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_literal_null(c):
@@ -76,11 +74,10 @@ def test_literal_null(c):
     SELECT NULL AS "N", 1 + NULL AS "I"
     """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
     expected_df["I"] = expected_df["I"].astype("Int32")
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_random(c, df):
@@ -89,19 +86,17 @@ def test_random(c, df):
     SELECT RAND(0) AS "0", RAND_INTEGER(1, 10) AS "1"
     """
     )
-    result_df = result_df.compute()
 
     # As the seed is fixed, this should always give the same results
     expected_df = pd.DataFrame({"0": [0.26183678695392976], "1": [8]})
     expected_df["1"] = expected_df["1"].astype("Int32")
-    assert_eq(result_df, expected_df)
+    dd.assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
     SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < b
     """
     )
-    result_df = result_df.compute()
 
     assert len(result_df) == 659
     assert list(result_df["R"].iloc[:5]) == [
@@ -118,7 +113,6 @@ def test_random(c, df):
     SELECT RAND() AS "0", RAND_INTEGER(10) AS "1"
     """
     )
-    result_df = result_df.compute()
 
 
 @pytest.mark.parametrize(
@@ -135,7 +129,6 @@ def test_not(c, input_table, request):
     WHERE NOT a LIKE '%normal%'
     """
     )
-    df = df.compute()
 
     expected_df = string_table[~string_table.a.str.contains("normal")]
     dd.assert_eq(df, expected_df)
@@ -159,7 +152,6 @@ def test_operators(c, df):
     FROM df
     """
     )
-    result_df = result_df.compute()
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["m"] = df["a"] * df["b"]
@@ -173,7 +165,7 @@ def test_operators(c, df):
     expected_df["l"] = df["a"] < df["b"]
     expected_df["le"] = df["a"] <= df["b"]
     expected_df["n"] = df["a"] != df["b"]
-    assert_eq(result_df, expected_df)
+    dd.assert_eq(result_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -194,17 +186,13 @@ def test_operators(c, df):
 )
 def test_like(c, input_table, gpu, request):
     string_table = request.getfixturevalue(input_table)
-    if gpu:
-        xd = pytest.importorskip("cudf")
-    else:
-        xd = pd
 
     df = c.sql(
         f"""
         SELECT * FROM {input_table}
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table.iloc[[0]])
 
@@ -213,7 +201,7 @@ def test_like(c, input_table, gpu, request):
         SELECT * FROM {input_table}
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
-    ).compute()
+    )
 
     assert len(df) == 0
 
@@ -222,7 +210,7 @@ def test_like(c, input_table, gpu, request):
         SELECT * FROM {input_table}
         WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
     """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table.iloc[[1]])
 
@@ -231,7 +219,7 @@ def test_like(c, input_table, gpu, request):
         SELECT * FROM {input_table}
         WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table.iloc[[2]])
 
@@ -240,7 +228,7 @@ def test_like(c, input_table, gpu, request):
         SELECT * FROM {input_table}
         WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
     """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table.iloc[[2]])
 
@@ -249,18 +237,18 @@ def test_like(c, input_table, gpu, request):
         SELECT * FROM {input_table}
         WHERE a LIKE '%_' ESCAPE 'r'
     """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table)
 
-    string_table2 = xd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
-    c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
+    string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
+    c.create_table("string_table2", string_table2, gpu=gpu)
     df = c.sql(
         """
         SELECT * FROM string_table2
         WHERE b LIKE 'b'
     """
-    ).compute()
+    )
 
     dd.assert_eq(df, string_table2.iloc[[1]])
 
@@ -273,13 +261,13 @@ def test_null(c):
             c IS NULL AS n
         FROM user_table_nan
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, False, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, True, False]
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
     df = c.sql(
         """
@@ -288,13 +276,13 @@ def test_null(c):
             a IS NULL AS n
         FROM string_table
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, False, False]
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_boolean_operations(c):
@@ -314,7 +302,7 @@ def test_boolean_operations(c):
             b IS UNKNOWN AS u,
             b IS NOT UNKNOWN AS nu
         FROM df"""
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(
         {
@@ -330,7 +318,7 @@ def test_boolean_operations(c):
     expected_df["nt"] = expected_df["nt"].astype("boolean")
     expected_df["nf"] = expected_df["nf"].astype("boolean")
     expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_math_operations(c, df):
@@ -363,7 +351,7 @@ def test_math_operations(c, df):
             , TRUNCATE(b) AS "truncate"
         FROM df
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["abs"] = df.b.abs()
@@ -390,7 +378,7 @@ def test_math_operations(c, df):
     expected_df["sin"] = np.sin(df.b)
     expected_df["tan"] = np.tan(df.b)
     expected_df["truncate"] = np.trunc(df.b)
-    assert_eq(result_df, expected_df)
+    dd.assert_eq(result_df, expected_df)
 
 
 def test_integer_div(c, df_simple):
@@ -402,7 +390,7 @@ def test_integer_div(c, df_simple):
             1.0 / a AS c
         FROM df_simple
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=df_simple.index)
     expected_df["a"] = [1, 0, 0]
@@ -410,7 +398,7 @@ def test_integer_div(c, df_simple):
     expected_df["b"] = [0, 1, 1]
     expected_df["b"] = expected_df["b"].astype("Int64")
     expected_df["c"] = [1.0, 0.5, 0.333333]
-    assert_eq(df, expected_df)
+    dd.assert_eq(df, expected_df)
 
 
 def test_subqueries(c, user_table_1, user_table_2):
@@ -427,9 +415,9 @@ def test_subqueries(c, user_table_1, user_table_2):
                     user_table_1.b = user_table_2.c
             )
     """
-    ).compute()
+    )
 
-    assert_eq(
+    dd.assert_eq(
         df.reset_index(drop=True),
         user_table_2[user_table_2.c.isin(user_table_1.b)].reset_index(drop=True),
     )
@@ -469,10 +457,9 @@ def test_string_functions(c, gpu):
         FROM
             {input_table}
         """
-    ).compute()
+    )
 
     if gpu:
-        df = df.to_pandas()
         df = df.astype({"c": "int64", "f": "int64", "g": "int64"})
 
     expected_df = pd.DataFrame(
@@ -501,7 +488,7 @@ def test_string_functions(c, gpu):
         }
     )
 
-    assert_eq(
+    dd.assert_eq(
         df.head(1), expected_df,
     )
 
@@ -558,7 +545,7 @@ def test_date_functions(c):
 
         FROM df
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(
         {
@@ -601,7 +588,7 @@ def test_date_functions(c):
         }
     )
 
-    assert_eq(df, expected_df, check_dtype=False)
+    dd.assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
     with pytest.raises(NotImplementedError):
@@ -611,4 +598,4 @@ def test_date_functions(c):
                 FLOOR(d TO YEAR) as floor_to_year
             FROM df
             """
-        ).compute()
+        )
