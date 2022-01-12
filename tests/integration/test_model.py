@@ -431,12 +431,9 @@ def test_describe_model(c, training_df):
         .sort_index()
     )
     # test
-    result = (
-        c.sql("DESCRIBE MODEL ex_describe_model")
-        .compute()["Params"]
-        .apply(lambda x: str(x))
-    )
-    pd.testing.assert_series_equal(expected_series, result)
+    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(lambda x: str(x))
+
+    assert_eq(expected_series, result)
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")

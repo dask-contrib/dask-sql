@@ -5,8 +5,8 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from dask.dataframe.utils import assert_eq
 from dask.distributed import Client
-from pandas.testing import assert_frame_equal
 
 try:
     import cudf
@@ -238,7 +238,7 @@ def assert_query_gives_same_result(engine):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
+        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
 
