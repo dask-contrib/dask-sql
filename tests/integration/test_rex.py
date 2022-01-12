@@ -88,7 +88,7 @@ def test_random(c, df):
     )
 
     # As the seed is fixed, this should always give the same results
-    expected_df = pd.DataFrame({"0": [0.26183678695392976], "1": [8]})
+    expected_df = pd.DataFrame({"0": [0.6673301193128622], "1": [0]})
     expected_df["1"] = expected_df["1"].astype("Int32")
     dd.assert_eq(result_df, expected_df)
 
@@ -99,19 +99,18 @@ def test_random(c, df):
     )
 
     assert len(result_df) == 659
-    assert list(result_df["R"].iloc[:5]) == [
-        0.5276488824980542,
-        0.17861463145673728,
-        0.33764733440490524,
-        0.6590485298464198,
-        0.08554137165307785,
-    ]
-
-    # If we do not fix the seed, we can just test if it works at all
-    result_df = c.sql(
-        """
-    SELECT RAND() AS "0", RAND_INTEGER(10) AS "1"
-    """
+    dd.assert_eq(
+        result_df["R"].head(5),
+        pd.Series(
+            [
+                0.7898216305850889,
+                0.19842118121803887,
+                0.8072709640993503,
+                0.5246145976097505,
+                0.7385306613589191,
+            ]
+        ),
+        check_names=False,
     )
 
 
@@ -418,8 +417,7 @@ def test_subqueries(c, user_table_1, user_table_2):
     )
 
     dd.assert_eq(
-        df.reset_index(drop=True),
-        user_table_2[user_table_2.c.isin(user_table_1.b)].reset_index(drop=True),
+        df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False
     )
 
 
