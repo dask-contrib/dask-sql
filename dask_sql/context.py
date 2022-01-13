@@ -444,6 +444,8 @@ class Context:
                 Defaults to returning the dask dataframe.
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
@@ -496,6 +498,8 @@ class Context:
             sql (:obj:`str`): The query string to use
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
 
         Returns:
             :obj:`str`: a description of the created relational algebra.
