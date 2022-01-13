@@ -5,12 +5,22 @@ import pytest
 from dask_sql.context import Context
 
 
-def test_sort(c, user_table_1, df):
+@pytest.mark.parametrize(
+    "input_table_1,input_df",
+    [
+        ("user_table_1", "df"),
+        pytest.param("gpu_user_table_1", "gpu_df", marks=pytest.mark.gpu),
+    ],
+)
+def test_sort(c, input_table_1, input_df, request):
+    user_table_1 = request.getfixturevalue(input_table_1)
+    df = request.getfixturevalue(input_df)
+
     df_result = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM user_table_1
+    FROM {input_table_1}
     ORDER BY b, user_id DESC
     """
     )
@@ -19,10 +29,10 @@ def test_sort(c, user_table_1, df):
     dd.assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM df
+    FROM {input_df}
     ORDER BY b DESC, a DESC
     """
     )
@@ -31,10 +41,10 @@ def test_sort(c, user_table_1, df):
     dd.assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM df
+    FROM {input_df}
     ORDER BY a DESC, b
     """
     )
@@ -43,10 +53,10 @@ def test_sort(c, user_table_1, df):
     dd.assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM df
+    FROM {input_df}
     ORDER BY b, a
     """
     )
@@ -55,12 +65,18 @@ def test_sort(c, user_table_1, df):
     dd.assert_eq(df_result, df_expected, check_index=False)
 
 
-def test_sort_by_alias(c, user_table_1):
+@pytest.mark.parametrize(
+    "input_table_1",
+    ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],
+)
+def test_sort_by_alias(c, input_table_1, request):
+    user_table_1 = request.getfixturevalue(input_table_1)
+
     df_result = c.sql(
-        """
+        f"""
     SELECT
         b AS my_column
-    FROM user_table_1
+    FROM {input_table_1}
     ORDER BY my_column, user_id DESC
     """
     ).rename(columns={"my_column": "b"})
@@ -276,77 +292,3 @@ def test_sort_not_allowed(c, gpu):
     # Wrong column
     with pytest.raises(Exception):
         c.sql(f"SELECT * FROM {table_name} ORDER BY 42")
-
-
-@pytest.mark.gpu
-def test_sort_gpu(c, gpu_user_table_1, gpu_df):
-    df_result = c.sql(
-        """
-    SELECT
-        *
-    FROM gpu_user_table_1
-    ORDER BY b, user_id DESC
-    """
-    )
-
-    df_expected = gpu_user_table_1.sort_values(
-        ["b", "user_id"], ascending=[True, False]
-    )
-
-    dd.assert_eq(df_result, df_expected, check_index=False)
-
-    df_result = c.sql(
-        """
-    SELECT
-        *
-    FROM gpu_df
-    ORDER BY b DESC, a DESC
-    """
-    )
-
-    df_expected = gpu_df.sort_values(["b", "a"], ascending=[False, False])
-
-    dd.assert_eq(df_result, df_expected, check_index=False)
-
-    df_result = c.sql(
-        """
-    SELECT
-        *
-    FROM gpu_df
-    ORDER BY a DESC, b
-    """
-    )
-
-    df_expected = gpu_df.sort_values(["a", "b"], ascending=[False, True])
-
-    dd.assert_eq(df_result, df_expected, check_index=False)
-
-    df_result = c.sql(
-        """
-    SELECT
-        *
-    FROM gpu_df
-    ORDER BY b, a
-    """
-    )
-
-    df_expected = gpu_df.sort_values(["b", "a"], ascending=[True, True])
-
-    dd.assert_eq(df_result, df_expected, check_index=False)
-
-
-@pytest.mark.gpu
-def test_sort_gpu_by_alias(c, gpu_user_table_1):
-    df_result = c.sql(
-        """
-    SELECT
-        b AS my_column
-    FROM gpu_user_table_1
-    ORDER BY my_column, user_id DESC
-    """
-    ).rename(columns={"my_column": "b"})
-    df_expected = gpu_user_table_1.sort_values(
-        ["b", "user_id"], ascending=[True, False]
-    )[["b"]]
-
-    dd.assert_eq(df_result, df_expected, check_index=False)
