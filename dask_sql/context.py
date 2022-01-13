@@ -418,7 +418,7 @@ class Context:
         sql: str,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        **kwargs,
+        gpu: bool = False,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -451,7 +451,7 @@ class Context:
         """
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df, **kwargs)
+                self.create_table(df_name, df, gpu=gpu)
 
         rel, select_names, _ = self._get_ral(sql)
 
@@ -481,7 +481,7 @@ class Context:
         self,
         sql: str,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        **kwargs,
+        gpu: bool = False,
     ) -> str:
         """
         Return the stringified relational algebra that this query will produce
@@ -503,7 +503,7 @@ class Context:
         """
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df, **kwargs)
+                self.create_table(df_name, df, gpu=gpu)
 
         _, _, rel_string = self._get_ral(sql)
         return rel_string
