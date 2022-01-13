@@ -116,3 +116,11 @@ def test_timezones(c, datetime_table):
     result_df = result_df.compute()
 
     assert_frame_equal(result_df, datetime_table)
+
+
+def test_multi_case_when(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    query = "SELECT CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END FROM df"
+    c.sql(query).compute()

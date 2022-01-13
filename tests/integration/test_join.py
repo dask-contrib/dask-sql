@@ -186,20 +186,26 @@ def test_join_literal(c):
 
 
 def test_conditional_join(c):
-    df1 = pd.DataFrame({"a": [1, 2, 2], "b": ["x", "y", "z"]})
-    df2 = pd.DataFrame({"c": [2, 3, 5], "d": ["i", "j", "k"]})
+    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", "z", None]})
+    df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
+
+    expected_df = pd.merge(df1, df2, how="inner", left_on=["a"], right_on=["c"])
+    expected_df = expected_df[expected_df["b"] != None]["a"]  # noqa: E711
 
     c.create_table("df1", df1)
     c.create_table("df2", df2)
 
-    query = """
-        SELECT
-                a
-            FROM df1
-            INNER JOIN df2 ON
-            (
-                a = c
-                AND b IS NOT NULL
-            )
+    actual_df = c.sql(
+        """
+    SELECT a FROM df1
+    INNER JOIN df2 ON
+    (
+        a = c
+        AND b IS NOT NULL
+    )
     """
-    ddf = c.sql(query)
+    ).compute()
+
+    assert_frame_equal(
+        actual_df.reset_index(), expected_df.reset_index(), check_dtype=False
+    )
