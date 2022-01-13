@@ -92,8 +92,8 @@ public class DaskProgram {
                 CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
                 CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
                 CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE, CoreRules.PROJECT_REMOVE,
-                CoreRules.PROJECT_REDUCE_EXPRESSIONS, CoreRules.FILTER_REDUCE_EXPRESSIONS,
-                CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM, CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
+                CoreRules.FILTER_REDUCE_EXPRESSIONS, CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM,
+                CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
 
         @Override
         public RelNode run(RelOptPlanner planner, RelNode rel, RelTraitSet requiredOutputTraits,
