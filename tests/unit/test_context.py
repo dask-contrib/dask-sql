@@ -78,11 +78,8 @@ def test_explain(gpu):
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-
     sql_string = c.explain(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
 
     assert sql_string.startswith(
@@ -107,9 +104,9 @@ def test_sql(gpu):
     assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-    result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
+    result = c.sql(
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
+    )
     assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 
