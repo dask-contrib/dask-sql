@@ -122,5 +122,13 @@ def test_multi_case_when(c):
     df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
     c.create_table("df", df)
 
-    query = "SELECT CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END FROM df"
-    c.sql(query).compute()
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+    FROM df
+    """
+    ).compute()
+
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    assert_frame_equal(actual_df, expected_df)
