@@ -102,3 +102,4 @@ def test_show_tables_no_schema(c):
     c.create_table("test", df)
 
     actual_df = c.sql("show tables").compute()
+    assert len(actual_df[actual_df["Table"] == "test"]) > 0
