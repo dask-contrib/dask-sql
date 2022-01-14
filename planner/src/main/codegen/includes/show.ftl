@@ -22,11 +22,13 @@ SqlNode SqlShowSchemas() :
 SqlNode SqlShowTables() :
 {
    final Span s;
-   final SqlIdentifier schema;
+   SqlIdentifier schema = null;
 }
 {
-    <SHOW> { s = span(); } <TABLES> <FROM>
-    schema = SimpleIdentifier()
+    <SHOW> { s = span(); } <TABLES>
+    (
+            <FROM> schema = SimpleIdentifier()
+    )?
     {
         return new SqlShowTables(s.end(this), schema);
     }
