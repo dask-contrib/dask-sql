@@ -32,7 +32,7 @@ class SamplePlugin(BaseRelPlugin):
     the expected.
     """
 
-    class_name = "org.apache.calcite.rel.core.Sample"
+    class_name = "com.dask.sql.nodes.DaskSample"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

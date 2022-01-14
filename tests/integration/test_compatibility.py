@@ -17,6 +17,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
+from dask_sql.utils import ParsingException
 
 
 def cast_datetime_to_string(df):
@@ -934,3 +935,16 @@ def test_integration_1():
         """,
         a=a,
     )
+
+
+def test_query_case_sensitivity():
+    c = Context()
+    c.set_config(("dask.sql.identifier.case.sensitive", False))
+    df = pd.DataFrame({"id": [0, 1]})
+
+    c.create_table("test", df)
+
+    try:
+        c.sql("select ID from test")
+    except ParsingException as pe:
+        assert False, f"Queries should be case insensitve but raised exception {pe}"

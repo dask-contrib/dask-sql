@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from dask_sql.java import org
 
 
-class LogicalTableScanPlugin(BaseRelPlugin):
+class DaskTableScanPlugin(BaseRelPlugin):
     """
-    A LogicalTableScal is the main ingredient: it will get the data
+    A DaskTableScal is the main ingredient: it will get the data
     from the database. It is always used, when the SQL looks like
 
         SELECT .... FROM table ....
@@ -20,7 +20,7 @@ class LogicalTableScanPlugin(BaseRelPlugin):
     Calcite will always refer to columns via index.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalTableScan"
+    class_name = "com.dask.sql.nodes.DaskTableScan"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

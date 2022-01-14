@@ -20,9 +20,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LogicalJoinPlugin(BaseRelPlugin):
+class DaskJoinPlugin(BaseRelPlugin):
     """
-    A LogicalJoin is used when (surprise) joining two tables.
+    A DaskJoin is used when (surprise) joining two tables.
     SQL allows for quite complicated joins with difficult conditions.
     dask/pandas only knows about equijoins on a specific column.
 
@@ -36,7 +36,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
     but so far, it is the only solution...
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalJoin"
+    class_name = "com.dask.sql.nodes.DaskJoin"
 
     JOIN_TYPE_MAPPING = {
         "INNER": "inner",

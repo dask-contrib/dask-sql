@@ -31,6 +31,7 @@ htmlcov/
 coverage.xml
 *.cover
 .pytest_cache/
+.hypothesis/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -48,6 +49,7 @@ planner/.project
 planner/.settings/
 planner/.idea
 planner/*.iml
+*.swp
 
 # project specific
 planner/dependency-reduced-pom.xml

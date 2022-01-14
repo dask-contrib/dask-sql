@@ -7,6 +7,17 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
+from tests.integration.fixtures import skip_if_external_scheduler
+
+try:
+    import cuml
+    import dask_cudf
+    import xgboost
+except ImportError:
+    cuml = None
+    xgboost = None
+    dask_cudf = None
+
 pytest.importorskip("dask_ml")
 
 
@@ -40,7 +51,16 @@ def training_df(c):
     df = timeseries(freq="1d").reset_index(drop=True)
     c.create_table("timeseries", df, persist=True)
 
-    return training_df
+    return None
+
+
+@pytest.fixture()
+def gpu_training_df(c):
+    if dask_cudf:
+        df = timeseries(freq="1d").reset_index(drop=True)
+        df = dask_cudf.from_dask_dataframe(df)
+        c.create_table("timeseries", input_table=df)
+    return None
 
 
 def test_training_and_prediction(c, training_df):
@@ -58,6 +78,74 @@ def test_training_and_prediction(c, training_df):
     """
     )
 
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_cuml_training_and_prediction(c, gpu_training_df):
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'cuml.linear_model.LogisticRegression',
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+@skip_if_external_scheduler
+def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
+
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'cuml.dask.linear_model.LinearRegression',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@skip_if_external_scheduler
+@pytest.mark.gpu
+def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'xgboost.dask.DaskXGBRegressor',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_xgboost_training_prediction(c, gpu_training_df):
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'xgboost.XGBRegressor',
+        wrap_predict = True,
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
     check_trained_model(c)
 
 

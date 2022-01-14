@@ -53,7 +53,7 @@ def test_filter_with_nan(c):
     return_df = return_df.compute()
 
     if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="int8")
+        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
     else:
         expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_frame_equal(
@@ -68,3 +68,15 @@ def test_string_filter(c, string_table):
     assert_frame_equal(
         return_df, string_table.head(1),
     )
+
+
+def test_filter_datetime(c):
+    df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
+
+    df["dt"] = pd.to_datetime(df)
+
+    c.create_table("datetime_test", df)
+    actual_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
+    expected_df = df[df["year"] < 2016]
+
+    assert_frame_equal(expected_df, actual_df)

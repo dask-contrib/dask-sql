@@ -103,3 +103,50 @@ SqlDrop SqlDropSchema(final Span s, boolean replace) :
         return new SqlDropSchema(s.end(this), ifExists, schemaName);
     }
 }
+
+/*
+ * Production for
+ * ALTER SCHEMA old RENAME TO new
+*/
+SqlNode SqlAlterSchema() :
+{
+    final Span s;
+    final SqlIdentifier oldSchemaName;
+    final SqlIdentifier newSchemaName;
+}
+{
+    <ALTER>
+    { s = span(); }
+    <SCHEMA>
+    oldSchemaName = SimpleIdentifier()
+    <RENAME> <TO>
+    newSchemaName = SimpleIdentifier()
+    {
+         return new SqlAlterSchema(s.end(this), oldSchemaName, newSchemaName);
+    }
+}
+
+/*
+ * Production for
+ * ALTER TABLE  old RENAME TO new
+*/
+SqlNode SqlAlterTable() :
+{
+    final Span s;
+    final SqlIdentifier oldTableName;
+    final SqlIdentifier newTableName;
+    final boolean ifExists;
+
+}
+{
+    <ALTER>
+    { s = span(); }
+    <TABLE>
+    ifExists = IfExists()
+    oldTableName = SimpleIdentifier()
+    <RENAME> <TO>
+    newTableName = SimpleIdentifier()
+    {
+         return new SqlAlterTable(s.end(this), ifExists,oldTableName, newTableName);
+    }
+}

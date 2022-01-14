@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
-from dask_sql.java import SqlTypeName
+from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
-
+SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {

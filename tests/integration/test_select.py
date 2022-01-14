@@ -95,6 +95,7 @@ def test_select_of_select_with_casing(c, df):
     expected_df = pd.DataFrame(
         {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
     )
+
     assert_frame_equal(result_df, expected_df)
 
 
