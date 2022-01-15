@@ -2,6 +2,8 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
+from dask_sql import Context
+
 try:
     import cudf
 except ImportError:
@@ -98,8 +100,11 @@ def test_wrong_input(c):
 
 
 def test_show_tables_no_schema(c):
+    c = Context()
+
     df = pd.DataFrame({"id": [0, 1]})
     c.create_table("test", df)
 
     actual_df = c.sql("show tables").compute()
-    assert len(actual_df[actual_df["Table"] == "test"]) > 0
+    expected_df = pd.DataFrame({"Table": ["test"]})
+    assert_frame_equal(actual_df, expected_df)
