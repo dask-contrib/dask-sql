@@ -75,15 +75,11 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
-        # required for Prestodb JDBC driver compatibility
-        # The driver sends a Catalog called system which is not supported by dask_sql
-        # and the '.' will cause queries to fail so we replace with '_'
-        # In parallel to this create_meta_data(context) creates a schema called
-        # system_jdbc which contains tables compatible with the Prestodb Driver
-        # Note1: Trinodb driver (a fork of Prestodb) unfortunately doesn't work with dask_sql
-        # as it has different http headers
-        # Note2: For a JDBC request to succeed create_meta_data(context) needs to be enabled
-        # and called after all user tables have been created in order to create the JDBC metadata
+        # required for PrestoDB JDBC driver compatibility
+        # replaces queries to unsupported `system` catalog with queries to `system_jdbc`
+        # schema created by `create_meta_data(context)` when `jdbc_metadata=True`
+        # TODO: explore Trino which should make JDBC compatibility easier but requires
+        # changing response headers (see https://github.com/dask-contrib/dask-sql/pull/351)
         sql = sql.replace("system.jdbc", "system_jdbc")
         df = request.app.c.sql(sql)
 
