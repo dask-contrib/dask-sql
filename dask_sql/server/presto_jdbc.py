@@ -31,9 +31,8 @@ def create_meta_data(c: Context):
     system_schema = "system_jdbc"
     c.create_schema(system_schema)
 
-    # if we supply a catalogue dbeaver (for instance) tries to use it
-    # but dask_sql presto interface doesn't support catalog
-    # so better for now not to supply a catalog
+    # TODO: add support for catalogs in presto interface
+    # see https://github.com/dask-contrib/dask-sql/pull/351
     # if catalog and len(catalog.strip()) > 0:
     #     catalogs = pd.DataFrame().append(create_catalog_row(catalog), ignore_index=True)
     #     c.create_table("catalogs", catalogs, schema_name=system_schema)
