@@ -87,13 +87,21 @@ public class DaskProgram {
      * FixedRulesProgram applies a fixed set of conversion rules, which we always
      */
     private static class FixedRulesProgram implements Program {
-        static private final List<RelOptRule> RULES = Arrays.asList(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
-                CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS, CoreRules.AGGREGATE_PROJECT_MERGE,
-                CoreRules.AGGREGATE_REDUCE_FUNCTIONS, CoreRules.AGGREGATE_MERGE,
-                CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN, CoreRules.AGGREGATE_JOIN_REMOVE,
-                CoreRules.PROJECT_MERGE, CoreRules.FILTER_MERGE, CoreRules.PROJECT_REMOVE,
-                CoreRules.PROJECT_REDUCE_EXPRESSIONS, CoreRules.FILTER_REDUCE_EXPRESSIONS,
-                CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM, CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW);
+        static private final List<RelOptRule> RULES = Arrays.asList(
+                CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
+                CoreRules.AGGREGATE_ANY_PULL_UP_CONSTANTS,
+                CoreRules.AGGREGATE_PROJECT_MERGE,
+                CoreRules.AGGREGATE_REDUCE_FUNCTIONS,
+                CoreRules.AGGREGATE_MERGE,
+                CoreRules.AGGREGATE_EXPAND_DISTINCT_AGGREGATES_TO_JOIN,
+                CoreRules.AGGREGATE_JOIN_REMOVE,
+                CoreRules.PROJECT_MERGE,
+                CoreRules.FILTER_MERGE,
+                CoreRules.PROJECT_REMOVE,
+                CoreRules.FILTER_REDUCE_EXPRESSIONS,
+                CoreRules.FILTER_EXPAND_IS_NOT_DISTINCT_FROM,
+                CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW
+        );
 
         @Override
         public RelNode run(RelOptPlanner planner, RelNode rel, RelTraitSet requiredOutputTraits,
