@@ -16,7 +16,7 @@ RUN conda config --add channels conda-forge \
     "pyarrow>=0.15.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
-    "dask-ml>=2021.11.16" \
+    "dask-ml>=2022.1.22" \
     "scikit-learn>=0.24.2" \
     "intake>=0.6.0" \
     && conda clean -ay
