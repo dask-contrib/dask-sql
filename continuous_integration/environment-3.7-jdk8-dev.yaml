@@ -20,7 +20,7 @@ dependencies:
 - mock>=4.0.3
 - nest-asyncio>=1.4.3
 - openjdk=8
-- pandas>=1.0.0  # below 1.0, there were no nullable ext. types
+- pandas=1.2  # below 1.0, there were no nullable ext. types
 - pip=20.2.4
 - pre-commit>=2.11.1
 - prompt_toolkit>=3.0.8
