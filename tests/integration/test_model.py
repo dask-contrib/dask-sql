@@ -165,9 +165,6 @@ def test_clustering_and_prediction(c, training_df):
     check_trained_model(c)
 
 
-@pytest.mark.xfail(
-    reason="Upstream breakage in dask needs to be fixed by next dask-ml release"
-)
 def test_iterative_and_prediction(c, training_df):
     c.sql(
         """
@@ -187,9 +184,6 @@ def test_iterative_and_prediction(c, training_df):
     check_trained_model(c)
 
 
-@pytest.mark.xfail(
-    reason="Upstream breakage in dask needs to be fixed by next dask-ml release"
-)
 def test_show_models(c, training_df):
     c.sql(
         """
