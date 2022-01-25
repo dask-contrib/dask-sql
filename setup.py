@@ -74,7 +74,7 @@ setup(
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2021.11.1,<=2022.01.0",
+        "dask[dataframe,distributed]>=2021.11.1",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
