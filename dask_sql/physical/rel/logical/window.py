@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from pandas.core.window.indexers import BaseIndexer
+from pandas.api.indexers import BaseIndexer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
