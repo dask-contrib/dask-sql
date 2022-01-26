@@ -53,7 +53,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
@@ -76,7 +76,7 @@ jobs:
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
-        python: [3.7, 3.8, 3.9, 3.10]
+        python: ["3.7", "3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -195,7 +195,7 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.8
+          python-version: "3.8"
           mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
