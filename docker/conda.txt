@@ -1,5 +1,5 @@
 python>=3.7
-dask>=2021.11.1,<=2021.11.2
+dask>=2021.11.1
 pandas>=1.0.0  # below 1.0, there were no nullable ext. types
 jpype1>=1.0.2
 openjdk>=8
@@ -16,7 +16,7 @@ uvicorn>=0.11.3
 pyarrow>=0.15.1
 prompt_toolkit>=3.0.8
 pygments>=2.7.1
-dask-ml>=2021.11.16
+dask-ml>=2022.1.22
 scikit-learn>=0.24.2
 intake>=0.6.0
 pre-commit>=2.11.1

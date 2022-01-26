@@ -212,6 +212,7 @@ def convert_sql_kwargs(
                 "ARRAY": list,
                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
                 "MULTISET": set,
+                "ROW": tuple,
             }
 
             operator = operator_mapping[str(value.getOperator())]

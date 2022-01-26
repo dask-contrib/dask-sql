@@ -128,3 +128,19 @@ def test_limit(c, input_table, limit, offset, request):
         query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
 
     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
+
+
+def test_multi_case_when(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+    FROM df
+    """
+    )
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+
+    assert_eq(actual_df, expected_df)

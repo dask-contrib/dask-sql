@@ -62,15 +62,12 @@ public class DaskPlanner extends VolcanoPlanner {
         addRule(CoreRules.PROJECT_FILTER_TRANSPOSE);
         addRule(CoreRules.FILTER_PROJECT_TRANSPOSE);
         addRule(CoreRules.FILTER_INTO_JOIN);
-        addRule(CoreRules.JOIN_CONDITION_PUSH);
         addRule(CoreRules.JOIN_PUSH_EXPRESSIONS);
         addRule(CoreRules.FILTER_AGGREGATE_TRANSPOSE);
         addRule(CoreRules.PROJECT_WINDOW_TRANSPOSE);
         addRule(CoreRules.JOIN_COMMUTE);
         addRule(CoreRules.FILTER_INTO_JOIN);
         addRule(CoreRules.PROJECT_JOIN_TRANSPOSE);
-        addRule(JoinPushThroughJoinRule.RIGHT);
-        addRule(JoinPushThroughJoinRule.LEFT);
         addRule(CoreRules.SORT_PROJECT_TRANSPOSE);
         addRule(CoreRules.SORT_JOIN_TRANSPOSE);
         addRule(CoreRules.SORT_UNION_TRANSPOSE);
