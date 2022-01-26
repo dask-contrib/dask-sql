@@ -7,7 +7,7 @@ At the core, ``dask-sql`` does two things:
   which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
 - convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
 
-Th following example explains this in quite some technical details.
+The following example explains this in quite some technical details.
 For most of the users, this level of technical understanding is not needed.
 
 1. SQL enters the library
