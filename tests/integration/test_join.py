@@ -184,7 +184,6 @@ def test_conditional_join(c):
     df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
 
-    breakpoint()
     expected_df = pd.merge(df1, df2, how="inner", left_on=["a"], right_on=["c"])
     expected_df = expected_df[~pd.isnull(expected_df.b)][["a"]]
 
