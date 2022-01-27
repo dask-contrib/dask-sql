@@ -1,4 +1,3 @@
-import os
 import warnings
 
 import dask.dataframe as dd
@@ -6,6 +5,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.datacontainer import Statistics
 
 try:
     import cudf
@@ -62,25 +62,28 @@ def test_explain(gpu):
 
     sql_string = c.explain("SELECT * FROM df")
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
+    )
+
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+
+    sql_string = c.explain("SELECT * FROM df")
+
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
     )
 
     c = Context()
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-
     sql_string = c.explain(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
 
@@ -101,9 +104,9 @@ def test_sql(gpu):
     assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-    result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
+    result = c.sql(
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
+    )
     assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 

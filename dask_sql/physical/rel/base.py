@@ -42,6 +42,8 @@ class BaseRelPlugin:
         """
         field_names = [str(x) for x in row_type.getFieldNames()]
 
+        logger.debug(f"Renaming {cc.columns} to {field_names}")
+
         cc = cc.rename(columns=dict(zip(cc.columns, field_names)))
 
         # TODO: We can also check for the types here and do any conversions if needed

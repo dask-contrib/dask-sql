@@ -74,7 +74,7 @@ setup(
     python_requires=">=3.6",
     setup_requires=["setuptools_scm"] + sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2021.10.0",
+        "dask[dataframe,distributed]>=2021.11.1",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
@@ -94,7 +94,7 @@ setup(
             "mock>=4.0.3",
             "sphinx>=3.2.1",
             "pyarrow>=0.15.1",
-            "dask-ml>=2021.11.16",
+            "dask-ml>=2022.1.22",
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",

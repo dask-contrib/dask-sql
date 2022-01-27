@@ -55,7 +55,7 @@ def test_filter_with_nan(c):
     return_df = return_df.compute()
 
     if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="int8")
+        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
     else:
         expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_frame_equal(
@@ -76,7 +76,7 @@ def test_string_filter(c, string_table):
     "input_table",
     ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
 )
-def test_date_filter(c, input_table, request):
+def test_filter_cast_date(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
     return_df = c.sql(
         f"""
@@ -84,7 +84,6 @@ def test_date_filter(c, input_table, request):
             CAST(timezone AS DATE) > DATE '2014-08-01'
         """
     )
-    return_df = return_df.compute()
 
     expected_df = datetime_table[
         datetime_table["timezone"].astype("<M8[ns]").dt.date.astype("<M8[ns]")
@@ -97,7 +96,7 @@ def test_date_filter(c, input_table, request):
     "input_table",
     ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
 )
-def test_timestamp_filter(c, input_table, request):
+def test_filter_cast_timestamp(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
     return_df = c.sql(
         f"""
@@ -105,10 +104,21 @@ def test_timestamp_filter(c, input_table, request):
             CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00'
         """
     )
-    return_df = return_df.compute()
 
     expected_df = datetime_table[
         datetime_table["timezone"].astype("<M8[ns]")
         >= pd.Timestamp("2014-08-01 23:00:00")
     ]
     dd.assert_eq(return_df, expected_df)
+
+
+def test_filter_year(c):
+    df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
+
+    df["dt"] = pd.to_datetime(df)
+
+    c.create_table("datetime_test", df)
+    actual_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
+    expected_df = df[df["year"] < 2016]
+
+    assert_frame_equal(expected_df, actual_df)

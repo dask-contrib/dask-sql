@@ -182,6 +182,8 @@ class LoggableDataFrame:
         df = self.df
         if isinstance(df, pd.Series) or isinstance(df, dd.Series):
             return f"Series: {(df.name, df.dtype)}"
+        if isinstance(df, pd.DataFrame) or isinstance(df, dd.DataFrame):
+            return f"DataFrame: {[(col, dtype) for col, dtype in zip(df.columns, df.dtypes)]}"
 
         elif isinstance(df, DataContainer):
             cols = df.column_container.columns
@@ -210,10 +212,11 @@ def convert_sql_kwargs(
                 "ARRAY": list,
                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
                 "MULTISET": set,
+                "ROW": tuple,
             }
 
             operator = operator_mapping[str(value.getOperator())]
-            operands = [convert_literal(o) for o in value.getOperands()]
+            operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
         elif isinstance(value, com.dask.sql.parser.SqlKwargs):

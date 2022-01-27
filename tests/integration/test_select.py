@@ -134,7 +134,6 @@ def test_date_casting(c, input_table, request):
         FROM {input_table}
         """
     )
-    result_df = result_df.compute()
 
     expected_df = datetime_table.apply(
         lambda x: x.astype("<M8[ns]").dt.date.astype("<M8[ns]")
@@ -157,7 +156,22 @@ def test_timestamp_casting(c, input_table, request):
         FROM {input_table}
         """
     )
-    result_df = result_df.compute()
 
     expected_df = datetime_table.astype("<M8[ns]")
     dd.assert_eq(result_df, expected_df)
+
+
+def test_multi_case_when(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+    FROM df
+    """
+    ).compute()
+
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    assert_frame_equal(actual_df, expected_df)
