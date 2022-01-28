@@ -235,7 +235,7 @@ class CastOperation(Operation):
         # but Pandas can't truncate timezone datetimes and cuDF can't
         # truncate datetimes
         if output_type == "DATE":
-            return return_column.dt.date.astype(python_type)
+            return return_column.dt.strftime("%Y-%m-%d").astype(python_type)
 
         return return_column
 
