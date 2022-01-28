@@ -13,7 +13,8 @@ try:
     import cuml
     import dask_cudf
     import xgboost
-except ImportError:
+except ImportError as e:
+    raise e
     cuml = None
     xgboost = None
     dask_cudf = None
