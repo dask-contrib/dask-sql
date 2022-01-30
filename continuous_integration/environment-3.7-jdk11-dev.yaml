@@ -1,14 +1,13 @@
 name: dask-sql
 channels:
 - conda-forge
-- defaults
 dependencies:
 - adagio>=0.2.3
 - antlr4-python3-runtime>=4.9.2
 - black=19.10b0
 - ciso8601>=2.2.0
-- dask-ml>=2021.11.16
-- dask>=2021.11.1,<=2021.11.2
+- dask-ml>=2022.1.22
+- dask>=2021.11.1
 - fastapi>=0.61.1
 - fs>=2.4.11
 - intake>=0.6.0

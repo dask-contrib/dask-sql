@@ -212,10 +212,11 @@ def convert_sql_kwargs(
                 "ARRAY": list,
                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
                 "MULTISET": set,
+                "ROW": tuple,
             }
 
             operator = operator_mapping[str(value.getOperator())]
-            operands = [convert_literal(o) for o in value.getOperands()]
+            operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
         elif isinstance(value, com.dask.sql.parser.SqlKwargs):

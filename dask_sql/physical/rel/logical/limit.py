@@ -58,7 +58,6 @@ class DaskLimitPlugin(BaseRelPlugin):
         we need to pass the partition number to the selection
         function, which is not possible with normal "map_partitions".
         """
-        df = df.persist()
         if not offset:
             # We do a (hopefully) very quick check: if the first partition
             # is already enough, we will just use this

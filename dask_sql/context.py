@@ -418,6 +418,7 @@ class Context:
         sql: str,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        gpu: bool = False,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -443,6 +444,8 @@ class Context:
                 Defaults to returning the dask dataframe.
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
@@ -450,7 +453,7 @@ class Context:
         """
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df)
+                self.create_table(df_name, df, gpu=gpu)
 
         rel, select_names, _ = self._get_ral(sql)
 
@@ -477,7 +480,10 @@ class Context:
         return df
 
     def explain(
-        self, sql: str, dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None
+        self,
+        sql: str,
+        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        gpu: bool = False,
     ) -> str:
         """
         Return the stringified relational algebra that this query will produce
@@ -492,6 +498,8 @@ class Context:
             sql (:obj:`str`): The query string to use
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
 
         Returns:
             :obj:`str`: a description of the created relational algebra.
@@ -499,7 +507,7 @@ class Context:
         """
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df)
+                self.create_table(df_name, df, gpu=gpu)
 
         _, _, rel_string = self._get_ral(sql)
         return rel_string

@@ -259,15 +259,16 @@ class DaskJoinPlugin(BaseRelPlugin):
             filter_condition = []
 
             for operand in operands:
-                try:
-                    lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                    lhs_on.append(lhs_on_part)
-                    rhs_on.append(rhs_on_part)
-                    continue
-                except AssertionError:
-                    pass
+                if isinstance(operand, org.apache.calcite.rex.RexCall):
+                    try:
+                        lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
+                        lhs_on.append(lhs_on_part)
+                        rhs_on.append(rhs_on_part)
+                        continue
+                    except AssertionError:
+                        pass
 
-                filter_condition.append(operand)
+                    filter_condition.append(operand)
 
             if lhs_on and rhs_on:
                 return lhs_on, rhs_on, filter_condition
