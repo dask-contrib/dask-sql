@@ -1,10 +1,12 @@
 package com.dask.sql.application;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.dask.sql.schema.DaskSchema;
 
+import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlDialect;
@@ -28,8 +30,14 @@ public class RelationalAlgebraGenerator {
 
 	public RelationalAlgebraGenerator(final String rootSchemaName,
 									  final List<DaskSchema> schemas,
-									  final boolean case_sensitive) throws SQLException {
-		this.planner = new DaskPlanner();
+									  final boolean case_sensitive,
+									  ArrayList<RelOptRule> disabledRules) throws SQLException {
+		// Use empty list to follow existing patterns if null
+		if (disabledRules == null) {
+			disabledRules = new ArrayList<>();
+		}
+
+		this.planner = new DaskPlanner(disabledRules);
 		this.sqlToRelConverter = new DaskSqlToRelConverter(this.planner, rootSchemaName, schemas, case_sensitive);
 		this.program = new DaskProgram(this.planner);
 		this.parser = new DaskSqlParser();

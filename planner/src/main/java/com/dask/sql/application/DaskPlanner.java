@@ -16,11 +16,14 @@ import org.apache.calcite.config.CalciteConnectionProperty;
 import org.apache.calcite.plan.Context;
 import org.apache.calcite.plan.Contexts;
 import org.apache.calcite.plan.ConventionTraitDef;
+import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.rules.DateRangeRules;
-import org.apache.calcite.rel.rules.JoinPushThroughJoinRule;
 import org.apache.calcite.rel.rules.PruneEmptyRules;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * DaskPlanner is a cost-based optimizer based on the Calcite VolcanoPlanner.
@@ -33,44 +36,58 @@ public class DaskPlanner extends VolcanoPlanner {
 
     private final Context defaultContext;
 
-    public DaskPlanner() {
-        // Allow transformation between logical and dask nodes
-        addRule(DaskAggregateRule.INSTANCE);
-        addRule(DaskFilterRule.INSTANCE);
-        addRule(DaskJoinRule.INSTANCE);
-        addRule(DaskProjectRule.INSTANCE);
-        addRule(DaskSampleRule.INSTANCE);
-        addRule(DaskSortLimitRule.INSTANCE);
-        addRule(DaskTableScanRule.INSTANCE);
-        addRule(DaskUnionRule.INSTANCE);
-        addRule(DaskValuesRule.INSTANCE);
-        addRule(DaskWindowRule.INSTANCE);
+    private final ArrayList<RelOptRule> ALL_RULES = new ArrayList<>(
+            Arrays.asList(
+                    // Allow transformation between logical and dask nodes
+                    DaskAggregateRule.INSTANCE,
+                    DaskFilterRule.INSTANCE,
+                    DaskJoinRule.INSTANCE,
+                    DaskProjectRule.INSTANCE,
+                    DaskSampleRule.INSTANCE,
+                    DaskSortLimitRule.INSTANCE,
+                    DaskTableScanRule.INSTANCE,
+                    DaskUnionRule.INSTANCE,
+                    DaskValuesRule.INSTANCE,
+                    DaskWindowRule.INSTANCE,
 
-        // Set of core rules
-        addRule(PruneEmptyRules.UNION_INSTANCE);
-        addRule(PruneEmptyRules.INTERSECT_INSTANCE);
-        addRule(PruneEmptyRules.MINUS_INSTANCE);
-        addRule(PruneEmptyRules.PROJECT_INSTANCE);
-        addRule(PruneEmptyRules.FILTER_INSTANCE);
-        addRule(PruneEmptyRules.SORT_INSTANCE);
-        addRule(PruneEmptyRules.AGGREGATE_INSTANCE);
-        addRule(PruneEmptyRules.JOIN_LEFT_INSTANCE);
-        addRule(PruneEmptyRules.JOIN_RIGHT_INSTANCE);
-        addRule(PruneEmptyRules.SORT_FETCH_ZERO_INSTANCE);
-        addRule(DateRangeRules.FILTER_INSTANCE);
-        addRule(CoreRules.INTERSECT_TO_DISTINCT);
-        addRule(CoreRules.PROJECT_FILTER_TRANSPOSE);
-        addRule(CoreRules.FILTER_PROJECT_TRANSPOSE);
-        addRule(CoreRules.FILTER_INTO_JOIN);
-        addRule(CoreRules.JOIN_PUSH_EXPRESSIONS);
-        addRule(CoreRules.FILTER_AGGREGATE_TRANSPOSE);
-        addRule(CoreRules.PROJECT_WINDOW_TRANSPOSE);
-        addRule(CoreRules.JOIN_COMMUTE);
-        addRule(CoreRules.FILTER_INTO_JOIN);
-        addRule(CoreRules.PROJECT_JOIN_TRANSPOSE);
-        addRule(CoreRules.SORT_PROJECT_TRANSPOSE);
-        addRule(CoreRules.SORT_JOIN_TRANSPOSE);
-        addRule(CoreRules.SORT_UNION_TRANSPOSE);
+                    // Set of core rules
+                    PruneEmptyRules.UNION_INSTANCE,
+                    PruneEmptyRules.INTERSECT_INSTANCE,
+                    PruneEmptyRules.MINUS_INSTANCE,
+                    PruneEmptyRules.PROJECT_INSTANCE,
+                    PruneEmptyRules.FILTER_INSTANCE,
+                    PruneEmptyRules.SORT_INSTANCE,
+                    PruneEmptyRules.AGGREGATE_INSTANCE,
+                    PruneEmptyRules.JOIN_LEFT_INSTANCE,
+                    PruneEmptyRules.JOIN_RIGHT_INSTANCE,
+                    PruneEmptyRules.SORT_FETCH_ZERO_INSTANCE,
+                    DateRangeRules.FILTER_INSTANCE,
+                    CoreRules.INTERSECT_TO_DISTINCT,
+                    CoreRules.PROJECT_FILTER_TRANSPOSE,
+                    CoreRules.FILTER_PROJECT_TRANSPOSE,
+                    CoreRules.FILTER_INTO_JOIN,
+                    CoreRules.JOIN_PUSH_EXPRESSIONS,
+                    CoreRules.FILTER_AGGREGATE_TRANSPOSE,
+                    CoreRules.PROJECT_WINDOW_TRANSPOSE,
+                    CoreRules.JOIN_COMMUTE,
+                    CoreRules.PROJECT_JOIN_TRANSPOSE,
+                    CoreRules.SORT_PROJECT_TRANSPOSE,
+                    CoreRules.SORT_JOIN_TRANSPOSE,
+                    CoreRules.SORT_UNION_TRANSPOSE)
+    );
+
+    private ArrayList<RelOptRule> disabledRules = new ArrayList<>();
+
+    public DaskPlanner(ArrayList<RelOptRule> disabledRules) {
+
+        this.disabledRules = disabledRules;
+
+        // Iterate through all rules and only add the ones not disabled
+        for (RelOptRule rule : ALL_RULES) {
+            if (!disabledRules.contains(rule)) {
+                addRule(rule);
+            }
+        }
 
         // Enable conventions to turn from logical to dask
         addRelTraitDef(ConventionTraitDef.INSTANCE);
@@ -85,5 +102,13 @@ public class DaskPlanner extends VolcanoPlanner {
 
     public Context getContext() {
         return defaultContext;
+    }
+
+    public ArrayList<RelOptRule> getAllRules() {
+        return this.ALL_RULES;
+    }
+
+    public ArrayList<RelOptRule> getDisabledRules() {
+        return this.disabledRules;
     }
 }
