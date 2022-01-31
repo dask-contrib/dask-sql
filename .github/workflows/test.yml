@@ -53,7 +53,8 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
@@ -90,6 +91,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -198,7 +200,7 @@ jobs:
           python-version: "3.8"
           mamba-version: "*"
           channels: conda-forge,defaults
-          channel-priority: true
+          channel-priority: strict
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
