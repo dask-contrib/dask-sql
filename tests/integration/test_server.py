@@ -2,6 +2,7 @@ from time import sleep
 
 import pytest
 
+from dask_sql import Context
 from dask_sql.server.app import _init_app, app
 
 # needed for the testclient
@@ -10,7 +11,9 @@ pytest.importorskip("requests")
 
 @pytest.fixture(scope="module")
 def app_client():
-    _init_app(app)
+    c = Context()
+    c.sql("SELECT 1 + 1").compute()
+    _init_app(app, c)
 
     # late import for the importskip
     from fastapi.testclient import TestClient
