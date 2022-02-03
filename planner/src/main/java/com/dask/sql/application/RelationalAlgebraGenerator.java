@@ -7,6 +7,7 @@ import java.util.List;
 import com.dask.sql.schema.DaskSchema;
 
 import org.apache.calcite.plan.RelOptRule;
+import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlDialect;
@@ -31,10 +32,17 @@ public class RelationalAlgebraGenerator {
 	public RelationalAlgebraGenerator(final String rootSchemaName,
 									  final List<DaskSchema> schemas,
 									  final boolean case_sensitive,
-									  ArrayList<RelOptRule> disabledRules) throws SQLException {
-		// Use empty list to follow existing patterns if null
-		if (disabledRules == null) {
-			disabledRules = new ArrayList<>();
+									  ArrayList<String> disabledRulesPython) throws SQLException {
+		ArrayList<RelOptRule> disabledRules = new ArrayList<>();
+		if (disabledRulesPython != null) {
+			for (String rule : disabledRulesPython) {
+				disabledRules.add(new RelOptRule() {
+					@Override
+					public void onMatch(RelOptRuleCall call) {
+
+					}
+				})
+			}
 		}
 
 		this.planner = new DaskPlanner(disabledRules);

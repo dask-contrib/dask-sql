@@ -111,4 +111,10 @@ public class DaskPlanner extends VolcanoPlanner {
     public ArrayList<RelOptRule> getDisabledRules() {
         return this.disabledRules;
     }
+
+    public ArrayList<RelOptRule> getEnabledRules() {
+        ArrayList<RelOptRule> enabledRules = this.ALL_RULES;
+        enabledRules.removeAll(this.disabledRules);
+        return enabledRules;
+    }
 }
