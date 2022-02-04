@@ -251,7 +251,6 @@ class SchemaContainer:
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
-        self.config: ConfigContainer = ConfigContainer()
 
 
 class ConfigContainer:
