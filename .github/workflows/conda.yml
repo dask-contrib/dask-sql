@@ -30,6 +30,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: 3.8
+          channel-priority: strict
       - name: Install dependencies
         run: |
           mamba install boa conda-verify
