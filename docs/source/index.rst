@@ -60,16 +60,16 @@ Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a
    :maxdepth: 1
    :caption: Contents:
 
-   pages/installation
-   pages/quickstart
-   pages/sql
-   pages/data_input
-   pages/custom
-   pages/machine_learning
-   pages/api
-   pages/server
-   pages/cmd
-   pages/how_does_it_work
+   source/installation
+   source/quickstart
+   source/sql
+   source/data_input
+   source/custom
+   source/machine_learning
+   source/api
+   source/server
+   source/cmd
+   source/how_does_it_work
 
 
 .. note::
