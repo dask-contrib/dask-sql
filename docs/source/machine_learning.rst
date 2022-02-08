@@ -68,17 +68,36 @@ which allows you to also call it e.g. from your BI tool.
 Additionally to the ``PREDICT`` keyword mentioned above, ``dask-sql`` also has a way to
 create and train a model from SQL:
 
-.. code-block:: sql
+.. tabs::
 
-    CREATE MODEL my_model WITH (
-        model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-        wrap_predict = True,
-        target_column = 'target'
-    ) AS (
-        SELECT x, y, target
-        FROM timeseries
-        LIMIT 100
-    )
+    .. group-tab:: CPU
+
+        .. code-block:: sql
+
+            CREATE MODEL my_model WITH (
+                model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+                wrap_predict = True,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, target
+                FROM timeseries
+                LIMIT 100
+            )
+
+    .. group-tab:: GPU
+
+        .. code-block:: sql
+
+            CREATE MODEL my_model WITH (
+                model_class = 'cuml.linear_model.LogisticRegression',
+                wrap_predict = True,
+                wrap_fit = False,  -- can we explain why this needs to be added?
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, target
+                FROM timeseries
+                LIMIT 100
+            )
 
 This call will create a new instance of ``sklearn.ensemble.GradientBoostingClassifier``
 and train it with the data collected from the ``SELECT`` call (again, every valid ``SELECT``

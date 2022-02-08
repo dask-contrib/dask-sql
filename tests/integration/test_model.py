@@ -841,7 +841,7 @@ def test_experiment_automl_classifier(c, client, training_df):
     check_trained_model(c, "my_automl_exp1")
 
 
-def test_experiement_automl_regressor(c, client, training_df):
+def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # test regressor
     c.sql(
