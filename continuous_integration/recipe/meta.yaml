@@ -11,12 +11,12 @@ source:
 
 build:
   number: {{ GIT_DESCRIBE_NUMBER }}
-  skip: true   # [py2k]
+  noarch: python
   entry_points:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
-  string: py{{ python | replace(".", "") }}{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
-  script: {{ PYTHON }} -m pip install . --no-deps -vv
+  string: py_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  script: {{ PYTHON }} setup.py build_ext install
 
 requirements:
   build:
@@ -24,7 +24,6 @@ requirements:
   host:
     - pip
     - python
-    - setuptools-scm
   run:
     - python
     - dask >=2021.11.1
@@ -38,7 +37,6 @@ requirements:
     - pygments
     - nest-asyncio
     - tabulate
-    - importlib-metadata  # [py<38]
 
 test:
   imports:
@@ -55,10 +53,3 @@ about:
   summary: SQL query layer for Dask
   license: MIT
   license_file: LICENSE.txt
-
-extra:
-  recipe-maintainers:
-    - quasiben
-    - galipremsagar
-    - charlesbluca
-    - nils-braun
