@@ -15,25 +15,55 @@ Chances are high, there exists already a function to load your favorite format o
 See below for all formats understood by ``dask-sql``.
 Make sure to install required libraries both on the driver and worker machines.
 
-.. code-block:: python
+.. tabs::
 
-    import dask.dataframe as dd
-    from dask_sql import Context
+  .. group-tab:: CPU
 
-    c = Context()
-    df = dd.read_csv("s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+    .. code-block:: python
 
-    c.create_table("my_data", df)
+        import dask.dataframe as dd
+        from dask_sql import Context
+
+        c = Context()
+        df = dd.read_csv("s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+
+        c.create_table("my_data", df)
+
+  .. group-tab:: GPU
+
+    .. code-block:: python
+
+        import dask.dataframe as dd
+        from dask_sql import Context
+
+        c = Context()
+        df = dd.read_csv("s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+
+        c.create_table("my_data", df, gpu=True)
 
 or in short (equivalent):
 
-.. code-block:: python
+.. tabs::
 
-    from dask_sql import Context
+  .. group-tab:: CPU
 
-    c = Context()
+    .. code-block:: python
 
-    c.create_table("my_data", "s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+        from dask_sql import Context
+
+        c = Context()
+
+        c.create_table("my_data", "s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv")
+
+  .. group-tab:: GPU
+
+    .. code-block:: python
+
+        from dask_sql import Context
+
+        c = Context()
+
+        c.create_table("my_data", "s3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv", gpu=True)
 
 2. Load it via SQL
 ------------------
@@ -41,12 +71,26 @@ or in short (equivalent):
 If you are connected to the SQL server implementation or you do not want to issue python command calls, you can also
 achieve the data loading via SQL only.
 
-.. code-block:: sql
+.. tabs::
 
-    CREATE TABLE my_data WITH (
-        format = 'csv',
-        location = 's3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv'
-    )
+  .. group-tab:: CPU
+
+    .. code-block:: sql
+
+        CREATE TABLE my_data WITH (
+            format = 'csv',
+            location = 's3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv'
+        )
+
+  .. group-tab:: GPU
+
+    .. code-block:: sql
+
+        CREATE TABLE my_data WITH (
+            format = 'csv',
+            location = 's3://nyc-tlc/trip data/yellow_tripdata_2019-01.csv',
+            gpu = True
+        )
 
 The parameters are the same as in the python function described above.
 You can find more information in :ref:`creation`.
@@ -68,21 +112,46 @@ and then later register it in the :class:`~dask_sql.Context` via SQL:
 
 Later in SQL:
 
-.. code-block:: SQL
+.. tabs::
 
-    CREATE TABLE my_data WITH (
-        format = 'memory',
-        location = 'my_ds'
-    )
+  .. group-tab:: CPU
+
+    .. code-block:: SQL
+
+        CREATE TABLE my_data WITH (
+            format = 'memory',
+            location = 'my_ds'
+        )
+
+  .. group-tab:: GPU
+
+    .. code-block:: SQL
+
+        CREATE TABLE my_data WITH (
+            format = 'memory',
+            location = 'my_ds',
+            gpu = True
+        )
 
 Note, that the format is set to ``memory`` and the location is the name, which was chosen when publishing the dataset.
 
 To achieve the same thing from python, you can just use dask's methods to get the dataset
 
-.. code-block:: python
+.. tabs::
 
-    df = client.get_dataset("my_df")
-    c.create_table("my_data", df)
+  .. group-tab:: CPU
+
+    .. code-block:: python
+
+        df = client.get_dataset("my_df")
+        c.create_table("my_data", df)
+
+  .. group-tab:: GPU
+
+    .. code-block:: python
+
+        df = client.get_dataset("my_df")
+        c.create_table("my_data", df, gpu=True)
 
 
 Input Formats
@@ -95,22 +164,51 @@ Input Formats
   The data can be from local disc or many remote locations (S3, hdfs, Azure Filesystem, http, Google Filesystem, ...) - just prefix the path with the matching protocol.
   Additional arguments passed to :func:`~dask_sql.Context.create_table` or ``CREATE TABLE`` are given to the ``read_<format>`` calls.
 
-  Example:
+Example:
 
-  .. code-block:: python
+.. tabs::
 
-    c.create_table("my_data", "s3://bucket-name/my-data-*.csv",
-                   storage_options={'anon': True})
+  .. group-tab:: CPU
 
-  .. code-block:: sql
+    .. code-block:: python
 
-    CREATE TABLE my_data WITH (
-        format = 'csv', -- can also be omitted, as clear from the extension
-        location = 's3://bucket-name/my-data-*.csv',
-        storage_options = (
-            anon = True
-        )
-    )
+      c.create_table(
+          "my_data",
+          "s3://bucket-name/my-data-*.csv",
+          storage_options={'anon': True}
+      )
+
+    .. code-block:: sql
+
+      CREATE TABLE my_data WITH (
+          format = 'csv', -- can also be omitted, as clear from the extension
+          location = 's3://bucket-name/my-data-*.csv',
+          storage_options = (
+              anon = True
+          )
+      )
+
+  .. group-tab:: GPU
+
+    .. code-block:: python
+
+      c.create_table(
+          "my_data",
+          "s3://bucket-name/my-data-*.csv",
+          gpu=True,
+          storage_options={'anon': True}
+      )
+
+    .. code-block:: sql
+
+      CREATE TABLE my_data WITH (
+          format = 'csv', -- can also be omitted, as clear from the extension
+          location = 's3://bucket-name/my-data-*.csv',
+          gpu = True,
+          storage_options = (
+              anon = True
+          )
+      )
 
 * If your data is already in Pandas (or Dask) DataFrames format, you can just use it as it is via the Python API
   by giving it to :func:`~dask_sql.Context.create_table` directly.

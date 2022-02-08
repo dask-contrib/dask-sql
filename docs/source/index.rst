@@ -22,38 +22,89 @@ Example
 For this example, we use some data loaded from disk and query them with a SQL command from our python code.
 Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a large amount of formats (csv, parquet, json,...) and locations (s3, hdfs, gcs,...).
 
-.. code-block:: python
 
-   import dask.dataframe as dd
-   from dask_sql import Context
+.. tabs::
 
-   # Create a context to hold the registered tables
-   c = Context()
+   .. group-tab:: CPU
 
-   # Load the data and register it in the context
-   # This will give the table a name, that we can use in queries
-   df = dd.read_csv("...")
-   c.create_table("my_data", df)
+      .. code-block:: python
 
-   # Now execute a SQL query. The result is again dask dataframe.
-   result = c.sql("""
-      SELECT
-         my_data.name,
-         SUM(my_data.x)
-      FROM
-         my_data
-      GROUP BY
-         my_data.name
-   """)
+         from dask_sql import Context
 
-   # Show the result
-   print(result)
+         # Create a context to hold the registered tables
+         c = Context()
 
-   # Show the result...
-   print(result.compute())
+         # Load the data and register it in the context
+         # This will give the table a name, that we can use in queries
+         c.sql("""
+             CREATE TABLE
+                 my_data
+             WITH (
+                 location = '/path/to/data',
+                 format = 'csv'
+             )
+         """)
 
-   # ... or use it for any other dask calculation
-   print(result.x.mean().compute())
+         # Now execute a SQL query. The result is again dask dataframe.
+         result = c.sql("""
+            SELECT
+               my_data.name,
+               SUM(my_data.x)
+            FROM
+               my_data
+            GROUP BY
+               my_data.name
+         """)
+
+         # Show the result
+         print(result)
+
+         # Show the result...
+         print(result.compute())
+
+         # ... or use it for any other dask calculation
+         print(result.x.mean().compute())
+
+   .. group-tab:: GPU
+
+      .. code-block:: python
+
+         from dask_sql import Context
+
+         # Create a context to hold the registered tables
+         c = Context()
+
+         # Load the data and register it in the context
+         # This will give the table a name, that we can use in queries
+         c.sql("""
+             CREATE TABLE
+                 my_data
+             WITH (
+                 location = '/path/to/data',
+                 format = 'csv',
+                 gpu = True
+             )
+         """)
+
+         # Now execute a SQL query. The result is again dask dataframe.
+         result = c.sql("""
+            SELECT
+               my_data.name,
+               SUM(my_data.x)
+            FROM
+               my_data
+            GROUP BY
+               my_data.name
+         """)
+
+         # Show the result
+         print(result)
+
+         # Show the result...
+         print(result.compute())
+
+         # ... or use it for any other dask calculation
+         print(result.x.mean().compute())
 
 
 .. toctree::

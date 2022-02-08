@@ -728,7 +728,7 @@ class Context:
 
     def stop_server(self):  # pragma: no cover
         """
-        Stop a SQL server started by ``run_server`.
+        Stop a SQL server started by ``run_server``.
         """
         if self.sql_server is not None:
             loop = asyncio.get_event_loop()

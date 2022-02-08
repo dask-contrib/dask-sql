@@ -15,11 +15,25 @@ However, the real magic of ``dask`` (and ``dask-sql``) comes from the ability to
 There are `plenty <https://docs.dask.org/en/latest/setup.html>`_ of possibilities to setup a ``dask`` cluster.
 For local development and testing, you can setup a distributed version of ``dask`` with
 
-.. code-block:: python
+.. tabs::
 
-    from dask.distributed import Client
+    .. group-tab:: CPU
 
-    client = Client()
+        .. code-block:: python
+
+            from dask.distributed import Client
+
+            client = Client()
+
+    .. group-tab:: GPU
+
+        .. code-block:: python
+
+            from dask_cuda import LocalCUDACluster
+            from dask.distributed import Client
+
+            cluster = LocalCUDACluster()
+            client = Client(cluster)
 
 1. Data Loading
 ---------------
@@ -44,12 +58,25 @@ If we want to work with the data in SQL, we need to give the data frame a unique
 We do this by registering the data at an instance of a :class:`~dask_sql.Context`.
 Typically, you only have a single context per application.
 
-.. code-block:: python
+.. tabs::
 
-    from dask_sql import Context
+    .. group-tab:: CPU
 
-    c = Context()
-    c.create_table("timeseries", df)
+        .. code-block:: python
+
+            from dask_sql import Context
+
+            c = Context()
+            c.create_table("timeseries", df)
+
+    .. group-tab:: GPU
+
+        .. code-block:: python
+
+            from dask_sql import Context
+
+            c = Context()
+            c.create_table("timeseries", df, gpu=True)
 
 From now on, the data is accessible as the "timeseries" table of this context.
 It is possible to register multiple data frames at the same context.
@@ -59,11 +86,19 @@ It is possible to register multiple data frames at the same context.
     If you plan to query the same data multiple times,
     it might make sense to persist the data before:
 
-    .. code-block:: python
+    .. tabs::
 
-        df = df.persist()
-        c.create_table("timeseries", df)
+        .. group-tab:: CPU
 
+            .. code-block:: python
+
+                c.create_table("timeseries", df, persist=True)
+
+        .. group-tab:: GPU
+
+            .. code-block:: python
+
+                c.create_table("timeseries", df, persist=True, gpu=True)
 
 3. Run your queries
 -------------------
