@@ -59,7 +59,7 @@ jobs:
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
         run: |
-          python setup.py java
+          python setup.py build_ext
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
