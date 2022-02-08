@@ -86,10 +86,7 @@ def test_filter_cast_date(c, input_table, request):
     )
 
     expected_df = datetime_table[
-        datetime_table["timezone"]
-        .astype("<M8[ns]")
-        .dt.strftime("%Y-%m-%d")
-        .astype("<M8[ns]")
+        datetime_table["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
         > pd.Timestamp("2014-08-01")
     ]
     dd.assert_eq(return_df, expected_df)

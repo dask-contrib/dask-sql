@@ -137,22 +137,13 @@ def test_date_casting(c, input_table, request):
 
     expected_df = datetime_table
     expected_df["timezone"] = (
-        expected_df["timezone"]
-        .astype("<M8[ns]")
-        .dt.strftime("%Y-%m-%d")
-        .astype("<M8[ns]")
+        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
     expected_df["no_timezone"] = (
-        expected_df["no_timezone"]
-        .astype("<M8[ns]")
-        .dt.strftime("%Y-%m-%d")
-        .astype("<M8[ns]")
+        expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
     expected_df["utc_timezone"] = (
-        expected_df["utc_timezone"]
-        .astype("<M8[ns]")
-        .dt.strftime("%Y-%m-%d")
-        .astype("<M8[ns]")
+        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
 
     dd.assert_eq(result_df, expected_df)

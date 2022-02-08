@@ -231,11 +231,11 @@ class CastOperation(Operation):
         if return_column is None:
             return_column = operand
 
-        # TODO: ideally we don't want to directly access the datetime dates,
+        # TODO: ideally we don't want to directly access the datetimes,
         # but Pandas can't truncate timezone datetimes and cuDF can't
         # truncate datetimes
         if output_type == "DATE":
-            return return_column.dt.strftime("%Y-%m-%d").astype(python_type)
+            return return_column.dt.floor("D").astype(python_type)
 
         return return_column
 
