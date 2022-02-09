@@ -85,7 +85,7 @@ create and train a model from SQL:
             )
 
     .. group-tab:: GPU
-        
+
         .. code-block:: sql
 
             CREATE MODEL my_model WITH (
@@ -98,11 +98,11 @@ create and train a model from SQL:
                 LIMIT 100
             )
 
-This call will create a new instance of ``linear_model.LogisticRegression`` 
+This call will create a new instance of ``linear_model.LogisticRegression``
 and train it with the data collected from the ``SELECT`` call (again, every valid ``SELECT``
 query can be given). The model can than be used in subsequent calls to ``PREDICT``
-using the given name.  
-We set ``wrap_predict`` = ``True`` here to parallelize post fit prediction task of non distributed models (sklearn/cuML etc) across workers.  
+using the given name.
+We set ``wrap_predict`` = ``True`` here to parallelize post fit prediction task of non distributed models (sklearn/cuML etc) across workers.
 
 Have a look into :ref:`ml` for more information.
 
