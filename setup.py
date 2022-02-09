@@ -52,7 +52,7 @@ needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = MavenCommand
+cmdclass["java"] = MavenCommand
 
 setup(
     name="dask_sql",

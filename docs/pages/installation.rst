@@ -101,7 +101,7 @@ To compile the Java classes (at the beginning or after changes), run
 
 .. code-block:: bash
 
-    python setup.py build_ext
+    python setup.py java
 
 You can run the tests (after installation) with
 

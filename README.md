@@ -123,7 +123,7 @@ After that, you can install the package in development mode
 
 To compile the Java classes (at the beginning or after changes), run
 
-    python setup.py build_ext
+    python setup.py java
 
 This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
 
