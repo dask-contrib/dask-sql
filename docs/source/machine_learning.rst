@@ -128,6 +128,9 @@ in SQL using below SQL syntax, choose different tuners
 from the dask_ml package based on memory and compute constraints and
 for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
 
+..
+    TODO - add a GPU section to these examples once we have working CREATE EXPERIMENT tests for GPU
+
 .. code-block:: sql
 
  CREATE EXPERIMENT my_exp WITH (
@@ -194,6 +197,9 @@ and used by dask-sql for training, prediction and exporting the model
 through standard sklearn interface
 
 
+..
+    TODO - add a GPU section to these examples once we have working EXPORT MODEL tests for GPU
+
 .. code-block:: sql
 
     -- for pickle model serialization
@@ -225,6 +231,9 @@ Example
 The following SQL-only code gives an example on how the commands can play together.
 We assume that you have created/registered a table "my_data" with the numerical columns ``x`` and ``y``
 and the boolean target ``label``.
+
+..
+    TODO - add a GPU section to these examples once we have working CREATE EXPERIMENT tests for GPU
 
 .. code-block:: sql
 
