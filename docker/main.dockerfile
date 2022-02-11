@@ -23,6 +23,7 @@ RUN conda config --add channels conda-forge \
 
 # Build the java libraries
 COPY setup.py /opt/dask_sql/
+COPY versioneer.py /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
 COPY planner /opt/dask_sql/planner
 RUN cd /opt/dask_sql/ \
