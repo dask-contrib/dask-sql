@@ -10,10 +10,9 @@ Run the following code in an interactive python session, a python script or a ju
 0. Cluster Setup
 ----------------
 
-If you just want to try out ``dask-sql`` quickly, you can skip this step at first.
-However, the real magic of ``dask`` (and ``dask-sql``) comes from the ability to scale the computations over multiple machines.
-There are `plenty <https://docs.dask.org/en/latest/setup.html>`_ of possibilities to setup a ``dask`` cluster.
-For local development and testing, you can setup a distributed version of ``dask`` with
+If you just want to try out ``dask-sql`` quickly, this step can be skipped.
+However, the real magic of ``dask`` (and ``dask-sql``) comes from the ability to scale the computations over multiple cores and/or machines.
+For local development and testing, a Distributed ``LocalCluster`` (or, if using GPUs, a `Dask-CUDA <https://docs.rapids.ai/api/dask-cuda/nightly/index.html>`_ ``LocalCUDACluster``) can be deployed and a client connected to it like so:
 
 .. tabs::
 
@@ -21,27 +20,29 @@ For local development and testing, you can setup a distributed version of ``dask
 
         .. code-block:: python
 
-            from dask.distributed import Client
+            from distributed import Client, LocalCluster
 
-            client = Client()
+            cluster = LocalCluster()
+            client = Client(cluster)
 
     .. group-tab:: GPU
 
         .. code-block:: python
 
             from dask_cuda import LocalCUDACluster
-            from dask.distributed import Client
+            from distributed import Client
 
             cluster = LocalCUDACluster()
             client = Client(cluster)
+
+There are several options for deploying clusters depending on the platform being used and the resources available; see `Dask - Deploying Clusters <https://docs.dask.org/en/latest/deploying.html>`_ for more information.
 
 1. Data Loading
 ---------------
 
 Before querying the data, you need to create a ``dask`` `data frame <https://docs.dask.org/en/latest/dataframe.html>`_ containing the data.
 ``dask`` understands many different `input formats <https://docs.dask.org/en/latest/dataframe-create.html>`_ and sources.
-
-In this example, we do not read in external data, but use test data in the form of random event time series.
+In this example, we do not read in external data, but use test data in the form of random event time series:
 
 .. code-block:: python
 
@@ -55,8 +56,7 @@ Read more on the data input part in :ref:`data_input`.
 --------------------
 
 If we want to work with the data in SQL, we need to give the data frame a unique name.
-We do this by registering the data at an instance of a :class:`~dask_sql.Context`.
-Typically, you only have a single context per application.
+We do this by registering the data in an instance of a :class:`~dask_sql.Context`:
 
 .. tabs::
 
@@ -78,8 +78,8 @@ Typically, you only have a single context per application.
             c = Context()
             c.create_table("timeseries", df, gpu=True)
 
-From now on, the data is accessible as the "timeseries" table of this context.
-It is possible to register multiple data frames at the same context.
+From now on, the data is accessible as the ``timeseries`` table of this context.
+It is possible to register multiple data frames in the same context.
 
 .. hint::
 

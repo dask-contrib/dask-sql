@@ -4,8 +4,7 @@ Data Loading and Input
 ======================
 
 Before data can be queried with ``dask-sql``, it needs to be loaded into the dask cluster (or local instance) and registered with the :class:`~dask_sql.Context`.
-For this, ``dask-sql`` uses the wide field of possible `input formats  <https://docs.dask.org/en/latest/dataframe-create.html>`_ of ``dask``, plus some additional formats only suitable for `dask-sql`.
-You have multiple possibilities to load input data in ``dask-sql``:
+``dask-sql`` supports all ``dask``-compatible `input formats  <https://docs.dask.org/en/latest/dataframe-create.html>`_, plus some additional formats only suitable for ``dask-sql``.
 
 1. Load it via python
 ---------------------
@@ -13,7 +12,7 @@ You have multiple possibilities to load input data in ``dask-sql``:
 You can either use already created dask dataframes or create one by using the :func:`~dask_sql.Context.create_table` function.
 Chances are high, there exists already a function to load your favorite format or location (e.g. s3 or hdfs).
 See below for all formats understood by ``dask-sql``.
-Make sure to install required libraries both on the driver and worker machines.
+Make sure to install required libraries both on the driver and worker machines:
 
 .. tabs::
 
