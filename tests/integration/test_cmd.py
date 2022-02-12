@@ -1,4 +1,5 @@
 import pytest
+from dask import config as dask_config
 from mock import MagicMock, patch
 from prompt_toolkit.application import create_app_session
 from prompt_toolkit.input import create_pipe_input
@@ -103,8 +104,9 @@ def test_meta_commands(c, client, capsys):
         match="Timed out during handshake while "
         "connecting to tcp://localhost:8787 after 5 s",
     ):
-        client = _meta_commands("\\dsc localhost:8787", context=c, client=client)
-        assert client.scheduler.__dict__["addr"] == "localhost:8787"
+        with dask_config.set({"distributed.comm.timeouts.connect": 5}):
+            client = _meta_commands("\\dsc localhost:8787", context=c, client=client)
+            assert client.scheduler.__dict__["addr"] == "localhost:8787"
 
 
 def test_connection_info(c, client, capsys):

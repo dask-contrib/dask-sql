@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
+from dask.distributed.utils_test import loop  # noqa: F401
 from pandas.testing import assert_frame_equal
 
 try:
@@ -287,3 +288,15 @@ skip_if_external_scheduler = pytest.mark.skipif(
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )
+
+
+@pytest.fixture()
+def cluster(loop):  # noqa: F811
+    with LocalCluster(loop=loop) as cluster:
+        yield cluster
+
+
+@pytest.fixture()
+def client(cluster):
+    with Client(cluster) as client:
+        yield client
