@@ -86,7 +86,7 @@ _SQL_TO_PYTHON_FRAMES = {
 def python_to_sql_type(python_type):
     """Mapping between python and SQL types."""
 
-    if isinstance(python_type, np.dtype):
+    if hasattr(python_type, "type"):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
