@@ -4,8 +4,9 @@ import shutil
 import subprocess
 import sys
 
-import setuptools.command.build_py
 from setuptools import find_packages, setup
+
+import versioneer
 
 
 class MavenCommand(distutils.cmd.Command):
@@ -42,15 +43,6 @@ class MavenCommand(distutils.cmd.Command):
         shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
 
 
-class BuildPyCommand(setuptools.command.build_py.build_py):
-    """Customize the build command and add the java build"""
-
-    def run(self):
-        """Run the maven build before the normal build"""
-        self.run_command("java")
-        setuptools.command.build_py.build_py.run(self)
-
-
 long_description = ""
 if os.path.exists("README.md"):
     with open("README.md") as f:
@@ -59,8 +51,12 @@ if os.path.exists("README.md"):
 needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass["java"] = MavenCommand
+
 setup(
     name="dask_sql",
+    version=versioneer.get_version(),
     description="SQL query layer for Dask",
     url="https://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
@@ -70,9 +66,8 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
-    use_scm_version=True,
     python_requires=">=3.6",
-    setup_requires=["setuptools_scm"] + sphinx_requirements,
+    setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2021.11.1",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
@@ -84,8 +79,6 @@ setup(
         "pygments",
         "tabulate",
         "nest-asyncio",
-        # backport for python versions without importlib.metadata
-        "importlib_metadata; python_version < '3.8.0'",
     ],
     extras_require={
         "dev": [
@@ -110,6 +103,6 @@ setup(
         ]
     },
     zip_safe=False,
-    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
+    cmdclass=cmdclass,
     command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
 )
