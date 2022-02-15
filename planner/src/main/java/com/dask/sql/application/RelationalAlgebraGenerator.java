@@ -7,7 +7,6 @@ import java.util.List;
 import com.dask.sql.schema.DaskSchema;
 
 import org.apache.calcite.plan.RelOptRule;
-import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlDialect;
