@@ -35,13 +35,15 @@ public class RelationalAlgebraGenerator {
 									  ArrayList<String> disabledRulesPython) throws SQLException {
 		ArrayList<RelOptRule> disabledRules = new ArrayList<>();
 		if (disabledRulesPython != null) {
-			for (String rule : disabledRulesPython) {
-				disabledRules.add(new RelOptRule() {
-					@Override
-					public void onMatch(RelOptRuleCall call) {
-
+			// Operationally complex but fine for object instantiation and seen
+			// as a trade-off since this structure is more efficient in other areas
+			for (String pythonRuleString : disabledRulesPython) {
+				for (RelOptRule rule : DaskPlanner.ALL_RULES) {
+					if (rule.toString().equalsIgnoreCase(pythonRuleString)) {
+						disabledRules.add(rule);
+						break;
 					}
-				})
+				}
 			}
 		}
 

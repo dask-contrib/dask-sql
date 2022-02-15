@@ -24,6 +24,9 @@ import org.apache.calcite.rel.rules.PruneEmptyRules;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * DaskPlanner is a cost-based optimizer based on the Calcite VolcanoPlanner.
@@ -36,7 +39,7 @@ public class DaskPlanner extends VolcanoPlanner {
 
     private final Context defaultContext;
 
-    private final ArrayList<RelOptRule> ALL_RULES = new ArrayList<>(
+    public static final ArrayList<RelOptRule> ALL_RULES = new ArrayList<>(
             Arrays.asList(
                     // Allow transformation between logical and dask nodes
                     DaskAggregateRule.INSTANCE,
@@ -80,12 +83,14 @@ public class DaskPlanner extends VolcanoPlanner {
 
     public DaskPlanner(ArrayList<RelOptRule> disabledRules) {
 
-        this.disabledRules = disabledRules;
+        if (disabledRules != null) {
+            this.disabledRules = disabledRules;
 
-        // Iterate through all rules and only add the ones not disabled
-        for (RelOptRule rule : ALL_RULES) {
-            if (!disabledRules.contains(rule)) {
-                addRule(rule);
+            // Iterate through all rules and only add the ones not disabled
+            for (RelOptRule rule : ALL_RULES) {
+                if (!disabledRules.contains(rule)) {
+                    addRule(rule);
+                }
             }
         }
 
@@ -104,17 +109,27 @@ public class DaskPlanner extends VolcanoPlanner {
         return defaultContext;
     }
 
-    public ArrayList<RelOptRule> getAllRules() {
-        return this.ALL_RULES;
+    public List<String> getAllRules() {
+        return this.ALL_RULES.stream()
+                .map(object -> Objects.toString(object, null))
+                .collect(Collectors.toList());
     }
 
-    public ArrayList<RelOptRule> getDisabledRules() {
-        return this.disabledRules;
+    public List<String> getDisabledRules() {
+        if (this.disabledRules != null) {
+            return this.disabledRules.stream()
+                    .map(object -> Objects.toString(object, null))
+                    .collect(Collectors.toList());
+        } else {
+            return new ArrayList<String>();
+        }
     }
 
-    public ArrayList<RelOptRule> getEnabledRules() {
+    public List<String> getEnabledRules() {
         ArrayList<RelOptRule> enabledRules = this.ALL_RULES;
         enabledRules.removeAll(this.disabledRules);
-        return enabledRules;
+        return enabledRules.stream()
+                .map(object -> Objects.toString(object, null))
+                .collect(Collectors.toList());
     }
 }
