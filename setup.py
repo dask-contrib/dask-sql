@@ -66,7 +66,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2021.11.1",
