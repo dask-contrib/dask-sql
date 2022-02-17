@@ -24,7 +24,7 @@ requirements:
     - maven >=3.6.0
   host:
     - pip
-    - python
+    - python >=3.8
   run:
     - python
     - dask >=2021.11.1
