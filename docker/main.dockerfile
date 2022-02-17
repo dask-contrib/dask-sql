@@ -28,7 +28,7 @@ COPY versioneer.py /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
 COPY planner /opt/dask_sql/planner
 RUN cd /opt/dask_sql/ \
-    && python setup.py java
+    && python setup.py build_ext
 
 # Install the python library
 COPY dask_sql /opt/dask_sql/dask_sql
