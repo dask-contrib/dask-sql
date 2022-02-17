@@ -24,7 +24,7 @@ from dask_sql.datacontainer import (
 )
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
-from dask_sql.java import com, get_java_class, org
+from dask_sql.java import com, get_java_class, java, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
@@ -853,7 +853,7 @@ class Context:
         )
 
         generator_builder = RelationalAlgebraGeneratorBuilder(
-            self.schema_name, case_sensitive
+            self.schema_name, case_sensitive, java.util.ArrayList()
         )
         for schema in schemas:
             generator_builder = generator_builder.addSchema(schema)

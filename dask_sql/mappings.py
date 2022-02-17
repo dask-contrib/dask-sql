@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
 import dask.array as da
@@ -77,7 +77,9 @@ _SQL_TO_PYTHON_FRAMES = {
     "VARCHAR": pd.StringDtype(),
     "CHAR": pd.StringDtype(),
     "STRING": pd.StringDtype(),  # Although not in the standard, makes compatibility easier
-    "DATE": np.dtype("<M8[ns]"),
+    "DATE": np.dtype(
+        "<M8[ns]"
+    ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
     "TIMESTAMP": np.dtype("<M8[ns]"),
     "NULL": type(None),
 }
@@ -160,12 +162,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
 
-        dt = datetime.fromtimestamp(
-            int(literal_value.getTimeInMillis()) / 1000, timezone.utc
-        )
+        dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
 
-        return dt
-
+        if sql_type == "DATE":
+            return dt.astype("<M8[D]")
+        return dt.astype("<M8[ns]")
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
