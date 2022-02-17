@@ -56,7 +56,7 @@ jobs:
           python-version: "3.8"
           channel-priority: strict
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
         run: |
           python setup.py java
@@ -150,7 +150,7 @@ jobs:
           python-version: "3.8"
           channel-priority: strict
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:

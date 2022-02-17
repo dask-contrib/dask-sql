@@ -29,7 +29,7 @@ jobs:
           python-version: "3.8"
           channel-priority: strict
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Install dependencies and build the jar
         run: |
           python setup.py java
