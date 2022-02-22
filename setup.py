@@ -5,6 +5,7 @@ import sys
 
 from setuptools import find_packages, setup
 from setuptools.command.build_ext import build_ext as build_ext_orig
+from setuptools.extension import Extension
 
 import versioneer
 
@@ -52,6 +53,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
+    ext_modules=[Extension("", sources=[])],  # forces build_ext to run on install
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
