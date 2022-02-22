@@ -26,6 +26,8 @@ class build_ext(build_ext_orig):
         os.makedirs("dask_sql/jar", exist_ok=True)
         shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
 
+        super().run()
+
 
 long_description = ""
 if os.path.exists("README.md"):
