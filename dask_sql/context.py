@@ -965,7 +965,8 @@ class Context:
 
         if not aggregation:
             f = UDF(f, row_udf, return_type)
-
+            nm = [i[0] for i in parameters]
+            f._names = nm
         lower_name = name.lower()
         if lower_name in schema.functions:
             if replace:

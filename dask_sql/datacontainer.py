@@ -215,6 +215,7 @@ class UDF:
             df = column_args[0].to_frame()
             for col in column_args[1:]:
                 df[col.name] = col
+            df.columns = self._names
             result = df.apply(
                 self.func, axis=1, args=tuple(scalar_args), meta=self.meta
             ).astype(self.meta[1])
