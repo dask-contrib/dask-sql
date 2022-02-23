@@ -964,9 +964,7 @@ class Context:
         schema = self.schema[schema_name]
 
         if not aggregation:
-            f = UDF(f, row_udf, return_type)
-            nm = [i[0] for i in parameters]
-            f._names = nm
+            f = UDF(f, row_udf, parameters, return_type)
         lower_name = name.lower()
         if lower_name in schema.functions:
             if replace:
