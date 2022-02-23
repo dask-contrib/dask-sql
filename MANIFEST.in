@@ -1,2 +1,3 @@
 include versioneer.py
 include dask_sql/_version.py
+include dask_sql/sql.yaml
