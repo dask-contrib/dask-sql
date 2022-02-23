@@ -4,6 +4,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
+from tests.integration.fixtures import skip_if_external_scheduler
 
 fugue_sql = pytest.importorskip("fugue_sql")
 
@@ -38,6 +39,9 @@ def test_simple_statement():
     assert_frame_equal(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
 
+# TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
+# discussion in https://github.com/dask-contrib/dask-sql/issues/407
+@skip_if_external_scheduler
 def test_fsql():
     def assert_eq(df: pd.DataFrame) -> None:
         assert_frame_equal(df, pd.DataFrame({"a": [1]}))

@@ -1,10 +1,12 @@
 package com.dask.sql.application;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.dask.sql.schema.DaskSchema;
 
+import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlDialect;
@@ -28,8 +30,23 @@ public class RelationalAlgebraGenerator {
 
 	public RelationalAlgebraGenerator(final String rootSchemaName,
 									  final List<DaskSchema> schemas,
-									  final boolean case_sensitive) throws SQLException {
-		this.planner = new DaskPlanner();
+									  final boolean case_sensitive,
+									  ArrayList<String> disabledRulesPython) throws SQLException {
+		ArrayList<RelOptRule> disabledRules = new ArrayList<>();
+		if (disabledRulesPython != null) {
+			// Operationally complex but fine for object instantiation and seen
+			// as a trade-off since this structure is more efficient in other areas
+			for (String pythonRuleString : disabledRulesPython) {
+				for (RelOptRule rule : DaskPlanner.ALL_RULES) {
+					if (rule.toString().equalsIgnoreCase(pythonRuleString)) {
+						disabledRules.add(rule);
+						break;
+					}
+				}
+			}
+		}
+
+		this.planner = new DaskPlanner(disabledRules);
 		this.sqlToRelConverter = new DaskSqlToRelConverter(this.planner, rootSchemaName, schemas, case_sensitive);
 		this.program = new DaskProgram(this.planner);
 		this.parser = new DaskSqlParser();
