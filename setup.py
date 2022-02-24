@@ -4,12 +4,10 @@ import subprocess
 import sys
 
 from setuptools import find_packages, setup
+from setuptools.command.build_ext import build_ext as build_ext_orig
+from setuptools.extension import Extension
 
 import versioneer
-
-cmdclass = versioneer.get_cmdclass()
-build_ext_orig = cmdclass["build_ext"]
-build_py_orig = cmdclass["build_py"]
 
 
 class build_ext(build_ext_orig):
@@ -29,12 +27,6 @@ class build_ext(build_ext_orig):
         os.makedirs("dask_sql/jar", exist_ok=True)
         shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
 
-
-class build_py(build_py_orig):
-    """Simple override of versioneer's build_py command to build/copy jar first"""
-
-    def run(self):
-        build_ext.run(build_ext)
         super().run()
 
 
@@ -46,8 +38,8 @@ if os.path.exists("README.md"):
 needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
+cmdclass = versioneer.get_cmdclass()
 cmdclass["build_ext"] = build_ext
-cmdclass["build_py"] = build_py
 
 setup(
     name="dask_sql",
@@ -61,6 +53,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
+    ext_modules=[Extension("", sources=[])],  # forces build_ext to run on install
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
