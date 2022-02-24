@@ -5,29 +5,55 @@ import sys
 
 from setuptools import find_packages, setup
 from setuptools.command.build_ext import build_ext as build_ext_orig
-from setuptools.extension import Extension
+from setuptools.command.install_lib import install_lib as install_lib_orig
 
 import versioneer
 
 
+def install_java_libraries(dir):
+    """Helper function to run dask-sql's java installation process in a given directory"""
+
+    # build the jar
+    maven_command = shutil.which("mvn")
+    if not maven_command:
+        raise OSError(
+            "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
+        )
+    command = [maven_command, "clean", "install", "-f", "pom.xml"]
+    subprocess.check_call(command, cwd=os.path.join(dir, "planner"))
+
+    # copy generated jar to python package
+    os.makedirs(os.path.join(dir, "dask_sql/jar"), exist_ok=True)
+    shutil.copy(
+        os.path.join(dir, "planner/target/DaskSQL.jar"),
+        os.path.join(dir, "dask_sql/jar/"),
+    )
+
+
 class build_ext(build_ext_orig):
-    """Build the external Java libraries"""
+    """Build and install the java libraries for an editable install"""
 
     def run(self):
-        """Run the mvn installation command"""
-        maven_command = shutil.which("mvn")
-        if not maven_command:
-            raise OSError(
-                "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
-            )
-        command = [maven_command, "clean", "install", "-f", "pom.xml"]
+        super().run()
 
-        subprocess.check_call(command, cwd="planner")
+        # build java inplace
+        install_java_libraries("")
 
-        os.makedirs("dask_sql/jar", exist_ok=True)
-        shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
 
-        build_ext_orig.run(self)
+class install_lib(install_lib_orig):
+    """Build and install the java libraries for a standard install"""
+
+    def build(self):
+        super().build()
+
+        # copy java source to build directory
+        self.copy_tree("planner", os.path.join(self.build_dir, "planner"))
+
+        # build java in build directory
+        install_java_libraries(self.build_dir)
+
+        # remove java source as it doesn't need to be packaged
+        shutil.rmtree(os.path.join(self.build_dir, "planner"))
 
 
 long_description = ""
@@ -40,6 +66,7 @@ sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else
 
 cmdclass = versioneer.get_cmdclass()
 cmdclass["build_ext"] = build_ext
+cmdclass["install_lib"] = install_lib
 
 setup(
     name="dask_sql",
@@ -53,7 +80,6 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     package_data={"dask_sql": ["jar/DaskSQL.jar"]},
-    ext_modules=[Extension("", sources=[])],  # forces build_ext to run on install
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
