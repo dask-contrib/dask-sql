@@ -55,8 +55,9 @@ class install_lib(install_lib_orig):
         # remove java source as it doesn't need to be packaged
         shutil.rmtree(os.path.join(self.build_dir, "planner"))
 
-        # copy jar to source directory so dask-sql can be imported from there
-        self.copy_tree(os.path.join(self.build_dir, "dask_sql/jar"), "dask_sql/jar")
+        # copy jar to source directory for RTD builds to API docs build correctly
+        if os.environ.get("READTHEDOCS", False):
+            self.copy_tree(os.path.join(self.build_dir, "dask_sql/jar"), "dask_sql/jar")
 
 
 long_description = ""
