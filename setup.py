@@ -56,7 +56,7 @@ class install_lib(install_lib_orig):
         shutil.rmtree(os.path.join(self.build_dir, "planner"))
 
         # copy jar to source directory for RTD builds to API docs build correctly
-        if os.environ.get("READTHEDOCS", False):
+        if os.environ.get("READTHEDOCS", "False") == "True":
             self.copy_tree(os.path.join(self.build_dir, "dask_sql/jar"), "dask_sql/jar")
 
 
