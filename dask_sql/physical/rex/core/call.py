@@ -224,14 +224,20 @@ class CastOperation(Operation):
             return operand
 
         output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
+        python_type = sql_to_python_type(output_type.upper())
 
-        return_column = cast_column_to_type(operand, output_type)
+        return_column = cast_column_to_type(operand, python_type)
 
         if return_column is None:
-            return operand
-        else:
-            return return_column
+            return_column = operand
+
+        # TODO: ideally we don't want to directly access the datetimes,
+        # but Pandas can't truncate timezone datetimes and cuDF can't
+        # truncate datetimes
+        if output_type == "DATE":
+            return return_column.dt.floor("D").astype(python_type)
+
+        return return_column
 
 
 class IsFalseOperation(Operation):
