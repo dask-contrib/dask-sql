@@ -121,7 +121,7 @@ After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To compile the Java classes (at the beginning or after changes), run
+To recompile the Java classes after changes have been made to the source contained in `planner/`, run
 
     python setup.py build_ext
 
