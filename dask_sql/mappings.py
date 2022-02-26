@@ -18,22 +18,32 @@ _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
     np.float32: SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
     np.int32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.int16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
     np.int8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
     np.uint64: SqlTypeName.BIGINT,
+    pd.UInt64Dtype(): SqlTypeName.BIGINT,
     np.uint32: SqlTypeName.INTEGER,
+    pd.UInt32Dtype(): SqlTypeName.INTEGER,
     np.uint16: SqlTypeName.SMALLINT,
+    pd.UInt16Dtype(): SqlTypeName.SMALLINT,
     np.uint8: SqlTypeName.TINYINT,
+    pd.UInt8Dtype(): SqlTypeName.TINYINT,
     np.bool8: SqlTypeName.BOOLEAN,
+    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     np.object_: SqlTypeName.VARCHAR,
+    pd.StringDtype(): SqlTypeName.VARCHAR,
     str: SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
 if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
     _PYTHON_TO_SQL.update(
-        {np.float64: SqlTypeName.FLOAT, np.float32: SqlTypeName.FLOAT}
+        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.FLOAT}
     )
 
 # Default mapping between SQL types and python types
