@@ -37,6 +37,7 @@ _PYTHON_TO_SQL = {
     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     np.object_: SqlTypeName.VARCHAR,
     pd.StringDtype(): SqlTypeName.VARCHAR,
+    str: SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
