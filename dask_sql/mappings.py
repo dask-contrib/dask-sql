@@ -35,9 +35,9 @@ _PYTHON_TO_SQL = {
     pd.UInt8Dtype(): SqlTypeName.TINYINT,
     np.bool8: SqlTypeName.BOOLEAN,
     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
-    np.object_: SqlTypeName.VARCHAR,
-    pd.StringDtype(): SqlTypeName.VARCHAR,
     str: SqlTypeName.VARCHAR,
+    pd.StringDtype(): SqlTypeName.VARCHAR,
+    np.object_: SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
