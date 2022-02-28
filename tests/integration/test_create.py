@@ -3,10 +3,8 @@ import pandas as pd
 import pytest
 
 import dask_sql
-from tests.integration.fixtures import skip_if_external_scheduler
 
 
-@skip_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -59,7 +57,6 @@ def test_cluster_memory(client, c, df, gpu):
     dd.assert_eq(df, return_df)
 
 
-@skip_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -149,7 +146,6 @@ def test_create_from_query(c, df):
     dd.assert_eq(df, return_df)
 
 
-@skip_if_external_scheduler
 @pytest.mark.parametrize(
     "gpu",
     [

@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
@@ -128,6 +129,56 @@ def test_limit(c, input_table, limit, offset, request):
         query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
 
     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_date_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS DATE) AS timezone,
+            CAST(no_timezone AS DATE) AS no_timezone,
+            CAST(utc_timezone AS DATE) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+
+    expected_df = datetime_table
+    expected_df["timezone"] = (
+        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+    expected_df["no_timezone"] = (
+        expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+    expected_df["utc_timezone"] = (
+        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+
+    dd.assert_eq(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+)
+def test_timestamp_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS TIMESTAMP) AS timezone,
+            CAST(no_timezone AS TIMESTAMP) AS no_timezone,
+            CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+
+    expected_df = datetime_table.astype("<M8[ns]")
+    dd.assert_eq(result_df, expected_df)
 
 
 def test_multi_case_when(c):

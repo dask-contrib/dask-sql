@@ -53,12 +53,13 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
         run: |
-          python setup.py java
+          python setup.py build_ext
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
@@ -76,7 +77,7 @@ jobs:
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
-        python: [3.7, 3.8, 3.9]
+        python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -90,6 +91,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -145,7 +147,8 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
@@ -195,10 +198,10 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.8
+          python-version: "3.8"
           mamba-version: "*"
           channels: conda-forge,defaults
-          channel-priority: true
+          channel-priority: strict
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
