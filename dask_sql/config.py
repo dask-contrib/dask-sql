@@ -10,5 +10,3 @@ with open(fn) as f:
 
 dask.config.update_defaults(defaults)
 dask.config.ensure_file(source=fn, comment=True)
-
-config = dask.config.get("sql")
