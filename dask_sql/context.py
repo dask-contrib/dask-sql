@@ -595,8 +595,8 @@ class Context:
         self, config_options: Dict[str, Any],
     ):
         """
-        Add configuration options to a schema.
-        A configuration option could be used to set the behavior of certain configurirable operations.
+        Sets sql configuration options to the global dask config
+        A configuration option could be used to set the behavior of certain sql operations.
 
         Eg: `sql.groupby.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
 
