@@ -598,11 +598,10 @@ class Context:
         Add configuration options to a schema.
         A configuration option could be used to set the behavior of certain configurirable operations.
 
-        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
+        Eg: `sql.groupby.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
 
         Args:
-            config_options (:obj:`Tuple[str,val]` or :obj:`Dict[str,val]`): config_option and value to set
-            schema_name (:obj:`str`): Optionally select schema for setting configs
+            config_options (:obj:`Dict[str,val]`): key, value paris of config_option and value to set.
 
         Example:
             .. code-block:: python
@@ -610,15 +609,24 @@ class Context:
                 from dask_sql import Context
 
                 c = Context()
-                c.set_config(("dask.groupby.aggregate.split_out", 1))
+                c.set_config({"sql.groupby.split_out", 1})
                 c.set_config(
                     {
-                        "dask.groupby.aggregate.split_out": 2,
-                        "dask.groupby.aggregate.split_every": 4,
+                        "sql.groupby.split_every": 2,
+                        "sql.identifier.case_sensitive": True,
                     }
                 )
-
         """
+        for config_str in list(config_options.keys()):
+            if not config_str.startswith("sql"):
+                warnings.warn(
+                    f"""
+                Passed non sql config {config_str} which will be ignored.
+                To set non dask-sql configs consider using `dask.config.set_config`
+                """
+                )
+                del config_options[config_str]
+
         dask_config.set(config_options)
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
@@ -698,7 +706,7 @@ class Context:
 
     def stop_server(self):  # pragma: no cover
         """
-        Stop a SQL server started by ``run_server`.
+        Stop a SQL server started by ``run_server``.
         """
         if self.sql_server is not None:
             loop = asyncio.get_event_loop()
@@ -816,7 +824,7 @@ class Context:
         )
 
         # True if the SQL query should be case sensitive and False otherwise
-        case_sensitive = dask_config.get("sql.identifier.case-sensitive", default=True)
+        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
         generator_builder = RelationalAlgebraGeneratorBuilder(
             self.schema_name, case_sensitive, java.util.ArrayList()
