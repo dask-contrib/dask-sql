@@ -36,12 +36,10 @@ jobs:
           which python
           pip list
           conda list
-      - name: Build jar
-        run: python setup.py java
-      - name: Build and publish package
+      - name: Build package
+        run: python setup.py sdist bdist_wheel
+      - name: Publish package
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
+        run: twine upload dist/*
