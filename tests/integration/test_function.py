@@ -1,9 +1,10 @@
+import itertools
 import operator
 
 import dask.dataframe as dd
 import numpy as np
 import pytest
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 
 def test_custom_function(c, df):
@@ -38,6 +39,27 @@ def test_custom_function_row(c, df):
     return_df = return_df.compute()
 
     assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
+
+
+@pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
+def test_custom_function_any_colnames(colnames, df_wide, c):
+    # a third column is needed
+
+    def f(row):
+        return row["x"] + row["y"]
+
+    colname_x, colname_y = colnames
+    c.register_function(
+        f, "f", [("x", np.int64), ("y", np.int64)], np.int64, row_udf=True
+    )
+
+    return_df = c.sql(f"SELECT F({colname_x},{colname_y}) FROM df_wide")
+
+    return_df = return_df.compute()
+    expect = df_wide[colname_x] + df_wide[colname_y]
+    got = return_df[return_df.columns[0]]
+
+    assert_series_equal(expect, got, check_names=False)
 
 
 @pytest.mark.parametrize(

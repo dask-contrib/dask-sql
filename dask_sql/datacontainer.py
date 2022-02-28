@@ -214,11 +214,11 @@ class UDF:
                     column_args.append(operand)
                 else:
                     scalar_args.append(operand)
-            
+
             df = column_args[0].to_frame()
             for name, col in zip(self.names, column_args):
                 df[name] = col
-            
+
             result = df.apply(
                 self.func, axis=1, args=tuple(scalar_args), meta=self.meta
             ).astype(self.meta[1])
