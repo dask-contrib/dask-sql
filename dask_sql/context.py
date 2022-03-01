@@ -326,7 +326,9 @@ class Context:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
-                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
+                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible. This
+                function is sensitive to the order of specified parameters when `row_udf=True`, and it is assumed
+                that column arguments are specified in order, followed by scalar arguments.
             return_type (:obj:`type`): The return type of the function
             replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
             present; instead, replace the original function. Default is `False`.
@@ -964,8 +966,7 @@ class Context:
         schema = self.schema[schema_name]
 
         if not aggregation:
-            f = UDF(f, row_udf, return_type)
-
+            f = UDF(f, row_udf, parameters, return_type)
         lower_name = name.lower()
         if lower_name in schema.functions:
             if replace:

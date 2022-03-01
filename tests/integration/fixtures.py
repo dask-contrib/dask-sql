@@ -39,6 +39,19 @@ def df_simple():
 
 
 @pytest.fixture()
+def df_wide():
+    return pd.DataFrame(
+        {
+            "a": [0, 1, 2],
+            "b": [3, 4, 5],
+            "c": [6, 7, 8],
+            "d": [9, 10, 11],
+            "e": [12, 13, 14],
+        }
+    )
+
+
+@pytest.fixture()
 def df():
     np.random.seed(42)
     return pd.DataFrame(
@@ -127,6 +140,7 @@ def gpu_datetime_table(datetime_table):
 @pytest.fixture()
 def c(
     df_simple,
+    df_wide,
     df,
     user_table_1,
     user_table_2,
@@ -143,6 +157,7 @@ def c(
 ):
     dfs = {
         "df_simple": df_simple,
+        "df_wide": df_wide,
         "df": df,
         "user_table_1": user_table_1,
         "user_table_2": user_table_2,

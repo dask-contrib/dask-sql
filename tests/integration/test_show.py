@@ -35,6 +35,7 @@ def test_tables(c):
             "Table": [
                 "df",
                 "df_simple",
+                "df_wide",
                 "user_table_1",
                 "user_table_2",
                 "long_table",
@@ -47,6 +48,7 @@ def test_tables(c):
             else [
                 "df",
                 "df_simple",
+                "df_wide",
                 "user_table_1",
                 "user_table_2",
                 "long_table",
