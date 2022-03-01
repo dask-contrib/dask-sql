@@ -18,8 +18,7 @@ build:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
   string: py_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
-  script_env:
-    - PYTHON
+  script: {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
   build:
