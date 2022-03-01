@@ -215,8 +215,8 @@ class UDF:
                 else:
                     scalar_args.append(operand)
 
-            df = column_args[0].to_frame()
-            for name, col in zip(self.names, column_args):
+            df = column_args[0].to_frame(self.names[0])
+            for name, col in zip(self.names[1:], column_args[1:]):
                 df[name] = col
 
             result = df.apply(

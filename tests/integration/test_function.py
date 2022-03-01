@@ -4,7 +4,7 @@ import operator
 import dask.dataframe as dd
 import numpy as np
 import pytest
-from pandas.testing import assert_frame_equal, assert_series_equal
+from pandas.testing import assert_frame_equal
 
 
 def test_custom_function(c, df):
@@ -26,7 +26,7 @@ def test_custom_function(c, df):
 
 def test_custom_function_row(c, df):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, row_udf=True)
 
@@ -55,11 +55,10 @@ def test_custom_function_any_colnames(colnames, df_wide, c):
 
     return_df = c.sql(f"SELECT F({colname_x},{colname_y}) FROM df_wide")
 
-    return_df = return_df.compute()
     expect = df_wide[colname_x] + df_wide[colname_y]
-    got = return_df[return_df.columns[0]]
+    got = return_df.iloc[:, 0]
 
-    assert_series_equal(expect, got, check_names=False)
+    dd.assert_eq(expect, got, check_names=False)
 
 
 @pytest.mark.parametrize(
@@ -68,7 +67,7 @@ def test_custom_function_any_colnames(colnames, df_wide, c):
 )
 def test_custom_function_row_return_types(c, df, retty):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     if retty is None:
         with pytest.raises(ValueError):
