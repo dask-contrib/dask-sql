@@ -1,7 +1,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 logger = logging.getLogger(__name__)

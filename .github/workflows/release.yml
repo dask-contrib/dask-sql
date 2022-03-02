@@ -36,8 +36,6 @@ jobs:
           which python
           pip list
           conda list
-      - name: Build jar
-        run: python setup.py java
       - name: Build and publish package
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}

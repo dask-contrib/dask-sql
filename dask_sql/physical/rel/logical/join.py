@@ -9,7 +9,6 @@ from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter

@@ -2,10 +2,10 @@ import logging
 from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
+from datafusion_planner import DaskLogicalPlan
 
 if TYPE_CHECKING:
     import dask_sql
@@ -23,10 +23,12 @@ class DaskProjectPlugin(BaseRelPlugin):
     class_name = "com.dask.sql.nodes.DaskProject"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self, rel: DaskLogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
+        print(f"Invoking project.py convert function ....")
         # Get the input of the previous step
-        (dc,) = self.assert_inputs(rel, 1, context)
+        # (dc,) = self.assert_inputs(rel, 1, context)
+        print(f"DaskLogicalPlan: {rel}")
 
         df = dc.df
         cc = dc.column_container

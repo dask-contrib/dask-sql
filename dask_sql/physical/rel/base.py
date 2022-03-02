@@ -5,10 +5,10 @@ import dask.dataframe as dd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
+from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: "org.apache.calcite.rel.type.RelDataType"
+        cc: ColumnContainer, row_type: DaskRelRowType
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -50,9 +50,7 @@ class BaseRelPlugin:
         return cc.limit_to(field_names)
 
     @staticmethod
-    def check_columns_from_row_type(
-        df: dd.DataFrame, row_type: "org.apache.calcite.rel.type.RelDataType"
-    ):
+    def check_columns_from_row_type(df: dd.DataFrame, row_type: DaskRelRowType):
         """
         Similar to `self.fix_column_to_row_type`, but this time
         check for the correct column names instead of
@@ -66,9 +64,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def assert_inputs(
-        rel: "org.apache.calcite.rel.RelNode",
-        n: int = 1,
-        context: "dask_sql.Context" = None,
+        rel: DaskLogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
     ) -> List[dd.DataFrame]:
         """
         Many RelNodes build on top of others.
@@ -78,6 +74,10 @@ class BaseRelPlugin:
         converted into a dask dataframe.
         """
         input_rels = rel.getInputs()
+        print(f"Inputs: {input_rels}")
+
+        projected_cols = rel.getProjections()
+        print(f"Projected Columns: {projected_cols}")
 
         assert len(input_rels) == n
 

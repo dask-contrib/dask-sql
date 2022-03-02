@@ -3,13 +3,11 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
-from dask_sql.java import get_java_class
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,8 @@ class RelConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables from the context.
         """
-        class_name = get_java_class(rel)
+        # class_name = get_java_class(rel)
+        class_name = "com.dask.sql.nodes.DaskTableScan"
 
         try:
             plugin_instance = cls.get_plugin(class_name)

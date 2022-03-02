@@ -5,43 +5,9 @@ import subprocess
 import sys
 
 from setuptools import find_packages, setup
+from setuptools_rust import Binding, RustExtension
 
 import versioneer
-
-
-class MavenCommand(distutils.cmd.Command):
-    """Run the maven build command"""
-
-    description = "run the mvn install command"
-    user_options = []
-
-    def initialize_options(self):
-        """No options"""
-        pass
-
-    def finalize_options(self):
-        """No options"""
-        pass
-
-    def run(self):
-        """Run the mvn installation command"""
-        # We need to explicitely specify the full path to mvn
-        # for Windows
-        maven_command = shutil.which("mvn")
-        if not maven_command:
-            raise OSError(
-                "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
-            )
-        command = [maven_command, "clean", "install", "-f", "pom.xml"]
-        self.announce(f"Running command: {' '.join(command)}", level=distutils.log.INFO)
-
-        subprocess.check_call(command, cwd="planner")
-
-        # Copy the artifact. We could also make maven do that,
-        # but in this way we have full control from python
-        os.makedirs("dask_sql/jar", exist_ok=True)
-        shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
-
 
 long_description = ""
 if os.path.exists("README.md"):
@@ -52,11 +18,17 @@ needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["java"] = MavenCommand
 
 setup(
     name="dask_sql",
     version=versioneer.get_version(),
+    rust_extensions=[
+        RustExtension(
+            "datafusion_planner",
+            binding=Binding.PyO3,
+            path="./datafusion_planner/Cargo.toml",
+        )
+    ],
     description="SQL query layer for Dask",
     url="https://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
@@ -64,14 +36,12 @@ setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages(include=["dask_sql", "dask_sql.*"]),
-    package_data={"dask_sql": ["jar/DaskSQL.jar"]},
+    # packages=find_packages(include=["dask_sql", "dask_sql.*", "datafusion_planner", "datafusion_planner.*"]),
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2021.11.1",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
-        "jpype1>=1.0.2",
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",

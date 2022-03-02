@@ -4,13 +4,11 @@ from typing import TYPE_CHECKING, Any, Union
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import get_java_class
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 

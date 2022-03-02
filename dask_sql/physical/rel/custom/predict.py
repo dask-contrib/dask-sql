@@ -3,7 +3,6 @@ import uuid
 from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:

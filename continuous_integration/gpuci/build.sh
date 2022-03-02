@@ -17,9 +17,6 @@ export PARALLEL_LEVEL=${PARALLEL_LEVEL:-4}
 # Set home to the job's workspace
 export HOME="$WORKSPACE"
 
-# specify maven options
-export MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.m2/repository"
-
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"
 
@@ -48,7 +45,6 @@ python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"
-python setup.py java
 
 gpuci_logger "Check Python version"
 python --version
@@ -59,4 +55,4 @@ conda config --show-sources
 conda list --show-channel-urls
 
 gpuci_logger "Python py.test for dask-sql"
-py.test $WORKSPACE -n 4 -v -m gpu --rungpu --junitxml="$WORKSPACE/junit-dask-sql.xml" --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term
+py.test $WORKSPACE -n 4 -v -m gpu --rungpu --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term

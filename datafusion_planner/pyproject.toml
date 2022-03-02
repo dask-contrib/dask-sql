@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-rust"]
+
+[project]
+name = "datafusion_planner"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]

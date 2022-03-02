@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 
 class DaskTableScanPlugin(BaseRelPlugin):
@@ -23,10 +23,11 @@ class DaskTableScanPlugin(BaseRelPlugin):
     class_name = "com.dask.sql.nodes.DaskTableScan"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self, rel: DaskLogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
-        self.assert_inputs(rel, 0)
+        # self.assert_inputs(rel, 0)
+        print(f"Entering table_scan plugin to load data into dataframes")
 
         # The table(s) we need to return
         table = rel.getTable()
@@ -48,7 +49,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         field_specifications = [str(f) for f in row_type.getFieldNames()]
         cc = cc.limit_to(field_specifications)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        # dc = DataContainer(df, cc)
+        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, table.getRowType())
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, table.getRowType())
         return dc

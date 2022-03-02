@@ -9,7 +9,6 @@ import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.literal import RexLiteralPlugin
@@ -82,23 +81,24 @@ class BoundDescription(
 
 def to_bound_description(
     java_window: "org.apache.calcite.rex.RexWindowBounds.RexBoundedWindowBound",
-    constants: List[org.apache.calcite.rex.RexLiteral],
+    # constants: List[org.apache.calcite.rex.RexLiteral],
+    constants,
     constant_count_offset: int,
 ) -> BoundDescription:
     """Convert the java object "java_window" to a python representation,
     replacing any literals or references to constants"""
     offset = java_window.getOffset()
     if offset:
-        if isinstance(offset, org.apache.calcite.rex.RexInputRef):
-            # For calcite, the constant pool are normal "columns",
-            # starting at (number of real columns + 1).
-            # Here, we do the de-referencing.
-            index = offset.getIndex() - constant_count_offset
-            offset = constants[index]
-        else:  # pragma: no cover
-            # prevent python to optimize it away and make coverage not respect the
-            # pragma
-            dummy = 0  # noqa: F841
+        # if isinstance(offset, org.apache.calcite.rex.RexInputRef):
+        #     # For calcite, the constant pool are normal "columns",
+        #     # starting at (number of real columns + 1).
+        #     # Here, we do the de-referencing.
+        #     index = offset.getIndex() - constant_count_offset
+        #     offset = constants[index]
+        # else:  # pragma: no cover
+        #     # prevent python to optimize it away and make coverage not respect the
+        #     # pragma
+        #     dummy = 0  # noqa: F841
         offset = int(RexLiteralPlugin().convert(offset, None, None))
     else:
         offset = None
@@ -266,8 +266,10 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _apply_window(
         self,
-        window: org.apache.calcite.rel.core.Window.Group,
-        constants: List[org.apache.calcite.rex.RexLiteral],
+        # window: org.apache.calcite.rel.core.Window.Group,
+        window,
+        # constants: List[org.apache.calcite.rex.RexLiteral],
+        constants,
         constant_count_offset: int,
         dc: DataContainer,
         field_names: List[str],
@@ -345,7 +347,8 @@ class DaskWindowPlugin(BaseRelPlugin):
     def _extract_groupby(
         self,
         df: dd.DataFrame,
-        window: org.apache.calcite.rel.core.Window.Group,
+        # window: org.apache.calcite.rel.core.Window.Group,
+        window,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
@@ -368,9 +371,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         return df, group_columns
 
-    def _extract_ordering(
-        self, window: org.apache.calcite.rel.core.Window.Group, cc: ColumnContainer
-    ) -> Tuple[str, str, str]:
+    def _extract_ordering(self, window, cc: ColumnContainer) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
         order_keys = list(window.orderKeys.getFieldCollations())
         sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
@@ -386,11 +387,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         return sort_columns, sort_ascending, sort_null_first
 
     def _extract_operations(
-        self,
-        window: org.apache.calcite.rel.core.Window.Group,
-        df: dd.DataFrame,
-        dc: DataContainer,
-        context: "dask_sql.Context",
+        self, window, df: dd.DataFrame, dc: DataContainer, context: "dask_sql.Context",
     ) -> List[Tuple[Callable, str, List[str]]]:
         # Finally apply the actual function on each group separately
         operations = []

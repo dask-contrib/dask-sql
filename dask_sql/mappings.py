@@ -8,42 +8,41 @@ import numpy as np
 import pandas as pd
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
-from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
-SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
+# SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
-# Default mapping between python types and SQL types
-_PYTHON_TO_SQL = {
-    np.float64: SqlTypeName.DOUBLE,
-    np.float32: SqlTypeName.FLOAT,
-    np.int64: SqlTypeName.BIGINT,
-    pd.Int64Dtype(): SqlTypeName.BIGINT,
-    np.int32: SqlTypeName.INTEGER,
-    pd.Int32Dtype(): SqlTypeName.INTEGER,
-    np.int16: SqlTypeName.SMALLINT,
-    pd.Int16Dtype(): SqlTypeName.SMALLINT,
-    np.int8: SqlTypeName.TINYINT,
-    pd.Int8Dtype(): SqlTypeName.TINYINT,
-    np.uint64: SqlTypeName.BIGINT,
-    pd.UInt64Dtype(): SqlTypeName.BIGINT,
-    np.uint32: SqlTypeName.INTEGER,
-    pd.UInt32Dtype(): SqlTypeName.INTEGER,
-    np.uint16: SqlTypeName.SMALLINT,
-    pd.UInt16Dtype(): SqlTypeName.SMALLINT,
-    np.uint8: SqlTypeName.TINYINT,
-    pd.UInt8Dtype(): SqlTypeName.TINYINT,
-    np.bool8: SqlTypeName.BOOLEAN,
-    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
-    np.object_: SqlTypeName.VARCHAR,
-    pd.StringDtype(): SqlTypeName.VARCHAR,
-    np.datetime64: SqlTypeName.TIMESTAMP,
-}
+# # Default mapping between python types and SQL types
+# _PYTHON_TO_SQL = {
+#     np.float64: SqlTypeName.DOUBLE,
+#     np.float32: SqlTypeName.FLOAT,
+#     np.int64: SqlTypeName.BIGINT,
+#     pd.Int64Dtype(): SqlTypeName.BIGINT,
+#     np.int32: SqlTypeName.INTEGER,
+#     pd.Int32Dtype(): SqlTypeName.INTEGER,
+#     np.int16: SqlTypeName.SMALLINT,
+#     pd.Int16Dtype(): SqlTypeName.SMALLINT,
+#     np.int8: SqlTypeName.TINYINT,
+#     pd.Int8Dtype(): SqlTypeName.TINYINT,
+#     np.uint64: SqlTypeName.BIGINT,
+#     pd.UInt64Dtype(): SqlTypeName.BIGINT,
+#     np.uint32: SqlTypeName.INTEGER,
+#     pd.UInt32Dtype(): SqlTypeName.INTEGER,
+#     np.uint16: SqlTypeName.SMALLINT,
+#     pd.UInt16Dtype(): SqlTypeName.SMALLINT,
+#     np.uint8: SqlTypeName.TINYINT,
+#     pd.UInt8Dtype(): SqlTypeName.TINYINT,
+#     np.bool8: SqlTypeName.BOOLEAN,
+#     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
+#     np.object_: SqlTypeName.VARCHAR,
+#     pd.StringDtype(): SqlTypeName.VARCHAR,
+#     np.datetime64: SqlTypeName.TIMESTAMP,
+# }
 
-if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-    _PYTHON_TO_SQL.update(
-        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.FLOAT}
-    )
+# if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
+#     _PYTHON_TO_SQL.update(
+#         {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.FLOAT}
+#     )
 
 # Default mapping between SQL types and python types
 # for values

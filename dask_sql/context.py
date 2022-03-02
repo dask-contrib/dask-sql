@@ -9,6 +9,8 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
+from datafusion_planner import DaskLogicalPlan, get_sql_node
+
 try:
     import dask_cuda  # noqa: F401
 except ImportError:  # pragma: no cover
@@ -23,11 +25,13 @@ from dask_sql.datacontainer import (
     Statistics,
 )
 from dask_sql.input_utils import InputType, InputUtil
-from dask_sql.integrations.ipython import ipython_integration
-from dask_sql.java import com, get_java_class, java, org
-from dask_sql.mappings import python_to_sql_type
-from dask_sql.physical.rel import RelConverter, custom, logical
-from dask_sql.physical.rex import RexConverter, core
+
+# from dask_sql.integrations.ipython import ipython_integration
+# from dask_sql.mappings import python_to_sql_type
+# from dask_sql.physical.rel import RelConverter, custom, logical
+from dask_sql.physical.rel import RelConverter, logical
+
+# from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
@@ -77,42 +81,42 @@ class Context:
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
-        # Register any default plugins, if nothing was registered before.
-        RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
+        # # Register any default plugins, if nothing was registered before.
+        # RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskProjectPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskTableScanPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
+        # RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
+        # RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
-        RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
+        # RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
+        # RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
+        # RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
@@ -455,23 +459,27 @@ class Context:
             for df_name, df in dataframes.items():
                 self.create_table(df_name, df, gpu=gpu)
 
-        rel, select_names, _ = self._get_ral(sql)
+        # rel, select_names, _ = self._get_ral(sql)
+        try:
+            rel = get_sql_node(sql)
+        except (RuntimeError) as e:
+            raise ParsingException(sql, str(e)) from None
 
         dc = RelConverter.convert(rel, context=self)
 
         if dc is None:
             return
 
-        if select_names:
-            # Rename any columns named EXPR$* to a more human readable name
-            cc = dc.column_container
-            cc = cc.rename(
-                {
-                    df_col: select_name
-                    for df_col, select_name in zip(cc.columns, select_names)
-                }
-            )
-            dc = DataContainer(dc.df, cc)
+        # if select_names:
+        #     # Rename any columns named EXPR$* to a more human readable name
+        #     cc = dc.column_container
+        #     cc = cc.rename(
+        #         {
+        #             df_col: select_name
+        #             for df_col, select_name in zip(cc.columns, select_names)
+        #         }
+        #     )
+        #     dc = DataContainer(dc.df, cc)
 
         df = dc.assign()
         if not return_futures:
@@ -836,86 +844,78 @@ class Context:
 
         return dask_function
 
-    def _get_ral(self, sql):
-        """Helper function to turn the sql query into a relational algebra and resulting column names"""
-        # get the schema of what we currently have registered
-        schemas = self._prepare_schemas()
+    # def _get_ral(self, sql):
+    #     """Helper function to turn the sql query into a relational algebra and resulting column names"""
+    #     # get the schema of what we currently have registered
+    #     schemas = self._prepare_schemas()
 
-        RelationalAlgebraGeneratorBuilder = (
-            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
-        )
+    #     # True if the SQL query should be case sensitive and False otherwise
+    #     case_sensitive = (
+    #         self.schema[self.schema_name]
+    #         .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
+    #         .get("dask.sql.identifier.case.sensitive", True)
+    #     )
 
-        # True if the SQL query should be case sensitive and False otherwise
-        case_sensitive = (
-            self.schema[self.schema_name]
-            .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
-            .get("dask.sql.identifier.case.sensitive", True)
-        )
+    #     for schema in schemas:
+    #         print(f'Schema: {schema}')
+    #         generator_builder = generator_builder.addSchema(schema)
+    #     generator = generator_builder.build()
+    #     default_dialect = generator.getDialect()
 
-        generator_builder = RelationalAlgebraGeneratorBuilder(
-            self.schema_name, case_sensitive, java.util.ArrayList()
-        )
-        for schema in schemas:
-            generator_builder = generator_builder.addSchema(schema)
-        generator = generator_builder.build()
-        default_dialect = generator.getDialect()
+    #     ValidationException = org.apache.calcite.tools.ValidationException
+    #     SqlParseException = org.apache.calcite.sql.parser.SqlParseException
+    #     CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
-        logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+    #     try:
+    #         sqlNode = generator.getSqlNode(sql)
+    #         sqlNodeClass = get_java_class(sqlNode)
 
-        ValidationException = org.apache.calcite.tools.ValidationException
-        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
-        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
+    #         select_names = None
+    #         rel = sqlNode
+    #         rel_string = ""
 
-        try:
-            sqlNode = generator.getSqlNode(sql)
-            sqlNodeClass = get_java_class(sqlNode)
+    #         if not sqlNodeClass.startswith("com.dask.sql.parser."):
+    #             nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
+    #             # Optimization might remove some alias projects. Make sure to keep them here.
+    #             select_names = [
+    #                 str(name)
+    #                 for name in nonOptimizedRelNode.getRowType().getFieldNames()
+    #             ]
+    #             rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+    #             rel_string = str(generator.getRelationalAlgebraString(rel))
+    #     except (ValidationException, SqlParseException, CalciteContextException) as e:
+    #         logger.debug(f"Original exception raised by Java:\n {e}")
+    #         # We do not want to re-raise an exception here
+    #         # as this would print the full java stack trace
+    #         # if debug is not set.
+    #         # Instead, we raise a nice exception
+    #         raise ParsingException(sql, str(e.message())) from None
 
-            select_names = None
-            rel = sqlNode
-            rel_string = ""
+    #     # Internal, temporary results of calcite are sometimes
+    #     # named EXPR$N (with N a number), which is not very helpful
+    #     # to the user. We replace these cases therefore with
+    #     # the actual query string. This logic probably fails in some
+    #     # edge cases (if the outer SQLNode is not a select node),
+    #     # but so far I did not find such a case.
+    #     # So please raise an issue if you have found one!
+    #     if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
+    #         sqlNode = sqlNode.query
+    #         sqlNodeClass = get_java_class(sqlNode)
 
-            if not sqlNodeClass.startswith("com.dask.sql.parser."):
-                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
-                # Optimization might remove some alias projects. Make sure to keep them here.
-                select_names = [
-                    str(name)
-                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
-                ]
-                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-                rel_string = str(generator.getRelationalAlgebraString(rel))
-        except (ValidationException, SqlParseException, CalciteContextException) as e:
-            logger.debug(f"Original exception raised by Java:\n {e}")
-            # We do not want to re-raise an exception here
-            # as this would print the full java stack trace
-            # if debug is not set.
-            # Instead, we raise a nice exception
-            raise ParsingException(sql, str(e.message())) from None
+    #     if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
+    #         select_names = [
+    #             self._to_sql_string(s, default_dialect=default_dialect)
+    #             if current_name.startswith("EXPR$")
+    #             else current_name
+    #             for s, current_name in zip(sqlNode.getSelectList(), select_names)
+    #         ]
+    #     else:
+    #         logger.debug(
+    #             "Not extracting output column names as the SQL is not a SELECT call"
+    #         )
 
-        # Internal, temporary results of calcite are sometimes
-        # named EXPR$N (with N a number), which is not very helpful
-        # to the user. We replace these cases therefore with
-        # the actual query string. This logic probably fails in some
-        # edge cases (if the outer SQLNode is not a select node),
-        # but so far I did not find such a case.
-        # So please raise an issue if you have found one!
-        if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
-            sqlNode = sqlNode.query
-            sqlNodeClass = get_java_class(sqlNode)
-
-        if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-            select_names = [
-                self._to_sql_string(s, default_dialect=default_dialect)
-                if current_name.startswith("EXPR$")
-                else current_name
-                for s, current_name in zip(sqlNode.getSelectList(), select_names)
-            ]
-        else:
-            logger.debug(
-                "Not extracting output column names as the SQL is not a SELECT call"
-            )
-
-        logger.debug(f"Extracted relational algebra:\n {rel_string}")
-        return rel, select_names, rel_string
+    #     logger.debug(f"Extracted relational algebra:\n {rel_string}")
+    #     return rel, select_names, rel_string
 
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:

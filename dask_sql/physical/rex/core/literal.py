@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import com, org
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
 
@@ -22,26 +21,26 @@ class SargPythonImplementation:
     class Range:
         """Helper class to represent one of the ranges in a Sarg object"""
 
-        def __init__(self, range: com.google.common.collect.Range, literal_type: str):
-            self.lower_endpoint = None
-            self.lower_open = True
-            if range.hasLowerBound():
-                self.lower_endpoint = sql_to_python_value(
-                    literal_type, range.lowerEndpoint()
-                )
-                self.lower_open = (
-                    range.lowerBoundType() == com.google.common.collect.BoundType.OPEN
-                )
+        # def __init__(self, range: com.google.common.collect.Range, literal_type: str):
+        #     self.lower_endpoint = None
+        #     self.lower_open = True
+        #     if range.hasLowerBound():
+        #         self.lower_endpoint = sql_to_python_value(
+        #             literal_type, range.lowerEndpoint()
+        #         )
+        #         self.lower_open = (
+        #             range.lowerBoundType() == com.google.common.collect.BoundType.OPEN
+        #         )
 
-            self.upper_endpoint = None
-            self.upper_open = True
-            if range.hasUpperBound():
-                self.upper_endpoint = sql_to_python_value(
-                    literal_type, range.upperEndpoint()
-                )
-                self.upper_open = (
-                    range.upperBoundType() == com.google.common.collect.BoundType.OPEN
-                )
+        #     self.upper_endpoint = None
+        #     self.upper_open = True
+        #     if range.hasUpperBound():
+        #         self.upper_endpoint = sql_to_python_value(
+        #             literal_type, range.upperEndpoint()
+        #         )
+        #         self.upper_open = (
+        #             range.upperBoundType() == com.google.common.collect.BoundType.OPEN
+        #         )
 
         def filter_on(self, series: dd.Series):
             lower_condition = True
@@ -63,11 +62,11 @@ class SargPythonImplementation:
         def __repr__(self) -> str:
             return f"Range {self.lower_endpoint} - {self.upper_endpoint}"
 
-    def __init__(self, java_sarg: org.apache.calcite.util.Sarg, literal_type: str):
-        self.ranges = [
-            SargPythonImplementation.Range(r, literal_type)
-            for r in java_sarg.rangeSet.asRanges()
-        ]
+    # def __init__(self, java_sarg: org.apache.calcite.util.Sarg, literal_type: str):
+    #     self.ranges = [
+    #         SargPythonImplementation.Range(r, literal_type)
+    #         for r in java_sarg.rangeSet.asRanges()
+    #     ]
 
     def __repr__(self) -> str:
         return ",".join(map(str, self.ranges))

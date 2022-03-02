@@ -89,17 +89,7 @@ Install the package from the `conda-forge` channel:
 
 ### With `pip`
 
-`dask-sql` needs Java for the parsing of the SQL queries.
-Make sure you have a running java installation with version >= 8.
-
-To test if you have Java properly installed and set up, run
-
-    $ java -version
-    openjdk version "1.8.0_152-release"
-    OpenJDK Runtime Environment (build 1.8.0_152-release-1056-b12)
-    OpenJDK 64-Bit Server VM (build 25.152-b12, mixed mode)
-
-After installing Java, you can install the package with
+You can install the package with
 
     pip install dask-sql
 

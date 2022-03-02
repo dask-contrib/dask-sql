@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import com, java, org
 from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
