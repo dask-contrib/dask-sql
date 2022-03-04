@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -249,3 +250,26 @@ def test_join_case_projection_subquery():
     ) sum_am_pm
     """
     ).compute()
+
+
+def test_conditional_join_with_limit(c):
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
+    ddf = dd.from_pandas(df, 5)
+
+    c.create_table("many_partitions", ddf)
+
+    df = df.assign(common=1)
+    expected_df = df.merge(df, on="common").drop(columns="common")
+    expected_df = expected_df[expected_df["a_x"] >= 2][:4]
+
+    actual_df = c.sql(
+        """
+    SELECT * FROM
+        many_partitions as df1, many_partitions as df2
+    WHERE
+        df1."a" >= 2
+    LIMIT 4
+    """
+    )
+
+    dd.assert_eq(actual_df, expected_df, check_names=False)
