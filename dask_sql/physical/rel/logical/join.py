@@ -119,9 +119,10 @@ class DaskJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
-                return merged_data.drop(columns=["common"])
+                return lhs_partition.merge(rhs_partition, on="common").drop(
+                    columns="common"
+                )
 
             # Iterate nested over all partitions from lhs and rhs and merge them
             name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
