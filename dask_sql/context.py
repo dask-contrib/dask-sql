@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
+from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
@@ -421,6 +422,7 @@ class Context:
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
+        config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -448,36 +450,39 @@ class Context:
                 to register before executing this query
             gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
                 requires cuDF / dask-cuDF if enabled. Defaults to False.
+            config_options (:obj:`Dict[str,Any]`): Specific configuration options to pass during
+                query execution
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
-        if dataframes is not None:
-            for df_name, df in dataframes.items():
-                self.create_table(df_name, df, gpu=gpu)
+        with dask_config.set(config_options):
+            if dataframes is not None:
+                for df_name, df in dataframes.items():
+                    self.create_table(df_name, df, gpu=gpu)
 
-        rel, select_names, _ = self._get_ral(sql)
+            rel, select_names, _ = self._get_ral(sql)
 
-        dc = RelConverter.convert(rel, context=self)
+            dc = RelConverter.convert(rel, context=self)
 
-        if dc is None:
-            return
+            if dc is None:
+                return
 
-        if select_names:
-            # Rename any columns named EXPR$* to a more human readable name
-            cc = dc.column_container
-            cc = cc.rename(
-                {
-                    df_col: select_name
-                    for df_col, select_name in zip(cc.columns, select_names)
-                }
-            )
-            dc = DataContainer(dc.df, cc)
+            if select_names:
+                # Rename any columns named EXPR$* to a more human readable name
+                cc = dc.column_container
+                cc = cc.rename(
+                    {
+                        df_col: select_name
+                        for df_col, select_name in zip(cc.columns, select_names)
+                    }
+                )
+                dc = DataContainer(dc.df, cc)
 
-        df = dc.assign()
-        if not return_futures:
-            df = df.compute()
+            df = dc.assign()
+            if not return_futures:
+                df = df.compute()
 
         return df
 
@@ -588,71 +593,6 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
-    def set_config(
-        self,
-        config_options: Union[Tuple[str, Any], Dict[str, Any]],
-        schema_name: str = None,
-    ):
-        """
-        Add configuration options to a schema.
-        A configuration option could be used to set the behavior of certain configurirable operations.
-
-        Eg: `dask.groupby.agg.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
-
-        Args:
-            config_options (:obj:`Tuple[str,val]` or :obj:`Dict[str,val]`): config_option and value to set
-            schema_name (:obj:`str`): Optionally select schema for setting configs
-
-        Example:
-            .. code-block:: python
-
-                from dask_sql import Context
-
-                c = Context()
-                c.set_config(("dask.groupby.aggregate.split_out", 1))
-                c.set_config(
-                    {
-                        "dask.groupby.aggregate.split_out": 2,
-                        "dask.groupby.aggregate.split_every": 4,
-                    }
-                )
-
-        """
-        schema_name = schema_name or self.schema_name
-        self.schema[schema_name].config.set_config(config_options)
-
-    def drop_config(
-        self, config_strs: Union[str, List[str]], schema_name: str = None,
-    ):
-        """
-        Drop user set configuration options from schema
-
-        Args:
-            config_strs (:obj:`str` or :obj:`List[str]`): config key or keys to drop
-            schema_name (:obj:`str`): Optionally select schema for dropping configs
-
-        Example:
-            .. code-block:: python
-
-                from dask_sql import Context
-
-                c = Context()
-                c.set_config(
-                    {
-                        "dask.groupby.aggregate.split_out": 2,
-                        "dask.groupby.aggregate.split_every": 4,
-                    }
-                )
-                c.drop_config(
-                    [
-                        "dask.groupby.aggregate.split_out",
-                        "dask.groupby.aggregate.split_every",
-                    ]
-                )
-        """
-        schema_name = schema_name or self.schema_name
-        self.schema[schema_name].config.drop_config(config_strs)
-
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
@@ -730,7 +670,7 @@ class Context:
 
     def stop_server(self):  # pragma: no cover
         """
-        Stop a SQL server started by ``run_server`.
+        Stop a SQL server started by ``run_server``.
         """
         if self.sql_server is not None:
             loop = asyncio.get_event_loop()
@@ -848,11 +788,7 @@ class Context:
         )
 
         # True if the SQL query should be case sensitive and False otherwise
-        case_sensitive = (
-            self.schema[self.schema_name]
-            .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
-            .get("dask.sql.identifier.case.sensitive", True)
-        )
+        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
         generator_builder = RelationalAlgebraGeneratorBuilder(
             self.schema_name, case_sensitive, java.util.ArrayList()
