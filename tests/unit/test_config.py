@@ -5,7 +5,8 @@ import pytest
 import yaml
 from dask import config as dask_config
 
-import dask_sql  # Required to instantiate default sql config
+# Required to instantiate default sql config
+import dask_sql  # noqa: F401
 
 
 def test_custom_yaml(tmpdir):
@@ -87,22 +88,6 @@ def test_schema_is_complete():
                 test_matches(c[k], s["properties"][k])
 
     test_matches(config, schema)
-
-
-def test_context_setconfig():
-    c = dask_sql.Context()
-    c.set_config({"sql.foo.bar.baz": "abc", "sql.test": True})
-    assert dask_config.get("sql.foo.bar.baz") == "abc"
-    assert dask_config.get("sql.test")
-    dask_config.refresh()
-
-
-def test_context_invalid_config():
-    c = dask_sql.Context()
-    with pytest.warns(UserWarning, match="Passed non sql config"):
-        c.set_config({"dask.foo.baz": "abc", "sql.test": 1})
-    assert dask_config.get("sql.test") == 1
-    dask_config.refresh()
 
 
 def test_dask_setconfig():

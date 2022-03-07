@@ -6,7 +6,8 @@ Configuration in Dask-SQL
 ``dask-sql`` supports a list of configuration options to configure behavior of certain operations.
 ``dask-sql`` uses `Dask's config <https://docs.dask.org/en/stable/configuration.html>`_
 module and configuration options can be specified with YAML files, via environment variables,
-or directly through the :func:`~dask_sql.Context.set_config` or :func:`~dask_sql.Context.sql` api.
+or directly, either through the `dask.config.set <https://docs.dask.org/en/stable/configuration.html#dask.config.set>`_ method
+or the ``config_options`` argument in the :func:`dask_sql.Context.sql` method.
 
 Configuration Reference
 -----------------------

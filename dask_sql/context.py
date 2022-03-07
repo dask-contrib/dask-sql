@@ -591,44 +591,6 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
-    def set_config(
-        self, config_options: Dict[str, Any],
-    ):
-        """
-        Sets sql configuration options to the global dask config
-        A configuration option could be used to set the behavior of certain sql operations.
-
-        Eg: `sql.groupby.split_out` can be used to split the output of a groupby agrregation to multiple partitions.
-
-        Args:
-            config_options (:obj:`Dict[str,val]`): key, value paris of config_option and value to set.
-
-        Example:
-            .. code-block:: python
-
-                from dask_sql import Context
-
-                c = Context()
-                c.set_config({"sql.groupby.split_out", 1})
-                c.set_config(
-                    {
-                        "sql.groupby.split_every": 2,
-                        "sql.identifier.case_sensitive": True,
-                    }
-                )
-        """
-        for config_str in list(config_options.keys()):
-            if not config_str.startswith("sql"):
-                warnings.warn(
-                    f"""
-                Passed non sql config {config_str} which will be ignored.
-                To set non dask-sql configs consider using `dask.config.set_config`
-                """
-                )
-                del config_options[config_str]
-
-        dask_config.set(config_options)
-
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
