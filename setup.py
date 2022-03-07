@@ -1,46 +1,63 @@
-import distutils
 import os
 import shutil
 import subprocess
 import sys
 
 from setuptools import find_packages, setup
+from setuptools.command.build_ext import build_ext as build_ext_orig
+from setuptools.command.install_lib import install_lib as install_lib_orig
 
 import versioneer
 
 
-class MavenCommand(distutils.cmd.Command):
-    """Run the maven build command"""
+def install_java_libraries(dir):
+    """Helper function to run dask-sql's java installation process in a given directory"""
 
-    description = "run the mvn install command"
-    user_options = []
+    # build the jar
+    maven_command = shutil.which("mvn")
+    if not maven_command:
+        raise OSError(
+            "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
+        )
+    command = [maven_command, "clean", "install", "-f", "pom.xml"]
+    subprocess.check_call(command, cwd=os.path.join(dir, "planner"))
 
-    def initialize_options(self):
-        """No options"""
-        pass
+    # copy generated jar to python package
+    os.makedirs(os.path.join(dir, "dask_sql/jar"), exist_ok=True)
+    shutil.copy(
+        os.path.join(dir, "planner/target/DaskSQL.jar"),
+        os.path.join(dir, "dask_sql/jar/"),
+    )
 
-    def finalize_options(self):
-        """No options"""
-        pass
+
+class build_ext(build_ext_orig):
+    """Build and install the java libraries for an editable install"""
 
     def run(self):
-        """Run the mvn installation command"""
-        # We need to explicitely specify the full path to mvn
-        # for Windows
-        maven_command = shutil.which("mvn")
-        if not maven_command:
-            raise OSError(
-                "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
-            )
-        command = [maven_command, "clean", "install", "-f", "pom.xml"]
-        self.announce(f"Running command: {' '.join(command)}", level=distutils.log.INFO)
+        super().run()
 
-        subprocess.check_call(command, cwd="planner")
+        # build java inplace
+        install_java_libraries("")
 
-        # Copy the artifact. We could also make maven do that,
-        # but in this way we have full control from python
-        os.makedirs("dask_sql/jar", exist_ok=True)
-        shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
+
+class install_lib(install_lib_orig):
+    """Build and install the java libraries for a standard install"""
+
+    def build(self):
+        super().build()
+
+        # copy java source to build directory
+        self.copy_tree("planner", os.path.join(self.build_dir, "planner"))
+
+        # build java in build directory
+        install_java_libraries(self.build_dir)
+
+        # remove java source as it doesn't need to be packaged
+        shutil.rmtree(os.path.join(self.build_dir, "planner"))
+
+        # copy jar to source directory for RTD builds to API docs build correctly
+        if os.environ.get("READTHEDOCS", "False") == "True":
+            self.copy_tree(os.path.join(self.build_dir, "dask_sql/jar"), "dask_sql/jar")
 
 
 long_description = ""
@@ -52,7 +69,8 @@ needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["java"] = MavenCommand
+cmdclass["build_ext"] = build_ext
+cmdclass["install_lib"] = install_lib
 
 setup(
     name="dask_sql",
