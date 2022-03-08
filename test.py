@@ -1,8 +1,8 @@
+import pandas as pd
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
-from dask_sql import Context
-import pandas as pd
 
+from dask_sql import Context
 
 if __name__ == "__main__":
     cluster = LocalCUDACluster(protocol="ucx")
@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     c = Context()
 
-    test_df = pd.DataFrame({'id': [0, 1, 2]})
+    test_df = pd.DataFrame({"id": [0, 1, 2]})
     c.create_table("test", test_df)
 
     # segfault
