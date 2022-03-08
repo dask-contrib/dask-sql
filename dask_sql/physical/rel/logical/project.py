@@ -5,7 +5,7 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
-from datafusion_planner import DaskLogicalPlan
+import dask_planner
 
 if TYPE_CHECKING:
     import dask_sql

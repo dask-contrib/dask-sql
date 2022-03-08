@@ -1,13 +1,14 @@
-import distutils
 import os
 import shutil
 import subprocess
 import sys
 
 from setuptools import find_packages, setup
-from setuptools_rust import Binding, RustExtension
+from setuptools.command.build_ext import build_ext as build_ext_orig
+from setuptools.command.install_lib import install_lib as install_lib_orig
 
 import versioneer
+
 
 long_description = ""
 if os.path.exists("README.md"):
@@ -22,13 +23,6 @@ cmdclass = versioneer.get_cmdclass()
 setup(
     name="dask_sql",
     version=versioneer.get_version(),
-    rust_extensions=[
-        RustExtension(
-            "datafusion_planner",
-            binding=Binding.PyO3,
-            path="./datafusion_planner/Cargo.toml",
-        )
-    ],
     description="SQL query layer for Dask",
     url="https://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
@@ -36,7 +30,7 @@ setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # packages=find_packages(include=["dask_sql", "dask_sql.*", "datafusion_planner", "datafusion_planner.*"]),
+    packages=find_packages(include=["dask_sql", "dask_sql.*"]),
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[

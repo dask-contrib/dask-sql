@@ -2,6 +2,7 @@ import pandas as pd
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
+import dask_planner
 from dask_sql import Context
 
 if __name__ == "__main__":
@@ -14,4 +15,4 @@ if __name__ == "__main__":
     c.create_table("test", test_df)
 
     # segfault
-    c.sql("select count(*) from test")
+    c.sql("select id from test")

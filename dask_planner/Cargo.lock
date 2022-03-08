@@ -276,6 +276,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dask_planner"
+version = "0.1.0"
+dependencies = [
+ "datafusion",
+ "datafusion-common",
+ "datafusion-expr",
+ "mimalloc",
+ "pyo3",
+ "rand 0.7.3",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "datafusion"
 version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -335,20 +349,6 @@ dependencies = [
  "arrow",
  "datafusion-common",
  "sqlparser",
-]
-
-[[package]]
-name = "datafusion_planner"
-version = "0.1.0"
-dependencies = [
- "datafusion",
- "datafusion-common",
- "datafusion-expr",
- "mimalloc",
- "pyo3",
- "rand 0.7.3",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -734,9 +734,9 @@ dependencies = [
 
 [[package]]
 name = "lz4"
-version = "1.23.2"
+version = "1.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac20ed6991e01bf6a2e68cc73df2b389707403662a8ba89f68511fb340f724c"
+checksum = "4edcb94251b1c375c459e5abe9fb0168c1c826c3370172684844f8f3f8d1a885"
 dependencies = [
  "libc",
  "lz4-sys",
@@ -744,9 +744,9 @@ dependencies = [
 
 [[package]]
 name = "lz4-sys"
-version = "1.9.2"
+version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dca79aa95d8b3226213ad454d328369853be3a1382d89532a854f4d69640acae"
+checksum = "d7be8908e2ed6f31c02db8a9fa962f03e36c53fbfde437363eae3306b85d7e17"
 dependencies = [
  "cc",
  "libc",
@@ -894,9 +894,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "ordered-float"
@@ -1183,18 +1183,18 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8383f39639269cde97d255a32bdb68c047337295414940c68bdd30c2e13203ff"
+checksum = "8380fe0152551244f0747b1bf41737e0f8a74f97a14ccefd1148187271634f3c"
 dependencies = [
  "bitflags",
 ]
 
 [[package]]
 name = "regex"
-version = "1.5.4"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d07a8629359eb56f1e2fb1652bb04212c072a87ba68546a04065d525673ac461"
+checksum = "1a11647b6b25ff05a515cb92c365cec08801e83423a235b51e231e1808747286"
 dependencies = [
  "aho-corasick",
  "memchr",

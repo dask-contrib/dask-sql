@@ -9,8 +9,7 @@ import pandas as pd
 from dask.base import optimize
 from dask.distributed import Client
 
-# from datafusion_planner import DaskLogicalPlan, get_sql_node
-import datafusion_planner
+import dask_planner
 
 try:
     import dask_cuda  # noqa: F401

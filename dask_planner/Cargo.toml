@@ -1,5 +1,5 @@
 [package]
-name = "datafusion_planner"
+name = "dask_planner"
 repository = "https://github.com/dask-contrib/dask-sql"
 version = "0.1.0"
 description = "Bindings for Datafusion used by Dask-SQL"
@@ -23,30 +23,8 @@ name = "_internal"
 crate-type = ["cdylib"]
 
 [package.metadata.maturin]
-name = "datafusion._internal"
+name = "dask_planner._internal"
 
 [profile.release]
 lto = true
 codegen-units = 1
-
-
-
-
-
-
-
-#[lib]
-#name = "datafusion_planner"
-#crate-type = ["cdylib"]
-
-#[dependencies]
-#tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync"] }
-#rand = "0.7"
-#pyo3 = { version = "0.15", features = ["extension-module", "abi3", "abi3-py36"] }
-#pyo3 = { git = "https://github.com/PyO3/pyo3.git", branch="main" }
-# datafusion = { git = "https://github.com/apache/arrow-datafusion", branch = "master" }
-#datafusion = { version = "^7.0.0", features = ["pyarrow"] }
-#datafusion-expr = { version = "^7.0.0" }
-#datafusion-common = { version = "^7.0.0", features = ["pyarrow"] }
-#uuid = { version = "0.8", features = ["v4"] }
-#mimalloc = { version = "*", default-features = false }

@@ -22,7 +22,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-datafusion_planner/*.so
 *.so
 
 # Unit test / coverage reports
