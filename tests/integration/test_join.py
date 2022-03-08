@@ -259,8 +259,8 @@ def test_conditional_join_with_limit(c):
     c.create_table("many_partitions", ddf)
 
     df = df.assign(common=1)
-    expected_df = df.merge(df, on="common").drop(columns="common")
-    expected_df = expected_df[expected_df["a_x"] >= 2][:4]
+    expected_df = df.merge(df, on="common", suffixes=("", "0")).drop(columns="common")
+    expected_df = expected_df[expected_df["a"] >= 2][:4]
 
     actual_df = c.sql(
         """
@@ -272,4 +272,4 @@ def test_conditional_join_with_limit(c):
     """
     )
 
-    dd.assert_eq(actual_df, expected_df, check_names=False)
+    dd.assert_eq(actual_df, expected_df, check_index=False)
