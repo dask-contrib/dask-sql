@@ -59,9 +59,13 @@ class DaskLimitPlugin(BaseRelPlugin):
         function, which is not possible with normal "map_partitions".
         """
         if not offset:
-            # We do a (hopefully) very quick check: if the first partition
-            # is already enough, we will just use this
-            first_partition_length = len(df.partitions[0])
+            # get length of first nonempty partition
+            for partition in df.partitions:
+                first_partition_length = len(partition)
+                if first_partition_length:
+                    break
+
+            # if this partition contains the requested data, return
             if first_partition_length >= end:
                 return df.head(end, compute=False)
 
