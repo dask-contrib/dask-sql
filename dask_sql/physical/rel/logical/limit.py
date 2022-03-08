@@ -59,15 +59,16 @@ class DaskLimitPlugin(BaseRelPlugin):
         function, which is not possible with normal "map_partitions".
         """
         if not offset:
-            # get length of first nonempty partition
+            # compute the number of partitions that need to be persisted in head
+            npartitions = 0
+            nrows = 0
             for partition in df.partitions:
-                first_partition_length = len(partition)
-                if first_partition_length:
+                npartitions += 1
+                nrows += len(partition)
+                if nrows >= end:
                     break
 
-            # if this partition contains the requested data, return
-            if first_partition_length >= end:
-                return df.head(end, compute=False)
+            return df.head(end, npartitions=npartitions, compute=False)
 
         # First, we need to find out which partitions we want to use.
         # Therefore we count the total number of entries
