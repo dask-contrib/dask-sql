@@ -70,6 +70,7 @@ Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a
    pages/server
    pages/cmd
    pages/how_does_it_work
+   pages/configuration
 
 
 .. note::

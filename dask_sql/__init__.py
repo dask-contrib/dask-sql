@@ -1,3 +1,4 @@
+from . import config
 from ._version import get_versions
 from .cmd import cmd_loop
 from .context import Context
