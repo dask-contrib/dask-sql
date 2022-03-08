@@ -31,6 +31,10 @@ fn _internal(py: Python, m: &PyModule) -> PyResult<()> {
     // m.add_class::<udf::PyScalarUDF>()?;
     // m.add_class::<udaf::PyAggregateUDF>()?;
 
+    // m.add_class::<DaskLogicalPlan>()?;
+    // m.add_class::<DaskTable>()?;
+    // m.add_class::<DaskRelRowType>()?;
+
     // // Register the functions as a submodule
     let funcs = PyModule::new(py, "functions")?;
     functions::init_module(funcs)?;
