@@ -6,10 +6,98 @@ use pyo3::prelude::*;
 use datafusion::sql::parser::{DFParser, Statement};
 use sqlparser::ast::{Query, Select};
 
+use datafusion::arrow::datatypes::{DataType, Field, Schema};
+
+use datafusion::catalog::TableReference;
+use datafusion::datasource::TableProvider;
+use datafusion::logical_plan::plan::LogicalPlan;
+use datafusion::sql::planner::{SqlToRel};
+
+use std::sync::Arc;
+
+struct DaskSQLContextProvider {}
+
+impl datafusion::sql::planner::ContextProvider for DaskSQLContextProvider {
+    fn get_table_provider(
+        &self,
+        name: TableReference,
+    ) -> Option<Arc<dyn TableProvider>> {
+        let schema = match name.table() {
+            "test" => Some(Schema::new(vec![
+                Field::new("id", DataType::Utf8, false),
+            ])),
+            _ => None,
+        };
+        schema.map(|s| -> Arc<dyn TableProvider> {
+            Arc::new(datafusion::datasource::empty::EmptyTable::new(Arc::new(s)))
+        })
+    }
+
+    fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
+        let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
+            Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
+        match name {
+            _ => None,
+        }
+    }
+
+    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<datafusion::physical_plan::udaf::AggregateUDF>> {
+        unimplemented!()
+    }
+}
+
+#[pyfunction]
+pub fn getSqlNode(sql: &str) -> Vec<PyStatement> {
+    let resp = DFParser::parse_sql(sql).unwrap().clone();
+    let mut statements = Vec::new();
+    for statement in resp {
+        statements.push(statement.into());
+    }
+    statements
+}
+
+#[pyfunction]
+pub fn getRelationalAlgebra(statement: PyStatement) -> PyLogicalPlan {
+    let context_provider = &DaskSQLContextProvider {};
+    let planner = SqlToRel::new(context_provider);
+
+    match planner.statement_to_plan(&statement.statement) {
+        Ok(k) => PyLogicalPlan { logical_plan: k },
+        Err(e) => panic!("{}", e.to_string()),
+    }
+}
+
+#[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub struct PyLogicalPlan {
+    pub logical_plan: LogicalPlan,
+}
+
+impl From<PyLogicalPlan> for LogicalPlan {
+    fn from(logical_plan: PyLogicalPlan) -> LogicalPlan  {
+        logical_plan.logical_plan
+    }
+}
+
+impl From<LogicalPlan> for PyLogicalPlan {
+    fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
+        PyLogicalPlan { logical_plan }
+    }
+}
+
+
+// #[pymethods]
+// impl PyLogicalPlan {
+//     pub fn getFieldNames() -> Vec<String> {
+
+//     }
+// }
+
+
 #[pyclass(name = "Statement", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct PyStatement {
-    pub(crate) statement: Statement,
+pub struct PyStatement {
+    pub statement: Statement,
 }
 
 impl From<PyStatement> for Statement {
@@ -24,11 +112,13 @@ impl From<Statement> for PyStatement {
     }
 }
 
+
 impl PyStatement {
     pub fn new(statement: Statement) -> Self {
         Self { statement }
     }
 }
+
 
 #[pymethods]
 impl PyStatement {
@@ -37,18 +127,11 @@ impl PyStatement {
     pub fn table_name() -> String {
         String::from("Got here!!!")
     }
-
-    #[staticmethod]
-    pub fn sql(sql: &str) -> PyStatement {
-        let resp = DFParser::parse_sql(sql).unwrap()[0].clone().into();
-        println!("Parsed Statement from Rust: {:?}", resp);
-        resp
-    }
 }
 
 #[pyclass(name = "Query", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct PyQuery {
+pub struct PyQuery {
     pub(crate) query: Query,
 }
 
@@ -82,10 +165,16 @@ fn query(statement: PyStatement) -> PyResult<PyQuery> {
     })
 }
 
+#[pyclass(name = "DaskSQLNode", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub struct DaskSQLNode {
+    pub(crate) statements: Vec<Statement>,
+}
+
 
 #[pyclass(name = "Select", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct PySelect {
+pub struct PySelect {
     pub(crate) select: Select,
 }
 
@@ -144,7 +233,7 @@ fn select(query: PyQuery) -> PyResult<PySelect> {
 
 #[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct DaskSchema {
+pub struct DaskSchema {
     name: String,
     databaseTables: HashMap<String, DaskTable>,
     functions: HashMap<String, DaskFunction>,
@@ -172,13 +261,13 @@ impl DaskSchema {
 
 #[pyclass(name = "DaskSqlTypeName", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct DaskSqlTypeName {
+pub struct DaskSqlTypeName {
     name: String,
 }
 
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct DaskTable {
+pub struct DaskTable {
     name: String,
     statistics: DaskStatistics,
     tableColumns: Vec<(String, DaskSqlTypeName)>,
@@ -208,13 +297,13 @@ impl DaskTable {
 
 #[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct DaskFunction {
+pub struct DaskFunction {
     name: String,
 }
 
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct DaskStatistics {
+pub struct DaskStatistics {
     row_count: f64,
 }
 
@@ -228,8 +317,10 @@ impl DaskStatistics {
     }
 }
 
-pub(crate) fn init_module(m: &PyModule) -> PyResult<()> {
+pub fn init_module(m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(query))?;
     m.add_wrapped(wrap_pyfunction!(select))?;
+    m.add_wrapped(wrap_pyfunction!(getSqlNode))?;
+    m.add_wrapped(wrap_pyfunction!(getRelationalAlgebra))?;
     Ok(())
 }

@@ -860,44 +860,44 @@ class Context:
         schemas = self._prepare_schemas()
         print(f"Schemas: {schemas}")
 
-        RelationalAlgebraGeneratorBuilder = (
-            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
-        )
-
         # True if the SQL query should be case sensitive and False otherwise
         case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
-        generator_builder = RelationalAlgebraGeneratorBuilder(
-            self.schema_name, case_sensitive, java.util.ArrayList()
-        )
-        for schema in schemas:
-            generator_builder = generator_builder.addSchema(schema)
-        generator = generator_builder.build()
-        default_dialect = generator.getDialect()
+        # for schema in schemas:
+        #     generator_builder = generator_builder.addSchema(schema)
+        # generator = generator_builder.build()
+        # default_dialect = generator.getDialect()
 
-        logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+        # logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
 
-        ValidationException = org.apache.calcite.tools.ValidationException
-        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
-        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
+        # ValidationException = org.apache.calcite.tools.ValidationException
+        # SqlParseException = org.apache.calcite.sql.parser.SqlParseException
+        # CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
         try:
-            sqlNode = generator.getSqlNode(sql)
-            sqlNodeClass = get_java_class(sqlNode)
+            sqlNode = sql_functions.getSqlNode(sql)
+            print(f'_get_ral -> sqlNode: {sqlNode}')
 
             select_names = None
             rel = sqlNode
             rel_string = ""
 
-            if not sqlNodeClass.startswith("com.dask.sql.parser."):
-                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
-                # Optimization might remove some alias projects. Make sure to keep them here.
-                select_names = [
-                    str(name)
-                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
-                ]
-                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-                rel_string = str(generator.getRelationalAlgebraString(rel))
+            # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
+            nonOptimizedRelNode = sql_functions.getRelationalAlgebra(sqlNode[0])
+            print(f'_get_ral -> nonOptimizedRelNode: {nonOptimizedRelNode}')
+            # # Optimization might remove some alias projects. Make sure to keep them here.
+            # select_names = [
+            #     str(name)
+            #     for name in nonOptimizedRelNode.getRowType().getFieldNames()
+            # ]
+
+            select_names = ["id"]
+            # select_names = nonOptimizedRelNode.getFieldNames()
+
+            #TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
+            # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+            # rel_string = str(generator.getRelationalAlgebraString(rel))
+
         except (ValidationException, SqlParseException, CalciteContextException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
@@ -906,28 +906,28 @@ class Context:
             # Instead, we raise a nice exception
             raise ParsingException(sql, str(e.message())) from None
 
-        # Internal, temporary results of calcite are sometimes
-        # named EXPR$N (with N a number), which is not very helpful
-        # to the user. We replace these cases therefore with
-        # the actual query string. This logic probably fails in some
-        # edge cases (if the outer SQLNode is not a select node),
-        # but so far I did not find such a case.
-        # So please raise an issue if you have found one!
-        if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
-            sqlNode = sqlNode.query
-            sqlNodeClass = get_java_class(sqlNode)
+        # # Internal, temporary results of calcite are sometimes
+        # # named EXPR$N (with N a number), which is not very helpful
+        # # to the user. We replace these cases therefore with
+        # # the actual query string. This logic probably fails in some
+        # # edge cases (if the outer SQLNode is not a select node),
+        # # but so far I did not find such a case.
+        # # So please raise an issue if you have found one!
+        # if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
+        #     sqlNode = sqlNode.query
+        #     sqlNodeClass = get_java_class(sqlNode)
 
-        if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-            select_names = [
-                self._to_sql_string(s, default_dialect=default_dialect)
-                if current_name.startswith("EXPR$")
-                else current_name
-                for s, current_name in zip(sqlNode.getSelectList(), select_names)
-            ]
-        else:
-            logger.debug(
-                "Not extracting output column names as the SQL is not a SELECT call"
-            )
+        # if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
+        #     select_names = [
+        #         self._to_sql_string(s, default_dialect=default_dialect)
+        #         if current_name.startswith("EXPR$")
+        #         else current_name
+        #         for s, current_name in zip(sqlNode.getSelectList(), select_names)
+        #     ]
+        # else:
+        #     logger.debug(
+        #         "Not extracting output column names as the SQL is not a SELECT call"
+        #     )
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string

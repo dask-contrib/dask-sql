@@ -42,7 +42,7 @@ import pandas as pd
 from dask_sql import Context
 
 c = Context()
-test_df = pd.DataFrame({"id": [0, 1, 2]})
+test_df = pd.DataFrame({"id": ["0", "1", "2"]})
 c.create_table("test", test_df)
 result = c.sql("select id from test")
 print(result)

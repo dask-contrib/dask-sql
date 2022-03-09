@@ -21,40 +21,6 @@ use std::sync::Arc;
 
 use pyo3::exceptions;
 
-
-struct DaskSQLContextProvider {}
-
-impl datafusion::sql::planner::ContextProvider for DaskSQLContextProvider {
-    fn get_table_provider(
-        &self,
-        name: TableReference,
-    ) -> Option<Arc<dyn TableProvider>> {
-        let schema = match name.table() {
-            "person" => Some(Schema::new(vec![
-                Field::new("first_name", DataType::Utf8, false),
-                Field::new("last_name", DataType::Utf8, false),
-            ])),
-            _ => None,
-        };
-        schema.map(|s| -> Arc<dyn TableProvider> {
-            Arc::new(datafusion::datasource::empty::EmptyTable::new(Arc::new(s)))
-        })
-    }
-
-    fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
-        let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
-            Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
-        match name {
-            _ => None,
-        }
-    }
-
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<datafusion::physical_plan::udaf::AggregateUDF>> {
-        unimplemented!()
-    }
-}
-
-
 #[pyclass]
 #[derive(Debug, Clone)]
 struct DaskRelRowType {
@@ -158,37 +124,6 @@ impl DaskLogicalPlan {
             }
         }
         Ok(projected_cols)
-    }
-}
-
-
-#[pyfunction]
-fn get_sql_node(sql: String) -> PyResult<DaskLogicalPlan> {
-
-    let context_provider = &DaskSQLContextProvider {};
-    let planner = SqlToRel::new(context_provider);
-
-    let logical_plan = DFParser::parse_sql(&sql);
-
-    match logical_plan {
-        Ok(results) => {
-            match planner.statement_to_plan(&results[0]) {
-                Ok(k) => Ok(DaskLogicalPlan{
-                    original_sql: sql,
-                    table: DaskTable{
-                        schema_name: String::from("root"),
-                        table_name: String::from("person"),
-                        row_type: DaskRelRowType{
-                            field_names: vec![String::from("first_name"), String::from("last_name")]
-                        },
-                    },
-                    logical_plan: k,
-                    parsed_statements: results
-                }),
-                Err(e) => Err(PyErr::new::<exceptions::PyTypeError, _>(e.to_string())),
-            }
-        },
-        Err(e) => {Err(PyErr::new::<exceptions::PyTypeError, _>(e.to_string()))},
     }
 }
 
