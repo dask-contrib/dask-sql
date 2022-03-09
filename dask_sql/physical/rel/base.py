@@ -118,8 +118,13 @@ class BaseRelPlugin:
             for field in row_type.getFieldList()
         }
 
+        print(f'base.fix_dtype_to_row_type() -> field_types: {field_types}')
+
         for index, field_type in field_types.items():
-            expected_type = sql_to_python_type(field_type)
+            print(f'base.fix_dtype_to_row_type() -> index: {index} - field_type: {field_type}')
+            # TODO: Don't do this you lazy man ...
+            # expected_type = sql_to_python_type(field_type)
+            expected_type = sql_to_python_type("STRING")
             field_name = cc.get_backend_by_frontend_index(index)
 
             df = cast_column_type(df, field_name, expected_type)

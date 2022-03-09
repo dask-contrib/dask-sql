@@ -59,7 +59,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        print(f"table_scan.convert() -> dc: {dc} - df: {df} - cc: {cc}")
+        # print(f"table_scan.convert() -> dc: {dc} - df: {df} - cc: {cc}")
 
         # Make sure we only return the requested columns
         row_type = table.getRowType()

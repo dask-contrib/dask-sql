@@ -336,7 +336,7 @@ impl DaskRelDataTypeField {
 
     pub fn getType(&self) -> DaskRelDataType {
         DaskRelDataType {
-            field_names: vec![]
+            field_names: vec![String::from("STRING")]
         }
     }
 }
