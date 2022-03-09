@@ -166,11 +166,18 @@ impl DaskSchema {
     }
 }
 
+#[pyclass(name = "DaskSqlTypeName", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct DaskSqlTypeName {
+    name: String,
+}
+
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub(crate) struct DaskTable {
     name: String,
     statistics: DaskStatistics,
+    tableColumns: Vec<(String, DaskSqlTypeName)>,
 }
 
 #[pymethods]
@@ -180,11 +187,18 @@ impl DaskTable {
         Self {
             name: table_name,
             statistics: DaskStatistics::new(row_count),
+            tableColumns: Vec::new(),
         }
     }
 
     pub fn to_string(&self) -> String {
         format!("Table Name: ({})", &self.name)
+    }
+
+    //TODO: Need to include the SqlTypeName later, for now in a hurry to get POC done
+    // pub fn addColumn(&self, column_name: String, column_type: DaskSqlTypeName) {
+    pub fn addColumn(&mut self, column_name: String) {
+        self.tableColumns.push((column_name, DaskSqlTypeName {name: String::from("string")}));
     }
 }
 

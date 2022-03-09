@@ -812,7 +812,10 @@ class Context:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
 
-                    table.addColumn(column, sql_data_type)
+                    print(f"_prepare_schemas inner, inner for loop -> sql_data_type: {sql_data_type}")
+                    # TODO: Due to time constraints only going to support string types for now
+                    #table.addColumn(column, sql_data_type)
+                    table.addColumn(column)
 
                 rust_schema.addTable(table)
 
