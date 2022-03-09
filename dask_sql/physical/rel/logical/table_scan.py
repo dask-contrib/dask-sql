@@ -1,7 +1,15 @@
 from typing import TYPE_CHECKING
 
-# from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
-import dask_planner
+from dask_planner.rust import (
+    DaskFunction,
+    DaskSchema,
+    DaskTable,
+    Query,
+    Statement,
+    sql_functions,
+    LogicalPlan,
+)
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -24,14 +32,18 @@ class DaskTableScanPlugin(BaseRelPlugin):
     class_name = "com.dask.sql.nodes.DaskTableScan"
 
     def convert(
-        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+        self, rel: LogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
         # self.assert_inputs(rel, 0)
         print(f"Entering table_scan plugin to load data into dataframes")
 
+        print(f"table_scan.convert() -> rel: {rel}")
+
         # The table(s) we need to return
         table = rel.getTable()
+
+        print(f"table_scan.convert() -> table: {table}")
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
@@ -41,13 +53,18 @@ class DaskTableScanPlugin(BaseRelPlugin):
         table_name = table_names[1]
         table_name = table_name.lower()
 
+        print(f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}")
+
         dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
 
+        print(f"table_scan.convert() -> dc: {dc} - df: {df} - cc: {cc}")
+
         # Make sure we only return the requested columns
         row_type = table.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
+        print(f"table_scan.convert() -> field_specifications: {field_specifications}")
         cc = cc.limit_to(field_specifications)
 
         # cc = self.fix_column_to_row_type(cc, rel.getRowType())

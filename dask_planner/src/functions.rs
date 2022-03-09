@@ -23,13 +23,13 @@ use pyo3::exceptions;
 
 #[pyclass]
 #[derive(Debug, Clone)]
-struct DaskRelRowType {
+struct DaskRelDataType {
     #[pyo3(get, set)]
     field_names: Vec<String>,
 }
 
 #[pymethods]
-impl DaskRelRowType {
+impl DaskRelDataType {
     pub fn getFieldNames(&self) -> PyResult<Vec<String>> {
         Ok(self.field_names.clone())
     }
@@ -46,7 +46,7 @@ struct DaskTable {
     table_name: String,
 
     #[pyo3(get, set)]
-    row_type: DaskRelRowType,
+    row_type: DaskRelDataType,
 }
 
 #[pymethods]
@@ -62,7 +62,7 @@ impl DaskTable {
         Ok(qualified_name)
     }
 
-    pub fn getRowType(&self) -> PyResult<DaskRelRowType> {
+    pub fn getRowType(&self) -> PyResult<DaskRelDataType> {
         Ok(self.row_type.clone())
     }
 }

@@ -51,6 +51,7 @@ pub fn getSqlNode(sql: &str) -> Vec<PyStatement> {
     let resp = DFParser::parse_sql(sql).unwrap().clone();
     let mut statements = Vec::new();
     for statement in resp {
+        // println!("Statement: {:?}", statement);
         statements.push(statement.into());
     }
     statements
@@ -62,7 +63,20 @@ pub fn getRelationalAlgebra(statement: PyStatement) -> PyLogicalPlan {
     let planner = SqlToRel::new(context_provider);
 
     match planner.statement_to_plan(&statement.statement) {
-        Ok(k) => PyLogicalPlan { logical_plan: k },
+        Ok(k) => {
+            // println!("Logical Plan: {:?}", k);
+            PyLogicalPlan { 
+                logical_plan: k ,
+                table: DaskTable{
+                    name: String::from("test"),
+                    statistics: DaskStatistics::new(0.0),
+                    tableColumns: Vec::new(),
+                    row_type: DaskRelDataType {
+                        field_names: vec![String::from("id")]
+                    },
+                },
+            }
+        },
         Err(e) => panic!("{}", e.to_string()),
     }
 }
@@ -71,6 +85,7 @@ pub fn getRelationalAlgebra(statement: PyStatement) -> PyLogicalPlan {
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
     pub logical_plan: LogicalPlan,
+    pub table: DaskTable,
 }
 
 impl From<PyLogicalPlan> for LogicalPlan {
@@ -81,17 +96,31 @@ impl From<PyLogicalPlan> for LogicalPlan {
 
 impl From<LogicalPlan> for PyLogicalPlan {
     fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
-        PyLogicalPlan { logical_plan }
+        PyLogicalPlan { 
+            logical_plan: logical_plan,
+            table: DaskTable{
+                name: String::from("test"),
+                statistics: DaskStatistics::new(0.0),
+                tableColumns: Vec::new(),
+                row_type: DaskRelDataType {
+                    field_names: vec![String::from("id")]
+                },
+            },
+        }
     }
 }
 
 
-// #[pymethods]
-// impl PyLogicalPlan {
-//     pub fn getFieldNames() -> Vec<String> {
+#[pymethods]
+impl PyLogicalPlan {
+    // pub fn getFieldNames() -> Vec<String> {
 
-//     }
-// }
+    // }
+
+    pub fn getTable(&self) -> DaskTable {
+        self.table.clone()
+    }
+}
 
 
 #[pyclass(name = "Statement", module = "dask_planner", subclass)]
@@ -154,7 +183,7 @@ fn query(statement: PyStatement) -> PyResult<PyQuery> {
             Statement::Statement(sql_statement) => {
                 match *sql_statement {
                    sqlparser::ast::Statement::Query(query) => {
-                       println!("Query: {:?}", *query);
+                    //    println!("Query: {:?}", *query);
                        *query
                     },
                     _ => panic!("something didn't go correct here")
@@ -265,13 +294,62 @@ pub struct DaskSqlTypeName {
     name: String,
 }
 
+#[pyclass]
+#[derive(Debug, Clone)]
+pub struct DaskRelDataType {
+    #[pyo3(get, set)]
+    field_names: Vec<String>,
+}
+
+#[pymethods]
+impl DaskRelDataType {
+    pub fn getFieldNames(&self) -> Vec<String> {
+        self.field_names.clone()
+    }
+
+    pub fn getFieldList(&self) -> Vec<DaskRelDataTypeField> {
+        let mut fields = Vec::new();
+        fields.push(DaskRelDataTypeField {
+            index: 0,
+            name: String::from("id"),
+            // field_type: Option,
+            dynamic_star: false,
+        });
+        fields
+    }
+}
+
+#[pyclass]
+#[derive(Debug, Clone)]
+pub struct DaskRelDataTypeField {
+    index: i16,
+    name: String,
+    // field_type: DaskRelDataType,
+    dynamic_star: bool,
+}
+
+#[pymethods]
+impl DaskRelDataTypeField {
+    pub fn getIndex(&self) -> i16 {
+        self.index
+    }
+
+    pub fn getType(&self) -> DaskRelDataType {
+        DaskRelDataType {
+            field_names: vec![]
+        }
+    }
+}
+
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
     name: String,
     statistics: DaskStatistics,
     tableColumns: Vec<(String, DaskSqlTypeName)>,
+    row_type: DaskRelDataType,
 }
+
 
 #[pymethods]
 impl DaskTable {
@@ -281,6 +359,9 @@ impl DaskTable {
             name: table_name,
             statistics: DaskStatistics::new(row_count),
             tableColumns: Vec::new(),
+            row_type: DaskRelDataType {
+                field_names: vec![String::from("id")]
+            },
         }
     }
 
@@ -292,6 +373,17 @@ impl DaskTable {
     // pub fn addColumn(&self, column_name: String, column_type: DaskSqlTypeName) {
     pub fn addColumn(&mut self, column_name: String) {
         self.tableColumns.push((column_name, DaskSqlTypeName {name: String::from("string")}));
+    }
+
+    pub fn getQualifiedName(&self) -> Vec<String> {
+        let mut qualified_name = Vec::new();
+        qualified_name.push(String::from("root"));
+        qualified_name.push(self.name.clone());
+        qualified_name
+    }
+
+    pub fn getRowType(&self) -> DaskRelDataType {
+        self.row_type.clone()
     }
 }
 

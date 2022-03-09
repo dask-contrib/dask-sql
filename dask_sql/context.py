@@ -36,6 +36,7 @@ from dask_sql.input_utils import InputType, InputUtil
 
 # from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
+
 # from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rel import RelConverter, logical
 
@@ -785,7 +786,9 @@ class Context:
         for schema_name, schema in self.schema.items():
             print(f"_prepare_schemas for loop -> schema_name: {schema_name}")
             rust_schema = DaskSchema(schema_name)
-            print(f"_prepare_schemas for loop -> rust_schema: {rust_schema.to_string()}")
+            print(
+                f"_prepare_schemas for loop -> rust_schema: {rust_schema.to_string()}"
+            )
 
             if not schema.tables:
                 logger.warning("No tables are registered.")
@@ -812,9 +815,11 @@ class Context:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
 
-                    print(f"_prepare_schemas inner, inner for loop -> sql_data_type: {sql_data_type}")
+                    print(
+                        f"_prepare_schemas inner, inner for loop -> sql_data_type: {sql_data_type}"
+                    )
                     # TODO: Due to time constraints only going to support string types for now
-                    #table.addColumn(column, sql_data_type)
+                    # table.addColumn(column, sql_data_type)
                     table.addColumn(column)
 
                 rust_schema.addTable(table)
@@ -876,7 +881,7 @@ class Context:
 
         try:
             sqlNode = sql_functions.getSqlNode(sql)
-            print(f'_get_ral -> sqlNode: {sqlNode}')
+            print(f"_get_ral -> sqlNode: {sqlNode}")
 
             select_names = None
             rel = sqlNode
@@ -884,7 +889,8 @@ class Context:
 
             # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
             nonOptimizedRelNode = sql_functions.getRelationalAlgebra(sqlNode[0])
-            print(f'_get_ral -> nonOptimizedRelNode: {nonOptimizedRelNode}')
+            rel = nonOptimizedRelNode
+            print(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRelNode}")
             # # Optimization might remove some alias projects. Make sure to keep them here.
             # select_names = [
             #     str(name)
@@ -894,7 +900,7 @@ class Context:
             select_names = ["id"]
             # select_names = nonOptimizedRelNode.getFieldNames()
 
-            #TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
+            # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
             # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
             # rel_string = str(generator.getRelationalAlgebraString(rel))
 
