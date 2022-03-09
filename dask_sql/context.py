@@ -10,7 +10,14 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import Statement, Statement, Query, DaskSchema, DaskTable, DaskFunction, sql_functions
+from dask_planner.rust import (
+    DaskFunction,
+    DaskSchema,
+    DaskTable,
+    Query,
+    Statement,
+    sql_functions,
+)
 
 try:
     import dask_cuda  # noqa: F401
@@ -28,7 +35,7 @@ from dask_sql.datacontainer import (
 from dask_sql.input_utils import InputType, InputUtil
 
 # from dask_sql.integrations.ipython import ipython_integration
-# from dask_sql.mappings import python_to_sql_type
+from dask_sql.mappings import python_to_sql_type
 # from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rel import RelConverter, logical
 
@@ -457,9 +464,9 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            print(f'Calling _get_ral(sql)')
+            print(f"Calling _get_ral(sql)")
             rel, select_names, _ = self._get_ral(sql)
-            print(f'Rel: {rel} - select_names: {select_names} - {_}')
+            print(f"Rel: {rel} - select_names: {select_names} - {_}")
 
             dc = RelConverter.convert(rel, context=self)
 
@@ -772,17 +779,19 @@ class Context:
         Create a list of schemas filled with the dataframes
         and functions we have currently in our schema list
         """
-        print(f'Existing schemas: {self.schema.items()}')
+        print(f"Existing schemas: {self.schema.items()}")
         schema_list = []
 
         for schema_name, schema in self.schema.items():
-            print(f'_prepare_schemas for loop -> schema_name: {schema_name}')
+            print(f"_prepare_schemas for loop -> schema_name: {schema_name}")
             rust_schema = DaskSchema(schema_name)
+            print(f"_prepare_schemas for loop -> rust_schema: {rust_schema.to_string()}")
 
             if not schema.tables:
                 logger.warning("No tables are registered.")
 
             for name, dc in schema.tables.items():
+                print(f"_prepare_schemas inner for loop -> table name: {name}")
                 row_count = (
                     schema.statistics[name].row_count
                     if name in schema.statistics
@@ -790,6 +799,10 @@ class Context:
                 )
                 if row_count is not None:
                     row_count = float(row_count)
+                else:
+                    row_count = float(0)
+
+                print(f"_prepare_schemas inner for loop -> row_count: {row_count}")
                 table = DaskTable(name, row_count)
                 df = dc.df
                 logger.debug(
@@ -801,29 +814,30 @@ class Context:
 
                     table.addColumn(column, sql_data_type)
 
-                java_schema.addTable(table)
+                rust_schema.addTable(table)
 
-            if not schema.functions:
-                logger.debug("No custom functions defined.")
-            for function_description in schema.function_lists:
-                name = function_description.name
-                sql_return_type = python_to_sql_type(function_description.return_type)
-                if function_description.aggregation:
-                    logger.debug(f"Adding function '{name}' to schema as aggregation.")
-                    dask_function = DaskAggregateFunction(name, sql_return_type)
-                else:
-                    logger.debug(
-                        f"Adding function '{name}' to schema as scalar function."
-                    )
-                    dask_function = DaskScalarFunction(name, sql_return_type)
+            # TODO: Custom functions are not in scope for the POC - Jeremy Dyer
+            # if not schema.functions:
+            #     logger.debug("No custom functions defined.")
+            # for function_description in schema.function_lists:
+            #     name = function_description.name
+            #     sql_return_type = python_to_sql_type(function_description.return_type)
+            #     if function_description.aggregation:
+            #         logger.debug(f"Adding function '{name}' to schema as aggregation.")
+            #         dask_function = DaskAggregateFunction(name, sql_return_type)
+            #     else:
+            #         logger.debug(
+            #             f"Adding function '{name}' to schema as scalar function."
+            #         )
+            #         dask_function = DaskScalarFunction(name, sql_return_type)
 
-                dask_function = self._add_parameters_from_description(
-                    function_description, dask_function
-                )
+            #     dask_function = self._add_parameters_from_description(
+            #         function_description, dask_function
+            #     )
 
-                java_schema.addFunction(dask_function)
+            #     java_schema.addFunction(dask_function)
 
-            schema_list.append(java_schema)
+            schema_list.append(rust_schema)
 
         return schema_list
 
@@ -841,7 +855,7 @@ class Context:
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
-        print(f'Schemas: {schemas}')
+        print(f"Schemas: {schemas}")
 
         RelationalAlgebraGeneratorBuilder = (
             com.dask.sql.application.RelationalAlgebraGeneratorBuilder

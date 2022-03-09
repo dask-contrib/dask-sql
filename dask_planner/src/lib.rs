@@ -28,6 +28,7 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<sql::DaskSchema>()?;
     m.add_class::<sql::DaskTable>()?;
     m.add_class::<sql::DaskFunction>()?;
+    m.add_class::<sql::DaskStatistics>()?;
 
     let sql_functions = PyModule::new(py, "sql_functions")?;
     sql::init_module(sql_functions)?;

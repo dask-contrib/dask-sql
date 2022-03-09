@@ -3,10 +3,10 @@ from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
 
-from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.mappings import cast_column_type, sql_to_python_type
 # from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
 import dask_planner
+from dask_sql.datacontainer import ColumnContainer, DataContainer
+from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 if TYPE_CHECKING:
     import dask_sql

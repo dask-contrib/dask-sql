@@ -7,37 +7,39 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+import pyarrow as pa
+
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
 # SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
-# # Default mapping between python types and SQL types
-# _PYTHON_TO_SQL = {
-#     np.float64: SqlTypeName.DOUBLE,
-#     np.float32: SqlTypeName.FLOAT,
-#     np.int64: SqlTypeName.BIGINT,
-#     pd.Int64Dtype(): SqlTypeName.BIGINT,
-#     np.int32: SqlTypeName.INTEGER,
-#     pd.Int32Dtype(): SqlTypeName.INTEGER,
-#     np.int16: SqlTypeName.SMALLINT,
-#     pd.Int16Dtype(): SqlTypeName.SMALLINT,
-#     np.int8: SqlTypeName.TINYINT,
-#     pd.Int8Dtype(): SqlTypeName.TINYINT,
-#     np.uint64: SqlTypeName.BIGINT,
-#     pd.UInt64Dtype(): SqlTypeName.BIGINT,
-#     np.uint32: SqlTypeName.INTEGER,
-#     pd.UInt32Dtype(): SqlTypeName.INTEGER,
-#     np.uint16: SqlTypeName.SMALLINT,
-#     pd.UInt16Dtype(): SqlTypeName.SMALLINT,
-#     np.uint8: SqlTypeName.TINYINT,
-#     pd.UInt8Dtype(): SqlTypeName.TINYINT,
-#     np.bool8: SqlTypeName.BOOLEAN,
-#     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
-#     np.object_: SqlTypeName.VARCHAR,
-#     pd.StringDtype(): SqlTypeName.VARCHAR,
-#     np.datetime64: SqlTypeName.TIMESTAMP,
-# }
+# Default mapping between python types and SQL types
+_PYTHON_TO_SQL = {
+    np.float64: pa.DoubleValue,
+    np.float32: pa.FloatValue,
+    np.int64: pa.Int64Value,
+    pd.Int64Dtype(): pa.Int64Value,
+    np.int32: pa.Int32Value,
+    pd.Int32Dtype(): pa.Int32Value,
+    np.int16: pa.Int16Value,
+    pd.Int16Dtype(): pa.Int16Value,
+    np.int8: pa.Int8Value,
+    pd.Int8Dtype(): pa.Int8Value,
+    np.uint64: pa.Int64Value,
+    pd.UInt64Dtype(): pa.Int64Value,
+    np.uint32: pa.Int32Value,
+    pd.UInt32Dtype(): pa.Int32Value,
+    np.uint16: pa.Int16Value,
+    pd.UInt16Dtype(): pa.Int16Value,
+    np.uint8: pa.Int8Value,
+    pd.UInt8Dtype(): pa.Int8Value,
+    np.bool8: pa.BooleanValue,
+    pd.BooleanDtype(): pa.BooleanValue,
+    np.object_: pa.StringValue,
+    pd.StringDtype(): pa.StringValue,
+    np.datetime64: pa.Date64Value,
+}
 
 # if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
 #     _PYTHON_TO_SQL.update(

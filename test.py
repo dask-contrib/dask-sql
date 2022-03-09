@@ -38,6 +38,7 @@
 # print(f'SELECT : {dir(select)}')
 
 import pandas as pd
+
 from dask_sql import Context
 
 c = Context()

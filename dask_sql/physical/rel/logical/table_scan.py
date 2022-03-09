@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING
 
-from dask_sql.datacontainer import DataContainer
-from dask_sql.physical.rel.base import BaseRelPlugin
 # from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
 import dask_planner
+from dask_sql.datacontainer import DataContainer
+from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql

@@ -160,12 +160,32 @@ impl DaskSchema {
             functions: HashMap::new(),
         }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.databaseTables.len(), &self.functions.len())
+    }
 }
 
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub(crate) struct DaskTable {
     name: String,
+    statistics: DaskStatistics,
+}
+
+#[pymethods]
+impl DaskTable {
+    #[new]
+    pub fn new(table_name: String, row_count: f64) -> Self {
+        Self {
+            name: table_name,
+            statistics: DaskStatistics::new(row_count),
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        format!("Table Name: ({})", &self.name)
+    }
 }
 
 #[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
@@ -174,6 +194,21 @@ pub(crate) struct DaskFunction {
     name: String,
 }
 
+#[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct DaskStatistics {
+    row_count: f64,
+}
+
+#[pymethods]
+impl DaskStatistics {
+    #[new]
+    pub fn new(row_count: f64) -> Self {
+        Self {
+            row_count: row_count,
+        }
+    }
+}
 
 pub(crate) fn init_module(m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(query))?;
