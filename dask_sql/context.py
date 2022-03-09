@@ -6,10 +6,11 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
+from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-import dask_planner
+from dask_planner.rust import Statement, Statement, Query, DaskSchema, DaskTable, DaskFunction, sql_functions
 
 try:
     import dask_cuda  # noqa: F401
@@ -423,25 +424,21 @@ class Context:
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
+        config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
         The SQL follows approximately the postgreSQL standard - however, not all
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
-
         For more information, see :ref:`sql`.
-
         Example:
             In this example, a query is called
             using the registered tables and then
             executed using dask.
-
             .. code-block:: python
-
                 result = c.sql("SELECT a, b FROM my_table")
                 print(result.compute())
-
         Args:
             sql (:obj:`str`): The query string to execute
             return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
@@ -450,40 +447,39 @@ class Context:
                 to register before executing this query
             gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
                 requires cuDF / dask-cuDF if enabled. Defaults to False.
-
+            config_options (:obj:`Dict[str,Any]`): Specific configuration options to pass during
+                query execution
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
-
         """
-        if dataframes is not None:
-            for df_name, df in dataframes.items():
-                self.create_table(df_name, df, gpu=gpu)
+        with dask_config.set(config_options):
+            if dataframes is not None:
+                for df_name, df in dataframes.items():
+                    self.create_table(df_name, df, gpu=gpu)
 
-        # rel, select_names, _ = self._get_ral(sql)
-        try:
-            rel = get_sql_node(sql)
-        except (RuntimeError) as e:
-            raise ParsingException(sql, str(e)) from None
+            print(f'Calling _get_ral(sql)')
+            rel, select_names, _ = self._get_ral(sql)
+            print(f'Rel: {rel} - select_names: {select_names} - {_}')
 
-        dc = RelConverter.convert(rel, context=self)
+            dc = RelConverter.convert(rel, context=self)
 
-        if dc is None:
-            return
+            if dc is None:
+                return
 
-        # if select_names:
-        #     # Rename any columns named EXPR$* to a more human readable name
-        #     cc = dc.column_container
-        #     cc = cc.rename(
-        #         {
-        #             df_col: select_name
-        #             for df_col, select_name in zip(cc.columns, select_names)
-        #         }
-        #     )
-        #     dc = DataContainer(dc.df, cc)
+            if select_names:
+                # Rename any columns named EXPR$* to a more human readable name
+                cc = dc.column_container
+                cc = cc.rename(
+                    {
+                        df_col: select_name
+                        for df_col, select_name in zip(cc.columns, select_names)
+                    }
+                )
+                dc = DataContainer(dc.df, cc)
 
-        df = dc.assign()
-        if not return_futures:
-            df = df.compute()
+            df = dc.assign()
+            if not return_futures:
+                df = df.compute()
 
         return df
 
@@ -776,15 +772,12 @@ class Context:
         Create a list of schemas filled with the dataframes
         and functions we have currently in our schema list
         """
+        print(f'Existing schemas: {self.schema.items()}')
         schema_list = []
 
-        DaskTable = com.dask.sql.schema.DaskTable
-        DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
-        DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
-        DaskSchema = com.dask.sql.schema.DaskSchema
-
         for schema_name, schema in self.schema.items():
-            java_schema = DaskSchema(schema_name)
+            print(f'_prepare_schemas for loop -> schema_name: {schema_name}')
+            rust_schema = DaskSchema(schema_name)
 
             if not schema.tables:
                 logger.warning("No tables are registered.")
@@ -844,78 +837,83 @@ class Context:
 
         return dask_function
 
-    # def _get_ral(self, sql):
-    #     """Helper function to turn the sql query into a relational algebra and resulting column names"""
-    #     # get the schema of what we currently have registered
-    #     schemas = self._prepare_schemas()
+    def _get_ral(self, sql):
+        """Helper function to turn the sql query into a relational algebra and resulting column names"""
+        # get the schema of what we currently have registered
+        schemas = self._prepare_schemas()
+        print(f'Schemas: {schemas}')
 
-    #     # True if the SQL query should be case sensitive and False otherwise
-    #     case_sensitive = (
-    #         self.schema[self.schema_name]
-    #         .config.get_config_by_prefix("dask.sql.identifier.case.sensitive")
-    #         .get("dask.sql.identifier.case.sensitive", True)
-    #     )
+        RelationalAlgebraGeneratorBuilder = (
+            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
+        )
 
-    #     for schema in schemas:
-    #         print(f'Schema: {schema}')
-    #         generator_builder = generator_builder.addSchema(schema)
-    #     generator = generator_builder.build()
-    #     default_dialect = generator.getDialect()
+        # True if the SQL query should be case sensitive and False otherwise
+        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
-    #     ValidationException = org.apache.calcite.tools.ValidationException
-    #     SqlParseException = org.apache.calcite.sql.parser.SqlParseException
-    #     CalciteContextException = org.apache.calcite.runtime.CalciteContextException
+        generator_builder = RelationalAlgebraGeneratorBuilder(
+            self.schema_name, case_sensitive, java.util.ArrayList()
+        )
+        for schema in schemas:
+            generator_builder = generator_builder.addSchema(schema)
+        generator = generator_builder.build()
+        default_dialect = generator.getDialect()
 
-    #     try:
-    #         sqlNode = generator.getSqlNode(sql)
-    #         sqlNodeClass = get_java_class(sqlNode)
+        logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
 
-    #         select_names = None
-    #         rel = sqlNode
-    #         rel_string = ""
+        ValidationException = org.apache.calcite.tools.ValidationException
+        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
+        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
-    #         if not sqlNodeClass.startswith("com.dask.sql.parser."):
-    #             nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
-    #             # Optimization might remove some alias projects. Make sure to keep them here.
-    #             select_names = [
-    #                 str(name)
-    #                 for name in nonOptimizedRelNode.getRowType().getFieldNames()
-    #             ]
-    #             rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-    #             rel_string = str(generator.getRelationalAlgebraString(rel))
-    #     except (ValidationException, SqlParseException, CalciteContextException) as e:
-    #         logger.debug(f"Original exception raised by Java:\n {e}")
-    #         # We do not want to re-raise an exception here
-    #         # as this would print the full java stack trace
-    #         # if debug is not set.
-    #         # Instead, we raise a nice exception
-    #         raise ParsingException(sql, str(e.message())) from None
+        try:
+            sqlNode = generator.getSqlNode(sql)
+            sqlNodeClass = get_java_class(sqlNode)
 
-    #     # Internal, temporary results of calcite are sometimes
-    #     # named EXPR$N (with N a number), which is not very helpful
-    #     # to the user. We replace these cases therefore with
-    #     # the actual query string. This logic probably fails in some
-    #     # edge cases (if the outer SQLNode is not a select node),
-    #     # but so far I did not find such a case.
-    #     # So please raise an issue if you have found one!
-    #     if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
-    #         sqlNode = sqlNode.query
-    #         sqlNodeClass = get_java_class(sqlNode)
+            select_names = None
+            rel = sqlNode
+            rel_string = ""
 
-    #     if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-    #         select_names = [
-    #             self._to_sql_string(s, default_dialect=default_dialect)
-    #             if current_name.startswith("EXPR$")
-    #             else current_name
-    #             for s, current_name in zip(sqlNode.getSelectList(), select_names)
-    #         ]
-    #     else:
-    #         logger.debug(
-    #             "Not extracting output column names as the SQL is not a SELECT call"
-    #         )
+            if not sqlNodeClass.startswith("com.dask.sql.parser."):
+                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
+                # Optimization might remove some alias projects. Make sure to keep them here.
+                select_names = [
+                    str(name)
+                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
+                ]
+                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+                rel_string = str(generator.getRelationalAlgebraString(rel))
+        except (ValidationException, SqlParseException, CalciteContextException) as e:
+            logger.debug(f"Original exception raised by Java:\n {e}")
+            # We do not want to re-raise an exception here
+            # as this would print the full java stack trace
+            # if debug is not set.
+            # Instead, we raise a nice exception
+            raise ParsingException(sql, str(e.message())) from None
 
-    #     logger.debug(f"Extracted relational algebra:\n {rel_string}")
-    #     return rel, select_names, rel_string
+        # Internal, temporary results of calcite are sometimes
+        # named EXPR$N (with N a number), which is not very helpful
+        # to the user. We replace these cases therefore with
+        # the actual query string. This logic probably fails in some
+        # edge cases (if the outer SQLNode is not a select node),
+        # but so far I did not find such a case.
+        # So please raise an issue if you have found one!
+        if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
+            sqlNode = sqlNode.query
+            sqlNodeClass = get_java_class(sqlNode)
+
+        if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
+            select_names = [
+                self._to_sql_string(s, default_dialect=default_dialect)
+                if current_name.startswith("EXPR$")
+                else current_name
+                for s, current_name in zip(sqlNode.getSelectList(), select_names)
+            ]
+        else:
+            logger.debug(
+                "Not extracting output column names as the SQL is not a SELECT call"
+            )
+
+        logger.debug(f"Extracted relational algebra:\n {rel_string}")
+        return rel, select_names, rel_string
 
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:

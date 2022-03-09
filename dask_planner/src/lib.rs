@@ -2,14 +2,9 @@ use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
 mod catalog;
-// mod context;
-// mod dataframe;
 mod errors;
 mod expression;
 mod functions;
-// mod udaf;
-// mod udf;
-// mod utils;
 mod sql;
 
 #[global_allocator]
@@ -18,18 +13,25 @@ static GLOBAL: MiMalloc = MiMalloc;
 /// Low-level DataFusion internal package.
 ///
 /// The higher-level public API is defined in pure python files under the
-/// datafusion_planner directory.
+/// dask_planner directory.
 #[pymodule]
-fn _internal(py: Python, m: &PyModule) -> PyResult<()> {
+fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     // Register the python classes
     m.add_class::<catalog::PyCatalog>()?;
     m.add_class::<catalog::PyDatabase>()?;
     m.add_class::<catalog::PyTable>()?;
-    // m.add_class::<context::PyExecutionContext>()?;
-    // m.add_class::<dataframe::PyDataFrame>()?;
     m.add_class::<expression::PyExpr>()?;
-    // m.add_class::<udf::PyScalarUDF>()?;
-    // m.add_class::<udaf::PyAggregateUDF>()?;
+
+    // SQL specific classes
+    m.add_class::<sql::PyStatement>()?;
+    m.add_class::<sql::PyQuery>()?;
+    m.add_class::<sql::DaskSchema>()?;
+    m.add_class::<sql::DaskTable>()?;
+    m.add_class::<sql::DaskFunction>()?;
+
+    let sql_functions = PyModule::new(py, "sql_functions")?;
+    sql::init_module(sql_functions)?;
+    m.add_submodule(sql_functions)?;
 
     // m.add_class::<DaskLogicalPlan>()?;
     // m.add_class::<DaskTable>()?;
@@ -39,6 +41,13 @@ fn _internal(py: Python, m: &PyModule) -> PyResult<()> {
     let funcs = PyModule::new(py, "functions")?;
     functions::init_module(funcs)?;
     m.add_submodule(funcs)?;
+
+
+
+    // let submodule = PyModule::new(py, "submodule")?;
+    // submodule.add("super_useful_constant", "important")?;
+
+    // module.add_submodule(submodule)?;
 
     Ok(())
 }

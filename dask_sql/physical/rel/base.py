@@ -5,7 +5,8 @@ import dask.dataframe as dd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
-from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
+# from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
+import dask_planner
 
 if TYPE_CHECKING:
     import dask_sql
@@ -32,7 +33,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: DaskRelRowType
+        cc: ColumnContainer, row_type: "DaskRelRowType"
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -50,7 +51,7 @@ class BaseRelPlugin:
         return cc.limit_to(field_names)
 
     @staticmethod
-    def check_columns_from_row_type(df: dd.DataFrame, row_type: DaskRelRowType):
+    def check_columns_from_row_type(df: dd.DataFrame, row_type: "DaskRelRowType"):
         """
         Similar to `self.fix_column_to_row_type`, but this time
         check for the correct column names instead of
@@ -64,7 +65,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def assert_inputs(
-        rel: DaskLogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
+        rel: "DaskLogicalPlan", n: int = 1, context: "dask_sql.Context" = None,
     ) -> List[dd.DataFrame]:
         """
         Many RelNodes build on top of others.

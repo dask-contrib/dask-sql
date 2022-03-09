@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
+# from datafusion_planner import DaskLogicalPlan, DaskRelRowType, DaskTable
+import dask_planner
 
 if TYPE_CHECKING:
     import dask_sql
@@ -23,7 +24,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
     class_name = "com.dask.sql.nodes.DaskTableScan"
 
     def convert(
-        self, rel: DaskLogicalPlan, context: "dask_sql.Context"
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
         # self.assert_inputs(rel, 0)

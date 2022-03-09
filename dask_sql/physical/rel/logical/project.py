@@ -1,11 +1,11 @@
 import logging
 from typing import TYPE_CHECKING
 
+import dask_planner
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
-import dask_planner
 
 if TYPE_CHECKING:
     import dask_sql
@@ -23,7 +23,7 @@ class DaskProjectPlugin(BaseRelPlugin):
     class_name = "com.dask.sql.nodes.DaskProject"
 
     def convert(
-        self, rel: DaskLogicalPlan, context: "dask_sql.Context"
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
     ) -> DataContainer:
         print(f"Invoking project.py convert function ....")
         # Get the input of the previous step

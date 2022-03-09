@@ -285,6 +285,7 @@ dependencies = [
  "mimalloc",
  "pyo3",
  "rand 0.7.3",
+ "sqlparser",
  "tokio",
  "uuid",
 ]

@@ -17,14 +17,7 @@ datafusion-expr = { version = "^7.0.0" }
 datafusion-common = { version = "^7.0.0", features = ["pyarrow"] }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
+sqlparser = "0.14.0"
 
 [lib]
-name = "_internal"
 crate-type = ["cdylib"]
-
-[package.metadata.maturin]
-name = "dask_planner._internal"
-
-[profile.release]
-lto = true
-codegen-units = 1

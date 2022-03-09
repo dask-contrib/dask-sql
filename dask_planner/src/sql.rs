@@ -1,107 +1,182 @@
 
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::collections::HashMap;
 
-use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
 
-use datafusion::{
-    arrow::pyarrow::PyArrowConvert,
-    catalog::{catalog::CatalogProvider, schema::SchemaProvider},
-    datasource::{TableProvider, TableType},
-};
+use datafusion::sql::parser::{DFParser, Statement};
+use sqlparser::ast::{Query, Select};
 
-#[pyclass(name = "Catalog", module = "datafusion", subclass)]
-pub(crate) struct PyCatalog {
-    catalog: Arc<dyn CatalogProvider>,
+#[pyclass(name = "Statement", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct PyStatement {
+    pub(crate) statement: Statement,
 }
 
-#[pyclass(name = "Database", module = "datafusion", subclass)]
-pub(crate) struct PyDatabase {
-    database: Arc<dyn SchemaProvider>,
-}
-
-#[pyclass(name = "Table", module = "datafusion", subclass)]
-pub(crate) struct PyTable {
-    table: Arc<dyn TableProvider>,
-}
-
-impl PyCatalog {
-    pub fn new(catalog: Arc<dyn CatalogProvider>) -> Self {
-        Self { catalog }
+impl From<PyStatement> for Statement {
+    fn from(statement: PyStatement) -> Statement  {
+        statement.statement
     }
 }
 
-impl PyDatabase {
-    pub fn new(database: Arc<dyn SchemaProvider>) -> Self {
-        Self { database }
+impl From<Statement> for PyStatement {
+    fn from(statement: Statement) -> PyStatement {
+        PyStatement { statement }
     }
 }
 
-impl PyTable {
-    pub fn new(table: Arc<dyn TableProvider>) -> Self {
-        Self { table }
+impl PyStatement {
+    pub fn new(statement: Statement) -> Self {
+        Self { statement }
     }
 }
 
 #[pymethods]
-impl PyCatalog {
-    fn names(&self) -> Vec<String> {
-        self.catalog.schema_names()
+impl PyStatement {
+
+    #[staticmethod]
+    pub fn table_name() -> String {
+        String::from("Got here!!!")
     }
 
-    #[args(name = "\"public\"")]
-    fn database(&self, name: &str) -> PyResult<PyDatabase> {
-        match self.catalog.schema(name) {
-            Some(database) => Ok(PyDatabase::new(database)),
-            None => Err(PyKeyError::new_err(format!(
-                "Database with name {} doesn't exist.",
-                name
-            ))),
+    #[staticmethod]
+    pub fn sql(sql: &str) -> PyStatement {
+        let resp = DFParser::parse_sql(sql).unwrap()[0].clone().into();
+        println!("Parsed Statement from Rust: {:?}", resp);
+        resp
+    }
+}
+
+#[pyclass(name = "Query", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct PyQuery {
+    pub(crate) query: Query,
+}
+
+impl From<PyQuery> for Query {
+    fn from(query: PyQuery) -> Query  {
+        query.query
+    }
+}
+
+impl From<Query> for PyQuery {
+    fn from(query: Query) -> PyQuery {
+        PyQuery { query }
+    }
+}
+
+#[pyfunction]
+fn query(statement: PyStatement) -> PyResult<PyQuery> {
+    Ok(PyQuery {
+        query: match statement.statement {
+            Statement::Statement(sql_statement) => {
+                match *sql_statement {
+                   sqlparser::ast::Statement::Query(query) => {
+                       println!("Query: {:?}", *query);
+                       *query
+                    },
+                    _ => panic!("something didn't go correct here")
+                }
+            },
+            _ => panic!("CreateTableStatement received but it was not expected")
+        },
+    })
+}
+
+
+#[pyclass(name = "Select", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct PySelect {
+    pub(crate) select: Select,
+}
+
+impl From<PySelect> for Select {
+    fn from(select: PySelect) -> Select  {
+        select.select
+    }
+}
+
+impl From<Select> for PySelect {
+    fn from(select: Select) -> PySelect {
+        PySelect { select }
+    }
+}
+
+#[pyfunction]
+fn select(query: PyQuery) -> PyResult<PySelect> {
+    println!("Query in select: {:?}", query.query);
+    Ok(PySelect {
+        select: match query.query.body {
+            sqlparser::ast::SetExpr::Select(select) => {
+                println!("Select: {:?}", *select);
+                *select
+                // for si in &select.projection {
+                //     match si {
+                //         sqlparser::ast::SelectItem::UnnamedExpr(expr) =>  {
+                //             match expr {
+                //                 sqlparser::ast::Expr::Identifier(ident) => {
+                //                     projected_cols.push(String::from(&ident.value))
+                //                 },
+                //                 _ => println!("Doesn't matter"),
+                //             }
+                //         },
+                //         _ => println!("Doesn't matter"),
+                //     }
+                // }
+            },
+            _ => panic!("nothing else matters"),
+        },
+    })
+}
+
+
+
+// #[pyproto]
+// impl PyMappingProtocol for PyStatement {
+//     fn __getitem__(&self, key: &str) -> PyResult<PyStatement> {
+//         Ok(Expr::GetIndexedField {
+//             expr: Box::new(self.expr.clone()),
+//             key: ScalarValue::Utf8(Some(key.to_string())),
+//         }
+//         .into())
+//     }
+// }
+
+
+#[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct DaskSchema {
+    name: String,
+    databaseTables: HashMap<String, DaskTable>,
+    functions: HashMap<String, DaskFunction>,
+}
+
+#[pymethods]
+impl DaskSchema {
+    #[new]
+    pub fn new(schema_name: String) -> Self {
+        Self {
+            name: schema_name,
+            databaseTables: HashMap::new(),
+            functions: HashMap::new(),
         }
     }
 }
 
-#[pymethods]
-impl PyDatabase {
-    fn names(&self) -> HashSet<String> {
-        self.database.table_names().into_iter().collect()
-    }
-
-    fn table(&self, name: &str) -> PyResult<PyTable> {
-        match self.database.table(name) {
-            Some(table) => Ok(PyTable::new(table)),
-            None => Err(PyKeyError::new_err(format!(
-                "Table with name {} doesn't exist.",
-                name
-            ))),
-        }
-    }
-
-    // register_table
-    // deregister_table
+#[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct DaskTable {
+    name: String,
 }
 
-#[pymethods]
-impl PyTable {
-    /// Get a reference to the schema for this table
-    #[getter]
-    fn schema(&self, py: Python) -> PyResult<PyObject> {
-        self.table.schema().to_pyarrow(py)
-    }
+#[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub(crate) struct DaskFunction {
+    name: String,
+}
 
-    /// Get the type of this table for metadata/catalog purposes.
-    #[getter]
-    fn kind(&self) -> &str {
-        match self.table.table_type() {
-            TableType::Base => "physical",
-            TableType::View => "view",
-            TableType::Temporary => "temporary",
-        }
-    }
 
-    // fn scan
-    // fn statistics
-    // fn has_exact_statistics
-    // fn supports_filter_pushdown
+pub(crate) fn init_module(m: &PyModule) -> PyResult<()> {
+    m.add_wrapped(wrap_pyfunction!(query))?;
+    m.add_wrapped(wrap_pyfunction!(select))?;
+    Ok(())
 }

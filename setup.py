@@ -9,7 +9,6 @@ from setuptools.command.install_lib import install_lib as install_lib_orig
 
 import versioneer
 
-
 long_description = ""
 if os.path.exists("README.md"):
     with open("README.md") as f:
@@ -30,7 +29,7 @@ setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages(include=["dask_sql", "dask_sql.*"]),
+    packages=find_packages(include=["dask_sql", "dask_sql.*", "dask_planner", "dask_planner.*"]),
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
