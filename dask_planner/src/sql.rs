@@ -164,6 +164,10 @@ impl DaskSchema {
     pub fn to_string(&self) -> String {
         format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.databaseTables.len(), &self.functions.len())
     }
+
+    pub fn addTable(&mut self, table: DaskTable) {
+        self.databaseTables.insert(table.name.clone(), table);
+    }
 }
 
 #[pyclass(name = "DaskSqlTypeName", module = "dask_planner", subclass)]
