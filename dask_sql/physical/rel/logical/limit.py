@@ -58,17 +58,9 @@ class DaskLimitPlugin(BaseRelPlugin):
         we need to pass the partition number to the selection
         function, which is not possible with normal "map_partitions".
         """
+        # lazily return a simple head operation if possible
         if not offset:
-            # compute the number of partitions that need to be persisted in head
-            npartitions = 0
-            nrows = 0
-            for partition in df.partitions:
-                npartitions += 1
-                nrows += len(partition)
-                if nrows >= end:
-                    break
-
-            return df.head(end, npartitions=npartitions, compute=False)
+            return df.head(end, npartitions=-1, compute=False)
 
         # First, we need to find out which partitions we want to use.
         # Therefore we count the total number of entries
