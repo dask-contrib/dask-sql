@@ -253,6 +253,7 @@ class SchemaContainer:
         self.statistics: Dict[str, Statistics] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
+        self.targets: Dict[str, List[str]] = {}
         self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
         self.config: ConfigContainer = ConfigContainer()

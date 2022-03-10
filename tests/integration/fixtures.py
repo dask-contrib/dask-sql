@@ -176,7 +176,11 @@ def c(
     # Lazy import, otherwise the pytest framework has problems
     from dask_sql.context import Context
 
-    c = Context()
+    # Add ENV vars to allow overwriting the parser_namespace and factory
+    c = Context(
+        parser_namespace=os.getenv("PARSER_NAMESPACE"),
+        parser_factory=os.getenv("PARSER_FACTORY"),
+    )
     for df_name, df in dfs.items():
         if df is None:
             continue

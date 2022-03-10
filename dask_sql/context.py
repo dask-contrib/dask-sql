@@ -27,6 +27,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.java import com, get_java_class, java, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
+from dask_sql.physical.rel import predibase
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
@@ -65,13 +66,23 @@ class Context:
     """
 
     DEFAULT_SCHEMA_NAME = "root"
+    DEFAULT_PARSER_NAMESPACE = "com.dask.sql.parser"
+    DEFAULT_PARSER_FATORY = "com.dask.sql.application.DaskSqlParserImplFactory"
 
-    def __init__(self):
+    def __init__(
+        self,
+        schema_name=DEFAULT_SCHEMA_NAME,
+        parser_namespace=DEFAULT_PARSER_NAMESPACE,
+        parser_factory=DEFAULT_PARSER_FATORY,
+    ):
         """
         Create a new context.
         """
         # Name of the root schema
-        self.schema_name = self.DEFAULT_SCHEMA_NAME
+        self.schema_name = schema_name
+        # TODO: Use these to filter on parser classes, and
+        self.parser_namespace = parser_namespace
+        self.parser_factory = parser_factory
         # All schema information
         self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
@@ -89,26 +100,12 @@ class Context:
         RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
+
+        # Register custom/predibase plugins
+        if self.parser_namespace == self.DEFAULT_PARSER_NAMESPACE:
+            self._register_custom_plugins()
+        else:
+            self._register_predibase_plugins()
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
@@ -568,6 +565,7 @@ class Context:
         model_name: str,
         model: Any,
         training_columns: List[str],
+        target_column: str,
         schema_name: str = None,
     ):
         """
@@ -587,6 +585,12 @@ class Context:
         """
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
+        # Store list of models for target column
+        targets = self.schema[schema_name].targets
+        if target_column.lower() in targets:
+            targets[target_column.lower()].append(model_name)
+        else:
+            targets[target_column.lower()] = [model_name]
 
     def set_config(
         self,
@@ -765,6 +769,45 @@ class Context:
 
         return schema, name
 
+
+    def _register_custom_plugins(self):
+        """
+        Register the custom relational albegra plugins.
+        """
+        RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
+
+    def _register_predibase_plugins(self):
+        """
+        Register the predibase relational albegra plugins.
+        """
+        RelConverter.add_plugin_class(predibase.CreateModelPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.DropModelPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.DropDatasetPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.PredictModelPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.ShowModelsPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.ShowMetricsPlugin, replace=False)
+        RelConverter.add_plugin_class(predibase.ShowDatasetsPlugin, replace=False)
+
     def _prepare_schemas(self):
         """
         Create a list of schemas filled with the dataframes
@@ -856,6 +899,7 @@ class Context:
 
         generator_builder = RelationalAlgebraGeneratorBuilder(
             self.schema_name, case_sensitive, java.util.ArrayList()
+            #, self.parser_factory
         )
         for schema in schemas:
             generator_builder = generator_builder.addSchema(schema)
@@ -876,7 +920,7 @@ class Context:
             rel = sqlNode
             rel_string = ""
 
-            if not sqlNodeClass.startswith("com.dask.sql.parser."):
+            if not sqlNodeClass.startswith(self.parser_namespace):
                 nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
                 # Optimization might remove some alias projects. Make sure to keep them here.
                 select_names = [

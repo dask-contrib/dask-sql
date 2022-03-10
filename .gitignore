@@ -58,3 +58,6 @@ dask_sql/jar
 .next/
 dask-worker-space/
 node_modules/
+
+# macosx
+.DS_Store

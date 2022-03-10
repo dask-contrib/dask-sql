@@ -157,6 +157,14 @@
 		</dependency>
 		<!-- END - Calcite Dependencies -->
 
+		<!-- BEGIN - Predibase Dependencies -->
+		<dependency>
+			<groupId>com.predibase.pql</groupId>
+			<artifactId>pql-parser</artifactId>
+			<version>0.5.0</version>
+		</dependency>
+		<!-- END - Predibase Dependencies -->
+
 		<dependency>
 			<groupId>net.java.dev.javacc</groupId>
 			<artifactId>javacc</artifactId>

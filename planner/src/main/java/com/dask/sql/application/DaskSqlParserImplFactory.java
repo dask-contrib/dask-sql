@@ -4,7 +4,7 @@ import java.io.Reader;
 
 import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.parser.SqlParserImplFactory;
-import com.dask.sql.parser.DaskSqlParserImpl;
+import com.predibase.pql.parser.ExtensionSqlParserImpl; // import com.dask.sql.parser.DaskSqlParserImpl;
 
 /**
  * DaskSqlParserImplFactory is the bridge between the Java code written by us
@@ -14,7 +14,7 @@ public class DaskSqlParserImplFactory implements SqlParserImplFactory {
 
     @Override
     public SqlAbstractParserImpl getParser(Reader stream) {
-        return new DaskSqlParserImpl(stream);
+        return new ExtensionSqlParserImpl(stream); //return new DaskSqlParserImpl(stream);
     }
 
 }
