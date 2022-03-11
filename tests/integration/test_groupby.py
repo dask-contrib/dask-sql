@@ -363,8 +363,6 @@ def test_stats_aggregation(c, timeseries_df):
 )
 @pytest.mark.parametrize("split_out", [None, 2, 4])
 def test_groupby_split_out(c, input_table, split_out, request):
-    c.set_config(("dask.groupby.aggregate.split_out", split_out))
-
     user_table = request.getfixturevalue(input_table)
 
     return_df = c.sql(
@@ -373,7 +371,8 @@ def test_groupby_split_out(c, input_table, split_out, request):
         user_id, SUM(b) AS "S"
         FROM {input_table}
         GROUP BY user_id
-        """
+        """,
+        config_options={"sql.groupby.split_out": split_out},
     )
     expected_df = (
         user_table.groupby(by="user_id")
@@ -386,8 +385,6 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert return_df.npartitions == split_out if split_out else 1
     dd.assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
-    c.drop_config("dask.groupby.aggregate.split_out")
-
 
 @pytest.mark.parametrize(
     "gpu,split_every,expected_keys",
@@ -395,9 +392,9 @@ def test_groupby_split_out(c, input_table, split_out, request):
         (False, 2, 74),
         (False, 3, 68),
         (False, 4, 64),
-        pytest.param(True, 2, 91, marks=pytest.mark.gpu),
-        pytest.param(True, 3, 85, marks=pytest.mark.gpu),
-        pytest.param(True, 4, 81, marks=pytest.mark.gpu),
+        pytest.param(True, 2, 107, marks=pytest.mark.gpu),
+        pytest.param(True, 3, 101, marks=pytest.mark.gpu),
+        pytest.param(True, 4, 97, marks=pytest.mark.gpu),
     ],
 )
 def test_groupby_split_every(c, gpu, split_every, expected_keys):
@@ -407,7 +404,6 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
     )  # Need an input with multiple partitions to demonstrate split_every
 
     c.create_table("split_every_input", input_ddf, gpu=gpu)
-    c.set_config(("dask.groupby.aggregate.split_every", split_every))
 
     return_df = c.sql(
         """
@@ -415,7 +411,8 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
         user_id, SUM(b) AS "S"
         FROM split_every_input
         GROUP BY user_id
-        """
+        """,
+        config_options={"sql.groupby.split_every": split_every},
     )
     expected_df = (
         input_ddf.groupby(by="user_id")
@@ -428,5 +425,4 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
     assert len(return_df.dask.keys()) == expected_keys
     dd.assert_eq(return_df, expected_df, check_index=False)
 
-    c.drop_config("dask.groupby.aggregate.split_every")
     c.drop_table("split_every_input")

@@ -1,0 +1,28 @@
+properties:
+
+  sql:
+    type: object
+    properties:
+
+      groupby:
+        type: object
+        properties:
+
+          split_out:
+            type: integer
+            description: |
+              Number of output partitions for a groupby operation
+
+          split_every:
+            type: [integer, "null"]
+            description: |
+              Number of branches per reduction step for a groupby operation.
+
+      identifier:
+        type: object
+        properties:
+
+          case_sensitive:
+            type: boolean
+            description: |
+              Whether sql identifiers are considered case sensitive while parsing.

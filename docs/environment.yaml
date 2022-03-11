@@ -23,7 +23,7 @@ dependencies:
   - cytoolz=0.11.0=py38h1e0a361_0
   - dask=2.28.0=py_0
   - dask-core=2.28.0=py_0
-  - dask-sphinx-theme=1.3.2=pyh9f0ad1d_0
+  - dask-sphinx-theme>=2.0.3
   - distributed=2.28.0=py38h32f6830_0
   - docutils=0.16=py38h32f6830_1
   - fontconfig=2.13.1=h1056068_1002

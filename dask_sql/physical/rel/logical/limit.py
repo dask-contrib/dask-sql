@@ -103,4 +103,6 @@ class DaskLimitPlugin(BaseRelPlugin):
 
         # (b) Now we just need to apply the function on every partition
         # We do this via the delayed interface, which seems the easiest one.
-        return map_on_partition_index(df, select_from_to, partition_borders)
+        return map_on_partition_index(
+            df, select_from_to, partition_borders, meta=df._meta
+        )

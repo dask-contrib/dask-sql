@@ -20,9 +20,7 @@ def test_schemas(c):
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_tables(gpu):
     c = Context()
-
-    data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
-    c.create_table("table", data_frame, gpu=gpu)
+    c.create_table("table", pd.DataFrame(), gpu=gpu)
 
     result_df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
     expected_df = pd.DataFrame({"Table": ["table"]})

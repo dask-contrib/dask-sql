@@ -939,12 +939,14 @@ def test_integration_1():
 
 def test_query_case_sensitivity():
     c = Context()
-    c.set_config(("dask.sql.identifier.case.sensitive", False))
     df = pd.DataFrame({"id": [0, 1]})
 
     c.create_table("test", df)
 
     try:
-        c.sql("select ID from test")
+        c.sql(
+            "select ID from test",
+            config_options={"sql.identifier.case_sensitive": False},
+        )
     except ParsingException as pe:
         assert False, f"Queries should be case insensitve but raised exception {pe}"
