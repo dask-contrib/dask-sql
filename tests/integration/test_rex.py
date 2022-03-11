@@ -255,7 +255,7 @@ def test_like(c, input_table, gpu, request):
     dd.assert_eq(df, string_table)
 
     string_table2 = xd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
-    c.create_table(string_table2, "string_table2")
+    c.create_table("string_table2", string_table2)
     df = c.sql(
         """
         SELECT * FROM string_table2
@@ -513,7 +513,7 @@ def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
     df = dd.from_pandas(pd.DataFrame({"d": [date]}), npartitions=1)
-    c.create_table(df, "df")
+    c.create_table("df", df)
 
     df = c.sql(
         """
