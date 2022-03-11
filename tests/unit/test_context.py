@@ -1,5 +1,3 @@
-import warnings
-
 import dask.dataframe as dd
 import pandas as pd
 import pytest
@@ -32,25 +30,6 @@ def test_add_remove_tables(gpu):
 
     c.create_table("table", [data_frame], gpu=gpu)
     assert "table" in c.schema[c.schema_name].tables
-
-
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_deprecation_warning(gpu):
-    c = Context()
-    data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-
-        c.register_dask_table(data_frame, "table", gpu=gpu)
-
-        assert len(w) == 1
-        assert issubclass(w[-1].category, DeprecationWarning)
-
-    assert "table" in c.schema[c.schema_name].tables
-
-    c.drop_table("table")
-    assert "table" not in c.schema[c.schema_name].tables
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
