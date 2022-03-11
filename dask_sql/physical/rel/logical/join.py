@@ -237,7 +237,10 @@ class DaskJoinPlugin(BaseRelPlugin):
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
 
-        if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
+        if isinstance(
+            join_condition,
+            (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
+        ):
             return [], [], [join_condition]
         elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
             raise NotImplementedError("Can not understand join condition.")
