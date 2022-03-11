@@ -721,7 +721,7 @@ class Context:
             java_schema = DaskSchema(schema_name)
 
             if not schema.tables:
-                logger.warning("No tables are registered.")
+                logger.debug("No tables are registered.")
 
             for name, dc in schema.tables.items():
                 row_count = (

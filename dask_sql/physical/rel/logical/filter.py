@@ -24,7 +24,7 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
     if np.isscalar(filter_condition):
         if not filter_condition:  # pragma: no cover
             # empty dataset
-            logger.warning("Join condition is always false - returning empty dataset")
+            logger.debug("Join condition is always false - returning empty dataset")
             return df.head(0, compute=False)
         else:
             return df
