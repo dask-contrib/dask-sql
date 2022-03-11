@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import logging
-import warnings
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
@@ -201,10 +200,6 @@ class Context:
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
-        if "file_format" in kwargs:  # pragma: no cover
-            warnings.warn("file_format is renamed to format", DeprecationWarning)
-            format = kwargs.pop("file_format")
-
         schema_name = schema_name or self.schema_name
 
         dc = InputUtil.to_dc(
@@ -218,16 +213,6 @@ class Context:
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
-        """
-        Outdated version of :func:`create_table()`.
-        """
-        warnings.warn(
-            "register_dask_table is deprecated, use the more general create_table instead.",
-            DeprecationWarning,
-        )
-        return self.create_table(name, df, *args, **kwargs)
 
     def drop_table(self, table_name: str, schema_name: str = None):
         """
