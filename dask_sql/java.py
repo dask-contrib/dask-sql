@@ -8,7 +8,6 @@ to the jar file in the package resources.
 import logging
 import os
 import platform
-import warnings
 
 import jpype
 import pkg_resources
@@ -36,7 +35,7 @@ def _set_or_check_java_home():
     elif (
         os.path.normpath(os.environ["JAVA_HOME"]) != correct_java_path
     ):  # pragma: no cover
-        warnings.warn(
+        logger.warning(
             "You are running in a conda environment, but the JAVA_PATH is not using it. "
             f"If this is by mistake, set $JAVA_HOME to {correct_java_path}, instead of {os.environ['JAVA_HOME']}."
         )

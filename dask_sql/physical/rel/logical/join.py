@@ -1,6 +1,5 @@
 import logging
 import operator
-import warnings
 from functools import reduce
 from typing import TYPE_CHECKING, List, Tuple
 
@@ -150,9 +149,8 @@ class DaskJoinPlugin(BaseRelPlugin):
             divisions = [None] * (len(dsk) + 1)
             df = dd.DataFrame(graph, name, meta=meta, divisions=divisions)
 
-            warnings.warn(
-                "Need to do a cross-join, which is typically very resource heavy",
-                ResourceWarning,
+            logger.warning(
+                "Need to do a cross-join, which is typically very resource heavy"
             )
 
         # 6. So the next step is to make sure
