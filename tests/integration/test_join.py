@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from dask.dataframe.utils import assert_eq
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
@@ -188,11 +189,11 @@ def test_join_literal(c):
 
 
 def test_conditional_join(c):
-    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", "z", None]})
+    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
 
     expected_df = pd.merge(df1, df2, how="inner", left_on=["a"], right_on=["c"])
-    expected_df = expected_df[expected_df["b"] != None]["a"]  # noqa: E711
+    expected_df = expected_df[~pd.isnull(expected_df.b)][["a"]]
 
     c.create_table("df1", df1)
     c.create_table("df2", df2)
@@ -206,11 +207,9 @@ def test_conditional_join(c):
         AND b IS NOT NULL
     )
     """
-    ).compute()
-
-    assert_frame_equal(
-        actual_df.reset_index(), expected_df.reset_index(), check_dtype=False
     )
+
+    assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
 def test_join_case_projection_subquery():
