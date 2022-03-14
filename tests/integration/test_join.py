@@ -193,14 +193,14 @@ def test_conditional_join(c):
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
 
     expected_df = pd.merge(df1, df2, how="inner", left_on=["a"], right_on=["c"])
-    expected_df = expected_df[~pd.isnull(expected_df.b)][["a"]]
+    expected_df = expected_df[~pd.isnull(expected_df.b)]
 
     c.create_table("df1", df1)
     c.create_table("df2", df2)
 
     actual_df = c.sql(
         """
-    SELECT a FROM df1
+    SELECT * FROM df1
     INNER JOIN df2 ON
     (
         a = c
