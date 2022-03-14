@@ -3,8 +3,13 @@ use std::collections::HashMap;
 
 use pyo3::prelude::*;
 
+use parking_lot::Mutex;
+
 use datafusion::sql::parser::{DFParser, Statement};
 use sqlparser::ast::{Query, Select};
+use datafusion::logical_plan::Expr;
+
+use datafusion::catalog::catalog::{CatalogList};
 
 use datafusion::arrow::datatypes::{DataType, Field, Schema};
 
@@ -15,9 +20,95 @@ use datafusion::sql::planner::{SqlToRel};
 
 use std::sync::Arc;
 
-struct DaskSQLContextProvider {}
 
-impl datafusion::sql::planner::ContextProvider for DaskSQLContextProvider {
+/// DaskSQLContext is main interface used for interacting with Datafusion to
+/// parse SQL queries, build logical plans, and optimize logical plans.
+///
+/// The following example demonstrates how to generate an optimized LogicalPlan
+/// from SQL using DaskSQLContext.
+///
+/// ```
+/// use datafusion::prelude::*;
+///
+/// # use datafusion::error::Result;
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
+/// let mut ctx = DaskSQLContext::new();
+/// let parsed_sql = ctx.parse_sql("SELECT COUNT(*) FROM test_table");
+/// let nonOptimizedRelAlgebra = ctx.logical_relational_algebra(parsed_sql);
+/// let optmizedRelAlg = ctx.optimizeRelationalAlgebra(nonOptimizedRelAlgebra);
+/// # Ok(())
+/// # }
+/// ```
+#[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
+#[derive(Clone)]
+pub struct DaskSQLContext {
+    pub state: Arc<Mutex<DaskSQLContextState>>,
+}
+
+#[pymethods]
+impl DaskSQLContext {
+    #[new]
+    pub fn new() -> Self {
+        Self::new()
+    }
+
+    /// Parses a SQL string into an AST presented as a Vec of Statements
+    pub fn parse_sql(&self, sql: &str) -> Vec<PyStatement> {
+        let resp = DFParser::parse_sql(sql).unwrap().clone();
+        let mut statements = Vec::new();
+        for statement in resp {
+            statements.push(statement.into());
+        }
+        statements
+    }
+
+    // /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
+    // pub fn logical_relational_algebra(&self, statement: PyStatement) -> PyLogicalPlan {
+    //     let context_provider = &DaskSQLContext {};
+    //     let planner = SqlToRel::new(context_provider);
+    
+    //     match planner.statement_to_plan(&statement.statement) {
+    //         Ok(k) => {
+    //             PyLogicalPlan { 
+    //                 logical_plan: k ,
+    //                 table: DaskTable{
+    //                     name: String::from("test"),
+    //                     statistics: DaskStatistics::new(0.0),
+    //                     tableColumns: Vec::new(),
+    //                     row_type: DaskRelDataType {
+    //                         field_names: vec![String::from("id")]
+    //                     },
+    //                 },
+    //             }
+    //         },
+    //         Err(e) => panic!("{}", e.to_string()),
+    //     }
+    // }
+}
+
+
+/// Dask SQL context for registering data sources and executing queries
+#[derive(Clone)]
+pub struct DaskSQLContextState {
+    /// Collection of catalogs containing schemas and ultimately TableProviders
+    pub catalog_list: Arc<dyn CatalogList>,
+    // /// Scalar functions that are registered with the context
+    // pub scalar_functions: HashMap<String, Arc<ScalarUDF>>,
+    // /// Aggregate functions registered in the context
+    // pub aggregate_functions: HashMap<String, Arc<AggregateUDF>>,
+    // /// Context configuration
+    // pub config: ExecutionConfig,
+    // /// Execution properties
+    // pub execution_props: ExecutionProps,
+    // /// Object Store that are registered with the context
+    // pub object_store_registry: Arc<ObjectStoreRegistry>,
+    // /// Runtime environment
+    // pub runtime_env: Arc<RuntimeEnv>,
+}
+
+
+impl datafusion::sql::planner::ContextProvider for DaskSQLContextState {
     fn get_table_provider(
         &self,
         name: TableReference,
@@ -46,40 +137,6 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContextProvider {
     }
 }
 
-#[pyfunction]
-pub fn getSqlNode(sql: &str) -> Vec<PyStatement> {
-    let resp = DFParser::parse_sql(sql).unwrap().clone();
-    let mut statements = Vec::new();
-    for statement in resp {
-        // println!("Statement: {:?}", statement);
-        statements.push(statement.into());
-    }
-    statements
-}
-
-#[pyfunction]
-pub fn getRelationalAlgebra(statement: PyStatement) -> PyLogicalPlan {
-    let context_provider = &DaskSQLContextProvider {};
-    let planner = SqlToRel::new(context_provider);
-
-    match planner.statement_to_plan(&statement.statement) {
-        Ok(k) => {
-            // println!("Logical Plan: {:?}", k);
-            PyLogicalPlan { 
-                logical_plan: k ,
-                table: DaskTable{
-                    name: String::from("test"),
-                    statistics: DaskStatistics::new(0.0),
-                    tableColumns: Vec::new(),
-                    row_type: DaskRelDataType {
-                        field_names: vec![String::from("id")]
-                    },
-                },
-            }
-        },
-        Err(e) => panic!("{}", e.to_string()),
-    }
-}
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -113,9 +170,44 @@ impl From<LogicalPlan> for PyLogicalPlan {
 
 #[pymethods]
 impl PyLogicalPlan {
-    // pub fn getFieldNames() -> Vec<String> {
+    pub fn getFieldNames(&self) -> Vec<String> {
+        let schema = self.logical_plan.schema();
+        println!("Schema: {:?}", schema);
 
-    // }
+        // Get all of the Expressions from the parsed logical plan
+        let exprs = self.logical_plan.expressions();
+        println!("EXPRESSIONS: {:?}", exprs);
+
+        for expr in exprs {
+            println!("EXPR: {:?}", expr);
+            match expr {
+                Expr::Alias( .. ) => println!("Alias was encountered!"),
+                Expr::Column(column) => {
+                    println!("Column Name: {:?}", column.name);
+                    if let Some(relation) = column.relation {
+                        println!("Relation: {:?}", relation);
+                    } else {
+                        println!("Column has no relation present. AKA None(E)");
+                    }
+                },
+                Expr::ScalarVariable( .. ) => println!("ScalarVariable was encountered!"),
+                Expr::Literal( .. ) => println!("Literal was encountered!"),
+                Expr::BinaryExpr{ .. } => println!("BinaryExpr was encountered!"),
+                Expr::Not( .. ) => println!("Not was encountered!"),
+                Expr::IsNotNull( .. ) => println!("IsNotNull was encountered!"),
+                Expr::IsNull( .. ) => println!("IsNull was encountered!"),
+                Expr::Negative( .. ) => println!("Negative was encountered!"),
+                Expr::AggregateFunction{ .. } => {
+                    println!("Aggregation function!!!!!");
+                },
+                Expr::Wildcard => println!("Wildcard was encountered!"),
+                _ => println!("Nothing matched ...."),
+            }
+        }
+
+        let field_names = Vec::new();
+        field_names
+    }
 
     pub fn getTable(&self) -> DaskTable {
         self.table.clone()
@@ -247,22 +339,10 @@ fn select(query: PyQuery) -> PyResult<PySelect> {
 }
 
 
-
-// #[pyproto]
-// impl PyMappingProtocol for PyStatement {
-//     fn __getitem__(&self, key: &str) -> PyResult<PyStatement> {
-//         Ok(Expr::GetIndexedField {
-//             expr: Box::new(self.expr.clone()),
-//             key: ScalarValue::Utf8(Some(key.to_string())),
-//         }
-//         .into())
-//     }
-// }
-
-
 #[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSchema {
+    #[pyo3(get, set)]
     name: String,
     databaseTables: HashMap<String, DaskTable>,
     functions: HashMap<String, DaskFunction>,
@@ -412,7 +492,5 @@ impl DaskStatistics {
 pub fn init_module(m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(query))?;
     m.add_wrapped(wrap_pyfunction!(select))?;
-    m.add_wrapped(wrap_pyfunction!(getSqlNode))?;
-    m.add_wrapped(wrap_pyfunction!(getRelationalAlgebra))?;
     Ok(())
 }

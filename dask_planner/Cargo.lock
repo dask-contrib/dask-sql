@@ -283,6 +283,7 @@ dependencies = [
  "datafusion-common",
  "datafusion-expr",
  "mimalloc",
+ "parking_lot 0.12.0",
  "pyo3",
  "rand 0.7.3",
  "sqlparser",

@@ -39,6 +39,8 @@ class DaskTableScanPlugin(BaseRelPlugin):
         print(f"Entering table_scan plugin to load data into dataframes")
 
         print(f"table_scan.convert() -> rel: {rel}")
+        field_names = rel.getFieldNames()
+        print(f'FIELD_NAMES!!!! {field_names}')
 
         # The table(s) we need to return
         table = rel.getTable()
@@ -58,8 +60,6 @@ class DaskTableScanPlugin(BaseRelPlugin):
         dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
-
-        # print(f"table_scan.convert() -> dc: {dc} - df: {df} - cc: {cc}")
 
         # Make sure we only return the requested columns
         row_type = table.getRowType()

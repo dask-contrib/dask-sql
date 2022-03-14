@@ -23,6 +23,9 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<expression::PyExpr>()?;
 
     // SQL specific classes
+    // m.add_class::<sql::DaskSQLContext>()?;
+    // m.add_class::<sql::DaskSQLContextState>()?;
+
     m.add_class::<sql::PyStatement>()?;
     m.add_class::<sql::PyQuery>()?;
     m.add_class::<sql::DaskSchema>()?;

@@ -11,11 +11,8 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_planner.rust import (
-    DaskFunction,
     DaskSchema,
     DaskTable,
-    Query,
-    Statement,
     sql_functions,
 )
 
@@ -33,14 +30,10 @@ from dask_sql.datacontainer import (
     Statistics,
 )
 from dask_sql.input_utils import InputType, InputUtil
-
-# from dask_sql.integrations.ipython import ipython_integration
+from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
-
-# from dask_sql.physical.rel import RelConverter, custom, logical
-from dask_sql.physical.rel import RelConverter, logical
-
-# from dask_sql.physical.rex import RexConverter, core
+from dask_sql.physical.rel import RelConverter, custom, logical
+from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
@@ -79,10 +72,14 @@ class Context:
 
     DEFAULT_SCHEMA_NAME = "root"
 
-    def __init__(self):
+    def __init__(self, logging_level=logging.INFO):
         """
         Create a new context.
         """
+
+        # Set the logging level for this SQL context
+        logging.basicConfig(level=logging_level)
+
         # Name of the root schema
         self.schema_name = self.DEFAULT_SCHEMA_NAME
         # All schema information
@@ -91,41 +88,41 @@ class Context:
         self.sql_server = None
 
         # # Register any default plugins, if nothing was registered before.
-        # RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskProjectPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskTableScanPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
-        # RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
-        # RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
-        # RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
-        # RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
-        # RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
@@ -213,6 +210,7 @@ class Context:
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
+        logger.debug(f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'")
         if "file_format" in kwargs:  # pragma: no cover
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
@@ -227,6 +225,7 @@ class Context:
             gpu=gpu,
             **kwargs,
         )
+
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
@@ -465,9 +464,8 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            print(f"Calling _get_ral(sql)")
             rel, select_names, _ = self._get_ral(sql)
-            print(f"Rel: {rel} - select_names: {select_names} - {_}")
+            logger.debug(f"Rel: {rel} - select_names: {select_names} - {_}")
 
             dc = RelConverter.convert(rel, context=self)
 
@@ -780,32 +778,23 @@ class Context:
         Create a list of schemas filled with the dataframes
         and functions we have currently in our schema list
         """
-        print(f"Existing schemas: {self.schema.items()}")
+        logger.debug(f"There are {len(self.schema)} existing schema(s): {self.schema.keys()}")
         schema_list = []
 
         for schema_name, schema in self.schema.items():
-            print(f"_prepare_schemas for loop -> schema_name: {schema_name}")
+            logger.debug(f"Preparing Schema: '{schema_name}'")
             rust_schema = DaskSchema(schema_name)
-            print(
-                f"_prepare_schemas for loop -> rust_schema: {rust_schema.to_string()}"
-            )
 
             if not schema.tables:
                 logger.warning("No tables are registered.")
 
             for name, dc in schema.tables.items():
-                print(f"_prepare_schemas inner for loop -> table name: {name}")
                 row_count = (
-                    schema.statistics[name].row_count
+                    float(schema.statistics[name].row_count)
                     if name in schema.statistics
-                    else None
+                    else float(0)
                 )
-                if row_count is not None:
-                    row_count = float(row_count)
-                else:
-                    row_count = float(0)
 
-                print(f"_prepare_schemas inner for loop -> row_count: {row_count}")
                 table = DaskTable(name, row_count)
                 df = dc.df
                 logger.debug(
@@ -846,6 +835,9 @@ class Context:
             #     java_schema.addFunction(dask_function)
 
             schema_list.append(rust_schema)
+            logger.debug(
+                f"Prepared Schema: {rust_schema.to_string()}"
+            )
 
         return schema_list
 
@@ -861,23 +853,17 @@ class Context:
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
+
+        logger.debug(f"Entering _get_ral('{sql}')")
+
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
-        print(f"Schemas: {schemas}")
+        for schema in schemas:
+            logger.debug(f"Schema: {type(schema)}")
+            logger.debug(f"Schema name: {schema.name}")
 
         # True if the SQL query should be case sensitive and False otherwise
         case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
-
-        # for schema in schemas:
-        #     generator_builder = generator_builder.addSchema(schema)
-        # generator = generator_builder.build()
-        # default_dialect = generator.getDialect()
-
-        # logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
-
-        # ValidationException = org.apache.calcite.tools.ValidationException
-        # SqlParseException = org.apache.calcite.sql.parser.SqlParseException
-        # CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
         try:
             sqlNode = sql_functions.getSqlNode(sql)

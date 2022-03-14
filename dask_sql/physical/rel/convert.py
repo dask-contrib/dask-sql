@@ -6,6 +6,16 @@ import dask.dataframe as dd
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
+from dask_planner.rust import (
+    DaskFunction,
+    DaskSchema,
+    DaskTable,
+    Query,
+    Statement,
+    sql_functions,
+    LogicalPlan,
+)
+
 if TYPE_CHECKING:
     import dask_sql
 
@@ -36,7 +46,7 @@ class RelConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        cls, rel: LogicalPlan, context: "dask_sql.Context"
     ) -> dd.DataFrame:
         """
         Convert the given rel (java instance)
