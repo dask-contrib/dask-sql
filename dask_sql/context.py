@@ -29,7 +29,7 @@ from dask_sql.java import com, get_java_class, java, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import ParsingException
+from dask_sql.utils import ParsingException, make_pickable_without_dask_sql
 
 logger = logging.getLogger(__name__)
 
@@ -902,7 +902,13 @@ class Context:
         schema = self.schema[schema_name]
 
         if not aggregation:
-            f = UDF(f, row_udf, parameters, return_type)
+            f = UDF(
+                f,
+                row_udf,
+                parameters,
+                return_type,
+                decorator=make_pickable_without_dask_sql,
+            )
         lower_name = name.lower()
         if lower_name in schema.functions:
             if replace:

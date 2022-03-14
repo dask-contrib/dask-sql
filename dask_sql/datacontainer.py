@@ -183,7 +183,7 @@ class DataContainer:
 
 
 class UDF:
-    def __init__(self, func, row_udf: bool, params, return_type=None):
+    def __init__(self, func, row_udf: bool, params, return_type=None, decorator=None):
         """
         Helper class that handles different types of UDFs and manages
         how they should be mapped to dask operations. Two versions of
@@ -195,6 +195,7 @@ class UDF:
         """
         self.row_udf = row_udf
         self.func = func
+        self.decorator = decorator
 
         self.names = [param[0] for param in params]
 
@@ -206,6 +207,8 @@ class UDF:
         self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):
+        apply_func = self.func if not self.decorator else self.decorator(self.func)
+
         if self.row_udf:
             column_args = []
             scalar_args = []
@@ -220,10 +223,10 @@ class UDF:
                 df[name] = col
 
             result = df.apply(
-                self.func, axis=1, args=tuple(scalar_args), meta=self.meta
+                apply_func, axis=1, args=tuple(scalar_args), meta=self.meta
             ).astype(self.meta[1])
         else:
-            result = self.func(*args, **kwargs)
+            result = apply_func(*args, **kwargs)
         return result
 
     def __eq__(self, other):
