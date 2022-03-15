@@ -1,3 +1,4 @@
+import itertools
 import operator
 
 import dask.dataframe as dd
@@ -25,7 +26,7 @@ def test_custom_function(c, df):
 
 def test_custom_function_row(c, df):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, row_udf=True)
 
@@ -40,13 +41,33 @@ def test_custom_function_row(c, df):
     assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
 
 
+@pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
+def test_custom_function_any_colnames(colnames, df_wide, c):
+    # a third column is needed
+
+    def f(row):
+        return row["x"] + row["y"]
+
+    colname_x, colname_y = colnames
+    c.register_function(
+        f, "f", [("x", np.int64), ("y", np.int64)], np.int64, row_udf=True
+    )
+
+    return_df = c.sql(f"SELECT F({colname_x},{colname_y}) FROM df_wide")
+
+    expect = df_wide[colname_x] + df_wide[colname_y]
+    got = return_df.iloc[:, 0]
+
+    dd.assert_eq(expect, got, check_names=False)
+
+
 @pytest.mark.parametrize(
     "retty",
     [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
 )
 def test_custom_function_row_return_types(c, df, retty):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     if retty is None:
         with pytest.raises(ValueError):

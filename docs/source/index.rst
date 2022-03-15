@@ -99,6 +99,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
    server
    cmd
    how_does_it_work
+   configuration
 
 
 .. note::

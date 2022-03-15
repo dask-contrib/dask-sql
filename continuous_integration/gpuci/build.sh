@@ -48,7 +48,6 @@ python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"
-python setup.py java
 
 gpuci_logger "Check Python version"
 python --version
