@@ -62,3 +62,6 @@ master_doc = "index"
 
 # Do not show type mappings
 autodoc_typehints = "none"
+
+# disable collapsible tabs
+sphinx_tabs_disable_tab_closing = True
