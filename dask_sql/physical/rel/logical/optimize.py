@@ -3,139 +3,111 @@ import operator
 import dask.dataframe as dd
 import numpy as np
 from dask.blockwise import Blockwise
+from dask.highlevelgraph import HighLevelGraph
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
-_comparison_ops_and_exprs = {
-    operator.eq: ({"func": operator.eq}, "=="),
-    operator.ne: ({"func": operator.ne}, "!="),
-    operator.lt: ({"func": operator.lt}, "<"),
-    operator.le: ({"func": operator.le}, "<="),
-    operator.gt: ({"func": operator.gt}, ">"),
-    operator.ge: ({"func": operator.ge}, ">="),
-    np.greater: ({"func": np.greater}, ">"),
-    np.greater_equal: ({"func": np.greater_equal}, ">="),
-    np.less: ({"func": np.less}, "<"),
-    np.less_equal: ({"func": np.less_equal}, "<="),
-    np.equal: ({"func": np.equal}, "=="),
-    np.not_equal: ({"func": np.not_equal}, "!="),
-}
-_comparison_ops = {k: v[0] for k, v in _comparison_ops_and_exprs.items()}
-_comparison_symbols = {k: v[1] for k, v in _comparison_ops_and_exprs.items()}
-_supported_ops = {
-    **_comparison_ops.copy(),
-    operator.and_: {"func": operator.and_},
-    operator.or_: {"func": operator.or_},
-    operator.getitem: {"func": operator.getitem},
-    M.fillna: {"func": dd.Series.fillna},
-}
 
+def predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
+    """Use graph information to update IO-level filters
 
-class SimpleDispatch:
+    This is a special optimization that must be called
+    eagerly on a DataFrame collection when filters are
+    applied. The "eager" requirement for this optimization
+    is due to the fact that `npartitions` and `divisions`
+    may change when this optimization is applied (invalidating
+    npartition/divisions-specific logic in following Layers).
+    """
 
-    """Simple dispatch class"""
+    # Get output layer name and HLG
+    name = ddf._name
 
-    def __init__(self, name=None):
-        self._lookup = {}
-        if name:
-            self.__name__ = name
+    # Start by converting the HLG to a `RegenerableGraph`.
+    # Succeeding here means that all layers in the graph
+    # are regenerable.
+    try:
+        dsk = RegenerableGraph.from_hlg(ddf.dask)
+    except ValueError:
+        return ddf
 
-    def register(self, ref, func=None):
-        """Register dispatch of `func` on `ref`"""
-
-        def wrapper(func):
-            if isinstance(ref, tuple):
-                for t in ref:
-                    self.register(t, func)
+    # Extract a DNF-formatted filter expression
+    try:
+        filters = dsk.layers[name]._dnf_filter_expression(dsk)
+        if filters:
+            if isinstance(filters[0], (list, tuple)):
+                filters = list(filters)
             else:
-                self._lookup[ref] = func
-            return func
+                filters = [filters]
+        else:
+            return ddf
+        if not isinstance(filters, list):
+            filters = [filters]
+    except ValueError:
+        # DNF dispatching failed for 1+ layers
+        return ddf
 
-        return wrapper(func) if func is not None else wrapper
+    # We were able to extract a DNF filter expression.
+    # Check that we have an IO layer with filters support
+    io_layer = []
+    for k, v in dsk.layers.items():
+        if (
+            isinstance(v.layer, DataFrameIOLayer)
+            and "filters" in v.creation_info.get("kwargs", {})
+            and v.creation_info["kwargs"]["filters"] is None
+        ):
+            io_layer.append(k)
+    if len(io_layer) != 1:
+        return ddf
+    io_layer = io_layer.pop()
 
-    def dispatch(self, ref):
-        """Return the function implementation for the given ``ref``"""
-        lk = self._lookup
-        try:
-            return lk[ref]
-        except KeyError:
-            pass
-        raise TypeError(f"No dispatch for {ref}")
-
-    def __call__(self, arg, *args, **kwargs):
-        """
-        Call the corresponding method based on type of argument.
-        """
-        meth = self.dispatch(arg)
-        return meth(arg, *args, **kwargs)
-
-
-dnf_filter_dispatch = SimpleDispatch("dnf_filter_dispatch")
-
-
-def _get_blockwise_input(input_index, indices, dsk):
-    key = indices[input_index][0]
-    if indices[input_index][1] is None:
-        return key
-    return dsk.layers[key]._dnf_filter_expression(dsk)
+    # Regenerate collection with filtered IO layer
+    return dsk.layers[name]._regenerate_collection(
+        dsk, new_kwargs={io_layer: {"filters": filters}},
+    )
 
 
-_inv_symbol = {
-    ">": "<",
-    "<": ">",
-    ">=": "<=",
-    "<=": ">=",
+# Define all supported comparison functions
+# (and their mapping to a string expression)
+_comparison_symbols = {
+    operator.eq: "==",
+    operator.ne: "!=",
+    operator.lt: "<",
+    operator.le: "<=",
+    operator.gt: ">",
+    operator.ge: ">=",
+    np.greater: ">",
+    np.greater_equal: ">=",
+    np.less: "<",
+    np.less_equal: "<=",
+    np.equal: "==",
+    np.not_equal: "!=",
 }
 
+# Define set of all "regenerable" operations.
+# Predicate pushdown is supported for graphs
+# comprised of `Blockwise` layers based on these
+# operations
+_regenerable_ops = set(_comparison_symbols.keys()) | {
+    operator.and_,
+    operator.or_,
+    operator.getitem,
+    M.fillna,
+}
 
-def _inv(symbol):
-    return _inv_symbol.get(symbol, symbol)
-
-
-@dnf_filter_dispatch.register(tuple(_comparison_symbols.keys()))
-def comparison_dnf(op, indices: list, dsk):
-    left = _get_blockwise_input(0, indices, dsk)
-    right = _get_blockwise_input(1, indices, dsk)
-    if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
-        left = left.item()
-        return (right, _inv(_comparison_symbols[op]), left)
-    if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
-        right = right.item()
-    return (left, _comparison_symbols[op], right)
-
-
-def _maybe_list(val):
-    if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
-        return list(val)
-    return [val]
-
-
-@dnf_filter_dispatch.register((operator.and_, operator.or_))
-def logical_dnf(op, indices: list, dsk):
-    left = _get_blockwise_input(0, indices, dsk)
-    right = _get_blockwise_input(1, indices, dsk)
-    if op == operator.or_:
-        return _maybe_list(left), _maybe_list(right)
-    elif op == operator.and_:
-        return (left, right)
-    else:
-        raise ValueError
-
-
-@dnf_filter_dispatch.register(operator.getitem)
-def getitem_dnf(op, indices: list, dsk):
-    # Return dnf of key (selected by getitem)
-    key = _get_blockwise_input(1, indices, dsk)
-    return key
-
-
-@dnf_filter_dispatch.register(dd.Series.fillna)
-def fillna_dnf(op, indices: list, dsk):
-    # Return dnf of input collection
-    return _get_blockwise_input(0, indices, dsk)
+# Specify functions that must be generated with
+# a different API at the dataframe-collection level
+_special_op_mappings = {M.fillna: dd.Series.fillna}
 
 
 class RegenerableLayer:
+    """Regenerable Layer
+
+    Wraps ``dask.highlevelgraph.Layer`` to ensure that a
+    ``creation_info`` attribute  is defined. This class
+    also defines the necessary methods for recursive
+    layer regeneration and filter-expression generation.
+    """
+
     def __init__(self, layer, creation_info):
         self.layer = layer
         self.creation_info = creation_info
@@ -143,6 +115,9 @@ class RegenerableLayer:
     def _regenerate_collection(
         self, dsk, new_kwargs: dict = None, _regen_cache: dict = None,
     ):
+        """Regenerate a Dask collection for this layer using the
+        provided inputs and key-word arguments
+        """
 
         # Return regenerated layer if the work was
         # already done
@@ -187,89 +162,123 @@ class RegenerableLayer:
         """Return a DNF-formatted filter expression for the
         graph terminating at this layer
         """
-        return dnf_filter_dispatch(self.creation_info["func"], self.layer.indices, dsk,)
+        op = self.creation_info["func"]
+        if op in _comparison_symbols.keys():
+            func = _comparison_dnf
+        elif op in (operator.and_, operator.or_):
+            func = _logical_dnf
+        elif op == operator.getitem:
+            func = _getitem_dnf
+        elif op == dd.Series.fillna:
+            func = _fillna_dnf
+        else:
+            raise ValueError(f"No DNF expression for {op}")
+
+        return func(op, self.layer.indices, dsk)
 
 
 class RegenerableGraph:
-    def __init__(self, layers, dependencies, dependents):
+    """Regenerable Graph
+
+    This class is similar to ``dask.highlevelgraph.HighLevelGraph``.
+    However, all layers in a ``RegenerableGraph`` graph must be
+    ``RegenerableLayer`` objects.
+    """
+
+    def __init__(self, layers: dict):
         self.layers = layers
-        self.dependencies = dependencies
-        self.dependents = dependents
 
     @classmethod
-    def from_hlg(cls, graph):
+    def from_hlg(cls, hlg: HighLevelGraph):
+        """Construct a ``RegenerableGraph`` from a ``HighLevelGraph``"""
+
+        if not isinstance(hlg, HighLevelGraph):
+            raise TypeError(f"Expected HighLevelGraph, got {type(hlg)}")
+
         _layers = {}
-        for key, layer in graph.layers.items():
+        for key, layer in hlg.layers.items():
             regenerable_layer = None
             if isinstance(layer, DataFrameIOLayer):
-                regenerable_layer = RegenerableLayer(layer, layer.creation_info or {},)
+                regenerable_layer = RegenerableLayer(layer, layer.creation_info or {})
             elif isinstance(layer, Blockwise):
                 tasks = list(layer.dsk.values())
                 if len(tasks) == 1 and tasks[0]:
+                    kwargs = {}
                     if tasks[0][0] == apply:
-                        creation_info = _supported_ops.get(tasks[0][1], None)
+                        op = tasks[0][1]
+                        options = tasks[0][3]
+                        if isinstance(options, dict):
+                            kwargs = options
+                        elif (
+                            isinstance(options, tuple)
+                            and options
+                            and callable(options[0])
+                        ):
+                            kwargs = options[0](*options[1:])
                     else:
-                        creation_info = _supported_ops.get(tasks[0][0], None)
-                    if creation_info:
-                        regenerable_layer = RegenerableLayer(layer, creation_info)
+                        op = tasks[0][0]
+                    if op in _regenerable_ops:
+                        regenerable_layer = RegenerableLayer(
+                            layer,
+                            {
+                                "func": _special_op_mappings.get(op, op),
+                                "kwargs": kwargs,
+                            },
+                        )
 
             if regenerable_layer is None:
                 raise ValueError(f"Graph contains non-regenerable layer: {layer}")
 
             _layers[key] = regenerable_layer
 
-        return RegenerableGraph(
-            _layers, graph.dependencies.copy(), graph.dependents.copy(),
-        )
+        return RegenerableGraph(_layers)
 
 
-def predicate_pushdown(ddf):
+def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
+    key = indices[input_index][0]
+    if indices[input_index][1] is None:
+        return key
+    return dsk.layers[key]._dnf_filter_expression(dsk)
 
-    # Get output layer name and HLG
-    name = ddf._name
 
-    # Start by converting the HLG to RegenerableGraph
-    try:
-        dsk = RegenerableGraph.from_hlg(ddf.dask)
-    except ValueError:
-        return ddf
+def _comparison_dnf(op, indices: list, dsk: RegenerableGraph):
+    left = _get_blockwise_input(0, indices, dsk)
+    right = _get_blockwise_input(1, indices, dsk)
 
-    # Extract filters
-    try:
-        filters = dsk.layers[name]._dnf_filter_expression(dsk)
-        if filters:
-            if isinstance(filters[0], (list, tuple)):
-                filters = list(filters)
-            else:
-                filters = [filters]
-        else:
-            return ddf
-        if not isinstance(filters, list):
-            filters = [filters]
-    except ImportError:  # (TypeError, ValueError):
-        # DNF dispatching failed for 1+ layers
-        return ddf
+    def _inv(symbol: str):
+        return {">": "<", "<": ">", ">=": "<=", "<=": ">=",}.get(symbol, symbol)
 
-    # We were able to extract a DNF filter expression.
-    # Check that all layers are regenerable, and that
-    # the graph contains an IO layer with filters support.
-    # All layers besides the root IO layer should also
-    # support DNF dispatching.  Otherwise, there could be
-    # something like column-assignment or data manipulation
-    # between the IO layer and the filter.
-    io_layer = []
-    for k, v in dsk.layers.items():
-        if (
-            isinstance(v.layer, DataFrameIOLayer)
-            and "filters" in v.creation_info.get("kwargs", {})
-            and v.creation_info["kwargs"]["filters"] is None
-        ):
-            io_layer.append(k)
-    if len(io_layer) != 1:
-        return ddf
-    io_layer = io_layer.pop()
+    if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
+        left = left.item()
+        return (right, _inv(_comparison_symbols[op]), left)
+    if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
+        right = right.item()
+    return (left, _comparison_symbols[op], right)
 
-    # Regenerate collection with filtered IO layer
-    return dsk.layers[name]._regenerate_collection(
-        dsk, new_kwargs={io_layer: {"filters": filters}},
-    )
+
+def _logical_dnf(op, indices: list, dsk: RegenerableGraph):
+    left = _get_blockwise_input(0, indices, dsk)
+    right = _get_blockwise_input(1, indices, dsk)
+
+    def _maybe_list(val):
+        if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
+            return list(val)
+        return [val]
+
+    if op == operator.or_:
+        return _maybe_list(left), _maybe_list(right)
+    elif op == operator.and_:
+        return (left, right)
+    else:
+        raise ValueError
+
+
+def _getitem_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return dnf of key (selected by getitem)
+    key = _get_blockwise_input(1, indices, dsk)
+    return key
+
+
+def _fillna_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return dnf of input collection
+    return _get_blockwise_input(0, indices, dsk)
