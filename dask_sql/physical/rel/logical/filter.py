@@ -6,6 +6,7 @@ import numpy as np
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rel.logical.optimize import predicate_pushdown
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
@@ -31,7 +32,7 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
 
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
-    return df[filter_condition]
+    return predicate_pushdown(df[filter_condition])
 
 
 class DaskFilterPlugin(BaseRelPlugin):
