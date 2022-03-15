@@ -13,6 +13,7 @@ from dask.distributed import Client
 from dask_planner.rust import (
     DaskSchema,
     DaskTable,
+    DaskSQLContext,
     sql_functions,
 )
 
@@ -79,6 +80,9 @@ class Context:
 
         # Set the logging level for this SQL context
         logging.basicConfig(level=logging_level)
+
+        # Create the `DaskSQLContext` Rust context
+        self.context = DaskSQLContext()
 
         # Name of the root schema
         self.schema_name = self.DEFAULT_SCHEMA_NAME
@@ -861,22 +865,23 @@ class Context:
         for schema in schemas:
             logger.debug(f"Schema: {type(schema)}")
             logger.debug(f"Schema name: {schema.name}")
+            self.context.register_schema(schema)
 
         # True if the SQL query should be case sensitive and False otherwise
         case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
         try:
-            sqlNode = sql_functions.getSqlNode(sql)
-            print(f"_get_ral -> sqlNode: {sqlNode}")
+            sqlTree = self.context.parse_sql(sql)
+            print(f"_get_ral -> sqlTree: {sqlTree}")
 
             select_names = None
-            rel = sqlNode
+            rel = sqlTree
             rel_string = ""
 
             # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
-            nonOptimizedRelNode = sql_functions.getRelationalAlgebra(sqlNode[0])
-            rel = nonOptimizedRelNode
-            print(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRelNode}")
+            nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+            rel = nonOptimizedRel
+            print(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
             # # Optimization might remove some alias projects. Make sure to keep them here.
             # select_names = [
             #     str(name)

@@ -21,6 +21,7 @@ use datafusion::sql::planner::{SqlToRel};
 use std::sync::Arc;
 
 
+
 /// DaskSQLContext is main interface used for interacting with Datafusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
 ///
@@ -43,14 +44,72 @@ use std::sync::Arc;
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct DaskSQLContext {
-    pub state: Arc<Mutex<DaskSQLContextState>>,
+    pub schemas: HashMap<String, DaskSchema>,
+}
+
+impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
+    fn get_table_provider(
+        &self,
+        name: TableReference,
+    ) -> Option<Arc<dyn TableProvider>> {
+        println!("RUST: get_table_provider");
+        println!("Table Name: {:?}", name.table());
+
+        let current_schema = String::from("root");
+
+        // Use the current schema and look for table
+        let schema = self.schemas.get(&current_schema).unwrap();
+        let mut resp = None;
+        for (table_name, table) in &schema.databaseTables {
+            println!("Table: {:?}", table);
+            if table.name.eq(&name.table()) {
+                println!("Found table provider! Building response!!!!");
+                resp = Some(Schema::new(vec![
+                    Field::new("id", DataType::Utf8, false),
+                ]));
+            }
+        }
+
+        Some(Arc::new(datafusion::datasource::empty::EmptyTable::new(
+            Arc::new(
+                resp.unwrap()
+            )
+        )))
+    }
+
+    fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
+        println!("RUST: get_function_meta");
+        let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
+            Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
+        match name {
+            _ => None,
+        }
+    }
+
+    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<datafusion::physical_plan::udaf::AggregateUDF>> {
+        println!("RUST: get_aggregate_meta");
+        unimplemented!()
+    }
+}
+
+impl Default for DaskSQLContext {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[pymethods]
 impl DaskSQLContext {
     #[new]
     pub fn new() -> Self {
-        Self::new()
+        Self {
+            schemas: HashMap::new(),
+        }
+    }
+
+    pub fn register_schema(&mut self, schema: DaskSchema) {
+        println!("Adding DaskSchema: {:?}", schema);
+        self.schemas.insert(String::from("root"), schema);
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
@@ -63,28 +122,27 @@ impl DaskSQLContext {
         statements
     }
 
-    // /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
-    // pub fn logical_relational_algebra(&self, statement: PyStatement) -> PyLogicalPlan {
-    //     let context_provider = &DaskSQLContext {};
-    //     let planner = SqlToRel::new(context_provider);
+    /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
+    pub fn logical_relational_algebra(&self, statement: PyStatement) -> PyLogicalPlan {
+        let planner = SqlToRel::new(self);
     
-    //     match planner.statement_to_plan(&statement.statement) {
-    //         Ok(k) => {
-    //             PyLogicalPlan { 
-    //                 logical_plan: k ,
-    //                 table: DaskTable{
-    //                     name: String::from("test"),
-    //                     statistics: DaskStatistics::new(0.0),
-    //                     tableColumns: Vec::new(),
-    //                     row_type: DaskRelDataType {
-    //                         field_names: vec![String::from("id")]
-    //                     },
-    //                 },
-    //             }
-    //         },
-    //         Err(e) => panic!("{}", e.to_string()),
-    //     }
-    // }
+        match planner.statement_to_plan(&statement.statement) {
+            Ok(k) => {
+                PyLogicalPlan { 
+                    logical_plan: k ,
+                    table: DaskTable{
+                        name: String::from("test"),
+                        statistics: DaskStatistics::new(0.0),
+                        tableColumns: Vec::new(),
+                        row_type: DaskRelDataType {
+                            field_names: vec![String::from("id")]
+                        },
+                    },
+                }
+            },
+            Err(e) => panic!("{}", e.to_string()),
+        }
+    }
 }
 
 
@@ -105,36 +163,6 @@ pub struct DaskSQLContextState {
     // pub object_store_registry: Arc<ObjectStoreRegistry>,
     // /// Runtime environment
     // pub runtime_env: Arc<RuntimeEnv>,
-}
-
-
-impl datafusion::sql::planner::ContextProvider for DaskSQLContextState {
-    fn get_table_provider(
-        &self,
-        name: TableReference,
-    ) -> Option<Arc<dyn TableProvider>> {
-        let schema = match name.table() {
-            "test" => Some(Schema::new(vec![
-                Field::new("id", DataType::Utf8, false),
-            ])),
-            _ => None,
-        };
-        schema.map(|s| -> Arc<dyn TableProvider> {
-            Arc::new(datafusion::datasource::empty::EmptyTable::new(Arc::new(s)))
-        })
-    }
-
-    fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
-        let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
-            Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
-        match name {
-            _ => None,
-        }
-    }
-
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<datafusion::physical_plan::udaf::AggregateUDF>> {
-        unimplemented!()
-    }
 }
 
 
