@@ -27,7 +27,7 @@ def predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     # are regenerable.
     try:
         dsk = RegenerableGraph.from_hlg(ddf.dask)
-    except ValueError:
+    except (ValueError, TypeError):
         return ddf
 
     # Extract a DNF-formatted filter expression
@@ -96,7 +96,7 @@ _regenerable_ops = set(_comparison_symbols.keys()) | {
 
 # Specify functions that must be generated with
 # a different API at the dataframe-collection level
-_special_op_mappings = {M.fillna: dd.Series.fillna}
+_special_op_mappings = {M.fillna: dd._Frame.fillna}
 
 
 class RegenerableLayer:
@@ -169,7 +169,7 @@ class RegenerableLayer:
             func = _logical_dnf
         elif op == operator.getitem:
             func = _getitem_dnf
-        elif op == dd.Series.fillna:
+        elif op == dd._Frame.fillna:
             func = _fillna_dnf
         else:
             raise ValueError(f"No DNF expression for {op}")
