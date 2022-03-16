@@ -1,4 +1,5 @@
 import operator
+import warnings
 
 import dask.dataframe as dd
 import numpy as np
@@ -64,9 +65,21 @@ def predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     io_layer = io_layer.pop()
 
     # Regenerate collection with filtered IO layer
-    return dsk.layers[name]._regenerate_collection(
-        dsk, new_kwargs={io_layer: {"filters": filters}},
-    )
+    try:
+        return dsk.layers[name]._regenerate_collection(
+            dsk, new_kwargs={io_layer: {"filters": filters}},
+        )
+    except ValueError as err:
+        # Most-likely failed to apply filters in read_parquet.
+        # We can just bail on predicate pushdown, but we also
+        # raise a warning to encourage the user to file an issue.
+        warnings.warn(
+            f"Predicate pushdown failed. Please open a bug report at "
+            f"https://github.com/dask-contrib/dask-sql/issues/new/choose "
+            f"and include the following error message: {err}"
+        )
+
+        return ddf
 
 
 # Define all supported comparison functions
@@ -273,10 +286,20 @@ def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph):
             return list(val)
         return [val]
 
+    def _maybe_tuple(val):
+        if isinstance(val, tuple) and val and isinstance(val[0], tuple):
+            return val
+        return (val,)
+
     if op == operator.or_:
-        return _maybe_list(left), _maybe_list(right)
+        # NDF "or" is List[List[Tuple]]
+        return [_maybe_list(left), _maybe_list(right)]
     elif op == operator.and_:
-        return (left, right)
+        # NDF "and" is List[Tuple]
+        # However, we don't want to add the outer list
+        # until the filter is finished, or this expression
+        # is combined with another in an "or" expression
+        return _maybe_tuple(left) + _maybe_tuple(right)
     else:
         raise ValueError
 

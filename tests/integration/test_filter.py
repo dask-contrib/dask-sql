@@ -1,8 +1,10 @@
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.utils_test import hlg_layer
 from pandas.testing import assert_frame_equal
 
+from dask_sql import Context
 from dask_sql._compat import INT_NAN_IMPLEMENTED
 
 
@@ -122,3 +124,29 @@ def test_filter_year(c):
     expected_df = df[df["year"] < 2016]
 
     assert_frame_equal(expected_df, actual_df)
+
+
+def test_predicate_pushdown_complicated(tmpdir):
+
+    # Write simple parquet dataset
+    dd.from_pandas(
+        pd.DataFrame({"a": [1, 2, 3] * 5, "b": range(15), "c": ["A"] * 15}),
+        npartitions=3,
+    ).to_parquet(tmpdir)
+
+    # Read back with dask and apply WHERE query
+    ddf = dd.read_parquet(tmpdir)
+    df = ddf.compute()
+
+    context = Context()
+    context.create_table("my_table", ddf)
+    return_df = context.sql("SELECT * FROM my_table WHERE a < 3 AND (b > 1 AND b < 3)")
+
+    # Check for predicate pushdown
+    assert hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"]["filters"]
+    return_df = return_df.compute()
+
+    expected_df = df[((df["a"] < 3) & ((df["b"] > 1) & (df["b"] < 3)))]
+    assert_frame_equal(
+        return_df, expected_df,
+    )
