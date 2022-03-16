@@ -23,6 +23,46 @@ use datafusion::sql::planner::{SqlToRel};
 use std::sync::Arc;
 
 
+#[derive(Debug, Default)]
+struct OkVisitor {
+    strings: Vec<String>,
+}
+
+impl datafusion::logical_plan::plan::PlanVisitor for OkVisitor {
+    type Error = String;
+
+    fn pre_visit(
+        &mut self,
+        plan: &LogicalPlan,
+    ) -> std::result::Result<bool, Self::Error> {
+        let s = match plan {
+            LogicalPlan::Projection { .. } => "pre_visit Projection",
+            LogicalPlan::Filter { .. } => "pre_visit Filter",
+            LogicalPlan::TableScan { .. } => "pre_visit TableScan",
+            _ => unimplemented!("unknown plan type"),
+        };
+
+        self.strings.push(s.into());
+        Ok(true)
+    }
+
+    fn post_visit(
+        &mut self,
+        plan: &LogicalPlan,
+    ) -> std::result::Result<bool, Self::Error> {
+        let s = match plan {
+            LogicalPlan::Projection { .. } => "post_visit Projection",
+            LogicalPlan::Filter { .. } => "post_visit Filter",
+            LogicalPlan::TableScan { .. } => "post_visit TableScan",
+            _ => unimplemented!("unknown plan type"),
+        };
+
+        self.strings.push(s.into());
+        Ok(true)
+    }
+}
+
+
 
 /// DaskSQLContext is main interface used for interacting with Datafusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -261,6 +301,18 @@ impl PyLogicalPlan {
     pub fn explain(&self) -> String {
         format!("{}", self.logical_plan.display_indent())
     }
+
+    pub fn get_inputs(&self) -> Vec<String> {
+        // Actually gonna test out walking the plan here ....
+        let mut visitor = OkVisitor::default();
+        self.logical_plan.accept(&mut visitor);
+
+        for mess in visitor.strings {
+            println!("{}", mess);
+        }
+
+        Vec::new()
+    }
 }
 
 
@@ -392,7 +444,7 @@ impl DaskRelDataType {
     pub fn new(field_name: String) -> Self {
         DaskRelDataType {
             name: field_name,
-            sqlType: DataType::Int64,
+            sqlType: DataType::Float64,
         }
     }
 
@@ -436,14 +488,16 @@ impl DaskRelDataType {
             DataType::UInt64 => {
                 String::from("BIGINT")
             },
+            DataType::Float32 => {
+                String::from("FLOAT")
+            },
+            DataType::Float64 => {
+                String::from("DOUBLE")
+            },
             _ => {
                 panic!("This is not yet implemented!!!")
             }
 
-
-    // Float16,
-    // Float32,
-    // Float64,
     // Timestamp(TimeUnit, Option<String>),
     // Date32,
     // Date64,
@@ -542,7 +596,7 @@ impl DaskTable {
 
         let sqlType: DaskRelDataType = DaskRelDataType {
             name: String::from(&column_name),
-            sqlType: DataType::Int64,
+            sqlType: DataType::Float64,
         };
 
         self.columns.push((column_name, sqlType));

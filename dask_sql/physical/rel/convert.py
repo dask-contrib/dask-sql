@@ -54,7 +54,9 @@ class RelConverter(Pluggable):
         registered dask tables from the context.
         """
         # class_name = get_java_class(rel)
-        class_name = "com.dask.sql.nodes.DaskTableScan"
+        class_name = "com.dask.sql.nodes.DaskProject"
+
+        print(f"Rel: {rel.explain()}")
 
         try:
             plugin_instance = cls.get_plugin(class_name)

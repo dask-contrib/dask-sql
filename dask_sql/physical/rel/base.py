@@ -82,11 +82,8 @@ class BaseRelPlugin:
         input tables as expected and returns them already
         converted into a dask dataframe.
         """
-        input_rels = rel.getInputs()
+        input_rels = rel.get_inputs()
         print(f"Inputs: {input_rels}")
-
-        projected_cols = rel.getProjections()
-        print(f"Projected Columns: {projected_cols}")
 
         assert len(input_rels) == n
 

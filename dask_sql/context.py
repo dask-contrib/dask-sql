@@ -475,6 +475,8 @@ class Context:
             rel, select_names, _ = self._get_ral(sql)
             logger.debug(f"Rel: {rel} - select_names: {select_names} - {_}")
 
+            print(f"Relational Algebra: {rel}")
+
             dc = RelConverter.convert(rel, context=self)
 
             if dc is None:
