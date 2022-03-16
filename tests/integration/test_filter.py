@@ -4,7 +4,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from pandas.testing import assert_frame_equal
 
-from dask_sql import Context
 from dask_sql._compat import INT_NAN_IMPLEMENTED
 
 
@@ -126,27 +125,38 @@ def test_filter_year(c):
     assert_frame_equal(expected_df, actual_df)
 
 
-def test_predicate_pushdown_complicated(tmpdir):
+@pytest.mark.parametrize(
+    "query,df_func",
+    [
+        ("SELECT * FROM parquet_ddf WHERE b < 10", lambda x: x[x["b"] < 10],),
+        (
+            "SELECT * FROM parquet_ddf WHERE a < 3 AND (b > 1 AND b < 5)",
+            lambda x: x[(x["a"] < 3) & ((x["b"] > 1) & (x["b"] < 5))],
+        ),
+        (
+            "SELECT * FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
+            lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
+        ),
+        (
+            "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
+            lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
+        ),
+    ],
+)
+def test_predicate_pushdown_complicated(c, parquet_ddf, query, df_func):
 
-    # Write simple parquet dataset
-    dd.from_pandas(
-        pd.DataFrame({"a": [1, 2, 3] * 5, "b": range(15), "c": ["A"] * 15}),
-        npartitions=3,
-    ).to_parquet(tmpdir)
-
-    # Read back with dask and apply WHERE query
-    ddf = dd.read_parquet(tmpdir)
-    df = ddf.compute()
-
-    context = Context()
-    context.create_table("my_table", ddf)
-    return_df = context.sql("SELECT * FROM my_table WHERE a < 3 AND (b > 1 AND b < 3)")
-
-    # Check for predicate pushdown
+    # Check for predicate pushdown.
+    # We can use the `hlg_layer` utility to make sure the
+    # `filters` field has been populated in `creation_info`
+    return_df = c.sql(query)
     assert hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"]["filters"]
-    return_df = return_df.compute()
 
-    expected_df = df[((df["a"] < 3) & ((df["b"] > 1) & (df["b"] < 3)))]
+    # Check computed result is correct.
+    # Note that we must sort by index to ensure
+    # ordering can be compared directly
+    return_df = return_df.compute()
+    df = parquet_ddf.compute()
+    expected_df = df_func(df)
     assert_frame_equal(
-        return_df, expected_df,
+        return_df.sort_index(), expected_df.sort_index(),
     )
