@@ -43,6 +43,7 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+                "parquet_ddf",
             ]
             if cudf is None
             else [
@@ -56,6 +57,7 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+                "parquet_ddf",
                 "gpu_user_table_1",
                 "gpu_df",
                 "gpu_long_table",

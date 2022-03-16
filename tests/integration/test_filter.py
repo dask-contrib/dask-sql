@@ -128,7 +128,7 @@ def test_filter_year(c):
 @pytest.mark.parametrize(
     "query,df_func",
     [
-        ("SELECT * FROM parquet_ddf WHERE b < 10", lambda x: x[x["b"] < 10],),
+        ("SELECT * FROM parquet_ddf WHERE b < 10", lambda x: x[x["b"] < 10]),
         (
             "SELECT * FROM parquet_ddf WHERE a < 3 AND (b > 1 AND b < 5)",
             lambda x: x[(x["a"] < 3) & ((x["b"] > 1) & (x["b"] < 5))],
@@ -140,6 +140,13 @@ def test_filter_year(c):
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
+            lambda x: x[x["d"].dt.year < 2015],
+            marks=pytest.mark.xfail(
+                reason="Predicate pushdown does not support datetime accessors."
+            ),
         ),
     ],
 )

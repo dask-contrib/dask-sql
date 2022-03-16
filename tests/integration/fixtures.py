@@ -116,18 +116,21 @@ def datetime_table():
 def parquet_ddf(tmpdir):
 
     # Write simple parquet dataset
-    dd.from_pandas(
-        pd.DataFrame(
-            {
-                "a": [1, 2, 3] * 5,
-                "b": range(15),
-                "c": ["A"] * 15,
-                "d": [2001, 2002, 2003] * 5,
-                "index": range(15),
-            },
-        ),
-        npartitions=3,
-    ).to_parquet(tmpdir)
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(tmpdir)
 
     # Read back with dask and apply WHERE query
     return dd.read_parquet(tmpdir, index="index")
