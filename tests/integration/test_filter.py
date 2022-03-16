@@ -144,13 +144,15 @@ def test_filter_year(c):
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
             lambda x: x[x["d"].dt.year < 2015],
+            # This test will fail, because the filters will not get pushed
+            # down to read_parquet. However, the query should still succeed.
             marks=pytest.mark.xfail(
                 reason="Predicate pushdown does not support datetime accessors."
             ),
         ),
     ],
 )
-def test_predicate_pushdown_complicated(c, parquet_ddf, query, df_func):
+def test_predicate_pushdown(c, parquet_ddf, query, df_func):
 
     # Check for predicate pushdown.
     # We can use the `hlg_layer` utility to make sure the

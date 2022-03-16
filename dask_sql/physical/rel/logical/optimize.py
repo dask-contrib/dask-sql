@@ -9,8 +9,11 @@ from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
 
-def predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
+def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     """Use graph information to update IO-level filters
+
+    The original `ddf` will be returned if/when the
+    predicate-pushdown optimization fails.
 
     This is a special optimization that must be called
     eagerly on a DataFrame collection when filters are
