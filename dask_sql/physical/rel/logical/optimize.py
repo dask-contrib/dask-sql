@@ -47,16 +47,19 @@ def predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         return ddf
 
     # We were able to extract a DNF filter expression.
-    # Check that we have an IO layer with filters support
+    # Check that we have a single IO layer with `filters` support
     io_layer = []
     for k, v in dsk.layers.items():
-        if (
-            isinstance(v.layer, DataFrameIOLayer)
-            and "filters" in v.creation_info.get("kwargs", {})
-            and v.creation_info["kwargs"]["filters"] is None
-        ):
+        if isinstance(v.layer, DataFrameIOLayer):
             io_layer.append(k)
+            if (
+                "filters" not in v.creation_info.get("kwargs", {})
+                or v.creation_info["kwargs"]["filters"] is not None
+            ):
+                # No filters support, or filters is already set
+                return ddf
     if len(io_layer) != 1:
+        # Not a single IO layer
         return ddf
     io_layer = io_layer.pop()
 
@@ -102,14 +105,14 @@ _special_op_mappings = {M.fillna: dd._Frame.fillna}
 class RegenerableLayer:
     """Regenerable Layer
 
-    Wraps ``dask.highlevelgraph.Layer`` to ensure that a
+    Wraps ``dask.highlevelgraph.Blockwise`` to ensure that a
     ``creation_info`` attribute  is defined. This class
     also defines the necessary methods for recursive
     layer regeneration and filter-expression generation.
     """
 
     def __init__(self, layer, creation_info):
-        self.layer = layer
+        self.layer = layer  # Original Blockwise layer reference
         self.creation_info = creation_info
 
     def _regenerate_collection(
@@ -164,13 +167,13 @@ class RegenerableLayer:
         """
         op = self.creation_info["func"]
         if op in _comparison_symbols.keys():
-            func = _comparison_dnf
+            func = _blockwise_comparison_dnf
         elif op in (operator.and_, operator.or_):
-            func = _logical_dnf
+            func = _blockwise_logical_dnf
         elif op == operator.getitem:
-            func = _getitem_dnf
+            func = _blockwise_getitem_dnf
         elif op == dd._Frame.fillna:
-            func = _fillna_dnf
+            func = _blockwise_fillna_dnf
         else:
             raise ValueError(f"No DNF expression for {op}")
 
@@ -182,7 +185,7 @@ class RegenerableGraph:
 
     This class is similar to ``dask.highlevelgraph.HighLevelGraph``.
     However, all layers in a ``RegenerableGraph`` graph must be
-    ``RegenerableLayer`` objects.
+    ``RegenerableLayer`` objects (which wrap ``Blockwise`` layers).
     """
 
     def __init__(self, layers: dict):
@@ -235,13 +238,16 @@ class RegenerableGraph:
 
 
 def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
+    # Simple utility to get the required input expressions
+    # for a Blockwise layer (using indices)
     key = indices[input_index][0]
     if indices[input_index][1] is None:
         return key
     return dsk.layers[key]._dnf_filter_expression(dsk)
 
 
-def _comparison_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return DNF expression pattern for a simple comparison
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
 
@@ -250,13 +256,15 @@ def _comparison_dnf(op, indices: list, dsk: RegenerableGraph):
 
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
         left = left.item()
+        # Need inverse comparison in read_parquet
         return (right, _inv(_comparison_symbols[op]), left)
     if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
         right = right.item()
     return (left, _comparison_symbols[op], right)
 
 
-def _logical_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return DNF expression pattern for logical "and" or "or"
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
 
@@ -273,12 +281,12 @@ def _logical_dnf(op, indices: list, dsk: RegenerableGraph):
         raise ValueError
 
 
-def _getitem_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_getitem_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return dnf of key (selected by getitem)
     key = _get_blockwise_input(1, indices, dsk)
     return key
 
 
-def _fillna_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_fillna_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return dnf of input collection
     return _get_blockwise_input(0, indices, dsk)
