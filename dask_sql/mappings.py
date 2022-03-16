@@ -87,13 +87,15 @@ _SQL_TO_PYTHON_FRAMES = {
 
 
 def python_to_sql_type(python_type):
+    # print(f"Python Type: {python_type}")
     """Mapping between python and SQL types."""
-
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+        # return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+        # TODO: Maybe pass in optional timezone here? Not really sure?
+        return pa.timestamp('ms', tz='America/New_York')
 
     try:
         return _PYTHON_TO_SQL[python_type]
@@ -194,7 +196,7 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
-    print(f'mappings.sql_to_python_type() -> sql_type: {sql_type}')
+    logger.debug(f'mappings.sql_to_python_type() -> sql_type: {sql_type}')
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):

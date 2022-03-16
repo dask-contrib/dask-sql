@@ -14,7 +14,7 @@ from dask_planner.rust import (
     DaskSchema,
     DaskTable,
     DaskSQLContext,
-    sql_functions,
+    DaskRelDataType,
 )
 
 try:
@@ -81,15 +81,16 @@ class Context:
         # Set the logging level for this SQL context
         logging.basicConfig(level=logging_level)
 
-        # Create the `DaskSQLContext` Rust context
-        self.context = DaskSQLContext()
-
         # Name of the root schema
         self.schema_name = self.DEFAULT_SCHEMA_NAME
         # All schema information
         self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
+
+        # Create the `DaskSQLContext` Rust context
+        self.context = DaskSQLContext(self.schema_name)
+        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
@@ -233,6 +234,9 @@ class Context:
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
+
+        # Register the table with the Rust DaskSQLContext
+        self.context.register_table(schema_name, DaskTable(table_name, 100))
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -807,15 +811,12 @@ class Context:
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-
-                    print(
-                        f"_prepare_schemas inner, inner for loop -> sql_data_type: {sql_data_type}"
-                    )
                     # TODO: Due to time constraints only going to support string types for now
-                    # table.addColumn(column, sql_data_type)
-                    table.addColumn(column)
+                    # print(f"SQL Data Type: {sql_data_type}")
+                    # something = DaskRelDataType(column, sql_data_type)
+                    table.add_column(column)
 
-                rust_schema.addTable(table)
+                rust_schema.add_table(table)
 
             # TODO: Custom functions are not in scope for the POC - Jeremy Dyer
             # if not schema.functions:
@@ -863,37 +864,38 @@ class Context:
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
         for schema in schemas:
-            logger.debug(f"Schema: {type(schema)}")
-            logger.debug(f"Schema name: {schema.name}")
-            self.context.register_schema(schema)
+            self.context.register_schema(schema.name, schema)
 
         # True if the SQL query should be case sensitive and False otherwise
         case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
 
         try:
             sqlTree = self.context.parse_sql(sql)
-            print(f"_get_ral -> sqlTree: {sqlTree}")
+            logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
             select_names = None
             rel = sqlTree
-            rel_string = ""
 
             # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
+            if len(sqlTree) > 1:
+                error = "Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!".format(sql)
+                raise RuntimeError(error)
+
             nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
             rel = nonOptimizedRel
-            print(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
+            logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
             # # Optimization might remove some alias projects. Make sure to keep them here.
             # select_names = [
             #     str(name)
             #     for name in nonOptimizedRelNode.getRowType().getFieldNames()
             # ]
 
-            select_names = ["id"]
-            # select_names = nonOptimizedRelNode.getFieldNames()
+            select_names = rel.get_field_names()
 
             # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
             # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
             # rel_string = str(generator.getRelationalAlgebraString(rel))
+            rel_string = rel.explain()
 
         except (ValidationException, SqlParseException, CalciteContextException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")

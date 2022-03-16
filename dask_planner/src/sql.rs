@@ -1,20 +1,22 @@
 
 use std::collections::HashMap;
 
+use std::fmt;
+
 use pyo3::prelude::*;
 
 use parking_lot::Mutex;
 
 use datafusion::sql::parser::{DFParser, Statement};
 use sqlparser::ast::{Query, Select};
-use datafusion::logical_plan::Expr;
 
 use datafusion::catalog::catalog::{CatalogList};
 
-use datafusion::arrow::datatypes::{DataType, Field, Schema};
+use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 
 use datafusion::catalog::TableReference;
 use datafusion::datasource::TableProvider;
+use datafusion::logical_plan::{DFSchema, Expr};
 use datafusion::logical_plan::plan::LogicalPlan;
 use datafusion::sql::planner::{SqlToRel};
 
@@ -44,6 +46,7 @@ use std::sync::Arc;
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct DaskSQLContext {
+    default_schema_name: String,
     pub schemas: HashMap<String, DaskSchema>,
 }
 
@@ -52,29 +55,30 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
         &self,
         name: TableReference,
     ) -> Option<Arc<dyn TableProvider>> {
-        println!("RUST: get_table_provider");
-        println!("Table Name: {:?}", name.table());
+        match self.schemas.get(&String::from(&self.default_schema_name)) {
+            Some(schema) => {
+                let mut resp = None;
+                for (table_name, table) in &schema.tables {
+                    if table.name.eq(&name.table()) {
+                        // Build the Schema here
+                        let mut fields: Vec<Field> = Vec::new();
 
-        let current_schema = String::from("root");
+                        // Iterate through the DaskTable instance and create a Schema instance
+                        for (column_name, column_type) in &table.columns {
+                            fields.push(Field::new(column_name, column_type.sqlType.clone(), false));
+                        }
 
-        // Use the current schema and look for table
-        let schema = self.schemas.get(&current_schema).unwrap();
-        let mut resp = None;
-        for (table_name, table) in &schema.databaseTables {
-            println!("Table: {:?}", table);
-            if table.name.eq(&name.table()) {
-                println!("Found table provider! Building response!!!!");
-                resp = Some(Schema::new(vec![
-                    Field::new("id", DataType::Utf8, false),
-                ]));
-            }
+                        resp = Some(Schema::new(fields));
+                    }
+                }
+                Some(Arc::new(datafusion::datasource::empty::EmptyTable::new(
+                    Arc::new(
+                        resp.unwrap()
+                    )
+                )))
+            },
+            None => panic!("Schema with name {} not found", "table_name"),
         }
-
-        Some(Arc::new(datafusion::datasource::empty::EmptyTable::new(
-            Arc::new(
-                resp.unwrap()
-            )
-        )))
     }
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
@@ -92,34 +96,40 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
     }
 }
 
-impl Default for DaskSQLContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new() -> Self {
+    pub fn new(default_schema_name: String) -> Self {
         Self {
+            default_schema_name: default_schema_name,
             schemas: HashMap::new(),
         }
     }
 
-    pub fn register_schema(&mut self, schema: DaskSchema) {
-        println!("Adding DaskSchema: {:?}", schema);
-        self.schemas.insert(String::from("root"), schema);
+    pub fn register_schema(&mut self, schema_name:String, schema: DaskSchema) {
+        self.schemas.insert(schema_name, schema);
+    }
+
+    pub fn register_table(&mut self, schema_name:String, table: DaskTable) {
+        match self.schemas.get_mut(&schema_name) {
+            Some(schema) => schema.add_table(table),
+            None => println!("Schema: {} not found in DaskSQLContext", schema_name),
+        }
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> Vec<PyStatement> {
-        let resp = DFParser::parse_sql(sql).unwrap().clone();
-        let mut statements = Vec::new();
-        for statement in resp {
-            statements.push(statement.into());
+        match DFParser::parse_sql(sql) {
+            Ok(k) => {
+                let mut statements = Vec::new();
+                for statement in k {
+                    statements.push(statement.into());
+                }
+                statements
+            },
+            Err(e) => panic!("{}", e.to_string()),
         }
-        statements
     }
 
     /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
@@ -129,15 +139,7 @@ impl DaskSQLContext {
         match planner.statement_to_plan(&statement.statement) {
             Ok(k) => {
                 PyLogicalPlan { 
-                    logical_plan: k ,
-                    table: DaskTable{
-                        name: String::from("test"),
-                        statistics: DaskStatistics::new(0.0),
-                        tableColumns: Vec::new(),
-                        row_type: DaskRelDataType {
-                            field_names: vec![String::from("id")]
-                        },
-                    },
+                    logical_plan: k,
                 }
             },
             Err(e) => panic!("{}", e.to_string()),
@@ -146,31 +148,10 @@ impl DaskSQLContext {
 }
 
 
-/// Dask SQL context for registering data sources and executing queries
-#[derive(Clone)]
-pub struct DaskSQLContextState {
-    /// Collection of catalogs containing schemas and ultimately TableProviders
-    pub catalog_list: Arc<dyn CatalogList>,
-    // /// Scalar functions that are registered with the context
-    // pub scalar_functions: HashMap<String, Arc<ScalarUDF>>,
-    // /// Aggregate functions registered in the context
-    // pub aggregate_functions: HashMap<String, Arc<AggregateUDF>>,
-    // /// Context configuration
-    // pub config: ExecutionConfig,
-    // /// Execution properties
-    // pub execution_props: ExecutionProps,
-    // /// Object Store that are registered with the context
-    // pub object_store_registry: Arc<ObjectStoreRegistry>,
-    // /// Runtime environment
-    // pub runtime_env: Arc<RuntimeEnv>,
-}
-
-
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
     pub logical_plan: LogicalPlan,
-    pub table: DaskTable,
 }
 
 impl From<PyLogicalPlan> for LogicalPlan {
@@ -183,14 +164,6 @@ impl From<LogicalPlan> for PyLogicalPlan {
     fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
         PyLogicalPlan { 
             logical_plan: logical_plan,
-            table: DaskTable{
-                name: String::from("test"),
-                statistics: DaskStatistics::new(0.0),
-                tableColumns: Vec::new(),
-                row_type: DaskRelDataType {
-                    field_names: vec![String::from("id")]
-                },
-            },
         }
     }
 }
@@ -198,47 +171,95 @@ impl From<LogicalPlan> for PyLogicalPlan {
 
 #[pymethods]
 impl PyLogicalPlan {
-    pub fn getFieldNames(&self) -> Vec<String> {
-        let schema = self.logical_plan.schema();
-        println!("Schema: {:?}", schema);
+    pub fn get_field_names(&self) -> Vec<String> {
+        let mut field_names: Vec<String> = Vec::new();
 
-        // Get all of the Expressions from the parsed logical plan
-        let exprs = self.logical_plan.expressions();
-        println!("EXPRESSIONS: {:?}", exprs);
-
-        for expr in exprs {
-            println!("EXPR: {:?}", expr);
-            match expr {
-                Expr::Alias( .. ) => println!("Alias was encountered!"),
-                Expr::Column(column) => {
-                    println!("Column Name: {:?}", column.name);
-                    if let Some(relation) = column.relation {
-                        println!("Relation: {:?}", relation);
-                    } else {
-                        println!("Column has no relation present. AKA None(E)");
-                    }
-                },
-                Expr::ScalarVariable( .. ) => println!("ScalarVariable was encountered!"),
-                Expr::Literal( .. ) => println!("Literal was encountered!"),
-                Expr::BinaryExpr{ .. } => println!("BinaryExpr was encountered!"),
-                Expr::Not( .. ) => println!("Not was encountered!"),
-                Expr::IsNotNull( .. ) => println!("IsNotNull was encountered!"),
-                Expr::IsNull( .. ) => println!("IsNull was encountered!"),
-                Expr::Negative( .. ) => println!("Negative was encountered!"),
-                Expr::AggregateFunction{ .. } => {
-                    println!("Aggregation function!!!!!");
-                },
-                Expr::Wildcard => println!("Wildcard was encountered!"),
-                _ => println!("Nothing matched ...."),
-            }
+        for field in self.logical_plan.schema().fields() {
+            field_names.push(String::from(field.name()));
         }
 
-        let field_names = Vec::new();
+        // // Get all of the Expressions from the parsed logical plan
+        // let exprs = self.logical_plan.expressions();
+        // println!("EXPRESSIONS: {:?}", exprs);
+
+        // for expr in exprs {
+        //     println!("EXPR: {:?}", expr);
+        //     match expr {
+        //         Expr::Alias( .. ) => println!("Alias was encountered!"),
+        //         Expr::Column(column) => {
+        //             println!("Column Name: {:?}", column.name);
+        //             if let Some(relation) = column.relation {
+        //                 println!("Relation: {:?}", relation);
+        //             } else {
+        //                 println!("Column has no relation present. AKA None(E)");
+        //             }
+        //         },
+        //         Expr::ScalarVariable( .. ) => println!("ScalarVariable was encountered!"),
+        //         Expr::Literal( .. ) => println!("Literal was encountered!"),
+        //         Expr::BinaryExpr{ .. } => println!("BinaryExpr was encountered!"),
+        //         Expr::Not( .. ) => println!("Not was encountered!"),
+        //         Expr::IsNotNull( .. ) => println!("IsNotNull was encountered!"),
+        //         Expr::IsNull( .. ) => println!("IsNull was encountered!"),
+        //         Expr::Negative( .. ) => println!("Negative was encountered!"),
+        //         Expr::AggregateFunction{ .. } => {
+        //             println!("Aggregation function!!!!!");
+        //         },
+        //         Expr::Wildcard => println!("Wildcard was encountered!"),
+        //         _ => println!("Nothing matched ...."),
+        //     }
+        // }
+
         field_names
     }
 
-    pub fn getTable(&self) -> DaskTable {
-        self.table.clone()
+    /// If the LogicalPlan represents access to a Table that instance is returned
+    /// otherwise None is returned
+    pub fn table(&self) -> PyResult<DaskTable> {
+        match &self.logical_plan {
+            datafusion::logical_plan::plan::LogicalPlan::Projection(projection) => {
+                match &*projection.input {
+                    datafusion::logical_plan::plan::LogicalPlan::TableScan(tableScan) => {
+
+                        // Get the TableProvider for this Table instance
+                        let tbl_provider: Arc<dyn TableProvider> = tableScan.source.clone();
+                        let tbl_schema: SchemaRef = tbl_provider.schema();
+                        let fields = tbl_schema.fields();
+
+                        let mut cols: Vec<(String, DaskRelDataType)> = Vec::new();
+                        for field in fields {
+                            cols.push(
+                                (
+                                    String::from(field.name()),
+                                    DaskRelDataType {
+                                        name: String::from(field.name()),
+                                        sqlType: field.data_type().clone(),
+                                    }
+                                )
+                            );
+                        }
+
+                        Ok(DaskTable {
+                            name: String::from(&tableScan.table_name),
+                            statistics: DaskStatistics { row_count: 0.0 },
+                            columns: cols,
+                        })
+                    },
+                    _ => panic!("Was something not in the list!")
+                }
+            },
+            datafusion::logical_plan::plan::LogicalPlan::TableScan(tableScan) => {
+                Ok(DaskTable {
+                    name: String::from(&tableScan.table_name),
+                    statistics: DaskStatistics { row_count: 0.0 },
+                    columns: Vec::new(),
+                })
+            },
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Not yet implemented"))
+        }
+    }
+
+    pub fn explain(&self) -> String {
+        format!("{}", self.logical_plan.display_indent())
     }
 }
 
@@ -296,24 +317,6 @@ impl From<Query> for PyQuery {
     }
 }
 
-#[pyfunction]
-fn query(statement: PyStatement) -> PyResult<PyQuery> {
-    Ok(PyQuery {
-        query: match statement.statement {
-            Statement::Statement(sql_statement) => {
-                match *sql_statement {
-                   sqlparser::ast::Statement::Query(query) => {
-                    //    println!("Query: {:?}", *query);
-                       *query
-                    },
-                    _ => panic!("something didn't go correct here")
-                }
-            },
-            _ => panic!("CreateTableStatement received but it was not expected")
-        },
-    })
-}
-
 #[pyclass(name = "DaskSQLNode", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLNode {
@@ -339,40 +342,13 @@ impl From<Select> for PySelect {
     }
 }
 
-#[pyfunction]
-fn select(query: PyQuery) -> PyResult<PySelect> {
-    println!("Query in select: {:?}", query.query);
-    Ok(PySelect {
-        select: match query.query.body {
-            sqlparser::ast::SetExpr::Select(select) => {
-                println!("Select: {:?}", *select);
-                *select
-                // for si in &select.projection {
-                //     match si {
-                //         sqlparser::ast::SelectItem::UnnamedExpr(expr) =>  {
-                //             match expr {
-                //                 sqlparser::ast::Expr::Identifier(ident) => {
-                //                     projected_cols.push(String::from(&ident.value))
-                //                 },
-                //                 _ => println!("Doesn't matter"),
-                //             }
-                //         },
-                //         _ => println!("Doesn't matter"),
-                //     }
-                // }
-            },
-            _ => panic!("nothing else matters"),
-        },
-    })
-}
-
 
 #[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSchema {
     #[pyo3(get, set)]
     name: String,
-    databaseTables: HashMap<String, DaskTable>,
+    tables: HashMap<String, DaskTable>,
     functions: HashMap<String, DaskFunction>,
 }
 
@@ -382,94 +358,177 @@ impl DaskSchema {
     pub fn new(schema_name: String) -> Self {
         Self {
             name: schema_name,
-            databaseTables: HashMap::new(),
+            tables: HashMap::new(),
             functions: HashMap::new(),
         }
     }
 
     pub fn to_string(&self) -> String {
-        format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.databaseTables.len(), &self.functions.len())
+        format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.tables.len(), &self.functions.len())
     }
 
-    pub fn addTable(&mut self, table: DaskTable) {
-        self.databaseTables.insert(table.name.clone(), table);
+    pub fn add_table(&mut self, table: DaskTable) {
+        self.tables.insert(table.name.clone(), table);
     }
 }
 
-#[pyclass(name = "DaskSqlTypeName", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
-pub struct DaskSqlTypeName {
-    name: String,
-}
+// #[pyclass(name = "DaskSqlTypeName", module = "dask_planner", subclass)]
+// #[derive(Debug, Clone)]
+// pub struct DaskSqlTypeName {
+//     name: String,
+// }
 
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct DaskRelDataType {
-    #[pyo3(get, set)]
-    field_names: Vec<String>,
+    name: String,
+    sqlType: DataType,
 }
 
 #[pymethods]
 impl DaskRelDataType {
-    pub fn getFieldNames(&self) -> Vec<String> {
-        self.field_names.clone()
-    }
 
-    pub fn getFieldList(&self) -> Vec<DaskRelDataTypeField> {
-        let mut fields = Vec::new();
-        fields.push(DaskRelDataTypeField {
-            index: 0,
-            name: String::from("id"),
-            // field_type: Option,
-            dynamic_star: false,
-        });
-        fields
-    }
-}
-
-#[pyclass]
-#[derive(Debug, Clone)]
-pub struct DaskRelDataTypeField {
-    index: i16,
-    name: String,
-    // field_type: DaskRelDataType,
-    dynamic_star: bool,
-}
-
-#[pymethods]
-impl DaskRelDataTypeField {
-    pub fn getIndex(&self) -> i16 {
-        self.index
-    }
-
-    pub fn getType(&self) -> DaskRelDataType {
+    #[new]
+    pub fn new(field_name: String) -> Self {
         DaskRelDataType {
-            field_names: vec![String::from("STRING")]
+            name: field_name,
+            sqlType: DataType::Int64,
         }
     }
+
+    pub fn get_column_name(&self) -> String {
+        String::from(self.name.clone())
+    }
+
+    pub fn get_type(&self) -> DataType {
+        self.sqlType.clone()
+    }
+
+    pub fn get_type_as_str(&self) -> String {
+        match self.sqlType {
+            DataType::Null => {
+                String::from("NULL")
+            },
+            DataType::Boolean => {
+                String::from("BOOLEAN")
+            },
+            DataType::Int8 => {
+                String::from("TINYINT")
+            },
+            DataType::UInt8 => {
+                String::from("TINYINT")
+            },
+            DataType::Int16 => {
+                String::from("SMALLINT")
+            },
+            DataType::UInt16 => {
+                String::from("SMALLINT")
+            },
+            DataType::Int32 => {
+                String::from("INTEGER")
+            },
+            DataType::UInt32 => {
+                String::from("INTEGER")
+            },
+            DataType::Int64 => {
+                String::from("BIGINT")
+            },
+            DataType::UInt64 => {
+                String::from("BIGINT")
+            },
+            _ => {
+                panic!("This is not yet implemented!!!")
+            }
+
+
+    // Float16,
+    // Float32,
+    // Float64,
+    // Timestamp(TimeUnit, Option<String>),
+    // Date32,
+    // Date64,
+    // Time32(TimeUnit),
+    // Time64(TimeUnit),
+    // Duration(TimeUnit),
+    // Interval(IntervalUnit),
+    // Binary,
+    // FixedSizeBinary(i32),
+    // LargeBinary,
+    // Utf8,
+    // LargeUtf8,
+    // List(Box<Field>),
+    // FixedSizeList(Box<Field>, i32),
+    // LargeList(Box<Field>),
+    // Struct(Vec<Field>),
+    // Union(Vec<Field>, UnionMode),
+    // Dictionary(Box<DataType>, Box<DataType>),
+    // Decimal(usize, usize),
+    // Map(Box<Field>, bool),
+        }
+    }
+
+    // pub fn getFieldList(&self) -> Vec<DaskRelDataTypeField> {
+    //     let mut fields = Vec::new();
+    //     fields.push(DaskRelDataTypeField {
+    //         index: 0,
+    //         name: String::from("id"),
+    //         // field_type: Option,
+    //         dynamic_star: false,
+    //     });
+    //     fields
+    // }
 }
+
+// #[pyclass]
+// #[derive(Debug, Clone)]
+// pub struct DaskRelDataTypeField {
+//     index: i16,
+//     name: String,
+//     // field_type: DaskRelDataType,
+//     dynamic_star: bool,
+// }
+
+// #[pymethods]
+// impl DaskRelDataTypeField {
+
+//     #[new]
+//     pub fn new(index: i16, name: String) -> Self {
+//         Self {
+//             index: index,
+//             name: name,
+//             dynamic_star: false,
+//         }
+//     }
+
+//     pub fn get_index(&self) -> i16 {
+//         self.index
+//     }
+
+//     pub fn get_type(&self) -> DaskRelDataType {
+//         DaskRelDataType {
+//             field_names: vec![String::from("STRING")]
+//         }
+//     }
+// }
 
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
     name: String,
     statistics: DaskStatistics,
-    tableColumns: Vec<(String, DaskSqlTypeName)>,
-    row_type: DaskRelDataType,
+    columns: Vec<(String, DaskRelDataType)>,
 }
 
 
 #[pymethods]
 impl DaskTable {
+
     #[new]
     pub fn new(table_name: String, row_count: f64) -> Self {
         Self {
             name: table_name,
             statistics: DaskStatistics::new(row_count),
-            tableColumns: Vec::new(),
-            row_type: DaskRelDataType {
-                field_names: vec![String::from("id")]
-            },
+            columns: Vec::new(),
         }
     }
 
@@ -478,21 +537,52 @@ impl DaskTable {
     }
 
     //TODO: Need to include the SqlTypeName later, for now in a hurry to get POC done
-    // pub fn addColumn(&self, column_name: String, column_type: DaskSqlTypeName) {
-    pub fn addColumn(&mut self, column_name: String) {
-        self.tableColumns.push((column_name, DaskSqlTypeName {name: String::from("string")}));
+    //pub fn addColumn(&mut self, column_name: String, column_type: DaskRelDataType) {
+    pub fn add_column(&mut self, column_name: String) {
+
+        let sqlType: DaskRelDataType = DaskRelDataType {
+            name: String::from(&column_name),
+            sqlType: DataType::Int64,
+        };
+
+        self.columns.push((column_name, sqlType));
     }
 
-    pub fn getQualifiedName(&self) -> Vec<String> {
+    pub fn get_qualified_name(&self) -> Vec<String> {
         let mut qualified_name = Vec::new();
+        //TODO: Don't hardcode this. Need to figure out what scope this value is pulled from however???
         qualified_name.push(String::from("root"));
         qualified_name.push(self.name.clone());
         qualified_name
     }
 
-    pub fn getRowType(&self) -> DaskRelDataType {
-        self.row_type.clone()
+    pub fn column_names(&self) -> Vec<String> {
+        let mut cns:Vec<String> = Vec::new();
+        for c in &self.columns {
+            cns.push(String::from(&c.0));
+        }
+        cns
     }
+
+    pub fn column_types(&self) -> Vec<DaskRelDataType> {
+        let mut col_types: Vec<DaskRelDataType> = Vec::new();
+        for col in &self.columns {
+            col_types.push(col.1.clone())
+        }
+        col_types
+    }
+
+    pub fn num_columns(&self) {
+        println!("There are {} columns in table {}", self.columns.len(), self.name);
+    }
+
+    // pub fn get_row_type(&self) -> DaskRelDataType {
+    //     let mut field_names: Vec<String> = Vec::with_capacity(self.columns.len());
+    //     for field in &self.columns {
+    //         field_names.push(String::from(&field.0));
+    //     }
+    //     DaskRelDataType::new(field_names)
+    // }
 }
 
 #[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
@@ -515,10 +605,4 @@ impl DaskStatistics {
             row_count: row_count,
         }
     }
-}
-
-pub fn init_module(m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(query))?;
-    m.add_wrapped(wrap_pyfunction!(select))?;
-    Ok(())
 }

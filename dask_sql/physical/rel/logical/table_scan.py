@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+import logging
 
 from dask_planner.rust import (
     DaskFunction,
@@ -6,7 +7,6 @@ from dask_planner.rust import (
     DaskTable,
     Query,
     Statement,
-    sql_functions,
     LogicalPlan,
 )
 
@@ -16,6 +16,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 if TYPE_CHECKING:
     import dask_sql
 
+logger = logging.getLogger(__name__)
 
 class DaskTableScanPlugin(BaseRelPlugin):
     """
@@ -35,42 +36,32 @@ class DaskTableScanPlugin(BaseRelPlugin):
         self, rel: LogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
         # There should not be any input. This is the first step.
+        # TODO: Need logic for inputs in Datafusion bindings before we can do this
         # self.assert_inputs(rel, 0)
-        print(f"Entering table_scan plugin to load data into dataframes")
 
-        print(f"table_scan.convert() -> rel: {rel}")
-        field_names = rel.getFieldNames()
-        print(f'FIELD_NAMES!!!! {field_names}')
+        field_names = rel.get_field_names()
 
         # The table(s) we need to return
-        table = rel.getTable()
-
-        print(f"table_scan.convert() -> table: {table}")
+        table = rel.table()
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        table_names = [str(n) for n in table.getQualifiedName()]
+        table_names = [str(n) for n in table.get_qualified_name()]
         assert len(table_names) == 2
         schema_name = table_names[0]
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        print(f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}")
+        logger.debug(f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}")
 
         dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
 
         # Make sure we only return the requested columns
-        row_type = table.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
-        print(f"table_scan.convert() -> field_specifications: {field_specifications}")
-        cc = cc.limit_to(field_specifications)
+        cc = cc.limit_to(field_names)
 
-        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        # dc = DataContainer(df, cc)
-        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        cc = self.fix_column_to_row_type(cc, table.getRowType())
+        cc = self.fix_column_to_row_type(cc, table.column_names())
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, table.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, table)
         return dc

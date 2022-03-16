@@ -22,8 +22,8 @@ from dask_sql import Context
 c = Context(logging_level=logging.DEBUG)
 
 test_df = pd.DataFrame({"id": [0, 1, 2]})
-c.create_table("new_table", test_df)
-result = c.sql("select id from new_table").compute()
+c.create_table("test", test_df)
+result = c.sql("select id from test").compute()
 print(result)
 
 print("done")

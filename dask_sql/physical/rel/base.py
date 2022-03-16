@@ -9,7 +9,6 @@ from dask_planner.rust import (
     DaskTable,
     Query,
     Statement,
-    sql_functions,
     LogicalPlan,
     DaskRelDataType,
 )
@@ -42,7 +41,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: DaskRelDataType
+        cc: ColumnContainer, column_names
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -50,14 +49,14 @@ class BaseRelPlugin:
         We assume that the column order is already correct
         and will just "blindly" rename the columns.
         """
-        field_names = [str(x) for x in row_type.getFieldNames()]
+        # field_names = [str(x) for x in row_type.getFieldNames()]
 
-        logger.debug(f"Renaming {cc.columns} to {field_names}")
+        logger.debug(f"Renaming {cc.columns} to {column_names}")
 
-        cc = cc.rename(columns=dict(zip(cc.columns, field_names)))
+        cc = cc.rename(columns=dict(zip(cc.columns, column_names)))
 
         # TODO: We can also check for the types here and do any conversions if needed
-        return cc.limit_to(field_names)
+        return cc.limit_to(column_names)
 
     @staticmethod
     def check_columns_from_row_type(df: dd.DataFrame, row_type: DaskRelDataType):
@@ -98,7 +97,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_dtype_to_row_type(
-        dc: DataContainer, row_type: DaskRelDataType
+        dc: DataContainer, dask_table: DaskTable
     ):
         """
         Fix the dtype of the given data container (or: the df within it)
@@ -113,20 +112,11 @@ class BaseRelPlugin:
         df = dc.df
         cc = dc.column_container
 
-        field_types = {
-            int(field.getIndex()): str(field.getType())
-            for field in row_type.getFieldList()
-        }
-
-        print(f'base.fix_dtype_to_row_type() -> field_types: {field_types}')
-
-        for index, field_type in field_types.items():
-            print(f'base.fix_dtype_to_row_type() -> index: {index} - field_type: {field_type}')
-            # TODO: Don't do this you lazy man ...
-            # expected_type = sql_to_python_type(field_type)
-            expected_type = sql_to_python_type("STRING")
-            field_name = cc.get_backend_by_frontend_index(index)
-
-            df = cast_column_type(df, field_name, expected_type)
+        for col in dask_table.column_types():
+            logger.debug(f"Column Inside: {col.get_type_as_str()}")
+            expected_type = sql_to_python_type(col.get_type_as_str())
+            
+            # field_name = cc.get_backend_by_frontend_index(field.get_index())
+            df = cast_column_type(df, col.get_column_name(), expected_type)
 
         return DataContainer(df, dc.column_container)

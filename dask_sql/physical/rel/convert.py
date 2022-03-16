@@ -12,7 +12,6 @@ from dask_planner.rust import (
     DaskTable,
     Query,
     Statement,
-    sql_functions,
     LogicalPlan,
 )
 
