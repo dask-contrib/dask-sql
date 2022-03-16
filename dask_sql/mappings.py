@@ -15,30 +15,56 @@ logger = logging.getLogger(__name__)
 # SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
 # Default mapping between python types and SQL types
+# _PYTHON_TO_SQL = {
+#     np.float64: pa.float64,
+#     np.float32: pa.float32,
+#     np.int64: pa.int64,
+#     pd.Int64Dtype(): pa.int64,
+#     np.int32: pa.int32,
+#     pd.Int32Dtype(): pa.int32,
+#     np.int16: pa.int16,
+#     pd.Int16Dtype(): pa.int16,
+#     np.int8: pa.int8,
+#     pd.Int8Dtype(): pa.int8,
+#     np.uint64: pa.int64,
+#     pd.UInt64Dtype(): pa.int64,
+#     np.uint32: pa.int32,
+#     pd.UInt32Dtype(): pa.int32,
+#     np.uint16: pa.int16,
+#     pd.UInt16Dtype(): pa.int16,
+#     np.uint8: pa.int8,
+#     pd.UInt8Dtype(): pa.int8,
+#     np.bool8: pa.bool_,
+#     pd.BooleanDtype(): pa.bool_,
+#     np.object_: pa.string,
+#     pd.StringDtype(): pa.string,
+#     np.datetime64: pa.date64,
+# }
+
 _PYTHON_TO_SQL = {
-    np.float64: pa.float64,
-    np.float32: pa.float32,
-    np.int64: pa.int64,
-    pd.Int64Dtype(): pa.int64,
-    np.int32: pa.int32,
-    pd.Int32Dtype(): pa.int32,
-    np.int16: pa.int16,
-    pd.Int16Dtype(): pa.int16,
-    np.int8: pa.int8,
-    pd.Int8Dtype(): pa.int8,
-    np.uint64: pa.int64,
-    pd.UInt64Dtype(): pa.int64,
-    np.uint32: pa.int32,
-    pd.UInt32Dtype(): pa.int32,
-    np.uint16: pa.int16,
-    pd.UInt16Dtype(): pa.int16,
-    np.uint8: pa.int8,
-    pd.UInt8Dtype(): pa.int8,
-    np.bool8: pa.bool_,
-    pd.BooleanDtype(): pa.bool_,
-    np.object_: pa.string,
-    pd.StringDtype(): pa.string,
-    np.datetime64: pa.date64,
+    np.float64: "DOUBLE",
+    np.float32: "FLOAT",
+    np.int64: "BIGINT",
+    pd.Int64Dtype(): "BIGINT",
+    np.int32: "INTEGER",
+    pd.Int32Dtype(): "INTEGER",
+    np.int16: "SMALLINT",
+    pd.Int16Dtype(): "SMALLINT",
+    np.int8: "TINYINT",
+    pd.Int8Dtype(): "TINYINT",
+    np.uint64: "BIGINT",
+    pd.UInt64Dtype(): "BIGINT",
+    np.uint32: "INTEGER",
+    pd.UInt32Dtype(): "INTEGER",
+    np.uint16: "SMALLINT",
+    pd.UInt16Dtype(): "SMALLINT",
+    np.uint8: "TINYINT",
+    pd.UInt8Dtype(): "TINYINT",
+    np.bool8: "BOOLEAN",
+    pd.BooleanDtype(): "BOOLEAN",
+    np.object_: "VARCHAR",
+    pd.StringDtype(): "VARCHAR",
+    np.datetime64: "TIMESTAMP",
 }
 
 # if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
@@ -87,15 +113,12 @@ _SQL_TO_PYTHON_FRAMES = {
 
 
 def python_to_sql_type(python_type):
-    # print(f"Python Type: {python_type}")
     """Mapping between python and SQL types."""
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        # return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
-        # TODO: Maybe pass in optional timezone here? Not really sure?
-        return pa.timestamp('ms', tz='America/New_York')
+        return pa.timestamp('ms', tz='UTC')
 
     try:
         return _PYTHON_TO_SQL[python_type]

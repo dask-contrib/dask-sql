@@ -2,7 +2,6 @@ import pandas as pd
 import pytest
 from dask import dataframe as dd
 
-from dask_sql.java import _set_or_check_java_home
 from dask_sql.utils import ParsingException, Pluggable, is_frame
 
 
@@ -102,8 +101,9 @@ The problem is probably somewhere here:
     assert str(e) == "Message"
 
 
-def test_no_warning():
-    with pytest.warns(None) as warn:
-        _set_or_check_java_home()
+# TODO: No JVM any longer so this is marked for removal
+# def test_no_warning():
+#     with pytest.warns(None) as warn:
+#         _set_or_check_java_home()
 
-    assert not warn
+#     assert not warn

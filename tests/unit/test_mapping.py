@@ -11,7 +11,7 @@ def test_python_to_sql():
     assert str(python_to_sql_type(np.dtype(">M8[ns]"))) == "TIMESTAMP"
     assert (
         str(python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")))
-        == "TIMESTAMP_WITH_LOCAL_TIME_ZONE"
+        == "timestamp[ms, tz=UTC]"
     )
 
 
