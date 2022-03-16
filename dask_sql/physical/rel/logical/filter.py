@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Series]):
     """
-    Some (complex) SQL queries can lead to a strange condition which is always true or false.
+    Some (complex) SQL queries calogger = logging.getLogger(__name__)n lead to a strange condition which is always true or false.
     We do not need to filter in this case.
     See https://github.com/dask-contrib/dask-sql/issues/87.
     """

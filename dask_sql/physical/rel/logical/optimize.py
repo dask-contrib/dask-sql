@@ -1,5 +1,5 @@
+import logging
 import operator
-import warnings
 
 import dask.dataframe as dd
 import numpy as np
@@ -7,6 +7,8 @@ from dask.blockwise import Blockwise
 from dask.highlevelgraph import HighLevelGraph
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
+
+logger = logging.getLogger(__name__)
 
 
 def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
@@ -32,6 +34,10 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     try:
         dsk = RegenerableGraph.from_hlg(ddf.dask)
     except (ValueError, TypeError):
+        logger.warning(
+            "Predicate pushdown optimization skipped. One or more "
+            "layers in the HighLevelGraph was not 'regenerable'."
+        )
         return ddf
 
     # Extract a DNF-formatted filter expression
@@ -48,6 +54,10 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
             filters = [filters]
     except ValueError:
         # DNF dispatching failed for 1+ layers
+        logger.warning(
+            "Predicate pushdown optimization skipped. One or more "
+            "layers has an unknown filter expression."
+        )
         return ddf
 
     # We were able to extract a DNF filter expression.
@@ -61,9 +71,18 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
                 or v.creation_info["kwargs"]["filters"] is not None
             ):
                 # No filters support, or filters is already set
+                logger.warning(
+                    "Predicate pushdown optimization skipped. The IO "
+                    "layer does not support a `filters` argument, or "
+                    "`filters` was already populated."
+                )
                 return ddf
     if len(io_layer) != 1:
         # Not a single IO layer
+        logger.warning(
+            f"Predicate pushdown optimization skipped. {len(io_layer)} "
+            f"IO layers detected, but only one IO layer is allowed."
+        )
         return ddf
     io_layer = io_layer.pop()
 
@@ -76,8 +95,9 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         # Most-likely failed to apply filters in read_parquet.
         # We can just bail on predicate pushdown, but we also
         # raise a warning to encourage the user to file an issue.
-        warnings.warn(
-            f"Predicate pushdown failed. Please open a bug report at "
+        logger.warning(
+            f"Predicate pushdown failed to apply filters: {filters}. "
+            f"Please open a bug report at "
             f"https://github.com/dask-contrib/dask-sql/issues/new/choose "
             f"and include the following error message: {err}"
         )
