@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Union
 
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 
@@ -32,7 +33,11 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
 
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
-    return attempt_predicate_pushdown(df[filter_condition])
+    out = df[filter_condition]
+    if dask_config.get("sql.predicate_pushdown"):
+        return attempt_predicate_pushdown(out)
+    else:
+        return out
 
 
 class DaskFilterPlugin(BaseRelPlugin):

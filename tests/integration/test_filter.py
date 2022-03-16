@@ -2,7 +2,6 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.utils_test import hlg_layer
-from pandas.testing import assert_frame_equal
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
 
@@ -12,7 +11,7 @@ def test_filter(c, df):
     return_df = return_df.compute()
 
     expected_df = df[df["a"] < 2]
-    assert_frame_equal(return_df, expected_df)
+    dd.assert_eq(return_df, expected_df)
 
 
 def test_filter_scalar(c, df):
@@ -20,25 +19,25 @@ def test_filter_scalar(c, df):
     return_df = return_df.compute()
 
     expected_df = df
-    assert_frame_equal(return_df, expected_df)
+    dd.assert_eq(return_df, expected_df)
 
     return_df = c.sql("SELECT * FROM df WHERE False")
     return_df = return_df.compute()
 
     expected_df = df.head(0)
-    assert_frame_equal(return_df, expected_df, check_index_type=False)
+    dd.assert_eq(return_df, expected_df, check_index_type=False)
 
     return_df = c.sql("SELECT * FROM df WHERE (1 = 1)")
     return_df = return_df.compute()
 
     expected_df = df
-    assert_frame_equal(return_df, expected_df)
+    dd.assert_eq(return_df, expected_df)
 
     return_df = c.sql("SELECT * FROM df WHERE (1 = 0)")
     return_df = return_df.compute()
 
     expected_df = df.head(0)
-    assert_frame_equal(return_df, expected_df, check_index_type=False)
+    dd.assert_eq(return_df, expected_df, check_index_type=False)
 
 
 def test_filter_complicated(c, df):
@@ -46,7 +45,7 @@ def test_filter_complicated(c, df):
     return_df = return_df.compute()
 
     expected_df = df[((df["a"] < 3) & ((df["b"] > 1) & (df["b"] < 3)))]
-    assert_frame_equal(
+    dd.assert_eq(
         return_df, expected_df,
     )
 
@@ -59,7 +58,7 @@ def test_filter_with_nan(c):
         expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
     else:
         expected_df = pd.DataFrame({"c": [3]}, dtype="float")
-    assert_frame_equal(
+    dd.assert_eq(
         return_df, expected_df,
     )
 
@@ -68,7 +67,7 @@ def test_string_filter(c, string_table):
     return_df = c.sql("SELECT * FROM string_table WHERE a = 'a normal string'")
     return_df = return_df.compute()
 
-    assert_frame_equal(
+    dd.assert_eq(
         return_df, string_table.head(1),
     )
 
@@ -122,7 +121,7 @@ def test_filter_year(c):
     actual_df = c.sql("select * from datetime_test where year(dt) < 2016").compute()
     expected_df = df[df["year"] < 2016]
 
-    assert_frame_equal(expected_df, actual_df)
+    dd.assert_eq(expected_df, actual_df)
 
 
 @pytest.mark.parametrize(
@@ -160,12 +159,7 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func):
     return_df = c.sql(query)
     assert hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"]["filters"]
 
-    # Check computed result is correct.
-    # Note that we must sort by index to ensure
-    # ordering can be compared directly
-    return_df = return_df.compute()
+    # Check computed result is correct
     df = parquet_ddf.compute()
     expected_df = df_func(df)
-    assert_frame_equal(
-        return_df.sort_index(), expected_df.sort_index(),
-    )
+    dd.assert_eq(return_df, expected_df)
