@@ -25,46 +25,24 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     npartition/divisions-specific logic in following Layers).
     """
 
-    # Get output layer name and HLG
-    name = ddf._name
-
-    # Start by converting the HLG to a `RegenerableGraph`.
-    # Succeeding here means that all layers in the graph
-    # are regenerable.
-    try:
-        dsk = RegenerableGraph.from_hlg(ddf.dask)
-    except (ValueError, TypeError):
-        logger.warning(
-            "Predicate pushdown optimization skipped. One or more "
-            "layers in the HighLevelGraph was not 'regenerable'."
+    # Check that we have a supported `ddf` object
+    if not isinstance(ddf, dd.DataFrame):
+        raise ValueError(
+            f"Predicate pushdown optimization skipped. Type {type(ddf)} "
+            f"does not support predicate pushdown."
         )
-        return ddf
-
-    # Extract a DNF-formatted filter expression
-    try:
-        filters = dsk.layers[name]._dnf_filter_expression(dsk)
-        if filters:
-            if isinstance(filters[0], (list, tuple)):
-                filters = list(filters)
-            else:
-                filters = [filters]
-        else:
-            return ddf
-        if not isinstance(filters, list):
-            filters = [filters]
-    except ValueError:
-        # DNF dispatching failed for 1+ layers
+    elif not isinstance(ddf.dask, HighLevelGraph):
         logger.warning(
-            "Predicate pushdown optimization skipped. One or more "
-            "layers has an unknown filter expression."
+            f"Predicate pushdown optimization skipped. Graph must be "
+            f"a HighLevelGraph object (got {type(ddf.dask)})."
         )
         return ddf
 
     # We were able to extract a DNF filter expression.
     # Check that we have a single IO layer with `filters` support
     io_layer = []
-    for k, v in dsk.layers.items():
-        if isinstance(v.layer, DataFrameIOLayer):
+    for k, v in ddf.dask.layers.items():
+        if isinstance(v, DataFrameIOLayer):
             io_layer.append(k)
             if (
                 "filters" not in v.creation_info.get("kwargs", {})
@@ -85,6 +63,39 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         )
         return ddf
     io_layer = io_layer.pop()
+
+    # Start by converting the HLG to a `RegenerableGraph`.
+    # Succeeding here means that all layers in the graph
+    # are regenerable.
+    try:
+        dsk = RegenerableGraph.from_hlg(ddf.dask)
+    except (ValueError, TypeError):
+        logger.warning(
+            "Predicate pushdown optimization skipped. One or more "
+            "layers in the HighLevelGraph was not 'regenerable'."
+        )
+        return ddf
+
+    # Extract a DNF-formatted filter expression
+    name = ddf._name
+    try:
+        filters = dsk.layers[name]._dnf_filter_expression(dsk)
+        if filters:
+            if isinstance(filters[0], (list, tuple)):
+                filters = list(filters)
+            else:
+                filters = [filters]
+        else:
+            return ddf
+        if not isinstance(filters, list):
+            filters = [filters]
+    except ValueError:
+        # DNF dispatching failed for 1+ layers
+        logger.warning(
+            "Predicate pushdown optimization skipped. One or more "
+            "layers has an unknown filter expression."
+        )
+        return ddf
 
     # Regenerate collection with filtered IO layer
     try:
