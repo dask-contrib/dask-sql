@@ -44,23 +44,15 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     for k, v in ddf.dask.layers.items():
         if isinstance(v, DataFrameIOLayer):
             io_layer.append(k)
+            creation_info = v.creatio_info if hasattr(v, "creation_info") else {}
             if (
-                "filters" not in v.creation_info.get("kwargs", {})
-                or v.creation_info["kwargs"]["filters"] is not None
+                "filters" not in creation_info.get("kwargs", {})
+                or creation_info["kwargs"]["filters"] is not None
             ):
                 # No filters support, or filters is already set
-                logger.warning(
-                    "Predicate pushdown optimization skipped. The IO "
-                    "layer does not support a `filters` argument, or "
-                    "`filters` was already populated."
-                )
                 return ddf
     if len(io_layer) != 1:
         # Not a single IO layer
-        logger.warning(
-            f"Predicate pushdown optimization skipped. {len(io_layer)} "
-            f"IO layers detected, but only one IO layer is allowed."
-        )
         return ddf
     io_layer = io_layer.pop()
 
