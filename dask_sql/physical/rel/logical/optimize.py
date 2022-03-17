@@ -44,7 +44,7 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     for k, v in ddf.dask.layers.items():
         if isinstance(v, DataFrameIOLayer):
             io_layer.append(k)
-            creation_info = v.creatio_info if hasattr(v, "creation_info") else {}
+            creation_info = v.creation_info if hasattr(v, "creation_info") else {}
             if (
                 "filters" not in creation_info.get("kwargs", {})
                 or creation_info["kwargs"]["filters"] is not None
