@@ -130,10 +130,10 @@ def parquet_ddf(tmpdir):
             "index": range(15),
         },
     )
-    dd.from_pandas(df, npartitions=3).to_parquet(tmpdir)
+    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
 
     # Read back with dask and apply WHERE query
-    return dd.read_parquet(tmpdir, index="index")
+    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
 
 
 @pytest.fixture()

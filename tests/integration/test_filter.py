@@ -170,3 +170,27 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func):
     df = parquet_ddf.compute()
     expected_df = df_func(df)
     dd.assert_eq(return_df, expected_df)
+
+
+def test_filtered_csv(tmpdir, c):
+    # Predicate pushdown is NOT supported for CSV data.
+    # This test just checks that the "attempted"
+    # predicate-pushdown logic does not lead to
+    # any unexpected errors
+
+    # Write simple csv dataset
+    df = pd.DataFrame({"a": [1, 2, 3] * 5, "b": range(15), "c": ["A"] * 15,},)
+    dd.from_pandas(df, npartitions=3).to_csv(tmpdir + "/*.csv", index=False)
+
+    # Read back with dask and apply WHERE query
+    csv_ddf = dd.read_csv(tmpdir + "/*.csv")
+    try:
+        c.create_table("my_csv_table", csv_ddf)
+        return_df = c.sql("SELECT * FROM my_csv_table WHERE b < 10")
+    finally:
+        c.drop_table("my_csv_table")
+
+    # Check computed result is correct
+    df = csv_ddf.compute()
+    expected_df = df[df["b"] < 10]
+    dd.assert_eq(return_df, expected_df)
