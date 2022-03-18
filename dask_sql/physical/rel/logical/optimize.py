@@ -1,3 +1,4 @@
+import itertools
 import logging
 import operator
 
@@ -74,15 +75,10 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     name = ddf._name
     try:
         filters = dsk.layers[name]._dnf_filter_expression(dsk)
-        if filters:
-            if isinstance(filters[0], (list, tuple)):
-                filters = list(filters)
-            else:
-                filters = [filters]
-        else:
+        if not isinstance(filters, frozenset):
+            # No filters encountered
             return ddf
-        if not isinstance(filters, list):
-            filters = [filters]
+        filters = filters.to_list_tuple()
     except ValueError:
         # DNF dispatching failed for 1+ layers
         logger.warning(
@@ -108,6 +104,51 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         )
 
         return ddf
+
+
+class Or(frozenset):
+    """Helper class for 'OR' expressions"""
+
+    def to_list_tuple(self):
+        # NDF "or" is List[List[Tuple]]
+        def _maybe_list(val):
+            if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
+                return list(val)
+            return [val]
+
+        return [
+            _maybe_list(val.to_list_tuple())
+            if hasattr(val, "to_list_tuple")
+            else _maybe_list(val)
+            for val in self
+        ]
+
+
+class And(frozenset):
+    """Helper class for 'AND' expressions"""
+
+    def to_list_tuple(self):
+        # NDF "and" is List[Tuple]
+        return tuple(
+            val.to_list_tuple() if hasattr(val, "to_list_tuple") else val
+            for val in self
+        )
+
+
+def to_dnf(expr):
+    """Normalize a boolean filter expression to disjunctive normal form (DNF)"""
+
+    # Credit: https://stackoverflow.com/a/58372345
+    if not isinstance(expr, (Or, And)):
+        result = Or((And((expr,)),))
+    elif isinstance(expr, Or):
+        result = Or(se for e in expr for se in to_dnf(e))
+    elif isinstance(expr, And):
+        total = []
+        for c in itertools.product(*[to_dnf(e) for e in expr]):
+            total.append(And(se for e in c for se in e))
+        result = Or(total)
+    return result
 
 
 # Define all supported comparison functions
@@ -301,33 +342,17 @@ def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
         return (right, _inv(_comparison_symbols[op]), left)
     if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
         right = right.item()
-    return (left, _comparison_symbols[op], right)
+    return to_dnf((left, _comparison_symbols[op], right))
 
 
 def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return DNF expression pattern for logical "and" or "or"
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
-
-    def _maybe_list(val):
-        if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
-            return list(val)
-        return [val]
-
-    def _maybe_tuple(val):
-        if isinstance(val, tuple) and val and isinstance(val[0], tuple):
-            return val
-        return (val,)
-
     if op == operator.or_:
-        # NDF "or" is List[List[Tuple]]
-        return [_maybe_list(left), _maybe_list(right)]
+        return to_dnf(Or([left, right]))
     elif op == operator.and_:
-        # NDF "and" is List[Tuple]
-        # However, we don't want to add the outer list
-        # until the filter is finished, or this expression
-        # is combined with another in an "or" expression
-        return _maybe_tuple(left) + _maybe_tuple(right)
+        return to_dnf(And([left, right]))
     else:
         raise ValueError
 

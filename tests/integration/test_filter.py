@@ -140,6 +140,13 @@ def test_filter_year(c):
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
         ),
+        (
+            # Original filters NOT in disjunctive normal form
+            "SELECT a FROM parquet_ddf WHERE (parquet_ddf.b > 3 AND parquet_ddf.b < 10 OR parquet_ddf.a = 1) AND (parquet_ddf.c = 'A')",
+            lambda x: x[
+                ((x["b"] > 3) & (x["b"] < 10) | (x["a"] == 1)) & (x["c"] == "A")
+            ][["a"]],
+        ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
             lambda x: x[x["d"].dt.year < 2015],
