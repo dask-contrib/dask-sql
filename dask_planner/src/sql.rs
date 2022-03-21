@@ -17,47 +17,90 @@ use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::catalog::TableReference;
 use datafusion::datasource::TableProvider;
 use datafusion::logical_plan::{DFSchema, Expr};
-use datafusion::logical_plan::plan::LogicalPlan;
+use datafusion::logical_plan::plan::{LogicalPlan, Projection, TableScan};
 use datafusion::sql::planner::{SqlToRel};
 
 use std::sync::Arc;
 
+use crate::expression::PyExpr;
 
-#[derive(Debug, Default)]
-struct OkVisitor {
-    strings: Vec<String>,
+
+#[pyclass(name = "LogicalPlanGenerator", module = "dask_planner", subclass)]
+#[derive(Clone)]
+pub struct LogicalPlanGenerator {
+    // Holds the ordered plan steps
+    #[pyo3(get)]
+    pub plan_steps: Vec<String>,
+    pub projection: Option<Projection>,
+    pub table_scan: Option<TableScan>,
 }
 
-impl datafusion::logical_plan::plan::PlanVisitor for OkVisitor {
+impl Default for LogicalPlanGenerator {
+    fn default() -> LogicalPlanGenerator {
+        LogicalPlanGenerator {
+            plan_steps: Vec::new(),
+            projection: None,
+            table_scan: None,
+        }
+    }
+}
+
+#[pymethods]
+impl LogicalPlanGenerator {
+
+    pub fn get_named_projects(&self) -> Vec<PyExpr> {
+        match &self.projection {
+            Some(proj) => {
+                let mut exprs:Vec<PyExpr> = Vec::new();
+                for expr in &proj.expr {
+                    exprs.push(expr.clone().into());
+                }
+                exprs
+            },
+            None => panic!("There is no Projection node present in the Logical Plan!")
+        }
+    }
+}
+
+impl datafusion::logical_plan::plan::PlanVisitor for LogicalPlanGenerator {
     type Error = String;
 
     fn pre_visit(
         &mut self,
         plan: &LogicalPlan,
     ) -> std::result::Result<bool, Self::Error> {
-        let s = match plan {
-            LogicalPlan::Projection { .. } => "pre_visit Projection",
-            LogicalPlan::Filter { .. } => "pre_visit Filter",
-            LogicalPlan::TableScan { .. } => "pre_visit TableScan",
-            _ => unimplemented!("unknown plan type"),
-        };
-
-        self.strings.push(s.into());
         Ok(true)
     }
 
+    /// By inserting in `post_visit` we effectively create a depth first traversal of the SQL parsed tree
     fn post_visit(
         &mut self,
         plan: &LogicalPlan,
     ) -> std::result::Result<bool, Self::Error> {
         let s = match plan {
-            LogicalPlan::Projection { .. } => "post_visit Projection",
-            LogicalPlan::Filter { .. } => "post_visit Filter",
-            LogicalPlan::TableScan { .. } => "post_visit TableScan",
+            LogicalPlan::Projection(projection) => { self.projection = Some(projection.clone()); "Projection" },
+            LogicalPlan::Filter { .. } => "Filter",
+            LogicalPlan::Window { .. } => "Window",
+            LogicalPlan::Aggregate { .. } => "Aggregate",
+            LogicalPlan::Sort { .. } => "Sort",
+            LogicalPlan::Join { .. } => "Join",
+            LogicalPlan::CrossJoin { .. } => "CrossJoin",
+            LogicalPlan::Repartition { .. } => "Repartition",
+            LogicalPlan::Union { .. } => "Union",
+            LogicalPlan::TableScan(tableScan) => { self.table_scan = Some(tableScan.clone()); "TableScan" },
+            LogicalPlan::EmptyRelation { .. } => "EmptyRelation",
+            LogicalPlan::Limit { .. } => "Limit",
+            LogicalPlan::CreateExternalTable { .. } => "CreateExternalTable",
+            LogicalPlan::CreateMemoryTable { .. } => "CreateMemoryTable",
+            LogicalPlan::DropTable { .. } => "DropTable",
+            LogicalPlan::Values { .. } => "Values",
+            LogicalPlan::Explain { .. } => "Explain",
+            LogicalPlan::Analyze { .. } => "Analyze",
+            LogicalPlan::Extension { .. } => "Extension",
             _ => unimplemented!("unknown plan type"),
         };
 
-        self.strings.push(s.into());
+        self.plan_steps.push(s.into());
         Ok(true)
     }
 }
@@ -218,37 +261,6 @@ impl PyLogicalPlan {
             field_names.push(String::from(field.name()));
         }
 
-        // // Get all of the Expressions from the parsed logical plan
-        // let exprs = self.logical_plan.expressions();
-        // println!("EXPRESSIONS: {:?}", exprs);
-
-        // for expr in exprs {
-        //     println!("EXPR: {:?}", expr);
-        //     match expr {
-        //         Expr::Alias( .. ) => println!("Alias was encountered!"),
-        //         Expr::Column(column) => {
-        //             println!("Column Name: {:?}", column.name);
-        //             if let Some(relation) = column.relation {
-        //                 println!("Relation: {:?}", relation);
-        //             } else {
-        //                 println!("Column has no relation present. AKA None(E)");
-        //             }
-        //         },
-        //         Expr::ScalarVariable( .. ) => println!("ScalarVariable was encountered!"),
-        //         Expr::Literal( .. ) => println!("Literal was encountered!"),
-        //         Expr::BinaryExpr{ .. } => println!("BinaryExpr was encountered!"),
-        //         Expr::Not( .. ) => println!("Not was encountered!"),
-        //         Expr::IsNotNull( .. ) => println!("IsNotNull was encountered!"),
-        //         Expr::IsNull( .. ) => println!("IsNull was encountered!"),
-        //         Expr::Negative( .. ) => println!("Negative was encountered!"),
-        //         Expr::AggregateFunction{ .. } => {
-        //             println!("Aggregation function!!!!!");
-        //         },
-        //         Expr::Wildcard => println!("Wildcard was encountered!"),
-        //         _ => println!("Nothing matched ...."),
-        //     }
-        // }
-
         field_names
     }
 
@@ -302,16 +314,12 @@ impl PyLogicalPlan {
         format!("{}", self.logical_plan.display_indent())
     }
 
-    pub fn get_inputs(&self) -> Vec<String> {
+    pub fn plan_generator(&self) -> LogicalPlanGenerator {
         // Actually gonna test out walking the plan here ....
-        let mut visitor = OkVisitor::default();
+        let mut visitor = LogicalPlanGenerator::default();
         self.logical_plan.accept(&mut visitor);
-
-        for mess in visitor.strings {
-            println!("{}", mess);
-        }
-
-        Vec::new()
+        // visitor.plan_steps.clone()
+        visitor
     }
 }
 
@@ -652,7 +660,7 @@ pub struct DaskStatistics {
 }
 
 #[pymethods]
-impl DaskStatistics {
+impl DaskStatistics { 
     #[new]
     pub fn new(row_count: f64) -> Self {
         Self {

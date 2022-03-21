@@ -8,6 +8,7 @@ from dask_planner.rust import (
     Query,
     Statement,
     LogicalPlan,
+    LogicalPlanGenerator,
 )
 
 from dask_sql.datacontainer import DataContainer
@@ -30,15 +31,15 @@ class DaskTableScanPlugin(BaseRelPlugin):
     Calcite will always refer to columns via index.
     """
 
-    class_name = "com.dask.sql.nodes.DaskTableScan"
+    class_name = "TableScan"
 
     def convert(
-        self, rel: LogicalPlan, context: "dask_sql.Context"
+        self,
+        input_dc: DataContainer,
+        logical_generator: LogicalPlanGenerator,
+        rel: LogicalPlan,
+        context: "dask_sql.Context"
     ) -> DataContainer:
-        # There should not be any input. This is the first step.
-        # TODO: Need logic for inputs in Datafusion bindings before we can do this
-        # self.assert_inputs(rel, 0)
-
         field_names = rel.get_field_names()
 
         # The table(s) we need to return

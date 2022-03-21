@@ -5,13 +5,9 @@ import dask.dataframe as dd
 
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
+from dask_sql.datacontainer import DataContainer
 
 from dask_planner.rust import (
-    DaskFunction,
-    DaskSchema,
-    DaskTable,
-    Query,
-    Statement,
     LogicalPlan,
 )
 
@@ -53,20 +49,27 @@ class RelConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables from the context.
         """
-        # class_name = get_java_class(rel)
-        class_name = "com.dask.sql.nodes.DaskProject"
 
-        print(f"Rel: {rel.explain()}")
+        # Traverse the LogicalPlan and build to generate an ordered
+        # list of plugins that should be invoked based on the plan
+        generator = rel.plan_generator()
 
-        try:
-            plugin_instance = cls.get_plugin(class_name)
-        except KeyError:  # pragma: no cover
-            raise NotImplementedError(
-                f"No conversion for class {class_name} available (yet)."
+        # Start out with an empty DataContainer
+        dc = None
+        for step in generator.plan_steps:
+            try:
+                print(f"Step: {step}")
+                plugin_instance = cls.get_plugin(step)
+                print(f"Plugin Instance: {plugin_instance}")
+            except KeyError: # pragma: no cover
+                raise NotImplementedError(
+                    f"No conversion for operation {step} available (yet)."
+                )
+            logger.debug(
+                    f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
             )
-        logger.debug(
-            f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
-        )
-        df = plugin_instance.convert(rel, context=context)
-        logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
-        return df
+
+            dc = plugin_instance.convert(dc, generator, rel, context=context)
+            logger.debug(f"Processed REL {rel} into {LoggableDataFrame(dc)}")
+        
+        return dc

@@ -71,26 +71,28 @@ class BaseRelPlugin:
 
         # TODO: similar to self.fix_column_to_row_type, we should check for the types
 
-    @staticmethod
-    def assert_inputs(
-        rel: LogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
-    ) -> List[dd.DataFrame]:
-        """
-        Many RelNodes build on top of others.
-        Those are the "input" of these RelNodes.
-        This function asserts that the given RelNode has exactly as many
-        input tables as expected and returns them already
-        converted into a dask dataframe.
-        """
-        input_rels = rel.get_inputs()
-        print(f"Inputs: {input_rels}")
+    # @staticmethod
+    # def assert_inputs(
+    #     rel: LogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
+    # ) -> List[dd.DataFrame]:
+    #     """
+    #     Many RelNodes build on top of others.
+    #     Those are the "input" of these RelNodes.
+    #     This function asserts that the given RelNode has exactly as many
+    #     input tables as expected and returns them already
+    #     converted into a dask dataframe.
+    #     """
+    #     input_rels = rel.get_inputs()
+    #     print(f"Inputs: {input_rels}")
+    #     for input in input_rels:
+    #         print(f"Input: {input}")
 
-        assert len(input_rels) == n
+    #     assert len(input_rels) == n
 
-        # Late import to remove cycling dependency
-        from dask_sql.physical.rel.convert import RelConverter
+    #     # Late import to remove cycling dependency
+    #     from dask_sql.physical.rel.convert import RelConverter
 
-        return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
+    #     return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
     def fix_dtype_to_row_type(

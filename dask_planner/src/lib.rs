@@ -24,6 +24,7 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
 
     // SQL specific classes
     m.add_class::<sql::DaskSQLContext>()?;
+    m.add_class::<sql::LogicalPlanGenerator>()?;
 
     m.add_class::<sql::PyStatement>()?;
     m.add_class::<sql::PyQuery>()?;
@@ -34,16 +35,6 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<sql::DaskSQLNode>()?;
     m.add_class::<sql::PyLogicalPlan>()?;
     m.add_class::<sql::DaskRelDataType>()?;
-    // m.add_class::<sql::DaskRelDataTypeField>()?;
-
-    // let sql_functions = PyModule::new(py, "sql_functions")?;
-    // sql::init_module(sql_functions)?;
-    // m.add_submodule(sql_functions)?;
-
-    // // // Register the functions as a submodule
-    // let funcs = PyModule::new(py, "functions")?;
-    // functions::init_module(funcs)?;
-    // m.add_submodule(funcs)?;
 
     Ok(())
 }

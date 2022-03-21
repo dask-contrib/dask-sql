@@ -11,8 +11,8 @@ use datafusion::scalar::ScalarValue;
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
-pub(crate) struct PyExpr {
-    pub(crate) expr: Expr,
+pub struct PyExpr {
+    pub expr: Expr,
 }
 
 impl From<PyExpr> for Expr {
@@ -86,6 +86,14 @@ impl PyExpr {
     #[staticmethod]
     pub fn literal(value: ScalarValue) -> PyExpr {
         lit(value).into()
+    }
+
+    pub fn column_name(&self) -> String {
+        match &self.expr {
+            Expr::Alias{ .. } => { println!("Alias!"); String::from("alias") },
+            Expr::Column(column) => { println!("Column: {:?}", &column.name); column.name.clone() },
+            _ => panic!("Nothing found!!!")
+        }
     }
 
     #[staticmethod]

@@ -7,6 +7,8 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
+from dask_planner.rust import LogicalPlan, LogicalPlanGenerator, Expression
+
 if TYPE_CHECKING:
     import dask_sql
 
@@ -38,7 +40,7 @@ class RexConverter(Pluggable):
     @classmethod
     def convert(
         cls,
-        rex: "org.apache.calcite.rex.RexNode",
+        rex: Expression,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
@@ -48,7 +50,8 @@ class RexConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        class_name = get_java_class(rex)
+        # class_name = get_java_class(rex)
+        print(f"Rex: {rex}")
 
         try:
             plugin_instance = cls.get_plugin(class_name)
