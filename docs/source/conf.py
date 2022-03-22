@@ -32,6 +32,7 @@ author = "Nils Braun"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx_tabs.tabs",
     "dask_sphinx_theme.ext.dask_config_sphinx_ext",
 ]
 
@@ -61,3 +62,6 @@ master_doc = "index"
 
 # Do not show type mappings
 autodoc_typehints = "none"
+
+# disable collapsible tabs
+sphinx_tabs_disable_tab_closing = True
