@@ -297,7 +297,7 @@ def gpu_client(gpu_cluster):
             yield client
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def client():
     yield Client(address=os.getenv("DASK_SQL_TEST_SCHEDULER", None))
 
