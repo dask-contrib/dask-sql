@@ -7,8 +7,8 @@ import numpy as np
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.physical.rel.logical.optimize import attempt_predicate_pushdown
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
