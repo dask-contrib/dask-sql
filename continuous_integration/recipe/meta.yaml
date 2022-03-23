@@ -22,6 +22,8 @@ build:
     - PYTHON
 
 requirements:
+  build:
+    - {{ compiler('rust') }}
   host:
     - pip
     - python >=3.8

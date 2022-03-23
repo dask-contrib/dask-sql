@@ -45,12 +45,10 @@ class DaskProjectPlugin(BaseRelPlugin):
         new_mappings = {}
 
         for expr in named_projects:
-            print(f"Expression: {expr}")
             key = str(expr.column_name())
             column_names.append(key)
 
             random_name = new_temporary_column(df)
-            print(f"Key: {key} \nDataFrame: {df.head()}")
             new_columns[random_name] = df['a']
             logger.debug(f"Adding a new column {key} out of {expr}")
             new_mappings[key] = random_name
@@ -59,8 +57,8 @@ class DaskProjectPlugin(BaseRelPlugin):
         if new_columns:
             df = df.assign(**new_columns)
 
-        # # Make sure the order is correct
-        # cc = cc.limit_to(column_names)
+        # Make sure the order is correct
+        cc = cc.limit_to(column_names)
 
         dc = DataContainer(df, cc)
 

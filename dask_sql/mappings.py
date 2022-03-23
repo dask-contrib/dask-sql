@@ -12,34 +12,7 @@ import pyarrow as pa
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
-# SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
-# Default mapping between python types and SQL types
-# _PYTHON_TO_SQL = {
-#     np.float64: pa.float64,
-#     np.float32: pa.float32,
-#     np.int64: pa.int64,
-#     pd.Int64Dtype(): pa.int64,
-#     np.int32: pa.int32,
-#     pd.Int32Dtype(): pa.int32,
-#     np.int16: pa.int16,
-#     pd.Int16Dtype(): pa.int16,
-#     np.int8: pa.int8,
-#     pd.Int8Dtype(): pa.int8,
-#     np.uint64: pa.int64,
-#     pd.UInt64Dtype(): pa.int64,
-#     np.uint32: pa.int32,
-#     pd.UInt32Dtype(): pa.int32,
-#     np.uint16: pa.int16,
-#     pd.UInt16Dtype(): pa.int16,
-#     np.uint8: pa.int8,
-#     pd.UInt8Dtype(): pa.int8,
-#     np.bool8: pa.bool_,
-#     pd.BooleanDtype(): pa.bool_,
-#     np.object_: pa.string,
-#     pd.StringDtype(): pa.string,
-#     np.datetime64: pa.date64,
-# }
 
 _PYTHON_TO_SQL = {
     np.float64: "DOUBLE",
@@ -294,6 +267,8 @@ def cast_column_type(
     """
     current_type = df[column_name].dtype
 
+    print(f"Casting column {column_name} of type {current_type} to {expected_type}")
+
     logger.debug(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
     )
@@ -325,4 +300,5 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
+    print(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

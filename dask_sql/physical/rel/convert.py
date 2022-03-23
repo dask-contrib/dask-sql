@@ -58,9 +58,7 @@ class RelConverter(Pluggable):
         dc = None
         for step in generator.plan_steps:
             try:
-                print(f"Step: {step}")
                 plugin_instance = cls.get_plugin(step)
-                print(f"Plugin Instance: {plugin_instance}")
             except KeyError: # pragma: no cover
                 raise NotImplementedError(
                     f"No conversion for operation {step} available (yet)."

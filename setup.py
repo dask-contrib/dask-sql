@@ -3,7 +3,8 @@ import shutil
 import subprocess
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, find_namespace_packages, setup
+from setuptools_rust import Binding, RustExtension
 from setuptools.command.build_ext import build_ext as build_ext_orig
 from setuptools.command.install_lib import install_lib as install_lib_orig
 
@@ -18,6 +19,19 @@ needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
 cmdclass = versioneer.get_cmdclass()
+
+setup(
+    name="dask_planner",
+    version="0.0.1",
+    packages=find_namespace_packages(include=["dask_planner.*"]),
+    rust_extensions=[
+        RustExtension(
+            "dask_planner.rust", binding=Binding.PyO3, path="dask_planner/Cargo.toml", debug=False,
+        )
+    ],
+    python_requires=">=3.8",
+    zip_safe=False,
+)
 
 setup(
     name="dask_sql",

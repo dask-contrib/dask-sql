@@ -612,7 +612,7 @@ impl DaskTable {
 
     pub fn get_qualified_name(&self) -> Vec<String> {
         let mut qualified_name = Vec::new();
-        //TODO: Don't hardcode this. Need to figure out what scope this value is pulled from however???
+        //TODO: What scope should the current schema be pulled from here?? For now temporary hardcoded to default "root"
         qualified_name.push(String::from("root"));
         qualified_name.push(self.name.clone());
         qualified_name

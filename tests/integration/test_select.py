@@ -7,6 +7,7 @@ from pandas.testing import assert_frame_equal
 from dask_sql.utils import ParsingException
 
 
+# # Works!!!!
 # def test_select(c, df):
 #     result_df = c.sql("SELECT * FROM df")
 #     result_df = result_df.compute()
@@ -26,34 +27,32 @@ from dask_sql.utils import ParsingException
 #     assert_frame_equal(result_df[["a", "b"]], expected_df[["a", "b"]])
 
 
-def test_select_column(c, df):
-    result_df = c.sql("SELECT a FROM df")
-    result_df = result_df.compute()
-
-    print(f"Result DF: {result_df.head()}")
-
-    assert_frame_equal(result_df, df[["a"]])
+# # Works!!!!
+# def test_select_column(c, df):
+#     result_df = c.sql("SELECT a FROM df")
+#     result_df = result_df.compute()
+#     assert_frame_equal(result_df, df[["a"]])
 
 
-# def test_select_different_types(c):
-#     expected_df = pd.DataFrame(
-#         {
-#             "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
-#             "string": ["this is a test", "another test", "äölüć", ""],
-#             "integer": [1, 2, -4, 5],
-#             "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
-#         }
-#     )
-#     c.create_table("df", expected_df)
-#     df = c.sql(
-#         """
-#     SELECT *
-#     FROM df
-#     """
-#     )
-#     df = df.compute()
+def test_select_different_types(c):
+    expected_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
+            "string": ["this is a test", "another test", "äölüć", ""],
+            "integer": [1, 2, -4, 5],
+            "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
+        }
+    )
+    c.create_table("df", expected_df)
+    df = c.sql(
+        """
+    SELECT *
+    FROM df
+    """
+    )
+    df = df.compute()
 
-#     assert_frame_equal(df, expected_df)
+    assert_frame_equal(df, expected_df)
 
 
 # def test_select_expr(c, df):
