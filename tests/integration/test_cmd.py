@@ -120,8 +120,9 @@ def test_connection_info(c, client, capsys):
 
 
 def test_quit(c, client, capsys):
+    dummy_client = MagicMock()
     with patch("sys.exit", return_value=lambda: "exit"):
-        _meta_commands("quit", context=c, client=client)
+        _meta_commands("quit", context=c, client=dummy_client)
         captured = capsys.readouterr()
         assert captured.out == "Quitting dask-sql ...\n"
 
