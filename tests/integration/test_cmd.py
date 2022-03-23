@@ -100,9 +100,7 @@ def test_meta_commands(c, client, capsys):
     assert "Schema not_exists not available\n" == captured.out
 
     with pytest.raises(
-        OSError,
-        match="Timed out during handshake while "
-        "connecting to tcp://localhost:8787 after 5 s",
+        OSError, match="Timed out .* to tcp://localhost:8787 after 5 s",
     ):
         with dask_config.set({"distributed.comm.timeouts.connect": 5}):
             client = _meta_commands("\\dsc localhost:8787", context=c, client=client)
