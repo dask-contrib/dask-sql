@@ -4,14 +4,12 @@ services:
     dask-scheduler:
         container_name: dask-scheduler
         image: daskdev/dask:latest
-        # TODO: remove when dask-docker#209 is in or better mamba support exists
-        command: bash -c "mamba update -y 'pandas>=1.0.0' && dask-scheduler"
+        command: dask-scheduler
         ports:
             - "8786:8786"
     dask-worker:
         container_name: dask-worker
         image: daskdev/dask:latest
-        # TODO: remove when dask-docker#209 is in or better mamba support exists
-        command: bash -c "mamba update -y 'pandas>=1.0.0' && dask-worker dask-scheduler:8786"
+        command: dask-worker dask-scheduler:8786
         volumes:
             - /tmp:/tmp
