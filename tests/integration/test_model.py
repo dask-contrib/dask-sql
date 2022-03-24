@@ -5,9 +5,9 @@ import sys
 import joblib
 import pandas as pd
 import pytest
-from dask.dataframe.utils import assert_eq
 from dask.datasets import timeseries
 
+from dask_sql.testing.utils import assert_eq
 from tests.integration.fixtures import skip_if_external_scheduler
 
 try:

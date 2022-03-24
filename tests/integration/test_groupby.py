@@ -4,6 +4,8 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
+from dask_sql.testing.utils import assert_eq
+
 
 @pytest.fixture()
 def timeseries_df(c):
@@ -31,7 +33,7 @@ def test_group_by(c):
     )
     expected_df = pd.DataFrame({"user_id": [1, 2, 3], "S": [3, 4, 3]})
 
-    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
 def test_group_by_all(c, df):
@@ -46,7 +48,7 @@ def test_group_by_all(c, df):
     expected_df["S"] = expected_df["S"].astype("int64")
     expected_df["X"] = expected_df["X"].astype("int32")
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
@@ -73,7 +75,7 @@ def test_group_by_all(c, df):
         }
     )
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_group_by_filtered(c):
@@ -87,7 +89,7 @@ def test_group_by_filtered(c):
     )
     expected_df = pd.DataFrame({"S1": [4], "S2": [10]}, dtype="int64")
 
-    dd.assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df)
 
     return_df = c.sql(
         """
@@ -103,7 +105,7 @@ def test_group_by_filtered(c):
         {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3],},
     )
 
-    dd.assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df)
 
     return_df = c.sql(
         """
@@ -113,7 +115,7 @@ def test_group_by_filtered(c):
     """
     )
     expected_df = pd.DataFrame({"S1": [4]})
-    dd.assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df)
 
 
 def test_group_by_case(c):
@@ -128,7 +130,7 @@ def test_group_by_case(c):
     expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
 
     # Do not check dtypes, as pandas versions are inconsistent here
-    dd.assert_eq(
+    assert_eq(
         return_df.sort_values("A").reset_index(drop=True),
         expected_df,
         check_dtype=False,
@@ -148,7 +150,7 @@ def test_group_by_nan(c):
 
     # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
     # we cannot check here
-    dd.assert_eq(
+    assert_eq(
         return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
         check_dtype=False,
@@ -165,7 +167,7 @@ def test_group_by_nan(c):
     expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
     expected_df["c"] = expected_df["c"].astype("float64")
 
-    dd.assert_eq(
+    assert_eq(
         return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
     )
@@ -199,7 +201,7 @@ def test_aggregations(c):
     )
     expected_df["a"] = expected_df["a"].astype("float64")
 
-    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
     return_df = c.sql(
         """
@@ -227,7 +229,7 @@ def test_aggregations(c):
             "a": [1.5, 3, 4],
         }
     )
-    dd.assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
     return_df = c.sql(
         """
@@ -239,7 +241,7 @@ def test_aggregations(c):
     )
     expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
 
-    dd.assert_eq(return_df.reset_index(drop=True), expected_df)
+    assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
 def test_stats_aggregation(c, timeseries_df):
@@ -255,7 +257,7 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    dd.assert_eq(
+    assert_eq(
         regr_count["expected"],
         regr_count["calculated"],
         check_dtype=False,
@@ -275,7 +277,7 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    dd.assert_eq(
+    assert_eq(
         regr_syy["expected"],
         regr_syy["calculated"],
         check_dtype=False,
@@ -295,7 +297,7 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    dd.assert_eq(
+    assert_eq(
         regr_sxx["expected"],
         regr_sxx["calculated"],
         check_dtype=False,
@@ -322,7 +324,7 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    dd.assert_eq(
+    assert_eq(
         covar_pop["expected"],
         covar_pop["calculated"],
         check_dtype=False,
@@ -349,7 +351,7 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    dd.assert_eq(
+    assert_eq(
         covar_samp["expected"],
         covar_samp["calculated"],
         check_dtype=False,
@@ -383,7 +385,7 @@ def test_groupby_split_out(c, input_table, split_out, request):
     )
 
     assert return_df.npartitions == split_out if split_out else 1
-    dd.assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
+    assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
 
 @pytest.mark.parametrize(
@@ -423,6 +425,6 @@ def test_groupby_split_every(c, gpu, split_every, expected_keys):
     )
 
     assert len(return_df.dask.keys()) == expected_keys
-    dd.assert_eq(return_df, expected_df, check_index=False)
+    assert_eq(return_df, expected_df, check_index=False)
 
     c.drop_table("split_every_input")

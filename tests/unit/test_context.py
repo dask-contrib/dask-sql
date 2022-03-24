@@ -6,6 +6,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
+from dask_sql.testing.utils import assert_eq
 
 try:
     import cudf
@@ -98,17 +99,17 @@ def test_sql(gpu):
 
     result = c.sql("SELECT * FROM df")
     assert isinstance(result, dd.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert_eq(result, data_frame)
 
     result = c.sql("SELECT * FROM df", return_futures=False)
     assert not isinstance(result, dd.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert_eq(result, data_frame)
 
     result = c.sql(
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
     assert isinstance(result, dd.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert_eq(result, data_frame)
 
 
 @pytest.mark.parametrize(
@@ -121,7 +122,7 @@ def test_input_types(temporary_data_file, gpu):
     def assert_correct_output(gpu):
         result = c.sql("SELECT * FROM df")
         assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
-        dd.assert_eq(result, df)
+        assert_eq(result, df)
 
     c.create_table("df", df, gpu=gpu)
     assert_correct_output(gpu=gpu)

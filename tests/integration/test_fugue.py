@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.testing.utils import assert_eq
 from tests.integration.fixtures import skip_if_external_scheduler
 
 fugue_sql = pytest.importorskip("fugue_sql")
@@ -19,7 +20,7 @@ def test_simple_statement():
         result = dag.run()
 
     return_df = result["result"].as_pandas()
-    dd.assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
+    assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
     # A more elegant way to do things
     pdf = pd.DataFrame([[0, "hello"], [1, "world"]], columns=["a", "b"])
@@ -28,7 +29,7 @@ def test_simple_statement():
     ).run("dask")
 
     return_df = result["result"].as_pandas()
-    dd.assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
+    assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
@@ -36,7 +37,7 @@ def test_simple_statement():
 @skip_if_external_scheduler
 def test_fsql():
     def assert_eq(df: pd.DataFrame) -> None:
-        dd.assert_eq(df, pd.DataFrame({"a": [1]}))
+        assert_eq(df, pd.DataFrame({"a": [1]}))
 
     # the simplest case: the SQL does not use any input and does not generate output
     fsql_dask(

@@ -1,5 +1,6 @@
 import pandas as pd
-from dask.dataframe.utils import assert_eq
+
+from dask_sql.testing.utils import assert_eq
 
 
 def test_union_not_all(c, df):

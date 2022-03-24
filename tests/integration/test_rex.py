@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from dask_sql.testing.utils import assert_eq
+
 
 @pytest.mark.xfail(
     reason="Bumping to Calcite 1.29.0 to address CVE-2021-44228 caused a stack overflow in this test"
@@ -39,7 +41,7 @@ def test_case(c, df):
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
 
     # Do not check dtypes, as pandas versions are inconsistent here
-    dd.assert_eq(result_df, expected_df, check_dtype=False)
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_literals(c):
@@ -65,7 +67,7 @@ def test_literals(c):
             "IN": [pd.to_timedelta("1d")],
         }
     )
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_literal_null(c):
@@ -77,7 +79,7 @@ def test_literal_null(c):
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
     expected_df["I"] = expected_df["I"].astype("Int32")
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_random(c, df):
@@ -90,7 +92,7 @@ def test_random(c, df):
     # As the seed is fixed, this should always give the same results
     expected_df = pd.DataFrame({"0": [0.6673301193128622], "1": [0]})
     expected_df["1"] = expected_df["1"].astype("Int32")
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
@@ -99,7 +101,7 @@ def test_random(c, df):
     )
 
     assert len(result_df) == 659
-    dd.assert_eq(
+    assert_eq(
         result_df["R"].head(5),
         pd.Series(
             [
@@ -130,7 +132,7 @@ def test_not(c, input_table, request):
     )
 
     expected_df = string_table[~string_table.a.str.contains("normal")]
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_operators(c, df):
@@ -164,7 +166,7 @@ def test_operators(c, df):
     expected_df["l"] = df["a"] < df["b"]
     expected_df["le"] = df["a"] <= df["b"]
     expected_df["n"] = df["a"] != df["b"]
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -193,7 +195,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    dd.assert_eq(df, string_table.iloc[[0]])
+    assert_eq(df, string_table.iloc[[0]])
 
     df = c.sql(
         f"""
@@ -211,7 +213,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    dd.assert_eq(df, string_table.iloc[[1]])
+    assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
         f"""
@@ -220,7 +222,7 @@ def test_like(c, input_table, gpu, request):
         """
     )
 
-    dd.assert_eq(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
         f"""
@@ -229,7 +231,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    dd.assert_eq(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
         f"""
@@ -238,7 +240,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    dd.assert_eq(df, string_table)
+    assert_eq(df, string_table)
 
     string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
     c.create_table("string_table2", string_table2, gpu=gpu)
@@ -249,7 +251,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    dd.assert_eq(df, string_table2.iloc[[1]])
+    assert_eq(df, string_table2.iloc[[1]])
 
 
 def test_null(c):
@@ -266,7 +268,7 @@ def test_null(c):
     expected_df["nn"] = [True, False, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, True, False]
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
     df = c.sql(
         """
@@ -281,7 +283,7 @@ def test_null(c):
     expected_df["nn"] = [True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, False, False]
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_boolean_operations(c):
@@ -317,7 +319,7 @@ def test_boolean_operations(c):
     expected_df["nt"] = expected_df["nt"].astype("boolean")
     expected_df["nf"] = expected_df["nf"].astype("boolean")
     expected_df["nu"] = expected_df["nu"].astype("boolean")
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_math_operations(c, df):
@@ -377,7 +379,7 @@ def test_math_operations(c, df):
     expected_df["sin"] = np.sin(df.b)
     expected_df["tan"] = np.tan(df.b)
     expected_df["truncate"] = np.trunc(df.b)
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_integer_div(c, df_simple):
@@ -397,7 +399,7 @@ def test_integer_div(c, df_simple):
     expected_df["b"] = [0, 1, 1]
     expected_df["b"] = expected_df["b"].astype("Int64")
     expected_df["c"] = [1.0, 0.5, 0.333333]
-    dd.assert_eq(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_subqueries(c, user_table_1, user_table_2):
@@ -416,9 +418,7 @@ def test_subqueries(c, user_table_1, user_table_2):
     """
     )
 
-    dd.assert_eq(
-        df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False
-    )
+    assert_eq(df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -488,7 +488,7 @@ def test_string_functions(c, gpu):
         }
     )
 
-    dd.assert_eq(
+    assert_eq(
         df.head(1), expected_df,
     )
 
@@ -588,7 +588,7 @@ def test_date_functions(c):
         }
     )
 
-    dd.assert_eq(df, expected_df, check_dtype=False)
+    assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
     with pytest.raises(NotImplementedError):

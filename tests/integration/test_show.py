@@ -1,20 +1,20 @@
-import dask.dataframe as dd
 import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.testing.utils import assert_eq
 
 
 def test_schemas(c):
     result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
     expected_df = pd.DataFrame({"Schema": ["information_schema"]})
 
-    dd.assert_eq(result_df, expected_df, check_index=False)
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -25,7 +25,7 @@ def test_tables(gpu):
     result_df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
     expected_df = pd.DataFrame({"Table": ["table"]})
 
-    dd.assert_eq(result_df, expected_df, check_index=False)
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_columns(c):
@@ -39,11 +39,11 @@ def test_columns(c):
         }
     )
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql('SHOW COLUMNS FROM "user_table_1"')
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_wrong_input(c):
@@ -65,4 +65,4 @@ def test_show_tables_no_schema(c):
 
     actual_df = c.sql("show tables").compute()
     expected_df = pd.DataFrame({"Table": ["test"]})
-    dd.assert_eq(actual_df, expected_df)
+    assert_eq(actual_df, expected_df)

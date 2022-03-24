@@ -14,9 +14,9 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from dask.dataframe.utils import assert_eq
 
 from dask_sql import Context
+from dask_sql.testing.utils import assert_eq
 from dask_sql.utils import ParsingException
 
 

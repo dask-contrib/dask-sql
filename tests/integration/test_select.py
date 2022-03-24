@@ -1,9 +1,8 @@
-import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.dataframe.utils import assert_eq
 
+from dask_sql.testing.utils import assert_eq
 from dask_sql.utils import ParsingException
 
 
@@ -158,7 +157,7 @@ def test_date_casting(c, input_table, request):
         expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
 
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -178,7 +177,7 @@ def test_timestamp_casting(c, input_table, request):
     )
 
     expected_df = datetime_table.astype("<M8[ns]")
-    dd.assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_multi_case_when(c):

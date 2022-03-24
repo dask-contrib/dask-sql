@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from dask_sql.context import Context
+from dask_sql.testing.utils import assert_eq
 
 
 @pytest.mark.parametrize(
@@ -26,7 +27,7 @@ def test_sort(c, input_table_1, input_df, request):
     )
     df_expected = user_table_1.sort_values(["b", "user_id"], ascending=[True, False])
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
         f"""
@@ -38,7 +39,7 @@ def test_sort(c, input_table_1, input_df, request):
     )
     df_expected = df.sort_values(["b", "a"], ascending=[False, False])
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
         f"""
@@ -50,7 +51,7 @@ def test_sort(c, input_table_1, input_df, request):
     )
     df_expected = df.sort_values(["a", "b"], ascending=[False, True])
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
         f"""
@@ -62,7 +63,7 @@ def test_sort(c, input_table_1, input_df, request):
     )
     df_expected = df.sort_values(["b", "a"], ascending=[True, True])
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
 
 @pytest.mark.parametrize(
@@ -84,7 +85,7 @@ def test_sort_by_alias(c, input_table_1, request):
         ["b"]
     ]
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -96,7 +97,7 @@ def test_sort_with_nan(gpu):
     c.create_table("df", df, gpu=gpu)
 
     df_result = c.sql("SELECT * FROM df ORDER BY a")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
@@ -105,7 +106,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS FIRST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
@@ -114,7 +115,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS LAST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
@@ -123,7 +124,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
@@ -132,7 +133,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC NULLS FIRST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [float("nan"), 1, 2, 2], "b": [5, 4, float("nan"), float("inf")]}
@@ -141,7 +142,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a ASC NULLS LAST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [1, 2, 2, float("nan")], "b": [4, float("nan"), float("inf"), 5]}
@@ -150,7 +151,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
@@ -159,7 +160,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC NULLS FIRST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [float("nan"), 2, 2, 1], "b": [5, float("nan"), float("inf"), 4]}
@@ -168,7 +169,7 @@ def test_sort_with_nan(gpu):
     )
 
     df_result = c.sql("SELECT * FROM df ORDER BY a DESC NULLS LAST")
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {"a": [2, 2, 1, float("nan")], "b": [float("nan"), float("inf"), 4, 5]}
@@ -192,7 +193,7 @@ def test_sort_with_nan_more_columns(gpu):
     df_result = c.sql(
         "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
     )
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {
@@ -207,7 +208,7 @@ def test_sort_with_nan_more_columns(gpu):
     df_result = c.sql(
         "SELECT * FROM df ORDER BY a ASC NULLS LAST, b DESC NULLS FIRST, c DESC NULLS LAST"
     )
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {
@@ -222,7 +223,7 @@ def test_sort_with_nan_more_columns(gpu):
     df_result = c.sql(
         "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c DESC NULLS LAST"
     )
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {
@@ -243,7 +244,7 @@ def test_sort_with_nan_many_partitions(gpu):
 
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS FIRST, b ASC NULLS FIRST")
 
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame(
             {
@@ -259,7 +260,7 @@ def test_sort_with_nan_many_partitions(gpu):
 
     df_result = c.sql("SELECT * FROM df ORDER BY a")
 
-    dd.assert_eq(
+    assert_eq(
         df_result,
         pd.DataFrame({"a": [1] * 30 + [float("nan")] * 30,}),
         check_index=False,
@@ -282,7 +283,7 @@ def test_sort_strings(c, gpu):
 
     df_expected = string_table.sort_values(["a"], ascending=True)
 
-    dd.assert_eq(df_result, df_expected, check_index=False)
+    assert_eq(df_result, df_expected, check_index=False)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])

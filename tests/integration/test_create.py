@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 import dask_sql
+from dask_sql.testing.utils import assert_eq
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -27,7 +28,7 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     """
     )
 
-    dd.assert_eq(result_df, df)
+    assert_eq(result_df, df)
 
 
 @pytest.mark.parametrize(
@@ -54,7 +55,7 @@ def test_cluster_memory(client, c, df, gpu):
     """
     )
 
-    dd.assert_eq(df, return_df)
+    assert_eq(df, return_df)
 
     client.unpublish_dataset("df")
 
@@ -82,7 +83,7 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
     """
     )
 
-    dd.assert_eq(df, return_df)
+    assert_eq(df, return_df)
 
 
 def test_wrong_create(c):
@@ -127,7 +128,7 @@ def test_create_from_query(c, df):
     """
     )
 
-    dd.assert_eq(df, return_df)
+    assert_eq(df, return_df)
 
     c.sql(
         """
@@ -145,7 +146,7 @@ def test_create_from_query(c, df):
     """
     )
 
-    dd.assert_eq(df, return_df)
+    assert_eq(df, return_df)
 
 
 @pytest.mark.parametrize(
@@ -199,16 +200,16 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     from_view = c.sql("SELECT c FROM count_view")
     from_table = c.sql("SELECT c FROM count_table")
 
-    dd.assert_eq(from_view, pd.DataFrame({"c": [700]}))
-    dd.assert_eq(from_table, pd.DataFrame({"c": [700]}))
+    assert_eq(from_view, pd.DataFrame({"c": [700]}))
+    assert_eq(from_table, pd.DataFrame({"c": [700]}))
 
     df.iloc[:10].to_csv(temporary_data_file, index=False)
 
     from_view = c.sql("SELECT c FROM count_view")
     from_table = c.sql("SELECT c FROM count_table")
 
-    dd.assert_eq(from_view, pd.DataFrame({"c": [10]}))
-    dd.assert_eq(from_table, pd.DataFrame({"c": [700]}))
+    assert_eq(from_view, pd.DataFrame({"c": [10]}))
+    assert_eq(from_table, pd.DataFrame({"c": [700]}))
 
 
 def test_replace_and_error(c, temporary_data_file, df):
@@ -222,7 +223,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     """
     )
 
-    dd.assert_eq(
+    assert_eq(
         c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [1]}), check_dtype=False,
     )
 
@@ -247,7 +248,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     """
     )
 
-    dd.assert_eq(
+    assert_eq(
         c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [1]}), check_dtype=False,
     )
 
@@ -261,7 +262,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     """
     )
 
-    dd.assert_eq(
+    assert_eq(
         c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [2]}), check_dtype=False,
     )
 
@@ -280,7 +281,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     """
     )
 
-    dd.assert_eq(
+    assert_eq(
         c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [3]}), check_dtype=False,
     )
 
@@ -308,7 +309,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     """
     )
 
-    dd.assert_eq(
+    assert_eq(
         c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [3]}), check_dtype=False,
     )
 
@@ -325,7 +326,7 @@ def test_replace_and_error(c, temporary_data_file, df):
 
     result_df = c.sql("SELECT * FROM new_table")
 
-    dd.assert_eq(result_df, df)
+    assert_eq(result_df, df)
 
 
 def test_drop(c):

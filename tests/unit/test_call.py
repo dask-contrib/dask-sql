@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 import dask_sql.physical.rex.core.call as call
+from dask_sql.testing.utils import assert_eq
 
 df1 = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 df2 = dd.from_pandas(pd.DataFrame({"a": [3, 2, 1]}), npartitions=1)
@@ -35,13 +36,13 @@ def test_reduce():
 def test_case():
     op = call.CaseOperation()
 
-    dd.assert_eq(op(df1.a > 2, df1.a, df2.a), pd.Series([3, 2, 3]), check_names=False)
+    assert_eq(op(df1.a > 2, df1.a, df2.a), pd.Series([3, 2, 3]), check_names=False)
 
-    dd.assert_eq(op(df1.a > 2, 99, df2.a), pd.Series([3, 2, 99]), check_names=False)
+    assert_eq(op(df1.a > 2, 99, df2.a), pd.Series([3, 2, 99]), check_names=False)
 
-    dd.assert_eq(op(df1.a > 2, 99, -1), pd.Series([-1, -1, 99]), check_names=False)
+    assert_eq(op(df1.a > 2, 99, -1), pd.Series([-1, -1, 99]), check_names=False)
 
-    dd.assert_eq(op(df1.a > 2, df1.a, -1), pd.Series([-1, -1, 3]), check_names=False)
+    assert_eq(op(df1.a > 2, df1.a, -1), pd.Series([-1, -1, 3]), check_names=False)
 
     assert op(True, 1, 2) == 1
     assert op(False, 1, 2) == 2
@@ -50,8 +51,8 @@ def test_case():
 def test_is_true():
     op = call.IsTrueOperation()
 
-    dd.assert_eq(op(df1.a > 2), pd.Series([False, False, True]), check_names=False)
-    dd.assert_eq(
+    assert_eq(op(df1.a > 2), pd.Series([False, False, True]), check_names=False)
+    assert_eq(
         op(df3.a), pd.Series([True, False, False], dtype="boolean"), check_names=False,
     )
 
@@ -65,8 +66,8 @@ def test_is_true():
 def test_is_false():
     op = call.IsFalseOperation()
 
-    dd.assert_eq(op(df1.a > 2), pd.Series([True, True, False]), check_names=False)
-    dd.assert_eq(
+    assert_eq(op(df1.a > 2), pd.Series([True, True, False]), check_names=False)
+    assert_eq(
         op(df3.a), pd.Series([False, False, True], dtype="boolean"), check_names=False,
     )
 
@@ -104,44 +105,44 @@ def test_nan():
     assert op(None)
     assert op(np.NaN)
     assert op(pd.NA)
-    dd.assert_eq(op(pd.Series(["a", None, "c"])), pd.Series([False, True, False]))
-    dd.assert_eq(
+    assert_eq(op(pd.Series(["a", None, "c"])), pd.Series([False, True, False]))
+    assert_eq(
         op(pd.Series([3, 2, np.NaN, pd.NA])), pd.Series([False, False, True, True])
     )
 
 
 def test_simple_ops():
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["and"](df1.a >= 2, df2.a >= 2),
         pd.Series([False, True, False]),
         check_names=False,
     )
 
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["or"](df1.a >= 2, df2.a >= 2),
         pd.Series([True, True, True]),
         check_names=False,
     )
 
-    dd.assert_eq(
+    assert_eq(
         ops_mapping[">="](df1.a, df2.a),
         pd.Series([False, True, True]),
         check_names=False,
     )
 
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["+"](df1.a, df2.a, df1.a), pd.Series([5, 6, 7]), check_names=False,
     )
 
 
 def test_math_operations():
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["abs"](-df1.a), pd.Series([1, 2, 3]), check_names=False,
     )
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["round"](df1.a), pd.Series([1, 2, 3]), check_names=False,
     )
-    dd.assert_eq(
+    assert_eq(
         ops_mapping["floor"](df1.a), pd.Series([1.0, 2.0, 3.0]), check_names=False,
     )
 

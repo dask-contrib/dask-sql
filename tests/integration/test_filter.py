@@ -1,9 +1,8 @@
-import dask.dataframe as dd
 import pandas as pd
 import pytest
-from dask.dataframe.utils import assert_eq
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
+from dask_sql.testing.utils import assert_eq
 
 
 def test_filter(c, df):
@@ -81,7 +80,7 @@ def test_filter_cast_date(c, input_table, request):
         datetime_table["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
         > pd.Timestamp("2014-08-01")
     ]
-    dd.assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -101,7 +100,7 @@ def test_filter_cast_timestamp(c, input_table, request):
         datetime_table["timezone"].astype("<M8[ns]")
         >= pd.Timestamp("2014-08-01 23:00:00")
     ]
-    dd.assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df)
 
 
 def test_filter_year(c):
