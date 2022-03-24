@@ -6,7 +6,6 @@ import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-
 import pyarrow as pa
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
@@ -40,10 +39,8 @@ _PYTHON_TO_SQL = {
     np.datetime64: "TIMESTAMP",
 }
 
-# if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-#     _PYTHON_TO_SQL.update(
-#         {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.FLOAT}
-#     )
+if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
+    _PYTHON_TO_SQL.update({pd.Float32Dtype(): "FLOAT", pd.Float64Dtype(): "FLOAT"})
 
 # Default mapping between SQL types and python types
 # for values
@@ -91,7 +88,7 @@ def python_to_sql_type(python_type):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        return pa.timestamp('ms', tz='UTC')
+        return pa.timestamp("ms", tz="UTC")
 
     try:
         return _PYTHON_TO_SQL[python_type]
@@ -192,7 +189,8 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
-    logger.debug(f'mappings.sql_to_python_type() -> sql_type: {sql_type}')
+    logger.debug(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
+    print(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
@@ -209,7 +207,8 @@ def sql_to_python_type(sql_type: str) -> type:
         return np.float64
     else:
         try:
-            return _SQL_TO_PYTHON_FRAMES[sql_type]
+            python_type = _SQL_TO_PYTHON_FRAMES[sql_type]
+            return python_type
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"

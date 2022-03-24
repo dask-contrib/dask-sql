@@ -15,7 +15,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 /// The higher-level public API is defined in pure python files under the
 /// dask_planner directory.
 #[pymodule]
-fn rust(py: Python, m: &PyModule) -> PyResult<()> {
+fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
     // Register the python classes
     m.add_class::<catalog::PyCatalog>()?;
     m.add_class::<catalog::PyDatabase>()?;

@@ -10,12 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import (
-    DaskSchema,
-    DaskTable,
-    DaskSQLContext,
-    DaskRelDataType,
-)
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan
 
 try:
     import dask_cuda  # noqa: F401
@@ -35,7 +30,6 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +209,9 @@ class Context:
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
-        logger.debug(f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'")
+        logger.debug(
+            f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
+        )
         if "file_format" in kwargs:  # pragma: no cover
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
@@ -755,9 +751,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(
-        self, identifier: "org.apache.calcite.sql.SqlIdentifier"
-    ) -> Tuple[str, str]:
+    def fqn(self, identifier: LogicalPlan) -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -786,7 +780,9 @@ class Context:
         Create a list of schemas filled with the dataframes
         and functions we have currently in our schema list
         """
-        logger.debug(f"There are {len(self.schema)} existing schema(s): {self.schema.keys()}")
+        logger.debug(
+            f"There are {len(self.schema)} existing schema(s): {self.schema.keys()}"
+        )
         schema_list = []
 
         for schema_name, schema in self.schema.items():
@@ -811,10 +807,9 @@ class Context:
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-                    # TODO: Due to time constraints only going to support string types for now
-                    # print(f"SQL Data Type: {sql_data_type}")
-                    # something = DaskRelDataType(column, sql_data_type)
-                    table.add_column(column)
+                    # print(f"data_type: {data_type} - sql_data_type: {sql_data_type}")
+                    # print(f"type: {type(data_type)} - type: {type(sql_data_type)}")
+                    table.add_column(column, str(sql_data_type))
 
                 rust_schema.add_table(table)
 
@@ -840,9 +835,7 @@ class Context:
             #     java_schema.addFunction(dask_function)
 
             schema_list.append(rust_schema)
-            logger.debug(
-                f"Prepared Schema: {rust_schema.to_string()}"
-            )
+            logger.debug(f"Prepared Schema: {rust_schema.to_string()}")
 
         return schema_list
 
@@ -866,44 +859,33 @@ class Context:
         for schema in schemas:
             self.context.register_schema(schema.name, schema)
 
-        # True if the SQL query should be case sensitive and False otherwise
-        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
+        sqlTree = self.context.parse_sql(sql)
+        logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
-        try:
-            sqlTree = self.context.parse_sql(sql)
-            logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
+        select_names = None
+        rel = sqlTree
 
-            select_names = None
-            rel = sqlTree
+        # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
+        if len(sqlTree) > 1:
+            raise RuntimeError(
+                f"Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!"
+            )
 
-            # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
-            if len(sqlTree) > 1:
-                error = "Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!".format(sql)
-                raise RuntimeError(error)
+        nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        rel = nonOptimizedRel
+        logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
+        # # Optimization might remove some alias projects. Make sure to keep them here.
+        # select_names = [
+        #     str(name)
+        #     for name in nonOptimizedRelNode.getRowType().getFieldNames()
+        # ]
 
-            nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
-            rel = nonOptimizedRel
-            logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
-            # # Optimization might remove some alias projects. Make sure to keep them here.
-            # select_names = [
-            #     str(name)
-            #     for name in nonOptimizedRelNode.getRowType().getFieldNames()
-            # ]
+        select_names = rel.get_field_names()
 
-            select_names = rel.get_field_names()
-
-            # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
-            # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-            # rel_string = str(generator.getRelationalAlgebraString(rel))
-            rel_string = rel.explain()
-
-        except (ValidationException, SqlParseException, CalciteContextException) as e:
-            logger.debug(f"Original exception raised by Java:\n {e}")
-            # We do not want to re-raise an exception here
-            # as this would print the full java stack trace
-            # if debug is not set.
-            # Instead, we raise a nice exception
-            raise ParsingException(sql, str(e.message())) from None
+        # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
+        # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
+        # rel_string = str(generator.getRelationalAlgebraString(rel))
+        rel_string = rel.explain_original()
 
         # # Internal, temporary results of calcite are sometimes
         # # named EXPR$N (with N a number), which is not very helpful
@@ -931,17 +913,17 @@ class Context:
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
 
-    def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
-        if default_dialect is None:
-            default_dialect = (
-                com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
-            )
+    # def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
+    #     if default_dialect is None:
+    #         default_dialect = (
+    #             com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
+    #         )
 
-        try:
-            return str(s.toSqlString(default_dialect))
-        # Have not seen any instance so far, but better be safe than sorry
-        except Exception:  # pragma: no cover
-            return str(s)
+    #     try:
+    #         return str(s.toSqlString(default_dialect))
+    #     # Have not seen any instance so far, but better be safe than sorry
+    #     except Exception:  # pragma: no cover
+    #         return str(s)
 
     def _get_tables_from_stack(self):
         """Helper function to return all dask/pandas dataframes from the calling stack"""

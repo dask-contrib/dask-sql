@@ -3,11 +3,10 @@ from typing import TYPE_CHECKING, Any, Union
 
 import dask.dataframe as dd
 
+from dask_planner.rust import Expression
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
-
-from dask_planner.rust import LogicalPlan, LogicalPlanGenerator, Expression
 
 if TYPE_CHECKING:
     import dask_sql
@@ -39,10 +38,7 @@ class RexConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls,
-        rex: Expression,
-        dc: DataContainer,
-        context: "dask_sql.Context",
+        cls, rex: Expression, dc: DataContainer, context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
         Convert the given rel (java instance)
@@ -50,14 +46,15 @@ class RexConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        # class_name = get_java_class(rex)
-        print(f"Rex: {rex}")
+        print(f"PyExpr Rex in RexConverter.convert(): {rex}")
+        expr_type = rex.get_expr_type()
+        print(f"Expression Type: {expr_type}")
 
         try:
-            plugin_instance = cls.get_plugin(class_name)
+            plugin_instance = cls.get_plugin(expr_type)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
-                f"No conversion for class {class_name} available (yet)."
+                f"No conversion for class {expr_type} available (yet)."
             )
 
         logger.debug(

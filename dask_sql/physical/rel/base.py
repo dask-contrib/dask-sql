@@ -3,16 +3,7 @@ from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
 
-from dask_planner.rust import (
-    DaskFunction,
-    DaskSchema,
-    DaskTable,
-    Query,
-    Statement,
-    LogicalPlan,
-    DaskRelDataType,
-)
-
+from dask_planner.rust import DaskRelDataType, DaskTable, LogicalPlan
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
 
@@ -33,16 +24,12 @@ class BaseRelPlugin:
 
     class_name = None
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> dd.DataFrame:
+    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> dd.DataFrame:
         """Base method to implement"""
         raise NotImplementedError
 
     @staticmethod
-    def fix_column_to_row_type(
-        cc: ColumnContainer, column_names
-    ) -> ColumnContainer:
+    def fix_column_to_row_type(cc: ColumnContainer, column_names) -> ColumnContainer:
         """
         Make sure that the given column container
         has the column names specified by the row type.
@@ -71,33 +58,28 @@ class BaseRelPlugin:
 
         # TODO: similar to self.fix_column_to_row_type, we should check for the types
 
-    # @staticmethod
-    # def assert_inputs(
-    #     rel: LogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
-    # ) -> List[dd.DataFrame]:
-    #     """
-    #     Many RelNodes build on top of others.
-    #     Those are the "input" of these RelNodes.
-    #     This function asserts that the given RelNode has exactly as many
-    #     input tables as expected and returns them already
-    #     converted into a dask dataframe.
-    #     """
-    #     input_rels = rel.get_inputs()
-    #     print(f"Inputs: {input_rels}")
-    #     for input in input_rels:
-    #         print(f"Input: {input}")
+    @staticmethod
+    def assert_inputs(
+        rel: LogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
+    ) -> List[dd.DataFrame]:
+        """
+        LogicalPlan nodes build on top of others.
+        Those are called the "input" of the LogicalPlan.
+        This function asserts that the given LogicalPlan has exactly as many
+        input tables as expected and returns them already
+        converted into a dask dataframe.
+        """
+        input_rels = rel.get_inputs()
 
-    #     assert len(input_rels) == n
+        assert len(input_rels) == n
 
-    #     # Late import to remove cycling dependency
-    #     from dask_sql.physical.rel.convert import RelConverter
+        # Late import to remove cycling dependency
+        from dask_sql.physical.rel.convert import RelConverter
 
-    #     return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
+        return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
-    def fix_dtype_to_row_type(
-        dc: DataContainer, dask_table: DaskTable
-    ):
+    def fix_dtype_to_row_type(dc: DataContainer, dask_table: DaskTable):
         """
         Fix the dtype of the given data container (or: the df within it)
         to the data type given as argument.
@@ -109,14 +91,9 @@ class BaseRelPlugin:
         TODO: we should check the nullability of the SQL type
         """
         df = dc.df
-        cc = dc.column_container
 
         for col in dask_table.column_types():
-            logger.debug(f"Column Inside: {col.get_type_as_str()}")
             expected_type = sql_to_python_type(col.get_type_as_str())
-            
-            # field_name = cc.get_backend_by_frontend_index(field.get_index())
-            print(f"Casting column type")
             df = cast_column_type(df, col.get_column_name(), expected_type)
 
         return DataContainer(df, dc.column_container)

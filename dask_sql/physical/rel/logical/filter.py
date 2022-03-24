@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING, Union
 import dask.dataframe as dd
 import numpy as np
 
+from dask_planner.rust import LogicalPlan, LogicalPlanGenerator
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +40,15 @@ class DaskFilterPlugin(BaseRelPlugin):
     We just evaluate the filter (which is of type RexNode) and apply it
     """
 
-    class_name = "com.dask.sql.nodes.DaskFilter"
+    class_name = "Filter"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self,
+        dc: DataContainer,
+        logical_generator: LogicalPlanGenerator,
+        rel: LogicalPlan,
+        context: "dask_sql.Context",
     ) -> DataContainer:
-        (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
 

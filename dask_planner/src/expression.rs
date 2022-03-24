@@ -88,10 +88,96 @@ impl PyExpr {
         lit(value).into()
     }
 
+
+    /// Examine the current/"self" PyExpr and return its "type"
+    /// In this context a "type" is what Dask-SQL Python
+    /// RexConverter plugin instance should be invoked to handle
+    /// the Rex conversion
+    pub fn get_expr_type(&self) -> String {
+
+    //     Alias(Box<Expr, Global>, String),
+    // Column(Column),
+    // ScalarVariable(Vec<String, Global>),
+    // Literal(ScalarValue),
+    // BinaryExpr {
+    //     left: Box<Expr, Global>,
+    //     op: Operator,
+    //     right: Box<Expr, Global>,
+    // },
+    // Not(Box<Expr, Global>),
+    // IsNotNull(Box<Expr, Global>),
+    // IsNull(Box<Expr, Global>),
+    // Negative(Box<Expr, Global>),
+    // GetIndexedField {
+    //     expr: Box<Expr, Global>,
+    //     key: ScalarValue,
+    // },
+    // Between {
+    //     expr: Box<Expr, Global>,
+    //     negated: bool,
+    //     low: Box<Expr, Global>,
+    //     high: Box<Expr, Global>,
+    // },
+    // Case {
+    //     expr: Option<Box<Expr, Global>>,
+    //     when_then_expr: Vec<(Box<Expr, Global>, Box<Expr, Global>), Global>,
+    //     else_expr: Option<Box<Expr, Global>>,
+    // },
+    // Cast {
+    //     expr: Box<Expr, Global>,
+    //     data_type: DataType,
+    // },
+    // TryCast {
+    //     expr: Box<Expr, Global>,
+    //     data_type: DataType,
+    // },
+    // Sort {
+    //     expr: Box<Expr, Global>,
+    //     asc: bool,
+    //     nulls_first: bool,
+    // },
+    // ScalarFunction {
+    //     fun: BuiltinScalarFunction,
+    //     args: Vec<Expr, Global>,
+    // },
+    // ScalarUDF {
+    //     fun: Arc<ScalarUDF>,
+    //     args: Vec<Expr, Global>,
+    // },
+    // AggregateFunction {
+    //     fun: AggregateFunction,
+    //     args: Vec<Expr, Global>,
+    //     distinct: bool,
+    // },
+    // WindowFunction {
+    //     fun: WindowFunction,
+    //     args: Vec<Expr, Global>,
+    //     partition_by: Vec<Expr, Global>,
+    //     order_by: Vec<Expr, Global>,
+    //     window_frame: Option<WindowFrame>,
+    // },
+    // AggregateUDF {
+    //     fun: Arc<AggregateUDF>,
+    //     args: Vec<Expr, Global>,
+    // },
+    // InList {
+    //     expr: Box<Expr, Global>,
+    //     list: Vec<Expr, Global>,
+    //     negated: bool,
+    // },
+    // Wildcard,
+
+        match &self.expr {
+            Column => {
+                String::from("Column")
+            }
+            _ => String::from("OTHER")
+        }
+    }
+
     pub fn column_name(&self) -> String {
         match &self.expr {
-            Expr::Alias{ .. } => { println!("Alias!"); String::from("alias") },
-            Expr::Column(column) => { println!("Column: {:?}", &column.name); column.name.clone() },
+            Expr::Column(column) => { column.name.clone() },
             _ => panic!("Nothing found!!!")
         }
     }
