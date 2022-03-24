@@ -56,6 +56,8 @@ def test_cluster_memory(client, c, df, gpu):
 
     dd.assert_eq(df, return_df)
 
+    client.unpublish_dataset("df")
+
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv_persist(c, df, temporary_data_file, gpu):

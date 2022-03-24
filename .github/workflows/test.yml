@@ -180,9 +180,7 @@ jobs:
           docker logs dask-worker
       - name: Test with pytest while running an independent dask cluster
         run: |
-          pytest tests
-        env:
-          DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest tests
 
   import:
     name: "Test importing with bare requirements"
