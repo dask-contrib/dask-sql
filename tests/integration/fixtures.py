@@ -288,6 +288,9 @@ def gpu_client(gpu_cluster):
             yield client
 
 
+# if connecting to an independent cluster, use a session-wide
+# client for all computations. otherwise, only connect to a client
+# when specified.
 @pytest.fixture(
     scope="function" if SCHEDULER_ADDR is None else "session",
     autouse=False if SCHEDULER_ADDR is None else True,
