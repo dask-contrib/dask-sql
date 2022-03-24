@@ -37,8 +37,6 @@ def app_client(c):
 
     yield TestClient(app)
 
-    app.client.close()
-
 
 def test_jdbc_has_schema(app_client, c):
     create_meta_data(c)
