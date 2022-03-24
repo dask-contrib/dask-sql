@@ -19,6 +19,9 @@ except ImportError:
     cudf = None
     LocalCUDACluster = None
 
+# check if we want to connect to an independent cluster
+SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
+
 
 @pytest.fixture()
 def timeseries_df(c):
@@ -327,9 +330,16 @@ def gpu_client(gpu_cluster):
             yield client
 
 
-@pytest.fixture(scope="session", autouse=True)
+# if connecting to an independent cluster, use a session-wide
+# client for all computations. otherwise, only connect to a client
+# when specified.
+@pytest.fixture(
+    scope="function" if SCHEDULER_ADDR is None else "session",
+    autouse=False if SCHEDULER_ADDR is None else True,
+)
 def client():
-    yield Client(address=os.getenv("DASK_SQL_TEST_SCHEDULER", None))
+    with Client(address=SCHEDULER_ADDR) as client:
+        yield client
 
 
 skip_if_external_scheduler = pytest.mark.skipif(
