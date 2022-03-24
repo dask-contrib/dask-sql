@@ -100,9 +100,7 @@ def test_meta_commands(c, client, capsys):
     assert "Schema not_exists not available\n" == captured.out
 
     with pytest.raises(
-        OSError,
-        match="Timed out during handshake while "
-        "connecting to tcp://localhost:8787 after 5 s",
+        OSError, match="Timed out .* to tcp://localhost:8787 after 5 s",
     ):
         with dask_config.set({"distributed.comm.timeouts.connect": 5}):
             client = _meta_commands("\\dsc localhost:8787", context=c, client=client)
@@ -120,8 +118,9 @@ def test_connection_info(c, client, capsys):
 
 
 def test_quit(c, client, capsys):
+    dummy_client = MagicMock()
     with patch("sys.exit", return_value=lambda: "exit"):
-        _meta_commands("quit", context=c, client=client)
+        _meta_commands("quit", context=c, client=dummy_client)
         captured = capsys.readouterr()
         assert captured.out == "Quitting dask-sql ...\n"
 

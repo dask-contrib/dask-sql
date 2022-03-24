@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from dask.distributed import Client, LocalCluster
-from dask.distributed.utils_test import loop  # noqa: F401
+from dask.distributed import Client
 from pandas.testing import assert_frame_equal
 
 try:
@@ -19,6 +18,9 @@ try:
 except ImportError:
     cudf = None
     LocalCUDACluster = None
+
+# check if we want to connect to an independent cluster
+SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
 
 
 @pytest.fixture()
@@ -287,40 +289,30 @@ def gpu_cluster():
         pytest.skip("dask_cuda not installed")
         return None
 
-    cluster = LocalCUDACluster(protocol="tcp")
-    yield cluster
-    cluster.close()
+    with LocalCUDACluster(protocol="tcp") as cluster:
+        yield cluster
 
 
 @pytest.fixture()
 def gpu_client(gpu_cluster):
     if gpu_cluster:
-        client = Client(gpu_cluster)
+        with Client(gpu_cluster) as client:
+            yield client
+
+
+# if connecting to an independent cluster, use a session-wide
+# client for all computations. otherwise, only connect to a client
+# when specified.
+@pytest.fixture(
+    scope="function" if SCHEDULER_ADDR is None else "session",
+    autouse=False if SCHEDULER_ADDR is None else True,
+)
+def client():
+    with Client(address=SCHEDULER_ADDR) as client:
         yield client
-        client.close()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_dask_client():
-    """Setup a dask client if requested"""
-    address = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-    if address:
-        client = Client(address)
 
 
 skip_if_external_scheduler = pytest.mark.skipif(
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )
-
-
-@pytest.fixture()
-def cluster(loop):  # noqa: F811
-    with LocalCluster(loop=loop) as cluster:
-        yield cluster
-
-
-@pytest.fixture()
-def client(cluster):
-    with Client(cluster) as client:
-        yield client
