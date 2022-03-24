@@ -7,13 +7,9 @@ services:
         command: dask-scheduler
         ports:
             - "8786:8786"
-        environment:
-            EXTRA_CONDA_PACKAGES: "pandas>=1.0.0"
     dask-worker:
         container_name: dask-worker
         image: daskdev/dask:latest
         command: dask-worker dask-scheduler:8786
-        environment:
-            EXTRA_CONDA_PACKAGES: "pandas>=1.0.0"
         volumes:
             - /tmp:/tmp
