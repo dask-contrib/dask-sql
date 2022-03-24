@@ -1,6 +1,6 @@
 import pandas as pd
 
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 def test_over_with_sorting(c, user_table_1):

@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 def test_filter(c, df):

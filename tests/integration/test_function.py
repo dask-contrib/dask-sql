@@ -5,7 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pytest
 
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 def test_custom_function(c, df):

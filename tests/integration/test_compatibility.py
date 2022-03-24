@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 
 from dask_sql import Context
-from dask_sql.testing.utils import assert_eq
 from dask_sql.utils import ParsingException
+from tests.utils import assert_eq
 
 
 def cast_datetime_to_string(df):

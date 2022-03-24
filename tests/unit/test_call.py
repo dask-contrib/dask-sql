@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 import dask_sql.physical.rex.core.call as call
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 df1 = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 df2 = dd.from_pandas(pd.DataFrame({"a": [3, 2, 1]}), npartitions=1)

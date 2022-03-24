@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from dask_sql.context import Context
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 # skip the test if intake is not installed
 intake = pytest.importorskip("intake")

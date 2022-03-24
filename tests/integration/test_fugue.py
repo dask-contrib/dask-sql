@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from dask_sql.testing.utils import assert_eq
 from tests.integration.fixtures import skip_if_external_scheduler
+from tests.utils import assert_eq
 
 fugue_sql = pytest.importorskip("fugue_sql")
 

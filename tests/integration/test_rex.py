@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 @pytest.mark.xfail(

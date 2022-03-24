@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from dask_sql.context import Context
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="hive testing not supported on Windows"

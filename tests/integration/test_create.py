@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 import dask_sql
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])

@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 
 @pytest.fixture()

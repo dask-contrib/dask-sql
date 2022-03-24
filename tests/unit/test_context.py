@@ -6,7 +6,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 try:
     import cudf

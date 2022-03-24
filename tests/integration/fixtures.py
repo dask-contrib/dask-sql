@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from dask.distributed import Client
 
-from dask_sql.testing.utils import assert_eq
+from tests.utils import assert_eq
 
 try:
     import cudf
@@ -18,6 +18,9 @@ try:
 except ImportError:
     cudf = None
     LocalCUDACluster = None
+
+# check if we want to connect to an independent cluster
+SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
 
 
 @pytest.fixture()
@@ -285,9 +288,13 @@ def gpu_client(gpu_cluster):
             yield client
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(
+    scope="function" if SCHEDULER_ADDR is None else "session",
+    autouse=False if SCHEDULER_ADDR is None else True,
+)
 def client():
-    yield Client(address=os.getenv("DASK_SQL_TEST_SCHEDULER", None))
+    with Client(address=SCHEDULER_ADDR) as client:
+        yield client
 
 
 skip_if_external_scheduler = pytest.mark.skipif(
