@@ -20,6 +20,19 @@ except ImportError:
     LocalCUDACluster = None
 
 
+try:
+    import pyarrow as pq_dep
+except ImportError:
+    try:
+        import fastparquet as pq_dep
+    except ImportError:
+        pq_dep = False
+
+PARQUET_MARK = pytest.mark.skipif(
+    bool(pq_dep), reason="Parquet dependencies not installed."
+)
+
+
 @pytest.fixture()
 def timeseries_df(c):
     pdf = timeseries(freq="1d").compute().reset_index(drop=True)
@@ -111,8 +124,8 @@ def datetime_table():
     )
 
 
-@pytest.fixture()
-def parquet_ddf(tmpdir):
+@pytest.fixture(params=[pytest.param(None, marks=PARQUET_MARK)])
+def parquet_ddf(tmpdir, request):
 
     # Write simple parquet dataset
     df = pd.DataFrame(
@@ -172,7 +185,6 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
-    parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
@@ -190,7 +202,6 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
-        "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
@@ -205,12 +216,21 @@ def c(
     for df_name, df in dfs.items():
         if df is None:
             continue
-        if hasattr(df, "npartitions"):
-            # df is already a dask collection
-            dask_df = df
-        else:
-            dask_df = dd.from_pandas(df, npartitions=3)
+        dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
+
+    yield c
+
+
+@pytest.fixture()
+def c_parquet(parquet_ddf):
+    # Use separate fixture for parquet tables
+    # in case the required dependencies are
+    # not available.
+    from dask_sql.context import Context
+
+    c = Context()
+    c.create_table("parquet_ddf", parquet_ddf)
 
     yield c
 

@@ -174,12 +174,11 @@ def test_filter_year(c):
         ),
     ],
 )
-def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
-
+def test_predicate_pushdown(c_parquet, parquet_ddf, query, df_func, filters):
     # Check for predicate pushdown.
     # We can use the `hlg_layer` utility to make sure the
     # `filters` field has been populated in `creation_info`
-    return_df = c.sql(query)
+    return_df = c_parquet.sql(query)
     expect_filters = filters
     got_filters = hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"][
         "filters"
