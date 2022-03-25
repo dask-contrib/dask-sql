@@ -29,10 +29,10 @@ except ImportError:
     try:
         import fastparquet as pq_dep
     except ImportError:
-        pq_dep = False
+        pq_dep = None
 
 PARQUET_MARK = pytest.mark.skipif(
-    bool(pq_dep), reason="Parquet dependencies not installed."
+    pq_dep is None, reason="Parquet dependencies not installed."
 )
 
 
