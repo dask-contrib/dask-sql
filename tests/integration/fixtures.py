@@ -115,6 +115,30 @@ def datetime_table():
 
 
 @pytest.fixture()
+def parquet_ddf(tmpdir):
+
+    # Write simple parquet dataset
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
+
+    # Read back with dask and apply WHERE query
+    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
+
+
+@pytest.fixture()
 def gpu_user_table_1(user_table_1):
     return cudf.from_pandas(user_table_1) if cudf else None
 
@@ -151,6 +175,7 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
@@ -168,6 +193,7 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
@@ -182,7 +208,11 @@ def c(
     for df_name, df in dfs.items():
         if df is None:
             continue
-        dask_df = dd.from_pandas(df, npartitions=3)
+        if hasattr(df, "npartitions"):
+            # df is already a dask collection
+            dask_df = df
+        else:
+            dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
 
     yield c
