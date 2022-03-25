@@ -12,6 +12,6 @@ services:
         image: daskdev/dask:latest
         command: dask-worker dask-scheduler:8786
         environment:
-            EXTRA_CONDA_PACKAGES: "pyarrow>1.0.0"
+            EXTRA_CONDA_PACKAGES: "pyarrow>1.0.0"  # required for parquet IO
         volumes:
             - /tmp:/tmp
