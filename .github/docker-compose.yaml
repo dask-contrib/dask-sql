@@ -11,5 +11,7 @@ services:
         container_name: dask-worker
         image: daskdev/dask:latest
         command: dask-worker dask-scheduler:8786
+        environment:
+            EXTRA_CONDA_PACKAGES: "pyarrow>1.0.0"
         volumes:
             - /tmp:/tmp
