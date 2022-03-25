@@ -5,6 +5,7 @@ import re
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
+from dask_planner.rust import Expression
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
@@ -29,7 +30,6 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -716,7 +716,7 @@ class RexCallPlugin(BaseRexPlugin):
     The inputs can either be a column or a scalar value.
     """
 
-    class_name = "org.apache.calcite.rex.RexCall"
+    class_name = "RexCall"
 
     OPERATION_MAPPING = {
         # "binary" functions
@@ -801,13 +801,13 @@ class RexCallPlugin(BaseRexPlugin):
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        expr: Expression,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
-            RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
+            RexConverter.convert(o, dc, context=context) for o in expr.getOperands()
         ]
 
         # Now use the operator name in the mapping

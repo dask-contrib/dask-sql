@@ -94,93 +94,74 @@ impl PyExpr {
     /// RexConverter plugin instance should be invoked to handle
     /// the Rex conversion
     pub fn get_expr_type(&self) -> String {
-
-    //     Alias(Box<Expr, Global>, String),
-    // Column(Column),
-    // ScalarVariable(Vec<String, Global>),
-    // Literal(ScalarValue),
-    // BinaryExpr {
-    //     left: Box<Expr, Global>,
-    //     op: Operator,
-    //     right: Box<Expr, Global>,
-    // },
-    // Not(Box<Expr, Global>),
-    // IsNotNull(Box<Expr, Global>),
-    // IsNull(Box<Expr, Global>),
-    // Negative(Box<Expr, Global>),
-    // GetIndexedField {
-    //     expr: Box<Expr, Global>,
-    //     key: ScalarValue,
-    // },
-    // Between {
-    //     expr: Box<Expr, Global>,
-    //     negated: bool,
-    //     low: Box<Expr, Global>,
-    //     high: Box<Expr, Global>,
-    // },
-    // Case {
-    //     expr: Option<Box<Expr, Global>>,
-    //     when_then_expr: Vec<(Box<Expr, Global>, Box<Expr, Global>), Global>,
-    //     else_expr: Option<Box<Expr, Global>>,
-    // },
-    // Cast {
-    //     expr: Box<Expr, Global>,
-    //     data_type: DataType,
-    // },
-    // TryCast {
-    //     expr: Box<Expr, Global>,
-    //     data_type: DataType,
-    // },
-    // Sort {
-    //     expr: Box<Expr, Global>,
-    //     asc: bool,
-    //     nulls_first: bool,
-    // },
-    // ScalarFunction {
-    //     fun: BuiltinScalarFunction,
-    //     args: Vec<Expr, Global>,
-    // },
-    // ScalarUDF {
-    //     fun: Arc<ScalarUDF>,
-    //     args: Vec<Expr, Global>,
-    // },
-    // AggregateFunction {
-    //     fun: AggregateFunction,
-    //     args: Vec<Expr, Global>,
-    //     distinct: bool,
-    // },
-    // WindowFunction {
-    //     fun: WindowFunction,
-    //     args: Vec<Expr, Global>,
-    //     partition_by: Vec<Expr, Global>,
-    //     order_by: Vec<Expr, Global>,
-    //     window_frame: Option<WindowFrame>,
-    // },
-    // AggregateUDF {
-    //     fun: Arc<AggregateUDF>,
-    //     args: Vec<Expr, Global>,
-    // },
-    // InList {
-    //     expr: Box<Expr, Global>,
-    //     list: Vec<Expr, Global>,
-    //     negated: bool,
-    // },
-    // Wildcard,
-
         match &self.expr {
-            Column => {
-                String::from("Column")
-            }
+            Expr::Alias(..) => String::from("Alias"),
+            Expr::Column(..) => String::from("Column"),
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(..) => panic!("Literal!!!"),
+            Expr::BinaryExpr {..} => String::from("BinaryExpr"),
+            Expr::Not(..) => panic!("Not!!!"),
+            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+            Expr::Negative(..) => panic!("Negative!!!"),
+            Expr::GetIndexedField{..} => panic!("GetIndexedField!!!"),
+            Expr::IsNull(..) => panic!("IsNull!!!"),
+            Expr::Between{..} => panic!("Between!!!"),
+            Expr::Case{..} => panic!("Case!!!"),
+            Expr::Cast{..} => panic!("Cast!!!"),
+            Expr::TryCast{..} => panic!("TryCast!!!"),
+            Expr::Sort{..} => panic!("Sort!!!"),
+            Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+            Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+            Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
+            Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
+            Expr::InList{..} => panic!("InList!!!"),
+            Expr::Wildcard => panic!("Wildcard!!!"),
             _ => String::from("OTHER")
         }
     }
 
     pub fn column_name(&self) -> String {
         match &self.expr {
+            Expr::Alias(exprs, name) => {
+                println!("Expressions: {:?}, Expression Name: {:?}", exprs, name);
+                panic!("Alias")
+            },
             Expr::Column(column) => { column.name.clone() },
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(..) => panic!("Literal!!!"),
+            Expr::BinaryExpr {..} => panic!("BinaryExpr"),
+            Expr::Not(..) => panic!("Not!!!"),
+            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+            Expr::Negative(..) => panic!("Negative!!!"),
+            Expr::GetIndexedField{..} => panic!("GetIndexedField!!!"),
+            Expr::IsNull(..) => panic!("IsNull!!!"),
+            Expr::Between{..} => panic!("Between!!!"),
+            Expr::Case{..} => panic!("Case!!!"),
+            Expr::Cast{..} => panic!("Cast!!!"),
+            Expr::TryCast{..} => panic!("TryCast!!!"),
+            Expr::Sort{..} => panic!("Sort!!!"),
+            Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+            Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+            Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
+            Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
+            Expr::InList{..} => panic!("InList!!!"),
+            Expr::Wildcard => panic!("Wildcard!!!"),
             _ => panic!("Nothing found!!!")
         }
     }
+
+
+    /// Gets the operands for a BinaryExpr call
+    pub fn getOperands(&self) -> PyResult<Vec<PyExpr>> {
+        match &self.expr {
+            Expr::BinaryExpr {left, op, right} => {
+                let operands: Vec<PyExpr> = Vec::new();
+                Ok(operands)
+            },
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("current_node is not of type Projection"))
+        }
+    }
+
 
     #[staticmethod]
     pub fn column(value: &str) -> PyExpr {

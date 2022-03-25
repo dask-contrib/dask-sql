@@ -19,57 +19,87 @@ if you need it.
 Example
 -------
 
-For this example, we use some data loaded from disk and query them with a SQL command from our python code.
-Any pandas or dask dataframe can be used as input and ``dask-sql`` understands a large amount of formats (csv, parquet, json,...) and locations (s3, hdfs, gcs,...).
+For this example, we use some data loaded from disk and query it with a SQL command.
+``dask-sql`` accepts any pandas, cuDF, or dask dataframe as input and is able to read data directly from a variety of storage formats (csv, parquet, json) and file systems (s3, hdfs, gcs):
 
-.. code-block:: python
+.. tabs::
 
-   import dask.dataframe as dd
-   from dask_sql import Context
+   .. group-tab:: CPU
 
-   # Create a context to hold the registered tables
-   c = Context()
+      .. code-block:: python
 
-   # Load the data and register it in the context
-   # This will give the table a name, that we can use in queries
-   df = dd.read_csv("...")
-   c.create_table("my_data", df)
+         import dask.datasets
+         from dask_sql import Context
 
-   # Now execute a SQL query. The result is again dask dataframe.
-   result = c.sql("""
-      SELECT
-         my_data.name,
-         SUM(my_data.x)
-      FROM
-         my_data
-      GROUP BY
-         my_data.name
-   """)
+         # create a context to register tables
+         c = Context()
 
-   # Show the result
-   print(result)
+         # create a table and register it in the context
+         df = dask.datasets.timeseries()
+         c.create_table("timeseries", df)
 
-   # Show the result...
-   print(result.compute())
+         # execute a SQL query; the result is a "lazy" Dask dataframe
+         result = c.sql("""
+            SELECT
+               name, SUM(x) as "sum"
+            FROM
+               timeseries
+            GROUP BY
+               name
+         """)
 
-   # ... or use it for any other dask calculation
-   print(result.x.mean().compute())
+         # actually compute the query...
+         result.compute()
+
+         # ...or use it for another computation
+         result.sum.mean().compute()
+
+   .. group-tab:: GPU
+
+      .. code-block:: python
+
+         import dask.datasets
+         from dask_sql import Context
+
+         # create a context to register tables
+         c = Context()
+
+         # create a table and register it in the context
+         df = dask.datasets.timeseries()
+         c.create_table("timeseries", df, gpu=True)
+
+         # execute a SQL query; the result is a "lazy" Dask dataframe
+         result = c.sql("""
+            SELECT
+               name, SUM(x) as "sum"
+            FROM
+               timeseries
+            GROUP BY
+               name
+         """)
+
+         # actually compute the query...
+         result.compute()
+
+         # ...or use it for another computation
+         result.sum.mean().compute()
 
 
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
-   pages/installation
-   pages/quickstart
-   pages/sql
-   pages/data_input
-   pages/custom
-   pages/machine_learning
-   pages/api
-   pages/server
-   pages/cmd
-   pages/how_does_it_work
+   installation
+   quickstart
+   sql
+   data_input
+   custom
+   machine_learning
+   api
+   server
+   cmd
+   how_does_it_work
+   configuration
 
 
 .. note::

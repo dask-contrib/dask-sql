@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_REX_TYPE_TO_PLUGIN = {
+    "Alias": "InputRef",
+    "Column": "InputRef",
+    "BinaryExpr": "RexCall",
+}
+
+
 class RexConverter(Pluggable):
     """
     Helper to convert from rex to a python expression
@@ -49,6 +56,9 @@ class RexConverter(Pluggable):
         print(f"PyExpr Rex in RexConverter.convert(): {rex}")
         expr_type = rex.get_expr_type()
         print(f"Expression Type: {expr_type}")
+
+        expr_type = _REX_TYPE_TO_PLUGIN[expr_type]
+        print(f"Plugin Type: {expr_type} will be invoked")
 
         try:
             plugin_instance = cls.get_plugin(expr_type)

@@ -68,22 +68,42 @@ which allows you to also call it e.g. from your BI tool.
 Additionally to the ``PREDICT`` keyword mentioned above, ``dask-sql`` also has a way to
 create and train a model from SQL:
 
-.. code-block:: sql
+.. tabs::
 
-    CREATE MODEL my_model WITH (
-        model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-        wrap_predict = True,
-        target_column = 'target'
-    ) AS (
-        SELECT x, y, target
-        FROM timeseries
-        LIMIT 100
-    )
+    .. group-tab:: CPU
 
-This call will create a new instance of ``sklearn.ensemble.GradientBoostingClassifier``
+        .. code-block:: sql
+
+            CREATE MODEL my_model WITH (
+                model_class = 'sklearn.linear_model.LogisticRegression',
+                wrap_predict = True,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 as target
+                FROM timeseries
+                LIMIT 100
+            )
+
+    .. group-tab:: GPU
+
+        .. code-block:: sql
+
+            CREATE MODEL my_model WITH (
+                model_class = 'cuml.linear_model.LogisticRegression',
+                wrap_predict = True,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 as target
+                FROM timeseries
+                LIMIT 100
+            )
+
+This call will create a new instance of ``linear_model.LogisticRegression``
 and train it with the data collected from the ``SELECT`` call (again, every valid ``SELECT``
 query can be given). The model can than be used in subsequent calls to ``PREDICT``
 using the given name.
+We set ``wrap_predict`` = ``True`` here to parallelize post fit prediction task of non distributed models (sklearn/cuML etc) across workers.
+
 Have a look into :ref:`ml` for more information.
 
 4. Check Model parameters - Model meta data
@@ -107,6 +127,9 @@ parameters? Use the hyperparameter tuning directly
 in SQL using below SQL syntax, choose different tuners
 from the dask_ml package based on memory and compute constraints and
 for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
+
+..
+    TODO - add a GPU section to these examples once we have working CREATE EXPERIMENT tests for GPU
 
 .. code-block:: sql
 
@@ -174,6 +197,9 @@ and used by dask-sql for training, prediction and exporting the model
 through standard sklearn interface
 
 
+..
+    TODO - add a GPU section to these examples once we have working EXPORT MODEL tests for GPU
+
 .. code-block:: sql
 
     -- for pickle model serialization
@@ -205,6 +231,9 @@ Example
 The following SQL-only code gives an example on how the commands can play together.
 We assume that you have created/registered a table "my_data" with the numerical columns ``x`` and ``y``
 and the boolean target ``label``.
+
+..
+    TODO - add a GPU section to these examples once we have working CREATE EXPERIMENT tests for GPU
 
 .. code-block:: sql
 

@@ -17,7 +17,7 @@ class RexInputRefPlugin(BaseRexPlugin):
     calculate a function in a column of a table.
     """
 
-    class_name = "Column"
+    class_name = "InputRef"
 
     def convert(
         self, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
@@ -25,4 +25,6 @@ class RexInputRefPlugin(BaseRexPlugin):
         df = dc.df
 
         # The column is references by index
-        return df[str(expr.column_name())]
+        column_name = str(expr.column_name())
+        print(f"input_ref column name: {column_name}")
+        return df[column_name]

@@ -44,11 +44,10 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     def convert(
         self,
-        dc: DataContainer,
-        logical_generator: LogicalPlanGenerator,
         rel: LogicalPlan,
         context: "dask_sql.Context",
     ) -> DataContainer:
+        (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
 

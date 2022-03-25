@@ -59,7 +59,7 @@ jobs:
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Build the jar
         run: |
-          python setup.py java
+          python setup.py build_ext
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
@@ -180,9 +180,7 @@ jobs:
           docker logs dask-worker
       - name: Test with pytest while running an independent dask cluster
         run: |
-          pytest tests
-        env:
-          DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest tests
 
   import:
     name: "Test importing with bare requirements"

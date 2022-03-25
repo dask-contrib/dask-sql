@@ -59,3 +59,4 @@ dask_sql/jar
 .next/
 dask-worker-space/
 node_modules/
+docs/source/_build/

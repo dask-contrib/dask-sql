@@ -1,0 +1,7 @@
+sql:
+  groupby:
+    split_out: 1
+    split_every: null
+
+  identifier:
+    case_sensitive: True

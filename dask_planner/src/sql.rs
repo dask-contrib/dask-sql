@@ -442,14 +442,15 @@ impl PyLogicalPlan {
     //     visitor
     // }
 
-    // pub fn getCondition(&self) -> Filter {
-    //     match &self.logical_plan {
-    //         Filter(filter) => {
-    //             filter
-    //         },
-    //         _ => panic!("Something wrong here")
-    //     }
-    // }
+    /// LogicalPlan::Filter: The PyExpr, predicate, that represents the filtering condition
+    pub fn getCondition(&mut self) -> PyResult<PyExpr> {
+        match self.current_node() {
+            LogicalPlan::Filter(filter) => {
+                Ok(filter.predicate.clone().into())
+            },
+            _ => panic!("Something wrong here")
+        }
+    }
 }
 
 

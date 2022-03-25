@@ -1,5 +1,7 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from dask.dataframe.utils import assert_eq
 from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
@@ -188,29 +190,45 @@ def test_join_literal(c):
 
 
 def test_conditional_join(c):
-    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", "z", None]})
+    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
 
     expected_df = pd.merge(df1, df2, how="inner", left_on=["a"], right_on=["c"])
-    expected_df = expected_df[expected_df["b"] != None]["a"]  # noqa: E711
+    expected_df = expected_df[~pd.isnull(expected_df.b)]
 
     c.create_table("df1", df1)
     c.create_table("df2", df2)
 
     actual_df = c.sql(
         """
-    SELECT a FROM df1
+    SELECT * FROM df1
     INNER JOIN df2 ON
     (
         a = c
         AND b IS NOT NULL
     )
     """
-    ).compute()
-
-    assert_frame_equal(
-        actual_df.reset_index(), expected_df.reset_index(), check_dtype=False
     )
+
+    assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
+
+
+def test_join_on_unary_cond_only(c):
+    df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
+    df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
+
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
+
+    df1 = df1.assign(common=1)
+    df2 = df2.assign(common=1)
+
+    expected_df = df1.merge(df2, on="common").drop(columns="common")
+    expected_df = expected_df[~pd.isnull(expected_df.b)]
+
+    actual_df = c.sql("SELECT * FROM df1 INNER JOIN df2 ON b IS NOT NULL")
+
+    assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
 def test_join_case_projection_subquery():
@@ -249,3 +267,26 @@ def test_join_case_projection_subquery():
     ) sum_am_pm
     """
     ).compute()
+
+
+def test_conditional_join_with_limit(c):
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
+    ddf = dd.from_pandas(df, 5)
+
+    c.create_table("many_partitions", ddf)
+
+    df = df.assign(common=1)
+    expected_df = df.merge(df, on="common", suffixes=("", "0")).drop(columns="common")
+    expected_df = expected_df[expected_df["a"] >= 2][:4]
+
+    actual_df = c.sql(
+        """
+    SELECT * FROM
+        many_partitions as df1, many_partitions as df2
+    WHERE
+        df1."a" >= 2
+    LIMIT 4
+    """
+    )
+
+    dd.assert_eq(actual_df, expected_df, check_index=False)
