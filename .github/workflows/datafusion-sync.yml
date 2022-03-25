@@ -1,0 +1,30 @@
+name: Keep datafusion branch up to date
+on:
+  push:
+    branches:
+      - main
+
+# When this workflow is queued, automatically cancel any previous running
+# or pending jobs
+concurrency:
+  group: datafusion-sync
+  cancel-in-progress: true
+
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 12
+      - name: Opening pull request
+        id: pull
+        uses: tretuna/sync-branches@1.4.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FROM_BRANCH: main
+          TO_BRANCH: datafusion-sql-planner
