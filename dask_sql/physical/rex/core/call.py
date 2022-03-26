@@ -5,7 +5,6 @@ import re
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
-from dask_planner.rust import Expression
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
@@ -15,6 +14,7 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
+from dask_planner.rust import Expression
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
@@ -800,19 +800,20 @@ class RexCallPlugin(BaseRexPlugin):
     }
 
     def convert(
-        self,
-        expr: Expression,
-        dc: DataContainer,
-        context: "dask_sql.Context",
+        self, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
     ) -> SeriesOrScalar:
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(o, dc, context=context) for o in expr.getOperands()
         ]
 
+        print(f"Operands: {operands}")
+
         # Now use the operator name in the mapping
-        schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
-        operator_name = operator_name.lower()
+        #TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
+        schema_name = "root"
+        operator_name = expr.getOperatorName().lower()
+        print(f"Operator Name: {operator_name}")
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]

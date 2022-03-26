@@ -5,6 +5,7 @@ import dask.dataframe as dd
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_planner.rust import Expression
 
 if TYPE_CHECKING:
     import dask_sql
@@ -82,21 +83,25 @@ class RexLiteralPlugin(BaseRexPlugin):
     e.g. in a filter.
     """
 
-    class_name = "org.apache.calcite.rex.RexLiteral"
+    class_name = "RexLiteral"
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rex: Expression,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
+        print(f"Expression in literal.py: {rex}")
         literal_value = rex.getValue()
+        print(f"Expression in literal.py literal_value: {literal_value}")
 
         literal_type = str(rex.getType())
+        print(f"Expression in literal.py literal_type: {literal_type}")
 
-        if isinstance(literal_value, org.apache.calcite.util.Sarg):
-            return SargPythonImplementation(literal_value, literal_type)
+        # if isinstance(literal_value, org.apache.calcite.util.Sarg):
+        #     return SargPythonImplementation(literal_value, literal_type)
 
         python_value = sql_to_python_value(literal_type, literal_value)
+        print(f"literal.py python_value: {python_value} or Python type: {type(python_value)}")
 
         return python_value

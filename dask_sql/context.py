@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan, Expression
 
 try:
     import dask_cuda  # noqa: F401
@@ -688,7 +688,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, identifier: LogicalPlan) -> Tuple[str, str]:
+    def fqn(self, identifier: Expression) -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 

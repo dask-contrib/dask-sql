@@ -42,11 +42,7 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     class_name = "Filter"
 
-    def convert(
-        self,
-        rel: LogicalPlan,
-        context: "dask_sql.Context",
-    ) -> DataContainer:
+    def convert(self, rel: LogicalPlan, context: "dask_sql.Context",) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
@@ -57,6 +53,8 @@ class DaskFilterPlugin(BaseRelPlugin):
         df_condition = RexConverter.convert(condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        print(f"DATAFRAME: Len(): {len(df)}\n{df.head()}")
+
+        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to convert again
         return DataContainer(df, cc)
