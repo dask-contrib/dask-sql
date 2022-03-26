@@ -121,8 +121,13 @@ impl PyExpr {
             Expr::Alias(..) => "Alias",
             Expr::Column(..) => "Column",
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+<<<<<<< HEAD
             Expr::Literal(..) => "Literal",
             Expr::BinaryExpr { .. } => "BinaryExpr",
+=======
+            Expr::Literal(..) => String::from("Literal"),
+            Expr::BinaryExpr {..} => String::from("BinaryExpr"),
+>>>>>>> 9038b85... Condition for BinaryExpr, filter, input_ref, rexcall, and rexliteral
             Expr::Not(..) => panic!("Not!!!"),
             Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
             Expr::Negative(..) => panic!("Negative!!!"),
@@ -210,14 +215,80 @@ impl PyExpr {
     }
 
     /// Gets the operands for a BinaryExpr call
-    #[pyo3(name = "getOperands")]
-    pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
+    pub fn getOperands(&self) -> PyResult<Vec<PyExpr>> {
+        println!("PyExpr in getOperands(): {:?}", self.expr);
         match &self.expr {
-            Expr::BinaryExpr { left, op: _, right } => {
+            Expr::BinaryExpr {left, op, right} => {
+
+                let left_type: String = match *left.clone() {
+                    Expr::Alias(..) => String::from("Alias"),
+                    Expr::Column(..) => String::from("Column"),
+                    Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+                    Expr::Literal(..) => panic!("Literal!!!"),
+                    Expr::BinaryExpr {..} => String::from("BinaryExpr"),
+                    Expr::Not(..) => panic!("Not!!!"),
+                    Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+                    Expr::Negative(..) => panic!("Negative!!!"),
+                    Expr::GetIndexedField{..} => panic!("GetIndexedField!!!"),
+                    Expr::IsNull(..) => panic!("IsNull!!!"),
+                    Expr::Between{..} => panic!("Between!!!"),
+                    Expr::Case{..} => panic!("Case!!!"),
+                    Expr::Cast{..} => panic!("Cast!!!"),
+                    Expr::TryCast{..} => panic!("TryCast!!!"),
+                    Expr::Sort{..} => panic!("Sort!!!"),
+                    Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+                    Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+                    Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
+                    Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
+                    Expr::InList{..} => panic!("InList!!!"),
+                    Expr::Wildcard => panic!("Wildcard!!!"),
+                    _ => String::from("OTHER")
+                };
+
+                println!("Left Expression Name: {:?}", left_type);
+
+                let right_type: String = match *right.clone() {
+                    Expr::Alias(..) => String::from("Alias"),
+                    Expr::Column(..) => String::from("Column"),
+                    Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+                    Expr::Literal(scalarValue) => {
+                        let value = match scalarValue {
+                            datafusion::scalar::ScalarValue::Int64(value) => {
+                                println!("value: {:?}", value.unwrap());
+                                String::from("I64 Value")
+                            },
+                            _ => {
+                                String::from("CatchAll")
+                            }
+                        };
+                        String::from("Literal")
+                    },
+                    Expr::BinaryExpr {..} => String::from("BinaryExpr"),
+                    Expr::Not(..) => panic!("Not!!!"),
+                    Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+                    Expr::Negative(..) => panic!("Negative!!!"),
+                    Expr::GetIndexedField{..} => panic!("GetIndexedField!!!"),
+                    Expr::IsNull(..) => panic!("IsNull!!!"),
+                    Expr::Between{..} => panic!("Between!!!"),
+                    Expr::Case{..} => panic!("Case!!!"),
+                    Expr::Cast{..} => panic!("Cast!!!"),
+                    Expr::TryCast{..} => panic!("TryCast!!!"),
+                    Expr::Sort{..} => panic!("Sort!!!"),
+                    Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+                    Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+                    Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
+                    Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
+                    Expr::InList{..} => panic!("InList!!!"),
+                    Expr::Wildcard => panic!("Wildcard!!!"),
+                    _ => String::from("OTHER")
+                };
+
+                println!("Right Expression Name: {:?}", right_type);
+
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let left_desc: Expr = *left.clone();
-                operands.push(left_desc.into());
                 let right_desc: Expr = *right.clone();
+                operands.push(left_desc.into());
                 operands.push(right_desc.into());
                 Ok(operands)
             }
@@ -240,6 +311,7 @@ impl PyExpr {
         }
     }
 
+<<<<<<< HEAD
     #[pyo3(name = "getOperatorName")]
     pub fn get_operator_name(&self) -> PyResult<String> {
         match &self.expr {
@@ -334,6 +406,78 @@ impl PyExpr {
             _ => panic!("OTHER"),
         }
     }
+=======
+    pub fn getOperatorName(&self) -> PyResult<String> {
+        match &self.expr {
+            Expr::BinaryExpr { left, op, right } => {
+                Ok(format!("{}", op))
+            },
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Catch all triggered ...."))
+        }
+    }
+
+
+    /// Gets the ScalarValue represented by the Expression
+    pub fn getValue(&self) -> PyResult<i64> {
+        match &self.expr {
+            Expr::Alias(..) => panic!("Alias"),
+            Expr::Column(..) => panic!("Column"),
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(scalarValue) => {
+                let value = match scalarValue {
+                    datafusion::scalar::ScalarValue::Int64(value) => {
+                        println!("value: {:?}", value.unwrap());
+                        let val: i64 = value.unwrap();
+                        Ok(val)
+                    },
+                    _ => {
+                        panic!("CatchAll")
+                    }
+                };
+                value
+            },
+            Expr::BinaryExpr {..} => panic!("BinaryExpr"),
+            Expr::Not(..) => panic!("Not!!!"),
+            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+            Expr::Negative(..) => panic!("Negative!!!"),
+            Expr::GetIndexedField{..} => panic!("GetIndexedField!!!"),
+            Expr::IsNull(..) => panic!("IsNull!!!"),
+            Expr::Between{..} => panic!("Between!!!"),
+            Expr::Case{..} => panic!("Case!!!"),
+            Expr::Cast{..} => panic!("Cast!!!"),
+            Expr::TryCast{..} => panic!("TryCast!!!"),
+            Expr::Sort{..} => panic!("Sort!!!"),
+            Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+            Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+            Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
+            Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
+            Expr::InList{..} => panic!("InList!!!"),
+            Expr::Wildcard => panic!("Wildcard!!!"),
+            _ => panic!("OTHER")
+        }
+    }
+
+
+    /// Gets the ScalarValue represented by the Expression
+    pub fn getType(&self) -> PyResult<String> {
+        match &self.expr {
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(scalarValue) => {
+                let value = match scalarValue {
+                    datafusion::scalar::ScalarValue::Int64(value) => {
+                        Ok(String::from("BIGINT"))
+                    },
+                    _ => {
+                        panic!("CatchAll")
+                    }
+                };
+                value
+            },
+            _ => panic!("OTHER")
+        }
+    }
+
+>>>>>>> 9038b85... Condition for BinaryExpr, filter, input_ref, rexcall, and rexliteral
 
     #[staticmethod]
     pub fn column(value: &str) -> PyExpr {
