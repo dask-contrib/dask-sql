@@ -36,7 +36,7 @@ def test_simple_statement():
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
 @skip_if_external_scheduler
 def test_fsql():
-    def assert_eq(df: pd.DataFrame) -> None:
+    def assert_fsql(df: pd.DataFrame) -> None:
         assert_eq(df, pd.DataFrame({"a": [1]}))
 
     # the simplest case: the SQL does not use any input and does not generate output
@@ -44,7 +44,7 @@ def test_fsql():
         """
     CREATE [[0],[1]] SCHEMA a:long
     SELECT * WHERE a>0
-    OUTPUT USING assert_eq
+    OUTPUT USING assert_fsql
     """
     )
 
@@ -57,7 +57,7 @@ def test_fsql():
     fsql_dask(
         """
     SELECT * FROM df WHERE a>0
-    OUTPUT USING assert_eq
+    OUTPUT USING assert_fsql
     """,
         c,
     )
@@ -67,7 +67,7 @@ def test_fsql():
     result = fsql_dask(
         """
     x=SELECT * FROM df WHERE a>0
-    OUTPUT USING assert_eq
+    OUTPUT USING assert_fsql
     """,
         c,
         register=True,
