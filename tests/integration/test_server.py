@@ -1,3 +1,4 @@
+import os
 from time import sleep
 
 import pytest
@@ -20,7 +21,9 @@ def app_client():
 
     yield TestClient(app)
 
-    app.client.close()
+    # don't disconnect the client if using an independent cluster
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
+        app.client.close()
 
 
 def test_routes(app_client):
