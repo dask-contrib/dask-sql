@@ -83,10 +83,7 @@ def test_literal_null(c):
 
 
 def test_random(c):
-    # generate random seed
-    seed = np.random.randint(2 ** 32)
-
-    query = f'SELECT RAND({seed}) AS "0", RAND_INTEGER({seed}, 10) AS "1"'
+    query = 'SELECT RAND(0) AS "0", RAND_INTEGER(0, 10) AS "1"'
 
     result_df = c.sql(query)
     expected_df = c.sql(query)
