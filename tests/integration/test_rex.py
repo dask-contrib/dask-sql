@@ -82,38 +82,26 @@ def test_literal_null(c):
     assert_eq(df, expected_df)
 
 
-def test_random(c, df):
-    result_df = c.sql(
-        """
-    SELECT RAND(0) AS "0", RAND_INTEGER(1, 10) AS "1"
-    """
-    )
+def test_random(c):
+    # generate random seed
+    seed = np.random.randint(2 ** 32)
 
-    # As the seed is fixed, this should always give the same results
-    expected_df = pd.DataFrame({"0": [0.6673301193128622], "1": [0]})
-    expected_df["1"] = expected_df["1"].astype("Int32")
+    query = f'SELECT RAND({seed}) AS "0", RAND_INTEGER({seed}, 10) AS "1"'
+
+    result_df = c.sql(query)
+    expected_df = c.sql(query)
+
+    # assert that repeated queries give the same result
     assert_eq(result_df, expected_df)
 
-    result_df = c.sql(
-        """
-    SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < b
-    """
-    )
+    # assert output
+    result_df = result_df.compute()
 
-    assert len(result_df) == 659
-    assert_eq(
-        result_df["R"].head(5),
-        pd.Series(
-            [
-                0.7898216305850889,
-                0.19842118121803887,
-                0.8072709640993503,
-                0.5246145976097505,
-                0.7385306613589191,
-            ]
-        ),
-        check_names=False,
-    )
+    assert result_df["0"].dtype == "float64"
+    assert result_df["1"].dtype == "Int32"
+
+    assert 0 <= result_df["0"][0] < 1
+    assert 0 <= result_df["1"][0] < 10
 
 
 @pytest.mark.parametrize(
