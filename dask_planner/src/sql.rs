@@ -15,7 +15,13 @@ use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
 use datafusion_expr::ScalarFunctionImplementation;
 
+<<<<<<< HEAD
 use std::collections::HashMap;
+=======
+use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::physical_plan::udaf::AggregateUDF;
+
+>>>>>>> a4aeee5... more of test_filter.py working with the exception of some date pytests
 use std::sync::Arc;
 
 use pyo3::prelude::*;
