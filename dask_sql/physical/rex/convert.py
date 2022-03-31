@@ -19,6 +19,8 @@ _REX_TYPE_TO_PLUGIN = {
     "Column": "InputRef",
     "BinaryExpr": "RexCall",
     "Literal": "RexLiteral",
+    "ScalarFunction": "RexCall",
+    "Cast": "RexCall",
 }
 
 

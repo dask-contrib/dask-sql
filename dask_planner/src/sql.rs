@@ -707,10 +707,10 @@ impl DaskRelDataType {
                 String::from("TIMESTAMP")
             },
             DataType::Date32 => {
-                String::from("DATE32")
+                String::from("DATE")
             },
             DataType::Date64 => {
-                String::from("DATE64")
+                String::from("DATE")
             },
             DataType::Time32(..) => {
                 String::from("TIME32")

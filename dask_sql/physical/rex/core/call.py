@@ -700,6 +700,57 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
+class DatePartOperation(Operation):
+    """
+    Function for performing PostgreSQL like functions in a more convenient setting.
+    """
+
+    def __init__(self):
+        super().__init__(self.date_part)
+
+        
+
+    def date_part(self, what, df: SeriesOrScalar):
+        what = what.upper()
+        df = convert_to_datetime(df)
+
+        if what == "YEAR":
+            return df.year
+
+        if what == "CENTURY":
+            return da.trunc(df.year / 100)
+        elif what == "DAY":
+            return df.day
+        elif what == "DECADE":
+            return da.trunc(df.year / 10)
+        elif what == "DOW":
+            return (df.dayofweek + 1) % 7
+        elif what == "DOY":
+            return df.dayofyear
+        elif what == "HOUR":
+            return df.hour
+        elif what == "MICROSECOND":
+            return df.microsecond
+        elif what == "MILLENNIUM":
+            return da.trunc(df.year / 1000)
+        elif what == "MILLISECOND":
+            return da.trunc(1000 * df.microsecond)
+        elif what == "MINUTE":
+            return df.minute
+        elif what == "MONTH":
+            return df.month
+        elif what == "QUARTER":
+            return df.quarter
+        elif what == "SECOND":
+            return df.second
+        elif what == "WEEK":
+            return df.week
+        elif what == "YEAR":
+            return df.year
+        else:
+            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -797,11 +848,14 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        # Temporary UDF functions that need to be moved after this POC
+        "datepart": DatePartOperation(),
     }
 
     def convert(
         self, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
     ) -> SeriesOrScalar:
+        print(f"Expression Operands: {expr.getOperands()}")
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(o, dc, context=context) for o in expr.getOperands()
@@ -832,7 +886,7 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_dc(operation):
             kwargs["dc"] = dc
         if Operation.op_needs_rex(operation):
-            kwargs["rex"] = rex
+            kwargs["rex"] = expr
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it

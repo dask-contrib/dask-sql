@@ -8,6 +8,8 @@ use datafusion::logical_plan::{col, lit, Expr};
 
 use datafusion::scalar::ScalarValue;
 
+use datafusion::physical_plan::functions::BuiltinScalarFunction;
+
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
@@ -107,10 +109,10 @@ impl PyExpr {
             Expr::IsNull(..) => panic!("IsNull!!!"),
             Expr::Between{..} => panic!("Between!!!"),
             Expr::Case{..} => panic!("Case!!!"),
-            Expr::Cast{..} => panic!("Cast!!!"),
+            Expr::Cast{..} => String::from("Cast"),
             Expr::TryCast{..} => panic!("TryCast!!!"),
             Expr::Sort{..} => panic!("Sort!!!"),
-            Expr::ScalarFunction{..} => panic!("ScalarFunction!!!"),
+            Expr::ScalarFunction{..} => String::from("ScalarFunction"),
             Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
             Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
             Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
@@ -163,7 +165,20 @@ impl PyExpr {
                 operands.push(right_desc.into());
                 Ok(operands)
             },
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("current_node is not of type Projection"))
+            Expr::ScalarFunction {fun, args} => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                for arg in args {
+                    operands.push(arg.clone().into());
+                }
+                Ok(operands)
+            },
+            Expr::Cast { expr, data_type } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                let ex: Expr = *expr.clone();
+                operands.push(ex.into());
+                Ok(operands)
+            }
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("unknown Expr type encountered"))
         }
     }
 
@@ -172,6 +187,12 @@ impl PyExpr {
             Expr::BinaryExpr { left, op, right } => {
                 Ok(format!("{}", op))
             },
+            Expr::ScalarFunction { fun, args } => {
+                Ok(format!("{}", fun))
+            },
+            Expr::Cast { expr, data_type } => {
+                Ok(String::from("cast"))
+            }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Catch all triggered ...."))
         }
     }
@@ -182,7 +203,7 @@ impl PyExpr {
         match &self.expr {
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(scalarValue) => {
-                let value = match scalarValue {
+                match scalarValue {
                     ScalarValue::Boolean(value) => {
                         Ok(String::from("Boolean"))
                     },
@@ -240,8 +261,123 @@ impl PyExpr {
                     _ => {
                         panic!("CatchAll")
                     }
-                };
-                value
+                }
+            },
+            Expr::ScalarFunction { fun, args } => {
+                match fun {
+                    BuiltinScalarFunction::Abs => {
+                        Ok(String::from("Abs"))
+                    },
+                    BuiltinScalarFunction::DatePart => {
+                        Ok(String::from("DatePart"))
+                    },
+                    _ => {
+                        panic!("fire here for scalar function")
+                    }
+                }
+            },
+            Expr::Cast { expr, data_type } => {
+                match data_type {
+                    DataType::Null => {
+                        Ok(String::from("NULL"))
+                    },
+                    DataType::Boolean => {
+                        Ok(String::from("BOOLEAN"))
+                    },
+                    DataType::Int8 => {
+                        Ok(String::from("TINYINT"))
+                    },
+                    DataType::UInt8 => {
+                        Ok(String::from("TINYINT"))
+                    },
+                    DataType::Int16 => {
+                        Ok(String::from("SMALLINT"))
+                    },
+                    DataType::UInt16 => {
+                        Ok(String::from("SMALLINT"))
+                    },
+                    DataType::Int32 => {
+                        Ok(String::from("INTEGER"))
+                    },
+                    DataType::UInt32 => {
+                        Ok( String::from("INTEGER"))
+                    },
+                    DataType::Int64 => {
+                        Ok(String::from("BIGINT"))
+                    },
+                    DataType::UInt64 => {
+                        Ok(String::from("BIGINT"))
+                    },
+                    DataType::Float32 => {
+                        Ok(String::from("FLOAT"))
+                    },
+                    DataType::Float64 => {
+                        Ok(String::from("DOUBLE"))
+                    },
+                    DataType::Timestamp{..} => {
+                        Ok(String::from("TIMESTAMP"))
+                    },
+                    DataType::Date32 => {
+                        Ok(String::from("DATE"))
+                    },
+                    DataType::Date64 => {
+                        Ok(String::from("DATE"))
+                    },
+                    DataType::Time32(..) => {
+                        Ok(String::from("TIME32"))
+                    },
+                    DataType::Time64(..) => {
+                        Ok(String::from("TIME64"))
+                    },
+                    DataType::Duration(..) => {
+                        Ok(String::from("DURATION"))
+                    },
+                    DataType::Interval(..) => {
+                        Ok(String::from("INTERVAL"))
+                    },
+                    DataType::Binary => {
+                        Ok(String::from("BINARY"))
+                    },
+                    DataType::FixedSizeBinary(..) => {
+                        Ok(String::from("FIXEDSIZEBINARY"))
+                    },
+                    DataType::LargeBinary => {
+                        Ok(String::from("LARGEBINARY"))
+                    },
+                    DataType::Utf8 => {
+                        Ok(String::from("VARCHAR"))
+                    },
+                    DataType::LargeUtf8 => {
+                        Ok(String::from("BIGVARCHAR"))
+                    },
+                    DataType::List(..) => {
+                        Ok(String::from("LIST"))
+                    },
+                    DataType::FixedSizeList(..) => {
+                        Ok(String::from("FIXEDSIZELIST"))
+                    },
+                    DataType::LargeList(..) => {
+                        Ok(String::from("LARGELIST"))
+                    },
+                    DataType::Struct(..) => {
+                        Ok(String::from("STRUCT"))
+                    },
+                    DataType::Union(..) => {
+                        Ok(String::from("UNION"))
+                    },
+                    DataType::Dictionary(..) => {
+                        Ok(String::from("DICTIONARY"))
+                    },
+                    DataType::Decimal(..) => {
+                        Ok(String::from("DECIMAL"))
+                    },
+                    DataType::Map(..) => {
+                        Ok(String::from("MAP"))
+                    },
+                    _ => {
+                        panic!("This is not yet implemented!!!")
+                    }
+                }
             },
             _ => panic!("OTHER")
         }
@@ -472,15 +608,6 @@ impl PyExpr {
             _ => panic!("getValue<T>() - Non literal value encountered")
         }
     }
-
-
-// get_typed_value!(i8, Int8);
-// get_typed_value!(i16, Int16);
-// get_typed_value!(i32, Int32);
-// get_typed_value!(i64, Int64);
-// get_typed_value!(bool, Boolean);
-// get_typed_value!(f32, Float32);
-// get_typed_value!(f64, Float64);
 }
 
 // pub trait ObtainValue<T> {
