@@ -121,13 +121,8 @@ impl PyExpr {
             Expr::Alias(..) => "Alias",
             Expr::Column(..) => "Column",
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-<<<<<<< HEAD
             Expr::Literal(..) => "Literal",
             Expr::BinaryExpr { .. } => "BinaryExpr",
-=======
-            Expr::Literal(..) => String::from("Literal"),
-            Expr::BinaryExpr {..} => String::from("BinaryExpr"),
->>>>>>> 9038b85... Condition for BinaryExpr, filter, input_ref, rexcall, and rexliteral
             Expr::Not(..) => panic!("Not!!!"),
             Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
             Expr::Negative(..) => panic!("Negative!!!"),
@@ -148,12 +143,8 @@ impl PyExpr {
         })
     }
 
-<<<<<<< HEAD
-    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
-=======
 
     pub fn column_name(&self) -> String {
->>>>>>> 2d16579... Updates for test_filter
         match &self.expr {
             Expr::Alias(expr, name) => {
                 println!("Alias encountered with name: {:?}", name);
@@ -519,6 +510,7 @@ impl PyExpr {
         }
     }
 
+<<<<<<< HEAD
     #[pyo3(name = "getStringValue")]
     pub fn string_value(&mut self) -> String {
         match &self.expr {
@@ -531,6 +523,32 @@ impl PyExpr {
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
     }
+=======
+    pub fn getStringValue(&mut self) -> String {
+        match &self.expr {
+            Expr::Literal(scalar_value) => {
+                match scalar_value {
+                    ScalarValue::Utf8(iv) => {
+                        String::from(iv.clone().unwrap())
+                    },
+                    _ => {
+                        panic!("getValue<T>() - Unexpected value")
+                    }
+                }
+            },
+            _ => panic!("getValue<T>() - Non literal value encountered")
+        }
+    }
+
+
+// get_typed_value!(i8, Int8);
+// get_typed_value!(i16, Int16);
+// get_typed_value!(i32, Int32);
+// get_typed_value!(i64, Int64);
+// get_typed_value!(bool, Boolean);
+// get_typed_value!(f32, Float32);
+// get_typed_value!(f64, Float64);
+>>>>>>> a4aeee5... more of test_filter.py working with the exception of some date pytests
 }
 
 // pub trait ObtainValue<T> {

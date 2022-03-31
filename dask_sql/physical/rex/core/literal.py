@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import logging
-=======
-from resource import RUSAGE_THREAD
-import tty
->>>>>>> 2d16579... Updates for test_filter
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
