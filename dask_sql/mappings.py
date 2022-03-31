@@ -106,6 +106,9 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     # Additionally, a literal type is not used
     # so often anyways.
 
+    print(f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}")
+    sql_type = sql_type.upper()
+
     if (
         sql_type.startswith("CHAR(")
         or sql_type.startswith("VARCHAR(")

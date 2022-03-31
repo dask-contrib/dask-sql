@@ -1,3 +1,5 @@
+from resource import RUSAGE_THREAD
+import tty
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
@@ -92,10 +94,68 @@ class RexLiteralPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> Any:
         print(f"Expression in literal.py: {rex}")
-        literal_value = rex.getValue()
-        print(f"Expression in literal.py literal_value: {literal_value}")
-
         literal_type = str(rex.getType())
+        print(f"literal_type: {literal_type}")
+
+        # Call the Rust function to get the actual value and convert the Rust
+        # type name back to a SQL type
+        if literal_type == "Boolean":
+            literal_type = "BOOLEAN"
+            literal_value = rex.getBoolValue()
+        elif literal_type == "Float32":
+            literal_type = "FLOAT"
+            literal_value = rex.getFloat32Value()
+        elif literal_type == "Float64":
+            literal_type = "DOUBLE"
+            literal_value = rex.getFloat64Value()
+        elif literal_type == "UInt8":
+            literal_type = "TINYINT"
+            literal_value = rex.getUInt8Value()
+        elif literal_type == "UInt16":
+            literal_type = "SMALLINT"
+            literal_value = rex.getUInt16Value()
+        elif literal_type == "UInt32":
+            literal_type = "INTEGER"
+            literal_value = rex.getUInt32Value()
+        elif literal_type == "UInt64":
+            literal_type = "BIGINT"
+            literal_value = rex.getUInt64Value()
+        elif literal_type == "Int8":
+            literal_type = "TINYINT"
+            literal_value = rex.getInt8Value()
+        elif literal_type == "Int16":
+            literal_type = "SMALLINT"
+            literal_value = rex.getInt16Value()
+        elif literal_type == "Int32":
+            literal_type = "INTEGER"
+            literal_value = rex.getInt32Value()
+        elif literal_type == "Int64":
+            literal_type = "BIGINT"
+            literal_value = rex.getInt64Value()
+        else:
+            raise RuntimeError('Failed to determine Datafusion Type in literal.py')
+
+                    # ScalarValue::Utf8(value) => {
+                    #     Ok(String::from("Utf8"))
+                    # },
+                    # ScalarValue::LargeUtf8(value) => {
+                    #     Ok(String::from("LargeUtf8"))
+                    # },
+                    # ScalarValue::Binary(value) => {
+                    #     Ok(String::from("Binary"))
+                    # },
+                    # ScalarValue::LargeBinary(value) => {
+                    #     Ok(String::from("LargeBinary"))
+                    # },
+                    # ScalarValue::Date32(value) => {
+                    #     Ok(String::from("Date32"))
+                    # },
+                    # ScalarValue::Date64(value) => {
+                    #     Ok(String::from("Date64"))
+                    # },
+
+
+        print(f"Expression in literal.py literal_value: {literal_value}")
         print(f"Expression in literal.py literal_type: {literal_type}")
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):

@@ -14,30 +14,30 @@ def test_filter(c, df):
     assert_frame_equal(return_df, expected_df)
 
 
-# def test_filter_scalar(c, df):
-#     return_df = c.sql("SELECT * FROM df WHERE True")
-#     return_df = return_df.compute()
+def test_filter_scalar(c, df):
+    return_df = c.sql("SELECT * FROM df WHERE True")
+    return_df = return_df.compute()
 
-#     expected_df = df
-#     assert_frame_equal(return_df, expected_df)
+    expected_df = df
+    assert_frame_equal(return_df, expected_df)
 
-#     return_df = c.sql("SELECT * FROM df WHERE False")
-#     return_df = return_df.compute()
+    return_df = c.sql("SELECT * FROM df WHERE False")
+    return_df = return_df.compute()
 
-#     expected_df = df.head(0)
-#     assert_frame_equal(return_df, expected_df, check_index_type=False)
+    expected_df = df.head(0)
+    assert_frame_equal(return_df, expected_df, check_index_type=False)
 
-#     return_df = c.sql("SELECT * FROM df WHERE (1 = 1)")
-#     return_df = return_df.compute()
+    return_df = c.sql("SELECT * FROM df WHERE (1 = 1)")
+    return_df = return_df.compute()
 
-#     expected_df = df
-#     assert_frame_equal(return_df, expected_df)
+    expected_df = df
+    assert_frame_equal(return_df, expected_df)
 
-#     return_df = c.sql("SELECT * FROM df WHERE (1 = 0)")
-#     return_df = return_df.compute()
+    return_df = c.sql("SELECT * FROM df WHERE (1 = 0)")
+    return_df = return_df.compute()
 
-#     expected_df = df.head(0)
-#     assert_frame_equal(return_df, expected_df, check_index_type=False)
+    expected_df = df.head(0)
+    assert_frame_equal(return_df, expected_df, check_index_type=False)
 
 
 # def test_filter_complicated(c, df):
