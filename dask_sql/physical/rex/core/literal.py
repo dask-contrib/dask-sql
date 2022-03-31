@@ -132,28 +132,17 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Int64":
             literal_type = "BIGINT"
             literal_value = rex.getInt64Value()
+        elif literal_type == "Utf8":
+            literal_type = "VARCHAR"
+            literal_value = rex.getStringValue()
+        elif literal_type == "Date32":
+            literal_type = "Date"
+            literal_value = rex.getDateValue()
+        elif literal_type == "Date64":
+            literal_type = "Date"
+            literal_value = rex.getDateValue()
         else:
             raise RuntimeError('Failed to determine Datafusion Type in literal.py')
-
-                    # ScalarValue::Utf8(value) => {
-                    #     Ok(String::from("Utf8"))
-                    # },
-                    # ScalarValue::LargeUtf8(value) => {
-                    #     Ok(String::from("LargeUtf8"))
-                    # },
-                    # ScalarValue::Binary(value) => {
-                    #     Ok(String::from("Binary"))
-                    # },
-                    # ScalarValue::LargeBinary(value) => {
-                    #     Ok(String::from("LargeBinary"))
-                    # },
-                    # ScalarValue::Date32(value) => {
-                    #     Ok(String::from("Date32"))
-                    # },
-                    # ScalarValue::Date64(value) => {
-                    #     Ok(String::from("Date64"))
-                    # },
-
 
         print(f"Expression in literal.py literal_value: {literal_value}")
         print(f"Expression in literal.py literal_type: {literal_type}")

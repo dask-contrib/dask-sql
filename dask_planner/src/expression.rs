@@ -457,6 +457,22 @@ impl PyExpr {
         }
     }
 
+    pub fn getStringValue(&mut self) -> String {
+        match &self.expr {
+            Expr::Literal(scalar_value) => {
+                match scalar_value {
+                    ScalarValue::Utf8(iv) => {
+                        String::from(iv.clone().unwrap())
+                    },
+                    _ => {
+                        panic!("getValue<T>() - Unexpected value")
+                    }
+                }
+            },
+            _ => panic!("getValue<T>() - Non literal value encountered")
+        }
+    }
+
 
 // get_typed_value!(i8, Int8);
 // get_typed_value!(i16, Int16);

@@ -34,6 +34,9 @@ use datafusion::logical_plan::plan::{
     Extension
 };
 
+use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::physical_plan::udaf::AggregateUDF;
+
 use std::sync::Arc;
 
 use crate::expression::PyExpr;
@@ -177,7 +180,7 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
         }
     }
 
-    fn get_function_meta(&self, name: &str) -> Option<Arc<datafusion::physical_plan::udf::ScalarUDF>> {
+    fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
         println!("RUST: get_function_meta");
         let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
             Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
@@ -186,9 +189,10 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
         }
     }
 
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<datafusion::physical_plan::udaf::AggregateUDF>> {
-        println!("RUST: get_aggregate_meta");
-        unimplemented!()
+    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
+        println!("RUST: get_aggregate_meta NEED TO MAKE SURE THIS IS IMPLEMENTED LATER!!!!");
+        // unimplemented!()
+        None
     }
 }
 
