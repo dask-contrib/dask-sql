@@ -100,7 +100,11 @@ class DaskJoinPlugin(BaseRelPlugin):
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
             df = self._join_on_columns(
-                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
+                df_lhs_renamed,
+                df_rhs_renamed,
+                lhs_on,
+                rhs_on,
+                join_type,
             )
         else:
             # 5. We are in the complex join case

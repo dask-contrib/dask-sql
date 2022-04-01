@@ -20,5 +20,5 @@ dask-ml>=2022.1.22
 scikit-learn>=0.24.2
 intake>=0.6.0
 pre-commit>=2.11.1
-black=19.10b0
+black=22.3.0
 isort=5.7.0

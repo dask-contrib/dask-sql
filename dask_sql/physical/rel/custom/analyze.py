@@ -61,7 +61,10 @@ class AnalyzeTablePlugin(BaseRelPlugin):
             )
         )
         statistics = statistics.append(
-            pd.Series({col: col for col in columns}, name="col_name",)
+            pd.Series(
+                {col: col for col in columns},
+                name="col_name",
+            )
         )
 
         cc = ColumnContainer(statistics.columns)

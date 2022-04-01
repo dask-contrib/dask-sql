@@ -109,7 +109,7 @@ setup(
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",
-            "black==19.10b0",
+            "black==22.3.0",
             "isort==5.7.0",
         ],
         "fugue": ["fugue[sql]>=0.5.3"],
@@ -122,5 +122,9 @@ setup(
     },
     zip_safe=False,
     cmdclass=cmdclass,
-    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
+    command_options={
+        "build_sphinx": {
+            "source_dir": ("setup.py", "docs"),
+        }
+    },
 )

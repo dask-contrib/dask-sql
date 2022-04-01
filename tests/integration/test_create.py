@@ -35,7 +35,11 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu),],
+    "gpu",
+    [
+        False,
+        pytest.param(True, marks=pytest.mark.gpu),
+    ],
 )
 def test_cluster_memory(client, c, df, gpu):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
