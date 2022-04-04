@@ -246,7 +246,10 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def false_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -263,7 +266,10 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def true_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -280,7 +286,10 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def not_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -296,7 +305,10 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def null(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -328,7 +340,10 @@ class RegexOperation(Operation):
         super().__init__(self.regex)
 
     def regex(
-        self, test: SeriesOrScalar, regex: str, escape: str = None,
+        self,
+        test: SeriesOrScalar,
+        regex: str,
+        escape: str = None,
     ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex

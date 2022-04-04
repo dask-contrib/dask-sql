@@ -57,7 +57,10 @@ def df_wide():
 def df():
     np.random.seed(42)
     return pd.DataFrame(
-        {"a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400, "b": 10 * np.random.rand(700),}
+        {
+            "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
+            "b": 10 * np.random.rand(700),
+        }
     )
 
 

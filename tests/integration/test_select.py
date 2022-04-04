@@ -58,7 +58,11 @@ def test_select_expr(c, df):
     result_df = result_df.compute()
 
     expected_df = pd.DataFrame(
-        {"a": df["a"] + 1, "bla": df["b"], '"df"."a" - 1': df["a"] - 1,}
+        {
+            "a": df["a"] + 1,
+            "bla": df["b"],
+            '"df"."a" - 1': df["a"] - 1,
+        }
     )
     assert_frame_equal(result_df, expected_df)
 
@@ -121,7 +125,10 @@ def test_timezones(c, datetime_table):
 
 @pytest.mark.parametrize(
     "input_table",
-    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
 )
 def test_date_casting(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
@@ -151,7 +158,10 @@ def test_date_casting(c, input_table, request):
 
 @pytest.mark.parametrize(
     "input_table",
-    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
 )
 def test_timestamp_casting(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)

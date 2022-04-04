@@ -17,7 +17,8 @@ def test_join(c):
         {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
     assert_frame_equal(
-        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
+        expected_df,
     )
 
 
@@ -31,7 +32,8 @@ def test_join_inner(c):
         {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
     assert_frame_equal(
-        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
+        expected_df,
     )
 
 
@@ -71,7 +73,8 @@ def test_join_left(c):
         }
     )
     assert_frame_equal(
-        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
+        expected_df,
     )
 
 
@@ -91,7 +94,8 @@ def test_join_right(c):
         }
     )
     assert_frame_equal(
-        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True),
+        expected_df,
     )
 
 
@@ -119,7 +123,12 @@ def test_join_complex(c):
     df = df.compute()
 
     df_expected = pd.DataFrame(
-        {"a": [1, 1, 2], "b": [1.1, 1.1, 2.2], "a0": [2, 3, 3], "b0": [2.2, 3.3, 3.3],}
+        {
+            "a": [1, 1, 2],
+            "b": [1.1, 1.1, 2.2],
+            "a0": [2, 3, 3],
+            "b0": [2.2, 3.3, 3.3],
+        }
     )
 
     assert_frame_equal(df.sort_values(["a", "b0"]).reset_index(drop=True), df_expected)

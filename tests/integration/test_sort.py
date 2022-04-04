@@ -270,7 +270,12 @@ def test_sort_with_nan_many_partitions(gpu):
         xd = pd
 
     c = Context()
-    df = xd.DataFrame({"a": [float("nan"), 1] * 30, "b": [1, 2, 3] * 20,})
+    df = xd.DataFrame(
+        {
+            "a": [float("nan"), 1] * 30,
+            "b": [1, 2, 3] * 20,
+        }
+    )
     c.create_table("df", dd.from_pandas(df, npartitions=10))
 
     df_result = (
@@ -294,7 +299,14 @@ def test_sort_with_nan_many_partitions(gpu):
 
     df_result = c.sql("SELECT * FROM df ORDER BY a").compute().reset_index(drop=True)
 
-    dd.assert_eq(df_result, xd.DataFrame({"a": [1] * 30 + [float("nan")] * 30,}))
+    dd.assert_eq(
+        df_result,
+        xd.DataFrame(
+            {
+                "a": [1] * 30 + [float("nan")] * 30,
+            }
+        ),
+    )
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
