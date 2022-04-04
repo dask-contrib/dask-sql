@@ -86,7 +86,10 @@ if "DASK_SQL_JVM_DEBUG_ENABLED" in os.environ:  # pragma: no cover
 
 logger.debug(f"Starting JVM from path {jvmpath}...")
 jpype.startJVM(
-    *jvmArgs, ignoreUnrecognized=True, convertStrings=False, jvmpath=jvmpath,
+    *jvmArgs,
+    ignoreUnrecognized=True,
+    convertStrings=False,
+    jvmpath=jvmpath,
 )
 
 logger.debug("...having started JVM")

@@ -32,7 +32,11 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
 
 
 @pytest.mark.parametrize(
-    "gpu", [False, pytest.param(True, marks=pytest.mark.gpu),],
+    "gpu",
+    [
+        False,
+        pytest.param(True, marks=pytest.mark.gpu),
+    ],
 )
 def test_cluster_memory(client, c, df, gpu):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
@@ -224,7 +228,9 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     assert_eq(
-        c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [1]}), check_dtype=False,
+        c.sql("SELECT a FROM new_table"),
+        pd.DataFrame({"a": [1]}),
+        check_dtype=False,
     )
 
     with pytest.raises(RuntimeError):
@@ -249,7 +255,9 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     assert_eq(
-        c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [1]}), check_dtype=False,
+        c.sql("SELECT a FROM new_table"),
+        pd.DataFrame({"a": [1]}),
+        check_dtype=False,
     )
 
     c.sql(
@@ -263,7 +271,9 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     assert_eq(
-        c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [2]}), check_dtype=False,
+        c.sql("SELECT a FROM new_table"),
+        pd.DataFrame({"a": [2]}),
+        check_dtype=False,
     )
 
     c.sql("DROP TABLE new_table")
@@ -282,7 +292,9 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     assert_eq(
-        c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [3]}), check_dtype=False,
+        c.sql("SELECT a FROM new_table"),
+        pd.DataFrame({"a": [3]}),
+        check_dtype=False,
     )
 
     df.to_csv(temporary_data_file, index=False)
@@ -310,7 +322,9 @@ def test_replace_and_error(c, temporary_data_file, df):
     )
 
     assert_eq(
-        c.sql("SELECT a FROM new_table"), pd.DataFrame({"a": [3]}), check_dtype=False,
+        c.sql("SELECT a FROM new_table"),
+        pd.DataFrame({"a": [3]}),
+        check_dtype=False,
     )
 
     c.sql(

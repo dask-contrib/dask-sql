@@ -43,7 +43,8 @@ def test_union_mixed(c, df, long_table):
     long_table = long_table.rename(columns={"a": "I"})
     long_table["II"] = long_table["I"]
     expected_df = pd.concat(
-        [df.rename(columns={"a": "I", "b": "II"}), long_table], ignore_index=True,
+        [df.rename(columns={"a": "I", "b": "II"}), long_table],
+        ignore_index=True,
     )
 
     assert_eq(result_df, expected_df, check_index=False)

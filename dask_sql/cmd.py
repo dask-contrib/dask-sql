@@ -78,8 +78,8 @@ def _parse_meta_command(sql):
 
 def _meta_commands(sql: str, context: Context, client: Client) -> Union[bool, Client]:
     """
-     parses metacommands and prints their result
-     returns True if meta commands detected
+    parses metacommands and prints their result
+    returns True if meta commands detected
     """
     cmd, schema_name = _parse_meta_command(sql)
     available_commands = [
@@ -147,7 +147,10 @@ def _meta_commands(sql: str, context: Context, client: Client) -> Union[bool, Cl
 
 
 def cmd_loop(
-    context: Context = None, client: Client = None, startup=False, log_level=None,
+    context: Context = None,
+    client: Client = None,
+    startup=False,
+    log_level=None,
 ):  # pragma: no cover
     """
     Run a REPL for answering SQL queries using ``dask-sql``.

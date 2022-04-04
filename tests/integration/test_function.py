@@ -10,7 +10,7 @@ from tests.utils import assert_eq
 
 def test_custom_function(c, df):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
 
@@ -125,7 +125,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
 
 def test_multiple_definitions(c, df_simple):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -141,7 +141,7 @@ def test_multiple_definitions(c, df_simple):
     assert_eq(return_df, expected_df)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, replace=True)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -173,14 +173,14 @@ def test_aggregate_function(c):
 
 def test_reregistration(c):
     def f(x):
-        return x ** 2
+        return x**2
 
     # The same is fine
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     # A different not
     with pytest.raises(ValueError):

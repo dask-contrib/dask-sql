@@ -32,7 +32,10 @@ def test_columns(c):
     result_df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
     expected_df = pd.DataFrame(
         {
-            "Column": ["user_id", "b",],
+            "Column": [
+                "user_id",
+                "b",
+            ],
             "Type": ["bigint", "bigint"],
             "Extra": [""] * 2,
             "Comment": [""] * 2,

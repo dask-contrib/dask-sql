@@ -103,7 +103,10 @@ def test_random(c):
 
 @pytest.mark.parametrize(
     "input_table",
-    ["string_table", pytest.param("gpu_string_table", marks=pytest.mark.gpu),],
+    [
+        "string_table",
+        pytest.param("gpu_string_table", marks=pytest.mark.gpu),
+    ],
 )
 def test_not(c, input_table, request):
     string_table = request.getfixturevalue(input_table)
@@ -474,7 +477,8 @@ def test_string_functions(c, gpu):
     )
 
     assert_eq(
-        df.head(1), expected_df,
+        df.head(1),
+        expected_df,
     )
 
 

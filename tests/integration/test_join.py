@@ -128,7 +128,12 @@ def test_join_complex(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"a": [1, 1, 2], "b": [1.1, 1.1, 2.2], "a0": [2, 3, 3], "b0": [2.2, 3.3, 3.3],}
+        {
+            "a": [1, 1, 2],
+            "b": [1.1, 1.1, 2.2],
+            "a0": [2, 3, 3],
+            "b0": [2.2, 3.3, 3.3],
+        }
     )
 
     assert_eq(return_df, expected_df, check_index=False)

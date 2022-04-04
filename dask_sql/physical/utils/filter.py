@@ -90,7 +90,8 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     # Regenerate collection with filtered IO layer
     try:
         return dsk.layers[name]._regenerate_collection(
-            dsk, new_kwargs={io_layer: {"filters": filters}},
+            dsk,
+            new_kwargs={io_layer: {"filters": filters}},
         )
     except ValueError as err:
         # Most-likely failed to apply filters in read_parquet.
@@ -198,7 +199,10 @@ class RegenerableLayer:
         self.creation_info = creation_info
 
     def _regenerate_collection(
-        self, dsk, new_kwargs: dict = None, _regen_cache: dict = None,
+        self,
+        dsk,
+        new_kwargs: dict = None,
+        _regen_cache: dict = None,
     ):
         """Regenerate a Dask collection for this layer using the
         provided inputs and key-word arguments
@@ -223,7 +227,9 @@ class RegenerableLayer:
             else:
                 inputs.append(
                     dsk.layers[key]._regenerate_collection(
-                        dsk, new_kwargs=new_kwargs, _regen_cache=_regen_cache,
+                        dsk,
+                        new_kwargs=new_kwargs,
+                        _regen_cache=_regen_cache,
                     )
                 )
 
@@ -334,7 +340,12 @@ def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
     right = _get_blockwise_input(1, indices, dsk)
 
     def _inv(symbol: str):
-        return {">": "<", "<": ">", ">=": "<=", "<=": ">=",}.get(symbol, symbol)
+        return {
+            ">": "<",
+            "<": ">",
+            ">=": "<=",
+            "<=": ">=",
+        }.get(symbol, symbol)
 
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
         left = left.item()

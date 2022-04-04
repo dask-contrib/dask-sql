@@ -102,7 +102,11 @@ def test_group_by_filtered(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3],},
+        {
+            "user_id": [1, 2, 3],
+            "S1": [np.NaN, 4.0, np.NaN],
+            "S2": [3, 4, 3],
+        },
     )
 
     assert_eq(return_df, expected_df)
@@ -361,7 +365,10 @@ def test_stats_aggregation(c, timeseries_df):
 
 @pytest.mark.parametrize(
     "input_table",
-    ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),],
+    [
+        "user_table_1",
+        pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),
+    ],
 )
 @pytest.mark.parametrize("split_out", [None, 2, 4])
 def test_groupby_split_out(c, input_table, split_out, request):

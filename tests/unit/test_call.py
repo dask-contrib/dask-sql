@@ -53,7 +53,9 @@ def test_is_true():
 
     assert_eq(op(df1.a > 2), pd.Series([False, False, True]), check_names=False)
     assert_eq(
-        op(df3.a), pd.Series([True, False, False], dtype="boolean"), check_names=False,
+        op(df3.a),
+        pd.Series([True, False, False], dtype="boolean"),
+        check_names=False,
     )
 
     assert op(1)
@@ -68,7 +70,9 @@ def test_is_false():
 
     assert_eq(op(df1.a > 2), pd.Series([True, True, False]), check_names=False)
     assert_eq(
-        op(df3.a), pd.Series([False, False, True], dtype="boolean"), check_names=False,
+        op(df3.a),
+        pd.Series([False, False, True], dtype="boolean"),
+        check_names=False,
     )
 
     assert not op(1)
@@ -131,19 +135,27 @@ def test_simple_ops():
     )
 
     assert_eq(
-        ops_mapping["+"](df1.a, df2.a, df1.a), pd.Series([5, 6, 7]), check_names=False,
+        ops_mapping["+"](df1.a, df2.a, df1.a),
+        pd.Series([5, 6, 7]),
+        check_names=False,
     )
 
 
 def test_math_operations():
     assert_eq(
-        ops_mapping["abs"](-df1.a), pd.Series([1, 2, 3]), check_names=False,
+        ops_mapping["abs"](-df1.a),
+        pd.Series([1, 2, 3]),
+        check_names=False,
     )
     assert_eq(
-        ops_mapping["round"](df1.a), pd.Series([1, 2, 3]), check_names=False,
+        ops_mapping["round"](df1.a),
+        pd.Series([1, 2, 3]),
+        check_names=False,
     )
     assert_eq(
-        ops_mapping["floor"](df1.a), pd.Series([1.0, 2.0, 3.0]), check_names=False,
+        ops_mapping["floor"](df1.a),
+        pd.Series([1.0, 2.0, 3.0]),
+        check_names=False,
     )
 
     assert ops_mapping["abs"](-5) == 5

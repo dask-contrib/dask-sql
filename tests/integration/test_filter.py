@@ -41,7 +41,8 @@ def test_filter_complicated(c, df):
 
     expected_df = df[((df["a"] < 3) & ((df["b"] > 1) & (df["b"] < 3)))]
     assert_eq(
-        return_df, expected_df,
+        return_df,
+        expected_df,
     )
 
 
@@ -53,7 +54,8 @@ def test_filter_with_nan(c):
     else:
         expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_eq(
-        return_df, expected_df,
+        return_df,
+        expected_df,
     )
 
 
@@ -61,13 +63,17 @@ def test_string_filter(c, string_table):
     return_df = c.sql("SELECT * FROM string_table WHERE a = 'a normal string'")
 
     assert_eq(
-        return_df, string_table.head(1),
+        return_df,
+        string_table.head(1),
     )
 
 
 @pytest.mark.parametrize(
     "input_table",
-    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
 )
 def test_filter_cast_date(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
@@ -87,7 +93,10 @@ def test_filter_cast_date(c, input_table, request):
 
 @pytest.mark.parametrize(
     "input_table",
-    ["datetime_table", pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),],
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
 )
 def test_filter_cast_timestamp(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
@@ -196,7 +205,13 @@ def test_filtered_csv(tmpdir, c):
     # any unexpected errors
 
     # Write simple csv dataset
-    df = pd.DataFrame({"a": [1, 2, 3] * 5, "b": range(15), "c": ["A"] * 15,},)
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+        },
+    )
     dd.from_pandas(df, npartitions=3).to_csv(tmpdir + "/*.csv", index=False)
 
     # Read back with dask and apply WHERE query

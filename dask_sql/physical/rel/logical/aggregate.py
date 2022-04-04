@@ -179,7 +179,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
-            rel, dc, group_columns, context,
+            rel,
+            dc,
+            group_columns,
+            context,
         )
 
         # SQL does not care about the index, but we do not want to have any multiindices

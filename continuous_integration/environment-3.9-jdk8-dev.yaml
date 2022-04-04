@@ -5,7 +5,7 @@ channels:
 dependencies:
 - adagio>=0.2.3
 - antlr4-python3-runtime>=4.9.2
-- black=19.10b0
+- black=22.3.0
 - ciso8601>=2.2.0
 - dask-ml>=2022.1.22
 - dask>=2021.11.1

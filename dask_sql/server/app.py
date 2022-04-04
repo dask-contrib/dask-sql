@@ -272,7 +272,9 @@ def main():  # pragma: no cover
 
 
 def _init_app(
-    app: FastAPI, context: Context = None, client: dask.distributed.Client = None,
+    app: FastAPI,
+    context: Context = None,
+    client: dask.distributed.Client = None,
 ):
     app.c = context or Context()
     app.future_list = {}

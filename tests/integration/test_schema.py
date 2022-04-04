@@ -40,7 +40,7 @@ def test_function(c):
     c.sql("USE SCHEMA root")
 
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, schema_name="other")
 
