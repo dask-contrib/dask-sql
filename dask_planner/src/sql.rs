@@ -2,6 +2,9 @@ pub mod types;
 pub mod table;
 pub mod logical;
 pub mod column;
+pub mod statement;
+pub mod schema;
+pub mod function;
 
 use datafusion::logical_plan::plan::{
     LogicalPlan,
@@ -13,7 +16,7 @@ use std::collections::HashMap;
 
 use pyo3::prelude::*;
 
-use datafusion::sql::parser::{DFParser, Statement};
+use datafusion::sql::parser::{DFParser};
 
 use datafusion::arrow::datatypes::{Field, Schema};
 
@@ -132,7 +135,7 @@ impl datafusion::logical_plan::plan::PlanVisitor for LogicalPlanGenerator {
 #[derive(Clone)]
 pub struct DaskSQLContext {
     default_schema_name: String,
-    pub schemas: HashMap<String, DaskSchema>,
+    pub schemas: HashMap<String, schema::DaskSchema>,
 }
 
 impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
@@ -196,7 +199,7 @@ impl DaskSQLContext {
         }
     }
 
-    pub fn register_schema(&mut self, schema_name:String, schema: DaskSchema) {
+    pub fn register_schema(&mut self, schema_name:String, schema: schema::DaskSchema) {
         self.schemas.insert(schema_name, schema);
     }
 
@@ -208,7 +211,7 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: &str) -> Vec<PyStatement> {
+    pub fn parse_sql(&self, sql: &str) -> Vec<statement::PyStatement> {
         match DFParser::parse_sql(sql) {
             Ok(k) => {
                 let mut statements = Vec::new();
@@ -224,7 +227,7 @@ impl DaskSQLContext {
     }
 
     /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
-    pub fn logical_relational_algebra(&self, statement: PyStatement) -> logical::PyLogicalPlan {
+    pub fn logical_relational_algebra(&self, statement: statement::PyStatement) -> logical::PyLogicalPlan {
         let planner = SqlToRel::new(self);
 
         println!("Input Statement: {:?}", &statement.statement);
@@ -240,76 +243,4 @@ impl DaskSQLContext {
             Err(e) => panic!("{}", e.to_string()),
         }
     }
-}
-
-
-#[pyclass(name = "Statement", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
-pub struct PyStatement {
-    pub statement: Statement,
-}
-
-impl From<PyStatement> for Statement {
-    fn from(statement: PyStatement) -> Statement  {
-        statement.statement
-    }
-}
-
-impl From<Statement> for PyStatement {
-    fn from(statement: Statement) -> PyStatement {
-        PyStatement { statement }
-    }
-}
-
-
-impl PyStatement {
-    pub fn new(statement: Statement) -> Self {
-        Self { statement }
-    }
-}
-
-
-#[pymethods]
-impl PyStatement {
-
-    #[staticmethod]
-    pub fn table_name() -> String {
-        String::from("Got here!!!")
-    }
-}
-
-#[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
-pub struct DaskSchema {
-    #[pyo3(get, set)]
-    name: String,
-    tables: HashMap<String, table::DaskTable>,
-    functions: HashMap<String, DaskFunction>,
-}
-
-#[pymethods]
-impl DaskSchema {
-    #[new]
-    pub fn new(schema_name: String) -> Self {
-        Self {
-            name: schema_name,
-            tables: HashMap::new(),
-            functions: HashMap::new(),
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.tables.len(), &self.functions.len())
-    }
-
-    pub fn add_table(&mut self, table: table::DaskTable) {
-        self.tables.insert(table.name.clone(), table);
-    }
-}
-
-
-#[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
-pub struct DaskFunction {
-    name: String,
 }
