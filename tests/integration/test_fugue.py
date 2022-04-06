@@ -25,7 +25,8 @@ def test_simple_statement():
     # A more elegant way to do things
     pdf = pd.DataFrame([[0, "hello"], [1, "world"]], columns=["a", "b"])
     result = fugue_sql.fsql(
-        "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result", df=pdf,
+        "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result",
+        df=pdf,
     ).run("dask")
 
     return_df = result["result"].as_pandas()
