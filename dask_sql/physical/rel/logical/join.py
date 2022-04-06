@@ -8,6 +8,8 @@ import dask.dataframe as dd
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
+from dask_planner.rust import LogicalPlan
+
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -35,7 +37,7 @@ class DaskJoinPlugin(BaseRelPlugin):
     but so far, it is the only solution...
     """
 
-    class_name = "com.dask.sql.nodes.DaskJoin"
+    class_name = "Join"
 
     JOIN_TYPE_MAPPING = {
         "INNER": "inner",
@@ -45,7 +47,7 @@ class DaskJoinPlugin(BaseRelPlugin):
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self, rel: LogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
@@ -71,6 +73,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         join_type = rel.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
 
+        print(f"Join_Type: {join_type}")
+
         # 3. The join condition can have two forms, that we can understand
         # (a) a = b
         # (b) X AND Y AND a = b AND Z ... (can also be multiple a = b)
@@ -80,16 +84,26 @@ class DaskJoinPlugin(BaseRelPlugin):
         # In all other cases, we need to do a full table cross join and filter afterwards.
         # As this is probably non-sense for large tables, but there is no other
         # known solution so far.
-        join_condition = rel.getCondition()
-        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+        # join_condition = rel.getCondition()
+        # lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
+        join_on = rel.join_conditions()
+        print(f"join_on python type: {type(join_on)}")
+        lhs_on = []
+        rhs_on = []
+        for jo in join_on:
+            lhs_on.append(jo[0].getName())
+            rhs_on.append(jo[1].getName())
+
+        print(f"lhs_on: {lhs_on}.{join_on[0][0].getName()} rhs_on: {rhs_on}.{join_on[0][1].getName()}")
+
+        print(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
 
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
         # of lhs and rhs put side-by-side (in this order)
         # We therefore need to normalize the rhs indices relative to the rhs table.
-        rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
+        # rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
 
         # 4. dask can only merge on the same column names.
         # We therefore create new columns on purpose, which have a distinct name.
@@ -195,10 +209,17 @@ class DaskJoinPlugin(BaseRelPlugin):
         rhs_on: List[str],
         join_type: str,
     ) -> dd.DataFrame:
+        print(f"Something: {df_lhs_renamed['user_id']}")
+        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
+
+        print(f"lhs_on type: {type(lhs_on)}")
+        for i in lhs_on:
+            print(f"i: {i}")
         lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed.iloc[:, index]
-            for i, index in enumerate(lhs_on)
+            f"common_{i}": df_lhs_renamed.loc[:, lhs_on]
+            for i in lhs_on
         }
+        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]
             for i, index in enumerate(rhs_on)

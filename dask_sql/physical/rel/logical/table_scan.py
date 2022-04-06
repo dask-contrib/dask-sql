@@ -35,11 +35,13 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        table_names = [str(n) for n in table.get_qualified_name()]
+        table_names = [str(n) for n in table.get_qualified_name(rel)]
         assert len(table_names) == 2
         schema_name = table_names[0]
         table_name = table_names[1]
         table_name = table_name.lower()
+
+        print(f"Table_names: {table_names}")
 
         logger.debug(
             f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}"

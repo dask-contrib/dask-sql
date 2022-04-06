@@ -27,14 +27,11 @@ fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<sql::LogicalPlanGenerator>()?;
 
     m.add_class::<sql::PyStatement>()?;
-    m.add_class::<sql::PyQuery>()?;
     m.add_class::<sql::DaskSchema>()?;
-    m.add_class::<sql::DaskTable>()?;
+    m.add_class::<sql::table::DaskTable>()?;
     m.add_class::<sql::DaskFunction>()?;
-    m.add_class::<sql::DaskStatistics>()?;
-    m.add_class::<sql::DaskSQLNode>()?;
-    m.add_class::<sql::PyLogicalPlan>()?;
-    m.add_class::<sql::DaskRelDataType>()?;
+    m.add_class::<sql::table::DaskStatistics>()?;
+    m.add_class::<sql::logical::PyLogicalPlan>()?;
 
     Ok(())
 }
