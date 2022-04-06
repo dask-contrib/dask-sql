@@ -2,9 +2,7 @@ use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
 mod catalog;
-mod errors;
 mod expression;
-mod functions;
 mod sql;
 
 #[global_allocator]
@@ -15,6 +13,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 /// The higher-level public API is defined in pure python files under the
 /// dask_planner directory.
 #[pymodule]
+#[pyo3(name = "rust")]
 fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
     // Register the python classes
     m.add_class::<catalog::PyCatalog>()?;

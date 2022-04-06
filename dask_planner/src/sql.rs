@@ -6,25 +6,19 @@ pub mod statement;
 pub mod schema;
 pub mod function;
 
-use std::collections::HashMap;
-
-use pyo3::prelude::*;
-
+use datafusion::arrow::datatypes::{Field, Schema};
+use datafusion::catalog::TableReference;
 use datafusion::error::DataFusionError;
 use datafusion::sql::parser::{DFParser};
-use datafusion::sql::planner::ContextProvider;
-
-use datafusion::arrow::datatypes::{Field, Schema};
-
-use datafusion::catalog::TableReference;
-use datafusion::sql::planner::{SqlToRel};
-
-use datafusion::physical_plan::udf::ScalarUDF;
-use datafusion::physical_plan::udaf::AggregateUDF;
+use datafusion::sql::planner::{ContextProvider, SqlToRel};
 use datafusion::physical_plan::functions::ScalarFunctionImplementation;
+use datafusion::physical_plan::udaf::AggregateUDF;
+use datafusion::physical_plan::udf::ScalarUDF;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use pyo3::prelude::*;
 
 
 /// DaskSQLContext is main interface used for interacting with Datafusion to
@@ -50,15 +44,16 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct DaskSQLContext {
     default_schema_name: String,
-    pub schemas: HashMap<String, schema::DaskSchema>,
+    schemas: HashMap<String, schema::DaskSchema>,
 }
 
 impl ContextProvider for DaskSQLContext {
+
     fn get_table_provider(
         &self,
         name: TableReference,
     ) -> Option<Arc<dyn table::TableProvider>> {
-        match self.schemas.get(&String::from(&self.default_schema_name)) {
+        match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
                 let mut table_name: String = "".to_string();
@@ -83,12 +78,14 @@ impl ContextProvider for DaskSQLContext {
                     table_name,
                 )))
             },
-            None => panic!("Schema with name {} not found", "table_name"),
+            None => {
+                DataFusionError::Execution(format!("Schema with name {} not found", &self.default_schema_name));
+                None
+            },
         }
     }
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
-        println!("RUST: get_function_meta");
         let _f: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
         match name {
@@ -97,8 +94,7 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
-        println!("RUST: get_aggregate_meta NEED TO MAKE SURE THIS IS IMPLEMENTED LATER!!!!");
-        None
+        todo!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
     }
 }
 
@@ -113,45 +109,52 @@ impl DaskSQLContext {
         }
     }
 
-    pub fn register_schema(&mut self, schema_name:String, schema: schema::DaskSchema) {
+    /// Register a Schema with the current DaskSQLContext
+    pub fn register_schema(&mut self, schema_name:String, schema: schema::DaskSchema) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
+        Ok(true)
     }
 
-    pub fn register_table(&mut self, schema_name:String, table: table::DaskTable) {
+    /// Register a DaskTable instance under the specified schema in the current DaskSQLContext
+    pub fn register_table(&mut self, schema_name:String, table: table::DaskTable) -> PyResult<bool> {
         match self.schemas.get_mut(&schema_name) {
-            Some(schema) => schema.add_table(table),
-            None => println!("Schema: {} not found in DaskSQLContext", schema_name),
+            Some(schema) => {
+                schema.add_table(table);
+                Ok(true)
+            },
+            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Schema: {} not found in DaskSQLContext", schema_name))),
         }
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: &str) -> Vec<statement::PyStatement> {
+    pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
         match DFParser::parse_sql(sql) {
             Ok(k) => {
-                let mut statements = Vec::new();
+                let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
-                    println!("\n\nStatement: {:?}\n", statement);
                     statements.push(statement.into());
                 }
                 assert!(statements.len() == 1, "More than 1 expected statement was encounterd!");
-                statements
+                Ok(statements)
             },
-            Err(e) => panic!("{}", e.to_string()),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e.to_string()))),
         }
     }
 
     /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
-    pub fn logical_relational_algebra(&self, statement: statement::PyStatement) -> logical::PyLogicalPlan {
+    pub fn logical_relational_algebra(&self, statement: statement::PyStatement) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
 
         match planner.statement_to_plan(&statement.statement) {
             Ok(k) => {
-                logical::PyLogicalPlan {
-                    original_plan: k,
-                    current_node: None,
-                }
+                Ok(
+                    logical::PyLogicalPlan {
+                        original_plan: k,
+                        current_node: None,
+                    }
+                )
             },
-            Err(e) => panic!("{}", e.to_string()),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e.to_string()))),
         }
     }
 }
