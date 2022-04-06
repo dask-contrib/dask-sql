@@ -24,8 +24,7 @@ fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
 
     // SQL specific classes
     m.add_class::<sql::DaskSQLContext>()?;
-    m.add_class::<sql::LogicalPlanGenerator>()?;
-
+    m.add_class::<sql::types::DaskRelDataType>()?;
     m.add_class::<sql::statement::PyStatement>()?;
     m.add_class::<sql::schema::DaskSchema>()?;
     m.add_class::<sql::table::DaskTable>()?;

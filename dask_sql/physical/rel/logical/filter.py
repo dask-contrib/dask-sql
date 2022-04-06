@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Union
 import dask.dataframe as dd
 import numpy as np
 
-from dask_planner.rust import LogicalPlan, LogicalPlanGenerator
+from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter

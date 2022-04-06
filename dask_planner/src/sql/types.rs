@@ -26,6 +26,10 @@ impl DaskRelDataType {
     pub fn get_type(&self) -> DataType {
         self.sql_type.clone()
     }
+
+    pub fn get_type_as_str(&self) -> String {
+        String::from(arrow_type_to_sql_type(self.sql_type.clone()))
+    }
 }
 
 
@@ -61,17 +65,21 @@ pub(crate) fn arrow_type_to_sql_type(arrow_type: DataType) -> &'static str {
 /// Takes a valid Dask-SQL type and converts that String representation to an instance
 /// of Arrow DataType (https://docs.rs/crate/arrow/latest/source/src/datatypes/datatype.rs)
 pub(crate) fn sql_type_to_arrow_type(str_sql_type: String) -> DataType {
-    match &str_sql_type[..] {
-        "NULL" => DataType::Null,
-        "BOOLEAN" => DataType::Boolean,
-        "TINYINT" => DataType::Int8,
-        "SMALLINT" => DataType::Int16,
-        "INTEGER" => DataType::Int32,
-        "BIGINT" => DataType::Int64,
-        "FLOAT" => DataType::Float32,
-        "DOUBLE" => DataType::Float64,
-        "VARCHAR" =>  DataType::Utf8,
-        "TIMESTAMP" => DataType::Timestamp(TimeUnit::Millisecond, Some(String::from("America/New_York"))),
-        _ => todo!("Not yet implemented String value: {:?}", &str_sql_type),
+    if str_sql_type.starts_with("timestamp") {
+        DataType::Timestamp(TimeUnit::Millisecond, Some(String::from("America/New_York")))
+    } else {
+        match &str_sql_type[..] {
+            "NULL" => DataType::Null,
+            "BOOLEAN" => DataType::Boolean,
+            "TINYINT" => DataType::Int8,
+            "SMALLINT" => DataType::Int16,
+            "INTEGER" => DataType::Int32,
+            "BIGINT" => DataType::Int64,
+            "FLOAT" => DataType::Float32,
+            "DOUBLE" => DataType::Float64,
+            "VARCHAR" =>  DataType::Utf8,
+            "TIMESTAMP" => DataType::Timestamp(TimeUnit::Millisecond, Some(String::from("America/New_York"))),
+            _ => todo!("Not yet implemented String value: {:?}", &str_sql_type),
+        }
     }
 }
