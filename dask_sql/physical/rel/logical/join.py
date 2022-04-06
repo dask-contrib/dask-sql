@@ -73,8 +73,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         join_type = rel.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
 
-        print(f"Join_Type: {join_type}")
-
         # 3. The join condition can have two forms, that we can understand
         # (a) a = b
         # (b) X AND Y AND a = b AND Z ... (can also be multiple a = b)
@@ -88,9 +86,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         # lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
         join_on = rel.join_conditions()
-        print(f"join_on python type: {type(join_on)}")
-        lhs_on = []
-        rhs_on = []
+        lhs_on, rhs_on = [], []
         for jo in join_on:
             lhs_on.append(jo[0].getName())
             rhs_on.append(jo[1].getName())

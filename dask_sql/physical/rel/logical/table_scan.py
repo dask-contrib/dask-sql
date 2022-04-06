@@ -41,8 +41,6 @@ class DaskTableScanPlugin(BaseRelPlugin):
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        print(f"Table_names: {table_names}")
-
         logger.debug(
             f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}"
         )

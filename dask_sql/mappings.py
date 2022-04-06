@@ -193,7 +193,6 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
     logger.debug(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
-    print(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
@@ -268,8 +267,6 @@ def cast_column_type(
     or a tinyint into another int - but a string to an integer etc.
     """
     current_type = df[column_name].dtype
-
-    print(f"Casting column {column_name} of type {current_type} to {expected_type}")
 
     logger.debug(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."

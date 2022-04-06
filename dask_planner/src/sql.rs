@@ -6,17 +6,13 @@ pub mod statement;
 pub mod schema;
 pub mod function;
 
-use datafusion::logical_plan::plan::{
-    LogicalPlan,
-    TableScan,
-    Projection,
-};
-
 use std::collections::HashMap;
 
 use pyo3::prelude::*;
 
+use datafusion::error::DataFusionError;
 use datafusion::sql::parser::{DFParser};
+use datafusion::sql::planner::ContextProvider;
 
 use datafusion::arrow::datatypes::{Field, Schema};
 
@@ -25,10 +21,10 @@ use datafusion::sql::planner::{SqlToRel};
 
 use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::physical_plan::udaf::AggregateUDF;
+use datafusion::physical_plan::functions::ScalarFunctionImplementation;
 
 use std::sync::Arc;
 
-use crate::expression::PyExpr;
 
 
 /// DaskSQLContext is main interface used for interacting with Datafusion to
@@ -57,7 +53,7 @@ pub struct DaskSQLContext {
     pub schemas: HashMap<String, schema::DaskSchema>,
 }
 
-impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
+impl ContextProvider for DaskSQLContext {
     fn get_table_provider(
         &self,
         name: TableReference,
@@ -93,8 +89,8 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
         println!("RUST: get_function_meta");
-        let _f: datafusion::physical_plan::functions::ScalarFunctionImplementation =
-            Arc::new(|_| Err(datafusion::error::DataFusionError::NotImplemented("".to_string())));
+        let _f: ScalarFunctionImplementation =
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
         match name {
             _ => None,
         }
@@ -102,7 +98,6 @@ impl datafusion::sql::planner::ContextProvider for DaskSQLContext {
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
         println!("RUST: get_aggregate_meta NEED TO MAKE SURE THIS IS IMPLEMENTED LATER!!!!");
-        // unimplemented!()
         None
     }
 }
@@ -135,7 +130,7 @@ impl DaskSQLContext {
             Ok(k) => {
                 let mut statements = Vec::new();
                 for statement in k {
-                    println!("Statement: {:?}\n", statement);
+                    println!("\n\nStatement: {:?}\n", statement);
                     statements.push(statement.into());
                 }
                 assert!(statements.len() == 1, "More than 1 expected statement was encounterd!");
@@ -149,11 +144,8 @@ impl DaskSQLContext {
     pub fn logical_relational_algebra(&self, statement: statement::PyStatement) -> logical::PyLogicalPlan {
         let planner = SqlToRel::new(self);
 
-        println!("Input Statement: {:?}", &statement.statement);
-
         match planner.statement_to_plan(&statement.statement) {
             Ok(k) => {
-                println!("----Full Logical Plan----\n{:?}\n-------------------", k);
                 logical::PyLogicalPlan {
                     original_plan: k,
                     current_node: None,
