@@ -1,22 +1,19 @@
-import prompt_toolkit
 import pytest
 from dask import config as dask_config
 from mock import MagicMock, patch
-from packaging.version import parse as parseVersion
 from prompt_toolkit.application import create_app_session
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 from prompt_toolkit.shortcuts import PromptSession
 
+from dask_sql._compat import PIPE_INPUT_CONTEXT_MANAGER
 from dask_sql.cmd import _meta_commands
-
-_prompt_toolkit_version = parseVersion(prompt_toolkit.__version__)
 
 
 @pytest.fixture(autouse=True, scope="function")
 def mock_prompt_input():
     # TODO: remove if prompt-toolkit min version gets bumped
-    if _prompt_toolkit_version >= parseVersion("3.0.29"):
+    if PIPE_INPUT_CONTEXT_MANAGER:
         with create_pipe_input() as pipe_input:
             with create_app_session(input=pipe_input, output=DummyOutput()):
                 yield pipe_input
