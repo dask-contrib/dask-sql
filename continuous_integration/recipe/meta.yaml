@@ -15,7 +15,8 @@ build:
   number: {{ GIT_DESCRIBE_NUMBER }}
   noarch: python
   entry_points:
-    - dask-sql-server = dask_sql.server.app:main
+    # TODO: re-enable server once CVEs are resolved
+    # - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
   string: py_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: {{ PYTHON }} -m pip install . --no-deps -vv
@@ -45,7 +46,8 @@ test:
     - dask_sql
   commands:
     - pip check
-    - dask-sql-server --help
+    # TODO: re-enable server once CVEs are resolved
+    # - dask-sql-server --help
     - dask-sql --help
   requires:
     - pip
