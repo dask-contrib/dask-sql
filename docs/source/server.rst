@@ -5,7 +5,7 @@ SQL Server
 
 .. warning::
 
-    ``dask-sql``'s SQL server functionality is currently exploitable and has been disable until the exposed vulnerabilites can be resolve.
+    ``dask-sql``'s SQL server functionality is currently exploitable and has been disabled until the exposed vulnerabilities can be resolved.
 
 ``dask-sql`` comes with a small test implementation for a SQL server.
 Instead of rebuilding a full ODBC driver, we re-use the `presto wire protocol <https://github.com/prestodb/presto/wiki/HTTP-Protocol>`_.
