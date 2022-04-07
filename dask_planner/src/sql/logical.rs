@@ -1,9 +1,9 @@
-use crate::expression::PyExpr;
-use crate::sql::column;
 use crate::sql::table;
+mod projection;
+mod filter;
+mod join;
 
 pub use datafusion::logical_plan::plan::{
-    JoinType,
     LogicalPlan,
 };
 
@@ -17,21 +17,6 @@ pub struct PyLogicalPlan {
     pub(crate) original_plan: LogicalPlan,
     /// The original_plan is traversed. current_node stores the current node of this traversal
     pub(crate) current_node: Option<LogicalPlan>,
-}
-
-impl From<PyLogicalPlan> for LogicalPlan {
-    fn from(logical_plan: PyLogicalPlan) -> LogicalPlan  {
-        logical_plan.original_plan
-    }
-}
-
-impl From<LogicalPlan> for PyLogicalPlan {
-    fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
-        PyLogicalPlan {
-            original_plan: logical_plan,
-            current_node: None,
-        }
-    }
 }
 
 
@@ -54,18 +39,16 @@ impl PyLogicalPlan {
 #[pymethods]
 impl PyLogicalPlan {
 
-    /// Projection: Gets the names of the fields that should be projected
-    fn get_named_projects(&mut self) -> PyResult<Vec<PyExpr>> {
-        match self.current_node() {
-            LogicalPlan::Projection(projection) => {
-                let mut projs: Vec<PyExpr> = Vec::new();
-                for expr in projection.expr {
-                    projs.push(expr.clone().into());
-                }
-                Ok(projs)
-            },
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("current_node is not of type Projection")),
-        }
+    /// LogicalPlan::Projection as PyProjection
+    pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
+        Ok(proj)
+    }
+
+    /// LogicalPlan::Filter as PyFilter
+    pub fn filter(&self) -> PyResult<filter::PyFilter> {
+        let filter: filter::PyFilter = self.current_node.clone().unwrap().into();
+        Ok(filter)
     }
 
     /// Gets the "input" for the current LogicalPlan
@@ -86,7 +69,6 @@ impl PyLogicalPlan {
         Ok(field_names)
     }
 
-
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
@@ -96,103 +78,56 @@ impl PyLogicalPlan {
         }
     }
 
-
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
-    pub fn get_current_node_type(&mut self) -> PyResult<String> {
-        match self.current_node() {
-            LogicalPlan::Projection(_projection) => Ok(String::from("Projection")),
-            LogicalPlan::Filter(_filter) => Ok(String::from("Filter")),
-            LogicalPlan::Window(_window) => Ok(String::from("Window")),
-            LogicalPlan::Aggregate(_aggregate) => Ok(String::from("Aggregate")),
-            LogicalPlan::Sort(_sort) => Ok(String::from("Sort")),
-            LogicalPlan::Join(_join) => Ok(String::from("Join")),
-            LogicalPlan::CrossJoin(_cross_join) => Ok(String::from("CrossJoin")),
-            LogicalPlan::Repartition(_repartition) => Ok(String::from("Repartition")),
-            LogicalPlan::Union(_union) => Ok(String::from("Union")),
-            LogicalPlan::TableScan(_table_scan) => {
-                Ok(String::from("TableScan")) 
-            },
-            LogicalPlan::EmptyRelation(_empty_relation) => Ok(String::from("EmptyRelation")),
-            LogicalPlan::Limit(_limit) => Ok(String::from("Limit")),
-            LogicalPlan::CreateExternalTable(_create_external_table) => Ok(String::from("CreateExternalTable")),
-            LogicalPlan::CreateMemoryTable(_create_memory_table) => Ok(String::from("CreateMemoryTable")),
-            LogicalPlan::DropTable(_drop_table) => Ok(String::from("DropTable")),
-            LogicalPlan::Values(_values) => Ok(String::from("Values")),
-            LogicalPlan::Explain(_explain) => Ok(String::from("Explain")),
-            LogicalPlan::Analyze(_analyze) => Ok(String::from("Analyze")),
-            LogicalPlan::Extension(_extension) => Ok(String::from("Extension")),
-        }
+    pub fn get_current_node_type(&mut self) -> PyResult<&str> {
+        Ok(match self.current_node() {
+            LogicalPlan::Projection(_projection) => "Projection",
+            LogicalPlan::Filter(_filter) => "Filter",
+            LogicalPlan::Window(_window) => "Window",
+            LogicalPlan::Aggregate(_aggregate) => "Aggregate",
+            LogicalPlan::Sort(_sort) => "Sort",
+            LogicalPlan::Join(_join) => "Join",
+            LogicalPlan::CrossJoin(_cross_join) => "CrossJoin",
+            LogicalPlan::Repartition(_repartition) => "Repartition",
+            LogicalPlan::Union(_union) => "Union",
+            LogicalPlan::TableScan(_table_scan) => "TableScan",
+            LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
+            LogicalPlan::Limit(_limit) => "Limit",
+            LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
+            LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
+            LogicalPlan::DropTable(_drop_table) => "DropTable",
+            LogicalPlan::Values(_values) => "Values",
+            LogicalPlan::Explain(_explain) => "Explain",
+            LogicalPlan::Analyze(_analyze) => "Analyze",
+            LogicalPlan::Extension(_extension) => "Extension",
+        })
     }
-
 
     /// Explain plan for the full and original LogicalPlan
     pub fn explain_original(&self) -> PyResult<String> {
         Ok(format!("{}", self.original_plan.display_indent()))
     }
 
-
     /// Explain plan from the current node onward
     pub fn explain_current(&mut self) -> PyResult<String> {
         Ok(format!("{}", self.current_node().display_indent()))
     }
+}
 
-
-    /// LogicalPlan::Filter: The PyExpr, predicate, that represents the filtering condition
-    pub fn getCondition(&mut self) -> PyResult<PyExpr> {
-        match self.current_node() {
-            LogicalPlan::Filter(filter) => {
-                Ok(filter.predicate.clone().into())
-            },
-            _ => panic!("Something wrong here")
-        }
+/**
+ * ---- BEGIN From methods for converting to and From PyObject instances
+ */
+impl From<PyLogicalPlan> for LogicalPlan {
+    fn from(logical_plan: PyLogicalPlan) -> LogicalPlan  {
+        logical_plan.original_plan
     }
+}
 
-    pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
-        match self.current_node() {
-            LogicalPlan::Join(_join) => {
-                let lhs_table_name: String = match &*_join.left {
-                    LogicalPlan::TableScan(_table_scan) => {
-                        let tbl: String = _table_scan.source.as_any().downcast_ref::<table::DaskTableProvider>().unwrap().table_name();
-                        tbl
-                    },
-                    _ => panic!("lhs Expected TableScan but something else was received!")
-                };
-
-                let rhs_table_name:String = match &*_join.right {
-                    LogicalPlan::TableScan(_table_scan) => {
-                        let tbl: String = _table_scan.source.as_any().downcast_ref::<table::DaskTableProvider>().unwrap().table_name();
-                        tbl
-                    },
-                    _ => panic!("rhs Expected TableScan but something else was received!")
-                };
-
-                let mut joinConditions:Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
-                for (mut lhs, mut rhs) in _join.on {
-                    println!("lhs: {:?} rhs: {:?}", lhs, rhs);
-                    lhs.relation = Some(lhs_table_name.clone());
-                    rhs.relation = Some(rhs_table_name.clone());
-                    joinConditions.push((lhs.into(), rhs.into()));
-                }
-                Ok(joinConditions)
-            },
-            _ => panic!("Something wrong here, lhs_on")
-        }
-    }
-
-    /// Returns the type of join represented by this LogicalPlan
-    pub fn getJoinType(&mut self) -> PyResult<String> {
-        match &self.current_node() {
-            LogicalPlan::Join(_join) => {
-                match _join.join_type {
-                    JoinType::Inner => Ok("INNER".to_string()),
-                    JoinType::Left => Ok("LEFT".to_string()),
-                    JoinType::Right => Ok("RIGHT".to_string()),
-                    JoinType::Full => Ok("FULL".to_string()),
-                    JoinType::Semi => Ok("SEMI".to_string()),
-                    JoinType::Anti => Ok("ANTI".to_string()),
-                }
-            },
-            _ => panic!("Current node is not of Type LogicalPlan::Join")
+impl From<LogicalPlan> for PyLogicalPlan {
+    fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
+        PyLogicalPlan {
+            original_plan: logical_plan,
+            current_node: None,
         }
     }
 }

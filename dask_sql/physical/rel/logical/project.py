@@ -26,18 +26,17 @@ class DaskProjectPlugin(BaseRelPlugin):
     def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
         # Get the input of the previous step
         (dc,) = self.assert_inputs(rel, 1, context)
-        print("After project.py assert_inputs()")
-        print(f"Project DataFrame # Rows: {len(dc.df)}\nDataFrame: {dc.df.head()}")
 
         df = dc.df
         cc = dc.column_container
 
         column_names = []
-        new_columns = {}
-        new_mappings = {}
+        new_columns, new_mappings = {}, {}
+
+        projection = rel.projection()
 
         # Collect all (new) columns this Projection will limit to
-        for expr in rel.get_named_projects():
+        for expr in projection.get_named_projects():
             print(f"Expr: {expr}")
 
             key = str(expr.column_name())

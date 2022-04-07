@@ -41,7 +41,7 @@ use pyo3::prelude::*;
 /// # }
 /// ```
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DaskSQLContext {
     default_schema_name: String,
     schemas: HashMap<String, schema::DaskSchema>,

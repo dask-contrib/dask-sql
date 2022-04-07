@@ -85,7 +85,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         # join_condition = rel.getCondition()
         # lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        join_on = rel.join_conditions()
+        join = rel.join()
+        join_on = join.getJoinConditions()
         lhs_on, rhs_on = [], []
         for jo in join_on:
             lhs_on.append(jo[0].getName())

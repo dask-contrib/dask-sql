@@ -47,9 +47,11 @@ class DaskFilterPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
+        filter = rel.filter()
+
         # Every logic is handled in the RexConverter
         # we just need to apply it here
-        condition = rel.getCondition()
+        condition = filter.getCondition()
         df_condition = RexConverter.convert(condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
