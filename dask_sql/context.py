@@ -656,9 +656,6 @@ class Context:
             port (:obj:`int`): The port to listen on (defaults to 8080)
             log_level: (:obj:`str`): The log level of the server and dask-sql
         """
-        # TODO: re-enable server once CVEs are resolved
-        raise NotImplementedError
-
         from dask_sql.server.app import run_server
 
         self.stop_server()
@@ -675,9 +672,6 @@ class Context:
         """
         Stop a SQL server started by ``run_server``.
         """
-        # TODO: re-enable server once CVEs are resolved
-        raise NotImplementedError
-
         if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
