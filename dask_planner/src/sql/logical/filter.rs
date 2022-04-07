@@ -34,12 +34,3 @@ impl From<LogicalPlan> for PyFilter {
         }
     }
 }
-
-// impl From<LogicalPlan> for PyLogicalPlan {
-//     fn from(logical_plan: LogicalPlan) -> PyLogicalPlan {
-//         PyLogicalPlan {
-//             original_plan: logical_plan,
-//             current_node: None,
-//         }
-//     }
-// }

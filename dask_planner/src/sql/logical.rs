@@ -51,6 +51,12 @@ impl PyLogicalPlan {
         Ok(filter)
     }
 
+    /// LogicalPlan::Join as PyJoin
+    pub fn join(&self) -> PyResult<join::PyJoin> {
+        let join: join::PyJoin = self.current_node.clone().unwrap().into();
+        Ok(join)
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -114,9 +120,7 @@ impl PyLogicalPlan {
     }
 }
 
-/**
- * ---- BEGIN From methods for converting to and From PyObject instances
- */
+
 impl From<PyLogicalPlan> for LogicalPlan {
     fn from(logical_plan: PyLogicalPlan) -> LogicalPlan  {
         logical_plan.original_plan

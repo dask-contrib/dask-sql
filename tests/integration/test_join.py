@@ -21,18 +21,18 @@ def test_join(c):
     )
 
 
-# def test_join_inner(c):
-#     df = c.sql(
-#         "SELECT lhs.user_id, lhs.b, rhs.c FROM user_table_1 AS lhs INNER JOIN user_table_2 AS rhs ON lhs.user_id = rhs.user_id"
-#     )
-#     df = df.compute()
+def test_join_inner(c):
+    df = c.sql(
+        "SELECT lhs.user_id, lhs.b, rhs.c FROM user_table_1 AS lhs INNER JOIN user_table_2 AS rhs ON lhs.user_id = rhs.user_id"
+    )
+    df = df.compute()
 
-#     expected_df = pd.DataFrame(
-#         {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
-#     )
-#     assert_frame_equal(
-#         df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
-#     )
+    expected_df = pd.DataFrame(
+        {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
+    )
+    assert_frame_equal(
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+    )
 
 
 # def test_join_outer(c):
@@ -55,24 +55,24 @@ def test_join(c):
 #     )
 
 
-# def test_join_left(c):
-#     df = c.sql(
-#         "SELECT lhs.user_id, lhs.b, rhs.c FROM user_table_1 AS lhs LEFT JOIN user_table_2 AS rhs ON lhs.user_id = rhs.user_id"
-#     )
-#     df = df.compute()
+def test_join_left(c):
+    df = c.sql(
+        "SELECT lhs.user_id, lhs.b, rhs.c FROM user_table_1 AS lhs LEFT JOIN user_table_2 AS rhs ON lhs.user_id = rhs.user_id"
+    )
+    df = df.compute()
 
-#     expected_df = pd.DataFrame(
-#         {
-#             # That is strange. Unfortunately, it seems dask fills in the
-#             # missing rows with NaN, not with NA...
-#             "user_id": [1, 1, 2, 2, 3],
-#             "b": [3, 3, 1, 3, 3],
-#             "c": [1, 2, 3, 3, np.NaN],
-#         }
-#     )
-#     assert_frame_equal(
-#         df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
-#     )
+    expected_df = pd.DataFrame(
+        {
+            # That is strange. Unfortunately, it seems dask fills in the
+            # missing rows with NaN, not with NA...
+            "user_id": [1, 1, 2, 2, 3],
+            "b": [3, 3, 1, 3, 3],
+            "c": [1, 2, 3, 3, np.NaN],
+        }
+    )
+    assert_frame_equal(
+        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df,
+    )
 
 
 # def test_join_right(c):

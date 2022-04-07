@@ -51,26 +51,31 @@ class DaskJoinPlugin(BaseRelPlugin):
     ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
+        join = rel.join()
+
         # 1. We now have two inputs (from left and right), so we fetch them both
         dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
-        cc_lhs = dc_lhs.column_container
-        cc_rhs = dc_rhs.column_container
+        # cc_lhs = dc_lhs.column_container
+        # cc_rhs = dc_rhs.column_container
 
-        # 2. dask's merge will do some smart things with columns, which have the same name
-        # on lhs an rhs (which also includes reordering).
-        # However, that will confuse our column numbering in SQL.
-        # So we make our life easier by converting the column names into unique names
-        # We will convert back in the end
-        cc_lhs_renamed = cc_lhs.make_unique("lhs")
-        cc_rhs_renamed = cc_rhs.make_unique("rhs")
+        print(f"\nlhs DataFrame:\n{dc_lhs.df.compute().head()}")
+        print(f"\n\nrhs DataFrame:\n{dc_rhs.df.compute().head()}")
 
-        dc_lhs_renamed = DataContainer(dc_lhs.df, cc_lhs_renamed)
-        dc_rhs_renamed = DataContainer(dc_rhs.df, cc_rhs_renamed)
+        # # 2. dask's merge will do some smart things with columns, which have the same name
+        # # on lhs an rhs (which also includes reordering).
+        # # However, that will confuse our column numbering in SQL.
+        # # So we make our life easier by converting the column names into unique names
+        # # We will convert back in the end
+        # cc_lhs_renamed = cc_lhs.make_unique("lhs")
+        # cc_rhs_renamed = cc_rhs.make_unique("rhs")
 
-        df_lhs_renamed = dc_lhs_renamed.assign()
-        df_rhs_renamed = dc_rhs_renamed.assign()
+        # dc_lhs_renamed = DataContainer(dc_lhs.df, cc_lhs_renamed)
+        # dc_rhs_renamed = DataContainer(dc_rhs.df, cc_rhs_renamed)
 
-        join_type = rel.getJoinType()
+        # df_lhs_renamed = dc_lhs_renamed.assign()
+        # df_rhs_renamed = dc_rhs_renamed.assign()
+
+        join_type = join.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
 
         # 3. The join condition can have two forms, that we can understand
@@ -85,7 +90,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         # join_condition = rel.getCondition()
         # lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        join = rel.join()
         join_on = join.getJoinConditions()
         lhs_on, rhs_on = [], []
         for jo in join_on:
@@ -105,147 +109,149 @@ class DaskJoinPlugin(BaseRelPlugin):
         # 4. dask can only merge on the same column names.
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
-        if lhs_on:
-            # 5. Now we can finally merge on these columns
-            # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
-            # plus the added columns
-            df = self._join_on_columns(
-                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
-            )
-        else:
-            # 5. We are in the complex join case
-            # where we have no column to merge on
-            # This means we have no other chance than to merge
-            # everything with everything...
+        df = dd.merge(dc_lhs.df, dc_rhs.df, on=lhs_on, how=join_type)
+        print(f"\n\nDataFrame after Join Size:{df.shape[0].compute()}")
+        print(f"\nDataFrame after Join:\n{df.compute().head()}")
+        # if lhs_on:
+        #     # 5. Now we can finally merge on these columns
+        #     # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
+        #     # plus the added columns
+        #     df = self._join_on_columns(
+        #         df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
+        #     )
+        # else:
+        #     # 5. We are in the complex join case
+        #     # where we have no column to merge on
+        #     # This means we have no other chance than to merge
+        #     # everything with everything...
 
-            # TODO: we should implement a shortcut
-            # for filter conditions that are always false
+        #     # TODO: we should implement a shortcut
+        #     # for filter conditions that are always false
 
-            def merge_single_partitions(lhs_partition, rhs_partition):
-                # Do a cross join with the two partitions
-                # TODO: it would be nice to apply the filter already here
-                # problem: this would mean we need to ship the rex to the
-                # workers (as this is executed on the workers),
-                # which is definitely not possible (java dependency, JVM start...)
-                lhs_partition = lhs_partition.assign(common=1)
-                rhs_partition = rhs_partition.assign(common=1)
+        #     def merge_single_partitions(lhs_partition, rhs_partition):
+        #         # Do a cross join with the two partitions
+        #         # TODO: it would be nice to apply the filter already here
+        #         # problem: this would mean we need to ship the rex to the
+        #         # workers (as this is executed on the workers),
+        #         # which is definitely not possible (java dependency, JVM start...)
+        #         lhs_partition = lhs_partition.assign(common=1)
+        #         rhs_partition = rhs_partition.assign(common=1)
 
-                return lhs_partition.merge(rhs_partition, on="common").drop(
-                    columns="common"
-                )
+        #         return lhs_partition.merge(rhs_partition, on="common").drop(
+        #             columns="common"
+        #         )
 
-            # Iterate nested over all partitions from lhs and rhs and merge them
-            name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
-            dsk = {
-                (name, i * df_rhs_renamed.npartitions + j): (
-                    merge_single_partitions,
-                    (df_lhs_renamed._name, i),
-                    (df_rhs_renamed._name, j),
-                )
-                for i in range(df_lhs_renamed.npartitions)
-                for j in range(df_rhs_renamed.npartitions)
-            }
+        #     # Iterate nested over all partitions from lhs and rhs and merge them
+        #     name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
+        #     dsk = {
+        #         (name, i * df_rhs_renamed.npartitions + j): (
+        #             merge_single_partitions,
+        #             (df_lhs_renamed._name, i),
+        #             (df_rhs_renamed._name, j),
+        #         )
+        #         for i in range(df_lhs_renamed.npartitions)
+        #         for j in range(df_rhs_renamed.npartitions)
+        #     }
 
-            graph = HighLevelGraph.from_collections(
-                name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
-            )
+        #     graph = HighLevelGraph.from_collections(
+        #         name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
+        #     )
 
-            meta = dd.dispatch.concat(
-                [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
-            )
-            # TODO: Do we know the divisions in any way here?
-            divisions = [None] * (len(dsk) + 1)
-            df = dd.DataFrame(graph, name, meta=meta, divisions=divisions)
+        #     meta = dd.dispatch.concat(
+        #         [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
+        #     )
+        #     # TODO: Do we know the divisions in any way here?
+        #     divisions = [None] * (len(dsk) + 1)
+        #     df = dd.DataFrame(graph, name, meta=meta, divisions=divisions)
 
-            warnings.warn(
-                "Need to do a cross-join, which is typically very resource heavy",
-                ResourceWarning,
-            )
+        #     warnings.warn(
+        #         "Need to do a cross-join, which is typically very resource heavy",
+        #         ResourceWarning,
+        #     )
 
-        # 6. So the next step is to make sure
-        # we have the correct column order (and to remove the temporary join columns)
-        correct_column_order = list(df_lhs_renamed.columns) + list(
-            df_rhs_renamed.columns
-        )
-        cc = ColumnContainer(df.columns).limit_to(correct_column_order)
+        # # 6. So the next step is to make sure
+        # # we have the correct column order (and to remove the temporary join columns)
+        # correct_column_order = list(df_lhs_renamed.columns) + list(
+        #     df_rhs_renamed.columns
+        # )
+        # cc = ColumnContainer(df.columns).limit_to(correct_column_order)
 
-        # and to rename them like the rel specifies
-        row_type = rel.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
-        cc = cc.rename(
-            {
-                from_col: to_col
-                for from_col, to_col in zip(cc.columns, field_specifications)
-            }
-        )
-        cc = self.fix_column_to_row_type(cc, row_type)
-        dc = DataContainer(df, cc)
+        # # and to rename them like the rel specifies
+        # row_type = rel.getRowType()
+        # field_specifications = [str(f) for f in row_type.getFieldNames()]
+        # cc = cc.rename(
+        #     {
+        #         from_col: to_col
+        #         for from_col, to_col in zip(cc.columns, field_specifications)
+        #     }
+        # )
+        # cc = self.fix_column_to_row_type(cc, row_type)
+        # dc = DataContainer(df, cc)
 
-        # 7. Last but not least we apply any filters by and-chaining together the filters
-        if filter_condition:
-            # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
-            filter_condition = reduce(
-                operator.and_,
-                [
-                    RexConverter.convert(rex, dc, context=context)
-                    for rex in filter_condition
-                ],
-            )
-            logger.debug(f"Additionally applying filter {filter_condition}")
-            df = filter_or_scalar(df, filter_condition)
-            dc = DataContainer(df, cc)
+        # # 7. Last but not least we apply any filters by and-chaining together the filters
+        # if filter_condition:
+        #     # This line is a bit of code duplication with RexCallPlugin - but I guess it is worth to keep it separate
+        #     filter_condition = reduce(
+        #         operator.and_,
+        #         [
+        #             RexConverter.convert(rex, dc, context=context)
+        #             for rex in filter_condition
+        #         ],
+        #     )
+        #     logger.debug(f"Additionally applying filter {filter_condition}")
+        #     df = filter_or_scalar(df, filter_condition)
+        #     dc = DataContainer(df, cc)
 
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        return dc
+        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        # return dc
+        return DataContainer(df, ColumnContainer(df.columns))
 
-    def _join_on_columns(
-        self,
-        df_lhs_renamed: dd.DataFrame,
-        df_rhs_renamed: dd.DataFrame,
-        lhs_on: List[str],
-        rhs_on: List[str],
-        join_type: str,
-    ) -> dd.DataFrame:
-        print(f"Something: {df_lhs_renamed['user_id']}")
-        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
+    # def _join_on_columns(
+    #     self,
+    #     df_lhs_renamed: dd.DataFrame,
+    #     df_rhs_renamed: dd.DataFrame,
+    #     lhs_on: List[str],
+    #     rhs_on: List[str],
+    #     join_type: str,
+    # ) -> dd.DataFrame:
+    #     print(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
+    #     print(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
+    #     print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
-        print(f"lhs_on type: {type(lhs_on)}")
-        for i in lhs_on:
-            print(f"i: {i}")
-        lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed.loc[:, lhs_on]
-            for i in lhs_on
-        }
-        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
-        rhs_columns_to_add = {
-            f"common_{i}": df_rhs_renamed.iloc[:, index]
-            for i, index in enumerate(rhs_on)
-        }
+    #     lhs_columns_to_add = {
+    #         f"common_{i}": df_lhs_renamed[i]
+    #         for i in lhs_on
+    #     }
+    #     print(f"lhs_columns_to_add: {lhs_columns_to_add}")
+    #     rhs_columns_to_add = {
+    #         f"common_{i}": df_rhs_renamed.iloc[:, index]
+    #         for i, index in enumerate(rhs_on)
+    #     }
 
-        # SQL compatibility: when joining on columns that
-        # contain NULLs, pandas will actually happily
-        # keep those NULLs. That is however not compatible with
-        # SQL, so we get rid of them here
-        if join_type in ["inner", "right"]:
-            df_lhs_filter = reduce(
-                operator.and_,
-                [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
-            )
-            df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
-        if join_type in ["inner", "left"]:
-            df_rhs_filter = reduce(
-                operator.and_,
-                [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
-            )
-            df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
+    #     # SQL compatibility: when joining on columns that
+    #     # contain NULLs, pandas will actually happily
+    #     # keep those NULLs. That is however not compatible with
+    #     # SQL, so we get rid of them here
+    #     if join_type in ["inner", "right"]:
+    #         df_lhs_filter = reduce(
+    #             operator.and_,
+    #             [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
+    #         )
+    #         df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
+    #     if join_type in ["inner", "left"]:
+    #         df_rhs_filter = reduce(
+    #             operator.and_,
+    #             [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
+    #         )
+    #         df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
 
-        df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
-        df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
-        added_columns = list(lhs_columns_to_add.keys())
+    #     df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
+    #     df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
+    #     added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
+    #     df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
 
-        return df
+    #     return df
 
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"

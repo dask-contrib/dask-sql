@@ -174,6 +174,10 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 columns: cols,
             })
         },
+        LogicalPlan::Join(join) => {
+            //TODO: Don't always hardcode the left
+            table_from_logical_plan(&join.left)
+        },
         _ => todo!("table_from_logical_plan: unimplemented LogicalPlan type encountered")
     }
 }
