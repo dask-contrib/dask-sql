@@ -1,4 +1,5 @@
 recursive-include dask_sql *.yaml
+recursive-include planner *
 
 include versioneer.py
 include dask_sql/_version.py
