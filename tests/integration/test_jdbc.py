@@ -7,6 +7,11 @@ from dask_sql import Context
 from dask_sql.server.app import _init_app, app
 from dask_sql.server.presto_jdbc import create_meta_data
 
+# TODO: re-enable server once CVEs are resolved
+pytest.skip(
+    "SQL server is disabled until related CVEs are resolved", allow_module_level=True
+)
+
 # needed for the testclient
 pytest.importorskip("requests")
 
