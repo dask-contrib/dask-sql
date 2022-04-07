@@ -5,6 +5,11 @@ import pytest
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
 
+# TODO: re-enable server once CVEs are resolved
+pytest.skip(
+    "SQL server is disabled until related CVEs are resolved", allow_module_level=True
+)
+
 # needed for the testclient
 pytest.importorskip("requests")
 
@@ -21,6 +26,35 @@ def app_client():
     yield TestClient(app)
 
     app.client.close()
+
+
+def get_result_or_error(app_client, response):
+    result = response.json()
+
+    assert "nextUri" in result
+    assert "error" not in result
+
+    status_url = result["nextUri"]
+    next_url = status_url
+
+    counter = 0
+    while True:
+        response = app_client.get(next_url)
+        assert response.status_code == 200
+
+        result = response.json()
+
+        if "nextUri" not in result:
+            break
+
+        next_url = result["nextUri"]
+
+        counter += 1
+        assert counter <= 100
+
+        sleep(0.1)
+
+    return result
 
 
 def test_routes(app_client):
@@ -174,32 +208,3 @@ def test_inf_table(app_client, user_table_inf):
     assert len(result["data"]) == 3
     assert result["data"][1] == ["+Infinity"]
     assert "error" not in result
-
-
-def get_result_or_error(app_client, response):
-    result = response.json()
-
-    assert "nextUri" in result
-    assert "error" not in result
-
-    status_url = result["nextUri"]
-    next_url = status_url
-
-    counter = 0
-    while True:
-        response = app_client.get(next_url)
-        assert response.status_code == 200
-
-        result = response.json()
-
-        if "nextUri" not in result:
-            break
-
-        next_url = result["nextUri"]
-
-        counter += 1
-        assert counter <= 100
-
-        sleep(0.1)
-
-    return result

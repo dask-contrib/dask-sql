@@ -659,7 +659,7 @@ class Context:
         from dask_sql.server.app import run_server
 
         self.stop_server()
-        self.server = run_server(
+        self.sql_server = run_server(
             context=self,
             client=client,
             host=host,

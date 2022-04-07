@@ -116,7 +116,8 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "dask-sql-server = dask_sql.server.app:main",
+            # TODO: re-enable server once CVEs are resolved
+            # "dask-sql-server = dask_sql.server.app:main",
             "dask-sql = dask_sql.cmd:main",
         ]
     },

@@ -276,6 +276,9 @@ def _init_app(
     context: Context = None,
     client: dask.distributed.Client = None,
 ):
+    # TODO: re-enable server once CVEs are resolved
+    raise NotImplementedError
+
     app.c = context or Context()
     app.future_list = {}
 
