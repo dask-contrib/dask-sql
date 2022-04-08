@@ -100,7 +100,11 @@ class DaskJoinPlugin(BaseRelPlugin):
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
             df = self._join_on_columns(
-                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
+                df_lhs_renamed,
+                df_rhs_renamed,
+                lhs_on,
+                rhs_on,
+                join_type,
             )
         else:
             # 5. We are in the complex join case
@@ -119,9 +123,10 @@ class DaskJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
-                return merged_data
+                return lhs_partition.merge(rhs_partition, on="common").drop(
+                    columns="common"
+                )
 
             # Iterate nested over all partitions from lhs and rhs and merge them
             name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
@@ -140,11 +145,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             )
 
             meta = dd.dispatch.concat(
-                [
-                    df_lhs_renamed._meta_nonempty.assign(common=1),
-                    df_rhs_renamed._meta_nonempty,
-                ],
-                axis=1,
+                [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
             )
             # TODO: Do we know the divisions in any way here?
             divisions = [None] * (len(dsk) + 1)
@@ -237,7 +238,10 @@ class DaskJoinPlugin(BaseRelPlugin):
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
 
-        if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
+        if isinstance(
+            join_condition,
+            (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
+        ):
             return [], [], [join_condition]
         elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
             raise NotImplementedError("Can not understand join condition.")
@@ -259,15 +263,11 @@ class DaskJoinPlugin(BaseRelPlugin):
             filter_condition = []
 
             for operand in operands:
-                if isinstance(operand, org.apache.calcite.rex.RexCall):
-                    try:
-                        lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                        lhs_on.append(lhs_on_part)
-                        rhs_on.append(rhs_on_part)
-                        continue
-                    except AssertionError:
-                        pass
-
+                try:
+                    lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
+                    lhs_on.append(lhs_on_part)
+                    rhs_on.append(rhs_on_part)
+                except AssertionError:
                     filter_condition.append(operand)
 
             if lhs_on and rhs_on:
@@ -276,6 +276,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         return [], [], [join_condition]
 
     def _extract_lhs_rhs(self, rex):
+        assert isinstance(rex, org.apache.calcite.rex.RexCall)
+
         operator_name = str(rex.getOperator().getName())
         assert operator_name == "="
 

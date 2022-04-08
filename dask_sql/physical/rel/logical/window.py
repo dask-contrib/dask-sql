@@ -176,7 +176,8 @@ def map_on_each_group(
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
         windowed_group = partitioned_group.rolling(
-            window=lower_bound.offset + 1, min_periods=0,
+            window=lower_bound.offset + 1,
+            min_periods=0,
         )
     else:
         lower_offset = lower_bound.offset if not lower_bound.is_current_row else 0

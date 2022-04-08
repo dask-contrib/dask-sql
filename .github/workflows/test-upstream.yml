@@ -26,12 +26,13 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Install dependencies and build the jar
         run: |
-          python setup.py java
+          python setup.py build_ext
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
@@ -52,7 +53,7 @@ jobs:
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
-        python: [3.7, 3.8, 3.9]
+        python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -68,6 +69,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -107,7 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Report failures
-        uses: actions/github-script@v5
+        uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

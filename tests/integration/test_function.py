@@ -1,3 +1,4 @@
+import itertools
 import operator
 
 import dask.dataframe as dd
@@ -8,7 +9,7 @@ from pandas.testing import assert_frame_equal
 
 def test_custom_function(c, df):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
 
@@ -25,7 +26,7 @@ def test_custom_function(c, df):
 
 def test_custom_function_row(c, df):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, row_udf=True)
 
@@ -40,13 +41,33 @@ def test_custom_function_row(c, df):
     assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
 
 
+@pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
+def test_custom_function_any_colnames(colnames, df_wide, c):
+    # a third column is needed
+
+    def f(row):
+        return row["x"] + row["y"]
+
+    colname_x, colname_y = colnames
+    c.register_function(
+        f, "f", [("x", np.int64), ("y", np.int64)], np.int64, row_udf=True
+    )
+
+    return_df = c.sql(f"SELECT F({colname_x},{colname_y}) FROM df_wide")
+
+    expect = df_wide[colname_x] + df_wide[colname_y]
+    got = return_df.iloc[:, 0]
+
+    dd.assert_eq(expect, got, check_names=False)
+
+
 @pytest.mark.parametrize(
     "retty",
     [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
 )
 def test_custom_function_row_return_types(c, df, retty):
     def f(row):
-        return row["a"] ** 2
+        return row["x"] ** 2
 
     if retty is None:
         with pytest.raises(ValueError):
@@ -125,7 +146,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
 
 def test_multiple_definitions(c, df_simple):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -141,7 +162,7 @@ def test_multiple_definitions(c, df_simple):
     assert_frame_equal(return_df.reset_index(drop=True), df_simple[["a", "b"]] ** 2)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, replace=True)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -174,14 +195,14 @@ def test_aggregate_function(c):
 
 def test_reregistration(c):
     def f(x):
-        return x ** 2
+        return x**2
 
     # The same is fine
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     # A different not
     with pytest.raises(ValueError):

@@ -55,7 +55,11 @@ class InputUtil(Pluggable):
         maybe persist them to cluster memory before.
         """
         filled_get_dask_dataframe = lambda *args: cls._get_dask_dataframe(
-            *args, table_name=table_name, format=format, gpu=gpu, **kwargs,
+            *args,
+            table_name=table_name,
+            format=format,
+            gpu=gpu,
+            **kwargs,
         )
 
         if isinstance(input_item, list):

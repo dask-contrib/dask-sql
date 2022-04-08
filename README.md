@@ -111,19 +111,19 @@ If you want to have the newest (unreleased) `dask-sql` version or if you plan to
 
 Create a new conda environment and install the development environment:
 
-    conda env create -f continuous_integration/environment-3.8-jdk11-dev.yaml
+    conda env create -f continuous_integration/environment-3.9-jdk11-dev.yaml
 
 It is not recommended to use `pip` instead of `conda` for the environment setup.
 If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
-Have a look into `environment-3.8-jdk11-dev.yaml` for the rest of the development environment.
+Have a look into `environment-3.9-jdk11-dev.yaml` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To compile the Java classes (at the beginning or after changes), run
+To recompile the Java classes after changes have been made to the source contained in `planner/`, run
 
-    python setup.py java
+    python setup.py build_ext
 
 This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
 

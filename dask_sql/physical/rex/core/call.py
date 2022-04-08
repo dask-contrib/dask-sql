@@ -224,14 +224,20 @@ class CastOperation(Operation):
             return operand
 
         output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
+        python_type = sql_to_python_type(output_type.upper())
 
-        return_column = cast_column_to_type(operand, output_type)
+        return_column = cast_column_to_type(operand, python_type)
 
         if return_column is None:
-            return operand
-        else:
-            return return_column
+            return_column = operand
+
+        # TODO: ideally we don't want to directly access the datetimes,
+        # but Pandas can't truncate timezone datetimes and cuDF can't
+        # truncate datetimes
+        if output_type == "DATE":
+            return return_column.dt.floor("D").astype(python_type)
+
+        return return_column
 
 
 class IsFalseOperation(Operation):
@@ -240,7 +246,10 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def false_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -257,7 +266,10 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def true_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -274,7 +286,10 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def not_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -290,7 +305,10 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def null(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -322,7 +340,10 @@ class RegexOperation(Operation):
         super().__init__(self.regex)
 
     def regex(
-        self, test: SeriesOrScalar, regex: str, escape: str = None,
+        self,
+        test: SeriesOrScalar,
+        regex: str,
+        escape: str = None,
     ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex

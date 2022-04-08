@@ -1,54 +1,63 @@
-import distutils
 import os
 import shutil
 import subprocess
 import sys
 
-import setuptools.command.build_py
 from setuptools import find_packages, setup
+from setuptools.command.build_ext import build_ext as build_ext_orig
+from setuptools.command.install_lib import install_lib as install_lib_orig
+
+import versioneer
 
 
-class MavenCommand(distutils.cmd.Command):
-    """Run the maven build command"""
+def install_java_libraries(dir):
+    """Helper function to run dask-sql's java installation process in a given directory"""
 
-    description = "run the mvn install command"
-    user_options = []
+    # build the jar
+    maven_command = shutil.which("mvn")
+    if not maven_command:
+        raise OSError(
+            "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
+        )
+    command = [maven_command, "clean", "install", "-f", "pom.xml"]
+    subprocess.check_call(command, cwd=os.path.join(dir, "planner"))
 
-    def initialize_options(self):
-        """No options"""
-        pass
-
-    def finalize_options(self):
-        """No options"""
-        pass
-
-    def run(self):
-        """Run the mvn installation command"""
-        # We need to explicitely specify the full path to mvn
-        # for Windows
-        maven_command = shutil.which("mvn")
-        if not maven_command:
-            raise OSError(
-                "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
-            )
-        command = [maven_command, "clean", "install", "-f", "pom.xml"]
-        self.announce(f"Running command: {' '.join(command)}", level=distutils.log.INFO)
-
-        subprocess.check_call(command, cwd="planner")
-
-        # Copy the artifact. We could also make maven do that,
-        # but in this way we have full control from python
-        os.makedirs("dask_sql/jar", exist_ok=True)
-        shutil.copy("planner/target/DaskSQL.jar", "dask_sql/jar/DaskSQL.jar")
+    # copy generated jar to python package
+    os.makedirs(os.path.join(dir, "dask_sql/jar"), exist_ok=True)
+    shutil.copy(
+        os.path.join(dir, "planner/target/DaskSQL.jar"),
+        os.path.join(dir, "dask_sql/jar/"),
+    )
 
 
-class BuildPyCommand(setuptools.command.build_py.build_py):
-    """Customize the build command and add the java build"""
+class build_ext(build_ext_orig):
+    """Build and install the java libraries for an editable install"""
 
     def run(self):
-        """Run the maven build before the normal build"""
-        self.run_command("java")
-        setuptools.command.build_py.build_py.run(self)
+        super().run()
+
+        # build java inplace
+        install_java_libraries("")
+
+
+class install_lib(install_lib_orig):
+    """Build and install the java libraries for a standard install"""
+
+    def build(self):
+        super().build()
+
+        # copy java source to build directory
+        self.copy_tree("planner", os.path.join(self.build_dir, "planner"))
+
+        # build java in build directory
+        install_java_libraries(self.build_dir)
+
+        # remove java source as it doesn't need to be packaged
+        shutil.rmtree(os.path.join(self.build_dir, "planner"))
+
+        # copy jar to source directory for RTD builds to API docs build correctly
+        if os.environ.get("READTHEDOCS", "False") == "True":
+            self.copy_tree(os.path.join(self.build_dir, "dask_sql/jar"), "dask_sql/jar")
 
 
 long_description = ""
@@ -59,8 +68,13 @@ if os.path.exists("README.md"):
 needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass["build_ext"] = build_ext
+cmdclass["install_lib"] = install_lib
+
 setup(
     name="dask_sql",
+    version=versioneer.get_version(),
     description="SQL query layer for Dask",
     url="https://github.com/dask-contrib/dask-sql/",
     maintainer="Nils Braun",
@@ -69,12 +83,11 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(include=["dask_sql", "dask_sql.*"]),
-    package_data={"dask_sql": ["jar/DaskSQL.jar"]},
-    use_scm_version=True,
-    python_requires=">=3.6",
-    setup_requires=["setuptools_scm"] + sphinx_requirements,
+    package_data={"dask_sql": ["jar/DaskSQL.jar", "sql*.yaml"]},
+    python_requires=">=3.8",
+    setup_requires=sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2021.11.1",
+        "dask[dataframe,distributed]>=2022.3.0,<2022.4.1",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
@@ -84,8 +97,6 @@ setup(
         "pygments",
         "tabulate",
         "nest-asyncio",
-        # backport for python versions without importlib.metadata
-        "importlib_metadata; python_version < '3.8.0'",
     ],
     extras_require={
         "dev": [
@@ -98,18 +109,23 @@ setup(
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",
-            "black==19.10b0",
+            "black==22.3.0",
             "isort==5.7.0",
         ],
         "fugue": ["fugue[sql]>=0.5.3"],
     },
     entry_points={
         "console_scripts": [
-            "dask-sql-server = dask_sql.server.app:main",
+            # TODO: re-enable server once CVEs are resolved
+            # "dask-sql-server = dask_sql.server.app:main",
             "dask-sql = dask_sql.cmd:main",
         ]
     },
     zip_safe=False,
-    cmdclass={"java": MavenCommand, "build_py": BuildPyCommand,},
-    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
+    cmdclass=cmdclass,
+    command_options={
+        "build_sphinx": {
+            "source_dir": ("setup.py", "docs"),
+        }
+    },
 )
