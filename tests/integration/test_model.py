@@ -8,6 +8,7 @@ import pytest
 from dask.datasets import timeseries
 
 from tests.integration.fixtures import skip_if_external_scheduler
+from tests.utils import assert_eq
 
 try:
     import cuml
@@ -231,10 +232,10 @@ def test_show_models(c, training_df):
         )
     """
     )
+    result = c.sql("SHOW MODELS")
     expected = pd.DataFrame(["my_model1", "my_model2", "my_model3"], columns=["Models"])
-    result: pd.DataFrame = c.sql("SHOW MODELS").compute()
-    # test
-    pd.testing.assert_frame_equal(expected, result)
+
+    assert_eq(result, expected)
 
 
 def test_wrong_training_or_prediction(c, training_df):
@@ -440,12 +441,9 @@ def test_describe_model(c, training_df):
         .sort_index()
     )
     # test
-    result = (
-        c.sql("DESCRIBE MODEL ex_describe_model")
-        .compute()["Params"]
-        .apply(lambda x: str(x))
-    )
-    pd.testing.assert_series_equal(expected_series, result)
+    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(lambda x: str(x))
+
+    assert_eq(expected_series, result)
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")

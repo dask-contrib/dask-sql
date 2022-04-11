@@ -5,9 +5,9 @@ import time
 
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql.context import Context
+from tests.utils import assert_eq
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="hive testing not supported on Windows"
@@ -181,18 +181,18 @@ def test_select(hive_cursor):
     c = Context()
     c.create_table("df", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df").compute().reset_index(drop=True)
-    df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
+    result_df = c.sql("SELECT * FROM df")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
 
-    assert_frame_equal(df, result_df)
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_select_partitions(hive_cursor):
     c = Context()
     c.create_table("df_part", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df_part").compute().reset_index(drop=True)
-    df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
-    df["j"] = df["j"].astype("int64")
+    result_df = c.sql("SELECT * FROM df_part")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
+    expected_df["j"] = expected_df["j"].astype("int64")
 
-    assert_frame_equal(df, result_df)
+    assert_eq(result_df, expected_df, check_index=False)
