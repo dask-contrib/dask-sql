@@ -86,10 +86,9 @@ def test_random(c):
     query = 'SELECT RAND(0) AS "0", RAND_INTEGER(0, 10) AS "1"'
 
     result_df = c.sql(query)
-    expected_df = c.sql(query)
 
     # assert that repeated queries give the same result
-    assert_eq(result_df, expected_df)
+    assert_eq(result_df, c.sql(query))
 
     # assert output
     result_df = result_df.compute()
