@@ -1,12 +1,12 @@
 import dask.dataframe as dd
 import pandas as pd
 
+from dask_sql.input_utils.base import BaseInputPlugin
+
 try:
     import cudf
-except ImportError:  # pragma: no cover
+except ImportError:
     cudf = None
-
-from dask_sql.input_utils.base import BaseInputPlugin
 
 
 class PandasLikeInputPlugin(BaseInputPlugin):
@@ -15,8 +15,10 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     def is_correct_input(
         self, input_item, table_name: str, format: str = None, **kwargs
     ):
-        is_cudf_type = cudf and isinstance(input_item, cudf.DataFrame)
-        return is_cudf_type or isinstance(input_item, pd.DataFrame) or format == "dask"
+        return (
+            dd.utils.is_dataframe_like(input_item)
+            and not isinstance(input_item, dd.DataFrame)
+        ) or format == "dask"
 
     def to_dc(
         self,
@@ -28,15 +30,12 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     ):
         npartitions = kwargs.pop("npartitions", 1)
         if gpu:  # pragma: no cover
-            import dask_cudf
+            if not cudf:
+                raise ModuleNotFoundError(
+                    "Setting `gpu=True` for table creation requires cudf"
+                )
 
             if isinstance(input_item, pd.DataFrame):
-                return dask_cudf.from_cudf(
-                    cudf.from_pandas(input_item), npartitions=npartitions, **kwargs,
-                )
-            else:
-                return dask_cudf.from_cudf(
-                    input_item, npartitions=npartitions, **kwargs,
-                )
-        else:
-            return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)
+                input_item = cudf.from_pandas(input_item)
+
+        return dd.from_pandas(input_item, npartitions=npartitions, **kwargs)

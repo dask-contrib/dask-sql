@@ -7,6 +7,17 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
+from tests.integration.fixtures import skip_if_external_scheduler
+
+try:
+    import cuml
+    import dask_cudf
+    import xgboost
+except ImportError:
+    cuml = None
+    xgboost = None
+    dask_cudf = None
+
 pytest.importorskip("dask_ml")
 
 
@@ -26,8 +37,11 @@ def check_trained_model(c, model_name=None):
         )
         """
 
+    tables_before = c.schema["root"].tables.keys()
     result_df = c.sql(sql).compute()
 
+    # assert that there are no additional tables in context from prediction
+    assert tables_before == c.schema["root"].tables.keys()
     assert "target" in result_df.columns
     assert len(result_df["target"]) > 0
 
@@ -37,9 +51,20 @@ def training_df(c):
     df = timeseries(freq="1d").reset_index(drop=True)
     c.create_table("timeseries", df, persist=True)
 
-    return training_df
+    return None
 
 
+@pytest.fixture()
+def gpu_training_df(c):
+    if dask_cudf:
+        df = timeseries(freq="1d").reset_index(drop=True)
+        df = dask_cudf.from_dask_dataframe(df)
+        c.create_table("timeseries", input_table=df)
+    return None
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_training_and_prediction(c, training_df):
     c.sql(
         """
@@ -58,6 +83,76 @@ def test_training_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+@pytest.mark.gpu
+def test_cuml_training_and_prediction(c, gpu_training_df):
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'cuml.linear_model.LogisticRegression',
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+@skip_if_external_scheduler
+def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
+
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'cuml.dask.linear_model.LinearRegression',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@skip_if_external_scheduler
+@pytest.mark.gpu
+def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'xgboost.dask.DaskXGBRegressor',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_xgboost_training_prediction(c, gpu_training_df):
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'xgboost.XGBRegressor',
+        wrap_predict = True,
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_clustering_and_prediction(c, training_df):
     c.sql(
         """
@@ -74,6 +169,8 @@ def test_clustering_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_iterative_and_prediction(c, training_df):
     c.sql(
         """
@@ -93,6 +190,8 @@ def test_iterative_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_show_models(c, training_df):
     c.sql(
         """
@@ -312,6 +411,8 @@ def test_drop_model(c, training_df):
     assert "my_model" not in c.schema[c.schema_name].models
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_describe_model(c, training_df):
     c.sql(
         """
@@ -413,6 +514,8 @@ def test_export_model(c, training_df, tmpdir):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -469,10 +572,12 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="Windows is not officially supported for dask/xgboost",
 )
+@skip_if_external_scheduler
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -535,6 +640,8 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_ml_experiment(c, client, training_df):
 
     with pytest.raises(
@@ -727,6 +834,8 @@ def test_ml_experiment(c, client, training_df):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # currently tested with tpot==
@@ -750,7 +859,9 @@ def test_experiment_automl_classifier(c, client, training_df):
     check_trained_model(c, "my_automl_exp1")
 
 
-def test_experiement_automl_regressor(c, client, training_df):
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # test regressor
     c.sql(

@@ -1,4 +1,3 @@
-import os
 import warnings
 
 import dask.dataframe as dd
@@ -6,6 +5,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.datacontainer import Statistics
 
 try:
     import cudf
@@ -62,25 +62,28 @@ def test_explain(gpu):
 
     sql_string = c.explain("SELECT * FROM df")
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
+    )
+
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+
+    sql_string = c.explain("SELECT * FROM df")
+
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
     )
 
     c = Context()
 
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-
     sql_string = c.explain(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
 
-    assert (
-        sql_string
-        == f"LogicalProject(a=[$0]){os.linesep}  LogicalTableScan(table=[[root, other_df]]){os.linesep}"
+    assert sql_string.startswith(
+        "DaskTableScan(table=[[root, other_df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
 
@@ -90,10 +93,7 @@ def test_explain(gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
+            marks=pytest.mark.gpu,
         ),
     ],
 )
@@ -111,9 +111,9 @@ def test_sql(gpu):
     assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 
-    if gpu:
-        data_frame = dask_cudf.from_dask_dataframe(data_frame)
-    result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
+    result = c.sql(
+        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
+    )
     assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
     dd.assert_eq(result, data_frame)
 
@@ -124,10 +124,7 @@ def test_sql(gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="create_table(gpu=True) doesn't work"),
-            ),
+            marks=pytest.mark.gpu,
         ),
     ],
 )
@@ -171,15 +168,7 @@ def test_input_types(temporary_data_file, gpu):
     "gpu",
     [
         False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="GPU tables aren't picked up by _get_tables_from_stack"
-                ),
-            ),
-        ),
+        pytest.param(True, marks=pytest.mark.gpu),
     ],
 )
 def test_tables_from_stack(gpu):
@@ -312,3 +301,28 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
     assert c.schema[c.schema_name].function_lists[1].return_type == str
     assert c.schema[c.schema_name].function_lists[1].aggregation
+
+
+def test_alter_schema(c):
+    c.create_schema("test_schema")
+    c.sql("ALTER SCHEMA test_schema RENAME TO prod_schema")
+    assert "prod_schema" in c.schema
+
+    with pytest.raises(KeyError):
+        c.sql("ALTER SCHEMA MARVEL RENAME TO DC")
+
+    del c.schema["prod_schema"]
+
+
+def test_alter_table(c, df_simple):
+    c.create_table("maths", df_simple)
+    c.sql("ALTER TABLE maths RENAME TO physics")
+    assert "physics" in c.schema[c.schema_name].tables
+
+    with pytest.raises(KeyError):
+        c.sql("ALTER TABLE four_legs RENAME TO two_legs")
+
+    c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
+
+    print(c.schema[c.schema_name].tables)
+    del c.schema[c.schema_name].tables["physics"]

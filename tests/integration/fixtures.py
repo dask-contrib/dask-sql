@@ -11,8 +11,16 @@ from pandas.testing import assert_frame_equal
 
 try:
     import cudf
+
+    # importing to check for JVM segfault
+    import dask_cudf  # noqa: F401
+    from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     cudf = None
+    LocalCUDACluster = None
+
+# check if we want to connect to an independent cluster
+SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
 
 
 @pytest.fixture()
@@ -33,10 +41,26 @@ def df_simple():
 
 
 @pytest.fixture()
+def df_wide():
+    return pd.DataFrame(
+        {
+            "a": [0, 1, 2],
+            "b": [3, 4, 5],
+            "c": [6, 7, 8],
+            "d": [9, 10, 11],
+            "e": [12, 13, 14],
+        }
+    )
+
+
+@pytest.fixture()
 def df():
     np.random.seed(42)
     return pd.DataFrame(
-        {"a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400, "b": 10 * np.random.rand(700),}
+        {
+            "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
+            "b": 10 * np.random.rand(700),
+        }
     )
 
 
@@ -81,14 +105,40 @@ def datetime_table():
     return pd.DataFrame(
         {
             "timezone": pd.date_range(
-                start="2014-08-01 09:00", freq="H", periods=3, tz="Europe/Berlin"
+                start="2014-08-01 09:00", freq="8H", periods=6, tz="Europe/Berlin"
             ),
-            "no_timezone": pd.date_range(start="2014-08-01 09:00", freq="H", periods=3),
+            "no_timezone": pd.date_range(
+                start="2014-08-01 09:00", freq="8H", periods=6
+            ),
             "utc_timezone": pd.date_range(
-                start="2014-08-01 09:00", freq="H", periods=3, tz="UTC"
+                start="2014-08-01 09:00", freq="8H", periods=6, tz="UTC"
             ),
         }
     )
+
+
+@pytest.fixture()
+def parquet_ddf(tmpdir):
+
+    # Write simple parquet dataset
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
+
+    # Read back with dask and apply WHERE query
+    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
 
 
 @pytest.fixture()
@@ -112,8 +162,14 @@ def gpu_string_table(string_table):
 
 
 @pytest.fixture()
+def gpu_datetime_table(datetime_table):
+    return cudf.from_pandas(datetime_table) if cudf else None
+
+
+@pytest.fixture()
 def c(
     df_simple,
+    df_wide,
     df,
     user_table_1,
     user_table_2,
@@ -122,13 +178,16 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
     gpu_string_table,
+    gpu_datetime_table,
 ):
     dfs = {
         "df_simple": df_simple,
+        "df_wide": df_wide,
         "df": df,
         "user_table_1": user_table_1,
         "user_table_2": user_table_2,
@@ -137,10 +196,12 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
         "gpu_string_table": gpu_string_table,
+        "gpu_datetime_table": gpu_datetime_table,
     }
 
     # Lazy import, otherwise the pytest framework has problems
@@ -150,7 +211,11 @@ def c(
     for df_name, df in dfs.items():
         if df is None:
             continue
-        dask_df = dd.from_pandas(df, npartitions=3)
+        if hasattr(df, "npartitions"):
+            # df is already a dask collection
+            dask_df = df
+        else:
+            dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
 
     yield c
@@ -251,12 +316,33 @@ def assert_query_gives_same_result(engine):
     return _assert_query_gives_same_result
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_dask_client():
-    """Setup a dask client if requested"""
-    address = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-    if address:
-        client = Client(address)
+@pytest.fixture()
+def gpu_cluster():
+    if LocalCUDACluster is None:
+        pytest.skip("dask_cuda not installed")
+        return None
+
+    with LocalCUDACluster(protocol="tcp") as cluster:
+        yield cluster
+
+
+@pytest.fixture()
+def gpu_client(gpu_cluster):
+    if gpu_cluster:
+        with Client(gpu_cluster) as client:
+            yield client
+
+
+# if connecting to an independent cluster, use a session-wide
+# client for all computations. otherwise, only connect to a client
+# when specified.
+@pytest.fixture(
+    scope="function" if SCHEDULER_ADDR is None else "session",
+    autouse=False if SCHEDULER_ADDR is None else True,
+)
+def client():
+    with Client(address=SCHEDULER_ADDR) as client:
+        yield client
 
 
 skip_if_external_scheduler = pytest.mark.skipif(

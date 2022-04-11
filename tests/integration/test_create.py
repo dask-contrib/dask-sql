@@ -4,10 +4,8 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 import dask_sql
-from tests.integration.fixtures import skip_if_external_scheduler
 
 
-@skip_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -40,15 +38,7 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     "gpu",
     [
         False,
-        pytest.param(
-            True,
-            marks=[
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="dataframes on memory currently aren't being converted to dask-cudf"
-                ),
-            ],
-        ),
+        pytest.param(True, marks=pytest.mark.gpu),
     ],
 )
 def test_cluster_memory(client, c, df, gpu):
@@ -77,8 +67,9 @@ def test_cluster_memory(client, c, df, gpu):
 
     assert_frame_equal(df, return_df)
 
+    client.unpublish_dataset("df")
 
-@skip_if_external_scheduler
+
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -171,7 +162,6 @@ def test_create_from_query(c, df):
     assert_frame_equal(df, return_df)
 
 
-@skip_if_external_scheduler
 @pytest.mark.parametrize(
     "gpu",
     [

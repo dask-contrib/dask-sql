@@ -248,6 +248,7 @@ def test_string_operations(assert_query_gives_same_result):
             SUBSTRING(s FROM 10),
             SUBSTRING(s FROM 2),
             SUBSTRING(s FROM 2 FOR 2),
+            SUBSTR(s,2,2),
             INITCAP(s),
             INITCAP(UPPER(s)),
             INITCAP(LOWER(s))

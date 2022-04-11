@@ -2,6 +2,8 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
+from dask_sql import Context
+
 try:
     import cudf
 except ImportError:
@@ -33,6 +35,7 @@ def test_tables(c):
             "Table": [
                 "df",
                 "df_simple",
+                "df_wide",
                 "user_table_1",
                 "user_table_2",
                 "long_table",
@@ -40,11 +43,13 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+                "parquet_ddf",
             ]
             if cudf is None
             else [
                 "df",
                 "df_simple",
+                "df_wide",
                 "user_table_1",
                 "user_table_2",
                 "long_table",
@@ -52,6 +57,7 @@ def test_tables(c):
                 "user_table_nan",
                 "string_table",
                 "datetime_table",
+                "parquet_ddf",
                 "gpu_user_table_1",
                 "gpu_df",
                 "gpu_long_table",
@@ -72,7 +78,10 @@ def test_columns(c):
 
     expected_df = pd.DataFrame(
         {
-            "Column": ["user_id", "b",],
+            "Column": [
+                "user_id",
+                "b",
+            ],
             "Type": ["bigint", "bigint"],
             "Extra": [""] * 2,
             "Comment": [""] * 2,
@@ -95,3 +104,14 @@ def test_wrong_input(c):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW TABLES FROM "wrong"')
+
+
+def test_show_tables_no_schema(c):
+    c = Context()
+
+    df = pd.DataFrame({"id": [0, 1]})
+    c.create_table("test", df)
+
+    actual_df = c.sql("show tables").compute()
+    expected_df = pd.DataFrame({"Table": ["test"]})
+    assert_frame_equal(actual_df, expected_df)

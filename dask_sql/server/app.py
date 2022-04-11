@@ -10,6 +10,7 @@ from nest_asyncio import apply
 from uvicorn import Config, Server
 
 from dask_sql.context import Context
+from dask_sql.server.presto_jdbc import create_meta_data
 from dask_sql.server.responses import DataResults, ErrorResults, QueryResults
 
 app = FastAPI()
@@ -74,6 +75,12 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
+        # required for PrestoDB JDBC driver compatibility
+        # replaces queries to unsupported `system` catalog with queries to `system_jdbc`
+        # schema created by `create_meta_data(context)` when `jdbc_metadata=True`
+        # TODO: explore Trino which should make JDBC compatibility easier but requires
+        # changing response headers (see https://github.com/dask-contrib/dask-sql/pull/351)
+        sql = sql.replace("system.jdbc", "system_jdbc")
         df = request.app.c.sql(sql)
 
         if df is None:
@@ -102,6 +109,7 @@ def run_server(
     startup=False,
     log_level=None,
     blocking: bool = True,
+    jdbc_metadata: bool = False,
 ):  # pragma: no cover
     """
     Run a HTTP server for answering SQL queries using ``dask-sql``.
@@ -128,6 +136,8 @@ def run_server(
         log_level: (:obj:`str`): The log level of the server and dask-sql
         blocking: (:obj:`bool`): If running in an environment with an event loop (e.g. a jupyter notebook),
                 do not block. The server can be stopped with `context.stop_server()` afterwards.
+        jdbc_metadata: (:obj:`bool`): If enabled create JDBC metadata tables using schemas and tables in
+                the current dask_sql context
 
     Example:
         It is possible to run an SQL server by using the CLI script ``dask-sql-server``
@@ -179,6 +189,8 @@ def run_server(
 
     """
     _init_app(app, context=context, client=client)
+    if jdbc_metadata:
+        create_meta_data(context)
 
     if startup:
         app.c.sql("SELECT 1 + 1").compute()
@@ -260,7 +272,9 @@ def main():  # pragma: no cover
 
 
 def _init_app(
-    app: FastAPI, context: Context = None, client: dask.distributed.Client = None,
+    app: FastAPI,
+    context: Context = None,
+    client: dask.distributed.Client = None,
 ):
     app.c = context or Context()
     app.future_list = {}

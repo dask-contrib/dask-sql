@@ -16,19 +16,17 @@ RUN conda config --add channels conda-forge \
     "pyarrow>=0.15.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
-    "dask-ml>=1.7.0" \
+    "dask-ml>=2022.1.22" \
     "scikit-learn>=0.24.2" \
     "intake>=0.6.0" \
     && conda clean -ay
 
-# Build the java libraries
+# install dask-sql
 COPY setup.py /opt/dask_sql/
+COPY setup.cfg /opt/dask_sql/
+COPY versioneer.py /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
 COPY planner /opt/dask_sql/planner
-RUN cd /opt/dask_sql/ \
-    && python setup.py java
-
-# Install the python library
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
     && pip install -e .

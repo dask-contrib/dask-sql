@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
@@ -57,7 +58,11 @@ def test_select_expr(c, df):
     result_df = result_df.compute()
 
     expected_df = pd.DataFrame(
-        {"a": df["a"] + 1, "bla": df["b"], '"df"."a" - 1': df["a"] - 1,}
+        {
+            "a": df["a"] + 1,
+            "bla": df["b"],
+            '"df"."a" - 1': df["a"] - 1,
+        }
     )
     assert_frame_equal(result_df, expected_df)
 
@@ -95,6 +100,7 @@ def test_select_of_select_with_casing(c, df):
     expected_df = pd.DataFrame(
         {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
     )
+
     assert_frame_equal(result_df, expected_df)
 
 
@@ -115,3 +121,75 @@ def test_timezones(c, datetime_table):
     result_df = result_df.compute()
 
     assert_frame_equal(result_df, datetime_table)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
+)
+def test_date_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS DATE) AS timezone,
+            CAST(no_timezone AS DATE) AS no_timezone,
+            CAST(utc_timezone AS DATE) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+
+    expected_df = datetime_table
+    expected_df["timezone"] = (
+        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+    expected_df["no_timezone"] = (
+        expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+    expected_df["utc_timezone"] = (
+        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+    )
+
+    dd.assert_eq(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
+)
+def test_timestamp_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS TIMESTAMP) AS timezone,
+            CAST(no_timezone AS TIMESTAMP) AS no_timezone,
+            CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
+        FROM {input_table}
+        """
+    )
+
+    expected_df = datetime_table.astype("<M8[ns]")
+    dd.assert_eq(result_df, expected_df)
+
+
+def test_multi_case_when(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+    FROM df
+    """
+    ).compute()
+
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    assert_frame_equal(actual_df, expected_df)

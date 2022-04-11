@@ -2,7 +2,7 @@
 # Test the main branch and every pull request by
 # 1. building the jar on ubuntu
 # 2. testing code (using the build jar) on ubuntu and windows, with different java versions
-name: Test
+name: Test Python package
 on:
   push:
     branches:
@@ -15,11 +15,31 @@ concurrency:
   group: test-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
+  detect-ci-trigger:
+    name: Check for upstream trigger phrase
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    outputs:
+      triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - uses: xarray-contrib/ci-trigger@v1.1
+        id: detect-trigger
+        with:
+          keyword: "[test-upstream]"
+
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
     # the future deployable
-    name: "Build the jar on ubuntu"
+    name: Build the jar on ubuntu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -33,13 +53,13 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
-      - name: Install dependencies and build the jar
-        shell: bash -l {0}
+      - name: Build the jar
         run: |
-          python setup.py java
+          python setup.py build_ext
       - name: Upload the jar
         uses: actions/upload-artifact@v1
         with:
@@ -48,15 +68,16 @@ jobs:
 
   test:
     name: "Test (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
-    needs: build
+    needs: [detect-ci-trigger, build]
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
     strategy:
+      fail-fast: false
       matrix:
         java: [8, 11]
         os: [ubuntu-latest, windows-latest]
-        python: [3.7, 3.8]
+        python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -70,6 +91,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -78,29 +100,32 @@ jobs:
           name: jar
           path: dask_sql/jar/
       - name: Install hive testing dependencies for Linux
-        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
         run: |
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
-        if: matrix.os == 'ubuntu-latest'
       - name: Set proper JAVA_HOME for Windows
-        shell: bash -l {0}
+        if: matrix.os == 'windows-latest'
         run: |
           echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
-        if: matrix.os == 'windows-latest'
+      - name: Optionally install upstream dev Dask / dask-ml
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
-        shell: bash -l {0}
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: pytest-results
           path: junit/test-results.xml
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
       - name: Upload coverage to Codecov
+        if: github.repository == 'dask-contrib/dask-sql'
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
@@ -108,7 +133,7 @@ jobs:
 
   cluster:
     name: "Test in a dask cluster"
-    needs: build
+    needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -122,7 +147,8 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: 3.8
+          python-version: "3.8"
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
@@ -131,15 +157,19 @@ jobs:
           name: jar
           path: dask_sql/jar/
       - name: Install dependencies
-        shell: bash -l {0}
         run: |
           mamba install python-blosc lz4 -c conda-forge
 
           which python
           pip list
           mamba list
+      - name: Optionally install upstream dev Dask / dask-ml
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
-        shell: bash -l {0}
         run: |
           docker-compose -f .github/docker-compose.yaml up -d
 
@@ -149,15 +179,12 @@ jobs:
           docker logs dask-scheduler
           docker logs dask-worker
       - name: Test with pytest while running an independent dask cluster
-        shell: bash -l {0}
         run: |
-          pytest tests
-        env:
-          DASK_SQL_TEST_SCHEDULER: tcp://127.0.0.1:8786
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest tests
 
   import:
     name: "Test importing with bare requirements"
-    needs: build
+    needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -169,65 +196,28 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.8
+          python-version: "3.8"
           mamba-version: "*"
           channels: conda-forge,defaults
-          channel-priority: true
+          channel-priority: strict
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
           name: jar
           path: dask_sql/jar/
       - name: Install dependencies and nothing else
-        shell: bash -l {0}
         run: |
           pip install -e .
 
           which python
           pip list
           mamba list
+      - name: Optionally install upstream dev Dask / dask-ml
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Try to import dask-sql
-        shell: bash -l {0}
         run: |
           python -c "import dask_sql; print('ok')"
-
-  conda:
-    name: "Test building the conda package"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: 3.8
-      - name: Install dependencies
-        shell: bash -l {0}
-        run: |
-          mamba install conda-build conda-verify
-
-          which python
-          pip list
-          mamba list
-      - name: Build conda package
-        shell: bash -l {0}
-        run: |
-          # suffix for nightly package versions
-          export VERSION_SUFFIX=`date +%y%m%d`
-
-          mamba build continuous_integration/recipe \
-                      --no-anaconda-upload \
-                      --output-folder .
-      - name: Upload conda package
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dask-contrib/dask-sql' }}
-        shell: bash -l {0}
-        env:
-          ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
-        run: |
-          # install anaconda for upload
-          mamba install anaconda-client
-
-          anaconda upload --label dev noarch/*.tar.bz2

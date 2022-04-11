@@ -1,12 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Union
 
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
@@ -31,16 +33,20 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
 
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
-    return df[filter_condition]
+    out = df[filter_condition]
+    if dask_config.get("sql.predicate_pushdown"):
+        return attempt_predicate_pushdown(out)
+    else:
+        return out
 
 
-class LogicalFilterPlugin(BaseRelPlugin):
+class DaskFilterPlugin(BaseRelPlugin):
     """
-    LogicalFilter is used on WHERE clauses.
+    DaskFilter is used on WHERE clauses.
     We just evaluate the filter (which is of type RexNode) and apply it
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalFilter"
+    class_name = "com.dask.sql.nodes.DaskFilter"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple
 
 import dask.dataframe as dd
 import pandas as pd
+from dask import config as dask_config
 
 try:
     import dask_cudf
@@ -95,9 +96,9 @@ class AggregationSpecification:
         return self.custom_aggregation
 
 
-class LogicalAggregatePlugin(BaseRelPlugin):
+class DaskAggregatePlugin(BaseRelPlugin):
     """
-    A LogicalAggregate is used in GROUP BY clauses, but also
+    A DaskAggregate is used in GROUP BY clauses, but also
     when aggregating a function over the full dataset.
 
     In the first case we need to find out which columns we need to
@@ -119,7 +120,7 @@ class LogicalAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalAggregate"
+    class_name = "com.dask.sql.nodes.DaskAggregate"
 
     AGGREGATION_MAPPING = {
         "$sum0": AggregationSpecification("sum", AggregationOnPandas("sum")),
@@ -178,7 +179,10 @@ class LogicalAggregatePlugin(BaseRelPlugin):
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
-            rel, dc, group_columns, context,
+            rel,
+            dc,
+            group_columns,
+            context,
         )
 
         # SQL does not care about the index, but we do not want to have any multiindices
@@ -231,6 +235,8 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         for col in group_columns:
             collected_aggregations[None].append((col, col, "first"))
 
+        groupby_agg_options = dask_config.get("sql.groupby")
+
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
         # It is very important to start with the non-filtered entry.
@@ -240,13 +246,23 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         if key in collected_aggregations:
             aggregations = collected_aggregations.pop(key)
             df_result = self._perform_aggregation(
-                df, None, aggregations, additional_column_name, group_columns,
+                df,
+                None,
+                aggregations,
+                additional_column_name,
+                group_columns,
+                groupby_agg_options,
             )
 
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
-                df, filter_column, aggregations, additional_column_name, group_columns,
+                df,
+                filter_column,
+                aggregations,
+                additional_column_name,
+                group_columns,
+                groupby_agg_options,
             )
 
             # ... and finally concat the new data with the already present columns
@@ -358,33 +374,48 @@ class LogicalAggregatePlugin(BaseRelPlugin):
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
         group_columns: List[str],
+        groupby_agg_options: Dict[str, Any] = {},
     ):
         tmp_df = df
 
+        # format aggregations for Dask; also check if we can use fast path for
+        # groupby, which is only supported if we are not using any custom aggregations
+        aggregations_dict = defaultdict(dict)
+        fast_groupby = True
+        for aggregation in aggregations:
+            input_col, output_col, aggregation_f = aggregation
+            aggregations_dict[input_col][output_col] = aggregation_f
+            if not isinstance(aggregation_f, str):
+                fast_groupby = False
+
+        # filter dataframe if specified
         if filter_column:
             filter_expression = tmp_df[filter_column]
             tmp_df = tmp_df[filter_expression]
-
             logger.debug(f"Filtered by {filter_column} before aggregation.")
 
-        group_columns = [tmp_df[group_column] for group_column in group_columns]
-        group_columns_and_nulls = get_groupby_with_nulls_cols(
-            tmp_df, group_columns, additional_column_name
-        )
-        grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
+        # we might need a temporary column name if no groupby columns are specified
+        if additional_column_name is None:
+            additional_column_name = new_temporary_column(df)
 
-        # Convert into the correct format for dask
-        aggregations_dict = defaultdict(dict)
-        for aggregation in aggregations:
-            input_col, output_col, aggregation_f = aggregation
+        # perform groupby operation; if we are using custom aggreagations, we must handle
+        # null values manually (this is slow)
+        if fast_groupby:
+            grouped_df = tmp_df.groupby(
+                by=(group_columns or [additional_column_name]), dropna=False
+            )
+        else:
+            group_columns = [tmp_df[group_column] for group_column in group_columns]
+            group_columns_and_nulls = get_groupby_with_nulls_cols(
+                tmp_df, group_columns, additional_column_name
+            )
+            grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
 
-            aggregations_dict[input_col][output_col] = aggregation_f
-
-        # Now apply the aggregation
+        # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
-        agg_result = grouped_df.agg(aggregations_dict)
+        agg_result = grouped_df.agg(aggregations_dict, **groupby_agg_options)
 
-        # ... fix the column names to a single level ...
+        # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
 
         return agg_result

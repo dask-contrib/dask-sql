@@ -18,70 +18,51 @@ def apply_sort(
     sort_ascending: List[bool],
     sort_null_first: List[bool],
 ) -> dd.DataFrame:
-    # if we have a single partition, we can sometimes sort with map_partitions
-    if df.npartitions == 1:
-        if dask_cudf is not None and isinstance(df, dask_cudf.DataFrame):
-            # cudf only supports null positioning if `ascending` is a single boolean:
-            # https://github.com/rapidsai/cudf/issues/9400
-            if (all(sort_ascending) or not any(sort_ascending)) and not any(
-                sort_null_first[1:]
-            ):
-                return df.map_partitions(
-                    M.sort_values,
-                    by=sort_columns,
-                    ascending=all(sort_ascending),
-                    na_position="first" if sort_null_first[0] else "last",
-                )
-            if not any(sort_null_first):
-                return df.map_partitions(
-                    M.sort_values, by=sort_columns, ascending=sort_ascending
-                )
-        elif not any(sort_null_first[1:]):
-            return df.map_partitions(
-                M.sort_values,
-                by=sort_columns,
-                ascending=sort_ascending,
-                na_position="first" if sort_null_first[0] else "last",
-            )
+    # when sort_values doesn't support lists of ascending / null
+    # position booleans, we can still do the sort provided that
+    # the list(s) are homogeneous:
+    single_ascending = len(set(sort_ascending)) == 1
+    single_null_first = len(set(sort_null_first)) == 1
 
-    # dask-cudf only supports ascending sort / nulls last:
-    # https://github.com/rapidsai/cudf/pull/9250
-    # https://github.com/rapidsai/cudf/pull/9264
-    if (
+    # pandas / cudf don't support lists of null positions
+    if df.npartitions == 1 and single_null_first:
+        return df.map_partitions(
+            M.sort_values,
+            by=sort_columns,
+            ascending=sort_ascending,
+            na_position="first" if sort_null_first[0] else "last",
+        ).persist()
+
+    # dask / dask-cudf don't support lists of ascending / null positions
+    if len(sort_columns) == 1 or (
         dask_cudf is not None
         and isinstance(df, dask_cudf.DataFrame)
-        and all(sort_ascending)
-        and not any(sort_null_first)
+        and single_ascending
+        and single_null_first
     ):
         try:
-            return df.sort_values(sort_columns, ignore_index=True)
+            return df.sort_values(
+                by=sort_columns,
+                ascending=sort_ascending[0],
+                na_position="first" if sort_null_first[0] else "last",
+                ignore_index=True,
+            ).persist()
         except ValueError:
             pass
 
-    # Split the first column. We need to handle this one with set_index
-    first_sort_column = sort_columns[0]
-    first_sort_ascending = sort_ascending[0]
-    first_null_first = sort_null_first[0]
-
-    # Only sort by first column first
-    # As sorting is rather expensive, we bether persist here
-    df = df.persist()
-    df = _sort_first_column(
-        df, first_sort_column, first_sort_ascending, first_null_first
-    )
-
-    # sort the remaining columns if given
-    if len(sort_columns) > 1:
-        df = df.persist()
-        df = df.map_partitions(
-            make_pickable_without_dask_sql(sort_partition_func),
-            meta=df,
-            sort_columns=sort_columns,
-            sort_ascending=sort_ascending,
-            sort_null_first=sort_null_first,
-        )
-
-    return df.persist()
+    # if standard `sort_values` can't handle ascending / null position params,
+    # we extend it using our custom sort function
+    return df.sort_values(
+        by=sort_columns[0],
+        ascending=sort_ascending[0],
+        na_position="first" if sort_null_first[0] else "last",
+        sort_function=make_pickable_without_dask_sql(sort_partition_func),
+        sort_function_kwargs={
+            "sort_columns": sort_columns,
+            "sort_ascending": sort_ascending,
+            "sort_null_first": sort_null_first,
+        },
+    ).persist()
 
 
 def sort_partition_func(
@@ -89,6 +70,7 @@ def sort_partition_func(
     sort_columns: List[str],
     sort_ascending: List[bool],
     sort_null_first: List[bool],
+    **kwargs,
 ):
     if partition.empty:
         return partition
@@ -111,42 +93,3 @@ def sort_partition_func(
         )
 
     return partition
-
-
-def _sort_first_column(df, first_sort_column, first_sort_ascending, first_null_first):
-    # Dask can only sort if there are no NaNs in the first column.
-    # Therefore we need to do a single pass over the dataframe
-    # to check if we have NaNs in the first column
-    # If this is the case, we concat the NaN values to the front
-    # That might be a very complex operation and should
-    # in general be avoided
-    col = df[first_sort_column]
-    is_na = col.isna().persist()
-    if is_na.any().compute():
-        df_is_na = df[is_na].reset_index(drop=True).repartition(1)
-        df_not_is_na = (
-            df[~is_na].set_index(first_sort_column, drop=False).reset_index(drop=True)
-        )
-    else:
-        df_is_na = None
-        df_not_is_na = df.set_index(first_sort_column, drop=False).reset_index(
-            drop=True
-        )
-    if not first_sort_ascending:
-        # As set_index().reset_index() always sorts ascending, we need to reverse
-        # the order inside all partitions and the order of the partitions itself
-        # We do not need to do this for the nan-partitions
-        df_not_is_na = df_not_is_na.map_partitions(
-            lambda partition: partition[::-1], meta=df
-        )
-        df_not_is_na = df_not_is_na.partitions[::-1]
-
-    if df_is_na is not None:
-        if first_null_first:
-            df = dd.concat([df_is_na, df_not_is_na])
-        else:
-            df = dd.concat([df_not_is_na, df_is_na])
-    else:
-        df = df_not_is_na
-
-    return df

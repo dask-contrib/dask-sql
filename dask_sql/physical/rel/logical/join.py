@@ -20,9 +20,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LogicalJoinPlugin(BaseRelPlugin):
+class DaskJoinPlugin(BaseRelPlugin):
     """
-    A LogicalJoin is used when (surprise) joining two tables.
+    A DaskJoin is used when (surprise) joining two tables.
     SQL allows for quite complicated joins with difficult conditions.
     dask/pandas only knows about equijoins on a specific column.
 
@@ -36,7 +36,7 @@ class LogicalJoinPlugin(BaseRelPlugin):
     but so far, it is the only solution...
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalJoin"
+    class_name = "com.dask.sql.nodes.DaskJoin"
 
     JOIN_TYPE_MAPPING = {
         "INNER": "inner",
@@ -100,7 +100,11 @@ class LogicalJoinPlugin(BaseRelPlugin):
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
             df = self._join_on_columns(
-                df_lhs_renamed, df_rhs_renamed, lhs_on, rhs_on, join_type,
+                df_lhs_renamed,
+                df_rhs_renamed,
+                lhs_on,
+                rhs_on,
+                join_type,
             )
         else:
             # 5. We are in the complex join case
@@ -119,9 +123,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
                 # which is definitely not possible (java dependency, JVM start...)
                 lhs_partition = lhs_partition.assign(common=1)
                 rhs_partition = rhs_partition.assign(common=1)
-                merged_data = lhs_partition.merge(rhs_partition, on=["common"])
 
-                return merged_data
+                return lhs_partition.merge(rhs_partition, on="common").drop(
+                    columns="common"
+                )
 
             # Iterate nested over all partitions from lhs and rhs and merge them
             name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
@@ -233,7 +238,10 @@ class LogicalJoinPlugin(BaseRelPlugin):
         self, join_condition: "org.apache.calcite.rex.RexCall"
     ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
 
-        if isinstance(join_condition, org.apache.calcite.rex.RexLiteral):
+        if isinstance(
+            join_condition,
+            (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
+        ):
             return [], [], [join_condition]
         elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
             raise NotImplementedError("Can not understand join condition.")
@@ -259,11 +267,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
                     lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
                     lhs_on.append(lhs_on_part)
                     rhs_on.append(rhs_on_part)
-                    continue
                 except AssertionError:
-                    pass
-
-                filter_condition.append(operand)
+                    filter_condition.append(operand)
 
             if lhs_on and rhs_on:
                 return lhs_on, rhs_on, filter_condition
@@ -271,6 +276,8 @@ class LogicalJoinPlugin(BaseRelPlugin):
         return [], [], [join_condition]
 
     def _extract_lhs_rhs(self, rex):
+        assert isinstance(rex, org.apache.calcite.rex.RexCall)
+
         operator_name = str(rex.getOperator().getName())
         assert operator_name == "="
 

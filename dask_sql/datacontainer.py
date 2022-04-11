@@ -183,7 +183,7 @@ class DataContainer:
 
 
 class UDF:
-    def __init__(self, func, row_udf: bool, return_type=None):
+    def __init__(self, func, row_udf: bool, params, return_type=None):
         """
         Helper class that handles different types of UDFs and manages
         how they should be mapped to dask operations. Two versions of
@@ -195,14 +195,33 @@ class UDF:
         """
         self.row_udf = row_udf
         self.func = func
+
+        self.names = [param[0] for param in params]
+
+        if return_type is None:
+            # These UDFs go through apply and without providing
+            # a return type, dask will attempt to guess it, and
+            # dask might be wrong.
+            raise ValueError("Return type must be provided")
         self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):
         if self.row_udf:
-            df = args[0].to_frame()
-            for operand in args[1:]:
-                df[operand.name] = operand
-            result = df.apply(self.func, axis=1, meta=self.meta)
+            column_args = []
+            scalar_args = []
+            for operand in args:
+                if isinstance(operand, dd.Series):
+                    column_args.append(operand)
+                else:
+                    scalar_args.append(operand)
+
+            df = column_args[0].to_frame(self.names[0])
+            for name, col in zip(self.names[1:], column_args[1:]):
+                df[name] = col
+
+            result = df.apply(
+                self.func, axis=1, args=tuple(scalar_args), meta=self.meta
+            ).astype(self.meta[1])
         else:
             result = self.func(*args, **kwargs)
         return result
@@ -216,10 +235,22 @@ class UDF:
         return (self.func, self.row_udf).__hash__()
 
 
+class Statistics:
+    """
+    Statistics are used during the cost-based optimization.
+    Currently, only the row count is supported, more
+    properties might follow. It needs to be provided by the user.
+    """
+
+    def __init__(self, row_count: int) -> None:
+        self.row_count = row_count
+
+
 class SchemaContainer:
     def __init__(self, name: str):
         self.__name__ = name
         self.tables: Dict[str, DataContainer] = {}
+        self.statistics: Dict[str, Statistics] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, UDF] = {}
