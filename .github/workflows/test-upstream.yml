@@ -6,18 +6,17 @@ on:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
     needs: build
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
-        java: [8, 11]
         os: [ubuntu-latest, windows-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
@@ -28,7 +27,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-maven-v1-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:

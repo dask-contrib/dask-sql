@@ -1,7 +1,7 @@
 ---
 # Test the main branch and every pull request by
 # 1. building the jar on ubuntu
-# 2. testing code (using the build jar) on ubuntu and windows, with different java versions
+# 2. testing code (using the build jar) on ubuntu and windows
 name: Test Python package
 on:
   push:
@@ -67,24 +67,17 @@ jobs:
           path: dask_sql/jar/DaskSQL.jar
 
   test:
-    name: "Test (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
+    name: "Test (${{ matrix.os }}, python: ${{ matrix.python }})"
     needs: [detect-ci-trigger, build]
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     strategy:
       fail-fast: false
       matrix:
-        java: [8, 11]
         os: [ubuntu-latest, windows-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
