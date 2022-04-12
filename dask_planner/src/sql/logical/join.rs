@@ -1,4 +1,3 @@
-use crate::expression::PyExpr;
 use crate::sql::column;
 use crate::sql::table;
 
@@ -70,7 +69,7 @@ impl PyJoin {
 impl From<LogicalPlan> for PyJoin {
     fn from(logical_plan: LogicalPlan) -> PyJoin {
         match logical_plan {
-            LogicalPlan::Join(join) => PyJoin { join: join },
+            LogicalPlan::Join(join) => PyJoin { join },
             _ => panic!("something went wrong here"),
         }
     }

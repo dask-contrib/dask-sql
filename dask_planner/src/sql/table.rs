@@ -24,10 +24,7 @@ pub struct DaskTableProvider {
 impl DaskTableProvider {
     /// Initialize a new `EmptyTable` from a schema.
     pub fn new(schema: SchemaRef, table_name: String) -> Self {
-        Self {
-            schema: schema,
-            table_name: table_name,
-        }
+        Self { schema, table_name }
     }
 
     pub fn table_name(&self) -> String {
@@ -67,9 +64,7 @@ pub struct DaskStatistics {
 impl DaskStatistics {
     #[new]
     pub fn new(row_count: f64) -> Self {
-        Self {
-            row_count: row_count,
-        }
+        Self { row_count }
     }
 }
 
@@ -115,7 +110,7 @@ impl DaskTable {
                     .downcast_ref::<DaskTableProvider>()
                     .unwrap()
                     .table_name();
-                qualified_name.push(tbl.clone());
+                qualified_name.push(tbl);
             }
             _ => {
                 println!("Nothing matches");

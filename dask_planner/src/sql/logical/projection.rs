@@ -2,7 +2,7 @@ use crate::expression::PyExpr;
 
 pub use datafusion::logical_plan::plan::LogicalPlan;
 use datafusion::logical_plan::plan::Projection;
-use datafusion::logical_plan::DFField;
+
 use datafusion::logical_plan::Expr;
 
 use pyo3::prelude::*;
@@ -19,14 +19,9 @@ impl PyProjection {
     fn named_projects(&mut self, expr: PyExpr) -> PyResult<String> {
         let mut val: String = String::from("OK");
         match expr.expr {
-            Expr::Alias(expr, alias) => match expr.as_ref() {
+            Expr::Alias(expr, _alias) => match expr.as_ref() {
                 Expr::Column(col) => {
-                    let index = self
-                        .projection
-                        .input
-                        .schema()
-                        .index_of_column(&col)
-                        .unwrap();
+                    let index = self.projection.input.schema().index_of_column(col).unwrap();
                     match self.projection.input.as_ref() {
                         LogicalPlan::Aggregate(agg) => {
                             let mut exprs = agg.group_expr.clone();
@@ -122,9 +117,7 @@ impl PyProjection {
 impl From<LogicalPlan> for PyProjection {
     fn from(logical_plan: LogicalPlan) -> PyProjection {
         match logical_plan {
-            LogicalPlan::Projection(projection) => PyProjection {
-                projection: projection,
-            },
+            LogicalPlan::Projection(projection) => PyProjection { projection },
             _ => panic!("something went wrong here"),
         }
     }

@@ -161,7 +161,11 @@ impl PyExpr {
             Expr::Column(column) => column.name.clone(),
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(..) => panic!("Literal!!!"),
-            Expr::BinaryExpr { left, op, right } => {
+            Expr::BinaryExpr {
+                left: _,
+                op: _,
+                right: _,
+            } => {
                 // /// TODO: Examine this more deeply about whether name comes from the left or right
                 // self.column_name(left)
                 panic!("BinaryExpr HERE!!!")
@@ -189,7 +193,7 @@ impl PyExpr {
     /// Gets the operands for a BinaryExpr call
     pub fn getOperands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, op, right } => {
+            Expr::BinaryExpr { left, op: _, right } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let left_desc: Expr = *left.clone();
                 operands.push(left_desc.into());
@@ -197,14 +201,14 @@ impl PyExpr {
                 operands.push(right_desc.into());
                 Ok(operands)
             }
-            Expr::ScalarFunction { fun, args } => {
+            Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
                     operands.push(arg.clone().into());
                 }
                 Ok(operands)
             }
-            Expr::Cast { expr, data_type } => {
+            Expr::Cast { expr, data_type: _ } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let ex: Expr = *expr.clone();
                 operands.push(ex.into());
@@ -218,9 +222,16 @@ impl PyExpr {
 
     pub fn getOperatorName(&self) -> PyResult<String> {
         match &self.expr {
-            Expr::BinaryExpr { left, op, right } => Ok(format!("{}", op)),
-            Expr::ScalarFunction { fun, args } => Ok(format!("{}", fun)),
-            Expr::Cast { expr, data_type } => Ok(String::from("cast")),
+            Expr::BinaryExpr {
+                left: _,
+                op,
+                right: _,
+            } => Ok(format!("{}", op)),
+            Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
+            Expr::Cast {
+                expr: _,
+                data_type: _,
+            } => Ok(String::from("cast")),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "Catch all triggered ....",
             )),
@@ -232,36 +243,36 @@ impl PyExpr {
         match &self.expr {
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(scalarValue) => match scalarValue {
-                ScalarValue::Boolean(value) => Ok(String::from("Boolean")),
-                ScalarValue::Float32(value) => Ok(String::from("Float32")),
-                ScalarValue::Float64(value) => Ok(String::from("Float64")),
-                ScalarValue::Decimal128(value, ..) => Ok(String::from("Decimal128")),
-                ScalarValue::Int8(value) => Ok(String::from("Int8")),
-                ScalarValue::Int16(value) => Ok(String::from("Int16")),
-                ScalarValue::Int32(value) => Ok(String::from("Int32")),
-                ScalarValue::Int64(value) => Ok(String::from("Int64")),
-                ScalarValue::UInt8(value) => Ok(String::from("UInt8")),
-                ScalarValue::UInt16(value) => Ok(String::from("UInt16")),
-                ScalarValue::UInt32(value) => Ok(String::from("UInt32")),
-                ScalarValue::UInt64(value) => Ok(String::from("UInt64")),
-                ScalarValue::Utf8(value) => Ok(String::from("Utf8")),
-                ScalarValue::LargeUtf8(value) => Ok(String::from("LargeUtf8")),
-                ScalarValue::Binary(value) => Ok(String::from("Binary")),
-                ScalarValue::LargeBinary(value) => Ok(String::from("LargeBinary")),
-                ScalarValue::Date32(value) => Ok(String::from("Date32")),
-                ScalarValue::Date64(value) => Ok(String::from("Date64")),
+                ScalarValue::Boolean(_value) => Ok(String::from("Boolean")),
+                ScalarValue::Float32(_value) => Ok(String::from("Float32")),
+                ScalarValue::Float64(_value) => Ok(String::from("Float64")),
+                ScalarValue::Decimal128(_value, ..) => Ok(String::from("Decimal128")),
+                ScalarValue::Int8(_value) => Ok(String::from("Int8")),
+                ScalarValue::Int16(_value) => Ok(String::from("Int16")),
+                ScalarValue::Int32(_value) => Ok(String::from("Int32")),
+                ScalarValue::Int64(_value) => Ok(String::from("Int64")),
+                ScalarValue::UInt8(_value) => Ok(String::from("UInt8")),
+                ScalarValue::UInt16(_value) => Ok(String::from("UInt16")),
+                ScalarValue::UInt32(_value) => Ok(String::from("UInt32")),
+                ScalarValue::UInt64(_value) => Ok(String::from("UInt64")),
+                ScalarValue::Utf8(_value) => Ok(String::from("Utf8")),
+                ScalarValue::LargeUtf8(_value) => Ok(String::from("LargeUtf8")),
+                ScalarValue::Binary(_value) => Ok(String::from("Binary")),
+                ScalarValue::LargeBinary(_value) => Ok(String::from("LargeBinary")),
+                ScalarValue::Date32(_value) => Ok(String::from("Date32")),
+                ScalarValue::Date64(_value) => Ok(String::from("Date64")),
                 _ => {
                     panic!("CatchAll")
                 }
             },
-            Expr::ScalarFunction { fun, args } => match fun {
+            Expr::ScalarFunction { fun, args: _ } => match fun {
                 BuiltinScalarFunction::Abs => Ok(String::from("Abs")),
                 BuiltinScalarFunction::DatePart => Ok(String::from("DatePart")),
                 _ => {
                     panic!("fire here for scalar function")
                 }
             },
-            Expr::Cast { expr, data_type } => match data_type {
+            Expr::Cast { expr: _, data_type } => match data_type {
                 DataType::Null => Ok(String::from("NULL")),
                 DataType::Boolean => Ok(String::from("BOOLEAN")),
                 DataType::Int8 => Ok(String::from("TINYINT")),
@@ -469,7 +480,7 @@ impl PyExpr {
     pub fn getStringValue(&mut self) -> String {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Utf8(iv) => String::from(iv.clone().unwrap()),
+                ScalarValue::Utf8(iv) => iv.clone().unwrap(),
                 _ => {
                     panic!("getValue<T>() - Unexpected value")
                 }

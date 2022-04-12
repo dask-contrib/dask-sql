@@ -85,12 +85,10 @@ impl ContextProvider for DaskSQLContext {
         }
     }
 
-    fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
+    fn get_function_meta(&self, _name: &str) -> Option<Arc<ScalarUDF>> {
         let _f: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
-        match name {
-            _ => None,
-        }
+        None
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
@@ -103,7 +101,7 @@ impl DaskSQLContext {
     #[new]
     pub fn new(default_schema_name: String) -> Self {
         Self {
-            default_schema_name: default_schema_name,
+            default_schema_name,
             schemas: HashMap::new(),
         }
     }
@@ -152,7 +150,7 @@ impl DaskSQLContext {
             }
             Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
                 "{}",
-                e.to_string()
+                e
             ))),
         }
     }
@@ -174,7 +172,7 @@ impl DaskSQLContext {
             }
             Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
                 "{}",
-                e.to_string()
+                e
             ))),
         }
     }

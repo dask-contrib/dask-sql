@@ -6,14 +6,9 @@ use pyo3::prelude::*;
 
 use datafusion::{
     arrow::pyarrow::PyArrowConvert,
-    catalog::{catalog::CatalogProvider, schema::SchemaProvider},
+    catalog::schema::SchemaProvider,
     datasource::{TableProvider, TableType},
 };
-
-#[pyclass(name = "Catalog", module = "datafusion", subclass)]
-pub(crate) struct PyCatalog {
-    catalog: Arc<dyn CatalogProvider>,
-}
 
 #[pyclass(name = "Database", module = "datafusion", subclass)]
 pub(crate) struct PyDatabase {
@@ -25,12 +20,6 @@ pub(crate) struct PyTable {
     table: Arc<dyn TableProvider>,
 }
 
-impl PyCatalog {
-    pub fn new(catalog: Arc<dyn CatalogProvider>) -> Self {
-        Self { catalog }
-    }
-}
-
 impl PyDatabase {
     pub fn new(database: Arc<dyn SchemaProvider>) -> Self {
         Self { database }
@@ -40,24 +29,6 @@ impl PyDatabase {
 impl PyTable {
     pub fn new(table: Arc<dyn TableProvider>) -> Self {
         Self { table }
-    }
-}
-
-#[pymethods]
-impl PyCatalog {
-    fn names(&self) -> Vec<String> {
-        self.catalog.schema_names()
-    }
-
-    #[args(name = "\"public\"")]
-    fn database(&self, name: &str) -> PyResult<PyDatabase> {
-        match self.catalog.schema(name) {
-            Some(database) => Ok(PyDatabase::new(database)),
-            None => Err(PyKeyError::new_err(format!(
-                "Database with name {} doesn't exist.",
-                name
-            ))),
-        }
     }
 }
 

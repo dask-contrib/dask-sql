@@ -23,7 +23,7 @@ impl PyFilter {
 impl From<LogicalPlan> for PyFilter {
     fn from(logical_plan: LogicalPlan) -> PyFilter {
         match logical_plan {
-            LogicalPlan::Filter(filter) => PyFilter { filter: filter },
+            LogicalPlan::Filter(filter) => PyFilter { filter },
             _ => panic!("something went wrong here"),
         }
     }

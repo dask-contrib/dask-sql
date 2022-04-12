@@ -20,7 +20,7 @@ impl DaskRelDataType {
     }
 
     pub fn get_column_name(&self) -> String {
-        String::from(self.name.clone())
+        self.name.clone()
     }
 
     pub fn get_type(&self) -> DataType {

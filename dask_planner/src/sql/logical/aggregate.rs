@@ -44,7 +44,7 @@ impl PyAggregate {
     #[pyo3(name = "getArgs")]
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         Ok(match expr.expr {
-            Expr::AggregateFunction { fun, args, .. } => {
+            Expr::AggregateFunction { fun: _, args, .. } => {
                 let mut exprs: Vec<PyExpr> = Vec::new();
                 for expr in args {
                     exprs.push(PyExpr { expr });

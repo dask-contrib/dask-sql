@@ -17,14 +17,14 @@ impl From<PyColumn> for Column {
 
 impl From<Column> for PyColumn {
     fn from(column: Column) -> PyColumn {
-        PyColumn { column: column }
+        PyColumn { column }
     }
 }
 
 #[pymethods]
 impl PyColumn {
     pub fn getRelation(&self) -> String {
-        self.column.relation.clone().unwrap().clone()
+        self.column.relation.clone().unwrap()
     }
 
     pub fn getName(&self) -> String {

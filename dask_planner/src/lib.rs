@@ -16,7 +16,6 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pyo3(name = "rust")]
 fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
     // Register the python classes
-    m.add_class::<catalog::PyCatalog>()?;
     m.add_class::<catalog::PyDatabase>()?;
     m.add_class::<catalog::PyTable>()?;
     m.add_class::<expression::PyExpr>()?;

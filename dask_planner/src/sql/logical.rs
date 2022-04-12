@@ -8,8 +8,6 @@ pub use datafusion::logical_plan::plan::LogicalPlan;
 
 use datafusion::prelude::Column;
 
-use crate::sql::column::PyColumn;
-
 use pyo3::prelude::*;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
@@ -38,11 +36,7 @@ impl PyLogicalPlan {
     /// Gets the index of the column from the input schema
     pub(crate) fn get_index(&mut self, col: &Column) -> usize {
         let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        proj.projection
-            .input
-            .schema()
-            .index_of_column(&col)
-            .unwrap()
+        proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
