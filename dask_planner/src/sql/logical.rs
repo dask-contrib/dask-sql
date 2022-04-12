@@ -1,11 +1,16 @@
 use crate::sql::table;
-mod projection;
+pub mod projection;
 mod filter;
 mod join;
+mod aggregate;
 
 pub use datafusion::logical_plan::plan::{
     LogicalPlan,
 };
+
+use datafusion::prelude::Column;
+
+use crate::sql::column::{PyColumn};
 
 use pyo3::prelude::*;
 
@@ -24,7 +29,7 @@ pub struct PyLogicalPlan {
 /// of `impl PyLogicalPlan` causes issues with types not properly being mapped to Python from Rust
 impl PyLogicalPlan {
     /// Getter method for the LogicalPlan, if current_node is None return original_plan.
-    fn current_node(&mut self) -> LogicalPlan {
+    pub(crate) fn current_node(&mut self) -> LogicalPlan {
         match &self.current_node {
             Some(current) => current.clone(),
             None => {
@@ -32,6 +37,12 @@ impl PyLogicalPlan {
                 self.current_node.clone().unwrap()
             },
         }
+    }
+
+    /// Gets the index of the column from the input schema
+    pub(crate) fn get_index(&mut self, col: &Column) -> usize {
+        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
+        proj.projection.input.schema().index_of_column(&col).unwrap()
     }
 }
 
@@ -55,6 +66,12 @@ impl PyLogicalPlan {
     pub fn join(&self) -> PyResult<join::PyJoin> {
         let join: join::PyJoin = self.current_node.clone().unwrap().into();
         Ok(join)
+    }
+
+    /// LogicalPlan::Aggregate as PyAggregate
+    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
+        Ok(agg)
     }
 
     /// Gets the "input" for the current LogicalPlan

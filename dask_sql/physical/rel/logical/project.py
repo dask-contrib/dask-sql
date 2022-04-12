@@ -36,11 +36,9 @@ class DaskProjectPlugin(BaseRelPlugin):
         projection = rel.projection()
 
         # Collect all (new) columns this Projection will limit to
-        for expr in projection.get_named_projects():
-            print(f"Expr: {expr}")
+        for expr in projection.getProjectedExpressions():
 
-            key = str(expr.column_name())
-            print(f"Column Name / Key: {key}")
+            key = str(expr.column_name(rel))
             column_names.append(key)
 
             # TODO: Temporarily assigning all new rows to increase the flexibility of the code base,
@@ -64,7 +62,7 @@ class DaskProjectPlugin(BaseRelPlugin):
             #     new_mappings[key] = random_name
 
             random_name = new_temporary_column(df)
-            new_columns[random_name] = RexConverter.convert(expr, dc, context=context)
+            new_columns[random_name] = RexConverter.convert(rel, expr, dc, context=context)
             logger.debug(f"Adding a new column {key} out of {expr}")
             new_mappings[key] = random_name
 

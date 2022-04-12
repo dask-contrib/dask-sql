@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import dask.dataframe as dd
 
-from dask_planner.rust import Expression
+from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
@@ -48,7 +48,7 @@ class RexConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls, rex: Expression, dc: DataContainer, context: "dask_sql.Context",
+        cls, rel: LogicalPlan, rex: Expression, dc: DataContainer, context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
         Convert the given rel (java instance)
@@ -56,12 +56,7 @@ class RexConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        print(f"PyExpr Rex in RexConverter.convert(): {rex}")
-        expr_type = rex.get_expr_type()
-        print(f"Expression Type: {expr_type}")
-
-        expr_type = _REX_TYPE_TO_PLUGIN[expr_type]
-        print(f"Plugin Type: {expr_type} will be invoked")
+        expr_type = _REX_TYPE_TO_PLUGIN[rex.get_expr_type()]
 
         try:
             plugin_instance = cls.get_plugin(expr_type)
@@ -74,6 +69,6 @@ class RexConverter(Pluggable):
             f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
         )
 
-        df = plugin_instance.convert(rex, dc, context=context)
+        df = plugin_instance.convert(rel, rex, dc, context=context)
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df

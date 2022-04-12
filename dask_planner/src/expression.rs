@@ -1,3 +1,4 @@
+use crate::sql::logical;
 
 use pyo3::PyMappingProtocol;
 use pyo3::{basic::CompareOp, prelude::*, PyNumberProtocol, PyObjectProtocol};
@@ -7,6 +8,10 @@ use datafusion::arrow::datatypes::DataType;
 use datafusion::logical_plan::{col, lit, Expr};
 
 use datafusion::scalar::ScalarValue;
+
+pub use datafusion::logical_plan::plan::{
+    LogicalPlan,
+};
 
 use datafusion::physical_plan::functions::BuiltinScalarFunction;
 
@@ -96,12 +101,12 @@ impl PyExpr {
     /// RexConverter plugin instance should be invoked to handle
     /// the Rex conversion
     pub fn get_expr_type(&self) -> String {
-        match &self.expr {
-            Expr::Alias(..) => String::from("Alias"),
-            Expr::Column(..) => String::from("Column"),
+        String::from(match &self.expr {
+            Expr::Alias(..) => "Alias",
+            Expr::Column(..) => "Column",
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-            Expr::Literal(..) => String::from("Literal"),
-            Expr::BinaryExpr {..} => String::from("BinaryExpr"),
+            Expr::Literal(..) => "Literal",
+            Expr::BinaryExpr {..} => "BinaryExpr",
             Expr::Not(..) => panic!("Not!!!"),
             Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
             Expr::Negative(..) => panic!("Negative!!!"),
@@ -109,25 +114,57 @@ impl PyExpr {
             Expr::IsNull(..) => panic!("IsNull!!!"),
             Expr::Between{..} => panic!("Between!!!"),
             Expr::Case{..} => panic!("Case!!!"),
-            Expr::Cast{..} => String::from("Cast"),
+            Expr::Cast{..} => "Cast",
             Expr::TryCast{..} => panic!("TryCast!!!"),
             Expr::Sort{..} => panic!("Sort!!!"),
-            Expr::ScalarFunction{..} => String::from("ScalarFunction"),
-            Expr::AggregateFunction{..} => panic!("AggregateFunction!!!"),
+            Expr::ScalarFunction{..} => "ScalarFunction",
+            Expr::AggregateFunction{..} => "AggregateFunction",
             Expr::WindowFunction{..} => panic!("WindowFunction!!!"),
             Expr::AggregateUDF{..} => panic!("AggregateUDF!!!"),
             Expr::InList{..} => panic!("InList!!!"),
             Expr::Wildcard => panic!("Wildcard!!!"),
-            _ => String::from("OTHER")
-        }
+            _ => "OTHER"
+        })
     }
 
 
-    pub fn column_name(&self) -> String {
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
         match &self.expr {
-            Expr::Alias(exprs, name) => {
-                println!("Expressions: {:?}, Expression Name: {:?}", exprs, name);
-                panic!("Alias")
+            Expr::Alias(expr, name) => {
+                println!("Alias encountered with name: {:?}", name);
+
+                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we 
+                // extract the valid ones and error on the invalid ones
+                match expr.as_ref() {
+                    Expr::Column(col) => {
+                        // First we must iterate the current node before getting its input
+                        match plan.current_node() {
+                            LogicalPlan::Projection(proj) => {
+                                match proj.input.as_ref() {
+                                    LogicalPlan::Aggregate(agg) => {
+                                        let mut exprs = agg.group_expr.clone();
+                                        exprs.extend_from_slice(&agg.aggr_expr);
+                                        match &exprs[plan.get_index(col)] {
+                                            Expr::AggregateFunction { args, .. } => {
+                                                match &args[0] {
+                                                    Expr::Column(col) => {
+                                                        println!("AGGREGATE COLUMN IS {}", col.name);
+                                                        col.name.clone()
+                                                    },
+                                                    _ => name.clone()
+                                                }
+                                            },
+                                            _ => name.clone()
+                                        }
+                                    },
+                                    _ => name.clone()
+                                }
+                            },
+                            _ => name.clone()
+                        }
+                    },
+                    _ => name.clone()
+                }
             },
             Expr::Column(column) => { column.name.clone() },
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),

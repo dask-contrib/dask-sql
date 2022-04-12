@@ -111,7 +111,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         assert len(lhs_on) == len(rhs_on)
         df = dd.merge(dc_lhs.df, dc_rhs.df, on=lhs_on, how=join_type)
         print(f"\n\nDataFrame after Join Size:{df.shape[0].compute()}")
-        print(f"\nDataFrame after Join:\n{df.compute().head()}")
+        print(f"\nDataFrame after Join:\n{df.compute().head(6)}")
         # if lhs_on:
         #     # 5. Now we can finally merge on these columns
         #     # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
@@ -206,52 +206,52 @@ class DaskJoinPlugin(BaseRelPlugin):
         # return dc
         return DataContainer(df, ColumnContainer(df.columns))
 
-    # def _join_on_columns(
-    #     self,
-    #     df_lhs_renamed: dd.DataFrame,
-    #     df_rhs_renamed: dd.DataFrame,
-    #     lhs_on: List[str],
-    #     rhs_on: List[str],
-    #     join_type: str,
-    # ) -> dd.DataFrame:
-    #     print(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
-    #     print(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
-    #     print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
+    def _join_on_columns(
+        self,
+        df_lhs_renamed: dd.DataFrame,
+        df_rhs_renamed: dd.DataFrame,
+        lhs_on: List[str],
+        rhs_on: List[str],
+        join_type: str,
+    ) -> dd.DataFrame:
+        print(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
+        print(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
+        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
-    #     lhs_columns_to_add = {
-    #         f"common_{i}": df_lhs_renamed[i]
-    #         for i in lhs_on
-    #     }
-    #     print(f"lhs_columns_to_add: {lhs_columns_to_add}")
-    #     rhs_columns_to_add = {
-    #         f"common_{i}": df_rhs_renamed.iloc[:, index]
-    #         for i, index in enumerate(rhs_on)
-    #     }
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed[i]
+            for i in lhs_on
+        }
+        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
+        rhs_columns_to_add = {
+            f"common_{i}": df_rhs_renamed.iloc[:, index]
+            for i, index in enumerate(rhs_on)
+        }
 
-    #     # SQL compatibility: when joining on columns that
-    #     # contain NULLs, pandas will actually happily
-    #     # keep those NULLs. That is however not compatible with
-    #     # SQL, so we get rid of them here
-    #     if join_type in ["inner", "right"]:
-    #         df_lhs_filter = reduce(
-    #             operator.and_,
-    #             [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
-    #         )
-    #         df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
-    #     if join_type in ["inner", "left"]:
-    #         df_rhs_filter = reduce(
-    #             operator.and_,
-    #             [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
-    #         )
-    #         df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
+        # SQL compatibility: when joining on columns that
+        # contain NULLs, pandas will actually happily
+        # keep those NULLs. That is however not compatible with
+        # SQL, so we get rid of them here
+        if join_type in ["inner", "right"]:
+            df_lhs_filter = reduce(
+                operator.and_,
+                [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
+            )
+            df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
+        if join_type in ["inner", "left"]:
+            df_rhs_filter = reduce(
+                operator.and_,
+                [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
+            )
+            df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
 
-    #     df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
-    #     df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
-    #     added_columns = list(lhs_columns_to_add.keys())
+        df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
+        df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
+        added_columns = list(lhs_columns_to_add.keys())
 
-    #     df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
+        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
 
-    #     return df
+        return df
 
     def _split_join_condition(
         self, join_condition: "org.apache.calcite.rex.RexCall"

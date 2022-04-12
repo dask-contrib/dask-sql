@@ -52,7 +52,7 @@ class DaskFilterPlugin(BaseRelPlugin):
         # Every logic is handled in the RexConverter
         # we just need to apply it here
         condition = filter.getCondition()
-        df_condition = RexConverter.convert(condition, dc, context=context)
+        df_condition = RexConverter.convert(rel, condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
         print(f"DATAFRAME: Len(): {len(df)}\n{df.head()}")

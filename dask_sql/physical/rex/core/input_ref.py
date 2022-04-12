@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
-from dask_planner.rust import Expression
+from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
 
@@ -20,11 +20,10 @@ class RexInputRefPlugin(BaseRexPlugin):
     class_name = "InputRef"
 
     def convert(
-        self, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
+        self, rel: LogicalPlan, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
     ) -> dd.Series:
         df = dc.df
 
         # The column is references by index
-        column_name = str(expr.column_name())
-        print(f"input_ref column name: {column_name}")
+        column_name = str(expr.column_name(rel))
         return df[column_name]

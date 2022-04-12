@@ -147,6 +147,7 @@ impl DaskSQLContext {
 
         match planner.statement_to_plan(&statement.statement) {
             Ok(k) => {
+                println!("\nLogicalPlan: {:?}\n\n", k);
                 Ok(
                     logical::PyLogicalPlan {
                         original_plan: k,

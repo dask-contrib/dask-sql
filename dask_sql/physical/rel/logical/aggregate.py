@@ -8,6 +8,8 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
+from dask_planner.rust import LogicalPlan, Expression
+
 try:
     import dask_cudf
 except ImportError:
@@ -21,7 +23,6 @@ from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +121,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = "com.dask.sql.nodes.DaskAggregate"
+    class_name = "Aggregate"
 
     AGGREGATION_MAPPING = {
+        "sum": AggregationSpecification("sum", AggregationOnPandas("sum")),
         "$sum0": AggregationSpecification("sum", AggregationOnPandas("sum")),
         "any_value": AggregationSpecification(
             dd.Aggregation(
@@ -149,9 +151,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
     }
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self, rel: LogicalPlan, context: "dask_sql.Context"
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
+
+        agg = rel.aggregate()
 
         df = dc.df
         cc = dc.column_container
@@ -160,13 +164,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
         cc = cc.make_unique()
 
         # I have no idea what that is, but so far it was always of length 1
-        assert len(rel.getGroupSets()) == 1, "Do not know how to handle this case!"
+        assert len(agg.getGroupSets()) == 1, "Do not know how to handle this case!"
 
-        # Extract the information, which columns we need to group for
-        group_column_indices = [int(i) for i in rel.getGroupSet()]
+        group_exprs = agg.getGroupSets()
         group_columns = [
-            cc.get_backend_by_frontend_index(i) for i in group_column_indices
+            group_expr.column_name(rel) for group_expr in group_exprs 
         ]
+
+        print(f"group_columns: {group_columns}")
 
         dc = DataContainer(df, cc)
 
@@ -189,14 +194,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df_agg.columns = df_agg.columns.get_level_values(-1)
         cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        #dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        print(f"Leaving aggregate.py and return the dataframe")
         return dc
 
     def _do_aggregations(
         self,
-        rel: "org.apache.calcite.rel.RelNode",
+        rel: LogicalPlan,
         dc: DataContainer,
         group_columns: List[str],
         context: "dask_sql.Context",
@@ -221,6 +227,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         collected_aggregations, output_column_order, df = self._collect_aggregations(
             rel, df, cc, context, additional_column_name, output_column_order
         )
+
+        print(f"Collected Aggregations: {collected_aggregations}")
+        print(f"Output Column Order: {output_column_order}")
 
         if not collected_aggregations:
             return df[group_columns].drop_duplicates(), output_column_order
@@ -274,7 +283,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _collect_aggregations(
         self,
-        rel: "org.apache.calcite.rel.RelNode",
+        rel: LogicalPlan,
         df: dd.DataFrame,
         cc: ColumnContainer,
         context: "dask_sql.Context",
@@ -292,15 +301,23 @@ class DaskAggregatePlugin(BaseRelPlugin):
         """
         collected_aggregations = defaultdict(list)
 
-        for agg_call in rel.getNamedAggCalls():
-            expr = agg_call.getKey()
-            # Find out which aggregation function to use
-            schema_name, aggregation_name = context.fqn(
-                expr.getAggregation().getNameAsId()
-            )
-            aggregation_name = aggregation_name.lower()
-            # Find out about the input column
-            inputs = expr.getArgList()
+        for expr in rel.aggregate().getNamedAggCalls():
+            print(f"Aggregate Call: {expr}")
+            print(f"Expr Type: {expr.get_expr_type()}")
+
+            # Determine the aggregation function to use
+            assert expr.get_expr_type() == "AggregateFunction", "Do not know how to handle this case!"
+            # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
+            schema_name = "root"
+            aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
+            print(f"AggregationName: {aggregation_name}")
+
+            # Gather information about the input column
+            inputs = rel.aggregate().getArgs(expr)
+            print(f"Number of Inputs: {len(inputs)}")
+            print(f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}")
+
+            #TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
                 is_null = IsNullOperation()
                 two_columns_proxy = new_temporary_column(df)
@@ -323,19 +340,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     )
                 input_col = two_columns_proxy
             elif len(inputs) == 1:
-                input_col = cc.get_backend_by_frontend_index(inputs[0])
+                input_col = inputs[0].column_name(rel)
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
                 raise NotImplementedError("Can not cope with more than one input")
 
             # Extract flags (filtering/distinct)
-            if expr.isDistinct():  # pragma: no cover
-                raise ValueError("Apache Calcite should optimize them away!")
+            if rel.aggregate().isDistinct(expr):  # pragma: no cover
+                raise ValueError("Apache Datafusion should optimize them away!")
 
+            # TODO: Datafusion does not yet have the concept of "filters" in aggregations
             filter_column = None
-            if expr.hasFilter():
-                filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
+            # if expr.hasFilter():
+            #     filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
 
             try:
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
@@ -354,7 +372,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 )
 
             # Finally, extract the output column name
-            output_col = str(agg_call.getValue())
+            output_col = str(inputs[0].column_name(rel))
 
             # Store the aggregation
             key = filter_column
@@ -374,6 +392,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         groupby_agg_options: Dict[str, Any] = {},
     ):
         tmp_df = df
+
+        print(f"Additional Column Name: {additional_column_name}")
+        print(df.head())
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
@@ -412,7 +433,13 @@ class DaskAggregatePlugin(BaseRelPlugin):
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
         agg_result = grouped_df.agg(aggregations_dict, **groupby_agg_options)
 
+        for col in agg_result.columns:
+            print(col)
+        print(f"agg_result: {agg_result.head()}")
+
         # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
+
+        print(f"agg_result after: {agg_result.head()}")
 
         return agg_result
