@@ -1,8 +1,9 @@
-import numpy as np
+# import numpy as np
 import pandas as pd
-import pytest
-from dask import dataframe as dd
-from pandas.testing import assert_frame_equal, assert_series_equal
+
+# import pytest
+# from dask import dataframe as dd
+from pandas.testing import assert_frame_equal
 
 
 def test_group_by(c):
@@ -64,6 +65,7 @@ def test_group_by(c):
 #     assert_frame_equal(result_df, expected_df)
 
 
+# TODO: Filter is currently not supported by Datafusion, waiting on upstream Datafusion changes for this support
 # def test_group_by_filtered(c):
 #     df = c.sql(
 #         """
@@ -79,15 +81,16 @@ def test_group_by(c):
 #     assert_frame_equal(df, expected_df)
 
 
+# TODO: Filter is currently not supported by Datafusion, waiting on upstream Datafusion changes for this support
 # def test_group_by_filtered2(c):
 #     df = c.sql(
 #         """
-#     SELECT
-#         user_id,
-#         SUM(b) FILTER (WHERE user_id = 2) AS "S1",
-#         SUM(b) "S2"
-#     FROM user_table_1
-#     GROUP BY user_id
+# SELECT
+#     user_id,
+#     SUM(b) FILTER (WHERE user_id = 2) AS "S1",
+#     SUM(b) "S2"
+# FROM user_table_1
+# GROUP BY user_id
 #     """
 #     )
 #     df = df.compute()
@@ -110,22 +113,22 @@ def test_group_by(c):
 #     assert_frame_equal(df, expected_df)
 
 
-# def test_group_by_case(c):
-#     df = c.sql(
-#         """
-#     SELECT
-#         user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
-#     FROM user_table_1
-#     GROUP BY user_id + 1
-#     """
-#     )
-#     df = df.compute()
+def test_group_by_case(c):
+    df = c.sql(
+        """
+    SELECT
+        user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
+    FROM user_table_1
+    GROUP BY user_id + 1
+    """
+    )
+    df = df.compute()
 
-#     expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
-#     # Do not check dtypes, as pandas versions are inconsistent here
-#     assert_frame_equal(
-#         df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
-#     )
+    expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
+    # Do not check dtypes, as pandas versions are inconsistent here
+    assert_frame_equal(
+        df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
+    )
 
 
 # def test_group_by_nan(c):

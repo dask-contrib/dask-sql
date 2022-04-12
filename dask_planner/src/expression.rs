@@ -133,7 +133,7 @@ impl PyExpr {
             Expr::Alias(expr, name) => {
                 println!("Alias encountered with name: {:?}", name);
 
-                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we 
+                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
                 // extract the valid ones and error on the invalid ones
                 match expr.as_ref() {
                     Expr::Column(col) => {
@@ -169,7 +169,11 @@ impl PyExpr {
             Expr::Column(column) => { column.name.clone() },
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(..) => panic!("Literal!!!"),
-            Expr::BinaryExpr {..} => panic!("BinaryExpr"),
+            Expr::BinaryExpr {left, op, right} => {
+                // /// TODO: Examine this more deeply about whether name comes from the left or right
+                // self.column_name(left)
+                panic!("BinaryExpr HERE!!!")
+            },
             Expr::Not(..) => panic!("Not!!!"),
             Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
             Expr::Negative(..) => panic!("Negative!!!"),

@@ -48,7 +48,11 @@ class RexConverter(Pluggable):
 
     @classmethod
     def convert(
-        cls, rel: LogicalPlan, rex: Expression, dc: DataContainer, context: "dask_sql.Context",
+        cls,
+        rel: LogicalPlan,
+        rex: Expression,
+        dc: DataContainer,
+        context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
         Convert the given rel (java instance)
@@ -69,6 +73,7 @@ class RexConverter(Pluggable):
             f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
         )
 
+        breakpoint
         df = plugin_instance.convert(rel, rex, dc, context=context)
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df
