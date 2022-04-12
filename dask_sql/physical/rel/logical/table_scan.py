@@ -25,7 +25,11 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
     class_name = "TableScan"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context",) -> DataContainer:
+    def convert(
+        self,
+        rel: LogicalPlan,
+        context: "dask_sql.Context",
+    ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 

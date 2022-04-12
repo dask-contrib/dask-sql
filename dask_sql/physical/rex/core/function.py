@@ -34,7 +34,9 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
             literal_type = "FLOAT"
             literal_value = rex.getFloat32Value()
         else:
-            raise RuntimeError('Failed to determine Datafusion Type in scalar_function.py')
+            raise RuntimeError(
+                "Failed to determine Datafusion Type in scalar_function.py"
+            )
 
         print(f"Expression in literal.py literal_value: {literal_value}")
         print(f"Expression in literal.py literal_type: {literal_type}")
@@ -43,6 +45,8 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
         #     return SargPythonImplementation(literal_value, literal_type)
 
         python_value = sql_to_python_value(literal_type, literal_value)
-        print(f"literal.py python_value: {python_value} or Python type: {type(python_value)}")
+        print(
+            f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
+        )
 
         return python_value

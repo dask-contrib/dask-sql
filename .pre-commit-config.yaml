@@ -20,7 +20,9 @@ repos:
     rev: master
     hooks:
     -   id: fmt
-        args: ['--verbose', '--manifest-path', './dask_planner/Cargo.toml', '--']
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
+    -   id: cargo-check
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:

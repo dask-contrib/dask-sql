@@ -17,9 +17,7 @@ class DaskSortPlugin(BaseRelPlugin):
 
     class_name = "Sort"
 
-    def convert(
-        self, rel: LogicalPlan, context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
