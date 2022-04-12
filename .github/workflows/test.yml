@@ -42,6 +42,7 @@ jobs:
     name: Build the dask_planner on ubuntu
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -67,6 +68,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
+      - uses: actions/checkout@v2
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -109,6 +111,7 @@ jobs:
     needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -149,6 +152,7 @@ jobs:
     needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
