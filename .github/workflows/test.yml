@@ -1,7 +1,7 @@
 ---
 # Test the main branch and every pull request by
-# 1. building the jar on ubuntu
-# 2. testing code (using the build jar) on ubuntu and windows
+# 1. build dask_planner (Apache Datafusion Rust bindings) on ubuntu
+# 2. testing code (using the build Datafusion bindings) on ubuntu and windows
 name: Test Python package
 on:
   push:
@@ -39,15 +39,9 @@ jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
     # the future deployable
-    name: Build the jar on ubuntu
+    name: Build the dask_planner on ubuntu
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -56,15 +50,10 @@ jobs:
           python-version: "3.8"
           channel-priority: strict
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
-      - name: Build the jar
+          environment-file: continuous_integration/environment-3.8-dev.yaml
+      - name: Build the Rust Datafusion bindings
         run: |
-          python setup.py build_ext
-      - name: Upload the jar
-        uses: actions/upload-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/DaskSQL.jar
+          python setup.py build
 
   test:
     name: "Test (${{ matrix.os }}, python: ${{ matrix.python }})"
@@ -87,21 +76,12 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/
       - name: Install hive testing dependencies for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
-      - name: Set proper JAVA_HOME for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
       - name: Optionally install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
@@ -129,12 +109,6 @@ jobs:
     needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -144,11 +118,6 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/
       - name: Install dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
@@ -180,12 +149,6 @@ jobs:
     needs: [detect-ci-trigger, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -193,11 +156,6 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: strict
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/
       - name: Install dependencies and nothing else
         run: |
           pip install -e .
