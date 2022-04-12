@@ -1,11 +1,11 @@
-import dask.dataframe as dd
+# import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask.dataframe.utils import assert_eq
+
+# from dask.dataframe.utils import assert_eq
 from pandas.testing import assert_frame_equal
 
-from dask_sql import Context
-
+# from dask_sql import Context
 
 # def test_join(c):
 #     df = c.sql(

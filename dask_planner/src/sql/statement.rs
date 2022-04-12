@@ -1,4 +1,4 @@
-use datafusion::sql::parser::{Statement};
+use datafusion::sql::parser::Statement;
 
 use pyo3::prelude::*;
 
@@ -9,7 +9,7 @@ pub struct PyStatement {
 }
 
 impl From<PyStatement> for Statement {
-    fn from(statement: PyStatement) -> Statement  {
+    fn from(statement: PyStatement) -> Statement {
         statement.statement
     }
 }
@@ -20,17 +20,14 @@ impl From<Statement> for PyStatement {
     }
 }
 
-
 impl PyStatement {
     pub fn new(statement: Statement) -> Self {
         Self { statement }
     }
 }
 
-
 #[pymethods]
 impl PyStatement {
-
     #[staticmethod]
     pub fn table_name() -> String {
         String::from("Got here!!!")

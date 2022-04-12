@@ -1,54 +1,53 @@
 use crate::expression::PyExpr;
 
-pub use datafusion::logical_plan::plan::{LogicalPlan};
-use datafusion::logical_plan::{Expr};
+pub use datafusion::logical_plan::plan::LogicalPlan;
 use datafusion::logical_plan::plan::Projection;
 use datafusion::logical_plan::DFField;
+use datafusion::logical_plan::Expr;
 
 use pyo3::prelude::*;
-
 
 #[pyclass(name = "Projection", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct PyProjection {
-    pub(crate) projection: Projection
+    pub(crate) projection: Projection,
 }
 
 #[pymethods]
 impl PyProjection {
-
     #[pyo3(name = "getColumnName")]
     fn named_projects(&mut self, expr: PyExpr) -> PyResult<String> {
         let mut val: String = String::from("OK");
         match expr.expr {
-            Expr::Alias(expr, alias) => {
-                match expr.as_ref() {
-                    Expr::Column(col) => {
-                        let index = self.projection.input.schema().index_of_column(&col).unwrap();
-                        match self.projection.input.as_ref() {
-                            LogicalPlan::Aggregate(agg) => {
-                                let mut exprs = agg.group_expr.clone();
-                                exprs.extend_from_slice(&agg.aggr_expr);
-                                match &exprs[index] {
-                                    Expr::AggregateFunction { args, .. } => {
-                                        match &args[0] {
-                                            Expr::Column(col) => {
-                                                println!("AGGREGATE COLUMN IS {}", col.name);
-                                                val = col.name.clone();
-                                            },
-                                            _ => unimplemented!()
-                                        }
-                                    },
-                                    _ => unimplemented!()
-                                }
-                            },
-                            _ => unimplemented!()
+            Expr::Alias(expr, alias) => match expr.as_ref() {
+                Expr::Column(col) => {
+                    let index = self
+                        .projection
+                        .input
+                        .schema()
+                        .index_of_column(&col)
+                        .unwrap();
+                    match self.projection.input.as_ref() {
+                        LogicalPlan::Aggregate(agg) => {
+                            let mut exprs = agg.group_expr.clone();
+                            exprs.extend_from_slice(&agg.aggr_expr);
+                            match &exprs[index] {
+                                Expr::AggregateFunction { args, .. } => match &args[0] {
+                                    Expr::Column(col) => {
+                                        println!("AGGREGATE COLUMN IS {}", col.name);
+                                        val = col.name.clone();
+                                    }
+                                    _ => unimplemented!(),
+                                },
+                                _ => unimplemented!(),
+                            }
                         }
-                    },
-                    _ => println!("not supported: {:?}", expr)
+                        _ => unimplemented!(),
+                    }
                 }
+                _ => println!("not supported: {:?}", expr),
             },
-            _ => println!("Ignore for now")
+            _ => println!("Ignore for now"),
         }
         Ok(val)
     }
@@ -120,16 +119,13 @@ impl PyProjection {
     // }
 }
 
-
 impl From<LogicalPlan> for PyProjection {
-    fn from(logical_plan: LogicalPlan) -> PyProjection  {
+    fn from(logical_plan: LogicalPlan) -> PyProjection {
         match logical_plan {
-            LogicalPlan::Projection(projection) => {
-                PyProjection {
-                    projection: projection
-                }
+            LogicalPlan::Projection(projection) => PyProjection {
+                projection: projection,
             },
-            _ => panic!("something went wrong here") ,
+            _ => panic!("something went wrong here"),
         }
     }
 }

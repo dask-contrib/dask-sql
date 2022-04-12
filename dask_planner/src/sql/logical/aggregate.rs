@@ -1,21 +1,19 @@
 use crate::expression::PyExpr;
 use datafusion::logical_plan::Expr;
 
-pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
 use datafusion::logical_plan::plan::Aggregate;
+pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
-
 
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct PyAggregate {
-    aggregate: Aggregate
+    aggregate: Aggregate,
 }
 
 #[pymethods]
 impl PyAggregate {
-
     /// Returns a Vec of the group expressions
     #[pyo3(name = "getGroupSets")]
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
@@ -38,49 +36,43 @@ impl PyAggregate {
     #[pyo3(name = "getAggregationFuncName")]
     pub fn agg_func_name(&self, expr: PyExpr) -> PyResult<String> {
         Ok(match expr.expr {
-            Expr::AggregateFunction{fun, ..} => {
-                fun.to_string()
-            },
-            _ => panic!("Encountered a non Aggregate type in agg_func_name")
+            Expr::AggregateFunction { fun, .. } => fun.to_string(),
+            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
         })
     }
 
     #[pyo3(name = "getArgs")]
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         Ok(match expr.expr {
-            Expr::AggregateFunction{fun, args, ..} => {
+            Expr::AggregateFunction { fun, args, .. } => {
                 let mut exprs: Vec<PyExpr> = Vec::new();
                 for expr in args {
                     exprs.push(PyExpr { expr });
                 }
                 exprs
-            },
-            _ => panic!("Encountered a non Aggregate type in agg_func_name")
+            }
+            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
         })
     }
 
     #[pyo3(name = "isDistinct")]
     pub fn distinct(&self, expr: PyExpr) -> PyResult<bool> {
         Ok(match expr.expr {
-            Expr::AggregateFunction{fun: _, args: _, distinct} => {
-                distinct
-            },
-            _ => panic!("Encountered a non Aggregate type in agg_func_name")
+            Expr::AggregateFunction {
+                fun: _,
+                args: _,
+                distinct,
+            } => distinct,
+            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
         })
     }
-
 }
 
-
 impl From<LogicalPlan> for PyAggregate {
-    fn from(logical_plan: LogicalPlan) -> PyAggregate  {
+    fn from(logical_plan: LogicalPlan) -> PyAggregate {
         match logical_plan {
-            LogicalPlan::Aggregate(agg) => {
-                PyAggregate {
-                    aggregate: agg,
-                }
-            },
-            _ => panic!("something went wrong here") ,
+            LogicalPlan::Aggregate(agg) => PyAggregate { aggregate: agg },
+            _ => panic!("something went wrong here"),
         }
     }
 }

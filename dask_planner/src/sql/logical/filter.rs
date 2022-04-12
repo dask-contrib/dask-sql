@@ -1,15 +1,14 @@
 use crate::expression::PyExpr;
 
-pub use datafusion::logical_plan::plan::{LogicalPlan};
 use datafusion::logical_plan::plan::Filter;
+pub use datafusion::logical_plan::plan::LogicalPlan;
 
 use pyo3::prelude::*;
-
 
 #[pyclass(name = "Filter", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct PyFilter {
-    filter: Filter
+    filter: Filter,
 }
 
 #[pymethods]
@@ -21,16 +20,11 @@ impl PyFilter {
     }
 }
 
-
 impl From<LogicalPlan> for PyFilter {
-    fn from(logical_plan: LogicalPlan) -> PyFilter  {
+    fn from(logical_plan: LogicalPlan) -> PyFilter {
         match logical_plan {
-            LogicalPlan::Filter(filter) => {
-                PyFilter {
-                    filter: filter,
-                }
-            },
-            _ => panic!("something went wrong here") ,
+            LogicalPlan::Filter(filter) => PyFilter { filter: filter },
+            _ => panic!("something went wrong here"),
         }
     }
 }

@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan, Expression
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, Expression
 
 try:
     import dask_cuda  # noqa: F401

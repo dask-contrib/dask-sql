@@ -10,16 +10,14 @@ pub struct PyColumn {
 }
 
 impl From<PyColumn> for Column {
-    fn from(column: PyColumn) -> Column  {
+    fn from(column: PyColumn) -> Column {
         column.column
     }
 }
 
 impl From<Column> for PyColumn {
     fn from(column: Column) -> PyColumn {
-        PyColumn {
-            column: column,
-        }
+        PyColumn { column: column }
     }
 }
 

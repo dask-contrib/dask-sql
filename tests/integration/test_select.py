@@ -1,10 +1,10 @@
-import dask.dataframe as dd
-import numpy as np
-import pandas as pd
-import pytest
+# import dask.dataframe as dd
+# import numpy as np
+# import pandas as pd
+# import pytest
 from pandas.testing import assert_frame_equal
 
-from dask_sql.utils import ParsingException
+# from dask_sql.utils import ParsingException
 
 
 def test_select(c, df):

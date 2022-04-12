@@ -1,20 +1,19 @@
-use crate::sql::types;
 use crate::sql::logical;
+use crate::sql::types;
 
 use async_trait::async_trait;
 
-use datafusion::arrow::datatypes::{SchemaRef};
+use datafusion::arrow::datatypes::SchemaRef;
 pub use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_plan::{Expr};
-use datafusion::logical_plan::plan::{LogicalPlan};
-use datafusion::physical_plan::{empty::EmptyExec, ExecutionPlan, project_schema};
+use datafusion::logical_plan::plan::LogicalPlan;
+use datafusion::logical_plan::Expr;
+use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
 
 use pyo3::prelude::*;
 
 use std::any::Any;
 use std::sync::Arc;
-
 
 /// DaskTableProvider
 pub struct DaskTableProvider {
@@ -25,7 +24,10 @@ pub struct DaskTableProvider {
 impl DaskTableProvider {
     /// Initialize a new `EmptyTable` from a schema.
     pub fn new(schema: SchemaRef, table_name: String) -> Self {
-        Self { schema: schema, table_name: table_name }
+        Self {
+            schema: schema,
+            table_name: table_name,
+        }
     }
 
     pub fn table_name(&self) -> String {
@@ -55,7 +57,6 @@ impl TableProvider for DaskTableProvider {
     }
 }
 
-
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {
@@ -72,7 +73,6 @@ impl DaskStatistics {
     }
 }
 
-
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
@@ -80,7 +80,6 @@ pub struct DaskTable {
     pub(crate) statistics: DaskStatistics,
     pub(crate) columns: Vec<(String, types::DaskRelDataType)>,
 }
-
 
 #[pymethods]
 impl DaskTable {
@@ -110,10 +109,15 @@ impl DaskTable {
 
         match plan.original_plan {
             LogicalPlan::TableScan(_table_scan) => {
-                let tbl = _table_scan.source.as_any().downcast_ref::<DaskTableProvider>().unwrap().table_name();
+                let tbl = _table_scan
+                    .source
+                    .as_any()
+                    .downcast_ref::<DaskTableProvider>()
+                    .unwrap()
+                    .table_name();
                 qualified_name.push(tbl.clone());
-            },
-            _ => { 
+            }
+            _ => {
                 println!("Nothing matches");
                 qualified_name.push(self.name.clone());
             }
@@ -123,7 +127,7 @@ impl DaskTable {
     }
 
     pub fn column_names(&self) -> Vec<String> {
-        let mut cns:Vec<String> = Vec::new();
+        let mut cns: Vec<String> = Vec::new();
         for c in &self.columns {
             cns.push(String::from(&c.0));
         }
@@ -139,7 +143,11 @@ impl DaskTable {
     }
 
     pub fn num_columns(&self) {
-        println!("There are {} columns in table {}", self.columns.len(), self.name);
+        println!(
+            "There are {} columns in table {}",
+            self.columns.len(),
+            self.name
+        );
     }
 }
 
@@ -149,7 +157,6 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
         LogicalPlan::TableScan(tableScan) => {
-
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableProvider> = tableScan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
@@ -157,15 +164,13 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
 
             let mut cols: Vec<(String, types::DaskRelDataType)> = Vec::new();
             for field in fields {
-                cols.push(
-                    (
-                        String::from(field.name()),
-                        types::DaskRelDataType {
-                            name: String::from(field.name()),
-                            sql_type: field.data_type().clone(),
-                        }
-                    )
-                );
+                cols.push((
+                    String::from(field.name()),
+                    types::DaskRelDataType {
+                        name: String::from(field.name()),
+                        sql_type: field.data_type().clone(),
+                    },
+                ));
             }
 
             Some(DaskTable {
@@ -173,14 +178,12 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
             })
-        },
+        }
         LogicalPlan::Join(join) => {
             //TODO: Don't always hardcode the left
             table_from_logical_plan(&join.left)
-        },
-        LogicalPlan::Aggregate(agg) => {
-            table_from_logical_plan(&agg.input)
-        },
-        _ => todo!("table_from_logical_plan: unimplemented LogicalPlan type encountered")
+        }
+        LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
+        _ => todo!("table_from_logical_plan: unimplemented LogicalPlan type encountered"),
     }
 }

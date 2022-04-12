@@ -708,8 +708,6 @@ class DatePartOperation(Operation):
     def __init__(self):
         super().__init__(self.date_part)
 
-        
-
     def date_part(self, what, df: SeriesOrScalar):
         what = what.upper()
         df = convert_to_datetime(df)
@@ -864,7 +862,7 @@ class RexCallPlugin(BaseRexPlugin):
         print(f"Operands: {operands}")
 
         # Now use the operator name in the mapping
-        #TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
+        # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
         schema_name = "root"
         operator_name = expr.getOperatorName().lower()
         print(f"Operator Name: {operator_name}")

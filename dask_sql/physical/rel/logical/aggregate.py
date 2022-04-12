@@ -8,7 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-from dask_planner.rust import LogicalPlan, Expression
+from dask_planner.rust import LogicalPlan
 
 try:
     import dask_cudf
@@ -168,7 +168,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         group_exprs = agg.getGroupSets()
         group_columns = [
-            group_expr.column_name(rel) for group_expr in group_exprs 
+            group_expr.column_name(rel) for group_expr in group_exprs
         ]
 
         print(f"group_columns: {group_columns}")
@@ -196,8 +196,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
-        #dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        print(f"Leaving aggregate.py and return the dataframe")
+        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        print("Leaving aggregate.py and return the dataframe")
         return dc
 
     def _do_aggregations(
@@ -317,7 +317,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             print(f"Number of Inputs: {len(inputs)}")
             print(f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}")
 
-            #TODO: This if statement is likely no longer needed but left here for the time being just in case
+            # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
                 is_null = IsNullOperation()
                 two_columns_proxy = new_temporary_column(df)

@@ -1,9 +1,12 @@
-import pandas as pd
 import logging
+
+import pandas as pd
+
+from dask_sql import Context
+
 # from dask.distributed import Client
 # from dask_cuda import LocalCUDACluster
 
-from dask_sql import Context
 
 # if __name__ == "__main__":
 #     cluster = LocalCUDACluster(protocol="ucx")

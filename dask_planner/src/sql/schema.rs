@@ -1,10 +1,9 @@
-use crate::sql::table;
 use crate::sql::function;
+use crate::sql::table;
 
 use pyo3::prelude::*;
 
 use std::collections::HashMap;
-
 
 #[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -27,7 +26,12 @@ impl DaskSchema {
     }
 
     pub fn to_string(&self) -> String {
-        format!("Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})", &self.name, &self.tables.len(), &self.functions.len())
+        format!(
+            "Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})",
+            &self.name,
+            &self.tables.len(),
+            &self.functions.len()
+        )
     }
 
     pub fn add_table(&mut self, table: table::DaskTable) {

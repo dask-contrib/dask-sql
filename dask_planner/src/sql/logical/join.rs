@@ -2,40 +2,48 @@ use crate::expression::PyExpr;
 use crate::sql::column;
 use crate::sql::table;
 
-pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
 use datafusion::logical_plan::plan::Join;
+pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
-
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct PyJoin {
-    join: Join
+    join: Join,
 }
 
 #[pymethods]
 impl PyJoin {
-
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
         let lhs_table_name: String = match &*self.join.left {
             LogicalPlan::TableScan(_table_scan) => {
-                let tbl: String = _table_scan.source.as_any().downcast_ref::<table::DaskTableProvider>().unwrap().table_name();
+                let tbl: String = _table_scan
+                    .source
+                    .as_any()
+                    .downcast_ref::<table::DaskTableProvider>()
+                    .unwrap()
+                    .table_name();
                 tbl
-            },
-            _ => panic!("lhs Expected TableScan but something else was received!")
+            }
+            _ => panic!("lhs Expected TableScan but something else was received!"),
         };
 
-        let rhs_table_name:String = match &*self.join.right {
+        let rhs_table_name: String = match &*self.join.right {
             LogicalPlan::TableScan(_table_scan) => {
-                let tbl: String = _table_scan.source.as_any().downcast_ref::<table::DaskTableProvider>().unwrap().table_name();
+                let tbl: String = _table_scan
+                    .source
+                    .as_any()
+                    .downcast_ref::<table::DaskTableProvider>()
+                    .unwrap()
+                    .table_name();
                 tbl
-            },
-            _ => panic!("rhs Expected TableScan but something else was received!")
+            }
+            _ => panic!("rhs Expected TableScan but something else was received!"),
         };
 
-        let mut join_conditions:Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
+        let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
         for (mut lhs, mut rhs) in self.join.on.clone() {
             println!("lhs: {:?} rhs: {:?}", lhs, rhs);
             lhs.relation = Some(lhs_table_name.clone());
@@ -59,16 +67,11 @@ impl PyJoin {
     }
 }
 
-
 impl From<LogicalPlan> for PyJoin {
-    fn from(logical_plan: LogicalPlan) -> PyJoin  {
+    fn from(logical_plan: LogicalPlan) -> PyJoin {
         match logical_plan {
-            LogicalPlan::Join(join) => {
-                PyJoin {
-                    join: join,
-                }
-            },
-            _ => panic!("something went wrong here") ,
+            LogicalPlan::Join(join) => PyJoin { join: join },
+            _ => panic!("something went wrong here"),
         }
     }
 }

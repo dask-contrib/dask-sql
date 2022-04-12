@@ -1,11 +1,10 @@
-from typing import TYPE_CHECKING, Any, Union
+from typing import Any, Union
 
 import dask.dataframe as dd
 
 import dask_sql
+from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
-
-from dask_planner.rust import LogicalPlan, Expression
 
 
 class BaseRexPlugin:

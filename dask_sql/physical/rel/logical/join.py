@@ -1,19 +1,21 @@
 import logging
 import operator
-import warnings
+
+# import warnings
 from functools import reduce
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
-from dask.base import tokenize
-from dask.highlevelgraph import HighLevelGraph
 
 from dask_planner.rust import LogicalPlan
-
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.physical.rel.logical.filter import filter_or_scalar
-from dask_sql.physical.rex import RexConverter
+
+# from dask.base import tokenize
+# from dask.highlevelgraph import HighLevelGraph
+
+# from dask_sql.physical.rel.logical.filter import filter_or_scalar
+# from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
@@ -253,74 +255,74 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         return df
 
-    def _split_join_condition(
-        self, join_condition: "org.apache.calcite.rex.RexCall"
-    ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
+    # def _split_join_condition(
+    #     self, join_condition: Expression
+    # ) -> Tuple[List[str], List[str], List[Expression]]:
 
-        if isinstance(
-            join_condition,
-            (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
-        ):
-            return [], [], [join_condition]
-        elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
-            raise NotImplementedError("Can not understand join condition.")
+    #     if isinstance(
+    #         join_condition,
+    #         (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
+    #     ):
+    #         return [], [], [join_condition]
+    #     elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
+    #         raise NotImplementedError("Can not understand join condition.")
 
-        # Simplest case: ... ON lhs.a == rhs.b
-        try:
-            lhs_on, rhs_on = self._extract_lhs_rhs(join_condition)
-            return [lhs_on], [rhs_on], None
-        except AssertionError:
-            pass
+    #     # Simplest case: ... ON lhs.a == rhs.b
+    #     try:
+    #         lhs_on, rhs_on = self._extract_lhs_rhs(join_condition)
+    #         return [lhs_on], [rhs_on], None
+    #     except AssertionError:
+    #         pass
 
-        operator_name = str(join_condition.getOperator().getName())
-        operands = join_condition.getOperands()
-        # More complicated: ... ON X AND Y AND Z.
-        # We can map this if one of them is again a "="
-        if operator_name == "AND":
-            lhs_on = []
-            rhs_on = []
-            filter_condition = []
+    #     operator_name = str(join_condition.getOperator().getName())
+    #     operands = join_condition.getOperands()
+    #     # More complicated: ... ON X AND Y AND Z.
+    #     # We can map this if one of them is again a "="
+    #     if operator_name == "AND":
+    #         lhs_on = []
+    #         rhs_on = []
+    #         filter_condition = []
 
-            for operand in operands:
-                try:
-                    lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                    lhs_on.append(lhs_on_part)
-                    rhs_on.append(rhs_on_part)
-                except AssertionError:
-                    filter_condition.append(operand)
+    #         for operand in operands:
+    #             try:
+    #                 lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
+    #                 lhs_on.append(lhs_on_part)
+    #                 rhs_on.append(rhs_on_part)
+    #             except AssertionError:
+    #                 filter_condition.append(operand)
 
-            if lhs_on and rhs_on:
-                return lhs_on, rhs_on, filter_condition
+    #         if lhs_on and rhs_on:
+    #             return lhs_on, rhs_on, filter_condition
 
-        return [], [], [join_condition]
+    #     return [], [], [join_condition]
 
-    def _extract_lhs_rhs(self, rex):
-        assert isinstance(rex, org.apache.calcite.rex.RexCall)
+    # def _extract_lhs_rhs(self, rex):
+    #     assert isinstance(rex, org.apache.calcite.rex.RexCall)
 
-        operator_name = str(rex.getOperator().getName())
-        assert operator_name == "="
+    #     operator_name = str(rex.getOperator().getName())
+    #     assert operator_name == "="
 
-        operands = rex.getOperands()
-        assert len(operands) == 2
+    #     operands = rex.getOperands()
+    #     assert len(operands) == 2
 
-        operand_lhs = operands[0]
-        operand_rhs = operands[1]
+    #     operand_lhs = operands[0]
+    #     operand_rhs = operands[1]
 
-        if isinstance(operand_lhs, org.apache.calcite.rex.RexInputRef) and isinstance(
-            operand_rhs, org.apache.calcite.rex.RexInputRef
-        ):
-            lhs_index = operand_lhs.getIndex()
-            rhs_index = operand_rhs.getIndex()
+    #     if isinstance(operand_lhs, org.apache.calcite.rex.RexInputRef) and isinstance(
+    #         operand_rhs, org.apache.calcite.rex.RexInputRef
+    #     ):
+    #         lhs_index = operand_lhs.getIndex()
+    #         rhs_index = operand_rhs.getIndex()
 
-            # The rhs table always comes after the lhs
-            # table. Therefore we have a very simple
-            # way of checking, which index comes from which
-            # input
-            if lhs_index > rhs_index:
-                lhs_index, rhs_index = rhs_index, lhs_index
+    #         # The rhs table always comes after the lhs
+    #         # table. Therefore we have a very simple
+    #         # way of checking, which index comes from which
+    #         # input
+    #         if lhs_index > rhs_index:
+    #             lhs_index, rhs_index = rhs_index, lhs_index
 
-            return lhs_index, rhs_index
+    #         return lhs_index, rhs_index
 
-        raise AssertionError(
-            "Invalid join condition"
-        )  # pragma: no cover. Do not how how it could be triggered.
+    #     raise AssertionError(
+    #         "Invalid join condition"
+    #     )  # pragma: no cover. Do not how how it could be triggered.

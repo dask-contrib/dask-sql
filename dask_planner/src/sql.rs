@@ -1,25 +1,24 @@
-pub mod types;
-pub mod table;
-pub mod logical;
 pub mod column;
-pub mod statement;
-pub mod schema;
 pub mod function;
+pub mod logical;
+pub mod schema;
+pub mod statement;
+pub mod table;
+pub mod types;
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::TableReference;
 use datafusion::error::DataFusionError;
-use datafusion::sql::parser::{DFParser};
-use datafusion::sql::planner::{ContextProvider, SqlToRel};
 use datafusion::physical_plan::functions::ScalarFunctionImplementation;
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::sql::parser::DFParser;
+use datafusion::sql::planner::{ContextProvider, SqlToRel};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use pyo3::prelude::*;
-
 
 /// DaskSQLContext is main interface used for interacting with Datafusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -48,11 +47,7 @@ pub struct DaskSQLContext {
 }
 
 impl ContextProvider for DaskSQLContext {
-
-    fn get_table_provider(
-        &self,
-        name: TableReference,
-    ) -> Option<Arc<dyn table::TableProvider>> {
+    fn get_table_provider(&self, name: TableReference) -> Option<Arc<dyn table::TableProvider>> {
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
@@ -64,7 +59,11 @@ impl ContextProvider for DaskSQLContext {
 
                         // Iterate through the DaskTable instance and create a Schema instance
                         for (column_name, column_type) in &table.columns {
-                            fields.push(Field::new(column_name, column_type.sql_type.clone(), false));
+                            fields.push(Field::new(
+                                column_name,
+                                column_type.sql_type.clone(),
+                                false,
+                            ));
                         }
 
                         resp = Some(Schema::new(fields));
@@ -72,16 +71,17 @@ impl ContextProvider for DaskSQLContext {
                     }
                 }
                 Some(Arc::new(table::DaskTableProvider::new(
-                    Arc::new(
-                        resp.unwrap(),
-                    ),
+                    Arc::new(resp.unwrap()),
                     table_name,
                 )))
-            },
+            }
             None => {
-                DataFusionError::Execution(format!("Schema with name {} not found", &self.default_schema_name));
+                DataFusionError::Execution(format!(
+                    "Schema with name {} not found",
+                    &self.default_schema_name
+                ));
                 None
-            },
+            }
         }
     }
 
@@ -98,7 +98,6 @@ impl ContextProvider for DaskSQLContext {
     }
 }
 
-
 #[pymethods]
 impl DaskSQLContext {
     #[new]
@@ -110,19 +109,30 @@ impl DaskSQLContext {
     }
 
     /// Register a Schema with the current DaskSQLContext
-    pub fn register_schema(&mut self, schema_name:String, schema: schema::DaskSchema) -> PyResult<bool> {
+    pub fn register_schema(
+        &mut self,
+        schema_name: String,
+        schema: schema::DaskSchema,
+    ) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
         Ok(true)
     }
 
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext
-    pub fn register_table(&mut self, schema_name:String, table: table::DaskTable) -> PyResult<bool> {
+    pub fn register_table(
+        &mut self,
+        schema_name: String,
+        table: table::DaskTable,
+    ) -> PyResult<bool> {
         match self.schemas.get_mut(&schema_name) {
             Some(schema) => {
                 schema.add_table(table);
                 Ok(true)
-            },
-            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Schema: {} not found in DaskSQLContext", schema_name))),
+            }
+            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Schema: {} not found in DaskSQLContext",
+                schema_name
+            ))),
         }
     }
 
@@ -134,28 +144,38 @@ impl DaskSQLContext {
                 for statement in k {
                     statements.push(statement.into());
                 }
-                assert!(statements.len() == 1, "More than 1 expected statement was encounterd!");
+                assert!(
+                    statements.len() == 1,
+                    "More than 1 expected statement was encounterd!"
+                );
                 Ok(statements)
-            },
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e.to_string()))),
+            }
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "{}",
+                e.to_string()
+            ))),
         }
     }
 
     /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
-    pub fn logical_relational_algebra(&self, statement: statement::PyStatement) -> PyResult<logical::PyLogicalPlan> {
+    pub fn logical_relational_algebra(
+        &self,
+        statement: statement::PyStatement,
+    ) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
 
         match planner.statement_to_plan(&statement.statement) {
             Ok(k) => {
                 println!("\nLogicalPlan: {:?}\n\n", k);
-                Ok(
-                    logical::PyLogicalPlan {
-                        original_plan: k,
-                        current_node: None,
-                    }
-                )
-            },
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e.to_string()))),
+                Ok(logical::PyLogicalPlan {
+                    original_plan: k,
+                    current_node: None,
+                })
+            }
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "{}",
+                e.to_string()
+            ))),
         }
     }
 }

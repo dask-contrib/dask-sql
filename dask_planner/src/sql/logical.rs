@@ -1,19 +1,16 @@
 use crate::sql::table;
-pub mod projection;
+mod aggregate;
 mod filter;
 mod join;
-mod aggregate;
+pub mod projection;
 
-pub use datafusion::logical_plan::plan::{
-    LogicalPlan,
-};
+pub use datafusion::logical_plan::plan::LogicalPlan;
 
 use datafusion::prelude::Column;
 
-use crate::sql::column::{PyColumn};
+use crate::sql::column::PyColumn;
 
 use pyo3::prelude::*;
-
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -23,7 +20,6 @@ pub struct PyLogicalPlan {
     /// The original_plan is traversed. current_node stores the current node of this traversal
     pub(crate) current_node: Option<LogicalPlan>,
 }
-
 
 /// Unfortunately PyO3 forces us to do this as placing these methods in the #[pymethods] version
 /// of `impl PyLogicalPlan` causes issues with types not properly being mapped to Python from Rust
@@ -35,21 +31,23 @@ impl PyLogicalPlan {
             None => {
                 self.current_node = Some(self.original_plan.clone());
                 self.current_node.clone().unwrap()
-            },
+            }
         }
     }
 
     /// Gets the index of the column from the input schema
     pub(crate) fn get_index(&mut self, col: &Column) -> usize {
         let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        proj.projection.input.schema().index_of_column(&col).unwrap()
+        proj.projection
+            .input
+            .schema()
+            .index_of_column(&col)
+            .unwrap()
     }
 }
 
-
 #[pymethods]
 impl PyLogicalPlan {
-
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
         let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
@@ -97,7 +95,9 @@ impl PyLogicalPlan {
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),
-            None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("Unable to compute DaskTable from Datafusion LogicalPlan")),
+            None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Unable to compute DaskTable from Datafusion LogicalPlan",
+            )),
         }
     }
 
@@ -137,9 +137,8 @@ impl PyLogicalPlan {
     }
 }
 
-
 impl From<PyLogicalPlan> for LogicalPlan {
-    fn from(logical_plan: PyLogicalPlan) -> LogicalPlan  {
+    fn from(logical_plan: PyLogicalPlan) -> LogicalPlan {
         logical_plan.original_plan
     }
 }

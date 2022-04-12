@@ -5,7 +5,6 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from dask_sql.datacontainer import Statistics
 
 try:
     import cudf
@@ -66,7 +65,7 @@ def test_explain(gpu):
         "Projection: #df.a\n"
     )
 
-    #TODO: Need to add statistics to Rust optimizer before this can be uncommented.
+    # TODO: Need to add statistics to Rust optimizer before this can be uncommented.
     # c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
 
     # sql_string = c.explain("SELECT * FROM df")
@@ -287,7 +286,7 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
 
-#TODO: Alter schema is not yet implemented
+# TODO: Alter schema is not yet implemented
 # def test_alter_schema(c):
 #     c.create_schema("test_schema")
 #     c.sql("ALTER SCHEMA test_schema RENAME TO prod_schema")
@@ -299,7 +298,7 @@ def test_aggregation_adding():
 #     del c.schema["prod_schema"]
 
 
-#TODO: Alter table is not yet implemented
+# TODO: Alter table is not yet implemented
 # def test_alter_table(c, df_simple):
 #     c.create_table("maths", df_simple)
 #     c.sql("ALTER TABLE maths RENAME TO physics")

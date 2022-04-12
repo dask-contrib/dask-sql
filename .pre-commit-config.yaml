@@ -16,6 +16,11 @@ repos:
         args:
           - "--profile"
           - "black"
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: master
+    hooks:
+    -   id: fmt
+        args: ['--verbose', '--manifest-path', './dask_planner/Cargo.toml', '--']
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
