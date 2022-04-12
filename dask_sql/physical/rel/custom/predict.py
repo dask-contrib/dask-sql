@@ -48,9 +48,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
     class_name = "PredictModel"
 
-    def convert(
-        self, sql: LogicalPlan, context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, sql: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
         sql_select = sql.getSelect()
         schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
         model_type = sql.getModelName().getIdentifierType()

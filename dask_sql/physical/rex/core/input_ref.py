@@ -20,7 +20,11 @@ class RexInputRefPlugin(BaseRexPlugin):
     class_name = "InputRef"
 
     def convert(
-        self, rel: LogicalPlan, expr: Expression, dc: DataContainer, context: "dask_sql.Context",
+        self,
+        rel: LogicalPlan,
+        expr: Expression,
+        dc: DataContainer,
+        context: "dask_sql.Context",
     ) -> dd.Series:
         df = dc.df
 

@@ -26,9 +26,7 @@ class AlterSchemaPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterSchema"
 
-    def convert(
-        self, sql: LogicalPlan, context: "dask_sql.Context"
-    ):
+    def convert(self, sql: LogicalPlan, context: "dask_sql.Context"):
         old_schema_name = str(sql.getOldSchemaName())
         new_schema_name = str(sql.getNewSchemaName())
 
@@ -60,9 +58,7 @@ class AlterTablePlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterTable"
 
-    def convert(
-        self, sql: LogicalPlan, context: "dask_sql.Context"
-    ):
+    def convert(self, sql: LogicalPlan, context: "dask_sql.Context"):
         old_table_name = str(sql.getOldTableName())
         new_table_name = str(sql.getNewTableName())
 
