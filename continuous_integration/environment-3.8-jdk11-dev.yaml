@@ -4,7 +4,7 @@ channels:
 - nodefaults
 dependencies:
 - adagio>=0.2.3
-- antlr4-python3-runtime>=4.9.2, <4.10.0 # Max pin until https://github.com/fugue-project/fugue/issues/318 is resolved
+- antlr4-python3-runtime>=4.9.2, <4.10.0 # Remove max pin after qpd(fugue dependency) updates their conda recipe
 - black=22.3.0
 - ciso8601>=2.2.0
 - dask-ml>=2022.1.22
