@@ -48,7 +48,7 @@ setup(
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2021.11.1",
+        "dask[dataframe,distributed]>=2022.3.0",
         "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",
@@ -69,7 +69,7 @@ setup(
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",
             "pre-commit",
-            "black==19.10b0",
+            "black==22.3.0",
             "isort==5.7.0",
         ],
         "fugue": ["fugue[sql]>=0.5.3"],
@@ -82,5 +82,9 @@ setup(
     },
     zip_safe=False,
     cmdclass=cmdclass,
-    command_options={"build_sphinx": {"source_dir": ("setup.py", "docs"),}},
+    command_options={
+        "build_sphinx": {
+            "source_dir": ("setup.py", "docs"),
+        }
+    },
 )

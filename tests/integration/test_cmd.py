@@ -6,17 +6,24 @@ from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 from prompt_toolkit.shortcuts import PromptSession
 
+from dask_sql._compat import PIPE_INPUT_CONTEXT_MANAGER
 from dask_sql.cmd import _meta_commands
 
 
 @pytest.fixture(autouse=True, scope="function")
 def mock_prompt_input():
-    pipe_input = create_pipe_input()
-    try:
-        with create_app_session(input=pipe_input, output=DummyOutput()):
-            yield pipe_input
-    finally:
-        pipe_input.close()
+    # TODO: remove if prompt-toolkit min version gets bumped
+    if PIPE_INPUT_CONTEXT_MANAGER:
+        with create_pipe_input() as pipe_input:
+            with create_app_session(input=pipe_input, output=DummyOutput()):
+                yield pipe_input
+    else:
+        pipe_input = create_pipe_input()
+        try:
+            with create_app_session(input=pipe_input, output=DummyOutput()):
+                yield pipe_input
+        finally:
+            pipe_input.close()
 
 
 def _feed_cli_with_input(
@@ -100,7 +107,8 @@ def test_meta_commands(c, client, capsys):
     assert "Schema not_exists not available\n" == captured.out
 
     with pytest.raises(
-        OSError, match="Timed out .* to tcp://localhost:8787 after 5 s",
+        OSError,
+        match="Timed out .* to tcp://localhost:8787 after 5 s",
     ):
         with dask_config.set({"distributed.comm.timeouts.connect": 5}):
             client = _meta_commands("\\dsc localhost:8787", context=c, client=client)

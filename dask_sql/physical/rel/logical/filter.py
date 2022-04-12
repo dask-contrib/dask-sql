@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Union
 
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 
@@ -8,6 +9,7 @@ from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
+from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
@@ -31,7 +33,11 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
 
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
-    return df[filter_condition]
+    out = df[filter_condition]
+    if dask_config.get("sql.predicate_pushdown"):
+        return attempt_predicate_pushdown(out)
+    else:
+        return out
 
 
 class DaskFilterPlugin(BaseRelPlugin):
@@ -42,7 +48,11 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     class_name = "Filter"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context",) -> DataContainer:
+    def convert(
+        self,
+        rel: LogicalPlan,
+        context: "dask_sql.Context",
+    ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container

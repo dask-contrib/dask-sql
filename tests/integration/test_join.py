@@ -2,10 +2,12 @@
 import numpy as np
 import pandas as pd
 
-# from dask.dataframe.utils import assert_eq
-from pandas.testing import assert_frame_equal
-
 # from dask_sql import Context
+from tests.utils import assert_eq
+
+# from dask.dataframe.utils import assert_eq
+# from pandas.testing import assert_frame_equal
+
 
 # def test_join(c):
 #     df = c.sql(
@@ -36,11 +38,14 @@ from pandas.testing import assert_frame_equal
 
 
 def test_join_outer(c):
-    df = c.sql(
-        "SELECT lhs.user_id, lhs.b, rhs.c FROM user_table_1 AS lhs FULL JOIN user_table_2 AS rhs ON lhs.user_id = rhs.user_id"
+    return_df = c.sql(
+        """
+    SELECT lhs.user_id, lhs.b, rhs.c
+    FROM user_table_1 AS lhs
+    FULL JOIN user_table_2 AS rhs
+    ON lhs.user_id = rhs.user_id
+    """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame(
         {
             # That is strange. Unfortunately, it seems dask fills in the
@@ -51,9 +56,7 @@ def test_join_outer(c):
         }
     )
 
-    assert_frame_equal(
-        df.sort_values(["user_id", "b", "c"]).reset_index(drop=True), expected_df
-    )
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 # def test_join_left(c):

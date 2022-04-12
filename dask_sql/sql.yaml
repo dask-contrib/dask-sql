@@ -5,3 +5,5 @@ sql:
 
   identifier:
     case_sensitive: True
+
+  predicate_pushdown: True

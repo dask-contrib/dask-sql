@@ -48,9 +48,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "FULL": "outer",
     }
 
-    def convert(
-        self, rel: LogicalPlan, context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
         join = rel.join()
@@ -98,7 +96,9 @@ class DaskJoinPlugin(BaseRelPlugin):
             lhs_on.append(jo[0].getName())
             rhs_on.append(jo[1].getName())
 
-        print(f"lhs_on: {lhs_on}.{join_on[0][0].getName()} rhs_on: {rhs_on}.{join_on[0][1].getName()}")
+        print(
+            f"lhs_on: {lhs_on}.{join_on[0][0].getName()} rhs_on: {rhs_on}.{join_on[0][1].getName()}"
+        )
 
         print(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
 
@@ -220,10 +220,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         print(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
         print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
-        lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed[i]
-            for i in lhs_on
-        }
+        lhs_columns_to_add = {f"common_{i}": df_lhs_renamed[i] for i in lhs_on}
         print(f"lhs_columns_to_add: {lhs_columns_to_add}")
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]

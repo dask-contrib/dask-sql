@@ -3,11 +3,13 @@ import pandas as pd
 
 # import pytest
 # from dask import dataframe as dd
-from pandas.testing import assert_frame_equal
+from tests.utils import assert_eq
+
+# from pandas.testing import assert_frame_equal
 
 
 def test_group_by(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id, SUM(b) AS "S"
@@ -15,10 +17,9 @@ def test_group_by(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"user_id": [1, 2, 3], "S": [3, 4, 3]})
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
 # def test_group_by_all(c, df):
@@ -114,7 +115,7 @@ def test_group_by(c):
 
 
 def test_group_by_case(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
@@ -122,12 +123,13 @@ def test_group_by_case(c):
     GROUP BY user_id + 1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
+
     # Do not check dtypes, as pandas versions are inconsistent here
-    assert_frame_equal(
-        df.sort_values("A").reset_index(drop=True), expected_df, check_dtype=False
+    assert_eq(
+        return_df.sort_values("A").reset_index(drop=True),
+        expected_df,
+        check_dtype=False,
     )
 
 

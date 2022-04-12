@@ -5,9 +5,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.datasets import timeseries
 from dask.distributed import Client
-from pandas.testing import assert_frame_equal
+
+from tests.utils import assert_eq
 
 try:
     import cudf
@@ -21,18 +21,6 @@ except ImportError:
 
 # check if we want to connect to an independent cluster
 SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-
-
-@pytest.fixture()
-def timeseries_df(c):
-    pdf = timeseries(freq="1d").compute().reset_index(drop=True)
-    # impute nans in pandas dataframe
-    col1_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.2))
-    col2_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.3))
-    pdf.loc[col1_index, "x"] = np.nan
-    pdf.loc[col2_index, "y"] = np.nan
-    c.create_table("timeseries", pdf, persist=True)
-    return pdf
 
 
 @pytest.fixture()
@@ -57,7 +45,10 @@ def df_wide():
 def df():
     np.random.seed(42)
     return pd.DataFrame(
-        {"a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400, "b": 10 * np.random.rand(700),}
+        {
+            "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
+            "b": 10 * np.random.rand(700),
+        }
     )
 
 
@@ -115,6 +106,30 @@ def datetime_table():
 
 
 @pytest.fixture()
+def parquet_ddf(tmpdir):
+
+    # Write simple parquet dataset
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
+
+    # Read back with dask and apply WHERE query
+    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
+
+
+@pytest.fixture()
 def gpu_user_table_1(user_table_1):
     return cudf.from_pandas(user_table_1) if cudf else None
 
@@ -151,6 +166,7 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
@@ -168,6 +184,7 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
@@ -182,7 +199,11 @@ def c(
     for df_name, df in dfs.items():
         if df is None:
             continue
-        dask_df = dd.from_pandas(df, npartitions=3)
+        if hasattr(df, "npartitions"):
+            # df is already a dask collection
+            dask_df = df
+        else:
+            dask_df = dd.from_pandas(df, npartitions=3)
         c.create_table(df_name, dask_df)
 
     yield c
@@ -278,7 +299,7 @@ def assert_query_gives_same_result(engine):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
+        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
 

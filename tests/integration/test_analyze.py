@@ -1,11 +1,10 @@
-import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+
+from tests.utils import assert_eq
 
 
 def test_analyze(c, df):
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
-    result_df = result_df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -15,8 +14,7 @@ def test_analyze(c, df):
                 df.a.std(),
                 1.0,
                 2.0,
-                # That is actually wrong. But the approximate quantile function in dask gives a different result than the actual computation
-                result_df["a"].iloc[5],
+                2.0,  # incorrect, but what Dask gives for approx quantile
                 3.0,
                 3.0,
                 "double",
@@ -50,12 +48,8 @@ def test_analyze(c, df):
     )
 
     # The percentiles are calculated only approximately, therefore we do not use exact matching
-    p = ["25%", "50%", "75%"]
-    result_df.loc[p, :] = result_df.loc[p, :].astype(float).apply(np.ceil)
-    expected_df.loc[p, :] = expected_df.loc[p, :].astype(float).apply(np.ceil)
-    assert_frame_equal(result_df, expected_df, check_exact=False)
+    assert_eq(result_df, expected_df, rtol=0.135)
 
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR COLUMNS a")
-    result_df = result_df.compute()
 
-    assert_frame_equal(result_df, expected_df[["a"]])
+    assert_eq(result_df, expected_df[["a"]], rtol=0.135)

@@ -904,7 +904,8 @@ class Context:
             if replace:
                 schema.function_lists = list(
                     filter(
-                        lambda f: f.name.lower() != lower_name, schema.function_lists,
+                        lambda f: f.name.lower() != lower_name,
+                        schema.function_lists,
                     )
                 )
                 del schema.functions[lower_name]

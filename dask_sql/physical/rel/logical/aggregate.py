@@ -150,9 +150,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
     }
 
-    def convert(
-        self, rel: LogicalPlan, context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
         agg = rel.aggregate()
@@ -167,9 +165,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         assert len(agg.getGroupSets()) == 1, "Do not know how to handle this case!"
 
         group_exprs = agg.getGroupSets()
-        group_columns = [
-            group_expr.column_name(rel) for group_expr in group_exprs
-        ]
+        group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
 
         print(f"group_columns: {group_columns}")
 
@@ -184,7 +180,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
-            rel, dc, group_columns, context,
+            rel,
+            dc,
+            group_columns,
+            context,
         )
 
         # SQL does not care about the index, but we do not want to have any multiindices
@@ -306,7 +305,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             print(f"Expr Type: {expr.get_expr_type()}")
 
             # Determine the aggregation function to use
-            assert expr.get_expr_type() == "AggregateFunction", "Do not know how to handle this case!"
+            assert (
+                expr.get_expr_type() == "AggregateFunction"
+            ), "Do not know how to handle this case!"
             # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
             schema_name = "root"
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
@@ -315,7 +316,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
             print(f"Number of Inputs: {len(inputs)}")
-            print(f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}")
+            print(
+                f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}"
+            )
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":

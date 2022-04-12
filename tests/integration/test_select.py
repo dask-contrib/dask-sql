@@ -2,16 +2,16 @@
 # import numpy as np
 # import pandas as pd
 # import pytest
-from pandas.testing import assert_frame_equal
+# from pandas.testing import assert_frame_equal
+from tests.utils import assert_eq
 
 # from dask_sql.utils import ParsingException
 
 
 def test_select(c, df):
     result_df = c.sql("SELECT * FROM df")
-    result_df = result_df.compute()
 
-    assert_frame_equal(result_df, df)
+    assert_eq(result_df, df)
 
 
 # def test_select_alias(c, df):
