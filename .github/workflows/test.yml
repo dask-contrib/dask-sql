@@ -120,7 +120,7 @@ jobs:
           python-version: "3.8"
           channel-priority: strict
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+          environment-file: continuous_integration/environment-3.8-dev.yaml
       - name: Install dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge

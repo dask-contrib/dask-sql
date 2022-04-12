@@ -71,7 +71,7 @@ Create a new conda environment and install the development environment:
 
 .. code-block:: bash
 
-    conda env create -f continuous_integration/environment-3.9-jdk11-dev.yaml
+    conda env create -f continuous_integration/environment-3.9-dev.yaml
 
 It is not recommended to use ``pip`` instead of ``conda``.
 
