@@ -54,12 +54,12 @@ jobs:
           environment-file: continuous_integration/environment-3.8-dev.yaml
       - name: Build the Rust DataFusion bindings
         run: |
-          python setup.py build install
+          python setup.py build
       - name: Upload the DataFusion library
         uses: actions/upload-artifact@v1
         with:
           name: datafusion-lib
-          path: dask_planner/target/libdask_planner.so
+          path: build/lib.linux-x86_64-3.9/dask_planner/rust.cpython-39-x86_64-linux-gnu.so
 
   test:
     name: "Test (${{ matrix.os }}, python: ${{ matrix.python }})"
