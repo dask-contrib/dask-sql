@@ -191,7 +191,8 @@ impl PyExpr {
     }
 
     /// Gets the operands for a BinaryExpr call
-    pub fn getOperands(&self) -> PyResult<Vec<PyExpr>> {
+    #[pyo3(name = "getOperands")]
+    pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
             Expr::BinaryExpr { left, op: _, right } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
@@ -220,7 +221,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getOperatorName(&self) -> PyResult<String> {
+    #[pyo3(name = "getOperatorName")]
+    pub fn get_operator_name(&self) -> PyResult<String> {
         match &self.expr {
             Expr::BinaryExpr {
                 left: _,
@@ -239,10 +241,11 @@ impl PyExpr {
     }
 
     /// Gets the ScalarValue represented by the Expression
-    pub fn getType(&self) -> PyResult<String> {
+    #[pyo3(name = "getType")]
+    pub fn get_type(&self) -> PyResult<String> {
         match &self.expr {
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-            Expr::Literal(scalarValue) => match scalarValue {
+            Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => Ok(String::from("Boolean")),
                 ScalarValue::Float32(_value) => Ok(String::from("Float32")),
                 ScalarValue::Float64(_value) => Ok(String::from("Float64")),
@@ -345,7 +348,8 @@ impl PyExpr {
 
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
     /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
-    pub fn getFloat32Value(&mut self) -> f32 {
+    #[pyo3(name = "getFloat32Value")]
+    pub fn float_32_value(&mut self) -> f32 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Float32(iv) => iv.unwrap(),
@@ -357,7 +361,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getFloat64Value(&mut self) -> f64 {
+    #[pyo3(name = "getFloat64Value")]
+    pub fn float_64_value(&mut self) -> f64 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Float64(iv) => iv.unwrap(),
@@ -369,7 +374,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getInt8Value(&mut self) -> i8 {
+    #[pyo3(name = "getInt8Value")]
+    pub fn int_8_value(&mut self) -> i8 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Int8(iv) => iv.unwrap(),
@@ -381,7 +387,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getInt16Value(&mut self) -> i16 {
+    #[pyo3(name = "getInt16Value")]
+    pub fn int_16_value(&mut self) -> i16 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Int16(iv) => iv.unwrap(),
@@ -393,7 +400,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getInt32Value(&mut self) -> i32 {
+    #[pyo3(name = "getInt32Value")]
+    pub fn int_32_value(&mut self) -> i32 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Int32(iv) => iv.unwrap(),
@@ -405,7 +413,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getInt64Value(&mut self) -> i64 {
+    #[pyo3(name = "getInt64Value")]
+    pub fn int_64_value(&mut self) -> i64 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Int64(iv) => iv.unwrap(),
@@ -417,7 +426,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getUInt8Value(&mut self) -> u8 {
+    #[pyo3(name = "getUInt8Value")]
+    pub fn uint_8_value(&mut self) -> u8 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::UInt8(iv) => iv.unwrap(),
@@ -429,7 +439,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getUInt16Value(&mut self) -> u16 {
+    #[pyo3(name = "getUInt16Value")]
+    pub fn uint_16_value(&mut self) -> u16 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::UInt16(iv) => iv.unwrap(),
@@ -441,7 +452,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getUInt32Value(&mut self) -> u32 {
+    #[pyo3(name = "getUInt32Value")]
+    pub fn uint_32_value(&mut self) -> u32 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::UInt32(iv) => iv.unwrap(),
@@ -453,7 +465,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getUInt64Value(&mut self) -> u64 {
+    #[pyo3(name = "getUInt64Value")]
+    pub fn uint_64_value(&mut self) -> u64 {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::UInt64(iv) => iv.unwrap(),
@@ -465,7 +478,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getBoolValue(&mut self) -> bool {
+    #[pyo3(name = "getBoolValue")]
+    pub fn bool_value(&mut self) -> bool {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(iv) => iv.unwrap(),
@@ -477,7 +491,8 @@ impl PyExpr {
         }
     }
 
-    pub fn getStringValue(&mut self) -> String {
+    #[pyo3(name = "getStringValue")]
+    pub fn string_value(&mut self) -> String {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Utf8(iv) => iv.clone().unwrap(),

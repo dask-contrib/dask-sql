@@ -23,11 +23,13 @@ impl From<Column> for PyColumn {
 
 #[pymethods]
 impl PyColumn {
-    pub fn getRelation(&self) -> String {
+    #[pyo3(name = "getRelation")]
+    pub fn relation(&self) -> String {
         self.column.relation.clone().unwrap()
     }
 
-    pub fn getName(&self) -> String {
+    #[pyo3(name = "getName")]
+    pub fn name(&self) -> String {
         self.column.name.clone()
     }
 }

@@ -11,6 +11,7 @@ pub struct DaskSchema {
     #[pyo3(get, set)]
     pub(crate) name: String,
     pub(crate) tables: HashMap<String, table::DaskTable>,
+    #[allow(dead_code)]
     pub(crate) functions: HashMap<String, function::DaskFunction>,
 }
 
@@ -23,15 +24,6 @@ impl DaskSchema {
             tables: HashMap::new(),
             functions: HashMap::new(),
         }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!(
-            "Schema Name: ({}) - # Tables: ({}) - # Custom Functions: ({})",
-            &self.name,
-            &self.tables.len(),
-            &self.functions.len()
-        )
     }
 
     pub fn add_table(&mut self, table: table::DaskTable) {

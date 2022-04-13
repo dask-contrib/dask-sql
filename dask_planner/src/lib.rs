@@ -1,7 +1,6 @@
 use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
-mod catalog;
 mod expression;
 mod sql;
 
@@ -16,11 +15,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pyo3(name = "rust")]
 fn rust(_py: Python, m: &PyModule) -> PyResult<()> {
     // Register the python classes
-    m.add_class::<catalog::PyDatabase>()?;
-    m.add_class::<catalog::PyTable>()?;
     m.add_class::<expression::PyExpr>()?;
-
-    // SQL specific classes
     m.add_class::<sql::DaskSQLContext>()?;
     m.add_class::<sql::types::DaskRelDataType>()?;
     m.add_class::<sql::statement::PyStatement>()?;

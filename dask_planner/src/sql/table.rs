@@ -57,6 +57,7 @@ impl TableProvider for DaskTableProvider {
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {
+    #[allow(dead_code)]
     row_count: f64,
 }
 
@@ -72,6 +73,7 @@ impl DaskStatistics {
 #[derive(Debug, Clone)]
 pub struct DaskTable {
     pub(crate) name: String,
+    #[allow(dead_code)]
     pub(crate) statistics: DaskStatistics,
     pub(crate) columns: Vec<(String, types::DaskRelDataType)>,
 }
@@ -97,10 +99,7 @@ impl DaskTable {
     }
 
     pub fn get_qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
-        let mut qualified_name = Vec::new();
-
-        //TODO: What scope should the current schema be pulled from here?? For now temporary hardcoded to default "root"
-        qualified_name.push(String::from("root"));
+        let mut qualified_name = Vec::from([String::from("root")]);
 
         match plan.original_plan {
             LogicalPlan::TableScan(_table_scan) => {
@@ -151,9 +150,9 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
-        LogicalPlan::TableScan(tableScan) => {
+        LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
-            let tbl_provider: Arc<dyn TableProvider> = tableScan.source.clone();
+            let tbl_provider: Arc<dyn TableProvider> = table_scan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
             let fields = tbl_schema.fields();
 
@@ -169,7 +168,7 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             }
 
             Some(DaskTable {
-                name: String::from(&tableScan.table_name),
+                name: String::from(&table_scan.table_name),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
             })
