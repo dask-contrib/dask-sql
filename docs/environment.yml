@@ -7,7 +7,6 @@ dependencies:
   - sphinx>=4.0.0
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3
-  - maven>=3.6.0
   - dask>=2022.3.0
   - pandas>=1.0.0
   - fugue>=0.5.3
