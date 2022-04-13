@@ -12,3 +12,4 @@ prompt_toolkit
 pygments
 tabulate
 nest-asyncio
+setuptools-rust>=1.2.0
