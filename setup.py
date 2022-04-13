@@ -29,6 +29,7 @@ setup(
     packages=find_packages(
         include=["dask_sql", "dask_sql.*", "dask_planner", "dask_planner.*"]
     ),
+    package_data={"dask_sql": ["sql*.yaml"]},
     rust_extensions=[
         RustExtension(
             "dask_planner.rust",
