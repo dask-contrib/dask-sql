@@ -3,8 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime
-
-# from typing import Any, Dict
+from typing import Any, Dict
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -13,9 +12,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
-
-# from dask_sql.mappings import sql_to_python_value
+from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
 
@@ -196,45 +195,45 @@ class LoggableDataFrame:
         return f"Literal: {df}"
 
 
-# def convert_sql_kwargs(
-#     sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
-# ) -> Dict[str, Any]:
-#     """
-#     Convert a HapMap (probably coming from a SqlKwargs class instance)
-#     into its python equivalent. Basically calls convert_sql_kwargs
-#     for each of the values, except for some special handling for
-#     nested key-value parameters, ARRAYs etc. and CHARs (which unfortunately have
-#     an additional "'" around them if used in convert_sql_kwargs directly).
-#     """
+def convert_sql_kwargs(
+    sql_kwargs: Dict[LogicalPlan, LogicalPlan],
+) -> Dict[str, Any]:
+    """
+    Convert a HapMap (probably coming from a SqlKwargs class instance)
+    into its python equivalent. Basically calls convert_sql_kwargs
+    for each of the values, except for some special handling for
+    nested key-value parameters, ARRAYs etc. and CHARs (which unfortunately have
+    an additional "'" around them if used in convert_sql_kwargs directly).
+    """
 
-#     def convert_literal(value):
-#         if isinstance(value, org.apache.calcite.sql.SqlBasicCall):
-#             operator_mapping = {
-#                 "ARRAY": list,
-#                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
-#                 "MULTISET": set,
-#                 "ROW": tuple,
-#             }
+    def convert_literal(value):
+        if isinstance(value, LogicalPlan):
+            operator_mapping = {
+                "ARRAY": list,
+                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "MULTISET": set,
+                "ROW": tuple,
+            }
 
-#             operator = operator_mapping[str(value.getOperator())]
-#             operands = [convert_literal(o) for o in value.getOperandList()]
+            operator = operator_mapping[str(value.getOperator())]
+            operands = [convert_literal(o) for o in value.getOperandList()]
 
-#             return operator(operands)
-#         elif isinstance(value, com.dask.sql.parser.SqlKwargs):
-#             return convert_sql_kwargs(value.getMap())
-#         else:
-#             literal_type = str(value.getTypeName())
+            return operator(operands)
+        elif isinstance(value, LogicalPlan):
+            return convert_sql_kwargs(value.getMap())
+        else:
+            literal_type = str(value.getTypeName())
 
-#             if literal_type == "CHAR":
-#                 return str(value.getStringValue())
-#             elif literal_type == "DECIMAL" and value.isInteger():
-#                 literal_type = "BIGINT"
+            if literal_type == "CHAR":
+                return str(value.getStringValue())
+            elif literal_type == "DECIMAL" and value.isInteger():
+                literal_type = "BIGINT"
 
-#             literal_value = value.getValue()
-#             python_value = sql_to_python_value(literal_type, literal_value)
-#             return python_value
+            literal_value = value.getValue()
+            python_value = sql_to_python_value(literal_type, literal_value)
+            return python_value
 
-#     return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
+    return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
 
 
 def import_class(name: str) -> type:
