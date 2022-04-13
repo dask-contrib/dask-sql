@@ -773,7 +773,6 @@ class Context:
             #     java_schema.addFunction(dask_function)
 
             schema_list.append(rust_schema)
-            logger.debug(f"Prepared Schema: {rust_schema.to_string()}")
 
         return schema_list
 
