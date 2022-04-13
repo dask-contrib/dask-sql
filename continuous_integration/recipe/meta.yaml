@@ -27,6 +27,7 @@ requirements:
   host:
     - pip
     - python >=3.8
+    - setuptools-rust>=1.1.2
   run:
     - python
     - dask >=2022.3.0
@@ -38,6 +39,7 @@ requirements:
     - pygments
     - nest-asyncio
     - tabulate
+    - setuptools-rust>=1.1.2
     - pyarrow>=0.15.1
 
 test:
