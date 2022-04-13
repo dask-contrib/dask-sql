@@ -63,7 +63,7 @@ def test_intake_location(intake_catalog_location):
     check_read_table(c)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_intake_sql(intake_catalog_location):
     c = Context()
     c.sql(

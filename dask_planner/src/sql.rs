@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use pyo3::prelude::*;
 
-/// DaskSQLContext is main interface used for interacting with Datafusion to
+/// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
 ///
 /// The following example demonstrates how to generate an optimized LogicalPlan

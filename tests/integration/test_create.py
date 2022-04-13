@@ -6,7 +6,7 @@ import dask_sql
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -32,7 +32,7 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -66,7 +66,7 @@ def test_cluster_memory(client, c, df, gpu):
     client.unpublish_dataset("df")
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
@@ -93,7 +93,7 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
     assert_eq(df, return_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_create(c):
     with pytest.raises(AttributeError):
         c.sql(
@@ -119,7 +119,7 @@ def test_wrong_create(c):
         )
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_create_from_query(c, df):
     c.sql(
         """
@@ -158,7 +158,7 @@ def test_create_from_query(c, df):
     assert_eq(df, return_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -222,7 +222,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     assert_eq(from_table, pd.DataFrame({"c": [700]}))
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_replace_and_error(c, temporary_data_file, df):
     c.sql(
         """
@@ -350,7 +350,7 @@ def test_replace_and_error(c, temporary_data_file, df):
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop(c):
     with pytest.raises(RuntimeError):
         c.sql("DROP TABLE new_table")

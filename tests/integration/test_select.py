@@ -12,7 +12,7 @@ def test_select(c, df):
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_alias(c, df):
     result_df = c.sql("SELECT a as b, b as a FROM df")
 
@@ -49,7 +49,7 @@ def test_select_different_types(c):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_expr(c, df):
     result_df = c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
     result_df = result_df
@@ -64,7 +64,7 @@ def test_select_expr(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_of_select(c, df):
     result_df = c.sql(
         """
@@ -81,7 +81,7 @@ def test_select_of_select(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_of_select_with_casing(c, df):
     result_df = c.sql(
         """
@@ -101,7 +101,7 @@ def test_select_of_select_with_casing(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_input(c):
     with pytest.raises(ParsingException):
         c.sql("""SELECT x FROM df""")
@@ -110,7 +110,7 @@ def test_wrong_input(c):
         c.sql("""SELECT x FROM df""")
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_timezones(c, datetime_table):
     result_df = c.sql(
         """
@@ -121,7 +121,7 @@ def test_timezones(c, datetime_table):
     assert_eq(result_df, datetime_table)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -144,7 +144,7 @@ def test_limit(c, input_table, limit, offset, request):
     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -201,7 +201,7 @@ def test_timestamp_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_multi_case_when(c):
     df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
     c.create_table("df", df)

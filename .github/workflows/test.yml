@@ -1,7 +1,7 @@
 ---
 # Test the main branch and every pull request by
-# 1. build dask_planner (Apache Datafusion Rust bindings) on ubuntu
-# 2. testing code (using the build Datafusion bindings) on ubuntu and windows
+# 1. build dask_planner (Arrow DataFusion Rust bindings) on ubuntu
+# 2. testing code (using the build DataFusion bindings) on ubuntu and windows
 name: Test Python package
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-dev.yaml
-      - name: Build the Rust Datafusion bindings
+      - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build
 

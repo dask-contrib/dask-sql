@@ -43,7 +43,7 @@ def app_client(c):
         app.client.close()
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_jdbc_has_schema(app_client, c):
     create_meta_data(c)
 
@@ -75,7 +75,7 @@ def test_jdbc_has_schema(app_client, c):
     ]
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_jdbc_has_table(app_client, c):
     create_meta_data(c)
     check_data(app_client)
@@ -93,7 +93,7 @@ def test_jdbc_has_table(app_client, c):
     ]
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_jdbc_has_columns(app_client, c):
     create_meta_data(c)
     check_data(app_client)

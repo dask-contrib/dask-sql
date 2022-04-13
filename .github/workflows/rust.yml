@@ -1,4 +1,4 @@
-name: Rust-Datafusion
+name: Rust-DataFusion
 
 on:
   push:

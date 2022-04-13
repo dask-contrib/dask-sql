@@ -39,7 +39,7 @@ def test_join_inner(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_outer(c):
     return_df = c.sql(
         """
@@ -84,7 +84,7 @@ def test_join_left(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_right(c):
     return_df = c.sql(
         """
@@ -107,7 +107,7 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_complex(c):
     return_df = c.sql(
         """
@@ -157,7 +157,7 @@ def test_join_complex(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_literal(c):
     return_df = c.sql(
         """
@@ -191,7 +191,7 @@ def test_join_literal(c):
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_conditional_join(c):
     df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
@@ -216,7 +216,7 @@ def test_conditional_join(c):
     assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_on_unary_cond_only(c):
     df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
@@ -235,7 +235,7 @@ def test_join_on_unary_cond_only(c):
     assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_case_projection_subquery():
     c = Context()
 
@@ -274,7 +274,7 @@ def test_join_case_projection_subquery():
     ).compute()
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_conditional_join_with_limit(c):
     df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]})
     ddf = dd.from_pandas(df, 5)

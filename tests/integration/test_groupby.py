@@ -36,7 +36,7 @@ def test_group_by(c):
     assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_all(c, df):
     result_df = c.sql(
         """
@@ -79,7 +79,7 @@ def test_group_by_all(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_filtered(c):
     return_df = c.sql(
         """
@@ -124,7 +124,7 @@ def test_group_by_filtered(c):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_case(c):
     return_df = c.sql(
         """
@@ -180,7 +180,7 @@ def test_group_by_nan(c):
     )
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_aggregations(c):
     return_df = c.sql(
         """
@@ -252,7 +252,7 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_stats_aggregation(c, timeseries_df):
     # test regr_count
     regr_count = c.sql(
@@ -400,7 +400,7 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "gpu,split_every,expected_keys",
     [

@@ -90,7 +90,7 @@ impl PyLogicalPlan {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),
             None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Unable to compute DaskTable from Datafusion LogicalPlan",
+                "Unable to compute DaskTable from DataFusion LogicalPlan",
             )),
         }
     }

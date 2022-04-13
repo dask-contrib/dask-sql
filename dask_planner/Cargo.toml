@@ -2,7 +2,7 @@
 name = "dask_planner"
 repository = "https://github.com/dask-contrib/dask-sql"
 version = "0.1.0"
-description = "Bindings for Datafusion used by Dask-SQL"
+description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"

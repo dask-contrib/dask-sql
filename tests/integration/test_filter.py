@@ -14,7 +14,7 @@ def test_filter(c, df):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_filter_scalar(c, df):
     return_df = c.sql("SELECT * FROM df WHERE True")
 
@@ -37,7 +37,7 @@ def test_filter_scalar(c, df):
     assert_eq(return_df, expected_df, check_index_type=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_filter_complicated(c, df):
     return_df = c.sql("SELECT * FROM df WHERE a < 3 AND (b > 1 AND b < 3)")
 
@@ -48,7 +48,7 @@ def test_filter_complicated(c, df):
     )
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_filter_with_nan(c):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
 
@@ -62,7 +62,7 @@ def test_filter_with_nan(c):
     )
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_string_filter(c, string_table):
     return_df = c.sql("SELECT * FROM string_table WHERE a = 'a normal string'")
 
@@ -72,7 +72,7 @@ def test_string_filter(c, string_table):
     )
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -96,7 +96,7 @@ def test_filter_cast_date(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -120,7 +120,7 @@ def test_filter_cast_timestamp(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_filter_year(c):
     df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
     df["dt"] = pd.to_datetime(df)
@@ -133,7 +133,7 @@ def test_filter_year(c):
     assert_eq(expected_df, return_df)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "query,df_func,filters",
     [
@@ -206,7 +206,7 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
     assert_eq(return_df, expected_df, check_divisions=False)
 
 
-@pytest.mark.skip(reason="WIP Datafusion")
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_filtered_csv(tmpdir, c):
     # Predicate pushdown is NOT supported for CSV data.
     # This test just checks that the "attempted"

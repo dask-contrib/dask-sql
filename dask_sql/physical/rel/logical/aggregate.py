@@ -351,9 +351,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
             # Extract flags (filtering/distinct)
             if rel.aggregate().isDistinct(expr):  # pragma: no cover
-                raise ValueError("Apache Datafusion should optimize them away!")
+                raise ValueError("Arrow DataFusion should optimize them away!")
 
-            # TODO: Datafusion does not yet have the concept of "filters" in aggregations
+            # TODO: DataFusion does not yet have the concept of "filters" in aggregations
             filter_column = None
             # if expr.hasFilter():
             #     filter_column = cc.get_backend_by_frontend_index(expr.filterArg)

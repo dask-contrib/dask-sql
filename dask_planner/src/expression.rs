@@ -509,7 +509,7 @@ impl PyExpr {
 //     fn getValue(&mut self) -> T;
 // }
 
-// /// Expansion macro to get all typed values from a Datafusion Expr
+// /// Expansion macro to get all typed values from a DataFusion Expr
 // macro_rules! get_typed_value {
 //     ($t:ty, $func_name:ident) => {
 //         impl ObtainValue<$t> for PyExpr {

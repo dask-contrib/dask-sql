@@ -36,7 +36,7 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
             literal_value = rex.getFloat32Value()
         else:
             raise RuntimeError(
-                "Failed to determine Datafusion Type in scalar_function.py"
+                "Failed to determine DataFusion Type in scalar_function.py"
             )
 
         print(f"Expression in literal.py literal_value: {literal_value}")

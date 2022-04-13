@@ -141,7 +141,7 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_type = "Date"
             literal_value = rex.getDateValue()
         else:
-            raise RuntimeError("Failed to determine Datafusion Type in literal.py")
+            raise RuntimeError("Failed to determine DataFusion Type in literal.py")
 
         print(f"Expression in literal.py literal_value: {literal_value}")
         print(f"Expression in literal.py literal_type: {literal_type}")
