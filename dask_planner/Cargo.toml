@@ -5,8 +5,8 @@ version = "0.1.0"
 description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
-edition = "2021"
-rust-version = "1.57"
+edition = "2018"
+rust-version = "1.55"
 
 [dependencies]
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
