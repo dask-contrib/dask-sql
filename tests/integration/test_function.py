@@ -8,6 +8,7 @@ import pytest
 from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_custom_function(c, df):
     def f(x):
         return x**2
@@ -19,6 +20,7 @@ def test_custom_function(c, df):
     assert_eq(return_df, df[["a"]] ** 2)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_custom_function_row(c, df):
     def f(row):
         return row["x"] ** 2
@@ -30,6 +32,7 @@ def test_custom_function_row(c, df):
     assert_eq(return_df, df[["a"]] ** 2)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 @pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
 def test_custom_function_any_colnames(colnames, df_wide, c):
     # a third column is needed
@@ -50,6 +53,7 @@ def test_custom_function_any_colnames(colnames, df_wide, c):
     assert_eq(expect, got, check_names=False)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 @pytest.mark.parametrize(
     "retty",
     [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
@@ -71,6 +75,7 @@ def test_custom_function_row_return_types(c, df, retty):
 
 
 # Test row UDFs with one arg
+@pytest.mark.skip(reason="WIP Datafusion")
 @pytest.mark.parametrize("k", [1, 1.5, True])
 @pytest.mark.parametrize(
     "op", [operator.add, operator.sub, operator.mul, operator.truediv]
@@ -93,6 +98,7 @@ def test_custom_function_row_args(c, df, k, op, retty):
 
 
 # Test row UDFs with two args
+@pytest.mark.skip(reason="WIP Datafusion")
 @pytest.mark.parametrize("k2", [1, 1.5, True])
 @pytest.mark.parametrize("k1", [1, 1.5, True])
 @pytest.mark.parametrize(
@@ -123,6 +129,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     assert_eq(return_df, expected_df)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_multiple_definitions(c, df_simple):
     def f(x):
         return x**2
@@ -157,6 +164,7 @@ def test_multiple_definitions(c, df_simple):
     assert_eq(return_df, expected_df)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_aggregate_function(c):
     fagg = dd.Aggregation("f", lambda x: x.sum(), lambda x: x.sum())
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
@@ -171,6 +179,7 @@ def test_aggregate_function(c):
     assert_eq(return_df["test"], return_df["S"], check_names=False)
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_reregistration(c):
     def f(x):
         return x**2

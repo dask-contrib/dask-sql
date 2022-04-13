@@ -57,7 +57,7 @@ setup(
             "pytest-cov>=2.10.1",
             "mock>=4.0.3",
             "sphinx>=3.2.1",
-            "pyarrow>=0.15.1",
+            "pyarrow=7.0.0",
             "dask-ml>=2022.1.22",
             "scikit-learn>=0.24.2",
             "intake>=0.6.0",

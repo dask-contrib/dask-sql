@@ -1,8 +1,10 @@
 import pandas as pd
+import pytest
 
 from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP Datafusion")
 def test_analyze(c, df):
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
 

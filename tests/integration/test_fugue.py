@@ -35,6 +35,7 @@ def test_simple_statement():
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
+@pytest.mark.skip(reason="WIP Datafusion")
 @skip_if_external_scheduler
 def test_fsql():
     def assert_fsql(df: pd.DataFrame) -> None:

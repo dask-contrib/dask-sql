@@ -14,7 +14,7 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import Expression
+from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
@@ -867,6 +867,7 @@ class RexCallPlugin(BaseRexPlugin):
 
     def convert(
         self,
+        rel: LogicalPlan,
         expr: Expression,
         dc: DataContainer,
         context: "dask_sql.Context",
@@ -874,7 +875,8 @@ class RexCallPlugin(BaseRexPlugin):
         print(f"Expression Operands: {expr.getOperands()}")
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
-            RexConverter.convert(o, dc, context=context) for o in expr.getOperands()
+            RexConverter.convert(rel, o, dc, context=context)
+            for o in expr.getOperands()
         ]
 
         print(f"Operands: {operands}")

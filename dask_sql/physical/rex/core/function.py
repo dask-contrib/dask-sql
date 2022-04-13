@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from dask_planner.rust import Expression
+from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -15,6 +15,7 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
 
     def convert(
         self,
+        rel: LogicalPlan,
         rex: Expression,
         dc: DataContainer,
         context: "dask_sql.Context",

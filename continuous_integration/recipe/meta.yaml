@@ -40,7 +40,7 @@ requirements:
     - nest-asyncio
     - tabulate
     - setuptools-rust>=1.1.2
-    - pyarrow>=0.15.1
+    - pyarrow=7.0.0
 
 test:
   imports:
