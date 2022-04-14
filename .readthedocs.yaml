@@ -10,9 +10,10 @@ build:
       - export PATH=$PATH:~/.cargo/bin
       - whoami
       - echo $HOME
-      - ls -la ~/
-      - ls -la ~/.cargo
-      - ls -la ~/.cargo/bin
+      - ls -la $HOME
+      - ls -la $HOME/.cargo
+      - ls -la $HOME/.cargo/bin
+      - ls -la $HOME/carbo/bin/rustc --version
       - rustc --version
 
 sphinx:
