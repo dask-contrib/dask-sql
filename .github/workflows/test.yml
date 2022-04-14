@@ -98,7 +98,7 @@ jobs:
 
   cluster:
     name: "Test in a dask cluster"
-    needs: [detect-ci-trigger, build]
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
