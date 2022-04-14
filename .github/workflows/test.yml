@@ -37,7 +37,7 @@ jobs:
           keyword: "[test-upstream]"
 
   test:
-    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}), Rust: ${{ matrix.toolchain }}"
+    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}, Rust: ${{ matrix.toolchain }})"
     needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:
@@ -111,6 +111,15 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-dev.yaml
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
