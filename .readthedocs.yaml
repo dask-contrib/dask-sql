@@ -11,6 +11,9 @@ build:
       - whoami
       - echo $HOME
       - ls -la ~/
+      - ls -la ~/.cargo
+      - ls -la ~/.cargo/bin
+      - rustc --version
 
 sphinx:
   configuration: docs/source/conf.py
