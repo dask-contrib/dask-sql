@@ -13,6 +13,7 @@ build:
       - ls -la $HOME
       - ls -la $HOME/.cargo
       - ls -la $HOME/.cargo/bin
+      - echo $PATH
       - ls -la $HOME/carbo/bin/rustc --version
       - rustc --version
 
