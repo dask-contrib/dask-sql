@@ -161,6 +161,7 @@ jobs:
           channel-priority: strict
       - name: Install dependencies and nothing else
         run: |
+          pip install setuptools-rust
           pip install -e .
 
           which python
