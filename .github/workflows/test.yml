@@ -139,7 +139,7 @@ jobs:
 
   import:
     name: "Test importing with bare requirements"
-    needs: [detect-ci-trigger, build]
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
