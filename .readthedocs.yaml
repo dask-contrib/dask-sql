@@ -8,6 +8,9 @@ build:
     post_create_environment:
       - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - export PATH=$PATH:~/.cargo/bin
+      - whoami
+      - echo $HOME
+      - ls -la ~/
 
 sphinx:
   configuration: docs/source/conf.py
