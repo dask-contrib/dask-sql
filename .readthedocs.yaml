@@ -6,7 +6,7 @@ build:
     python: "3.8"
   jobs:
     post_create_environment:
-      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -y
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 sphinx:
   configuration: docs/source/conf.py
