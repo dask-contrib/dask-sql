@@ -36,34 +36,9 @@ jobs:
         with:
           keyword: "[test-upstream]"
 
-  build:
-    # This build step should be similar to the deploy build, to make sure we actually test
-    # the future deployable
-    name: Build the dask_planner on ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.8"
-          channel-priority: strict
-          activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-dev.yaml
-      - name: Build the Rust DataFusion bindings
-        run: |
-          python setup.py build
-      - name: Upload the DataFusion library
-        uses: actions/upload-artifact@v1
-        with:
-          name: datafusion-lib
-          path: build/lib.linux-x86_64-3.9/dask_planner/rust.cpython-39-x86_64-linux-gnu.so
-
   test:
-    name: "Test (${{ matrix.os }}, python: ${{ matrix.python }})"
-    needs: [detect-ci-trigger, build]
+    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}), Rust: ${{ matrix.toolchain }}"
+    needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
@@ -72,6 +47,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python: ["3.8", "3.9", "3.10"]
+        toolchain: [stable]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -83,11 +59,15 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Download the pre-built datafusion-libs
-        uses: actions/download-artifact@v1
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
         with:
-          name: datafusion-lib
-          path: dask_planner/target/
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install hive testing dependencies for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -131,11 +111,6 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-dev.yaml
-      - name: Download the pre-built datafusion-libs
-        uses: actions/download-artifact@v1
-        with:
-          name: datafusion-lib
-          path: dask_planner/target/
       - name: Install dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge

@@ -5,6 +5,15 @@ build:
   tools:
     python: "3.8"
     rust: "1.55"
+  apt_packages:
+    - libclang
+    - cmake
+  jobs:
+    pre_create_environment:
+      - echo "Command run at 'pre_create_environment' step"
+    post_build:
+      - echo "Command run at 'post_build' step"
+      - echo `date`
 
 sphinx:
   configuration: docs/source/conf.py
