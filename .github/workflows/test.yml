@@ -161,7 +161,8 @@ jobs:
           channel-priority: strict
       - name: Install dependencies and nothing else
         run: |
-          pip install setuptools-rust
+          conda install setuptools-rust
+          conda install pyarrow=6.0.1
           pip install -e .
 
           which python
