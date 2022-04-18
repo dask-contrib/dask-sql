@@ -159,8 +159,8 @@ impl PyExpr {
                 }
             }
             Expr::Column(column) => column.name.clone(),
-            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-            Expr::Literal(..) => panic!("Literal!!!"),
+            Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
+            Expr::Literal(..) => unimplemented!("Literal!!!"),
             Expr::BinaryExpr {
                 left: _,
                 op: _,
@@ -168,24 +168,24 @@ impl PyExpr {
             } => {
                 // /// TODO: Examine this more deeply about whether name comes from the left or right
                 // self.column_name(left)
-                panic!("BinaryExpr HERE!!!")
+                unimplemented!("BinaryExpr HERE!!!")
             }
-            Expr::Not(..) => panic!("Not!!!"),
-            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
-            Expr::Negative(..) => panic!("Negative!!!"),
-            Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
-            Expr::IsNull(..) => panic!("IsNull!!!"),
-            Expr::Between { .. } => panic!("Between!!!"),
-            Expr::Case { .. } => panic!("Case!!!"),
-            Expr::Cast { .. } => panic!("Cast!!!"),
-            Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => panic!("Sort!!!"),
-            Expr::ScalarFunction { .. } => panic!("ScalarFunction!!!"),
-            Expr::AggregateFunction { .. } => panic!("AggregateFunction!!!"),
-            Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => panic!("InList!!!"),
-            Expr::Wildcard => panic!("Wildcard!!!"),
+            Expr::Not(..) => unimplemented!("Not!!!"),
+            Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
+            Expr::Negative(..) => unimplemented!("Negative!!!"),
+            Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
+            Expr::IsNull(..) => unimplemented!("IsNull!!!"),
+            Expr::Between { .. } => unimplemented!("Between!!!"),
+            Expr::Case { .. } => unimplemented!("Case!!!"),
+            Expr::Cast { .. } => unimplemented!("Cast!!!"),
+            Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
+            Expr::Sort { .. } => unimplemented!("Sort!!!"),
+            Expr::ScalarFunction { .. } => unimplemented!("ScalarFunction!!!"),
+            Expr::AggregateFunction { .. } => unimplemented!("AggregateFunction!!!"),
+            Expr::WindowFunction { .. } => unimplemented!("WindowFunction!!!"),
+            Expr::AggregateUDF { .. } => unimplemented!("AggregateUDF!!!"),
+            Expr::InList { .. } => unimplemented!("InList!!!"),
+            Expr::Wildcard => unimplemented!("Wildcard!!!"),
             _ => panic!("Nothing found!!!"),
         }
     }

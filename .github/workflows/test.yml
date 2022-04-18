@@ -162,7 +162,7 @@ jobs:
       - name: Install dependencies and nothing else
         run: |
           conda install setuptools-rust
-          conda install pyarrow=6.0.1
+          conda install pyarrow>=4.0.0
           pip install -e .
 
           which python

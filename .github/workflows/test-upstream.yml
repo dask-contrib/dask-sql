@@ -7,7 +7,6 @@ on:
 jobs:
   test-dev:
     name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
-    needs: build
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
@@ -38,10 +37,6 @@ jobs:
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
-      - name: Set proper JAVA_HOME for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
       - name: Install upstream dev Dask / dask-ml
         run: |
           python -m pip install --no-deps git+https://github.com/dask/dask

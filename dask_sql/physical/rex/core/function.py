@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING, Any
 
 from dask_planner.rust import Expression, LogicalPlan
@@ -7,6 +8,8 @@ from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+
+logger = logging.getLogger(__name__)
 
 
 class RexScalarFunctionPlugin(BaseRexPlugin):
@@ -21,10 +24,10 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> Any:
         expr_type = rex.get_expr_type()
-        print(f"Function Name: {expr_type}")
-        print(f"Expression in scalar_function.py: {rex}")
+        logger.debug(f"Function Name: {expr_type}")
+        logger.debug(f"Expression in scalar_function.py: {rex}")
         literal_type = str(rex.getType())
-        print(f"literal_type: {literal_type}")
+        logger.debug(f"literal_type: {literal_type}")
 
         # Call the Rust function to get the actual value and convert the Rust
         # type name back to a SQL type
@@ -39,8 +42,8 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
                 "Failed to determine DataFusion Type in scalar_function.py"
             )
 
-        print(f"Expression in literal.py literal_value: {literal_value}")
-        print(f"Expression in literal.py literal_type: {literal_type}")
+        logger.debug(f"Expression in literal.py literal_value: {literal_value}")
+        logger.debug(f"Expression in literal.py literal_type: {literal_type}")
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):
         #     return SargPythonImplementation(literal_value, literal_type)

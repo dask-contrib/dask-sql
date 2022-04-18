@@ -106,7 +106,9 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     # Additionally, a literal type is not used
     # so often anyways.
 
-    print(f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}")
+    logger.debug(
+        f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}"
+    )
     sql_type = sql_type.upper()
 
     if (
@@ -299,5 +301,5 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    print(f"Need to cast from {current_type} to {expected_type}")
+    logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

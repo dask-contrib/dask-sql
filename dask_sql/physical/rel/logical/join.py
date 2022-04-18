@@ -58,8 +58,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         # cc_lhs = dc_lhs.column_container
         # cc_rhs = dc_rhs.column_container
 
-        print(f"\nlhs DataFrame:\n{dc_lhs.df.compute().head()}")
-        print(f"\n\nrhs DataFrame:\n{dc_rhs.df.compute().head()}")
+        logger.debug(f"\nlhs DataFrame:\n{dc_lhs.df.compute().head()}")
+        logger.debug(f"\n\nrhs DataFrame:\n{dc_rhs.df.compute().head()}")
 
         # # 2. dask's merge will do some smart things with columns, which have the same name
         # # on lhs an rhs (which also includes reordering).
@@ -100,7 +100,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             f"lhs_on: {lhs_on}.{join_on[0][0].getName()} rhs_on: {rhs_on}.{join_on[0][1].getName()}"
         )
 
-        print(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
+        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
 
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
@@ -112,8 +112,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
         df = dd.merge(dc_lhs.df, dc_rhs.df, on=lhs_on, how=join_type)
-        print(f"\n\nDataFrame after Join Size:{df.shape[0].compute()}")
-        print(f"\nDataFrame after Join:\n{df.compute().head(6)}")
+        logger.debug(f"\n\nDataFrame after Join Size:{df.shape[0].compute()}")
+        logger.debug(f"\nDataFrame after Join:\n{df.compute().head(6)}")
         # if lhs_on:
         #     # 5. Now we can finally merge on these columns
         #     # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
@@ -216,12 +216,12 @@ class DaskJoinPlugin(BaseRelPlugin):
         rhs_on: List[str],
         join_type: str,
     ) -> dd.DataFrame:
-        print(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
-        print(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
-        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
+        logger.debug(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
+        logger.debug(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
+        logger.debug(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
         lhs_columns_to_add = {f"common_{i}": df_lhs_renamed[i] for i in lhs_on}
-        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
+        logger.debug(f"lhs_columns_to_add: {lhs_columns_to_add}")
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]
             for i, index in enumerate(rhs_on)

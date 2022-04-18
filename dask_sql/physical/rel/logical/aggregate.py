@@ -161,13 +161,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # We make our life easier with having unique column names
         cc = cc.make_unique()
 
-        # I have no idea what that is, but so far it was always of length 1
-        assert len(agg.getGroupSets()) == 1, "Do not know how to handle this case!"
-
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
 
-        print(f"group_columns: {group_columns}")
+        logger.debug(f"group_columns: {group_columns}")
 
         dc = DataContainer(df, cc)
 
@@ -227,8 +224,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
-        print(f"Collected Aggregations: {collected_aggregations}")
-        print(f"Output Column Order: {output_column_order}")
+        logger.debug(f"Collected Aggregations: {collected_aggregations}")
+        logger.debug(f"Output Column Order: {output_column_order}")
 
         if not collected_aggregations:
             return df[group_columns].drop_duplicates(), output_column_order
@@ -301,21 +298,22 @@ class DaskAggregatePlugin(BaseRelPlugin):
         collected_aggregations = defaultdict(list)
 
         for expr in rel.aggregate().getNamedAggCalls():
-            print(f"Aggregate Call: {expr}")
-            print(f"Expr Type: {expr.get_expr_type()}")
+            logger.debug(f"Aggregate Call: {expr}")
+            logger.debug(f"Expr Type: {expr.get_expr_type()}")
 
             # Determine the aggregation function to use
             assert (
                 expr.get_expr_type() == "AggregateFunction"
             ), "Do not know how to handle this case!"
+
             # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
             schema_name = "root"
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
-            print(f"AggregationName: {aggregation_name}")
+            logger.debug(f"AggregationName: {aggregation_name}")
 
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
-            print(f"Number of Inputs: {len(inputs)}")
+            logger.debug(f"Number of Inputs: {len(inputs)}")
             print(
                 f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}"
             )
@@ -396,7 +394,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     ):
         tmp_df = df
 
-        print(f"Additional Column Name: {additional_column_name}")
+        logger.debug(f"Additional Column Name: {additional_column_name}")
         print(df.head())
 
         # format aggregations for Dask; also check if we can use fast path for
@@ -438,11 +436,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         for col in agg_result.columns:
             print(col)
-        print(f"agg_result: {agg_result.head()}")
+        logger.debug(f"agg_result: {agg_result.head()}")
 
         # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
 
-        print(f"agg_result after: {agg_result.head()}")
+        logger.debug(f"agg_result after: {agg_result.head()}")
 
         return agg_result

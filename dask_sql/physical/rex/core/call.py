@@ -872,20 +872,20 @@ class RexCallPlugin(BaseRexPlugin):
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
-        print(f"Expression Operands: {expr.getOperands()}")
+        logger.debug(f"Expression Operands: {expr.getOperands()}")
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(rel, o, dc, context=context)
             for o in expr.getOperands()
         ]
 
-        print(f"Operands: {operands}")
+        logger.debug(f"Operands: {operands}")
 
         # Now use the operator name in the mapping
         # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
         schema_name = "root"
         operator_name = expr.getOperatorName().lower()
-        print(f"Operator Name: {operator_name}")
+        logger.debug(f"Operator Name: {operator_name}")
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]

@@ -6,13 +6,13 @@ from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="DEBUGGING")
 def test_select(c, df):
     result_df = c.sql("SELECT * FROM df")
 
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_alias(c, df):
     result_df = c.sql("SELECT a as b, b as a FROM df")
 
@@ -23,12 +23,14 @@ def test_select_alias(c, df):
     assert_eq(result_df[["a", "b"]], expected_df[["a", "b"]])
 
 
+@pytest.mark.skip(reason="DEBUGGING")
 def test_select_column(c, df):
     result_df = c.sql("SELECT a FROM df")
 
     assert_eq(result_df, df[["a"]])
 
 
+@pytest.mark.skip(reason="DEBUGGING")
 def test_select_different_types(c):
     expected_df = pd.DataFrame(
         {
@@ -64,7 +66,9 @@ def test_select_expr(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion, subquery - https://github.com/apache/arrow-datafusion/issues/2237"
+)
 def test_select_of_select(c, df):
     result_df = c.sql(
         """
@@ -178,6 +182,7 @@ def test_date_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
+@pytest.mark.skip(reason="DEBUGGING")
 @pytest.mark.parametrize(
     "input_table",
     [

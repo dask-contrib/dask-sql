@@ -280,7 +280,7 @@ def test_join_multi():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.skip(reason="WIP DataFusion")
 def test_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)

@@ -745,8 +745,6 @@ class Context:
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-                    # print(f"data_type: {data_type} - sql_data_type: {sql_data_type}")
-                    # print(f"type: {type(data_type)} - type: {type(sql_data_type)}")
                     table.add_column(column, str(sql_data_type))
 
                 rust_schema.add_table(table)
