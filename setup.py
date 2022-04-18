@@ -13,6 +13,7 @@ if os.path.exists("README.md"):
 
 needs_sphinx = "build_sphinx" in sys.argv
 sphinx_requirements = ["sphinx>=3.2.1", "sphinx_rtd_theme"] if needs_sphinx else []
+debug_build = "debug" in sys.argv
 
 cmdclass = versioneer.get_cmdclass()
 
@@ -35,7 +36,7 @@ setup(
             "dask_planner.rust",
             binding=Binding.PyO3,
             path="dask_planner/Cargo.toml",
-            debug=False,
+            debug=debug_build,
         )
     ],
     python_requires=">=3.8",

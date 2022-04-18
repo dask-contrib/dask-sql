@@ -12,11 +12,13 @@ jobs:
       image: amd64/rust
     steps:
       - uses: actions/checkout@v2
-      - name: Setup toolchain
-        run: |
-          rustup toolchain install stable
-          rustup default stable
-          rustup component add rustfmt
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
       - name: Run
         run: cargo fmt --manifest-path ./dask_planner/Cargo.toml --all -- --check
 
@@ -26,7 +28,6 @@ jobs:
     strategy:
       matrix:
         arch: [amd64]
-        rust: [stable]
     container:
       image: ${{ matrix.arch }}/rust
       env:
@@ -37,11 +38,13 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Setup Rust toolchain
-        run: |
-          rustup toolchain install ${{ matrix.rust }}
-          rustup default ${{ matrix.rust }}
-          rustup component add rustfmt clippy
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
       - name: Run clippy
         run: |
           cargo clippy --manifest-path ./dask_planner/Cargo.toml --all-targets --workspace -- -D warnings
