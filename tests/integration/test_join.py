@@ -7,6 +7,7 @@ from dask_sql import Context
 from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join(c):
     return_df = c.sql(
         """
@@ -23,6 +24,7 @@ def test_join(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_inner(c):
     return_df = c.sql(
         """
@@ -62,6 +64,7 @@ def test_join_outer(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_join_left(c):
     return_df = c.sql(
         """
