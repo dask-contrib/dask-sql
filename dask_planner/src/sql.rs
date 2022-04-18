@@ -9,11 +9,11 @@ pub mod types;
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::TableReference;
 use datafusion::error::DataFusionError;
-use datafusion::physical_plan::functions::ScalarFunctionImplementation;
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
+use datafusion_expr::ScalarFunctionImplementation;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -92,7 +92,11 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
-        todo!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
+        unimplemented!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
+    }
+
+    fn get_variable_type(&self, _: &[String]) -> Option<datafusion::arrow::datatypes::DataType> {
+        unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 }
 
@@ -162,7 +166,7 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
 
-        match planner.statement_to_plan(&statement.statement) {
+        match planner.statement_to_plan(statement.statement) {
             Ok(k) => {
                 println!("\nLogicalPlan: {:?}\n\n", k);
                 Ok(logical::PyLogicalPlan {

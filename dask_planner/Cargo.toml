@@ -12,8 +12,8 @@ rust-version = "1.59"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
 pyo3 = { version = "0.15", features = ["extension-module", "abi3", "abi3-py38"] }
-datafusion = { version = "^7.0.0", features = ["pyarrow"] }
-datafusion-common = { version = "^7.0.0", features = ["pyarrow"] }
+datafusion = { git="https://github.com/apache/arrow-datafusion/" }
+datafusion-expr = { git="https://github.com/apache/arrow-datafusion/" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 sqlparser = "0.14.0"

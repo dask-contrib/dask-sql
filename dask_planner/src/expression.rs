@@ -1,4 +1,5 @@
 use crate::sql::logical;
+use crate::sql::types::PyDataType;
 
 use pyo3::PyMappingProtocol;
 use pyo3::{basic::CompareOp, prelude::*, PyNumberProtocol, PyObjectProtocol};
@@ -29,6 +30,24 @@ impl From<PyExpr> for Expr {
 impl From<Expr> for PyExpr {
     fn from(expr: Expr) -> PyExpr {
         PyExpr { expr }
+    }
+}
+
+#[pyclass(name = "ScalarValue", module = "datafusion", subclass)]
+#[derive(Debug, Clone)]
+pub struct PyScalarValue {
+    pub scalar_value: ScalarValue,
+}
+
+impl From<PyScalarValue> for ScalarValue {
+    fn from(pyscalar: PyScalarValue) -> ScalarValue {
+        pyscalar.scalar_value
+    }
+}
+
+impl From<ScalarValue> for PyScalarValue {
+    fn from(scalar_value: ScalarValue) -> PyScalarValue {
+        PyScalarValue { scalar_value }
     }
 }
 
@@ -89,8 +108,8 @@ impl PyObjectProtocol for PyExpr {
 #[pymethods]
 impl PyExpr {
     #[staticmethod]
-    pub fn literal(value: ScalarValue) -> PyExpr {
-        lit(value).into()
+    pub fn literal(value: PyScalarValue) -> PyExpr {
+        lit(value.scalar_value).into()
     }
 
     /// Examine the current/"self" PyExpr and return its "type"
@@ -336,12 +355,12 @@ impl PyExpr {
         self.expr.clone().is_null().into()
     }
 
-    pub fn cast(&self, to: DataType) -> PyExpr {
+    pub fn cast(&self, to: PyDataType) -> PyExpr {
         // self.expr.cast_to() requires DFSchema to validate that the cast
         // is supported, omit that for now
         let expr = Expr::Cast {
             expr: Box::new(self.expr.clone()),
-            data_type: to,
+            data_type: to.data_type,
         };
         expr.into()
     }

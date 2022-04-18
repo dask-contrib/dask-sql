@@ -9,6 +9,24 @@ pub struct DaskRelDataType {
     pub(crate) sql_type: DataType,
 }
 
+#[pyclass(name = "DataType", module = "datafusion", subclass)]
+#[derive(Debug, Clone)]
+pub struct PyDataType {
+    pub data_type: DataType,
+}
+
+impl From<PyDataType> for DataType {
+    fn from(data_type: PyDataType) -> DataType {
+        data_type.data_type
+    }
+}
+
+impl From<DataType> for PyDataType {
+    fn from(data_type: DataType) -> PyDataType {
+        PyDataType { data_type }
+    }
+}
+
 #[pymethods]
 impl DaskRelDataType {
     #[new]
@@ -23,8 +41,8 @@ impl DaskRelDataType {
         self.name.clone()
     }
 
-    pub fn get_type(&self) -> DataType {
-        self.sql_type.clone()
+    pub fn get_type(&self) -> PyDataType {
+        self.sql_type.clone().into()
     }
 
     pub fn get_type_as_str(&self) -> String {

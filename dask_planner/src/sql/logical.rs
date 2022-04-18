@@ -117,6 +117,9 @@ impl PyLogicalPlan {
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",
             LogicalPlan::Extension(_extension) => "Extension",
+            LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
+            LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
+            LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
         })
     }
 
