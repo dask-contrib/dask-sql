@@ -369,16 +369,16 @@ def test_create_gpu_error(c, df, temporary_data_file):
     try:
         import cudf
     except ImportError:
-        pass
+        cudf = None
 
     if cudf is not None:
         pytest.skip("GPU-related import errors only need to be checked on CPU")
 
     with pytest.raises(ModuleNotFoundError):
-        c.create_table("no_gpu_df", df, gpu=True)
+        c.create_table("new_table", df, gpu=True)
 
     with pytest.raises(ModuleNotFoundError):
-        c.create_table("no_gpu_df", dd.from_pandas(df), gpu=True)
+        c.create_table("new_table", dd.from_pandas(df), gpu=True)
 
     df.to_csv(temporary_data_file, index=False)
 
