@@ -3,11 +3,6 @@ import pandas as pd
 
 from dask_sql.input_utils.base import BaseInputPlugin
 
-try:
-    import cudf
-except ImportError:
-    cudf = None
-
 
 class PandasLikeInputPlugin(BaseInputPlugin):
     """Input Plugin for Pandas Like DataFrames, which get converted to dask DataFrames"""
@@ -30,7 +25,9 @@ class PandasLikeInputPlugin(BaseInputPlugin):
     ):
         npartitions = kwargs.pop("npartitions", 1)
         if gpu:  # pragma: no cover
-            if not cudf:
+            try:
+                import cudf
+            except ImportError:
                 raise ModuleNotFoundError(
                     "Setting `gpu=True` for table creation requires cudf"
                 )

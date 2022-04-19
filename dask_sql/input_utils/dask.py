@@ -4,11 +4,6 @@ import dask.dataframe as dd
 
 from dask_sql.input_utils.base import BaseInputPlugin
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
 
 class DaskInputPlugin(BaseInputPlugin):
     """Input Plugin for Dask DataFrames, just keeping them"""
@@ -27,7 +22,9 @@ class DaskInputPlugin(BaseInputPlugin):
         **kwargs
     ):
         if gpu:  # pragma: no cover
-            if not dask_cudf:
+            try:
+                import dask_cudf
+            except ImportError:
                 raise ModuleNotFoundError(
                     "Setting `gpu=True` for table creation requires dask_cudf"
                 )
