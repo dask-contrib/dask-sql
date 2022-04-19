@@ -2,24 +2,13 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 
-try:
-    import cudf
-except ImportError:
-    cudf = None
-
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_distribute_by(c, gpu):
-
-    if gpu:
-        xd = cudf
-    else:
-        xd = pd
-
-    df = xd.DataFrame({"id": [0, 1, 2, 1, 2, 3], "val": [0, 1, 2, 1, 2, 3]})
+    df = pd.DataFrame({"id": [0, 1, 2, 1, 2, 3], "val": [0, 1, 2, 1, 2, 3]})
     ddf = dd.from_pandas(df, npartitions=2)
 
-    c.create_table("test", ddf)
+    c.create_table("test", ddf, gpu=gpu)
     partitioned_ddf = c.sql(
         """
     SELECT

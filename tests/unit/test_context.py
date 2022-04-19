@@ -6,6 +6,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
+from tests.utils import assert_eq
 
 try:
     import cudf
@@ -66,7 +67,7 @@ def test_explain(gpu):
         "DaskTableScan(table=[[root, df]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = "
     )
 
-    c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
+    c.create_table("df", data_frame, statistics=Statistics(row_count=1337), gpu=gpu)
 
     sql_string = c.explain("SELECT * FROM df")
 
@@ -104,18 +105,18 @@ def test_sql(gpu):
     c.create_table("df", data_frame, gpu=gpu)
 
     result = c.sql("SELECT * FROM df")
-    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert isinstance(result, dd.DataFrame)
+    assert_eq(result, data_frame)
 
     result = c.sql("SELECT * FROM df", return_futures=False)
-    assert isinstance(result, pd.DataFrame if not gpu else cudf.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert not isinstance(result, dd.DataFrame)
+    assert_eq(result, data_frame)
 
     result = c.sql(
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
-    assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
-    dd.assert_eq(result, data_frame)
+    assert isinstance(result, dd.DataFrame)
+    assert_eq(result, data_frame)
 
 
 @pytest.mark.parametrize(
@@ -135,7 +136,7 @@ def test_input_types(temporary_data_file, gpu):
     def assert_correct_output(gpu):
         result = c.sql("SELECT * FROM df")
         assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
-        dd.assert_eq(result, df)
+        assert_eq(result, df)
 
     c.create_table("df", df, gpu=gpu)
     assert_correct_output(gpu=gpu)
