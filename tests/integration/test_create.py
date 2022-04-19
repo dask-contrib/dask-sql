@@ -378,7 +378,7 @@ def test_create_gpu_error(c, df, temporary_data_file):
         c.create_table("new_table", df, gpu=True)
 
     with pytest.raises(ModuleNotFoundError):
-        c.create_table("new_table", dd.from_pandas(df), gpu=True)
+        c.create_table("new_table", dd.from_pandas(df, npartitions=2), gpu=True)
 
     df.to_csv(temporary_data_file, index=False)
 
