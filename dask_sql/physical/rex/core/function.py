@@ -43,7 +43,6 @@ class RexScalarFunctionPlugin(BaseRexPlugin):
             )
 
         logger.debug(f"Expression in literal.py literal_value: {literal_value}")
-        logger.debug(f"Expression in literal.py literal_type: {literal_type}")
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):
         #     return SargPythonImplementation(literal_value, literal_type)

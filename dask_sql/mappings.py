@@ -301,5 +301,4 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)
