@@ -39,6 +39,7 @@ requirements:
     - pygments
     - nest-asyncio
     - tabulate
+    - pyarrow>=4.0.0
 
 test:
   imports:

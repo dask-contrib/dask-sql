@@ -14,7 +14,6 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
@@ -30,6 +29,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -867,8 +867,8 @@ class RexCallPlugin(BaseRexPlugin):
 
     def convert(
         self,
-        rel: LogicalPlan,
-        expr: Expression,
+        rel: "LogicalPlan",
+        expr: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:

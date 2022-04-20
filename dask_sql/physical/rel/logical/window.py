@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -23,6 +22,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +233,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         "last_value": LastValueOperation(),
     }
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
         # During optimization, some constants might end up in an internal
@@ -372,7 +372,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _extract_ordering(self, window, cc: ColumnContainer) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
-        print(
+        logger.debug(
             "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
         )
         # TODO: This was commented out for flake8 CI passing and needs to be handled

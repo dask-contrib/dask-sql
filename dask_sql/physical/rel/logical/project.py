@@ -8,8 +8,7 @@ from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-
-from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class DaskProjectPlugin(BaseRelPlugin):
 
     class_name = "Projection"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Get the input of the previous step
         (dc,) = self.assert_inputs(rel, 1, context)
 

@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, Any, Union
 
 import dask.dataframe as dd
 
-from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +49,8 @@ class RexConverter(Pluggable):
     @classmethod
     def convert(
         cls,
-        rel: LogicalPlan,
-        rex: Expression,
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:

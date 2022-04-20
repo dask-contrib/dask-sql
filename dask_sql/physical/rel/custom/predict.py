@@ -2,12 +2,12 @@ import logging
 import uuid
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
     class_name = "PredictModel"
 
-    def convert(self, sql: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         sql_select = sql.getSelect()
         schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
         model_type = sql.getModelName().getIdentifierType()

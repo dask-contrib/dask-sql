@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 
-from dask_planner.rust import Expression, LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ class RexLiteralPlugin(BaseRexPlugin):
 
     def convert(
         self,
-        rel: LogicalPlan,
-        rex: Expression,
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
@@ -153,7 +153,7 @@ class RexLiteralPlugin(BaseRexPlugin):
         #     return SargPythonImplementation(literal_value, literal_type)
 
         python_value = sql_to_python_value(literal_type, literal_value)
-        print(
+        logger.debug(
             f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
         )
 

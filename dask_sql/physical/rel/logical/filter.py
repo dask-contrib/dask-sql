@@ -5,7 +5,6 @@ import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
@@ -13,6 +12,7 @@ from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     def convert(
         self,
-        rel: LogicalPlan,
+        rel: "LogicalPlan",
         context: "dask_sql.Context",
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)

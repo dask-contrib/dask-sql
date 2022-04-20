@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -8,6 +7,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 
 class DaskSortPlugin(BaseRelPlugin):
@@ -17,7 +17,7 @@ class DaskSortPlugin(BaseRelPlugin):
 
     class_name = "Sort"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container

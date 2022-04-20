@@ -1,13 +1,13 @@
 import logging
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 
 class AlterSchemaPlugin(BaseRelPlugin):
@@ -26,7 +26,7 @@ class AlterSchemaPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterSchema"
 
-    def convert(self, sql: LogicalPlan, context: "dask_sql.Context"):
+    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context"):
         old_schema_name = str(sql.getOldSchemaName())
         new_schema_name = str(sql.getNewSchemaName())
 
@@ -58,7 +58,7 @@ class AlterTablePlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.parser.SqlAlterTable"
 
-    def convert(self, sql: LogicalPlan, context: "dask_sql.Context"):
+    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context"):
         old_table_name = str(sql.getOldTableName())
         new_table_name = str(sql.getNewTableName())
 

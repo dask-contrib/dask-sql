@@ -1,13 +1,10 @@
 import logging
 import operator
-
-# import warnings
 from functools import reduce
 from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -19,6 +16,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +46,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "FULL": "outer",
     }
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
         join = rel.join()
@@ -96,7 +94,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             lhs_on.append(jo[0].getName())
             rhs_on.append(jo[1].getName())
 
-        print(
+        logger.debug(
             f"lhs_on: {lhs_on}.{join_on[0][0].getName()} rhs_on: {rhs_on}.{join_on[0][1].getName()}"
         )
 

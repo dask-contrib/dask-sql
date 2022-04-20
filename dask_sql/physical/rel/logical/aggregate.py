@@ -8,10 +8,10 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-from dask_planner.rust import LogicalPlan
-
 try:
     import dask_cudf
+
+    from dask_planner.rust import LogicalPlan
 except ImportError:
     dask_cudf = None
 
@@ -150,7 +150,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
     }
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
         agg = rel.aggregate()
@@ -193,12 +193,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
         # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        print("Leaving aggregate.py and return the dataframe")
+        logger.debug("Leaving aggregate.py and return the dataframe")
         return dc
 
     def _do_aggregations(
         self,
-        rel: LogicalPlan,
+        rel: "LogicalPlan",
         dc: DataContainer,
         group_columns: List[str],
         context: "dask_sql.Context",
@@ -279,7 +279,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _collect_aggregations(
         self,
-        rel: LogicalPlan,
+        rel: "LogicalPlan",
         df: dd.DataFrame,
         cc: ColumnContainer,
         context: "dask_sql.Context",
@@ -314,7 +314,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
             logger.debug(f"Number of Inputs: {len(inputs)}")
-            print(
+            logger.debug(
                 f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}"
             )
 
@@ -395,7 +395,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         tmp_df = df
 
         logger.debug(f"Additional Column Name: {additional_column_name}")
-        print(df.head())
+        logger.debug(df.head())
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
@@ -435,7 +435,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         agg_result = grouped_df.agg(aggregations_dict, **groupby_agg_options)
 
         for col in agg_result.columns:
-            print(col)
+            logger.debug(col)
         logger.debug(f"agg_result: {agg_result.head()}")
 
         # fix the column names to a single level
