@@ -12,7 +12,7 @@ use datafusion::scalar::ScalarValue;
 
 pub use datafusion::logical_plan::plan::LogicalPlan;
 
-use datafusion::physical_plan::functions::BuiltinScalarFunction;
+use datafusion::logical_expr::BuiltinScalarFunction;
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
