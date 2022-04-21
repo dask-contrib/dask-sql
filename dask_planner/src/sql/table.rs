@@ -6,9 +6,8 @@ use async_trait::async_trait;
 use datafusion::arrow::datatypes::SchemaRef;
 pub use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_plan::plan::LogicalPlan;
-use datafusion::logical_plan::Expr;
 use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
+use datafusion_expr::{Expr, LogicalPlan, TableSource};
 
 use pyo3::prelude::*;
 
@@ -32,6 +31,19 @@ impl DaskTableProvider {
     }
 }
 
+/// Implement TableSource, used in the logical query plan and in logical query optimizations
+#[async_trait]
+impl TableSource for DaskTableProvider {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn schema(&self) -> SchemaRef {
+        self.schema.clone()
+    }
+}
+
+/// Implement TableProvider, used for physical query plans and execution
 #[async_trait]
 impl TableProvider for DaskTableProvider {
     fn as_any(&self) -> &dyn Any {
@@ -152,7 +164,7 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
-            let tbl_provider: Arc<dyn TableProvider> = table_scan.source.clone();
+            let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
             let fields = tbl_schema.fields();
 

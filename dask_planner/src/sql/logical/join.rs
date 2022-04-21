@@ -1,8 +1,8 @@
 use crate::sql::column;
 use crate::sql::table;
 
-use datafusion::logical_plan::plan::Join;
-pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
+use datafusion_expr::logical_plan::Join;
+pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
 
