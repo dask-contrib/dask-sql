@@ -6,32 +6,50 @@ use async_trait::async_trait;
 use datafusion::arrow::datatypes::SchemaRef;
 pub use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_plan::plan::LogicalPlan;
-use datafusion::logical_plan::Expr;
 use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
+use datafusion_expr::{Expr, LogicalPlan, TableSource};
 
 use pyo3::prelude::*;
 
 use std::any::Any;
 use std::sync::Arc;
 
-/// DaskTableProvider
-pub struct DaskTableProvider {
+/// DaskTable wrapper that is compatible with DataFusion logical query plans
+pub struct DaskTableSource {
     schema: SchemaRef,
-    table_name: String,
+}
+
+impl DaskTableSource {
+    /// Initialize a new `EmptyTable` from a schema.
+    pub fn new(schema: SchemaRef) -> Self {
+        Self { schema }
+    }
+}
+
+/// Implement TableSource, used in the logical query plan and in logical query optimizations
+#[async_trait]
+impl TableSource for DaskTableSource {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn schema(&self) -> SchemaRef {
+        self.schema.clone()
+    }
+}
+
+/// DaskTable wrapper that is compatible with DataFusion physical query plans
+pub struct DaskTableProvider {
+    source: Arc<DaskTableSource>,
 }
 
 impl DaskTableProvider {
-    /// Initialize a new `EmptyTable` from a schema.
-    pub fn new(schema: SchemaRef, table_name: String) -> Self {
-        Self { schema, table_name }
-    }
-
-    pub fn table_name(&self) -> String {
-        self.table_name.clone()
+    pub fn new(source: Arc<DaskTableSource>) -> Self {
+        Self { source }
     }
 }
 
+/// Implement TableProvider, used for physical query plans and execution
 #[async_trait]
 impl TableProvider for DaskTableProvider {
     fn as_any(&self) -> &dyn Any {
@@ -39,7 +57,7 @@ impl TableProvider for DaskTableProvider {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.schema.clone()
+        self.source.schema.clone()
     }
 
     async fn scan(
@@ -49,7 +67,7 @@ impl TableProvider for DaskTableProvider {
         _limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>, DataFusionError> {
         // even though there is no data, projections apply
-        let projected_schema = project_schema(&self.schema, projection.as_ref())?;
+        let projected_schema = project_schema(&self.source.schema, projection.as_ref())?;
         Ok(Arc::new(EmptyExec::new(false, projected_schema)))
     }
 }
@@ -102,14 +120,8 @@ impl DaskTable {
         let mut qualified_name = Vec::from([String::from("root")]);
 
         match plan.original_plan {
-            LogicalPlan::TableScan(_table_scan) => {
-                let tbl = _table_scan
-                    .source
-                    .as_any()
-                    .downcast_ref::<DaskTableProvider>()
-                    .unwrap()
-                    .table_name();
-                qualified_name.push(tbl);
+            LogicalPlan::TableScan(table_scan) => {
+                qualified_name.push(table_scan.table_name);
             }
             _ => {
                 println!("Nothing matches");
@@ -152,7 +164,7 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
-            let tbl_provider: Arc<dyn TableProvider> = table_scan.source.clone();
+            let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
             let fields = tbl_schema.fields();
 
