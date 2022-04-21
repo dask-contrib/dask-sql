@@ -32,10 +32,9 @@ impl RelDataType {
             field_map.get(&field_name).unwrap().clone()
         } else {
             for field in &self.field_list {
-                #[allow(clippy::if_same_then_else)]
-                if case_sensitive && field.name().eq(&field_name) {
-                    return field.clone();
-                } else if !case_sensitive && field.name().eq_ignore_ascii_case(&field_name) {
+                if (case_sensitive && field.name().eq(&field_name))
+                    || (!case_sensitive && field.name().eq_ignore_ascii_case(&field_name))
+                {
                     return field.clone();
                 }
             }
