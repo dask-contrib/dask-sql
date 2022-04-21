@@ -1,5 +1,4 @@
 use crate::sql::column;
-use crate::sql::table;
 
 use datafusion_expr::logical_plan::Join;
 pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
@@ -17,28 +16,12 @@ impl PyJoin {
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
         let lhs_table_name: String = match &*self.join.left {
-            LogicalPlan::TableScan(_table_scan) => {
-                let tbl: String = _table_scan
-                    .source
-                    .as_any()
-                    .downcast_ref::<table::DaskTableProvider>()
-                    .unwrap()
-                    .table_name();
-                tbl
-            }
+            LogicalPlan::TableScan(scan) => scan.table_name.clone(),
             _ => panic!("lhs Expected TableScan but something else was received!"),
         };
 
         let rhs_table_name: String = match &*self.join.right {
-            LogicalPlan::TableScan(_table_scan) => {
-                let tbl: String = _table_scan
-                    .source
-                    .as_any()
-                    .downcast_ref::<table::DaskTableProvider>()
-                    .unwrap()
-                    .table_name();
-                tbl
-            }
+            LogicalPlan::TableScan(scan) => scan.table_name.clone(),
             _ => panic!("rhs Expected TableScan but something else was received!"),
         };
 
