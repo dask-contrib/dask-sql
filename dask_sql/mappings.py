@@ -106,6 +106,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     # Additionally, a literal type is not used
     # so often anyways.
 
+    logger.debug(
+        f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}"
+    )
+    sql_type = sql_type.upper()
+
     if (
         sql_type.startswith("CHAR(")
         or sql_type.startswith("VARCHAR(")
@@ -190,7 +195,6 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
     logger.debug(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
-    print(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
@@ -266,8 +270,6 @@ def cast_column_type(
     """
     current_type = df[column_name].dtype
 
-    print(f"Casting column {column_name} of type {current_type} to {expected_type}")
-
     logger.debug(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
     )
@@ -299,5 +301,4 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    print(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

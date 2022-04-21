@@ -3,7 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -14,6 +14,9 @@ import pandas as pd
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
+
+if TYPE_CHECKING:
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +198,7 @@ class LoggableDataFrame:
 
 
 def convert_sql_kwargs(
-    sql_kwargs: "java.util.HashMap[org.apache.calcite.sql.SqlNode, org.apache.calcite.sql.SqlNode]",
+    sql_kwargs: Dict["LogicalPlan", "LogicalPlan"],
 ) -> Dict[str, Any]:
     """
     Convert a HapMap (probably coming from a SqlKwargs class instance)
@@ -206,7 +209,7 @@ def convert_sql_kwargs(
     """
 
     def convert_literal(value):
-        if isinstance(value, org.apache.calcite.sql.SqlBasicCall):
+        if isinstance(value, "LogicalPlan"):
             operator_mapping = {
                 "ARRAY": list,
                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
@@ -218,7 +221,7 @@ def convert_sql_kwargs(
             operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
-        elif isinstance(value, com.dask.sql.parser.SqlKwargs):
+        elif isinstance(value, "LogicalPlan"):
             return convert_sql_kwargs(value.getMap())
         else:
             literal_type = str(value.getTypeName())

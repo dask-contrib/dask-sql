@@ -4,43 +4,35 @@ import operator
 import dask.dataframe as dd
 import numpy as np
 import pytest
-from pandas.testing import assert_frame_equal
+
+from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_custom_function(c, df):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
 
-    return_df = c.sql(
-        """
-        SELECT F(a) AS a
-        FROM df
-        """
-    )
-    return_df = return_df.compute()
+    return_df = c.sql("SELECT F(a) AS a FROM df")
 
-    assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
+    assert_eq(return_df, df[["a"]] ** 2)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_custom_function_row(c, df):
     def f(row):
         return row["x"] ** 2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, row_udf=True)
 
-    return_df = c.sql(
-        """
-        SELECT F(a) AS a
-        FROM df
-        """
-    )
-    return_df = return_df.compute()
+    return_df = c.sql("SELECT F(a) AS a FROM df")
 
-    assert_frame_equal(return_df.reset_index(drop=True), df[["a"]] ** 2)
+    assert_eq(return_df, df[["a"]] ** 2)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
 def test_custom_function_any_colnames(colnames, df_wide, c):
     # a third column is needed
@@ -58,9 +50,10 @@ def test_custom_function_any_colnames(colnames, df_wide, c):
     expect = df_wide[colname_x] + df_wide[colname_y]
     got = return_df.iloc[:, 0]
 
-    dd.assert_eq(expect, got, check_names=False)
+    assert_eq(expect, got, check_names=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "retty",
     [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
@@ -75,18 +68,14 @@ def test_custom_function_row_return_types(c, df, retty):
         return
 
     c.register_function(f, "f", [("x", np.float64)], retty, row_udf=True)
-    return_df = c.sql(
-        """
-        SELECT F(a) AS a
-        FROM df
-        """
-    )
-    return_df = return_df.compute()
-    expectation = (df[["a"]] ** 2).astype(retty)
-    assert_frame_equal(return_df.reset_index(drop=True), expectation)
+
+    return_df = c.sql("SELECT F(a) AS a FROM df")
+
+    assert_eq(return_df, (df[["a"]] ** 2).astype(retty))
 
 
 # Test row UDFs with one arg
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("k", [1, 1.5, True])
 @pytest.mark.parametrize(
     "op", [operator.add, operator.sub, operator.mul, operator.truediv]
@@ -102,15 +91,14 @@ def test_custom_function_row_args(c, df, k, op, retty):
         f, "f", [("a", np.int64), ("k", const_type)], retty, row_udf=True
     )
 
-    statement = f"SELECT F(a, {k}) as a from df"
+    return_df = c.sql(f"SELECT F(a, {k}) as a from df")
+    expected_df = op(df[["a"]], k).astype(retty)
 
-    return_df = c.sql(statement)
-    return_df = return_df.compute()
-    expectation = op(df[["a"]], k).astype(retty)
-    assert_frame_equal(return_df.reset_index(drop=True), expectation)
+    assert_eq(return_df, expected_df)
 
 
 # Test row UDFs with two args
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("k2", [1, 1.5, True])
 @pytest.mark.parametrize("k1", [1, 1.5, True])
 @pytest.mark.parametrize(
@@ -135,18 +123,16 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
         row_udf=True,
     )
 
-    statement = f"SELECT F(a, {k1}, {k2}) as a from df"
+    return_df = c.sql(f"SELECT F(a, {k1}, {k2}) as a from df")
+    expected_df = op(op(df[["a"]], k1), k2).astype(retty)
 
-    return_df = c.sql(statement)
-    return_df = return_df.compute()
-
-    expectation = op(op(df[["a"]], k1), k2).astype(retty)
-    assert_frame_equal(return_df.reset_index(drop=True), expectation)
+    assert_eq(return_df, expected_df)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_multiple_definitions(c, df_simple):
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -157,12 +143,12 @@ def test_multiple_definitions(c, df_simple):
         FROM df_simple
         """
     )
-    return_df = return_df.compute()
+    expected_df = df_simple[["a", "b"]] ** 2
 
-    assert_frame_equal(return_df.reset_index(drop=True), df_simple[["a", "b"]] ** 2)
+    assert_eq(return_df, expected_df)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, replace=True)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
@@ -173,11 +159,12 @@ def test_multiple_definitions(c, df_simple):
         FROM df_simple
         """
     )
-    return_df = return_df.compute()
+    expected_df = df_simple[["a", "b"]] ** 3
 
-    assert_frame_equal(return_df.reset_index(drop=True), df_simple[["a", "b"]] ** 3)
+    assert_eq(return_df, expected_df)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_aggregate_function(c):
     fagg = dd.Aggregation("f", lambda x: x.sum(), lambda x: x.sum())
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
@@ -188,21 +175,21 @@ def test_aggregate_function(c):
         FROM df
         """
     )
-    return_df = return_df.compute()
 
-    assert (return_df["test"] == return_df["S"]).all()
+    assert_eq(return_df["test"], return_df["S"], check_names=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_reregistration(c):
     def f(x):
-        return x ** 2
+        return x**2
 
     # The same is fine
     c.register_function(f, "f", [("x", np.float64)], np.float64)
     c.register_function(f, "f", [("x", np.int64)], np.int64)
 
     def f(x):
-        return x ** 3
+        return x**3
 
     # A different not
     with pytest.raises(ValueError):

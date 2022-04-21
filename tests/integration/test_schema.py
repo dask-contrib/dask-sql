@@ -1,30 +1,31 @@
 import dask.dataframe as dd
 import numpy as np
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql.utils import ParsingException
+from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_table_schema(c, df):
-    original_df = c.sql("SELECT * FROM df").compute()
+    original_df = c.sql("SELECT * FROM df")
 
-    assert_frame_equal(original_df, c.sql("SELECT * FROM root.df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
     c.sql("CREATE SCHEMA foo")
-    assert_frame_equal(original_df, c.sql("SELECT * FROM df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM df"))
 
     c.sql('USE SCHEMA "foo"')
-    assert_frame_equal(original_df, c.sql("SELECT * FROM root.df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
     c.sql("CREATE TABLE bar AS TABLE root.df")
-    assert_frame_equal(original_df, c.sql("SELECT * FROM bar").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
     with pytest.raises(KeyError):
         c.sql("CREATE TABLE other.bar AS TABLE df")
 
     c.sql('USE SCHEMA "root"')
-    assert_frame_equal(original_df, c.sql("SELECT * FROM foo.bar").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
 
     with pytest.raises(ParsingException):
         c.sql("SELECT * FROM bar")
@@ -35,12 +36,13 @@ def test_table_schema(c, df):
         c.sql("SELECT * FROM foo.bar")
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_function(c):
     c.sql("CREATE SCHEMA other")
     c.sql("USE SCHEMA root")
 
     def f(x):
-        return x ** 2
+        return x**2
 
     c.register_function(f, "f", [("x", np.float64)], np.float64, schema_name="other")
 
@@ -67,6 +69,7 @@ def test_function(c):
     c.sql("SELECT FAGG(b) AS test FROM root.df")
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_create_schema(c):
     c.sql("CREATE SCHEMA new_schema")
     assert "new_schema" in c.schema
@@ -78,6 +81,7 @@ def test_create_schema(c):
     c.sql("CREATE SCHEMA IF NOT EXISTS new_schema")
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop_schema(c):
     with pytest.raises(RuntimeError):
         c.sql("DROP SCHEMA new_schema")

@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class RelConverter(Pluggable):
         cls.add_plugin(plugin_class.class_name, plugin_class(), replace=replace)
 
     @classmethod
-    def convert(cls, rel: LogicalPlan, context: "dask_sql.Context") -> dd.DataFrame:
+    def convert(cls, rel: "LogicalPlan", context: "dask_sql.Context") -> dd.DataFrame:
         """
         Convert SQL AST tree node(s)
         into a python expression (a dask dataframe)
@@ -48,7 +48,6 @@ class RelConverter(Pluggable):
         """
 
         node_type = rel.get_current_node_type()
-        print(f"Node Type: {node_type}")
 
         try:
             plugin_instance = cls.get_plugin(node_type)

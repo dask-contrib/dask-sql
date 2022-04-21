@@ -22,6 +22,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +81,7 @@ class BoundDescription(
 
 
 def to_bound_description(
-    java_window: "org.apache.calcite.rex.RexWindowBounds.RexBoundedWindowBound",
-    # constants: List[org.apache.calcite.rex.RexLiteral],
+    java_window,
     constants,
     constant_count_offset: int,
 ) -> BoundDescription:
@@ -176,7 +176,8 @@ def map_on_each_group(
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
         windowed_group = partitioned_group.rolling(
-            window=lower_bound.offset + 1, min_periods=0,
+            window=lower_bound.offset + 1,
+            min_periods=0,
         )
     else:
         lower_offset = lower_bound.offset if not lower_bound.is_current_row else 0
@@ -217,7 +218,7 @@ class DaskWindowPlugin(BaseRelPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = "com.dask.sql.nodes.DaskWindow"
+    class_name = "Window"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
@@ -232,9 +233,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         "last_value": LastValueOperation(),
     }
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
         # During optimization, some constants might end up in an internal
@@ -373,21 +372,29 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _extract_ordering(self, window, cc: ColumnContainer) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
-        order_keys = list(window.orderKeys.getFieldCollations())
-        sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
-        sort_columns = [
-            cc.get_backend_by_frontend_index(i) for i in sort_columns_indices
-        ]
+        logger.debug(
+            "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
+        )
+        # TODO: This was commented out for flake8 CI passing and needs to be handled
+        # order_keys = list(window.orderKeys.getFieldCollations())
+        # sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
+        # sort_columns = [
+        #     cc.get_backend_by_frontend_index(i) for i in sort_columns_indices
+        # ]
 
-        ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
-        FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
-        sort_ascending = [x.getDirection() == ASCENDING for x in order_keys]
-        sort_null_first = [x.nullDirection == FIRST for x in order_keys]
+        # ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
+        # FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
+        # sort_ascending = [x.getDirection() == ASCENDING for x in order_keys]
+        # sort_null_first = [x.nullDirection == FIRST for x in order_keys]
 
-        return sort_columns, sort_ascending, sort_null_first
+        # return sort_columns, sort_ascending, sort_null_first
 
     def _extract_operations(
-        self, window, df: dd.DataFrame, dc: DataContainer, context: "dask_sql.Context",
+        self,
+        window,
+        df: dd.DataFrame,
+        dc: DataContainer,
+        context: "dask_sql.Context",
     ) -> List[Tuple[Callable, str, List[str]]]:
         # Finally apply the actual function on each group separately
         operations = []

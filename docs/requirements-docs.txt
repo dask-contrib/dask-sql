@@ -1,10 +1,9 @@
 sphinx>=4.0.0
 sphinx-tabs
 dask-sphinx-theme>=2.0.3
-dask>=2021.11.1
+dask>=2022.3.0
 pandas>=1.0.0
 fugue>=0.5.3
-jpype1>=1.0.2
 fastapi>=0.61.1
 uvicorn>=0.11.3
 tzlocal>=2.1
@@ -12,3 +11,4 @@ prompt_toolkit
 pygments
 tabulate
 nest-asyncio
+setuptools-rust>=1.2.0

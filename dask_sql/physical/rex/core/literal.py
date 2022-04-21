@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
@@ -8,6 +9,9 @@ from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
+
+logger = logging.getLogger(__name__)
 
 
 class SargPythonImplementation:
@@ -82,21 +86,75 @@ class RexLiteralPlugin(BaseRexPlugin):
     e.g. in a filter.
     """
 
-    class_name = "org.apache.calcite.rex.RexLiteral"
+    class_name = "RexLiteral"
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
-        literal_value = rex.getValue()
-
+        logger.debug(f"Expression in literal.py: {rex}")
         literal_type = str(rex.getType())
+        logger.debug(f"literal_type: {literal_type}")
 
-        if isinstance(literal_value, org.apache.calcite.util.Sarg):
-            return SargPythonImplementation(literal_value, literal_type)
+        # Call the Rust function to get the actual value and convert the Rust
+        # type name back to a SQL type
+        if literal_type == "Boolean":
+            literal_type = "BOOLEAN"
+            literal_value = rex.getBoolValue()
+        elif literal_type == "Float32":
+            literal_type = "FLOAT"
+            literal_value = rex.getFloat32Value()
+        elif literal_type == "Float64":
+            literal_type = "DOUBLE"
+            literal_value = rex.getFloat64Value()
+        elif literal_type == "UInt8":
+            literal_type = "TINYINT"
+            literal_value = rex.getUInt8Value()
+        elif literal_type == "UInt16":
+            literal_type = "SMALLINT"
+            literal_value = rex.getUInt16Value()
+        elif literal_type == "UInt32":
+            literal_type = "INTEGER"
+            literal_value = rex.getUInt32Value()
+        elif literal_type == "UInt64":
+            literal_type = "BIGINT"
+            literal_value = rex.getUInt64Value()
+        elif literal_type == "Int8":
+            literal_type = "TINYINT"
+            literal_value = rex.getInt8Value()
+        elif literal_type == "Int16":
+            literal_type = "SMALLINT"
+            literal_value = rex.getInt16Value()
+        elif literal_type == "Int32":
+            literal_type = "INTEGER"
+            literal_value = rex.getInt32Value()
+        elif literal_type == "Int64":
+            literal_type = "BIGINT"
+            literal_value = rex.getInt64Value()
+        elif literal_type == "Utf8":
+            literal_type = "VARCHAR"
+            literal_value = rex.getStringValue()
+        elif literal_type == "Date32":
+            literal_type = "Date"
+            literal_value = rex.getDateValue()
+        elif literal_type == "Date64":
+            literal_type = "Date"
+            literal_value = rex.getDateValue()
+        else:
+            raise RuntimeError("Failed to determine DataFusion Type in literal.py")
+
+        logger.debug(f"Expression in literal.py literal_value: {literal_value}")
+        logger.debug(f"Expression in literal.py literal_type: {literal_type}")
+
+        # if isinstance(literal_value, org.apache.calcite.util.Sarg):
+        #     return SargPythonImplementation(literal_value, literal_type)
 
         python_value = sql_to_python_value(literal_type, literal_value)
+        logger.debug(
+            f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
+        )
 
         return python_value

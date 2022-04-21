@@ -8,8 +8,7 @@ from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-
-from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +22,22 @@ class DaskProjectPlugin(BaseRelPlugin):
 
     class_name = "Projection"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Get the input of the previous step
         (dc,) = self.assert_inputs(rel, 1, context)
-        print("After project.py assert_inputs()")
-        print(f"Project DataFrame # Rows: {len(dc.df)}\nDataFrame: {dc.df.head()}")
 
         df = dc.df
         cc = dc.column_container
 
         column_names = []
-        new_columns = {}
-        new_mappings = {}
+        new_columns, new_mappings = {}, {}
+
+        projection = rel.projection()
 
         # Collect all (new) columns this Projection will limit to
-        for expr in rel.get_named_projects():
-            print(f"Expr: {expr}")
+        for expr in projection.getProjectedExpressions():
 
-            key = str(expr.column_name())
-            print(f"Column Name / Key: {key}")
+            key = str(expr.column_name(rel))
             column_names.append(key)
 
             # TODO: Temporarily assigning all new rows to increase the flexibility of the code base,
@@ -65,7 +61,9 @@ class DaskProjectPlugin(BaseRelPlugin):
             #     new_mappings[key] = random_name
 
             random_name = new_temporary_column(df)
-            new_columns[random_name] = RexConverter.convert(expr, dc, context=context)
+            new_columns[random_name] = RexConverter.convert(
+                rel, expr, dc, context=context
+            )
             logger.debug(f"Adding a new column {key} out of {expr}")
             new_mappings[key] = random_name
 

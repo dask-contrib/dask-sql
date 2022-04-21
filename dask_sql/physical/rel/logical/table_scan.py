@@ -1,12 +1,12 @@
 import logging
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import LogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,11 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
     class_name = "TableScan"
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context",) -> DataContainer:
+    def convert(
+        self,
+        rel: "LogicalPlan",
+        context: "dask_sql.Context",
+    ) -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
@@ -35,7 +39,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        table_names = [str(n) for n in table.get_qualified_name()]
+        table_names = [str(n) for n in table.get_qualified_name(rel)]
         assert len(table_names) == 2
         schema_name = table_names[0]
         table_name = table_names[1]

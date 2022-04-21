@@ -1,7 +1,10 @@
 import pandas as pd
-from pandas.testing import assert_frame_equal
+import pytest
+
+from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_union_not_all(c, df):
     result_df = c.sql(
         """
@@ -12,11 +15,11 @@ def test_union_not_all(c, df):
         SELECT * FROM df
         """
     )
-    result_df = result_df.compute()
 
-    assert_frame_equal(result_df.reset_index(drop=True), df)
+    assert_eq(result_df, df, check_index=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_union_all(c, df):
     result_df = c.sql(
         """
@@ -27,12 +30,12 @@ def test_union_all(c, df):
         SELECT * FROM df
         """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.concat([df, df, df], ignore_index=True)
-    assert_frame_equal(result_df.reset_index(drop=True), expected_df)
+
+    assert_eq(result_df, expected_df, check_index=False)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_union_mixed(c, df, long_table):
     result_df = c.sql(
         """
@@ -41,12 +44,11 @@ def test_union_mixed(c, df, long_table):
         SELECT a as "I", a as "II" FROM long_table
         """
     )
-    result_df = result_df.compute()
-
     long_table = long_table.rename(columns={"a": "I"})
     long_table["II"] = long_table["I"]
-
     expected_df = pd.concat(
-        [df.rename(columns={"a": "I", "b": "II"}), long_table], ignore_index=True,
+        [df.rename(columns={"a": "I", "b": "II"}), long_table],
+        ignore_index=True,
     )
-    assert_frame_equal(result_df.reset_index(drop=True), expected_df)
+
+    assert_eq(result_df, expected_df, check_index=False)

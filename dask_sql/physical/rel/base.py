@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
 
-from dask_planner.rust import DaskRelDataType, DaskTable, LogicalPlan
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import DaskRelDataType, DaskTable, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class BaseRelPlugin:
 
     class_name = None
 
-    def convert(self, rel: LogicalPlan, context: "dask_sql.Context") -> dd.DataFrame:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> dd.DataFrame:
         """Base method to implement"""
         raise NotImplementedError
 
@@ -46,7 +46,7 @@ class BaseRelPlugin:
         return cc.limit_to(column_names)
 
     @staticmethod
-    def check_columns_from_row_type(df: dd.DataFrame, row_type: DaskRelDataType):
+    def check_columns_from_row_type(df: dd.DataFrame, row_type: "DaskRelDataType"):
         """
         Similar to `self.fix_column_to_row_type`, but this time
         check for the correct column names instead of
@@ -60,7 +60,9 @@ class BaseRelPlugin:
 
     @staticmethod
     def assert_inputs(
-        rel: LogicalPlan, n: int = 1, context: "dask_sql.Context" = None,
+        rel: "LogicalPlan",
+        n: int = 1,
+        context: "dask_sql.Context" = None,
     ) -> List[dd.DataFrame]:
         """
         LogicalPlan nodes build on top of others.
@@ -79,7 +81,7 @@ class BaseRelPlugin:
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
-    def fix_dtype_to_row_type(dc: DataContainer, dask_table: DaskTable):
+    def fix_dtype_to_row_type(dc: DataContainer, dask_table: "DaskTable"):
         """
         Fix the dtype of the given data container (or: the df within it)
         to the data type given as argument.

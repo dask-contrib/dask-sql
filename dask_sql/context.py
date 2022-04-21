@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, Expression
 
 try:
     import dask_cuda  # noqa: F401
@@ -688,7 +688,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, identifier: LogicalPlan) -> Tuple[str, str]:
+    def fqn(self, identifier: Expression) -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -744,8 +744,6 @@ class Context:
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-                    # print(f"data_type: {data_type} - sql_data_type: {sql_data_type}")
-                    # print(f"type: {type(data_type)} - type: {type(sql_data_type)}")
                     table.add_column(column, str(sql_data_type))
 
                 rust_schema.add_table(table)
@@ -772,7 +770,6 @@ class Context:
             #     java_schema.addFunction(dask_function)
 
             schema_list.append(rust_schema)
-            logger.debug(f"Prepared Schema: {rust_schema.to_string()}")
 
         return schema_list
 
@@ -903,7 +900,8 @@ class Context:
             if replace:
                 schema.function_lists = list(
                     filter(
-                        lambda f: f.name.lower() != lower_name, schema.function_lists,
+                        lambda f: f.name.lower() != lower_name,
+                        schema.function_lists,
                     )
                 )
                 del schema.functions[lower_name]
