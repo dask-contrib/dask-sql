@@ -591,22 +591,22 @@ def test_date_functions(c):
 
 def test_timestampdiff(c):
     # single value test
-    # query = (
-    #     "SELECT timestampdiff(SECOND, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res0,"
-    #     "timestampdiff(MINUTE, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res1,"
-    #     "timestampdiff(HOUR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res2,"
-    #     "timestampdiff(DAY, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res3,"
-    #     "timestampdiff(MONTH, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res4,"
-    #     "timestampdiff(YEAR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res5"
-    # )
-    # print(c.explain(query))
-    # df = c.sql(query).compute()
-    # assert df["res0"][0] == 7776000
-    # assert df["res1"][0] == 129600
-    # assert df["res2"][0] == 2160
-    # assert df["res3"][0] == 90
-    # assert df["res4"][0] == 2
-    # assert df["res5"][0] == 0
+    query = (
+        "SELECT timestampdiff(SECOND, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res0,"
+        "timestampdiff(MINUTE, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res1,"
+        "timestampdiff(HOUR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res2,"
+        "timestampdiff(DAY, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res3,"
+        "timestampdiff(MONTH, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res4,"
+        "timestampdiff(YEAR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res5"
+    )
+    print(c.explain(query))
+    df = c.sql(query).compute()
+    assert df["res0"][0] == 7776000
+    assert df["res1"][0] == 129600
+    assert df["res2"][0] == 2160
+    assert df["res3"][0] == 90
+    assert df["res4"][0] == 2
+    assert df["res5"][0] == 0
 
     # dataframe test
 
