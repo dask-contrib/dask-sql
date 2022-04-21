@@ -15,6 +15,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -168,10 +169,11 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, datetime.timedelta):
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
         else:  # pragma: no cover
             result = da.trunc(result)
+            result = result.astype(int)
             return result
 
 
@@ -249,9 +251,6 @@ class ReinterpretOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):
-            return operand
-
         output_type = str(rex.getType())
         python_type = sql_to_python_type(output_type.upper())
 
@@ -737,6 +736,36 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
+class DatetimeSubOperation(Operation):
+    """
+    Datetime subtraction is a special case of the `minus` operation in calcite
+    which also specifies a sql interval return type for the operation.
+    """
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.datetime_sub)
+
+    def datetime_sub(self, *operands, rex=None):
+        output_type = str(rex.getType())
+        # Special case output_type for datetime operations
+        assert output_type.startswith("INTERVAL")
+        interval_unit = output_type.split()[1].lower()
+        print(interval_unit)
+        if interval_unit in {"year", "quarter", "month"}:
+            # if interval_unit is INTERVAL YEAR, Calcite will covert to months
+            output_type = np.dtype("timedelta64[M]")
+        else:
+            output_type = np.dtype("timedelta64[ms]")
+        print(output_type)
+        subtraction_op = ReduceOperation(
+            operation=operator.sub, unary_operation=lambda x: -x
+        )
+        res = subtraction_op(*operands)
+        return res.astype(output_type)
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -835,6 +864,7 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "datetime_subtraction": DatetimeSubOperation(),
     }
 
     def convert(
@@ -850,6 +880,8 @@ class RexCallPlugin(BaseRexPlugin):
 
         # Now use the operator name in the mapping
         schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
+        if special_op := check_special_operator(rex.getOperator()):
+            operator_name = special_op
         operator_name = operator_name.lower()
 
         try:
@@ -873,3 +905,16 @@ class RexCallPlugin(BaseRexPlugin):
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it
+
+
+def check_special_operator(operator: "org.apache.calcite.sql.fun"):
+    """
+    Check for special operator classes that have an overloaded name with other
+    operator type/kinds.
+
+    eg: sqlDatetimeSubtractionOperator has the sqltype and kind of the `-` or `minus` operation.
+    """
+    special_op_to_name = {
+        "org.apache.calcite.sql.fun.SqlDatetimeSubtractionOperator": "datetime_subtraction"
+    }
+    return special_op_to_name.get(get_java_class(operator), None)
