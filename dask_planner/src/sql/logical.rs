@@ -4,7 +4,7 @@ mod filter;
 mod join;
 pub mod projection;
 
-pub use datafusion::logical_plan::plan::LogicalPlan;
+pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 

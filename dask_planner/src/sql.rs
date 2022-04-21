@@ -18,6 +18,7 @@ use datafusion_expr::ScalarFunctionImplementation;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::sql::table::DaskTableProvider;
 use pyo3::prelude::*;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
@@ -51,7 +52,6 @@ impl ContextProvider for DaskSQLContext {
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
-                let mut table_name: String = "".to_string();
                 for (_table_name, table) in &schema.tables {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
@@ -67,13 +67,11 @@ impl ContextProvider for DaskSQLContext {
                         }
 
                         resp = Some(Schema::new(fields));
-                        table_name = _table_name.clone();
                     }
                 }
-                Some(Arc::new(table::DaskTableProvider::new(
-                    Arc::new(resp.unwrap()),
-                    table_name,
-                )))
+                Some(Arc::new(DaskTableProvider::new(Arc::new(
+                    table::DaskTableSource::new(Arc::new(resp.unwrap())),
+                ))))
             }
             None => {
                 DataFusionError::Execution(format!(
