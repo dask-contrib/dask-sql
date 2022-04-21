@@ -6,7 +6,6 @@ import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
@@ -88,7 +87,7 @@ def python_to_sql_type(python_type):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        return pa.timestamp("ms", tz="UTC")
+        return "TIMESTAMP_WITH_LOCAL_TIME_ZONE"
 
     try:
         return _PYTHON_TO_SQL[python_type]
