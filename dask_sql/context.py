@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, LogicalPlan, Expression
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable
 
 try:
     import dask_cuda  # noqa: F401
@@ -30,6 +30,9 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
+
+if TYPE_CHECKING:
+    from dask_planner.rust import Expression
 
 logger = logging.getLogger(__name__)
 
@@ -688,7 +691,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, identifier: Expression) -> Tuple[str, str]:
+    def fqn(self, identifier: "Expression") -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
