@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, DFParsingException
 
 try:
     import dask_cuda  # noqa: F401
@@ -30,6 +30,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
+from dask_sql.utils import ParsingException
 
 if TYPE_CHECKING:
     from dask_planner.rust import Expression
@@ -741,9 +742,7 @@ class Context:
 
                 table = DaskTable(name, row_count)
                 df = dc.df
-                logger.debug(
-                    f"Adding table '{name}' to schema with columns: {list(df.columns)}"
-                )
+
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
@@ -808,7 +807,11 @@ class Context:
                 f"Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!"
             )
 
-        nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        try:
+            nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        except DFParsingException as pe:
+            raise ParsingException(sql, str(pe)) from None
+
         rel = nonOptimizedRel
         logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
         # # Optimization might remove some alias projects. Make sure to keep them here.
