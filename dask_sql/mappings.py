@@ -196,7 +196,12 @@ def sql_to_python_type(sql_type: str) -> type:
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
+        interval_type = sql_type.split()[1].lower()
+        if interval_type in {"year", "quarter", "month"}:
+            # if sql_type is INTERVAL YEAR, Calcite will covert to months
+            return np.dtype("timedelta64[M]")
         return np.dtype("<m8[ns]")
+
     elif sql_type.startswith("TIMESTAMP(") or sql_type.startswith("TIME("):
         return np.dtype("<M8[ns]")
     elif sql_type.startswith("TIMESTAMP_WITH_LOCAL_TIME_ZONE("):
@@ -299,7 +304,7 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     if current_timedelta_type and expected_integer:
-        res = col.dt.total_seconds() * 1000
+        res = col.astype(int)
     else:
         res = col.astype(expected_type)
 
