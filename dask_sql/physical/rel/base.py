@@ -8,7 +8,7 @@ from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskRelDataType, DaskTable, LogicalPlan
+    from dask_planner.rust import LogicalPlan, RelDataType
 
 logger = logging.getLogger(__name__)
 
@@ -29,24 +29,26 @@ class BaseRelPlugin:
         raise NotImplementedError
 
     @staticmethod
-    def fix_column_to_row_type(cc: ColumnContainer, column_names) -> ColumnContainer:
+    def fix_column_to_row_type(
+        cc: ColumnContainer, row_type: "RelDataType"
+    ) -> ColumnContainer:
         """
         Make sure that the given column container
         has the column names specified by the row type.
         We assume that the column order is already correct
         and will just "blindly" rename the columns.
         """
-        # field_names = [str(x) for x in row_type.getFieldNames()]
+        field_names = [str(x) for x in row_type.getFieldNames()]
 
-        logger.debug(f"Renaming {cc.columns} to {column_names}")
+        logger.debug(f"Renaming {cc.columns} to {field_names}")
 
-        cc = cc.rename(columns=dict(zip(cc.columns, column_names)))
+        cc = cc.rename(columns=dict(zip(cc.columns, field_names)))
 
         # TODO: We can also check for the types here and do any conversions if needed
-        return cc.limit_to(column_names)
+        return cc.limit_to(field_names)
 
     @staticmethod
-    def check_columns_from_row_type(df: dd.DataFrame, row_type: "DaskRelDataType"):
+    def check_columns_from_row_type(df: dd.DataFrame, row_type: "RelDataType"):
         """
         Similar to `self.fix_column_to_row_type`, but this time
         check for the correct column names instead of
@@ -81,7 +83,7 @@ class BaseRelPlugin:
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
-    def fix_dtype_to_row_type(dc: DataContainer, dask_table: "DaskTable"):
+    def fix_dtype_to_row_type(dc: DataContainer, row_type: "RelDataType"):
         """
         Fix the dtype of the given data container (or: the df within it)
         to the data type given as argument.
@@ -93,9 +95,17 @@ class BaseRelPlugin:
         TODO: we should check the nullability of the SQL type
         """
         df = dc.df
+        cc = dc.column_container
 
-        for col in dask_table.column_types():
-            expected_type = sql_to_python_type(col.get_type_as_str())
-            df = cast_column_type(df, col.get_column_name(), expected_type)
+        field_types = {
+            int(field.getIndex()): str(field.getType())
+            for field in row_type.getFieldList()
+        }
+
+        for index, field_type in field_types.items():
+            expected_type = sql_to_python_type(field_type)
+            field_name = cc.get_backend_by_frontend_index(index)
+
+            df = cast_column_type(df, field_name, expected_type)
 
         return DataContainer(df, dc.column_container)

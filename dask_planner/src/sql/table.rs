@@ -1,5 +1,5 @@
 use crate::sql::logical;
-use crate::sql::types;
+use crate::sql::types::rel_data_type::RelDataType;
 
 use async_trait::async_trait;
 
@@ -75,7 +75,7 @@ pub struct DaskTable {
     pub(crate) name: String,
     #[allow(dead_code)]
     pub(crate) statistics: DaskStatistics,
-    pub(crate) columns: Vec<(String, types::DaskRelDataType)>,
+    pub(crate) columns: Vec<(String, RelDataType)>,
 }
 
 #[pymethods]
@@ -90,12 +90,13 @@ impl DaskTable {
     }
 
     pub fn add_column(&mut self, column_name: String, column_type_str: String) {
-        let sql_type: types::DaskRelDataType = types::DaskRelDataType {
-            name: String::from(&column_name),
-            sql_type: types::sql_type_to_arrow_type(column_type_str),
-        };
+        panic!("Need to uncomment and fix this before running!!");
+        // let sql_type: RelDataType = RelDataType {
+        //     name: String::from(&column_name),
+        //     sql_type: types::sql_type_to_arrow_type(column_type_str),
+        // };
 
-        self.columns.push((column_name, sql_type));
+        // self.columns.push((column_name, sql_type));
     }
 
     pub fn get_qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
@@ -128,8 +129,8 @@ impl DaskTable {
         cns
     }
 
-    pub fn column_types(&self) -> Vec<types::DaskRelDataType> {
-        let mut col_types: Vec<types::DaskRelDataType> = Vec::new();
+    pub fn column_types(&self) -> Vec<RelDataType> {
+        let mut col_types: Vec<RelDataType> = Vec::new();
         for col in &self.columns {
             col_types.push(col.1.clone())
         }
@@ -156,16 +157,17 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             let tbl_schema: SchemaRef = tbl_provider.schema();
             let fields = tbl_schema.fields();
 
-            let mut cols: Vec<(String, types::DaskRelDataType)> = Vec::new();
-            for field in fields {
-                cols.push((
-                    String::from(field.name()),
-                    types::DaskRelDataType {
-                        name: String::from(field.name()),
-                        sql_type: field.data_type().clone(),
-                    },
-                ));
-            }
+            let mut cols: Vec<(String, RelDataType)> = Vec::new();
+            panic!("uncomment and fix this");
+            // for field in fields {
+            //     cols.push((
+            //         String::from(field.name()),
+            //         RelDataType {
+            //             name: String::from(field.name()),
+            //             sql_type: field.data_type().clone(),
+            //         },
+            //     ));
+            // }
 
             Some(DaskTable {
                 name: String::from(&table_scan.table_name),
