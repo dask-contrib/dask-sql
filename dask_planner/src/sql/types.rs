@@ -5,6 +5,15 @@ pub mod rel_data_type_field;
 
 use pyo3::prelude::*;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[pyclass(name = "RexType", module = "datafusion")]
+pub enum RexType {
+    Literal,
+    Call,
+    Reference,
+    Other,
+}
+
 /// Enumeration of the type names which can be used to construct a SQL type. Since
 /// several SQL types do not exist as Rust types and also because the Enum
 /// `SqlTypeName` is already used in the Python Dask-SQL code base this enum is used

@@ -121,7 +121,6 @@ class ColumnContainer:
         Get back the dask column, which is referenced by the
         frontend (SQL) column with the given index.
         """
-        print(f"self._frontend_columns: {self._frontend_columns} index: {index}")
         frontend_column = self._frontend_columns[index]
         backend_column = self._frontend_backend_mapping[frontend_column]
         return backend_column

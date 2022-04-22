@@ -299,11 +299,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         for expr in rel.aggregate().getNamedAggCalls():
             logger.debug(f"Aggregate Call: {expr}")
-            logger.debug(f"Expr Type: {expr.get_expr_type()}")
+            logger.debug(f"Expr Type: {expr.getExprType()}")
 
             # Determine the aggregation function to use
             assert (
-                expr.get_expr_type() == "AggregateFunction"
+                expr.getExprType() == "AggregateFunction"
             ), "Do not know how to handle this case!"
 
             # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
@@ -315,7 +315,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             inputs = rel.aggregate().getArgs(expr)
             logger.debug(f"Number of Inputs: {len(inputs)}")
             logger.debug(
-                f"Input: {inputs[0]} of type: {inputs[0].get_expr_type()} with column name: {inputs[0].column_name(rel)}"
+                f"Input: {inputs[0]} of type: {inputs[0].getExprType()} with column name: {inputs[0].column_name(rel)}"
             )
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case

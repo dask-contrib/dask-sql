@@ -1,7 +1,10 @@
 use crate::sql::logical;
+use crate::sql::types::RexType;
 
-use pyo3::{basic::CompareOp, prelude::*, PyNumberProtocol, PyObjectProtocol};
+use pyo3::prelude::*;
 use std::convert::{From, Into};
+
+use datafusion::error::DataFusionError;
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::{col, lit, BuiltinScalarFunction, Expr};
@@ -10,10 +13,14 @@ use datafusion::scalar::ScalarValue;
 
 pub use datafusion_expr::LogicalPlan;
 
+use std::sync::Arc;
+
+
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyExpr {
+    pub input_plan: Option<Arc<LogicalPlan>>,
     pub expr: Expr,
 }
 
@@ -25,7 +32,10 @@ impl From<PyExpr> for Expr {
 
 impl From<Expr> for PyExpr {
     fn from(expr: Expr) -> PyExpr {
-        PyExpr { expr }
+        PyExpr {
+            input_plan: None,
+            expr: expr ,
+        }
     }
 }
 
@@ -47,61 +57,16 @@ impl From<ScalarValue> for PyScalarValue {
     }
 }
 
-#[pyproto]
-impl PyNumberProtocol for PyExpr {
-    fn __add__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr + rhs.expr).into())
-    }
-
-    fn __sub__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr - rhs.expr).into())
-    }
-
-    fn __truediv__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr / rhs.expr).into())
-    }
-
-    fn __mul__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr * rhs.expr).into())
-    }
-
-    fn __mod__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.modulus(rhs.expr).into())
-    }
-
-    fn __and__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.and(rhs.expr).into())
-    }
-
-    fn __or__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.or(rhs.expr).into())
-    }
-
-    fn __invert__(&self) -> PyResult<PyExpr> {
-        Ok(self.expr.clone().not().into())
-    }
-}
-
-#[pyproto]
-impl PyObjectProtocol for PyExpr {
-    fn __richcmp__(&self, other: PyExpr, op: CompareOp) -> PyExpr {
-        let expr = match op {
-            CompareOp::Lt => self.expr.clone().lt(other.expr),
-            CompareOp::Le => self.expr.clone().lt_eq(other.expr),
-            CompareOp::Eq => self.expr.clone().eq(other.expr),
-            CompareOp::Ne => self.expr.clone().not_eq(other.expr),
-            CompareOp::Gt => self.expr.clone().gt(other.expr),
-            CompareOp::Ge => self.expr.clone().gt_eq(other.expr),
-        };
-        expr.into()
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        Ok(format!("{}", self.expr))
-    }
-}
-
 impl PyExpr {
+
+    /// Generally we would implement the `From` trait offered by Rust
+    /// However in this case Expr does not contain the contextual 
+    /// `LogicalPlan` instance that we need so we need to make a instance
+    /// function to take and create the PyExpr.
+    pub fn from(expr: Expr, input: Option<Arc<LogicalPlan>>) -> PyExpr {
+        PyExpr { input_plan: input, expr:expr }
+    }
+
     fn _column_name(&self, mut plan: LogicalPlan) -> String {
         match &self.expr {
             Expr::Alias(expr, name) => {
@@ -205,10 +170,32 @@ impl PyExpr {
         }
     }
 
+    /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
+    #[pyo3(name = "getIndex")]
+    pub fn index(&self) -> PyResult<usize> {
+        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+        match input {
+            Some(plan) => {
+                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                println!("Column NAME: {:?}", name);
+                match name {
+                    Ok(k) => {
+                        let index: usize = plan.schema().index_of(&k).unwrap();
+                        println!("Index: {:?}", index);
+                        Ok(index)
+                    },
+                    Err(e) => panic!("{:?}", e),
+                }
+            },
+            None => panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema"),
+        }
+    }
+
     /// Examine the current/"self" PyExpr and return its "type"
     /// In this context a "type" is what Dask-SQL Python
     /// RexConverter plugin instance should be invoked to handle
     /// the Rex conversion
+    #[pyo3(name = "getExprType")]
     pub fn get_expr_type(&self) -> String {
         String::from(match &self.expr {
             Expr::Alias(..) => "Alias",
@@ -234,6 +221,35 @@ impl PyExpr {
             Expr::Wildcard => panic!("Wildcard!!!"),
             _ => "OTHER",
         })
+    }
+
+    /// Determines the type of this Expr based on its variant
+    #[pyo3(name = "getRexType")]
+    pub fn rex_type(&self) -> RexType {
+        match &self.expr {
+            Expr::Alias(..) => RexType::Reference,
+            Expr::Column(..) => RexType::Reference,
+            Expr::ScalarVariable(..) => RexType::Literal,
+            Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. } => RexType::Call,
+            Expr::Not(..) => RexType::Call,
+            Expr::IsNotNull(..) => RexType::Call,
+            Expr::Negative(..) => RexType::Call,
+            Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::IsNull(..) => RexType::Call,
+            Expr::Between { .. } => RexType::Call,
+            Expr::Case { .. } => RexType::Call,
+            Expr::Cast { .. } => RexType::Call,
+            Expr::TryCast { .. } => RexType::Call,
+            Expr::Sort { .. } => RexType::Call,
+            Expr::ScalarFunction { .. } => RexType::Call,
+            Expr::AggregateFunction { .. } => RexType::Call,
+            Expr::WindowFunction { .. } => RexType::Call,
+            Expr::AggregateUDF { .. } => RexType::Call,
+            Expr::InList { .. } => RexType::Call,
+            Expr::Wildcard => RexType::Call,
+            _ => RexType::Other,
+        }
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
@@ -365,26 +381,6 @@ impl PyExpr {
             },
             _ => panic!("OTHER"),
         }
-    }
-
-    #[staticmethod]
-    pub fn column(value: &str) -> PyExpr {
-        col(value).into()
-    }
-
-    /// assign a name to the PyExpr
-    pub fn alias(&self, name: &str) -> PyExpr {
-        self.expr.clone().alias(name).into()
-    }
-
-    /// Create a sort PyExpr from an existing PyExpr.
-    #[args(ascending = true, nulls_first = true)]
-    pub fn sort(&self, ascending: bool, nulls_first: bool) -> PyExpr {
-        self.expr.clone().sort(ascending, nulls_first).into()
-    }
-
-    pub fn is_null(&self) -> PyExpr {
-        self.expr.clone().is_null().into()
     }
 
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
