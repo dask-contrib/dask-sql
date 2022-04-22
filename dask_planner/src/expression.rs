@@ -7,13 +7,11 @@ use std::convert::{From, Into};
 use datafusion::error::DataFusionError;
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion::logical_plan::{col, lit, Expr};
+use datafusion_expr::{col, lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
-pub use datafusion::logical_plan::plan::LogicalPlan;
-
-use datafusion::logical_expr::BuiltinScalarFunction;
+pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 

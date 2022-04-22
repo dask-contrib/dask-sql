@@ -1,8 +1,7 @@
 use crate::expression::PyExpr;
-use datafusion::logical_plan::Expr;
 
-use datafusion::logical_plan::plan::Aggregate;
-pub use datafusion::logical_plan::plan::{JoinType, LogicalPlan};
+use datafusion_expr::{logical_plan::Aggregate, Expr};
+pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
 
