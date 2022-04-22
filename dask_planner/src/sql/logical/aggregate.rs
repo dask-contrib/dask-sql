@@ -19,7 +19,7 @@ impl PyAggregate {
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
         let mut group_exprs: Vec<PyExpr> = Vec::new();
         for expr in &self.aggregate.group_expr {
-            group_exprs.push(expr.clone().into());
+            group_exprs.push(PyExpr::from(expr.clone(), Some(self.aggregate.input.clone())));
         }
         Ok(group_exprs)
     }
@@ -28,7 +28,7 @@ impl PyAggregate {
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
         let mut agg_exprs: Vec<PyExpr> = Vec::new();
         for expr in &self.aggregate.aggr_expr {
-            agg_exprs.push(expr.clone().into());
+            agg_exprs.push(PyExpr::from(expr.clone(), Some(self.aggregate.input.clone())));
         }
         Ok(agg_exprs)
     }
@@ -47,7 +47,7 @@ impl PyAggregate {
             Expr::AggregateFunction { fun: _, args, .. } => {
                 let mut exprs: Vec<PyExpr> = Vec::new();
                 for expr in args {
-                    exprs.push(PyExpr { expr });
+                    exprs.push(PyExpr { input_plan: Some(self.aggregate.input.clone()), expr: expr });
                 }
                 exprs
             }

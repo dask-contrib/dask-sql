@@ -38,7 +38,6 @@ class BaseRelPlugin:
         We assume that the column order is already correct
         and will just "blindly" rename the columns.
         """
-        print(f"type(row_type): {type(row_type)}")
         field_names = [str(x) for x in row_type.getFieldNames()]
 
         logger.debug(f"Renaming {cc.columns} to {field_names}")
