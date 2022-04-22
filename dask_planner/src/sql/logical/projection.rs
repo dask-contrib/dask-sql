@@ -51,7 +51,10 @@ impl PyProjection {
     fn projected_expressions(&mut self) -> PyResult<Vec<PyExpr>> {
         let mut projs: Vec<PyExpr> = Vec::new();
         for expr in &self.projection.expr {
-            projs.push(PyExpr::from(expr.clone(), Some(self.projection.input.clone())));
+            projs.push(PyExpr::from(
+                expr.clone(),
+                Some(self.projection.input.clone()),
+            ));
         }
         Ok(projs)
     }
@@ -70,10 +73,8 @@ impl PyProjection {
 impl From<LogicalPlan> for PyProjection {
     fn from(logical_plan: LogicalPlan) -> PyProjection {
         match logical_plan {
-            LogicalPlan::Projection(projection) => {
-                PyProjection { 
-                    projection: projection
-                }
+            LogicalPlan::Projection(projection) => PyProjection {
+                projection: projection,
             },
             _ => panic!("something went wrong here"),
         }

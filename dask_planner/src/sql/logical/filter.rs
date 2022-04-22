@@ -16,7 +16,10 @@ impl PyFilter {
     /// LogicalPlan::Filter: The PyExpr, predicate, that represents the filtering condition
     #[pyo3(name = "getCondition")]
     pub fn get_condition(&mut self) -> PyResult<PyExpr> {
-        Ok(PyExpr::from(self.filter.predicate.clone(), Some(self.filter.input.clone())))
+        Ok(PyExpr::from(
+            self.filter.predicate.clone(),
+            Some(self.filter.input.clone()),
+        ))
     }
 }
 
