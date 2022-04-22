@@ -15,8 +15,9 @@ pub use datafusion::logical_plan::plan::LogicalPlan;
 
 use datafusion::logical_expr::BuiltinScalarFunction;
 
-use std::sync::Arc;
+use datafusion::prelude::Column;
 
+use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
@@ -36,7 +37,7 @@ impl From<Expr> for PyExpr {
     fn from(expr: Expr) -> PyExpr {
         PyExpr {
             input_plan: None,
-            expr: expr ,
+            expr: expr,
         }
     }
 }
@@ -60,13 +61,15 @@ impl From<ScalarValue> for PyScalarValue {
 }
 
 impl PyExpr {
-
     /// Generally we would implement the `From` trait offered by Rust
-    /// However in this case Expr does not contain the contextual 
+    /// However in this case Expr does not contain the contextual
     /// `LogicalPlan` instance that we need so we need to make a instance
     /// function to take and create the PyExpr.
     pub fn from(expr: Expr, input: Option<Arc<LogicalPlan>>) -> PyExpr {
-        PyExpr { input_plan: input, expr:expr }
+        PyExpr {
+            input_plan: input,
+            expr: expr,
+        }
     }
 
     fn _column_name(&self, mut plan: LogicalPlan) -> String {
@@ -179,17 +182,17 @@ impl PyExpr {
         match input {
             Some(plan) => {
                 let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
-                println!("Column NAME: {:?}", name);
                 match name {
-                    Ok(k) => {
-                        let index: usize = plan.schema().index_of(&k).unwrap();
-                        println!("Index: {:?}", index);
-                        Ok(index)
-                    },
+                    Ok(fq_name) => Ok(plan
+                        .schema()
+                        .index_of_column(&Column::from_qualified_name(&fq_name))
+                        .unwrap()),
                     Err(e) => panic!("{:?}", e),
                 }
-            },
-            None => panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema"),
+            }
+            None => {
+                panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
+            }
         }
     }
 

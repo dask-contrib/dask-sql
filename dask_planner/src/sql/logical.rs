@@ -1,10 +1,14 @@
 use crate::sql::table;
+use crate::sql::types::rel_data_type::RelDataType;
+use crate::sql::types::rel_data_type_field::RelDataTypeField;
+
 mod aggregate;
 mod filter;
 mod join;
 pub mod projection;
 
 pub use datafusion::logical_plan::plan::LogicalPlan;
+use datafusion::logical_plan::DFField;
 
 use datafusion::prelude::Column;
 
@@ -132,6 +136,22 @@ impl PyLogicalPlan {
     /// Explain plan from the current node onward
     pub fn explain_current(&mut self) -> PyResult<String> {
         Ok(format!("{}", self.current_node().display_indent()))
+    }
+
+    #[pyo3(name = "getRowType")]
+    pub fn row_type(&self) -> RelDataType {
+        let fields: &Vec<DFField> = self.original_plan.schema().fields();
+        let mut rel_fields: Vec<RelDataTypeField> = Vec::new();
+        for i in 0..fields.len() {
+            rel_fields.push(
+                RelDataTypeField::from(
+                    fields[i].clone(),
+                    self.original_plan.schema().as_ref().clone(),
+                )
+                .unwrap(),
+            );
+        }
+        RelDataType::new(false, rel_fields)
     }
 }
 

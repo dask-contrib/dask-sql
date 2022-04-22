@@ -1,5 +1,7 @@
-use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::SqlTypeName;
+
+use datafusion::error::DataFusionError;
+use datafusion::logical_plan::{DFField, DFSchema};
 
 use std::fmt;
 
@@ -11,13 +13,24 @@ use pyo3::prelude::*;
 pub struct RelDataTypeField {
     name: String,
     data_type: SqlTypeName,
-    index: u8,
+    index: usize,
+}
+
+// Functions that should not be presented to Python are placed here
+impl RelDataTypeField {
+    pub fn from(field: DFField, schema: DFSchema) -> Result<RelDataTypeField, DataFusionError> {
+        Ok(RelDataTypeField {
+            name: field.name().clone(),
+            data_type: SqlTypeName::from_arrow(field.data_type()),
+            index: schema.index_of(field.name())?,
+        })
+    }
 }
 
 #[pymethods]
 impl RelDataTypeField {
     #[new]
-    pub fn new(name: String, data_type: SqlTypeName, index: u8) -> Self {
+    pub fn new(name: String, data_type: SqlTypeName, index: usize) -> Self {
         Self {
             name: name,
             data_type: data_type,
@@ -31,7 +44,7 @@ impl RelDataTypeField {
     }
 
     #[pyo3(name = "getIndex")]
-    pub fn index(&self) -> u8 {
+    pub fn index(&self) -> usize {
         self.index
     }
 
