@@ -7,35 +7,36 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+from dask_planner.rust import SqlTypeName
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
 
-
+# Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
-    np.float64: "DOUBLE",
-    np.float32: "FLOAT",
-    np.int64: "BIGINT",
-    pd.Int64Dtype(): "BIGINT",
-    np.int32: "INTEGER",
-    pd.Int32Dtype(): "INTEGER",
-    np.int16: "SMALLINT",
-    pd.Int16Dtype(): "SMALLINT",
-    np.int8: "TINYINT",
-    pd.Int8Dtype(): "TINYINT",
-    np.uint64: "BIGINT",
-    pd.UInt64Dtype(): "BIGINT",
-    np.uint32: "INTEGER",
-    pd.UInt32Dtype(): "INTEGER",
-    np.uint16: "SMALLINT",
-    pd.UInt16Dtype(): "SMALLINT",
-    np.uint8: "TINYINT",
-    pd.UInt8Dtype(): "TINYINT",
-    np.bool8: "BOOLEAN",
-    pd.BooleanDtype(): "BOOLEAN",
-    np.object_: "VARCHAR",
-    pd.StringDtype(): "VARCHAR",
-    np.datetime64: "TIMESTAMP",
+    np.float64: SqlTypeName.DOUBLE,
+    np.float32: SqlTypeName.FLOAT,
+    np.int64: SqlTypeName.BIGINT,
+    pd.Int64Dtype(): SqlTypeName.BIGINT,
+    np.int32: SqlTypeName.INTEGER,
+    pd.Int32Dtype(): SqlTypeName.INTEGER,
+    np.int16: SqlTypeName.SMALLINT,
+    pd.Int16Dtype(): SqlTypeName.SMALLINT,
+    np.int8: SqlTypeName.TINYINT,
+    pd.Int8Dtype(): SqlTypeName.TINYINT,
+    np.uint64: SqlTypeName.BIGINT,
+    pd.UInt64Dtype(): SqlTypeName.BIGINT,
+    np.uint32: SqlTypeName.INTEGER,
+    pd.UInt32Dtype(): SqlTypeName.INTEGER,
+    np.uint16: SqlTypeName.SMALLINT,
+    pd.UInt16Dtype(): SqlTypeName.SMALLINT,
+    np.uint8: SqlTypeName.TINYINT,
+    pd.UInt8Dtype(): SqlTypeName.TINYINT,
+    np.bool8: SqlTypeName.BOOLEAN,
+    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
+    np.object_: SqlTypeName.VARCHAR,
+    pd.StringDtype(): SqlTypeName.VARCHAR,
+    np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
 if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
@@ -81,13 +82,13 @@ _SQL_TO_PYTHON_FRAMES = {
 }
 
 
-def python_to_sql_type(python_type):
+def python_to_sql_type(python_type) -> "SqlTypeName":
     """Mapping between python and SQL types."""
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        return "TIMESTAMP_WITH_LOCAL_TIME_ZONE"
+        return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
 
     try:
         return _PYTHON_TO_SQL[python_type]
@@ -193,7 +194,10 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: str) -> type:
     """Turn an SQL type into a dataframe dtype"""
-    logger.debug(f"mappings.sql_to_python_type() -> sql_type: {sql_type}")
+    # Ex: Rust SqlTypeName Enum str value 'SqlTypeName.DOUBLE'
+    if sql_type.find(".") != -1:
+        sql_type = sql_type.split(".")[1]
+
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):

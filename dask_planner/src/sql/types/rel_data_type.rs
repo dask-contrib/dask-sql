@@ -18,6 +18,14 @@ pub struct RelDataType {
 /// RelDataType represents the type of a scalar expression or entire row returned from a relational expression.
 #[pymethods]
 impl RelDataType {
+    #[new]
+    pub fn new(nullable: bool, fields: Vec<RelDataTypeField>) -> Self {
+        Self {
+            nullable: nullable,
+            field_list: fields,
+        }
+    }
+
     /// Looks up a field by name.
     ///
     /// # Arguments

@@ -1,4 +1,4 @@
-use datafusion::arrow::datatypes::{DataType, TimeUnit};
+use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 
 pub mod rel_data_type;
 pub mod rel_data_type_field;
@@ -11,7 +11,9 @@ use pyo3::prelude::*;
 /// in place of just using the built-in Rust types.
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-enum SqlTypeName {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[pyclass(name = "SqlTypeName", module = "datafusion")]
+pub enum SqlTypeName {
     ANY,
     ARRAY,
     BIGINT,
@@ -61,103 +63,88 @@ enum SqlTypeName {
     VARCHAR,
 }
 
-/// Takes an Arrow DataType (https://docs.rs/crate/arrow/latest/source/src/datatypes/datatype.rs)
-/// and converts it to a SQL type. The SQL type is a String and represents the valid
-/// SQL types which are supported by Dask-SQL
-pub(crate) fn arrow_type_to_sql_type(arrow_type: DataType) -> String {
-    match arrow_type {
-        DataType::Null => String::from("NULL"),
-        DataType::Boolean => String::from("BOOLEAN"),
-        DataType::Int8 => String::from("TINYINT"),
-        DataType::UInt8 => String::from("TINYINT"),
-        DataType::Int16 => String::from("SMALLINT"),
-        DataType::UInt16 => String::from("SMALLINT"),
-        DataType::Int32 => String::from("INTEGER"),
-        DataType::UInt32 => String::from("INTEGER"),
-        DataType::Int64 => String::from("BIGINT"),
-        DataType::UInt64 => String::from("BIGINT"),
-        DataType::Float32 => String::from("FLOAT"),
-        DataType::Float64 => String::from("DOUBLE"),
-        DataType::Timestamp(unit, tz) => {
-            // let mut timestamp_str: String = "timestamp[".to_string();
+impl SqlTypeName {
+    pub fn to_arrow(&self) -> DataType {
+        match self {
+            SqlTypeName::NULL => DataType::Null,
+            SqlTypeName::BOOLEAN => DataType::Boolean,
+            SqlTypeName::TINYINT => DataType::Int8,
+            SqlTypeName::SMALLINT => DataType::Int16,
+            SqlTypeName::INTEGER => DataType::Int32,
+            SqlTypeName::BIGINT => DataType::Int64,
+            SqlTypeName::REAL => DataType::Float16,
+            SqlTypeName::FLOAT => DataType::Float32,
+            SqlTypeName::DOUBLE => DataType::Float64,
+            SqlTypeName::DATE => DataType::Date64,
+            SqlTypeName::TIMESTAMP => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            _ => todo!(),
+        }
+    }
 
-            // let unit_str: &str = match unit {
-            //     TimeUnit::Microsecond => "ps",
-            //     TimeUnit::Millisecond => "ms",
-            //     TimeUnit::Nanosecond => "ns",
-            //     TimeUnit::Second => "s",
-            // };
+    pub fn from_arrow(data_type: &DataType) -> Self {
+        match data_type {
+            DataType::Null => SqlTypeName::NULL,
+            DataType::Boolean => SqlTypeName::BOOLEAN,
+            DataType::Int8 => SqlTypeName::TINYINT,
+            DataType::Int16 => SqlTypeName::SMALLINT,
+            DataType::Int32 => SqlTypeName::INTEGER,
+            DataType::Int64 => SqlTypeName::BIGINT,
+            DataType::UInt8 => SqlTypeName::TINYINT,
+            DataType::UInt16 => SqlTypeName::SMALLINT,
+            DataType::UInt32 => SqlTypeName::INTEGER,
+            DataType::UInt64 => SqlTypeName::BIGINT,
+            DataType::Float16 => SqlTypeName::REAL,
+            DataType::Float32 => SqlTypeName::FLOAT,
+            DataType::Float64 => SqlTypeName::DOUBLE,
+            DataType::Timestamp(_unit, tz) => match tz {
+                Some(..) => SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE,
+                None => SqlTypeName::TIMESTAMP,
+            },
+            DataType::Date32 => SqlTypeName::DATE,
+            DataType::Date64 => SqlTypeName::DATE,
+            DataType::Interval(unit) => match unit {
+                IntervalUnit::DayTime => SqlTypeName::INTERVAL_DAY,
+                IntervalUnit::YearMonth => SqlTypeName::INTERVAL_YEAR_MONTH,
+                IntervalUnit::MonthDayNano => SqlTypeName::INTERVAL_MONTH,
+            },
+            DataType::Binary => SqlTypeName::BINARY,
+            DataType::FixedSizeBinary(_size) => SqlTypeName::VARBINARY,
+            DataType::Utf8 => SqlTypeName::CHAR,
+            DataType::LargeUtf8 => SqlTypeName::VARCHAR,
+            DataType::Struct(_fields) => SqlTypeName::STRUCTURED,
+            DataType::Decimal(_precision, _scale) => SqlTypeName::DECIMAL,
+            DataType::Map(_field, _bool) => SqlTypeName::MAP,
+            _ => todo!(),
+        }
+    }
 
-            // timestamp_str.push_str(&format!("{}", unit_str));
-            // match tz {
-            //     Some(e) => {
-            //         timestamp_str.push_str(&format!(", {}", e))
-            //     },
-            //     None => (),
-            // }
-            // timestamp_str.push_str("]");
-            // println!("timestamp_str: {:?}", timestamp_str);
-            // timestamp_str
-
-            let mut timestamp_str: String = "TIMESTAMP".to_string();
-            match tz {
-                Some(e) => {
-                    timestamp_str.push_str("_WITH_LOCAL_TIME_ZONE(0)");
-                }
-                None => timestamp_str.push_str("(0)"),
+    pub fn from_string(input_type: &str) -> Self {
+        match input_type {
+            "SqlTypeName.NULL" => SqlTypeName::NULL,
+            "SqlTypeName.BOOLEAN" => SqlTypeName::BOOLEAN,
+            "SqlTypeName.TINYINT" => SqlTypeName::TINYINT,
+            "SqlTypeName.SMALLINT" => SqlTypeName::SMALLINT,
+            "SqlTypeName.INTEGER" => SqlTypeName::INTEGER,
+            "SqlTypeName.BIGINT" => SqlTypeName::BIGINT,
+            "SqlTypeName.REAL" => SqlTypeName::REAL,
+            "SqlTypeName.FLOAT" => SqlTypeName::FLOAT,
+            "SqlTypeName.DOUBLE" => SqlTypeName::DOUBLE,
+            "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE" => {
+                SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE
             }
-            timestamp_str
+            "SqlTypeName.TIMESTAMP" => SqlTypeName::TIMESTAMP,
+            "SqlTypeName.DATE" => SqlTypeName::DATE,
+            "SqlTypeName.INTERVAL_DAY" => SqlTypeName::INTERVAL_DAY,
+            "SqlTypeName.INTERVAL_YEAR_MONTH" => SqlTypeName::INTERVAL_YEAR_MONTH,
+            "SqlTypeName.INTERVAL_MONTH" => SqlTypeName::INTERVAL_MONTH,
+            "SqlTypeName.BINARY" => SqlTypeName::BINARY,
+            "SqlTypeName.VARBINARY" => SqlTypeName::VARBINARY,
+            "SqlTypeName.CHAR" => SqlTypeName::CHAR,
+            "SqlTypeName.VARCHAR" => SqlTypeName::VARCHAR,
+            "SqlTypeName.STRUCTURED" => SqlTypeName::STRUCTURED,
+            "SqlTypeName.DECIMAL" => SqlTypeName::DECIMAL,
+            "SqlTypeName.MAP" => SqlTypeName::MAP,
+            _ => todo!(),
         }
-        DataType::Date32 => String::from("DATE"),
-        DataType::Date64 => String::from("DATE"),
-        DataType::Time32(..) => String::from("TIMESTAMP"),
-        DataType::Time64(..) => String::from("TIMESTAMP"),
-        DataType::Utf8 => String::from("VARCHAR"),
-        DataType::LargeUtf8 => String::from("BIGVARCHAR"),
-        _ => todo!("Unimplemented Arrow DataType encountered"),
-    }
-}
-
-/// Takes a valid Dask-SQL type and converts that String representation to an instance
-/// of Arrow DataType (https://docs.rs/crate/arrow/latest/source/src/datatypes/datatype.rs)
-pub(crate) fn sql_type_to_arrow_type(str_sql_type: String) -> DataType {
-    println!("str_sql_type: {:?}", str_sql_type);
-
-    // TODO: https://github.com/dask-contrib/dask-sql/issues/485
-    if str_sql_type.starts_with("timestamp") {
-        DataType::Timestamp(TimeUnit::Nanosecond, Some(String::from("Europe/Berlin")))
-    } else {
-        match &str_sql_type[..] {
-            "NULL" => DataType::Null,
-            "BOOLEAN" => DataType::Boolean,
-            "TINYINT" => DataType::Int8,
-            "SMALLINT" => DataType::Int16,
-            "INTEGER" => DataType::Int32,
-            "BIGINT" => DataType::Int64,
-            "FLOAT" => DataType::Float32,
-            "DOUBLE" => DataType::Float64,
-            "VARCHAR" => DataType::Utf8,
-            "TIMESTAMP" => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            _ => todo!("Not yet implemented String value: {:?}", &str_sql_type),
-        }
-    }
-}
-
-#[pyclass(name = "DataType", module = "datafusion", subclass)]
-#[derive(Debug, Clone)]
-pub struct PyDataType {
-    pub data_type: DataType,
-}
-
-impl From<PyDataType> for DataType {
-    fn from(data_type: PyDataType) -> DataType {
-        data_type.data_type
-    }
-}
-
-impl From<DataType> for PyDataType {
-    fn from(data_type: DataType) -> PyDataType {
-        PyDataType { data_type }
     }
 }

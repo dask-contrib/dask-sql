@@ -34,32 +34,26 @@ class DaskTableScanPlugin(BaseRelPlugin):
         self.assert_inputs(rel, 0)
 
         # The table(s) we need to return
-        table = rel.table()
-        field_names = rel.get_field_names()
+        table = rel.getTable()
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        table_names = [str(n) for n in table.get_qualified_name(rel)]
+        table_names = [str(n) for n in table.getQualifiedName(rel)]
         assert len(table_names) == 2
         schema_name = table_names[0]
         table_name = table_names[1]
         table_name = table_name.lower()
-
-        logger.debug(
-            f"table_scan.convert() -> schema_name: {schema_name} - table_name: {table_name}"
-        )
 
         dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
 
         # Make sure we only return the requested columns
-        # row_type = table.getRowType()
-        # field_specifications = [str(f) for f in row_type.getFieldNames()]
-        # cc = cc.limit_to(field_specifications)
-        cc = cc.limit_to(field_names)
+        row_type = table.getRowType()
+        field_specifications = [str(f) for f in row_type.getFieldNames()]
+        cc = cc.limit_to(field_specifications)
 
-        cc = self.fix_column_to_row_type(cc, table.column_names())
+        cc = self.fix_column_to_row_type(cc, row_type)
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, table)
+        dc = self.fix_dtype_to_row_type(dc, row_type)
         return dc

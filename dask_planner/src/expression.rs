@@ -1,7 +1,5 @@
 use crate::sql::logical;
-use crate::sql::types::PyDataType;
 
-use pyo3::PyMappingProtocol;
 use pyo3::{basic::CompareOp, prelude::*, PyNumberProtocol, PyObjectProtocol};
 use std::convert::{From, Into};
 
@@ -389,16 +387,6 @@ impl PyExpr {
         self.expr.clone().is_null().into()
     }
 
-    pub fn cast(&self, to: PyDataType) -> PyExpr {
-        // self.expr.cast_to() requires DFSchema to validate that the cast
-        // is supported, omit that for now
-        let expr = Expr::Cast {
-            expr: Box::new(self.expr.clone()),
-            data_type: to.data_type,
-        };
-        expr.into()
-    }
-
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
     /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
     #[pyo3(name = "getFloat32Value")]
@@ -555,16 +543,5 @@ impl PyExpr {
             },
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
-    }
-}
-
-#[pyproto]
-impl PyMappingProtocol for PyExpr {
-    fn __getitem__(&self, key: &str) -> PyResult<PyExpr> {
-        Ok(Expr::GetIndexedField {
-            expr: Box::new(self.expr.clone()),
-            key: ScalarValue::Utf8(Some(key.to_string())),
-        }
-        .into())
     }
 }

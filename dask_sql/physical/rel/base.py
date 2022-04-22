@@ -38,6 +38,7 @@ class BaseRelPlugin:
         We assume that the column order is already correct
         and will just "blindly" rename the columns.
         """
+        print(f"type(row_type): {type(row_type)}")
         field_names = [str(x) for x in row_type.getFieldNames()]
 
         logger.debug(f"Renaming {cc.columns} to {field_names}")
@@ -98,14 +99,14 @@ class BaseRelPlugin:
         cc = dc.column_container
 
         field_types = {
-            int(field.getIndex()): str(field.getType())
+            str(field.getName()): str(field.getType())
             for field in row_type.getFieldList()
         }
 
-        for index, field_type in field_types.items():
+        for sql_field_name, field_type in field_types.items():
             expected_type = sql_to_python_type(field_type)
-            field_name = cc.get_backend_by_frontend_index(index)
+            df_field_name = cc.get_backend_by_frontend_name(sql_field_name)
 
-            df = cast_column_type(df, field_name, expected_type)
+            df = cast_column_type(df, df_field_name, expected_type)
 
         return DataContainer(df, dc.column_container)
