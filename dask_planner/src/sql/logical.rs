@@ -86,6 +86,7 @@ impl PyLogicalPlan {
 
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned
+    #[pyo3(name = "getTable")]
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),

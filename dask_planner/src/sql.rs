@@ -59,16 +59,10 @@ impl ContextProvider for DaskSQLContext {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
-
-                        panic!("Uncomment this section .... before running");
-                        // // Iterate through the DaskTable instance and create a Schema instance
-                        // for (column_name, column_type) in &table.columns {
-                        //     fields.push(Field::new(
-                        //         column_name,
-                        //         column_type.sql_type.clone(),
-                        //         false,
-                        //     ));
-                        // }
+                        // Iterate through the DaskTable instance and create a Schema instance
+                        for (column_name, column_type) in &table.columns {
+                            fields.push(Field::new(column_name, column_type.to_arrow(), false));
+                        }
 
                         resp = Some(Schema::new(fields));
                         table_name = _table_name.clone();

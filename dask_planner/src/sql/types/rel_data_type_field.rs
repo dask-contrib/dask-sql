@@ -1,23 +1,30 @@
-use crate::sql::types;
 use crate::sql::types::rel_data_type::RelDataType;
+use crate::sql::types::SqlTypeName;
 
 use std::fmt;
 
 use pyo3::prelude::*;
-
-use super::SqlTypeName;
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
 #[pyclass]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataTypeField {
     name: String,
-    data_type: RelDataType,
+    data_type: SqlTypeName,
     index: u8,
 }
 
 #[pymethods]
 impl RelDataTypeField {
+    #[new]
+    pub fn new(name: String, data_type: SqlTypeName, index: u8) -> Self {
+        Self {
+            name: name,
+            data_type: data_type,
+            index: index,
+        }
+    }
+
     #[pyo3(name = "getName")]
     pub fn name(&self) -> &str {
         &self.name
@@ -29,7 +36,7 @@ impl RelDataTypeField {
     }
 
     #[pyo3(name = "getType")]
-    pub fn data_type(&self) -> RelDataType {
+    pub fn data_type(&self) -> SqlTypeName {
         self.data_type.clone()
     }
 
@@ -45,8 +52,13 @@ impl RelDataTypeField {
     /// Alas it is used in certain places so it is implemented here to allow other
     /// places in the code base to not have to change.
     #[pyo3(name = "getValue")]
-    pub fn get_value(&self) -> RelDataType {
+    pub fn get_value(&self) -> SqlTypeName {
         self.data_type()
+    }
+
+    #[pyo3(name = "setValue")]
+    pub fn set_value(&mut self, data_type: SqlTypeName) {
+        self.data_type = data_type
     }
 
     // TODO: Uncomment after implementing in RelDataType
