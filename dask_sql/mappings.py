@@ -62,23 +62,20 @@ _SQL_TO_PYTHON_SCALARS = {
 # Default mapping between SQL types and python types
 # for data frames
 _SQL_TO_PYTHON_FRAMES = {
-    "DOUBLE": np.float64,
-    "FLOAT": np.float32,
-    "DECIMAL": np.float64,
-    "BIGINT": pd.Int64Dtype(),
-    "INTEGER": pd.Int32Dtype(),
-    "INT": pd.Int32Dtype(),  # Although not in the standard, makes compatibility easier
-    "SMALLINT": pd.Int16Dtype(),
-    "TINYINT": pd.Int8Dtype(),
-    "BOOLEAN": pd.BooleanDtype(),
-    "VARCHAR": pd.StringDtype(),
-    "CHAR": pd.StringDtype(),
-    "STRING": pd.StringDtype(),  # Although not in the standard, makes compatibility easier
-    "DATE": np.dtype(
+    "SqlTypeName.DOUBLE": np.float64,
+    "SqlTypeName.FLOAT": np.float32,
+    "SqlTypeName.DECIMAL": np.float64,
+    "SqlTypeName.BIGINT": pd.Int64Dtype(),
+    "SqlTypeName.INTEGER": pd.Int32Dtype(),
+    "SqlTypeName.SMALLINT": pd.Int16Dtype(),
+    "SqlTypeName.TINYINT": pd.Int8Dtype(),
+    "SqlTypeName.BOOLEAN": pd.BooleanDtype(),
+    "SqlTypeName.VARCHAR": pd.StringDtype(),
+    "SqlTypeName.DATE": np.dtype(
         "<M8[ns]"
     ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
-    "TIMESTAMP": np.dtype("<M8[ns]"),
-    "NULL": type(None),
+    "SqlTypeName.TIMESTAMP": np.dtype("<M8[ns]"),
+    "SqlTypeName.NULL": type(None),
 }
 
 
@@ -196,29 +193,32 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     return python_type(literal_value)
 
 
-def sql_to_python_type(sql_type: str) -> type:
+def sql_to_python_type(sql_type: "SqlTypeName") -> type:
     """Turn an SQL type into a dataframe dtype"""
-    # Ex: Rust SqlTypeName Enum str value 'SqlTypeName.DOUBLE'
-    if sql_type.find(".") != -1:
-        sql_type = sql_type.split(".")[1]
+    # # Ex: Rust SqlTypeName Enum str value 'SqlTypeName.DOUBLE'
+    # if sql_type.find(".") != -1:
+    #     sql_type = sql_type.split(".")[1]
 
-    print(f"sql_type: {sql_type}")
-    if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
+    print(f"sql_type: {sql_type} type: {type(sql_type)}")
+    print(f"equal?: {SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE == sql_type}")
+    if sql_type == SqlTypeName.VARCHAR or sql_type == SqlTypeName.CHAR:
         return pd.StringDtype()
-    elif sql_type.startswith("INTERVAL"):
-        return np.dtype("<m8[ns]")
-    elif sql_type.startswith("TIME"):
+    elif sql_type == SqlTypeName.TIME or sql_type == SqlTypeName.TIMESTAMP:
         return np.dtype("<M8[ns]")
-    elif sql_type.startswith("DECIMAL("):
+    elif sql_type == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+        # Everything is converted to UTC
+        # So far, this did not break
+        return pd.DatetimeTZDtype(unit="ns", tz="UTC")
+    elif sql_type == SqlTypeName.DECIMAL:
         # We use np.float64 always, even though we might
         # be able to use a smaller type
         return np.float64
     else:
         try:
-            return _SQL_TO_PYTHON_FRAMES[sql_type]
+            return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
-                f"The SQL type {sql_type} is not implemented (yet)"
+                f"The SQL type {str(sql_type)} is not implemented (yet)"
             )
 
 
