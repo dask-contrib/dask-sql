@@ -10,13 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import (
-    DaskSchema,
-    DaskSQLContext,
-    DaskTable,
-    DaskTypeMap,
-    DFParsingException,
-)
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, DFParsingException
 
 try:
     import dask_cuda  # noqa: F401
