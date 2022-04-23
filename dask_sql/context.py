@@ -10,7 +10,13 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, DFParsingException
+from dask_planner.rust import (
+    DaskSchema,
+    DaskSQLContext,
+    DaskTable,
+    DaskTypeMap,
+    DFParsingException,
+)
 
 try:
     import dask_cuda  # noqa: F401
@@ -746,7 +752,7 @@ class Context:
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-                    table.add_column(column, str(sql_data_type))
+                    table.add_column(column, sql_data_type)
 
                 rust_schema.add_table(table)
 

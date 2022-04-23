@@ -1,3 +1,4 @@
+use crate::sql::types::DaskTypeMap;
 use crate::sql::types::SqlTypeName;
 
 use datafusion::error::DataFusionError;
@@ -12,7 +13,7 @@ use pyo3::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataTypeField {
     name: String,
-    data_type: SqlTypeName,
+    data_type: DaskTypeMap,
     index: usize,
 }
 
@@ -21,7 +22,10 @@ impl RelDataTypeField {
     pub fn from(field: DFField, schema: DFSchema) -> Result<RelDataTypeField, DataFusionError> {
         Ok(RelDataTypeField {
             name: field.name().clone(),
-            data_type: SqlTypeName::from_arrow(field.data_type()),
+            data_type: DaskTypeMap {
+                sql_type: SqlTypeName::from_arrow(field.data_type()),
+                data_type: field.data_type().clone(),
+            },
             index: schema.index_of(field.name())?,
         })
     }
@@ -30,10 +34,10 @@ impl RelDataTypeField {
 #[pymethods]
 impl RelDataTypeField {
     #[new]
-    pub fn new(name: String, data_type: SqlTypeName, index: usize) -> Self {
+    pub fn new(name: String, type_map: DaskTypeMap, index: usize) -> Self {
         Self {
             name: name,
-            data_type: data_type,
+            data_type: type_map,
             index: index,
         }
     }
@@ -49,7 +53,7 @@ impl RelDataTypeField {
     }
 
     #[pyo3(name = "getType")]
-    pub fn data_type(&self) -> SqlTypeName {
+    pub fn data_type(&self) -> DaskTypeMap {
         self.data_type.clone()
     }
 
@@ -65,12 +69,12 @@ impl RelDataTypeField {
     /// Alas it is used in certain places so it is implemented here to allow other
     /// places in the code base to not have to change.
     #[pyo3(name = "getValue")]
-    pub fn get_value(&self) -> SqlTypeName {
+    pub fn get_value(&self) -> DaskTypeMap {
         self.data_type()
     }
 
     #[pyo3(name = "setValue")]
-    pub fn set_value(&mut self, data_type: SqlTypeName) {
+    pub fn set_value(&mut self, data_type: DaskTypeMap) {
         self.data_type = data_type
     }
 

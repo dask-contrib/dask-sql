@@ -48,12 +48,17 @@ class DaskTableScanPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
+        print(f"Before TableScan: {df.head(10)}")
+
         # Make sure we only return the requested columns
         row_type = table.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
         cc = cc.limit_to(field_specifications)
 
-        cc = self.fix_column_to_row_type(cc, row_type)
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, row_type)
+        print(f"Before TableScan fix dtype: {dc.df.head(10)}")
+        print(f"row_type: {row_type}")
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        print(f"After TableScan fix dtype: {dc.df.head(10)}")
         return dc

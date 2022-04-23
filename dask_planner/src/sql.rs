@@ -61,7 +61,7 @@ impl ContextProvider for DaskSQLContext {
                         let mut fields: Vec<Field> = Vec::new();
                         // Iterate through the DaskTable instance and create a Schema instance
                         for (column_name, column_type) in &table.columns {
-                            fields.push(Field::new(column_name, column_type.to_arrow(), false));
+                            fields.push(Field::new(column_name, column_type.data_type(), false));
                         }
 
                         resp = Some(Schema::new(fields));
@@ -148,10 +148,7 @@ impl DaskSQLContext {
                 );
                 Ok(statements)
             }
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "{}",
-                e
-            ))),
+            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
         }
     }
 
@@ -170,10 +167,7 @@ impl DaskSQLContext {
                     current_node: None,
                 })
             }
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "{}",
-                e
-            ))),
+            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
         }
     }
 }

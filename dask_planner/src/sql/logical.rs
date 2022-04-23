@@ -1,6 +1,7 @@
 use crate::sql::table;
 use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
+use datafusion::logical_plan::DFField;
 
 mod aggregate;
 mod filter;

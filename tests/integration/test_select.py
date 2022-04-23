@@ -5,22 +5,21 @@ import pytest
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
+# def test_select(c, df):
+#     result_df = c.sql("SELECT * FROM df")
 
-def test_select(c, df):
-    result_df = c.sql("SELECT * FROM df")
-
-    assert_eq(result_df, df)
+#     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
-def test_select_alias(c, df):
-    result_df = c.sql("SELECT a as b, b as a FROM df")
+# @pytest.mark.skip(reason="WIP DataFusion")
+# def test_select_alias(c, df):
+#     result_df = c.sql("SELECT a as b, b as a FROM df")
 
-    expected_df = pd.DataFrame(index=df.index)
-    expected_df["b"] = df.a
-    expected_df["a"] = df.b
+#     expected_df = pd.DataFrame(index=df.index)
+#     expected_df["b"] = df.a
+#     expected_df["a"] = df.b
 
-    assert_eq(result_df[["a", "b"]], expected_df[["a", "b"]])
+#     assert_eq(result_df[["a", "b"]], expected_df[["a", "b"]])
 
 
 # def test_select_column(c, df):
@@ -49,76 +48,78 @@ def test_select_alias(c, df):
 #     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
-def test_select_expr(c, df):
-    result_df = c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
-    result_df = result_df
+# @pytest.mark.skip(reason="WIP DataFusion")
+# def test_select_expr(c, df):
+#     result_df = c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
+#     result_df = result_df
 
-    expected_df = pd.DataFrame(
-        {
-            "a": df["a"] + 1,
-            "bla": df["b"],
-            '"df"."a" - 1': df["a"] - 1,
-        }
-    )
-    assert_eq(result_df, expected_df)
-
-
-@pytest.mark.skip(
-    reason="WIP DataFusion, subquery - https://github.com/apache/arrow-datafusion/issues/2237"
-)
-def test_select_of_select(c, df):
-    result_df = c.sql(
-        """
-        SELECT 2*c AS e, d - 1 AS f
-        FROM
-        (
-            SELECT a - 1 AS c, 2*b  AS d
-            FROM df
-        ) AS "inner"
-        """
-    )
-
-    expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
-    assert_eq(result_df, expected_df)
+#     expected_df = pd.DataFrame(
+#         {
+#             "a": df["a"] + 1,
+#             "bla": df["b"],
+#             '"df"."a" - 1': df["a"] - 1,
+#         }
+#     )
+#     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
-def test_select_of_select_with_casing(c, df):
-    result_df = c.sql(
-        """
-        SELECT AAA, aaa, aAa
-        FROM
-        (
-            SELECT a - 1 AS aAa, 2*b AS aaa, a + b AS AAA
-            FROM df
-        ) AS "inner"
-        """
-    )
+# @pytest.mark.skip(
+#     reason="WIP DataFusion, subquery - https://github.com/apache/arrow-datafusion/issues/2237"
+# )
+# def test_select_of_select(c, df):
+#     result_df = c.sql(
+#         """
+#         SELECT 2*c AS e, d - 1 AS f
+#         FROM
+#         (
+#             SELECT a - 1 AS c, 2*b  AS d
+#             FROM df
+#         ) AS "inner"
+#         """
+#     )
 
-    expected_df = pd.DataFrame(
-        {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
-    )
-
-    assert_eq(result_df, expected_df)
-
-
-@pytest.mark.skip(reason="WIP DataFusion")
-def test_wrong_input(c):
-    with pytest.raises(ParsingException):
-        c.sql("""SELECT x FROM df""")
-
-    with pytest.raises(ParsingException):
-        c.sql("""SELECT x FROM df""")
+#     expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
+#     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.skip(reason="WIP DataFusion")
+# def test_select_of_select_with_casing(c, df):
+#     result_df = c.sql(
+#         """
+#         SELECT AAA, aaa, aAa
+#         FROM
+#         (
+#             SELECT a - 1 AS aAa, 2*b AS aaa, a + b AS AAA
+#             FROM df
+#         ) AS "inner"
+#         """
+#     )
+
+#     expected_df = pd.DataFrame(
+#         {"AAA": df["a"] + df["b"], "aaa": 2 * df["b"], "aAa": df["a"] - 1}
+#     )
+
+#     assert_eq(result_df, expected_df)
+
+
+# def test_wrong_input(c):
+#     with pytest.raises(ParsingException):
+#         c.sql("""SELECT x FROM df""")
+
+#     with pytest.raises(ParsingException):
+#         c.sql("""SELECT x FROM df""")
+
+
+# @pytest.mark.skip(reason="WIP DataFusion")
 def test_timezones(c, datetime_table):
     result_df = c.sql(
         """
         SELECT * FROM datetime_table
         """
     )
+
+    print(f"Expected DF: \n{datetime_table.head(10)}\n")
+    print(f"\nResult DF: \n{result_df.head(10)}")
 
     assert_eq(result_df, datetime_table)
 
