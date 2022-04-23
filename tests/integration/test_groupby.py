@@ -368,6 +368,7 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
