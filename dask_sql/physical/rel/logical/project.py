@@ -1,12 +1,11 @@
 import logging
 from typing import TYPE_CHECKING
 
+from dask_planner.rust import RexType
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
-
-from dask_planner.rust import RexType
 
 if TYPE_CHECKING:
     import dask_sql
@@ -31,6 +30,8 @@ class DaskProjectPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
+        print(f"Before Project: {df.head(10)}")
+
         # Collect all (new) columns
         proj = rel.projection()
         named_projects = proj.getNamedProjects()
@@ -49,7 +50,7 @@ class DaskProjectPlugin(BaseRelPlugin):
             new_columns[random_name] = RexConverter.convert(
                 rel, expr, dc, context=context
             )
-            
+
             new_mappings[key] = random_name
 
             # shortcut: if we have a column already, there is no need to re-assign it again
@@ -83,4 +84,7 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+
+        print(f"After Project: {dc.df.head(10)}")
+
         return dc

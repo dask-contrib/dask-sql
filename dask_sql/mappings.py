@@ -7,7 +7,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-from dask_planner.rust import SqlTypeName
+from dask_planner.rust import DaskTypeMap, SqlTypeName
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
@@ -82,16 +82,20 @@ _SQL_TO_PYTHON_FRAMES = {
 }
 
 
-def python_to_sql_type(python_type) -> "SqlTypeName":
+def python_to_sql_type(python_type) -> "DaskTypeMap":
     """Mapping between python and SQL types."""
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
-        return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+        return DaskTypeMap(
+            SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
+            unit=str(python_type.unit),
+            tz=str(python_type.tz),
+        )
 
     try:
-        return _PYTHON_TO_SQL[python_type]
+        return DaskTypeMap(_PYTHON_TO_SQL[python_type])
     except KeyError:  # pragma: no cover
         raise NotImplementedError(
             f"The python type {python_type} is not implemented (yet)"
@@ -198,24 +202,20 @@ def sql_to_python_type(sql_type: str) -> type:
     if sql_type.find(".") != -1:
         sql_type = sql_type.split(".")[1]
 
+    print(f"sql_type: {sql_type}")
     if sql_type.startswith("CHAR(") or sql_type.startswith("VARCHAR("):
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
         return np.dtype("<m8[ns]")
-    elif sql_type.startswith("TIMESTAMP(") or sql_type.startswith("TIME("):
+    elif sql_type.startswith("TIME"):
         return np.dtype("<M8[ns]")
-    elif sql_type.startswith("TIMESTAMP_WITH_LOCAL_TIME_ZONE("):
-        # Everything is converted to UTC
-        # So far, this did not break
-        return pd.DatetimeTZDtype(unit="ns", tz="UTC")
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
         return np.float64
     else:
         try:
-            python_type = _SQL_TO_PYTHON_FRAMES[sql_type]
-            return python_type
+            return _SQL_TO_PYTHON_FRAMES[sql_type]
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"
@@ -231,6 +231,7 @@ def similar_type(lhs: type, rhs: type) -> bool:
 
     TODO: nullability is not checked so far.
     """
+    print(f"similar_type: {lhs} - {rhs}")
     pdt = pd.api.types
     is_uint = pdt.is_unsigned_integer_dtype
     is_sint = pdt.is_signed_integer_dtype
@@ -273,9 +274,7 @@ def cast_column_type(
     """
     current_type = df[column_name].dtype
 
-    logger.debug(
-        f"Column {column_name} has type {current_type}, expecting {expected_type}..."
-    )
+    print(f"Column {column_name} has type {current_type}, expecting {expected_type}...")
 
     casted_column = cast_column_to_type(df[column_name], expected_type)
 
@@ -303,5 +302,5 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         # will convert both NA and np.NaN to NA.
         col = da.trunc(col.fillna(value=np.NaN))
 
-    logger.debug(f"Need to cast from {current_type} to {expected_type}")
+    print(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

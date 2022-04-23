@@ -4,6 +4,8 @@ pub mod rel_data_type;
 pub mod rel_data_type_field;
 
 use pyo3::prelude::*;
+use pyo3::types::PyAny;
+use pyo3::types::PyDict;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
@@ -12,6 +14,92 @@ pub enum RexType {
     Call,
     Reference,
     Other,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[pyclass(name = "DaskTypeMap", module = "datafusion", subclass)]
+/// Represents a Python Data Type. This is needed instead of simple
+/// Enum instances because PyO3 can only support unit variants as
+/// of version 0.16 which means Enums like `DataType::TIMESTAMP_WITH_LOCAL_TIME_ZONE`
+/// which generally hold `unit` and `tz` information are unable to
+/// do that so data is lost. This struct aims to solve that issue
+/// by taking the type Enum from Python and some optional extra
+/// parameters that can be used to properly create those DataType
+/// instances in Rust.
+pub struct DaskTypeMap {
+    sql_type: SqlTypeName,
+    data_type: DataType,
+}
+
+/// Functions not exposed to Python
+impl DaskTypeMap {
+    pub fn from(sql_type: SqlTypeName, data_type: DataType) -> Self {
+        DaskTypeMap {
+            sql_type: sql_type,
+            data_type: data_type,
+        }
+    }
+
+    pub fn data_type(&self) -> DataType {
+        self.data_type.clone()
+    }
+}
+
+#[pymethods]
+impl DaskTypeMap {
+    #[new]
+    #[args(sql_type, py_kwargs = "**")]
+    fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> Self {
+        println!("sql_type={:?} - py_kwargs={:?}", sql_type, py_kwargs);
+
+        let d_type: DataType = match sql_type {
+            SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
+                let (unit, tz) = match py_kwargs {
+                    Some(dict) => {
+                        let tz: Option<String> = match dict.get_item("tz") {
+                            Some(e) => {
+                                let res: PyResult<String> = e.extract();
+                                Some(res.unwrap())
+                            }
+                            None => None,
+                        };
+                        let unit: TimeUnit = match dict.get_item("unit") {
+                            Some(e) => {
+                                let res: PyResult<&str> = e.extract();
+                                match res.unwrap() {
+                                    "Second" => TimeUnit::Second,
+                                    "Millisecond" => TimeUnit::Millisecond,
+                                    "Microsecond" => TimeUnit::Microsecond,
+                                    "Nanosecond" => TimeUnit::Nanosecond,
+                                    _ => TimeUnit::Nanosecond,
+                                }
+                            }
+                            // Default to Nanosecond which is common if not present
+                            None => TimeUnit::Nanosecond,
+                        };
+                        (unit, tz)
+                    }
+                    // Default to Nanosecond and None for tz which is common if not present
+                    None => (TimeUnit::Nanosecond, None),
+                };
+                DataType::Timestamp(unit, tz)
+            }
+            _ => {
+                panic!("stop here");
+                // sql_type.to_arrow()
+            }
+        };
+
+        DaskTypeMap {
+            sql_type: sql_type,
+            data_type: d_type,
+        }
+    }
+
+    #[pyo3(name = "getSqlType")]
+    pub fn sql_type(&self) -> SqlTypeName {
+        self.sql_type.clone()
+    }
 }
 
 /// Enumeration of the type names which can be used to construct a SQL type. Since
@@ -73,23 +161,6 @@ pub enum SqlTypeName {
 }
 
 impl SqlTypeName {
-    pub fn to_arrow(&self) -> DataType {
-        match self {
-            SqlTypeName::NULL => DataType::Null,
-            SqlTypeName::BOOLEAN => DataType::Boolean,
-            SqlTypeName::TINYINT => DataType::Int8,
-            SqlTypeName::SMALLINT => DataType::Int16,
-            SqlTypeName::INTEGER => DataType::Int32,
-            SqlTypeName::BIGINT => DataType::Int64,
-            SqlTypeName::REAL => DataType::Float16,
-            SqlTypeName::FLOAT => DataType::Float32,
-            SqlTypeName::DOUBLE => DataType::Float64,
-            SqlTypeName::DATE => DataType::Date64,
-            SqlTypeName::TIMESTAMP => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            _ => todo!(),
-        }
-    }
-
     pub fn from_arrow(data_type: &DataType) -> Self {
         match data_type {
             DataType::Null => SqlTypeName::NULL,
