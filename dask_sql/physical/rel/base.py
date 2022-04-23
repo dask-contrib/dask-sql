@@ -102,14 +102,12 @@ class BaseRelPlugin:
         }
 
         for field_name, field_type in field_types.items():
-            expected_type = sql_to_python_type(str(field_type.getSqlType()))
+            expected_type = sql_to_python_type(field_type.getSqlType())
             df_field_name = cc.get_backend_by_frontend_name(field_name)
 
             print(
                 f"Before cast df_field_name: {df_field_name}, expected_type: {expected_type}"
             )
-            print(f"Before cast: {df.head(10)}")
             df = cast_column_type(df, df_field_name, expected_type)
-            print(f"After cast: {df.head(10)}")
 
         return DataContainer(df, dc.column_container)

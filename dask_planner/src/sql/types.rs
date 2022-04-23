@@ -84,9 +84,40 @@ impl DaskTypeMap {
                 };
                 DataType::Timestamp(unit, tz)
             }
+            SqlTypeName::TIMESTAMP => {
+                let (unit, tz) = match py_kwargs {
+                    Some(dict) => {
+                        let tz: Option<String> = match dict.get_item("tz") {
+                            Some(e) => {
+                                let res: PyResult<String> = e.extract();
+                                Some(res.unwrap())
+                            }
+                            None => None,
+                        };
+                        let unit: TimeUnit = match dict.get_item("unit") {
+                            Some(e) => {
+                                let res: PyResult<&str> = e.extract();
+                                match res.unwrap() {
+                                    "Second" => TimeUnit::Second,
+                                    "Millisecond" => TimeUnit::Millisecond,
+                                    "Microsecond" => TimeUnit::Microsecond,
+                                    "Nanosecond" => TimeUnit::Nanosecond,
+                                    _ => TimeUnit::Nanosecond,
+                                }
+                            }
+                            // Default to Nanosecond which is common if not present
+                            None => TimeUnit::Nanosecond,
+                        };
+                        (unit, tz)
+                    }
+                    // Default to Nanosecond and None for tz which is common if not present
+                    None => (TimeUnit::Nanosecond, None),
+                };
+                DataType::Timestamp(unit, tz)
+            }
             _ => {
-                panic!("stop here");
-                // sql_type.to_arrow()
+                // panic!("stop here");
+                sql_type.to_arrow()
             }
         };
 
@@ -161,6 +192,26 @@ pub enum SqlTypeName {
 }
 
 impl SqlTypeName {
+    pub fn to_arrow(&self) -> DataType {
+        match self {
+            SqlTypeName::NULL => DataType::Null,
+            SqlTypeName::BOOLEAN => DataType::Boolean,
+            SqlTypeName::TINYINT => DataType::Int8,
+            SqlTypeName::SMALLINT => DataType::Int16,
+            SqlTypeName::INTEGER => DataType::Int32,
+            SqlTypeName::BIGINT => DataType::Int64,
+            SqlTypeName::REAL => DataType::Float16,
+            SqlTypeName::FLOAT => DataType::Float32,
+            SqlTypeName::DOUBLE => DataType::Float64,
+            SqlTypeName::DATE => DataType::Date64,
+            SqlTypeName::VARCHAR => DataType::Utf8,
+            _ => {
+                println!("Type: {:?}", self);
+                todo!();
+            }
+        }
+    }
+
     pub fn from_arrow(data_type: &DataType) -> Self {
         match data_type {
             DataType::Null => SqlTypeName::NULL,

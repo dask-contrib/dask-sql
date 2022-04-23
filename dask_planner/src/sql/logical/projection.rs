@@ -30,18 +30,24 @@ impl PyProjection {
                                         println!("AGGREGATE COLUMN IS {}", col.name);
                                         val = col.name.clone();
                                     }
-                                    _ => unimplemented!(),
+                                    _ => unimplemented!("projection.rs column_name is unimplemented for Expr variant: {:?}", &args[0]),
                                 },
-                                _ => unimplemented!(),
+                                _ => unimplemented!("projection.rs column_name is unimplemented for Expr variant: {:?}", &exprs[index]),
                             }
                         }
-                        _ => unimplemented!(),
+                        LogicalPlan::TableScan(table_scan) => val = table_scan.table_name.clone(),
+                        _ => unimplemented!("projection.rs column_name is unimplemented for LogicalPlan variant: {:?}", self.projection.input),
                     }
                 }
                 _ => panic!("not supported: {:?}", expr),
             },
             Expr::Column(col) => val = col.name.clone(),
-            _ => panic!("Ignore for now"),
+            _ => {
+                panic!(
+                    "column_name is unimplemented for Expr variant: {:?}",
+                    expr.expr
+                );
+            }
         }
         Ok(val)
     }
