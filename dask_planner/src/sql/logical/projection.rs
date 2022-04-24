@@ -39,9 +39,18 @@ impl PyProjection {
                         _ => unimplemented!("projection.rs column_name is unimplemented for LogicalPlan variant: {:?}", self.projection.input),
                     }
                 }
+                Expr::Cast { expr, data_type:_ } => {
+                    let ex_type: Expr = *expr.clone();
+                    val = self.column_name(ex_type.into()).unwrap();
+                    println!("Setting col name to: {:?}", val);
+                },
                 _ => panic!("not supported: {:?}", expr),
             },
             Expr::Column(col) => val = col.name.clone(),
+            Expr::Cast { expr, data_type:_ } => {
+                let ex_type: Expr = *expr;
+                val = self.column_name(ex_type.into()).unwrap()
+            },
             _ => {
                 panic!(
                     "column_name is unimplemented for Expr variant: {:?}",
