@@ -45,18 +45,18 @@ if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
 # Default mapping between SQL types and python types
 # for values
 _SQL_TO_PYTHON_SCALARS = {
-    "DOUBLE": np.float64,
-    "FLOAT": np.float32,
-    "DECIMAL": np.float32,
-    "BIGINT": np.int64,
-    "INTEGER": np.int32,
-    "SMALLINT": np.int16,
-    "TINYINT": np.int8,
-    "BOOLEAN": np.bool8,
-    "VARCHAR": str,
-    "CHAR": str,
-    "NULL": type(None),
-    "SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
+    "SqlTypeName.DOUBLE": np.float64,
+    "SqlTypeName.FLOAT": np.float32,
+    "SqlTypeName.DECIMAL": np.float32,
+    "SqlTypeName.BIGINT": np.int64,
+    "SqlTypeName.INTEGER": np.int32,
+    "SqlTypeName.SMALLINT": np.int16,
+    "SqlTypeName.TINYINT": np.int8,
+    "SqlTypeName.BOOLEAN": np.bool8,
+    "SqlTypeName.VARCHAR": str,
+    "SqlTypeName.CHAR": str,
+    "SqlTypeName.NULL": type(None),
+    "SqlTypeName.SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
 }
 
 # Default mapping between SQL types and python types
@@ -99,7 +99,7 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
         )
 
 
-def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
+def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     """Mapping between SQL and python values (of correct type)."""
     # In most of the cases, we turn the value first into a string.
     # That might not be the most efficient thing to do,
@@ -110,14 +110,8 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
     logger.debug(
         f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}"
     )
-    sql_type = sql_type.upper()
 
-    if (
-        sql_type.startswith("CHAR(")
-        or sql_type.startswith("VARCHAR(")
-        or sql_type == "VARCHAR"
-        or sql_type == "CHAR"
-    ):
+    if sql_type == SqlTypeName.CHAR or sql_type == SqlTypeName.VARCHAR:
         # Some varchars contain an additional encoding
         # in the format _ENCODING'string'
         literal_value = str(literal_value)
@@ -129,10 +123,10 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
         return literal_value
 
-    elif sql_type.startswith("INTERVAL"):
+    elif sql_type == SqlTypeName.INTERVAL:
         # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
         try:
-            interval_type = sql_type.split()[1].lower()
+            interval_type = str(sql_type).split()[1].lower()
 
             if interval_type in {"year", "quarter", "month"}:
                 # if sql_type is INTERVAL YEAR, Calcite will covert to months
@@ -149,13 +143,13 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return timedelta(milliseconds=float(str(literal_value)))
 
-    elif sql_type == "BOOLEAN":
+    elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)
 
     elif (
-        sql_type.startswith("TIMESTAMP(")
-        or sql_type.startswith("TIME(")
-        or sql_type == "DATE"
+        sql_type == SqlTypeName.TIMESTAMP
+        or sql_type == SqlTypeName.TIME
+        or sql_type == SqlTypeName.DATE
     ):
         if str(literal_value) == "None":
             # NULL time
@@ -166,16 +160,16 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
 
         dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
 
-        if sql_type == "DATE":
+        if sql_type == SqlTypeName.DATE:
             return dt.astype("<M8[D]")
         return dt.astype("<M8[ns]")
-    elif sql_type.startswith("DECIMAL("):
+    elif sql_type == SqlTypeName.DECIMAL:
         # We use np.float64 always, even though we might
         # be able to use a smaller type
         python_type = np.float64
     else:
         try:
-            python_type = _SQL_TO_PYTHON_SCALARS[sql_type]
+            python_type = _SQL_TO_PYTHON_SCALARS[str(sql_type)]
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"The SQL type {sql_type} is not implemented (yet)"
@@ -231,7 +225,6 @@ def similar_type(lhs: type, rhs: type) -> bool:
 
     TODO: nullability is not checked so far.
     """
-    print(f"similar_type: {lhs} - {rhs}")
     pdt = pd.api.types
     is_uint = pdt.is_unsigned_integer_dtype
     is_sint = pdt.is_signed_integer_dtype

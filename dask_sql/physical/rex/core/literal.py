@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -102,46 +103,46 @@ class RexLiteralPlugin(BaseRexPlugin):
         # Call the Rust function to get the actual value and convert the Rust
         # type name back to a SQL type
         if literal_type == "Boolean":
-            literal_type = "BOOLEAN"
+            literal_type = SqlTypeName.BOOLEAN
             literal_value = rex.getBoolValue()
         elif literal_type == "Float32":
-            literal_type = "FLOAT"
+            literal_type = SqlTypeName.FLOAT
             literal_value = rex.getFloat32Value()
         elif literal_type == "Float64":
-            literal_type = "DOUBLE"
+            literal_type = SqlTypeName.DOUBLE
             literal_value = rex.getFloat64Value()
         elif literal_type == "UInt8":
-            literal_type = "TINYINT"
+            literal_type = SqlTypeName.TINYINT
             literal_value = rex.getUInt8Value()
         elif literal_type == "UInt16":
-            literal_type = "SMALLINT"
+            literal_type = SqlTypeName.SMALLINT
             literal_value = rex.getUInt16Value()
         elif literal_type == "UInt32":
-            literal_type = "INTEGER"
+            literal_type = SqlTypeName.INTEGER
             literal_value = rex.getUInt32Value()
         elif literal_type == "UInt64":
-            literal_type = "BIGINT"
+            literal_type = SqlTypeName.BIGINT
             literal_value = rex.getUInt64Value()
         elif literal_type == "Int8":
-            literal_type = "TINYINT"
+            literal_type = SqlTypeName.TINYINT
             literal_value = rex.getInt8Value()
         elif literal_type == "Int16":
-            literal_type = "SMALLINT"
+            literal_type = SqlTypeName.SMALLINT
             literal_value = rex.getInt16Value()
         elif literal_type == "Int32":
-            literal_type = "INTEGER"
+            literal_type = SqlTypeName.INTEGER
             literal_value = rex.getInt32Value()
         elif literal_type == "Int64":
-            literal_type = "BIGINT"
+            literal_type = SqlTypeName.BIGINT
             literal_value = rex.getInt64Value()
         elif literal_type == "Utf8":
-            literal_type = "VARCHAR"
+            literal_type = SqlTypeName.VARCHAR
             literal_value = rex.getStringValue()
         elif literal_type == "Date32":
-            literal_type = "Date"
+            literal_type = SqlTypeName.DATE
             literal_value = rex.getDateValue()
         elif literal_type == "Date64":
-            literal_type = "Date"
+            literal_type = SqlTypeName.DATE
             literal_value = rex.getDateValue()
         else:
             raise RuntimeError("Failed to determine DataFusion Type in literal.py")
