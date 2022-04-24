@@ -3,28 +3,32 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 
 def test_python_to_sql():
-    assert str(python_to_sql_type(np.dtype("int32"))) == "INTEGER"
-    assert str(python_to_sql_type(np.dtype(">M8[ns]"))) == "TIMESTAMP"
+    assert python_to_sql_type(np.dtype("int32")).getSqlType() == SqlTypeName.INTEGER
+    assert python_to_sql_type(np.dtype(">M8[ns]")).getSqlType() == SqlTypeName.TIMESTAMP
+    thing = python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
     assert (
-        str(python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")))
-        == "timestamp[ms, tz=UTC]"
+        python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
+        == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
     )
 
 
 def test_sql_to_python():
-    assert sql_to_python_value("CHAR(5)", "test 123") == "test 123"
-    assert type(sql_to_python_value("BIGINT", 653)) == np.int64
-    assert sql_to_python_value("BIGINT", 653) == 653
-    assert sql_to_python_value("INTERVAL", 4) == timedelta(milliseconds=4)
+    assert sql_to_python_value(SqlTypeName.VARCHAR, "test 123") == "test 123"
+    assert type(sql_to_python_value(SqlTypeName.BIGINT, 653)) == np.int64
+    assert sql_to_python_value(SqlTypeName.BIGINT, 653) == 653
+    assert sql_to_python_value(SqlTypeName.INTERVAL, 4) == timedelta(microseconds=4000)
 
 
 def test_python_to_sql_to_python():
     assert (
-        type(sql_to_python_value(str(python_to_sql_type(np.dtype("int64"))), 54))
+        type(
+            sql_to_python_value(python_to_sql_type(np.dtype("int64")).getSqlType(), 54)
+        )
         == np.int64
     )
 
