@@ -189,12 +189,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: "SqlTypeName") -> type:
     """Turn an SQL type into a dataframe dtype"""
-    # # Ex: Rust SqlTypeName Enum str value 'SqlTypeName.DOUBLE'
-    # if sql_type.find(".") != -1:
-    #     sql_type = sql_type.split(".")[1]
-
-    print(f"sql_type: {sql_type} type: {type(sql_type)}")
-    print(f"equal?: {SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE == sql_type}")
     if sql_type == SqlTypeName.VARCHAR or sql_type == SqlTypeName.CHAR:
         return pd.StringDtype()
     elif sql_type == SqlTypeName.TIME or sql_type == SqlTypeName.TIMESTAMP:
