@@ -7,7 +7,7 @@ use std::convert::{From, Into};
 use datafusion::error::DataFusionError;
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion_expr::{col, lit, BuiltinScalarFunction, Expr};
+use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
@@ -70,13 +70,9 @@ impl PyExpr {
         }
     }
 
-    fn _column_name(&self, mut plan: LogicalPlan) -> String {
+    fn _column_name(&self, plan: LogicalPlan) -> String {
         match &self.expr {
             Expr::Alias(expr, name) => {
-                println!("Alias encountered with name: {:?}", name);
-                // let reference: Expr = *expr.as_ref();
-                // let plan: logical::PyLogicalPlan = reference.input().clone().into();
-
                 // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
                 // extract the valid ones and error on the invalid ones
                 match expr.as_ref() {
@@ -116,9 +112,8 @@ impl PyExpr {
                             }
                             _ => name.clone(),
                         }
-                    }
+                    },
                     _ => {
-                        println!("Encountered a non Expr::Column instance");
                         name.clone()
                     }
                 }
