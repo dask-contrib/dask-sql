@@ -38,6 +38,8 @@ class DaskProjectPlugin(BaseRelPlugin):
         new_columns = {}
         new_mappings = {}
 
+        print(f"Named Projects: {named_projects} df columns: {df.columns}")
+
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
 
@@ -54,19 +56,23 @@ class DaskProjectPlugin(BaseRelPlugin):
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
             if expr.getRexType() == RexType.Reference:
-                index = expr.getIndex()
+                print(f"Reference for Expr: {expr}")
+                index = expr.getIndex(rel)
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
                     f"Not re-adding the same column {key} (but just referencing it)"
                 )
                 new_mappings[key] = backend_column_name
             else:
+                print(f"Other for Expr: {expr}")
                 random_name = new_temporary_column(df)
                 new_columns[random_name] = RexConverter.convert(
                     expr, dc, context=context
                 )
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 new_mappings[key] = random_name
+
+        print(f"Projecting columns: {column_names}")
 
         # Actually add the new columns
         if new_columns:
