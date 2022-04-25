@@ -1,5 +1,5 @@
 # import numpy as np
-# import pandas as pd
+import pandas as pd
 import pytest
 
 # from dask_sql.utils import ParsingException
@@ -146,41 +146,41 @@ from tests.utils import assert_eq
 #     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        # pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
-    ],
-)
-def test_date_casting(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
-    result_df = c.sql(
-        f"""
-        SELECT
-            CAST(timezone AS DATE) AS timezone,
-            CAST(no_timezone AS DATE) AS no_timezone,
-            CAST(utc_timezone AS DATE) AS utc_timezone
-        FROM {input_table}
-        """
-    )
+# # @pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.parametrize(
+#     "input_table",
+#     [
+#         "datetime_table",
+#         # pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+#     ],
+# )
+# def test_date_casting(c, input_table, request):
+#     datetime_table = request.getfixturevalue(input_table)
+#     result_df = c.sql(
+#         f"""
+#         SELECT
+#             CAST(timezone AS DATE) AS timezone,
+#             CAST(no_timezone AS DATE) AS no_timezone,
+#             CAST(utc_timezone AS DATE) AS utc_timezone
+#         FROM {input_table}
+#         """
+#     )
 
-    expected_df = datetime_table
-    expected_df["timezone"] = (
-        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
-    expected_df["no_timezone"] = (
-        expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
-    expected_df["utc_timezone"] = (
-        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
+#     expected_df = datetime_table
+#     expected_df["timezone"] = (
+#         expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+#     )
+#     expected_df["no_timezone"] = (
+#         expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+#     )
+#     expected_df["utc_timezone"] = (
+#         expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+#     )
 
-    print(f"\nExpected DF:\n{expected_df.head(10)}\n")
-    print(f"\nResult DF:\n{expected_df.head(10)}\n")
+#     print(f"\nExpected DF:\n{expected_df.head(10)}\n")
+#     print(f"\nResult DF:\n{expected_df.head(10)}\n")
 
-    assert_eq(result_df, expected_df)
+#     assert_eq(result_df, expected_df)
 
 
 # @pytest.mark.skip(reason="WIP DataFusion")
@@ -208,17 +208,17 @@ def test_date_casting(c, input_table, request):
 
 
 # @pytest.mark.skip(reason="WIP DataFusion")
-# def test_multi_case_when(c):
-#     df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
-#     c.create_table("df", df)
+def test_multi_case_when(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
 
-#     actual_df = c.sql(
-#         """
-#     SELECT
-#         CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
-#     FROM df
-#     """
-#     )
-#     expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+    FROM df
+    """
+    )
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
 
-#     assert_eq(actual_df, expected_df)
+    assert_eq(actual_df, expected_df)
