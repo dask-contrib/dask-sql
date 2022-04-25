@@ -30,8 +30,6 @@ class DaskProjectPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        print(f"Before Project: {df.head(10)}")
-
         # Collect all (new) columns
         proj = rel.projection()
         named_projects = proj.getNamedProjects()
@@ -84,7 +82,5 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-
-        print(f"After Project: {dc.df.head(10)}")
 
         return dc
