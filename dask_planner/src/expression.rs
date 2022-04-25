@@ -112,10 +112,8 @@ impl PyExpr {
                             }
                             _ => name.clone(),
                         }
-                    },
-                    _ => {
-                        name.clone()
                     }
+                    _ => name.clone(),
                 }
             }
             Expr::Column(column) => column.name.clone(),

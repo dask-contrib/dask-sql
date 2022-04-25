@@ -1,10 +1,9 @@
-import numpy as np
-import pandas as pd
+# import numpy as np
+# import pandas as pd
 import pytest
 
-from dask_sql.utils import ParsingException
+# from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
-
 
 # def test_select(c, df):
 #     result_df = c.sql("SELECT * FROM df")
