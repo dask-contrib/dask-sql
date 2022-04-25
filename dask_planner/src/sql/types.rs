@@ -248,34 +248,37 @@ impl SqlTypeName {
             _ => todo!(),
         }
     }
+}
 
+#[pymethods]
+impl SqlTypeName {
+    #[pyo3(name = "fromString")]
+    #[staticmethod]
     pub fn from_string(input_type: &str) -> Self {
         match input_type {
-            "SqlTypeName.NULL" => SqlTypeName::NULL,
-            "SqlTypeName.BOOLEAN" => SqlTypeName::BOOLEAN,
-            "SqlTypeName.TINYINT" => SqlTypeName::TINYINT,
-            "SqlTypeName.SMALLINT" => SqlTypeName::SMALLINT,
-            "SqlTypeName.INTEGER" => SqlTypeName::INTEGER,
-            "SqlTypeName.BIGINT" => SqlTypeName::BIGINT,
-            "SqlTypeName.REAL" => SqlTypeName::REAL,
-            "SqlTypeName.FLOAT" => SqlTypeName::FLOAT,
-            "SqlTypeName.DOUBLE" => SqlTypeName::DOUBLE,
-            "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE" => {
-                SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE
-            }
-            "SqlTypeName.TIMESTAMP" => SqlTypeName::TIMESTAMP,
-            "SqlTypeName.DATE" => SqlTypeName::DATE,
-            "SqlTypeName.INTERVAL_DAY" => SqlTypeName::INTERVAL_DAY,
-            "SqlTypeName.INTERVAL_YEAR_MONTH" => SqlTypeName::INTERVAL_YEAR_MONTH,
-            "SqlTypeName.INTERVAL_MONTH" => SqlTypeName::INTERVAL_MONTH,
-            "SqlTypeName.BINARY" => SqlTypeName::BINARY,
-            "SqlTypeName.VARBINARY" => SqlTypeName::VARBINARY,
-            "SqlTypeName.CHAR" => SqlTypeName::CHAR,
-            "SqlTypeName.VARCHAR" => SqlTypeName::VARCHAR,
-            "SqlTypeName.STRUCTURED" => SqlTypeName::STRUCTURED,
-            "SqlTypeName.DECIMAL" => SqlTypeName::DECIMAL,
-            "SqlTypeName.MAP" => SqlTypeName::MAP,
-            _ => todo!(),
+            "NULL" => SqlTypeName::NULL,
+            "BOOLEAN" => SqlTypeName::BOOLEAN,
+            "TINYINT" => SqlTypeName::TINYINT,
+            "SMALLINT" => SqlTypeName::SMALLINT,
+            "INTEGER" => SqlTypeName::INTEGER,
+            "BIGINT" => SqlTypeName::BIGINT,
+            "REAL" => SqlTypeName::REAL,
+            "FLOAT" => SqlTypeName::FLOAT,
+            "DOUBLE" => SqlTypeName::DOUBLE,
+            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE,
+            "TIMESTAMP" => SqlTypeName::TIMESTAMP,
+            "DATE" => SqlTypeName::DATE,
+            "INTERVAL_DAY" => SqlTypeName::INTERVAL_DAY,
+            "INTERVAL_YEAR_MONTH" => SqlTypeName::INTERVAL_YEAR_MONTH,
+            "INTERVAL_MONTH" => SqlTypeName::INTERVAL_MONTH,
+            "BINARY" => SqlTypeName::BINARY,
+            "VARBINARY" => SqlTypeName::VARBINARY,
+            "CHAR" => SqlTypeName::CHAR,
+            "VARCHAR" => SqlTypeName::VARCHAR,
+            "STRUCTURED" => SqlTypeName::STRUCTURED,
+            "DECIMAL" => SqlTypeName::DECIMAL,
+            "MAP" => SqlTypeName::MAP,
+            _ => unimplemented!(),
         }
     }
 }
