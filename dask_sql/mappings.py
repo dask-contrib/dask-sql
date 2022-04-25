@@ -261,7 +261,9 @@ def cast_column_type(
     """
     current_type = df[column_name].dtype
 
-    # print(f"Column {column_name} has type {current_type}, expecting {expected_type}...")
+    logger.debug(
+        f"Column {column_name} has type {current_type}, expecting {expected_type}..."
+    )
 
     casted_column = cast_column_to_type(df[column_name], expected_type)
 

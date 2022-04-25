@@ -14,6 +14,7 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
@@ -140,7 +141,7 @@ class SQLDivisionOperator(Operation):
         result = lhs / rhs
 
         output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
+        output_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
         is_float = pd.api.types.is_float_dtype(output_type)
         if not is_float:
@@ -224,7 +225,9 @@ class CastOperation(Operation):
             return operand
 
         output_type = str(rex.getType())
-        python_type = sql_to_python_type(output_type.upper())
+        python_type = sql_to_python_type(
+            output_type=sql_to_python_type(output_type.upper())
+        )
 
         return_column = cast_column_to_type(operand, python_type)
 
