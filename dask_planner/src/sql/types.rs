@@ -266,6 +266,7 @@ impl SqlTypeName {
             "CURSOR" => SqlTypeName::CURSOR,
             "TINYINT" => SqlTypeName::TINYINT,
             "SMALLINT" => SqlTypeName::SMALLINT,
+            "INT" => SqlTypeName::INTEGER,
             "INTEGER" => SqlTypeName::INTEGER,
             "BIGINT" => SqlTypeName::BIGINT,
             "REAL" => SqlTypeName::REAL,
