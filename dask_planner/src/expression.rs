@@ -75,6 +75,7 @@ impl PyExpr {
             Expr::Alias(expr, name) => {
                 // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
                 // extract the valid ones and error on the invalid ones
+                println!("Alias Expr: {:?} - Alias Name: {:?}", expr, name);
                 match expr.as_ref() {
                     Expr::Column(col) => {
                         // First we must iterate the current node before getting its input
@@ -113,6 +114,12 @@ impl PyExpr {
                             _ => name.clone(),
                         }
                     }
+                    // Expr::Case { expr, when_then_expr, else_expr } => {
+                    //     println!("expr: {:?}", expr);
+                    //     println!("when_then_expr: {:?}", when_then_expr);
+                    //     println!("else_expr: {:?}", else_expr);
+                    //     panic!("Case WHEN BABY!!!");
+                    // },
                     _ => name.clone(),
                 }
             }

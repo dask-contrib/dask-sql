@@ -44,6 +44,13 @@ impl PyProjection {
                     val = self.column_name(ex_type.into()).unwrap();
                     println!("Setting col name to: {:?}", val);
                 }
+                Expr::Case {
+                    expr,
+                    when_then_expr,
+                    else_expr,
+                } => {
+                    println!("Case WHEN BABY!!!");
+                }
                 _ => panic!("not supported: {:?}", expr),
             },
             Expr::Column(col) => val = col.name.clone(),
