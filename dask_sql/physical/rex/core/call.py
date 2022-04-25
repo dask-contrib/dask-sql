@@ -749,21 +749,28 @@ class DatetimeSubOperation(Operation):
 
     def datetime_sub(self, *operands, rex=None):
         output_type = str(rex.getType())
-        # Special case output_type for datetime operations
         assert output_type.startswith("INTERVAL")
         interval_unit = output_type.split()[1].lower()
-        print(interval_unit)
-        if interval_unit in {"year", "quarter", "month"}:
-            # if interval_unit is INTERVAL YEAR, Calcite will covert to months
-            output_type = np.dtype("timedelta64[M]")
-        else:
-            output_type = np.dtype("timedelta64[ms]")
-        print(output_type)
+
         subtraction_op = ReduceOperation(
             operation=operator.sub, unary_operation=lambda x: -x
         )
-        res = subtraction_op(*operands)
-        return res.astype(output_type)
+        intermediate_res = subtraction_op(*operands)
+
+        # Special case output_type for datetime operations
+        if interval_unit in {"year", "quarter", "month"}:
+            # if interval_unit is INTERVAL YEAR, Calcite will covert to months
+            if not is_frame(intermediate_res):
+                # Numpy doesn't allow divsion by month time unit
+                result = intermediate_res.astype("timedelta64[M]")
+                # numpy -ve timedelta's are off by one vs sql when casted to month
+                result = result + 1 if result < 0 else result
+            else:
+                result = intermediate_res / np.timedelta64(1, "M")
+        else:
+            result = intermediate_res.astype("timedelta64[ms]")
+
+        return result
 
 
 class RexCallPlugin(BaseRexPlugin):
