@@ -589,63 +589,90 @@ def test_date_functions(c):
         )
 
 
-def test_timestampdiff(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_timestampdiff(c, gpu):
     # single value test
+    ts_literal1 = "2002-03-07 09:10:05.123"
+    ts_literal2 = "2001-06-05 10:11:06.234"
     query = (
-        "SELECT timestampdiff(SECOND, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res0,"
-        "timestampdiff(MINUTE, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res1,"
-        "timestampdiff(HOUR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res2,"
-        "timestampdiff(DAY, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res3,"
-        "timestampdiff(MONTH, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res4,"
-        "timestampdiff(YEAR, CAST('2002-03-07' AS TIMESTAMP),CAST('2002-06-05' AS TIMESTAMP)) as res5"
+        f"SELECT timestampdiff(NANOSECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res0,"
+        f"timestampdiff(MICROSECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res1,"
+        f"timestampdiff(SECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res2,"
+        f"timestampdiff(MINUTE, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res3,"
+        f"timestampdiff(HOUR, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res4,"
+        f"timestampdiff(DAY, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res5,"
+        f"timestampdiff(WEEK, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res6,"
+        f"timestampdiff(MONTH, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res7,"
+        f"timestampdiff(QUARTER, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res8,"
+        f"timestampdiff(YEAR, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res9"
     )
-    print(c.explain(query))
-    df = c.sql(query).compute()
-    assert df["res0"][0] == 7776000
-    assert df["res1"][0] == 129600
-    assert df["res2"][0] == 2160
-    assert df["res3"][0] == 90
-    assert df["res4"][0] == 2
-    assert df["res5"][0] == 0
-
+    df = c.sql(query)
+    expected_df = pd.DataFrame(
+        {
+            "res0": [-23756339_000_000_000],
+            "res1": [-23756339_000_000],
+            "res2": [-23756339],
+            "res3": [-395938],
+            "res4": [-6598],
+            "res5": [-274],
+            "res6": [-39],
+            "res7": [-9],
+            "res8": [-3],
+            "res9": [0],
+        }
+    )
+    assert_eq(df, expected_df)
     # dataframe test
 
     test = pd.DataFrame(
         {
-            "a": ["2002-06-05 00:00:00", "2002-09-01 00:00:00", "2002-12-03 00:00:00"],
-            "b": ["2002-06-07 00:00:00", "2003-06-05 00:00:00", "2002-06-05 00:00:00"],
+            "a": [
+                "2002-06-05 02:01:05.200",
+                "2002-09-01 00:00:00",
+                "1970-12-03 00:00:00",
+            ],
+            "b": [
+                "2002-06-07 01:00:02.100",
+                "2003-06-05 00:00:00",
+                "2038-06-05 00:00:00",
+            ],
         }
     )
 
-    c.create_table("test", test)
+    c.create_table("test", test, gpu=gpu)
     query = (
-        "SELECT timestampdiff(MICROSECOND, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as ms,"
-        "timestampdiff(SECOND, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as sec,"
-        "timestampdiff(MINUTE, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as minn,"
-        "timestampdiff(HOUR, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as hr,"
-        "timestampdiff(DAY, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as dayy "
-        "FROM test"
+        "SELECT timestampdiff(NANOSECOND, CAST(a AS TIMESTAMP), CAST(b AS TIMESTAMP)) as nanoseconds,"
+        "timestampdiff(MICROSECOND, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as microseconds,"
+        "timestampdiff(SECOND, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as seconds,"
+        "timestampdiff(MINUTE, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as minutes,"
+        "timestampdiff(HOUR, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as hours,"
+        "timestampdiff(DAY, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as days,"
+        "timestampdiff(WEEK, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as weeks,"
+        "timestampdiff(MONTH, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as months,"
+        "timestampdiff(QUARTER, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as quarters,"
+        "timestampdiff(YEAR, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as years"
+        " FROM test"
     )
 
-    ddf = c.sql(query).compute()
+    ddf = c.sql(query)
 
     expected_df = pd.DataFrame(
         {
-            "ms": {0: -1001308160, 1: -1242226688, 2: 424075264},
-            "sec": {0: -172800, 1: -23932800, 2: 15638400},
-            "minn": {0: -2880, 1: -398880, 2: 260640},
-            "hr": {0: -48, 1: -6648, 2: 4344},
-            "dayy": {0: -2, 1: -277, 2: 181},
+            "nanoseconds": [
+                169136_000_000_000,
+                23932_800_000_000_000,
+                2_130_278_400_000_000_000,
+            ],
+            "microseconds": [169136_000_000, 23932_800_000_000, 2_130_278_400_000_000],
+            "seconds": [169136, 23932_800, 2_130_278_400],
+            "minutes": [2818, 398880, 35504640],
+            "hours": [46, 6648, 591744],
+            "days": [1, 277, 24656],
+            "weeks": [0, 39, 3522],
+            "months": [0, 9, 810],
+            "quarters": [0, 3, 270],
+            "years": [0, 0, 67],
         }
     )
 
     assert_eq(ddf, expected_df, check_dtype=False)
-
-    # as of now year and month was not working
-    query = (
-        "SELECT timestampdiff(MONTH, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as monthh,"
-        "timestampdiff(YEAR, CAST(b AS TIMESTAMP),CAST(a AS TIMESTAMP)) as yearr "
-        "FROM test"
-    )
-    ddf = c.sql(query).compute()
-    print(ddf)
