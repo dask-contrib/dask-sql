@@ -1,9 +1,11 @@
-# import numpy as np
+import numpy as np
 import pandas as pd
-import pytest
 
 # from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
+
+# import pytest
+
 
 # def test_select(c, df):
 #     result_df = c.sql("SELECT * FROM df")
@@ -207,7 +209,6 @@ from tests.utils import assert_eq
 #     assert_eq(result_df, expected_df)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 def test_multi_case_when(c):
     df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
     c.create_table("df", df)
@@ -215,10 +216,10 @@ def test_multi_case_when(c):
     actual_df = c.sql(
         """
     SELECT
-        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS "C"
     FROM df
     """
     )
-    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int64)
 
     assert_eq(actual_df, expected_df)

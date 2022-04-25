@@ -96,31 +96,25 @@ impl PyExpr {
                                                             "AGGREGATE COLUMN IS {}",
                                                             col.name
                                                         );
-                                                        col.name.clone()
+                                                        col.name.clone().to_ascii_uppercase()
                                                     }
-                                                    _ => name.clone(),
+                                                    _ => name.clone().to_ascii_uppercase(),
                                                 }
                                             }
-                                            _ => name.clone(),
+                                            _ => name.clone().to_ascii_uppercase(),
                                         }
                                     }
                                     _ => {
                                         println!("Encountered a non-Aggregate type");
 
-                                        name.clone()
+                                        name.clone().to_ascii_uppercase()
                                     }
                                 }
                             }
-                            _ => name.clone(),
+                            _ => name.clone().to_ascii_uppercase(),
                         }
                     }
-                    // Expr::Case { expr, when_then_expr, else_expr } => {
-                    //     println!("expr: {:?}", expr);
-                    //     println!("when_then_expr: {:?}", when_then_expr);
-                    //     println!("else_expr: {:?}", else_expr);
-                    //     panic!("Case WHEN BABY!!!");
-                    // },
-                    _ => name.clone(),
+                    _ => name.clone().to_ascii_uppercase(),
                 }
             }
             Expr::Column(column) => column.name.clone(),
@@ -173,25 +167,37 @@ impl PyExpr {
         }
     }
 
+    // /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
+    // #[pyo3(name = "getIndex")]
+    // pub fn index(&self, input_plan: LogicalPlan) -> PyResult<usize> {
+    //     // let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+    //     match input_plan {
+    //         Some(plan) => {
+    //             let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+    //             match name {
+    //                 Ok(fq_name) => Ok(plan
+    //                     .schema()
+    //                     .index_of_column(&Column::from_qualified_name(&fq_name))
+    //                     .unwrap()),
+    //                 Err(e) => panic!("{:?}", e),
+    //             }
+    //         }
+    //         None => {
+    //             panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
+    //         }
+    //     }
+    // }
+
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
-    pub fn index(&self) -> PyResult<usize> {
-        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
-        match input {
-            Some(plan) => {
-                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
-                match name {
-                    Ok(fq_name) => Ok(plan
-                        .schema()
-                        .index_of_column(&Column::from_qualified_name(&fq_name))
-                        .unwrap()),
-                    Err(e) => panic!("{:?}", e),
-                }
-            }
-            None => {
-                panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
-            }
-        }
+    pub fn index(&self, input_plan: logical::PyLogicalPlan) -> PyResult<usize> {
+        let fq_name: Result<String, DataFusionError> =
+            self.expr.name(input_plan.original_plan.schema());
+        Ok(input_plan
+            .original_plan
+            .schema()
+            .index_of_column(&Column::from_qualified_name(&fq_name.unwrap()))
+            .unwrap())
     }
 
     /// Examine the current/"self" PyExpr and return its "type"
