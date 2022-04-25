@@ -113,7 +113,11 @@ impl DaskTypeMap {
                     // Default to Nanosecond and None for tz which is common if not present
                     None => (TimeUnit::Nanosecond, None),
                 };
-                DataType::Timestamp(unit, tz)
+
+                match tz {
+                    Some(e) => DataType::Timestamp(unit, Some(e)),
+                    None => DataType::Timestamp(unit, Some(String::from("UTC"))), // Defaults to UTC if tz is not specified
+                }
             }
             _ => {
                 // panic!("stop here");
