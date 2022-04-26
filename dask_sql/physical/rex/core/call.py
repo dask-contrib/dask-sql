@@ -173,7 +173,7 @@ class IntDivisionOperator(Operation):
             return result
         else:  # pragma: no cover
             result = da.trunc(result)
-            result = result.astype(int)
+            result = result.astype(np.int64)
             return result
 
 
