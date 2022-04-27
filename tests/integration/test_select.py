@@ -159,9 +159,9 @@ def test_date_casting(c, input_table, request):
     result_df = c.sql(
         f"""
         SELECT
-            CAST(timezone AS DATE) AS timezone,
-            CAST(no_timezone AS DATE) AS no_timezone,
-            CAST(utc_timezone AS DATE) AS utc_timezone
+            CAST(timezone AS DATE) AS timezone_new,
+            CAST(no_timezone AS DATE) AS no_timezone_new,
+            CAST(utc_timezone AS DATE) AS utc_timezone_new
         FROM {input_table}
         """
     )
