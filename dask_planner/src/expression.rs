@@ -194,26 +194,10 @@ impl PyExpr {
         }
     }
 
-    // /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
-    // #[pyo3(name = "getIndex")]
-    // pub fn index(&self, input_plan: LogicalPlan) -> PyResult<usize> {
-    //     // let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
-    //     match input_plan {
-    //         Some(plan) => {
-    //             let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
-    //             match name {
-    //                 Ok(fq_name) => Ok(plan
-    //                     .schema()
-    //                     .index_of_column(&Column::from_qualified_name(&fq_name))
-    //                     .unwrap()),
-    //                 Err(e) => panic!("{:?}", e),
-    //             }
-    //         }
-    //         None => {
-    //             panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
-    //         }
-    //     }
-    // }
+    #[pyo3(name = "toString")]
+    pub fn to_string(&self) -> PyResult<String> {
+        Ok(format!("{}", &self.expr))
+    }
 
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]

@@ -55,7 +55,7 @@ class RexConverter(Pluggable):
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
-        Convert the given rel (java instance)
+        Convert the given Expression
         into a python expression (a dask dataframe)
         using the stored plugins and the dictionary of
         registered dask tables.

@@ -224,6 +224,8 @@ class CastOperation(Operation):
         if not is_frame(operand):  # pragma: no cover
             return operand
 
+        breakpoint()
+
         output_type = str(rex.getType())
         python_type = sql_to_python_type(
             output_type=sql_to_python_type(output_type.upper())
@@ -891,6 +893,7 @@ class RexCallPlugin(BaseRexPlugin):
         logger.debug(f"Operator Name: {operator_name}")
 
         try:
+            breakpoint()
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
