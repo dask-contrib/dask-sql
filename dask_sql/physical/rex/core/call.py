@@ -874,9 +874,6 @@ class RexCallPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
         logger.debug(f"Expression Operands: {expr.getOperands()}")
-        print(
-            f"Expr: {expr.toString()} - # Operands: {len(expr.getOperands())} - Operands[0]: {expr.getOperands()[0].toString()}"
-        )
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(rel, o, dc, context=context)
