@@ -1,16 +1,26 @@
 import numpy as np
 import pandas as pd
+<<<<<<< HEAD
+=======
+import pytest
+>>>>>>> Refactor PyExpr by removing From trait, and using recursion to expand expression list for rex calls
 
-# from dask_sql.utils import ParsingException
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
+<<<<<<< HEAD
 # import pytest
 
 
 # def test_select(c, df):
 #     result_df = c.sql("SELECT * FROM df")
+=======
+>>>>>>> Refactor PyExpr by removing From trait, and using recursion to expand expression list for rex calls
 
-#     assert_eq(result_df, df)
+def test_select(c, df):
+    result_df = c.sql("SELECT * FROM df")
+
+    assert_eq(result_df, df)
 
 
 # @pytest.mark.skip(reason="WIP DataFusion")
@@ -24,30 +34,30 @@ from tests.utils import assert_eq
 #     assert_eq(result_df[["a", "b"]], expected_df[["a", "b"]])
 
 
-# def test_select_column(c, df):
-#     result_df = c.sql("SELECT a FROM df")
+def test_select_column(c, df):
+    result_df = c.sql("SELECT a FROM df")
 
-#     assert_eq(result_df, df[["a"]])
+    assert_eq(result_df, df[["a"]])
 
 
-# def test_select_different_types(c):
-#     expected_df = pd.DataFrame(
-#         {
-#             "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
-#             "string": ["this is a test", "another test", "äölüć", ""],
-#             "integer": [1, 2, -4, 5],
-#             "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
-#         }
-#     )
-#     c.create_table("df", expected_df)
-#     result_df = c.sql(
-#         """
-#     SELECT *
-#     FROM df
-#     """
-#     )
+def test_select_different_types(c):
+    expected_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
+            "string": ["this is a test", "another test", "äölüć", ""],
+            "integer": [1, 2, -4, 5],
+            "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
+        }
+    )
+    c.create_table("df", expected_df)
+    result_df = c.sql(
+        """
+    SELECT *
+    FROM df
+    """
+    )
 
-#     assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 # @pytest.mark.skip(reason="WIP DataFusion")
@@ -104,25 +114,25 @@ from tests.utils import assert_eq
 #     assert_eq(result_df, expected_df)
 
 
-# def test_wrong_input(c):
-#     with pytest.raises(ParsingException):
-#         c.sql("""SELECT x FROM df""")
+def test_wrong_input(c):
+    with pytest.raises(ParsingException):
+        c.sql("""SELECT x FROM df""")
 
-#     with pytest.raises(ParsingException):
-#         c.sql("""SELECT x FROM df""")
+    with pytest.raises(ParsingException):
+        c.sql("""SELECT x FROM df""")
 
 
-# def test_timezones(c, datetime_table):
-#     result_df = c.sql(
-#         """
-#         SELECT * FROM datetime_table
-#         """
-#     )
+def test_timezones(c, datetime_table):
+    result_df = c.sql(
+        """
+        SELECT * FROM datetime_table
+        """
+    )
 
-#     print(f"Expected DF: \n{datetime_table.head(10)}\n")
-#     print(f"\nResult DF: \n{result_df.head(10)}")
+    print(f"Expected DF: \n{datetime_table.head(10)}\n")
+    print(f"\nResult DF: \n{result_df.head(10)}")
 
-#     assert_eq(result_df, datetime_table)
+    assert_eq(result_df, datetime_table)
 
 
 # @pytest.mark.skip(reason="WIP DataFusion")
@@ -148,25 +158,24 @@ from tests.utils import assert_eq
 #     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-# # @pytest.mark.skip(reason="WIP DataFusion")
-# @pytest.mark.parametrize(
-#     "input_table",
-#     [
-#         "datetime_table",
-#         # pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
-#     ],
-# )
-# def test_date_casting(c, input_table, request):
-#     datetime_table = request.getfixturevalue(input_table)
-#     result_df = c.sql(
-#         f"""
-#         SELECT
-#             CAST(timezone AS DATE) AS timezone,
-#             CAST(no_timezone AS DATE) AS no_timezone,
-#             CAST(utc_timezone AS DATE) AS utc_timezone
-#         FROM {input_table}
-#         """
-#     )
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "datetime_table",
+        # pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
+)
+def test_date_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS DATE) AS timezone,
+            CAST(no_timezone AS DATE) AS no_timezone,
+            CAST(utc_timezone AS DATE) AS utc_timezone
+        FROM {input_table}
+        """
+    )
 
 #     expected_df = datetime_table
 #     expected_df["timezone"] = (
@@ -185,28 +194,27 @@ from tests.utils import assert_eq
 #     assert_eq(result_df, expected_df)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
-# @pytest.mark.parametrize(
-#     "input_table",
-#     [
-#         "datetime_table",
-#         pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
-#     ],
-# )
-# def test_timestamp_casting(c, input_table, request):
-#     datetime_table = request.getfixturevalue(input_table)
-#     result_df = c.sql(
-#         f"""
-#         SELECT
-#             CAST(timezone AS TIMESTAMP) AS timezone,
-#             CAST(no_timezone AS TIMESTAMP) AS no_timezone,
-#             CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
-#         FROM {input_table}
-#         """
-#     )
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "datetime_table",
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+    ],
+)
+def test_timestamp_casting(c, input_table, request):
+    datetime_table = request.getfixturevalue(input_table)
+    result_df = c.sql(
+        f"""
+        SELECT
+            CAST(timezone AS TIMESTAMP) AS timezone,
+            CAST(no_timezone AS TIMESTAMP) AS no_timezone,
+            CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
+        FROM {input_table}
+        """
+    )
 
-#     expected_df = datetime_table.astype("<M8[ns]")
-#     assert_eq(result_df, expected_df)
+    expected_df = datetime_table.astype("<M8[ns]")
+    assert_eq(result_df, expected_df)
 
 
 def test_multi_case_when(c):

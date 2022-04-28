@@ -41,14 +41,14 @@ class DaskProjectPlugin(BaseRelPlugin):
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
 
+            print(f"Key: {key} - Expr: {expr.toString()}")
+
             key = str(key)
             column_names.append(key)
             random_name = new_temporary_column(df)
             new_columns[random_name] = RexConverter.convert(
                 rel, expr, dc, context=context
             )
-
-            breakpoint()
 
             new_mappings[key] = random_name
 
@@ -66,7 +66,7 @@ class DaskProjectPlugin(BaseRelPlugin):
                 print(f"Other for Expr: {expr}")
                 random_name = new_temporary_column(df)
                 new_columns[random_name] = RexConverter.convert(
-                    expr, dc, context=context
+                    rel, expr, dc, context=context
                 )
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 new_mappings[key] = random_name
