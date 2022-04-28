@@ -291,5 +291,5 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         # will convert both NA and np.NaN to NA.
         col = da.trunc(col.fillna(value=np.NaN))
 
-    col = col.astype(expected_type)
-    return col
+    logger.debug(f"Need to cast from {current_type} to {expected_type}")
+    return col.astype(expected_type)
