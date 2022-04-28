@@ -70,8 +70,6 @@ class RexConverter(Pluggable):
             f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
         )
 
-        print(f"expr_type: {expr_type} - Expr: {rex.toString()}")
-
         df = plugin_instance.convert(rel, rex, dc, context=context)
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df

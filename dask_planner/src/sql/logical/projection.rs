@@ -84,14 +84,11 @@ impl PyProjection {
     #[pyo3(name = "getNamedProjects")]
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
-        println!("Projection Input: {:?}", &self.projection.input);
         for expression in self.projection.expr.clone() {
             let mut py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
             py_expr.input_plan = Some(self.projection.input.clone());
-            println!("Expression Input: {:?}", &py_expr.input_plan);
             for expr in self.projected_expressions(&py_expr) {
                 let name: String = self.column_name(expr.clone()).unwrap();
-                println!("Named Project: {:?} - Expr: {:?}", &name, &expr);
                 named.push((name, expr.clone()));
             }
         }

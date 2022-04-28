@@ -168,8 +168,6 @@ impl PyExpr {
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
-        println!("&self: {:?}", &self);
-        println!("&self.input_plan: {:?}", self.input_plan);
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
