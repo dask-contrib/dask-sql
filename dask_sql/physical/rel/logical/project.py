@@ -41,10 +41,9 @@ class DaskProjectPlugin(BaseRelPlugin):
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
 
-            print(f"Key: {key} - Expr: {expr.toString()}")
-
             key = str(key)
             column_names.append(key)
+
             random_name = new_temporary_column(df)
             new_columns[random_name] = RexConverter.convert(
                 rel, expr, dc, context=context
@@ -55,23 +54,19 @@ class DaskProjectPlugin(BaseRelPlugin):
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
             if expr.getRexType() == RexType.Reference:
-                print(f"Reference for Expr: {expr}")
-                index = expr.getIndex(rel)
+                index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
                     f"Not re-adding the same column {key} (but just referencing it)"
                 )
                 new_mappings[key] = backend_column_name
             else:
-                print(f"Other for Expr: {expr}")
                 random_name = new_temporary_column(df)
                 new_columns[random_name] = RexConverter.convert(
                     rel, expr, dc, context=context
                 )
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 new_mappings[key] = random_name
-
-        print(f"Projecting columns: {column_names}")
 
         # Actually add the new columns
         if new_columns:
@@ -87,7 +82,5 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-
-        print(f"After Project: {dc.df.head(10)}")
 
         return dc

@@ -1,21 +1,10 @@
 import numpy as np
 import pandas as pd
-<<<<<<< HEAD
-=======
 import pytest
->>>>>>> Refactor PyExpr by removing From trait, and using recursion to expand expression list for rex calls
 
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
-<<<<<<< HEAD
-# import pytest
-
-
-# def test_select(c, df):
-#     result_df = c.sql("SELECT * FROM df")
-=======
->>>>>>> Refactor PyExpr by removing From trait, and using recursion to expand expression list for rex calls
 
 def test_select(c, df):
     result_df = c.sql("SELECT * FROM df")

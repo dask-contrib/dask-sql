@@ -249,14 +249,57 @@ impl PyExpr {
     #[pyo3(name = "getRexType")]
     pub fn rex_type(&self) -> RexType {
         match &self.expr {
-<<<<<<< HEAD
-            Expr::Alias(..) => self.rex_type(),
-=======
             Expr::Alias(expr, name) => {
-                println!("expr: {:?}", *expr);
-                RexType::Reference
+                println!("Alias encountered with name: {:?}", name);
+                // let reference: Expr = *expr.as_ref();
+                // let plan: logical::PyLogicalPlan = reference.input().clone().into();
+
+                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
+                // extract the valid ones and error on the invalid ones
+                match expr.as_ref() {
+                    Expr::Column(col) => {
+                        // First we must iterate the current node before getting its input
+                        match plan {
+                            LogicalPlan::Projection(proj) => {
+                                match proj.input.as_ref() {
+                                    LogicalPlan::Aggregate(agg) => {
+                                        let mut exprs = agg.group_expr.clone();
+                                        exprs.extend_from_slice(&agg.aggr_expr);
+                                        let col_index: usize =
+                                            proj.input.schema().index_of_column(col).unwrap();
+                                        // match &exprs[plan.get_index(col)] {
+                                        match &exprs[col_index] {
+                                            Expr::AggregateFunction { args, .. } => {
+                                                match &args[0] {
+                                                    Expr::Column(col) => {
+                                                        println!(
+                                                            "AGGREGATE COLUMN IS {}",
+                                                            col.name
+                                                        );
+                                                        col.name.clone()
+                                                    }
+                                                    _ => name.clone(),
+                                                }
+                                            }
+                                            _ => name.clone(),
+                                        }
+                                    }
+                                    _ => {
+                                        println!("Encountered a non-Aggregate type");
+
+                                        name.clone()
+                                    }
+                                }
+                            }
+                            _ => name.clone(),
+                        }
+                    }
+                    _ => {
+                        println!("Encountered a non Expr::Column instance");
+                        name.clone()
+                    }
+                }
             }
->>>>>>> Refactor PyExpr by removing From trait, and using recursion to expand expression list for rex calls
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,
@@ -279,6 +322,111 @@ impl PyExpr {
             Expr::Wildcard => RexType::Call,
             _ => RexType::Other,
         }
+    }
+}
+
+#[pymethods]
+impl PyExpr {
+    #[staticmethod]
+    pub fn literal(value: PyScalarValue) -> PyExpr {
+        lit(value.scalar_value).into()
+    }
+
+    /// If this Expression instances references an existing
+    /// Column in the SQL parse tree or not
+    #[pyo3(name = "isInputReference")]
+    pub fn is_input_reference(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Column(_col) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
+    #[pyo3(name = "getIndex")]
+    pub fn index(&self) -> PyResult<usize> {
+        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+        match input {
+            Some(plan) => {
+                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                match name {
+                    Ok(fq_name) => Ok(plan
+                        .schema()
+                        .index_of_column(&Column::from_qualified_name(&fq_name))
+                        .unwrap()),
+                    Err(e) => panic!("{:?}", e),
+                }
+            }
+            None => {
+                panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
+            }
+        }
+    }
+
+    /// Examine the current/"self" PyExpr and return its "type"
+    /// In this context a "type" is what Dask-SQL Python
+    /// RexConverter plugin instance should be invoked to handle
+    /// the Rex conversion
+    #[pyo3(name = "getExprType")]
+    pub fn get_expr_type(&self) -> String {
+        String::from(match &self.expr {
+            Expr::Alias(..) => "Alias",
+            Expr::Column(..) => "Column",
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(..) => "Literal",
+            Expr::BinaryExpr { .. } => "BinaryExpr",
+            Expr::Not(..) => panic!("Not!!!"),
+            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+            Expr::Negative(..) => panic!("Negative!!!"),
+            Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
+            Expr::IsNull(..) => panic!("IsNull!!!"),
+            Expr::Between { .. } => panic!("Between!!!"),
+            Expr::Case { .. } => panic!("Case!!!"),
+            Expr::Cast { .. } => "Cast",
+            Expr::TryCast { .. } => panic!("TryCast!!!"),
+            Expr::Sort { .. } => panic!("Sort!!!"),
+            Expr::ScalarFunction { .. } => "ScalarFunction",
+            Expr::AggregateFunction { .. } => "AggregateFunction",
+            Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
+            Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
+            Expr::InList { .. } => panic!("InList!!!"),
+            Expr::Wildcard => panic!("Wildcard!!!"),
+            _ => "OTHER",
+        })
+    }
+
+    /// Determines the type of this Expr based on its variant
+    #[pyo3(name = "getRexType")]
+    pub fn rex_type(&self) -> RexType {
+        match &self.expr {
+            Expr::Alias(..) => RexType::Reference,
+            Expr::Column(..) => RexType::Reference,
+            Expr::ScalarVariable(..) => RexType::Literal,
+            Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. } => RexType::Call,
+            Expr::Not(..) => RexType::Call,
+            Expr::IsNotNull(..) => RexType::Call,
+            Expr::Negative(..) => RexType::Call,
+            Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::IsNull(..) => RexType::Call,
+            Expr::Between { .. } => RexType::Call,
+            Expr::Case { .. } => RexType::Call,
+            Expr::Cast { .. } => RexType::Call,
+            Expr::TryCast { .. } => RexType::Call,
+            Expr::Sort { .. } => RexType::Call,
+            Expr::ScalarFunction { .. } => RexType::Call,
+            Expr::AggregateFunction { .. } => RexType::Call,
+            Expr::WindowFunction { .. } => RexType::Call,
+            Expr::AggregateUDF { .. } => RexType::Call,
+            Expr::InList { .. } => RexType::Call,
+            Expr::Wildcard => RexType::Call,
+            _ => RexType::Other,
+        }
+    }
+
+    /// Python friendly shim code to get the name of a column referenced by an expression
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
+        self._column_name(plan.current_node())
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
