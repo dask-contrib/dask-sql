@@ -31,15 +31,6 @@ impl From<PyExpr> for Expr {
     }
 }
 
-impl From<Expr> for PyExpr {
-    fn from(expr: Expr) -> PyExpr {
-        PyExpr {
-            input_plan: None,
-            expr: expr,
-        }
-    }
-}
-
 #[pyclass(name = "ScalarValue", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyScalarValue {
@@ -153,7 +144,7 @@ impl PyExpr {
 impl PyExpr {
     #[staticmethod]
     pub fn literal(value: PyScalarValue) -> PyExpr {
-        lit(value.scalar_value).into()
+        PyExpr::from(lit(value.scalar_value), None)
     }
 
     /// If this Expression instances references an existing
@@ -174,6 +165,8 @@ impl PyExpr {
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
+        println!("&self: {:?}", &self);
+        println!("&self.input_plan: {:?}", self.input_plan);
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
@@ -228,7 +221,10 @@ impl PyExpr {
     #[pyo3(name = "getRexType")]
     pub fn rex_type(&self) -> RexType {
         match &self.expr {
-            Expr::Alias(..) => RexType::Reference,
+            Expr::Alias(expr, name) => {
+                println!("expr: {:?}", *expr);
+                RexType::Reference
+            }
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,
@@ -265,22 +261,26 @@ impl PyExpr {
             Expr::BinaryExpr { left, op: _, right } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let left_desc: Expr = *left.clone();
-                operands.push(left_desc.into());
+                let py_left: PyExpr = PyExpr::from(left_desc, self.input_plan.clone());
+                operands.push(py_left);
                 let right_desc: Expr = *right.clone();
-                operands.push(right_desc.into());
+                let py_right: PyExpr = PyExpr::from(right_desc, self.input_plan.clone());
+                operands.push(py_right);
                 Ok(operands)
             }
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
-                    operands.push(arg.clone().into());
+                    let py_arg: PyExpr = PyExpr::from(arg.clone(), self.input_plan.clone());
+                    operands.push(py_arg);
                 }
                 Ok(operands)
             }
             Expr::Cast { expr, data_type: _ } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let ex: Expr = *expr.clone();
-                operands.push(ex.into());
+                let py_ex: PyExpr = PyExpr::from(ex, self.input_plan.clone());
+                operands.push(py_ex);
                 Ok(operands)
             }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
