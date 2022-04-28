@@ -1,9 +1,12 @@
 use crate::sql::logical;
-use crate::sql::types;
+use crate::sql::types::rel_data_type::RelDataType;
+use crate::sql::types::rel_data_type_field::RelDataTypeField;
+use crate::sql::types::DaskTypeMap;
+use crate::sql::types::SqlTypeName;
 
 use async_trait::async_trait;
 
-use datafusion::arrow::datatypes::SchemaRef;
+use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
 pub use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
 use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
@@ -93,7 +96,7 @@ pub struct DaskTable {
     pub(crate) name: String,
     #[allow(dead_code)]
     pub(crate) statistics: DaskStatistics,
-    pub(crate) columns: Vec<(String, types::DaskRelDataType)>,
+    pub(crate) columns: Vec<(String, DaskTypeMap)>,
 }
 
 #[pymethods]
@@ -107,16 +110,14 @@ impl DaskTable {
         }
     }
 
-    pub fn add_column(&mut self, column_name: String, column_type_str: String) {
-        let sql_type: types::DaskRelDataType = types::DaskRelDataType {
-            name: String::from(&column_name),
-            sql_type: types::sql_type_to_arrow_type(column_type_str),
-        };
-
-        self.columns.push((column_name, sql_type));
+    // TODO: Really wish we could accept a SqlTypeName instance here instead of a String for `column_type` ....
+    #[pyo3(name = "add_column")]
+    pub fn add_column(&mut self, column_name: String, type_map: DaskTypeMap) {
+        self.columns.push((column_name, type_map));
     }
 
-    pub fn get_qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
+    #[pyo3(name = "getQualifiedName")]
+    pub fn qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
         let mut qualified_name = Vec::from([String::from("root")]);
 
         match plan.original_plan {
@@ -132,28 +133,13 @@ impl DaskTable {
         qualified_name
     }
 
-    pub fn column_names(&self) -> Vec<String> {
-        let mut cns: Vec<String> = Vec::new();
-        for c in &self.columns {
-            cns.push(String::from(&c.0));
+    #[pyo3(name = "getRowType")]
+    pub fn row_type(&self) -> RelDataType {
+        let mut fields: Vec<RelDataTypeField> = Vec::new();
+        for (name, data_type) in &self.columns {
+            fields.push(RelDataTypeField::new(name.clone(), data_type.clone(), 255));
         }
-        cns
-    }
-
-    pub fn column_types(&self) -> Vec<types::DaskRelDataType> {
-        let mut col_types: Vec<types::DaskRelDataType> = Vec::new();
-        for col in &self.columns {
-            col_types.push(col.1.clone())
-        }
-        col_types
-    }
-
-    pub fn num_columns(&self) {
-        println!(
-            "There are {} columns in table {}",
-            self.columns.len(),
-            self.name
-        );
+        RelDataType::new(false, fields)
     }
 }
 
@@ -166,16 +152,14 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
-            let fields = tbl_schema.fields();
+            let fields: &Vec<Field> = tbl_schema.fields();
 
-            let mut cols: Vec<(String, types::DaskRelDataType)> = Vec::new();
+            let mut cols: Vec<(String, DaskTypeMap)> = Vec::new();
             for field in fields {
+                let data_type: &DataType = field.data_type();
                 cols.push((
                     String::from(field.name()),
-                    types::DaskRelDataType {
-                        name: String::from(field.name()),
-                        sql_type: field.data_type().clone(),
-                    },
+                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone()),
                 ));
             }
 

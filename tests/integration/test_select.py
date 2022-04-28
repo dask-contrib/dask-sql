@@ -103,7 +103,6 @@ def test_select_of_select_with_casing(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_input(c):
     with pytest.raises(ParsingException):
         c.sql("""SELECT x FROM df""")
@@ -112,7 +111,6 @@ def test_wrong_input(c):
         c.sql("""SELECT x FROM df""")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_timezones(c, datetime_table):
     result_df = c.sql(
         """
@@ -180,7 +178,7 @@ def test_date_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="DEBUGGING")
+@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [

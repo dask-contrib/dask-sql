@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, Expression
+from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, DFParsingException
 
 try:
     import dask_cuda  # noqa: F401
@@ -30,6 +30,10 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
+from dask_sql.utils import ParsingException
+
+if TYPE_CHECKING:
+    from dask_planner.rust import Expression
 
 logger = logging.getLogger(__name__)
 
@@ -688,7 +692,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, identifier: Expression) -> Tuple[str, str]:
+    def fqn(self, identifier: "Expression") -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -738,13 +742,11 @@ class Context:
 
                 table = DaskTable(name, row_count)
                 df = dc.df
-                logger.debug(
-                    f"Adding table '{name}' to schema with columns: {list(df.columns)}"
-                )
+
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
-                    table.add_column(column, str(sql_data_type))
+                    table.add_column(column, sql_data_type)
 
                 rust_schema.add_table(table)
 
@@ -805,7 +807,11 @@ class Context:
                 f"Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!"
             )
 
-        nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        try:
+            nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        except DFParsingException as pe:
+            raise ParsingException(sql, str(pe)) from None
+
         rel = nonOptimizedRel
         logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
         # # Optimization might remove some alias projects. Make sure to keep them here.

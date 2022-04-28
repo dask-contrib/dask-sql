@@ -1,10 +1,13 @@
 pub mod column;
+pub mod exceptions;
 pub mod function;
 pub mod logical;
 pub mod schema;
 pub mod statement;
 pub mod table;
 pub mod types;
+
+use crate::sql::exceptions::ParsingException;
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::TableReference;
@@ -56,14 +59,9 @@ impl ContextProvider for DaskSQLContext {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
-
                         // Iterate through the DaskTable instance and create a Schema instance
                         for (column_name, column_type) in &table.columns {
-                            fields.push(Field::new(
-                                column_name,
-                                column_type.sql_type.clone(),
-                                false,
-                            ));
+                            fields.push(Field::new(column_name, column_type.data_type(), false));
                         }
 
                         resp = Some(Schema::new(fields));
@@ -150,10 +148,7 @@ impl DaskSQLContext {
                 );
                 Ok(statements)
             }
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "{}",
-                e
-            ))),
+            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
         }
     }
 
@@ -172,10 +167,7 @@ impl DaskSQLContext {
                     current_node: None,
                 })
             }
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "{}",
-                e
-            ))),
+            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
         }
     }
 }

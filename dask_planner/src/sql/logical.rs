@@ -1,4 +1,8 @@
 use crate::sql::table;
+use crate::sql::types::rel_data_type::RelDataType;
+use crate::sql::types::rel_data_type_field::RelDataTypeField;
+use datafusion::logical_plan::DFField;
+
 mod aggregate;
 mod filter;
 mod join;
@@ -86,6 +90,7 @@ impl PyLogicalPlan {
 
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned
+    #[pyo3(name = "getTable")]
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),
@@ -131,6 +136,22 @@ impl PyLogicalPlan {
     /// Explain plan from the current node onward
     pub fn explain_current(&mut self) -> PyResult<String> {
         Ok(format!("{}", self.current_node().display_indent()))
+    }
+
+    #[pyo3(name = "getRowType")]
+    pub fn row_type(&self) -> RelDataType {
+        let fields: &Vec<DFField> = self.original_plan.schema().fields();
+        let mut rel_fields: Vec<RelDataTypeField> = Vec::new();
+        for i in 0..fields.len() {
+            rel_fields.push(
+                RelDataTypeField::from(
+                    fields[i].clone(),
+                    self.original_plan.schema().as_ref().clone(),
+                )
+                .unwrap(),
+            );
+        }
+        RelDataType::new(false, rel_fields)
     }
 }
 

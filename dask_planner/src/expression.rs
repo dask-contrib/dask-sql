@@ -1,9 +1,10 @@
 use crate::sql::logical;
-use crate::sql::types::PyDataType;
+use crate::sql::types::RexType;
 
-use pyo3::PyMappingProtocol;
-use pyo3::{basic::CompareOp, prelude::*, PyNumberProtocol, PyObjectProtocol};
+use pyo3::prelude::*;
 use std::convert::{From, Into};
+
+use datafusion::error::DataFusionError;
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::{col, lit, BuiltinScalarFunction, Expr};
@@ -12,10 +13,15 @@ use datafusion::scalar::ScalarValue;
 
 pub use datafusion_expr::LogicalPlan;
 
+use datafusion::prelude::Column;
+
+use std::sync::Arc;
+
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyExpr {
+    pub input_plan: Option<Arc<LogicalPlan>>,
     pub expr: Expr,
 }
 
@@ -27,7 +33,10 @@ impl From<PyExpr> for Expr {
 
 impl From<Expr> for PyExpr {
     fn from(expr: Expr) -> PyExpr {
-        PyExpr { expr }
+        PyExpr {
+            input_plan: None,
+            expr: expr,
+        }
     }
 }
 
@@ -49,130 +58,69 @@ impl From<ScalarValue> for PyScalarValue {
     }
 }
 
-#[pyproto]
-impl PyNumberProtocol for PyExpr {
-    fn __add__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr + rhs.expr).into())
-    }
-
-    fn __sub__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr - rhs.expr).into())
-    }
-
-    fn __truediv__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr / rhs.expr).into())
-    }
-
-    fn __mul__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok((lhs.expr * rhs.expr).into())
-    }
-
-    fn __mod__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.modulus(rhs.expr).into())
-    }
-
-    fn __and__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.and(rhs.expr).into())
-    }
-
-    fn __or__(lhs: PyExpr, rhs: PyExpr) -> PyResult<PyExpr> {
-        Ok(lhs.expr.or(rhs.expr).into())
-    }
-
-    fn __invert__(&self) -> PyResult<PyExpr> {
-        Ok(self.expr.clone().not().into())
-    }
-}
-
-#[pyproto]
-impl PyObjectProtocol for PyExpr {
-    fn __richcmp__(&self, other: PyExpr, op: CompareOp) -> PyExpr {
-        let expr = match op {
-            CompareOp::Lt => self.expr.clone().lt(other.expr),
-            CompareOp::Le => self.expr.clone().lt_eq(other.expr),
-            CompareOp::Eq => self.expr.clone().eq(other.expr),
-            CompareOp::Ne => self.expr.clone().not_eq(other.expr),
-            CompareOp::Gt => self.expr.clone().gt(other.expr),
-            CompareOp::Ge => self.expr.clone().gt_eq(other.expr),
-        };
-        expr.into()
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        Ok(format!("{}", self.expr))
-    }
-}
-
-#[pymethods]
 impl PyExpr {
-    #[staticmethod]
-    pub fn literal(value: PyScalarValue) -> PyExpr {
-        lit(value.scalar_value).into()
+    /// Generally we would implement the `From` trait offered by Rust
+    /// However in this case Expr does not contain the contextual
+    /// `LogicalPlan` instance that we need so we need to make a instance
+    /// function to take and create the PyExpr.
+    pub fn from(expr: Expr, input: Option<Arc<LogicalPlan>>) -> PyExpr {
+        PyExpr {
+            input_plan: input,
+            expr: expr,
+        }
     }
 
-    /// Examine the current/"self" PyExpr and return its "type"
-    /// In this context a "type" is what Dask-SQL Python
-    /// RexConverter plugin instance should be invoked to handle
-    /// the Rex conversion
-    pub fn get_expr_type(&self) -> String {
-        String::from(match &self.expr {
-            Expr::Alias(..) => "Alias",
-            Expr::Column(..) => "Column",
-            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-            Expr::Literal(..) => "Literal",
-            Expr::BinaryExpr { .. } => "BinaryExpr",
-            Expr::Not(..) => panic!("Not!!!"),
-            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
-            Expr::Negative(..) => panic!("Negative!!!"),
-            Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
-            Expr::IsNull(..) => panic!("IsNull!!!"),
-            Expr::Between { .. } => panic!("Between!!!"),
-            Expr::Case { .. } => panic!("Case!!!"),
-            Expr::Cast { .. } => "Cast",
-            Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => panic!("Sort!!!"),
-            Expr::ScalarFunction { .. } => "ScalarFunction",
-            Expr::AggregateFunction { .. } => "AggregateFunction",
-            Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => panic!("InList!!!"),
-            Expr::Wildcard => panic!("Wildcard!!!"),
-            _ => "OTHER",
-        })
-    }
-
-    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
+    fn _column_name(&self, mut plan: LogicalPlan) -> String {
         match &self.expr {
             Expr::Alias(expr, name) => {
                 println!("Alias encountered with name: {:?}", name);
+                // let reference: Expr = *expr.as_ref();
+                // let plan: logical::PyLogicalPlan = reference.input().clone().into();
 
                 // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
                 // extract the valid ones and error on the invalid ones
                 match expr.as_ref() {
                     Expr::Column(col) => {
                         // First we must iterate the current node before getting its input
-                        match plan.current_node() {
-                            LogicalPlan::Projection(proj) => match proj.input.as_ref() {
-                                LogicalPlan::Aggregate(agg) => {
-                                    let mut exprs = agg.group_expr.clone();
-                                    exprs.extend_from_slice(&agg.aggr_expr);
-                                    match &exprs[plan.get_index(col)] {
-                                        Expr::AggregateFunction { args, .. } => match &args[0] {
-                                            Expr::Column(col) => {
-                                                println!("AGGREGATE COLUMN IS {}", col.name);
-                                                col.name.clone()
+                        match plan {
+                            LogicalPlan::Projection(proj) => {
+                                match proj.input.as_ref() {
+                                    LogicalPlan::Aggregate(agg) => {
+                                        let mut exprs = agg.group_expr.clone();
+                                        exprs.extend_from_slice(&agg.aggr_expr);
+                                        let col_index: usize =
+                                            proj.input.schema().index_of_column(col).unwrap();
+                                        // match &exprs[plan.get_index(col)] {
+                                        match &exprs[col_index] {
+                                            Expr::AggregateFunction { args, .. } => {
+                                                match &args[0] {
+                                                    Expr::Column(col) => {
+                                                        println!(
+                                                            "AGGREGATE COLUMN IS {}",
+                                                            col.name
+                                                        );
+                                                        col.name.clone()
+                                                    }
+                                                    _ => name.clone(),
+                                                }
                                             }
                                             _ => name.clone(),
-                                        },
-                                        _ => name.clone(),
+                                        }
+                                    }
+                                    _ => {
+                                        println!("Encountered a non-Aggregate type");
+
+                                        name.clone()
                                     }
                                 }
-                                _ => name.clone(),
-                            },
+                            }
                             _ => name.clone(),
                         }
                     }
-                    _ => name.clone(),
+                    _ => {
+                        println!("Encountered a non Expr::Column instance");
+                        name.clone()
+                    }
                 }
             }
             Expr::Column(column) => column.name.clone(),
@@ -205,6 +153,111 @@ impl PyExpr {
             Expr::Wildcard => unimplemented!("Wildcard!!!"),
             _ => panic!("Nothing found!!!"),
         }
+    }
+}
+
+#[pymethods]
+impl PyExpr {
+    #[staticmethod]
+    pub fn literal(value: PyScalarValue) -> PyExpr {
+        lit(value.scalar_value).into()
+    }
+
+    /// If this Expression instances references an existing
+    /// Column in the SQL parse tree or not
+    #[pyo3(name = "isInputReference")]
+    pub fn is_input_reference(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Column(_col) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
+    #[pyo3(name = "getIndex")]
+    pub fn index(&self) -> PyResult<usize> {
+        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+        match input {
+            Some(plan) => {
+                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                match name {
+                    Ok(fq_name) => Ok(plan
+                        .schema()
+                        .index_of_column(&Column::from_qualified_name(&fq_name))
+                        .unwrap()),
+                    Err(e) => panic!("{:?}", e),
+                }
+            }
+            None => {
+                panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
+            }
+        }
+    }
+
+    /// Examine the current/"self" PyExpr and return its "type"
+    /// In this context a "type" is what Dask-SQL Python
+    /// RexConverter plugin instance should be invoked to handle
+    /// the Rex conversion
+    #[pyo3(name = "getExprType")]
+    pub fn get_expr_type(&self) -> String {
+        String::from(match &self.expr {
+            Expr::Alias(..) => "Alias",
+            Expr::Column(..) => "Column",
+            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
+            Expr::Literal(..) => "Literal",
+            Expr::BinaryExpr { .. } => "BinaryExpr",
+            Expr::Not(..) => panic!("Not!!!"),
+            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
+            Expr::Negative(..) => panic!("Negative!!!"),
+            Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
+            Expr::IsNull(..) => panic!("IsNull!!!"),
+            Expr::Between { .. } => panic!("Between!!!"),
+            Expr::Case { .. } => panic!("Case!!!"),
+            Expr::Cast { .. } => "Cast",
+            Expr::TryCast { .. } => panic!("TryCast!!!"),
+            Expr::Sort { .. } => panic!("Sort!!!"),
+            Expr::ScalarFunction { .. } => "ScalarFunction",
+            Expr::AggregateFunction { .. } => "AggregateFunction",
+            Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
+            Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
+            Expr::InList { .. } => panic!("InList!!!"),
+            Expr::Wildcard => panic!("Wildcard!!!"),
+            _ => "OTHER",
+        })
+    }
+
+    /// Determines the type of this Expr based on its variant
+    #[pyo3(name = "getRexType")]
+    pub fn rex_type(&self) -> RexType {
+        match &self.expr {
+            Expr::Alias(..) => RexType::Reference,
+            Expr::Column(..) => RexType::Reference,
+            Expr::ScalarVariable(..) => RexType::Literal,
+            Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. } => RexType::Call,
+            Expr::Not(..) => RexType::Call,
+            Expr::IsNotNull(..) => RexType::Call,
+            Expr::Negative(..) => RexType::Call,
+            Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::IsNull(..) => RexType::Call,
+            Expr::Between { .. } => RexType::Call,
+            Expr::Case { .. } => RexType::Call,
+            Expr::Cast { .. } => RexType::Call,
+            Expr::TryCast { .. } => RexType::Call,
+            Expr::Sort { .. } => RexType::Call,
+            Expr::ScalarFunction { .. } => RexType::Call,
+            Expr::AggregateFunction { .. } => RexType::Call,
+            Expr::WindowFunction { .. } => RexType::Call,
+            Expr::AggregateUDF { .. } => RexType::Call,
+            Expr::InList { .. } => RexType::Call,
+            Expr::Wildcard => RexType::Call,
+            _ => RexType::Other,
+        }
+    }
+
+    /// Python friendly shim code to get the name of a column referenced by an expression
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
+        self._column_name(plan.current_node())
     }
 
     /// Gets the operands for a BinaryExpr call
@@ -331,36 +384,6 @@ impl PyExpr {
             },
             _ => panic!("OTHER"),
         }
-    }
-
-    #[staticmethod]
-    pub fn column(value: &str) -> PyExpr {
-        col(value).into()
-    }
-
-    /// assign a name to the PyExpr
-    pub fn alias(&self, name: &str) -> PyExpr {
-        self.expr.clone().alias(name).into()
-    }
-
-    /// Create a sort PyExpr from an existing PyExpr.
-    #[args(ascending = true, nulls_first = true)]
-    pub fn sort(&self, ascending: bool, nulls_first: bool) -> PyExpr {
-        self.expr.clone().sort(ascending, nulls_first).into()
-    }
-
-    pub fn is_null(&self) -> PyExpr {
-        self.expr.clone().is_null().into()
-    }
-
-    pub fn cast(&self, to: PyDataType) -> PyExpr {
-        // self.expr.cast_to() requires DFSchema to validate that the cast
-        // is supported, omit that for now
-        let expr = Expr::Cast {
-            expr: Box::new(self.expr.clone()),
-            data_type: to.data_type,
-        };
-        expr.into()
     }
 
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
@@ -519,69 +542,5 @@ impl PyExpr {
             },
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
-    }
-}
-
-// pub trait ObtainValue<T> {
-//     fn getValue(&mut self) -> T;
-// }
-
-// /// Expansion macro to get all typed values from a DataFusion Expr
-// macro_rules! get_typed_value {
-//     ($t:ty, $func_name:ident) => {
-//         impl ObtainValue<$t> for PyExpr {
-//             #[inline]
-//             fn getValue(&mut self) -> $t
-//             {
-//                 match &self.expr {
-//                     Expr::Literal(scalar_value) => {
-//                         match scalar_value {
-//                             ScalarValue::$func_name(iv) => {
-//                                 iv.unwrap()
-//                             },
-//                             _ => {
-//                                 panic!("getValue<T>() - Unexpected value")
-//                             }
-//                         }
-//                     },
-//                     _ => panic!("getValue<T>() - Non literal value encountered")
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// get_typed_value!(u8, UInt8);
-// get_typed_value!(u16, UInt16);
-// get_typed_value!(u32, UInt32);
-// get_typed_value!(u64, UInt64);
-// get_typed_value!(i8, Int8);
-// get_typed_value!(i16, Int16);
-// get_typed_value!(i32, Int32);
-// get_typed_value!(i64, Int64);
-// get_typed_value!(bool, Boolean);
-// get_typed_value!(f32, Float32);
-// get_typed_value!(f64, Float64);
-
-// get_typed_value!(for usize u8 u16 u32 u64 isize i8 i16 i32 i64 bool f32 f64);
-// get_typed_value!(usize, Integer);
-// get_typed_value!(isize, );
-// Decimal128(Option<i128>, usize, usize),
-// Utf8(Option<String>),
-// LargeUtf8(Option<String>),
-// Binary(Option<Vec<u8, Global>>),
-// LargeBinary(Option<Vec<u8, Global>>),
-// List(Option<Box<Vec<ScalarValue, Global>, Global>>, Box<DataType, Global>),
-// Date32(Option<i32>),
-// Date64(Option<i64>),
-
-#[pyproto]
-impl PyMappingProtocol for PyExpr {
-    fn __getitem__(&self, key: &str) -> PyResult<PyExpr> {
-        Ok(Expr::GetIndexedField {
-            expr: Box::new(self.expr.clone()),
-            key: ScalarValue::Utf8(Some(key.to_string())),
-        }
-        .into())
     }
 }
