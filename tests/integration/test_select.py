@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
+import pytest
 
-# from dask_sql.utils import ParsingException
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
-
-# import pytest
 
 
 # def test_select(c, df):
@@ -148,7 +147,6 @@ from tests.utils import assert_eq
 #     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-# # @pytest.mark.skip(reason="WIP DataFusion")
 # @pytest.mark.parametrize(
 #     "input_table",
 #     [
@@ -179,13 +177,9 @@ from tests.utils import assert_eq
 #         expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
 #     )
 
-#     print(f"\nExpected DF:\n{expected_df.head(10)}\n")
-#     print(f"\nResult DF:\n{expected_df.head(10)}\n")
-
 #     assert_eq(result_df, expected_df)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 # @pytest.mark.parametrize(
 #     "input_table",
 #     [

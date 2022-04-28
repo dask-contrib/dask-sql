@@ -11,75 +11,39 @@ pub struct PyProjection {
     pub(crate) projection: Projection,
 }
 
+impl PyProjection {
+    /// Projection: Gets the names of the fields that should be projected
+    fn projected_expressions(&mut self, local_expr: &PyExpr) -> Vec<PyExpr> {
+        let mut projs: Vec<PyExpr> = Vec::new();
+        match &local_expr.expr {
+            Expr::Alias(expr, _name) => {
+                let ex: Expr = *expr.clone();
+                let mut py_expr: PyExpr = PyExpr::from(ex, Some(self.projection.input.clone()));
+                py_expr.input_plan = local_expr.input_plan.clone();
+                projs.extend_from_slice(self.projected_expressions(&py_expr).as_slice());
+            }
+            _ => projs.push(local_expr.clone()),
+        }
+        projs
+    }
+}
+
 #[pymethods]
 impl PyProjection {
-    #[pyo3(name = "getColumnName")]
-    fn column_name(&mut self, expr: PyExpr) -> PyResult<String> {
-        let mut val: String = String::from("OK");
-        match expr.expr {
-            Expr::Alias(expr, name) => match expr.as_ref() {
-                Expr::Column(col) => {
-                    let index = self.projection.input.schema().index_of_column(col).unwrap();
-                    match self.projection.input.as_ref() {
-                        LogicalPlan::Aggregate(agg) => {
-                            let mut exprs = agg.group_expr.clone();
-                            exprs.extend_from_slice(&agg.aggr_expr);
-                            match &exprs[index] {
-                                Expr::AggregateFunction { args, .. } => match &args[0] {
-                                    Expr::Column(col) => {
-                                        println!("AGGREGATE COLUMN IS {}", col.name);
-                                        val = col.name.clone();
-                                    }
-                                    _ => unimplemented!("projection.rs column_name is unimplemented for Expr variant: {:?}", &args[0]),
-                                },
-                                _ => unimplemented!("projection.rs column_name is unimplemented for Expr variant: {:?}", &exprs[index]),
-                            }
-                        }
-                        LogicalPlan::TableScan(table_scan) => val = table_scan.table_name.clone(),
-                        _ => unimplemented!("projection.rs column_name is unimplemented for LogicalPlan variant: {:?}", self.projection.input),
-                    }
-                }
-                Expr::Cast { expr, data_type: _ } => {
-                    let ex_type: Expr = *expr.clone();
-                    val = self.column_name(ex_type.into()).unwrap();
-                    println!("Setting col name to: {:?}", val);
-                }
-                _ => val = name.clone().to_ascii_uppercase(),
-            },
-            Expr::Column(col) => val = col.name.clone(),
-            Expr::Cast { expr, data_type: _ } => {
-                let ex_type: Expr = *expr;
-                val = self.column_name(ex_type.into()).unwrap()
-            }
-            _ => {
-                panic!(
-                    "column_name is unimplemented for Expr variant: {:?}",
-                    expr.expr
-                );
-            }
-        }
-        Ok(val)
-    }
-
-    /// Projection: Gets the names of the fields that should be projected
-    #[pyo3(name = "getProjectedExpressions")]
-    fn projected_expressions(&mut self) -> PyResult<Vec<PyExpr>> {
-        let mut projs: Vec<PyExpr> = Vec::new();
-        for expr in &self.projection.expr {
-            projs.push(PyExpr::from(
-                expr.clone(),
-                Some(self.projection.input.clone()),
-            ));
-        }
-        Ok(projs)
-    }
-
     #[pyo3(name = "getNamedProjects")]
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
-        for expr in &self.projected_expressions().unwrap() {
-            let name: String = self.column_name(expr.clone()).unwrap();
-            named.push((name, expr.clone()));
+        println!("Projection Input: {:?}", &self.projection.input);
+        for expression in self.projection.expr.clone() {
+            let mut py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
+            py_expr.input_plan = Some(self.projection.input.clone());
+            println!("Expression Input: {:?}", &py_expr.input_plan);
+            for expr in self.projected_expressions(&py_expr) {
+                let plan: &LogicalPlan = &*self.projection.input;
+                let name: String = expr.column_name(plan.clone().into());
+                println!("Named Project: {:?} - Expr: {:?}", &name, &expr);
+                named.push((name, expr.clone()));
+            }
         }
         Ok(named)
     }

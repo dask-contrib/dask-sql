@@ -116,6 +116,7 @@ def test_sql(gpu):
     assert_eq(result, data_frame)
 
 
+@pytest.mark.skip(reason="WIP DataFusion - missing create statement logic")
 @pytest.mark.parametrize(
     "gpu",
     [

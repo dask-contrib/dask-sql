@@ -22,7 +22,7 @@ class RexInputRefPlugin(BaseRexPlugin):
     def convert(
         self,
         rel: "LogicalPlan",
-        expr: "Expression",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> dd.Series:
@@ -30,6 +30,6 @@ class RexInputRefPlugin(BaseRexPlugin):
         cc = dc.column_container
 
         # The column is references by index
-        index = expr.getIndex(rel)
+        index = rex.getIndex()
         backend_column_name = cc.get_backend_by_frontend_index(index)
         return df[backend_column_name]
