@@ -229,8 +229,6 @@ impl PyExpr {
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
-        println!("&self: {:?}", &self);
-        println!("&self.input_plan: {:?}", self.input_plan);
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
@@ -285,10 +283,7 @@ impl PyExpr {
     #[pyo3(name = "getRexType")]
     pub fn rex_type(&self) -> RexType {
         match &self.expr {
-            Expr::Alias(expr, name) => {
-                println!("expr: {:?}", *expr);
-                RexType::Reference
-            }
+            Expr::Alias(expr, name) => RexType::Reference,
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,

@@ -41,10 +41,9 @@ class DaskProjectPlugin(BaseRelPlugin):
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
 
-            print(f"Key: {key} - Expr: {expr.toString()}")
-
             key = str(key)
             column_names.append(key)
+
             random_name = new_temporary_column(df)
             new_columns[random_name] = RexConverter.convert(
                 rel, expr, dc, context=context
@@ -83,7 +82,5 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-
-        print(f"After Project: {dc.df.head(10)}")
 
         return dc

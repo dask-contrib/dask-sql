@@ -14,15 +14,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# _REX_TYPE_TO_PLUGIN = {
-#     "Alias": "InputRef",
-#     "Column": "InputRef",
-#     "BinaryExpr": "RexCall",
-#     "Literal": "RexLiteral",
-#     "ScalarFunction": "RexCall",
-#     "Cast": "RexCall",
-# }
-
 _REX_TYPE_TO_PLUGIN = {
     "RexType.Reference": "InputRef",
     "RexType.Call": "RexCall",
@@ -78,8 +69,6 @@ class RexConverter(Pluggable):
         logger.debug(
             f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
         )
-
-        print(f"expr_type: {expr_type} - Expr: {rex.toString()}")
 
         df = plugin_instance.convert(rel, rex, dc, context=context)
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
