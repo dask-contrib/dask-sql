@@ -118,9 +118,6 @@ def test_timezones(c, datetime_table):
         """
     )
 
-    print(f"Expected DF: \n{datetime_table.head(10)}\n")
-    print(f"\nResult DF: \n{result_df.head(10)}")
-
     assert_eq(result_df, datetime_table)
 
 
