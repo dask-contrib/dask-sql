@@ -104,7 +104,10 @@ impl PyExpr {
                             _ => name.clone(),
                         }
                     }
-                    _ => name.clone(),
+                    _ => {
+                        println!("Encountered a non Expr::Column instance");
+                        name.clone()
+                    }
                 }
             }
             Expr::Column(column) => column.name.clone(),
@@ -221,10 +224,7 @@ impl PyExpr {
     #[pyo3(name = "getRexType")]
     pub fn rex_type(&self) -> RexType {
         match &self.expr {
-            Expr::Alias(expr, name) => {
-                println!("expr: {:?}", *expr);
-                RexType::Reference
-            }
+            Expr::Alias(expr, name) => RexType::Reference,
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,

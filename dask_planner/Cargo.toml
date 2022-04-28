@@ -12,8 +12,8 @@ rust-version = "1.59"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
 pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
-datafusion = { git="https://github.com/apache/arrow-datafusion/", rev = "6ae7d9599813b3aaf72b22a0d18f4d27bef0f730" }
-datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "6ae7d9599813b3aaf72b22a0d18f4d27bef0f730" }
+datafusion = { git="https://github.com/apache/arrow-datafusion/", rev = "ef49d2858c2aba1ea7cd5fed3b1e5feb77fc2233" }
+datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "ef49d2858c2aba1ea7cd5fed3b1e5feb77fc2233" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 sqlparser = "0.14.0"

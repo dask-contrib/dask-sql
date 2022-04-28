@@ -151,7 +151,7 @@ def test_timezones(c, datetime_table):
     "input_table",
     [
         "datetime_table",
-        # pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
+        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
     ],
 )
 def test_date_casting(c, input_table, request):
@@ -176,9 +176,6 @@ def test_date_casting(c, input_table, request):
     expected_df["utc_timezone"] = (
         expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
-
-    print(f"\nExpected DF:\n{expected_df.head(10)}\n")
-    print(f"\nResult DF:\n{expected_df.head(10)}\n")
 
     assert_eq(result_df, expected_df)
 
