@@ -126,7 +126,16 @@ impl PyExpr {
             Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
             Expr::IsNull(..) => unimplemented!("IsNull!!!"),
             Expr::Between { .. } => unimplemented!("Between!!!"),
-            Expr::Case { .. } => unimplemented!("Case!!!"),
+            Expr::Case {
+                expr,
+                when_then_expr,
+                else_expr,
+            } => {
+                println!("expr: {:?}", &expr);
+                println!("when_then_expr: {:?}", &when_then_expr);
+                println!("else_expr: {:?}", &else_expr);
+                unimplemented!("CASE!!!")
+            }
             Expr::Cast { .. } => unimplemented!("Cast!!!"),
             Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
             Expr::Sort { .. } => unimplemented!("Sort!!!"),
