@@ -111,22 +111,18 @@ impl PyExpr {
             Expr::Column(column) => column.name.clone(),
             Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
             Expr::Literal(..) => unimplemented!("Literal!!!"),
-            Expr::BinaryExpr {
-                left,
-                op,
-                right,
-            } => {
+            Expr::BinaryExpr { left, op, right } => {
                 println!("left: {:?}", &left);
                 println!("op: {:?}", &op);
                 println!("right: {:?}", &right);
                 // If the BinaryExpr does not have an Alias
                 // Ex: `df.a - Int64(1)` then use the String
-                // representation of the Expr to match what is 
+                // representation of the Expr to match what is
                 // in the DFSchemaRef instance
                 let sample_name: String = format!("{}", &self.expr);
                 println!("BinaryExpr Name: {:?}", sample_name);
                 sample_name
-            },
+            }
             Expr::Not(..) => unimplemented!("Not!!!"),
             Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
             Expr::Negative(..) => unimplemented!("Negative!!!"),
