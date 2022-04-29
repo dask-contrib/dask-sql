@@ -14,12 +14,14 @@ pub struct PyProjection {
 impl PyProjection {
     /// Projection: Gets the names of the fields that should be projected
     fn projected_expressions(&mut self, local_expr: &PyExpr) -> Vec<PyExpr> {
+        println!("Exprs: {:?}", &self.projection.expr);
+        println!("Input: {:?}", &self.projection.input);
+        println!("Schema: {:?}", &self.projection.schema);
+        println!("Alias: {:?}", &self.projection.alias);
         let mut projs: Vec<PyExpr> = Vec::new();
         match &local_expr.expr {
             Expr::Alias(expr, _name) => {
-                let ex: Expr = *expr.clone();
-                let mut py_expr: PyExpr = PyExpr::from(ex, Some(self.projection.input.clone()));
-                py_expr.input_plan = local_expr.input_plan.clone();
+                let py_expr: PyExpr = PyExpr::from(*expr.clone(), Some(self.projection.input.clone()));
                 projs.extend_from_slice(self.projected_expressions(&py_expr).as_slice());
             }
             _ => projs.push(local_expr.clone()),
@@ -34,8 +36,7 @@ impl PyProjection {
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
         for expression in self.projection.expr.clone() {
-            let mut py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
-            py_expr.input_plan = Some(self.projection.input.clone());
+            let py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
             for expr in self.projected_expressions(&py_expr) {
                 let plan: &LogicalPlan = &*self.projection.input;
                 let name: String = expr.column_name(plan.clone().into());
