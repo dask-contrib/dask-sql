@@ -112,14 +112,21 @@ impl PyExpr {
             Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
             Expr::Literal(..) => unimplemented!("Literal!!!"),
             Expr::BinaryExpr {
-                left: _,
-                op: _,
-                right: _,
+                left,
+                op,
+                right,
             } => {
-                // /// TODO: Examine this more deeply about whether name comes from the left or right
-                // self.column_name(left)
-                unimplemented!("BinaryExpr HERE!!!")
-            }
+                println!("left: {:?}", &left);
+                println!("op: {:?}", &op);
+                println!("right: {:?}", &right);
+                // If the BinaryExpr does not have an Alias
+                // Ex: `df.a - Int64(1)` then use the String
+                // representation of the Expr to match what is 
+                // in the DFSchemaRef instance
+                let sample_name: String = format!("{}", &self.expr);
+                println!("BinaryExpr Name: {:?}", sample_name);
+                sample_name
+            },
             Expr::Not(..) => unimplemented!("Not!!!"),
             Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
             Expr::Negative(..) => unimplemented!("Negative!!!"),
