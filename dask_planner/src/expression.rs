@@ -111,17 +111,12 @@ impl PyExpr {
             Expr::Column(column) => column.name.clone(),
             Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
             Expr::Literal(..) => unimplemented!("Literal!!!"),
-            Expr::BinaryExpr { left, op, right } => {
-                println!("left: {:?}", &left);
-                println!("op: {:?}", &op);
-                println!("right: {:?}", &right);
+            Expr::BinaryExpr { .. } => {
                 // If the BinaryExpr does not have an Alias
                 // Ex: `df.a - Int64(1)` then use the String
                 // representation of the Expr to match what is
                 // in the DFSchemaRef instance
-                let sample_name: String = format!("{}", &self.expr);
-                println!("BinaryExpr Name: {:?}", sample_name);
-                sample_name
+                format!("{}", &self.expr)
             }
             Expr::Not(..) => unimplemented!("Not!!!"),
             Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
@@ -129,17 +124,8 @@ impl PyExpr {
             Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
             Expr::IsNull(..) => unimplemented!("IsNull!!!"),
             Expr::Between { .. } => unimplemented!("Between!!!"),
-            Expr::Case {
-                expr,
-                when_then_expr,
-                else_expr,
-            } => {
-                println!("expr: {:?}", &expr);
-                println!("when_then_expr: {:?}", &when_then_expr);
-                println!("else_expr: {:?}", &else_expr);
-                unimplemented!("CASE!!!")
-            }
-            Expr::Cast { .. } => unimplemented!("Cast!!!"),
+            Expr::Case { .. } => format!("{}", &self.expr),
+            Expr::Cast { .. } => format!("{}", &self.expr),
             Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
             Expr::Sort { .. } => unimplemented!("Sort!!!"),
             Expr::ScalarFunction { .. } => unimplemented!("ScalarFunction!!!"),
@@ -473,9 +459,44 @@ impl PyExpr {
                 operands.push(py_ex);
                 Ok(operands)
             }
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "unknown Expr type encountered",
-            )),
+            Expr::Case {
+                expr,
+                when_then_expr,
+                else_expr,
+            } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                match expr {
+                    Some(e) => operands.push(PyExpr::from(*e.clone(), self.input_plan.clone())),
+                    None => (),
+                };
+
+                for (when, then) in when_then_expr {
+                    operands.push(PyExpr::from(*when.clone(), self.input_plan.clone()));
+                    operands.push(PyExpr::from(*then.clone(), self.input_plan.clone()));
+                }
+
+                match else_expr {
+                    Some(e) => operands.push(PyExpr::from(*e.clone(), self.input_plan.clone())),
+                    None => (),
+                }
+                Ok(operands)
+            }
+            Expr::Between {
+                expr,
+                negated: _,
+                low,
+                high,
+            } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                operands.push(PyExpr::from(*low.clone(), self.input_plan.clone()));
+                operands.push(PyExpr::from(*high.clone(), self.input_plan.clone()));
+                Ok(operands)
+            }
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
         }
     }
 
@@ -492,9 +513,21 @@ impl PyExpr {
                 expr: _,
                 data_type: _,
             } => Ok(String::from("cast")),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Catch all triggered ....",
-            )),
+            Expr::Between {
+                expr: _,
+                negated: _,
+                low: _,
+                high: _,
+            } => Ok(String::from("between")),
+            Expr::Case {
+                expr: _,
+                when_then_expr: _,
+                else_expr: _,
+            } => Ok(String::from("case")),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Catch all triggered for get_operator_name: {:?}",
+                &self.expr
+            ))),
         }
     }
 
