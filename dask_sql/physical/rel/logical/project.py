@@ -38,10 +38,6 @@ class DaskProjectPlugin(BaseRelPlugin):
         new_columns = {}
         new_mappings = {}
 
-        # Debugging only
-        for key, expr in named_projects:
-            print(f"Key: {key} - Expr: {expr.toString()}", str(key), expr)
-
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
 

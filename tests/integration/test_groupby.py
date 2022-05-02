@@ -22,7 +22,6 @@ def timeseries_df(c):
     return None
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by(c):
     return_df = c.sql(
         """

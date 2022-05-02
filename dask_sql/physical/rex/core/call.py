@@ -235,7 +235,7 @@ class CastOperation(Operation):
         # TODO: ideally we don't want to directly access the datetimes,
         # but Pandas can't truncate timezone datetimes and cuDF can't
         # truncate datetimes
-        if output_type == "DATE":
+        if output_type == "DATE" or output_type == "TIMESTAMP":
             return return_column.dt.floor("D").astype(python_type)
 
         return return_column
@@ -887,24 +887,16 @@ class RexCallPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
 
-        print(f"\n\nEntering call.py convert for expr: {expr.toString()}")
-
-        for ex in expr.getOperands():
-            print(f"convert operand expr: {ex.toString()}")
-
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(rel, o, dc, context=context)
             for o in expr.getOperands()
         ]
 
-        print(f"\nOperands post conversion: {operands}")
-
         # Now use the operator name in the mapping
         # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
         schema_name = "root"
         operator_name = expr.getOperatorName().lower()
-        print(f"Operator Name: {operator_name}")
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]

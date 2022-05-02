@@ -97,7 +97,6 @@ impl PyExpr {
                                     }
                                     _ => {
                                         println!("Encountered a non-Aggregate type");
-
                                         name.clone().to_ascii_uppercase()
                                     }
                                 }
@@ -110,7 +109,10 @@ impl PyExpr {
             }
             Expr::Column(column) => column.name.clone(),
             Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
-            Expr::Literal(..) => unimplemented!("Literal!!!"),
+            Expr::Literal(scalar_value) => {
+                println!("Scalar Value: {:?}", scalar_value);
+                unimplemented!("Literal!!!")
+            }
             Expr::BinaryExpr { .. } => {
                 // If the BinaryExpr does not have an Alias
                 // Ex: `df.a - Int64(1)` then use the String
