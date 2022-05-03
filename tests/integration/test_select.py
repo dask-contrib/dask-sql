@@ -144,7 +144,6 @@ def test_limit(c, input_table, limit, offset, request):
     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -178,7 +177,6 @@ def test_date_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [

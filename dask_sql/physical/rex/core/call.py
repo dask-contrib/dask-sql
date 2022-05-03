@@ -225,9 +225,7 @@ class CastOperation(Operation):
             return operand
 
         output_type = str(rex.getType())
-        python_type = sql_to_python_type(
-            output_type=sql_to_python_type(output_type.upper())
-        )
+        python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
         return_column = cast_column_to_type(operand, python_type)
 

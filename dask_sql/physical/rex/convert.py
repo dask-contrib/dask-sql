@@ -15,12 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 _REX_TYPE_TO_PLUGIN = {
-    "Alias": "InputRef",
-    "Column": "InputRef",
-    "BinaryExpr": "RexCall",
-    "Literal": "RexLiteral",
-    "ScalarFunction": "RexCall",
-    "Cast": "RexCall",
+    "RexType.Reference": "InputRef",
+    "RexType.Call": "RexCall",
+    "RexType.Literal": "RexLiteral",
 }
 
 
@@ -55,12 +52,12 @@ class RexConverter(Pluggable):
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
-        Convert the given rel (java instance)
+        Convert the given Expression
         into a python expression (a dask dataframe)
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        expr_type = _REX_TYPE_TO_PLUGIN[rex.getExprType()]
+        expr_type = _REX_TYPE_TO_PLUGIN[str(rex.getRexType())]
 
         try:
             plugin_instance = cls.get_plugin(expr_type)
