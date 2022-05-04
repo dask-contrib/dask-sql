@@ -1,7 +1,7 @@
 use crate::sql::types::DaskTypeMap;
 use crate::sql::types::SqlTypeName;
 
-use datafusion::error::DataFusionError;
+use datafusion::error::{DataFusionError, Result};
 use datafusion::logical_plan::{DFField, DFSchema};
 
 use std::fmt;
@@ -19,7 +19,7 @@ pub struct RelDataTypeField {
 
 // Functions that should not be presented to Python are placed here
 impl RelDataTypeField {
-    pub fn from(field: DFField, schema: DFSchema) -> Result<RelDataTypeField, DataFusionError> {
+    pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
         Ok(RelDataTypeField {
             name: field.name().clone(),
             data_type: DaskTypeMap {

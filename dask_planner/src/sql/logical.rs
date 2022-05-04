@@ -10,6 +10,7 @@ pub mod projection;
 
 pub use datafusion_expr::LogicalPlan;
 
+use datafusion::common::Result;
 use datafusion::prelude::Column;
 
 use pyo3::prelude::*;
@@ -141,17 +142,13 @@ impl PyLogicalPlan {
 
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> RelDataType {
-        let fields: &Vec<DFField> = self.original_plan.schema().fields();
-        let mut rel_fields: Vec<RelDataTypeField> = Vec::new();
-        for i in 0..fields.len() {
-            rel_fields.push(
-                RelDataTypeField::from(
-                    fields[i].clone(),
-                    self.original_plan.schema().as_ref().clone(),
-                )
-                .unwrap(),
-            );
-        }
+        let schema = self.original_plan.schema();
+        let mut rel_fields: Vec<RelDataTypeField> = schema
+            .fields()
+            .iter()
+            .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
         RelDataType::new(false, rel_fields)
     }
 }
