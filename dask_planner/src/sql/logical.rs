@@ -12,7 +12,9 @@ pub use datafusion_expr::LogicalPlan;
 
 use datafusion::common::Result;
 use datafusion::prelude::Column;
+use pyo3::ffi::Py_FatalError;
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
@@ -141,15 +143,15 @@ impl PyLogicalPlan {
     }
 
     #[pyo3(name = "getRowType")]
-    pub fn row_type(&self) -> RelDataType {
+    pub fn row_type(&self) -> PyResult<RelDataType> {
         let schema = self.original_plan.schema();
         let mut rel_fields: Vec<RelDataTypeField> = schema
             .fields()
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))
             .collect::<Result<Vec<_>>>()
-            .unwrap();
-        RelDataType::new(false, rel_fields)
+            .map_err(|e| py_type_err(e))?;
+        Ok(RelDataType::new(false, rel_fields))
     }
 }
 
