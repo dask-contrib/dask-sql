@@ -7,6 +7,7 @@ mod aggregate;
 mod filter;
 mod join;
 pub mod projection;
+mod sort;
 
 pub use datafusion_expr::LogicalPlan;
 
@@ -46,10 +47,10 @@ impl PyLogicalPlan {
 
 #[pymethods]
 impl PyLogicalPlan {
-    /// LogicalPlan::Projection as PyProjection
-    pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        Ok(proj)
+    /// LogicalPlan::Aggregate as PyAggregate
+    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
+        Ok(agg)
     }
 
     /// LogicalPlan::Filter as PyFilter
@@ -64,10 +65,16 @@ impl PyLogicalPlan {
         Ok(join)
     }
 
-    /// LogicalPlan::Aggregate as PyAggregate
-    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
-        Ok(agg)
+    /// LogicalPlan::Projection as PyProjection
+    pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
+        Ok(proj)
+    }
+
+    /// LogicalPlan::Sort as PySort
+    pub fn sort(&self) -> PyResult<sort::PySort> {
+        let srt: sort::PySort = self.current_node.clone().unwrap().into();
+        Ok(srt)
     }
 
     /// Gets the "input" for the current LogicalPlan
