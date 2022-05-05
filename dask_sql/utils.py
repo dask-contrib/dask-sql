@@ -87,21 +87,19 @@ class ParsingException(Exception):
     exception in a nicer way
     """
 
-    JAVA_MSG_REGEX = r"^.*?line (?P<from_line>\d+), column (?P<from_col>\d+)"
-    JAVA_MSG_REGEX += r"(?: to line (?P<to_line>\d+), column (?P<to_col>\d+))?"
-
     def __init__(self, sql, validation_exception_string):
         """
         Create a new exception out of the SQL query and the exception text
         raise by calcite.
         """
-        message, from_line, from_col = self._extract_message(
-            sql, validation_exception_string
-        )
-        self.from_line = from_line
-        self.from_col = from_col
+        print(f"Exception message: {validation_exception_string}")
+        # message, from_line, from_col = self._extract_message(
+        #     sql, validation_exception_string
+        # )
+        # self.from_line = from_line
+        # self.from_col = from_col
 
-        super().__init__(message)
+        super().__init__(validation_exception_string)
 
     @staticmethod
     def _line_with_marker(line, marker_from=0, marker_to=None):

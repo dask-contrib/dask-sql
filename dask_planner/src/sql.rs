@@ -10,7 +10,7 @@ pub mod types;
 use crate::sql::exceptions::ParsingException;
 
 use datafusion::arrow::datatypes::{Field, Schema};
-use datafusion::catalog::TableReference;
+use datafusion::catalog::{ResolvedTableReference, TableReference};
 use datafusion::error::DataFusionError;
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
@@ -46,12 +46,18 @@ use pyo3::prelude::*;
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLContext {
+    default_catalog_name: String,
     default_schema_name: String,
     schemas: HashMap<String, schema::DaskSchema>,
 }
 
 impl ContextProvider for DaskSQLContext {
-    fn get_table_provider(&self, name: TableReference) -> Option<Arc<dyn table::TableProvider>> {
+    fn get_table_provider(
+        &self,
+        name: TableReference,
+    ) -> Result<Arc<dyn table::TableProvider>, DataFusionError> {
+        let reference: ResolvedTableReference =
+            name.resolve(&self.default_catalog_name, &self.default_schema_name);
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
@@ -67,17 +73,22 @@ impl ContextProvider for DaskSQLContext {
                         resp = Some(Schema::new(fields));
                     }
                 }
-                Some(Arc::new(DaskTableProvider::new(Arc::new(
-                    table::DaskTableSource::new(Arc::new(resp.unwrap())),
-                ))))
+
+                // If the Table is not found return None. DataFusion will handle the error propagation
+                match resp {
+                    Some(e) => Ok(Arc::new(DaskTableProvider::new(Arc::new(
+                        table::DaskTableSource::new(Arc::new(e)),
+                    )))),
+                    None => Err(DataFusionError::Plan(format!(
+                        "Table '{}.{}.{}' not found",
+                        reference.catalog, reference.schema, reference.table
+                    ))),
+                }
             }
-            None => {
-                DataFusionError::Execution(format!(
-                    "Schema with name {} not found",
-                    &self.default_schema_name
-                ));
-                None
-            }
+            None => Err(DataFusionError::Plan(format!(
+                "Unable to located Schema: '{}.{}'",
+                reference.catalog, reference.schema
+            ))),
         }
     }
 
@@ -99,8 +110,9 @@ impl ContextProvider for DaskSQLContext {
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new(default_schema_name: String) -> Self {
+    pub fn new(default_catalog_name: String, default_schema_name: String) -> Self {
         Self {
+            default_catalog_name,
             default_schema_name,
             schemas: HashMap::new(),
         }
@@ -159,13 +171,10 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
         match planner.statement_to_plan(statement.statement) {
-            Ok(k) => {
-                println!("\nLogicalPlan: {:?}\n\n", k);
-                Ok(logical::PyLogicalPlan {
-                    original_plan: k,
-                    current_node: None,
-                })
-            }
+            Ok(k) => Ok(logical::PyLogicalPlan {
+                original_plan: k,
+                current_node: None,
+            }),
             Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
         }
     }
