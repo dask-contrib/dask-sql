@@ -88,7 +88,8 @@ impl PyProjection {
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
         for expression in self.projection.expr.clone() {
-            let py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
+            let mut py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
+            py_expr.input_plan = Some(self.projection.input.clone());
             for expr in self.projected_expressions(&py_expr) {
                 let name: String = self.column_name(expr.clone()).unwrap();
                 named.push((name, expr.clone()));

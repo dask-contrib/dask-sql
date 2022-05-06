@@ -69,6 +69,7 @@ class Context:
 
     """
 
+    DEFAULT_CATALOG_NAME = "dask_sql"
     DEFAULT_SCHEMA_NAME = "root"
 
     def __init__(self, logging_level=logging.INFO):
@@ -79,6 +80,8 @@ class Context:
         # Set the logging level for this SQL context
         logging.basicConfig(level=logging_level)
 
+        # Name of the root catalog
+        self.catalog_name = self.DEFAULT_CATALOG_NAME
         # Name of the root schema
         self.schema_name = self.DEFAULT_SCHEMA_NAME
         # All schema information
@@ -87,7 +90,7 @@ class Context:
         self.sql_server = None
 
         # Create the `DaskSQLContext` Rust context
-        self.context = DaskSQLContext(self.schema_name)
+        self.context = DaskSQLContext(self.catalog_name, self.schema_name)
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
