@@ -4,7 +4,7 @@ use crate::sql::types::RexType;
 use pyo3::prelude::*;
 use std::convert::{From, Into};
 
-use datafusion::error::DataFusionError;
+use datafusion::error::{DataFusionError, Result};
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
@@ -15,6 +15,8 @@ pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
+use datafusion::common::DFField;
+use datafusion::logical_plan::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
@@ -62,84 +64,8 @@ impl PyExpr {
     }
 
     fn _column_name(&self, plan: LogicalPlan) -> String {
-        match &self.expr {
-            Expr::Alias(expr, name) => {
-                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
-                // extract the valid ones and error on the invalid ones
-                match expr.as_ref() {
-                    Expr::Column(col) => {
-                        // First we must iterate the current node before getting its input
-                        match plan {
-                            LogicalPlan::Projection(proj) => {
-                                match proj.input.as_ref() {
-                                    LogicalPlan::Aggregate(agg) => {
-                                        let mut exprs = agg.group_expr.clone();
-                                        exprs.extend_from_slice(&agg.aggr_expr);
-                                        let col_index: usize =
-                                            proj.input.schema().index_of_column(col).unwrap();
-                                        // match &exprs[plan.get_index(col)] {
-                                        match &exprs[col_index] {
-                                            Expr::AggregateFunction { args, .. } => {
-                                                match &args[0] {
-                                                    Expr::Column(col) => {
-                                                        println!(
-                                                            "AGGREGATE COLUMN IS {}",
-                                                            col.name
-                                                        );
-                                                        col.name.clone()
-                                                    }
-                                                    _ => name.clone(),
-                                                }
-                                            }
-                                            _ => name.clone(),
-                                        }
-                                    }
-                                    _ => {
-                                        println!("Encountered a non-Aggregate type");
-
-                                        name.clone()
-                                    }
-                                }
-                            }
-                            _ => name.clone(),
-                        }
-                    }
-                    _ => {
-                        println!("Encountered a non Expr::Column instance");
-                        name.clone()
-                    }
-                }
-            }
-            Expr::Column(column) => column.name.clone(),
-            Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
-            Expr::Literal(..) => unimplemented!("Literal!!!"),
-            Expr::BinaryExpr {
-                left: _,
-                op: _,
-                right: _,
-            } => {
-                // /// TODO: Examine this more deeply about whether name comes from the left or right
-                // self.column_name(left)
-                unimplemented!("BinaryExpr HERE!!!")
-            }
-            Expr::Not(..) => unimplemented!("Not!!!"),
-            Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
-            Expr::Negative(..) => unimplemented!("Negative!!!"),
-            Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
-            Expr::IsNull(..) => unimplemented!("IsNull!!!"),
-            Expr::Between { .. } => unimplemented!("Between!!!"),
-            Expr::Case { .. } => unimplemented!("Case!!!"),
-            Expr::Cast { .. } => unimplemented!("Cast!!!"),
-            Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
-            Expr::Sort { .. } => unimplemented!("Sort!!!"),
-            Expr::ScalarFunction { .. } => unimplemented!("ScalarFunction!!!"),
-            Expr::AggregateFunction { .. } => unimplemented!("AggregateFunction!!!"),
-            Expr::WindowFunction { .. } => unimplemented!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => unimplemented!("AggregateUDF!!!"),
-            Expr::InList { .. } => unimplemented!("InList!!!"),
-            Expr::Wildcard => unimplemented!("Wildcard!!!"),
-            _ => panic!("Nothing found!!!"),
-        }
+        let field = expr_to_field(&self.expr, &plan).unwrap();
+        field.unqualified_column().name.clone()
     }
 }
 
@@ -171,7 +97,7 @@ impl PyExpr {
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
-                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                let name: Result<String> = self.expr.name(plan.schema());
                 match name {
                     Ok(fq_name) => Ok(plan
                         .schema()
@@ -539,4 +465,12 @@ impl PyExpr {
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
     }
+}
+
+/// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
+pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
+    // TODO this is not the implementation that we really want and will be improved
+    // once some changes are made in DataFusion
+    let fields = exprlist_to_fields(&[expr.clone()], &input_plan.schema())?;
+    Ok(fields[0].clone())
 }
