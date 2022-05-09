@@ -64,7 +64,8 @@ impl PyExpr {
         }
     }
 
-    fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
+    /// Determines the name of the `Expr` instance by examining the LogicalPlan
+    pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
         Ok(field.unqualified_column().name.clone())
     }
@@ -203,7 +204,7 @@ impl PyExpr {
 
     /// Python friendly shim code to get the name of a column referenced by an expression
     pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
-        self._column_name(plan.current_node())
+        self._column_name(&plan.current_node())
             .map_err(|e| py_runtime_err(e))
     }
 
