@@ -64,7 +64,7 @@ impl PyExpr {
     }
 
     fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
-        let field = expr_to_field(&self.expr, &plan).unwrap();
+        let field = expr_to_field(&self.expr, &plan)?;
         field.unqualified_column().name.clone()
     }
 }
