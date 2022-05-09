@@ -15,6 +15,7 @@ pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
+use crate::sql::exceptions::py_runtime_err;
 use datafusion::common::DFField;
 use datafusion::logical_plan::exprlist_to_fields;
 use std::sync::Arc;
@@ -174,8 +175,9 @@ impl PyExpr {
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
-    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
-        self._column_name(plan.current_node()).unwrap()
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
+        self._column_name(plan.current_node())
+            .map_err(|e| py_runtime_err(e))
     }
 
     /// Gets the operands for a BinaryExpr call
