@@ -27,7 +27,6 @@ impl PyJoin {
 
         let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
         for (mut lhs, mut rhs) in self.join.on.clone() {
-            println!("lhs: {:?} rhs: {:?}", lhs, rhs);
             lhs.relation = Some(lhs_table_name.clone());
             rhs.relation = Some(rhs_table_name.clone());
             join_conditions.push((lhs.into(), rhs.into()));

@@ -212,16 +212,10 @@ impl PyExpr {
     #[pyo3(name = "getOperands")]
     pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, op: _, right } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                let left_desc: Expr = *left.clone();
-                let py_left: PyExpr = PyExpr::from(left_desc, self.input_plan.clone());
-                operands.push(py_left);
-                let right_desc: Expr = *right.clone();
-                let py_right: PyExpr = PyExpr::from(right_desc, self.input_plan.clone());
-                operands.push(py_right);
-                Ok(operands)
-            }
+            Expr::BinaryExpr { left, op: _, right } => Ok(vec![
+                PyExpr::from(*left.clone(), self.input_plan.clone()),
+                PyExpr::from(*right.clone(), self.input_plan.clone()),
+            ]),
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
@@ -231,11 +225,7 @@ impl PyExpr {
                 Ok(operands)
             }
             Expr::Cast { expr, data_type: _ } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                let ex: Expr = *expr.clone();
-                let py_ex: PyExpr = PyExpr::from(ex, self.input_plan.clone());
-                operands.push(py_ex);
-                Ok(operands)
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
             }
             Expr::Case {
                 expr,
@@ -243,9 +233,9 @@ impl PyExpr {
                 else_expr,
             } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
-                match expr {
-                    Some(e) => operands.push(PyExpr::from(*e.clone(), self.input_plan.clone())),
-                    None => (),
+
+                if let Some(e) = expr {
+                    operands.push(PyExpr::from(*e.clone(), self.input_plan.clone()));
                 };
 
                 for (when, then) in when_then_expr {
@@ -253,10 +243,10 @@ impl PyExpr {
                     operands.push(PyExpr::from(*then.clone(), self.input_plan.clone()));
                 }
 
-                match else_expr {
-                    Some(e) => operands.push(PyExpr::from(*e.clone(), self.input_plan.clone())),
-                    None => (),
-                }
+                if let Some(e) = else_expr {
+                    operands.push(PyExpr::from(*e.clone(), self.input_plan.clone()));
+                };
+
                 Ok(operands)
             }
             Expr::Between {
@@ -264,13 +254,11 @@ impl PyExpr {
                 negated: _,
                 low,
                 high,
-            } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
-                operands.push(PyExpr::from(*low.clone(), self.input_plan.clone()));
-                operands.push(PyExpr::from(*high.clone(), self.input_plan.clone()));
-                Ok(operands)
-            }
+            } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*low.clone(), self.input_plan.clone()),
+                PyExpr::from(*high.clone(), self.input_plan.clone()),
+            ]),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr

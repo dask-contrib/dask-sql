@@ -14,10 +14,6 @@ pub struct PyProjection {
 impl PyProjection {
     /// Projection: Gets the names of the fields that should be projected
     fn projected_expressions(&mut self, local_expr: &PyExpr) -> Vec<PyExpr> {
-        println!("Exprs: {:?}", &self.projection.expr);
-        println!("Input: {:?}", &self.projection.input);
-        println!("Schema: {:?}", &self.projection.schema);
-        println!("Alias: {:?}", &self.projection.alias);
         let mut projs: Vec<PyExpr> = Vec::new();
         match &local_expr.expr {
             Expr::Alias(expr, _name) => {
