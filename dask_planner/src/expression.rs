@@ -65,7 +65,7 @@ impl PyExpr {
 
     fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
-        field.unqualified_column().name.clone()
+        Ok(field.unqualified_column().name.clone())
     }
 }
 
@@ -175,7 +175,7 @@ impl PyExpr {
 
     /// Python friendly shim code to get the name of a column referenced by an expression
     pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
-        self._column_name(plan.current_node())
+        self._column_name(plan.current_node()).unwrap()
     }
 
     /// Gets the operands for a BinaryExpr call
