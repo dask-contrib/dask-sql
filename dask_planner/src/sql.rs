@@ -86,7 +86,7 @@ impl ContextProvider for DaskSQLContext {
                 }
             }
             None => Err(DataFusionError::Plan(format!(
-                "Unable to located Schema: '{}.{}'",
+                "Unable to locate Schema: '{}.{}'",
                 reference.catalog, reference.schema
             ))),
         }
