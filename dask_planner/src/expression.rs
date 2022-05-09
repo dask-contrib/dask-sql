@@ -4,7 +4,7 @@ use crate::sql::types::RexType;
 use pyo3::prelude::*;
 use std::convert::From;
 
-use datafusion::error::DataFusionError;
+use datafusion::error::{DataFusionError, Result};
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
@@ -15,6 +15,9 @@ pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
+use crate::sql::exceptions::py_runtime_err;
+use datafusion::common::DFField;
+use datafusion::logical_plan::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
@@ -61,82 +64,9 @@ impl PyExpr {
         }
     }
 
-    fn _column_name(&self, plan: LogicalPlan) -> String {
-        match &self.expr {
-            Expr::Alias(expr, name) => {
-                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
-                // extract the valid ones and error on the invalid ones
-                match expr.as_ref() {
-                    Expr::Column(col) => {
-                        // First we must iterate the current node before getting its input
-                        match plan {
-                            LogicalPlan::Projection(proj) => {
-                                match proj.input.as_ref() {
-                                    LogicalPlan::Aggregate(agg) => {
-                                        let mut exprs = agg.group_expr.clone();
-                                        exprs.extend_from_slice(&agg.aggr_expr);
-                                        let col_index: usize =
-                                            proj.input.schema().index_of_column(col).unwrap();
-                                        // match &exprs[plan.get_index(col)] {
-                                        match &exprs[col_index] {
-                                            Expr::AggregateFunction { args, .. } => {
-                                                match &args[0] {
-                                                    Expr::Column(col) => {
-                                                        println!(
-                                                            "AGGREGATE COLUMN IS {}",
-                                                            col.name
-                                                        );
-                                                        col.name.clone().to_ascii_uppercase()
-                                                    }
-                                                    _ => name.clone().to_ascii_uppercase(),
-                                                }
-                                            }
-                                            _ => name.clone().to_ascii_uppercase(),
-                                        }
-                                    }
-                                    _ => {
-                                        println!("Encountered a non-Aggregate type");
-                                        name.clone().to_ascii_uppercase()
-                                    }
-                                }
-                            }
-                            _ => name.clone().to_ascii_uppercase(),
-                        }
-                    }
-                    _ => name.clone().to_ascii_uppercase(),
-                }
-            }
-            Expr::Column(column) => column.name.clone(),
-            Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
-            Expr::Literal(scalar_value) => {
-                println!("Scalar Value: {:?}", scalar_value);
-                unimplemented!("Literal!!!")
-            }
-            Expr::BinaryExpr { .. } => {
-                // If the BinaryExpr does not have an Alias
-                // Ex: `df.a - Int64(1)` then use the String
-                // representation of the Expr to match what is
-                // in the DFSchemaRef instance
-                format!("{}", &self.expr)
-            }
-            Expr::Not(..) => unimplemented!("Not!!!"),
-            Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
-            Expr::Negative(..) => unimplemented!("Negative!!!"),
-            Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
-            Expr::IsNull(..) => unimplemented!("IsNull!!!"),
-            Expr::Between { .. } => unimplemented!("Between!!!"),
-            Expr::Case { .. } => format!("{}", &self.expr),
-            Expr::Cast { .. } => format!("{}", &self.expr),
-            Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
-            Expr::Sort { .. } => unimplemented!("Sort!!!"),
-            Expr::ScalarFunction { .. } => unimplemented!("ScalarFunction!!!"),
-            Expr::AggregateFunction { .. } => unimplemented!("AggregateFunction!!!"),
-            Expr::WindowFunction { .. } => unimplemented!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => unimplemented!("AggregateUDF!!!"),
-            Expr::InList { .. } => unimplemented!("InList!!!"),
-            Expr::Wildcard => unimplemented!("Wildcard!!!"),
-            _ => panic!("Nothing found!!!"),
-        }
+    fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
+        let field = expr_to_field(&self.expr, &plan)?;
+        Ok(field.unqualified_column().name.clone())
     }
 
     fn _rex_type(&self, expr: Expr) -> RexType {
@@ -195,7 +125,7 @@ impl PyExpr {
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
-                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                let name: Result<String> = self.expr.name(plan.schema());
                 match name {
                     Ok(fq_name) => Ok(plan
                         .schema()
@@ -272,8 +202,9 @@ impl PyExpr {
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
-    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
         self._column_name(plan.current_node())
+            .map_err(|e| py_runtime_err(e))
     }
 
     /// Gets the operands for a BinaryExpr call
@@ -610,4 +541,12 @@ impl PyExpr {
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
     }
+}
+
+/// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
+pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
+    // TODO this is not the implementation that we really want and will be improved
+    // once some changes are made in DataFusion
+    let fields = exprlist_to_fields(&[expr.clone()], &input_plan.schema())?;
+    Ok(fields[0].clone())
 }
