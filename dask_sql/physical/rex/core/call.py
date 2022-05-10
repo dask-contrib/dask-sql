@@ -171,10 +171,8 @@ class IntDivisionOperator(Operation):
         # of this function.
         if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
-        else:  # pragma: no cover
-            result = da.trunc(result)
-            result = result.astype(np.int64)
-            return result
+        else:
+            return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):
@@ -222,9 +220,6 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):  # pragma: no cover
-            return operand
-
         output_type = str(rex.getType())
         python_type = sql_to_python_type(output_type.upper())
 
@@ -240,25 +235,6 @@ class CastOperation(Operation):
             return return_column.dt.floor("D").astype(python_type)
 
         return return_column
-
-
-class ReinterpretOperation(Operation):
-    """The cast operator"""
-
-    needs_rex = True
-
-    def __init__(self):
-        super().__init__(self.cast)
-
-    def cast(self, operand, rex=None) -> SeriesOrScalar:
-        output_type = str(rex.getType())
-        python_type = sql_to_python_type(output_type.upper())
-
-        return_column = cast_column_to_type(operand, python_type)
-        if return_column is None:
-            return operand
-        else:
-            return return_column
 
 
 class IsFalseOperation(Operation):
@@ -810,7 +786,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
-        "reinterpret": ReinterpretOperation(),
+        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
