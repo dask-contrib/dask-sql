@@ -9,7 +9,8 @@ pub mod projection;
 
 pub use datafusion_expr::LogicalPlan;
 
-use datafusion::common::Result;
+use datafusion::common::{DataFusionError, Result};
+use datafusion::logical_plan::{DFField, DFSchema, DFSchemaRef};
 use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_type_err;
@@ -97,6 +98,32 @@ impl PyLogicalPlan {
             Some(table) => Ok(table),
             None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
+            )),
+        }
+    }
+
+    #[pyo3(name = "getCurrentNodeSchemaName")]
+    pub fn get_current_node_schema_name(&self) -> PyResult<&str> {
+        match &self.current_node {
+            Some(e) => {
+                let sch: &DFSchemaRef = e.schema();
+                println!("DFSchemaRef: {:?}", sch);
+                //TODO: Where can I actually get this in the context of the running query?
+                Ok("root")
+            }
+            None => Err(py_type_err(DataFusionError::Plan(format!(
+                "Current schema not found. Defaulting to {:?}",
+                "root"
+            )))),
+        }
+    }
+
+    #[pyo3(name = "getCurrentNodeTableName")]
+    pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
+        match self.table() {
+            Ok(dask_table) => Ok(dask_table.name.clone()),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Unable to determine current node table name",
             )),
         }
     }

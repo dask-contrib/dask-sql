@@ -1,6 +1,8 @@
 use crate::sql::column;
 
-use datafusion_expr::logical_plan::Join;
+use crate::expression::PyExpr;
+use datafusion::logical_plan::Operator;
+use datafusion_expr::{col, logical_plan::Join, Expr};
 pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
@@ -13,6 +15,17 @@ pub struct PyJoin {
 
 #[pymethods]
 impl PyJoin {
+    #[pyo3(name = "getCondition")]
+    pub fn join_condition(&self) -> PyExpr {
+        let ex: Expr = Expr::BinaryExpr {
+            left: Box::new(col("user_id")),
+            op: Operator::Eq,
+            right: Box::new(col("user_id")),
+        };
+        // TODO: Is left really the correct place to get the logical plan from here??
+        PyExpr::from(ex, Some(self.join.left.clone()))
+    }
+
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
         let lhs_table_name: String = match &*self.join.left {

@@ -7,7 +7,7 @@ from dask_sql import Context
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.skip(reason="WIP DataFusion")
 def test_join(c):
     return_df = c.sql(
         """
