@@ -2,6 +2,8 @@ use crate::expression::PyExpr;
 
 use datafusion_expr::logical_plan::Sort;
 pub use datafusion_expr::{logical_plan::LogicalPlan, Expr};
+
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Sort", module = "dask_planner", subclass)]
@@ -10,6 +12,30 @@ pub struct PySort {
     sort: Sort,
 }
 
+impl PySort {
+    /// Returns if a sort expressions denotes an ascending sort
+    fn is_ascending(&self, expr: Expr) -> bool {
+        match expr {
+            Expr::Sort {
+                expr: _,
+                asc,
+                nulls_first: _,
+            } => asc,
+            _ => panic!("Provided expression is not a sort epxression"),
+        }
+    }
+    /// Returns if nulls should be placed first in a sort expression
+    fn is_nulls_first(&self, expr: Expr) -> bool {
+        match &expr {
+            Expr::Sort {
+                expr: _,
+                asc: _,
+                nulls_first,
+            } => nulls_first.clone(),
+            _ => panic!("Provided expression is not a sort epxression"),
+        }
+    }
+}
 #[pymethods]
 impl PySort {
     /// Returns a Vec of the sort expressions
@@ -17,55 +43,28 @@ impl PySort {
     pub fn sort_expressions(&self) -> PyResult<Vec<PyExpr>> {
         let mut sort_exprs: Vec<PyExpr> = Vec::new();
         for expr in &self.sort.expr {
-            println!("The expr seen is {}", expr);
             sort_exprs.push(PyExpr::from(expr.clone(), Some(self.sort.input.clone())));
         }
         Ok(sort_exprs)
     }
-    #[pyo3(name = "getColumnName")]
-    pub fn get_column(&self, expr: PyExpr) -> String {
-        match &expr.expr {
-            Expr::Sort {
-                expr,
-                asc,
-                nulls_first,
-            } => {
-                println!("expr {}", expr);
-                println!("asc {}", asc);
-                println!("nulls_first {}", nulls_first);
-                match expr.as_ref() {
-                    Expr::Column(col) => {
-                        println!("Is a column {}", col);
-                        println!("col_name {}", col.name);
-                        col.name.clone()
-                    }
-                    _ => panic!("Sort Expression expr not of column type!"),
-                }
-            }
-            _ => panic!("Provided expression is not a sort expression"),
+
+    #[pyo3(name = "getAscending")]
+    pub fn get_ascending(&self) -> PyResult<Vec<bool>> {
+        let mut is_ascending: Vec<bool> = Vec::new();
+        for sortexpr in &self.sort.expr {
+            is_ascending.push(self.is_ascending(sortexpr.clone()))
         }
+        Ok(is_ascending)
     }
-    #[pyo3(name = "isAscending")]
-    pub fn is_ascending(&self, expr: PyExpr) -> bool {
-        match &expr.expr {
-            Expr::Sort {
-                expr: _,
-                asc,
-                nulls_first: _,
-            } => asc.clone(),
-            _ => panic!("Provided expression is not a sort expression"),
-        }
-    }
-    #[pyo3(name = "isNullsFirst")]
-    pub fn is_nulls_first(&self, expr: PyExpr) -> bool {
-        match &expr.expr {
-            Expr::Sort {
-                expr: _,
-                asc: _,
-                nulls_first,
-            } => nulls_first.clone(),
-            _ => panic!("Provided expression is not a sort expression"),
-        }
+    #[pyo3(name = "getNullsFirst")]
+    pub fn get_nulls_first(&self) -> PyResult<Vec<bool>> {
+        let nulls_first: Vec<bool> = self
+            .sort
+            .expr
+            .iter()
+            .map(|sortexpr| self.is_nulls_first(sortexpr.clone()))
+            .collect::<Vec<bool>>();
+        Ok(nulls_first)
     }
 }
 

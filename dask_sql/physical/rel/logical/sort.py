@@ -21,9 +21,9 @@ class DaskSortPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
         sort_expressions = rel.sort().getCollation()
-        sort_columns = [rel.sort().getColumnName(expr) for expr in sort_expressions]
-        sort_ascending = [rel.sort().isAscending(expr) for expr in sort_expressions]
-        sort_null_first = [rel.sort().isNullsFirst(expr) for expr in sort_expressions]
+        sort_columns = [expr.column_name(rel) for expr in sort_expressions]
+        sort_ascending = rel.sort().getAscending()
+        sort_null_first = rel.sort().getNullsFirst()
         # TODO: Commented out to pass flake8, will be fixed in sort PR
         # sort_collation = rel.getCollation().getFieldCollations()
         # sort_columns = [

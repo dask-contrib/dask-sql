@@ -134,7 +134,7 @@ impl PyExpr {
             Expr::Case { .. } => panic!("Case!!!"),
             Expr::Cast { .. } => "Cast",
             Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => panic!("Sort!!!"),
+            Expr::Sort { .. } => "Sort",
             Expr::ScalarFunction { .. } => "ScalarFunction",
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
