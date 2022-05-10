@@ -288,21 +288,17 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         logger.debug("...not converting.")
         return None
 
-    current_float = pd.api.types.is_float_dtype(current_type)
-    expected_integer = pd.api.types.is_integer_dtype(expected_type)
-    current_timedelta_type = pd.api.types.is_timedelta64_dtype(current_type)
-    if current_float and expected_integer:
-        logger.debug("...truncating...")
-        # Currently "trunc" can not be applied to NA (the pandas missing value type),
-        # because NA is a different type. It works with np.NaN though.
-        # For our use case, that does not matter, as the conversion to integer later
-        # will convert both NA and np.NaN to NA.
-        col = da.trunc(col.fillna(value=np.NaN))
-
-    if current_timedelta_type and expected_integer:
-        res = col.astype(np.int64)
-    else:
-        res = col.astype(expected_type)
+    if pd.api.types.is_integer_dtype(expected_type):
+        if pd.api.types.is_float_dtype(current_type):
+            logger.debug("...truncating...")
+            # Currently "trunc" can not be applied to NA (the pandas missing value type),
+            # because NA is a different type. It works with np.NaN though.
+            # For our use case, that does not matter, as the conversion to integer later
+            # will convert both NA and np.NaN to NA.
+            col = da.trunc(col.fillna(value=np.NaN))
+        elif pd.api.types.is_timedelta64_dtype(current_type):
+            logger.debug(f"Explicitly casting from {current_type} to np.int64")
+            return col.astype(np.int64)
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    return res
+    return col.astype(expected_type)
