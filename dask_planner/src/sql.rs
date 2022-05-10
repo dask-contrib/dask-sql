@@ -86,7 +86,7 @@ impl ContextProvider for DaskSQLContext {
                 }
             }
             None => Err(DataFusionError::Plan(format!(
-                "Unable to located Schema: '{}.{}'",
+                "Unable to locate Schema: '{}.{}'",
                 reference.catalog, reference.schema
             ))),
         }
@@ -170,15 +170,12 @@ impl DaskSQLContext {
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
-        match planner.statement_to_plan(statement.statement) {
-            Ok(k) => {
-                println!("LogicalPlan: {:?}", k);
-                Ok(logical::PyLogicalPlan {
-                    original_plan: k,
-                    current_node: None,
-                })
-            }
-            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
-        }
+        planner
+            .statement_to_plan(statement.statement)
+            .map(|k| logical::PyLogicalPlan {
+                original_plan: k,
+                current_node: None,
+            })
+            .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
     }
 }
