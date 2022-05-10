@@ -102,6 +102,7 @@ class Context:
         RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.ExplainPlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
@@ -479,6 +480,8 @@ class Context:
 
             dc = RelConverter.convert(rel, context=self)
 
+            if rel.get_current_node_type() == "Explain":
+                return dc
             if dc is None:
                 return
 
