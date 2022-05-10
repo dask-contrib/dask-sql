@@ -37,6 +37,6 @@ dependencies:
 - uvicorn>=0.11.3
 - maturin>=0.12.8
 - setuptools-rust>=1.1.2
-- rust>=1.59.0
+- rust>=1.60.0
 - pip:
   - fugue[sql]>=0.5.3

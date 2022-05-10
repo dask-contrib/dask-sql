@@ -63,7 +63,7 @@ class DaskProjectPlugin(BaseRelPlugin):
             else:
                 random_name = new_temporary_column(df)
                 new_columns[random_name] = RexConverter.convert(
-                    expr, dc, context=context
+                    rel, expr, dc, context=context
                 )
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 new_mappings[key] = random_name

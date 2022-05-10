@@ -4,10 +4,10 @@ use crate::sql::types::RexType;
 use pyo3::prelude::*;
 use std::convert::{From, Into};
 
-use datafusion::error::DataFusionError;
+use datafusion::error::{DataFusionError, Result};
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion_expr::{col, lit, BuiltinScalarFunction, Expr};
+use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
@@ -15,6 +15,9 @@ pub use datafusion_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
+use crate::sql::exceptions::py_runtime_err;
+use datafusion::common::DFField;
+use datafusion::logical_plan::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
@@ -28,15 +31,6 @@ pub struct PyExpr {
 impl From<PyExpr> for Expr {
     fn from(expr: PyExpr) -> Expr {
         expr.expr
-    }
-}
-
-impl From<Expr> for PyExpr {
-    fn from(expr: Expr) -> PyExpr {
-        PyExpr {
-            input_plan: None,
-            expr: expr,
-        }
     }
 }
 
@@ -70,89 +64,9 @@ impl PyExpr {
         }
     }
 
-    fn _column_name(&self, mut plan: LogicalPlan) -> String {
-        match &self.expr {
-            Expr::Alias(expr, name) => {
-                println!("Alias encountered with name: {:?}", name);
-                // let reference: Expr = *expr.as_ref();
-                // let plan: logical::PyLogicalPlan = reference.input().clone().into();
-
-                // Only certain LogicalPlan variants are valid in this nested Alias scenario so we
-                // extract the valid ones and error on the invalid ones
-                match expr.as_ref() {
-                    Expr::Column(col) => {
-                        // First we must iterate the current node before getting its input
-                        match plan {
-                            LogicalPlan::Projection(proj) => {
-                                match proj.input.as_ref() {
-                                    LogicalPlan::Aggregate(agg) => {
-                                        let mut exprs = agg.group_expr.clone();
-                                        exprs.extend_from_slice(&agg.aggr_expr);
-                                        let col_index: usize =
-                                            proj.input.schema().index_of_column(col).unwrap();
-                                        // match &exprs[plan.get_index(col)] {
-                                        match &exprs[col_index] {
-                                            Expr::AggregateFunction { args, .. } => {
-                                                match &args[0] {
-                                                    Expr::Column(col) => {
-                                                        println!(
-                                                            "AGGREGATE COLUMN IS {}",
-                                                            col.name
-                                                        );
-                                                        col.name.clone()
-                                                    }
-                                                    _ => name.clone(),
-                                                }
-                                            }
-                                            _ => name.clone(),
-                                        }
-                                    }
-                                    _ => {
-                                        println!("Encountered a non-Aggregate type");
-
-                                        name.clone()
-                                    }
-                                }
-                            }
-                            _ => name.clone(),
-                        }
-                    }
-                    _ => {
-                        println!("Encountered a non Expr::Column instance");
-                        name.clone()
-                    }
-                }
-            }
-            Expr::Column(column) => column.name.clone(),
-            Expr::ScalarVariable(..) => unimplemented!("ScalarVariable!!!"),
-            Expr::Literal(..) => unimplemented!("Literal!!!"),
-            Expr::BinaryExpr {
-                left: _,
-                op: _,
-                right: _,
-            } => {
-                // /// TODO: Examine this more deeply about whether name comes from the left or right
-                // self.column_name(left)
-                unimplemented!("BinaryExpr HERE!!!")
-            }
-            Expr::Not(..) => unimplemented!("Not!!!"),
-            Expr::IsNotNull(..) => unimplemented!("IsNotNull!!!"),
-            Expr::Negative(..) => unimplemented!("Negative!!!"),
-            Expr::GetIndexedField { .. } => unimplemented!("GetIndexedField!!!"),
-            Expr::IsNull(..) => unimplemented!("IsNull!!!"),
-            Expr::Between { .. } => unimplemented!("Between!!!"),
-            Expr::Case { .. } => unimplemented!("Case!!!"),
-            Expr::Cast { .. } => unimplemented!("Cast!!!"),
-            Expr::TryCast { .. } => unimplemented!("TryCast!!!"),
-            Expr::Sort { .. } => unimplemented!("Sort!!!"),
-            Expr::ScalarFunction { .. } => unimplemented!("ScalarFunction!!!"),
-            Expr::AggregateFunction { .. } => unimplemented!("AggregateFunction!!!"),
-            Expr::WindowFunction { .. } => unimplemented!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => unimplemented!("AggregateUDF!!!"),
-            Expr::InList { .. } => unimplemented!("InList!!!"),
-            Expr::Wildcard => unimplemented!("Wildcard!!!"),
-            _ => panic!("Nothing found!!!"),
-        }
+    fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
+        let field = expr_to_field(&self.expr, &plan)?;
+        Ok(field.unqualified_column().name.clone())
     }
 }
 
@@ -160,7 +74,7 @@ impl PyExpr {
 impl PyExpr {
     #[staticmethod]
     pub fn literal(value: PyScalarValue) -> PyExpr {
-        lit(value.scalar_value).into()
+        PyExpr::from(lit(value.scalar_value), None)
     }
 
     /// If this Expression instances references an existing
@@ -173,13 +87,18 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "toString")]
+    pub fn to_string(&self) -> PyResult<String> {
+        Ok(format!("{}", &self.expr))
+    }
+
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
         let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
         match input {
             Some(plan) => {
-                let name: Result<String, DataFusionError> = self.expr.name(plan.schema());
+                let name: Result<String> = self.expr.name(plan.schema());
                 match name {
                     Ok(fq_name) => Ok(plan
                         .schema()
@@ -230,7 +149,7 @@ impl PyExpr {
     #[pyo3(name = "getRexType")]
     pub fn rex_type(&self) -> RexType {
         match &self.expr {
-            Expr::Alias(..) => RexType::Reference,
+            Expr::Alias(expr, name) => RexType::Reference,
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,
@@ -256,8 +175,9 @@ impl PyExpr {
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
-    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> String {
+    pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
         self._column_name(plan.current_node())
+            .map_err(|e| py_runtime_err(e))
     }
 
     /// Gets the operands for a BinaryExpr call
@@ -267,22 +187,26 @@ impl PyExpr {
             Expr::BinaryExpr { left, op: _, right } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let left_desc: Expr = *left.clone();
-                operands.push(left_desc.into());
+                let py_left: PyExpr = PyExpr::from(left_desc, self.input_plan.clone());
+                operands.push(py_left);
                 let right_desc: Expr = *right.clone();
-                operands.push(right_desc.into());
+                let py_right: PyExpr = PyExpr::from(right_desc, self.input_plan.clone());
+                operands.push(py_right);
                 Ok(operands)
             }
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
-                    operands.push(arg.clone().into());
+                    let py_arg: PyExpr = PyExpr::from(arg.clone(), self.input_plan.clone());
+                    operands.push(py_arg);
                 }
                 Ok(operands)
             }
             Expr::Cast { expr, data_type: _ } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 let ex: Expr = *expr.clone();
-                operands.push(ex.into());
+                let py_ex: PyExpr = PyExpr::from(ex, self.input_plan.clone());
+                operands.push(py_ex);
                 Ok(operands)
             }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
@@ -543,4 +467,12 @@ impl PyExpr {
             _ => panic!("getValue<T>() - Non literal value encountered"),
         }
     }
+}
+
+/// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
+pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
+    // TODO this is not the implementation that we really want and will be improved
+    // once some changes are made in DataFusion
+    let fields = exprlist_to_fields(&[expr.clone()], &input_plan.schema())?;
+    Ok(fields[0].clone())
 }

@@ -19,4 +19,4 @@ dependencies:
   - tabulate
   - nest-asyncio
   - setuptools-rust>=1.2.0
-  - rust>=1.59.0
+  - rust>=1.60.0

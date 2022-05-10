@@ -4,7 +4,6 @@ pub mod rel_data_type;
 pub mod rel_data_type_field;
 
 use pyo3::prelude::*;
-use pyo3::types::PyAny;
 use pyo3::types::PyDict;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

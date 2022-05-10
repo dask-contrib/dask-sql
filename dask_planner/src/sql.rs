@@ -158,7 +158,6 @@ impl DaskSQLContext {
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
         let planner = SqlToRel::new(self);
-
         match planner.statement_to_plan(statement.statement) {
             Ok(k) => {
                 println!("\nLogicalPlan: {:?}\n\n", k);
