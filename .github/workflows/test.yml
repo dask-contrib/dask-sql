@@ -173,9 +173,6 @@ jobs:
         run: |
           docker-compose -f .github/docker-compose.yaml up -d
 
-          # Wait for installation
-          sleep 10
-
           docker logs dask-scheduler
           docker logs dask-worker
       - name: Test with pytest while running an independent dask cluster
