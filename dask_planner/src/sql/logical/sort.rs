@@ -46,8 +46,7 @@ impl PySort {
 
     #[pyo3(name = "getAscending")]
     pub fn get_ascending(&self) -> PyResult<Vec<bool>> {
-        self
-            .sort
+        self.sort
             .expr
             .iter()
             .map(|sortexpr| self.is_ascending(sortexpr))
@@ -55,8 +54,7 @@ impl PySort {
     }
     #[pyo3(name = "getNullsFirst")]
     pub fn get_nulls_first(&self) -> PyResult<Vec<bool>> {
-        self
-            .sort
+        self.sort
             .expr
             .iter()
             .map(|sortexpr| self.is_nulls_first(sortexpr))
