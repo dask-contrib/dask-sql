@@ -174,7 +174,7 @@ jobs:
           docker-compose -f .github/docker-compose.yaml up -d
 
           # Wait for installation
-          sleep 40
+          sleep 10
 
           docker logs dask-scheduler
           docker logs dask-worker
