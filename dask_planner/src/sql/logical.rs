@@ -50,33 +50,54 @@ impl PyLogicalPlan {
 
 #[pymethods]
 impl PyLogicalPlan {
-    /// LogicalPlan::Projection as PyProjection
-    pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        Ok(proj)
+    /// LogicalPlan::Aggregate as PyAggregate
+    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
+    }
+
+    /// LogicalPlan::Explain as PyExplain
+    pub fn explain(&self) -> PyResult<explain::PyExplain> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
     /// LogicalPlan::Filter as PyFilter
     pub fn filter(&self) -> PyResult<filter::PyFilter> {
-        let filter: filter::PyFilter = self.current_node.clone().unwrap().into();
-        Ok(filter)
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
-        let join: join::PyJoin = self.current_node.clone().unwrap().into();
-        Ok(join)
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
-    /// LogicalPlan::Aggregate as PyAggregate
-    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
-        Ok(agg)
-    }
-
-    pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        let expln: explain::PyExplain = self.current_node.clone().unwrap().into();
-        Ok(expln)
+    /// LogicalPlan::Projection as PyProjection
+    pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
     /// Gets the "input" for the current LogicalPlan

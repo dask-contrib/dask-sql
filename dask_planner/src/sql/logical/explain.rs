@@ -1,5 +1,5 @@
-use datafusion_expr::logical_plan::Explain;
-pub use datafusion_expr::LogicalPlan;
+use datafusion::logical_expr::logical_plan::Explain;
+pub use datafusion::logical_expr::LogicalPlan;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Explain", module = "dask_planner", subclass)]
