@@ -11,12 +11,13 @@ use crate::sql::exceptions::ParsingException;
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
+use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
+use datafusion::logical_expr::ScalarFunctionImplementation;
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
-use datafusion_expr::ScalarFunctionImplementation;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -55,7 +56,7 @@ impl ContextProvider for DaskSQLContext {
     fn get_table_provider(
         &self,
         name: TableReference,
-    ) -> Result<Arc<dyn table::TableProvider>, DataFusionError> {
+    ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
         let reference: ResolvedTableReference =
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
         match self.schemas.get(&self.default_schema_name) {
@@ -169,6 +170,7 @@ impl DaskSQLContext {
         &self,
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
+        println!("STATEMENT: {:?}", statement);
         let planner = SqlToRel::new(self);
         planner
             .statement_to_plan(statement.statement)

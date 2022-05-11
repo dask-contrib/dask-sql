@@ -1,7 +1,7 @@
 use crate::sql::types::DaskTypeMap;
 use crate::sql::types::SqlTypeName;
 
-use datafusion::error::{DataFusionError, Result};
+use datafusion::error::Result;
 use datafusion::logical_plan::{DFField, DFSchema};
 
 use std::fmt;

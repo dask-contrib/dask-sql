@@ -25,13 +25,15 @@ class DaskLimitPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        offset = rel.getOffset()
-        if offset:
-            offset = RexConverter.convert(offset, df, context=context)
+        limit = rel.limit()
 
-        end = rel.getFetch()
+        offset = limit.getOffset()
+        if offset:
+            offset = RexConverter.convert(rel, offset, df, context=context)
+
+        end = limit.getFetch()
         if end:
-            end = RexConverter.convert(end, df, context=context)
+            end = RexConverter.convert(rel, end, df, context=context)
 
             if offset:
                 end += offset

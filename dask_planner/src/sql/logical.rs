@@ -5,9 +5,10 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 mod aggregate;
 mod filter;
 mod join;
+mod limit;
 pub mod projection;
 
-pub use datafusion_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::common::Result;
 use datafusion::prelude::Column;
@@ -71,6 +72,12 @@ impl PyLogicalPlan {
         Ok(agg)
     }
 
+    /// LogicalPlan::Limit as PyLimit
+    pub fn limit(&self) -> PyResult<limit::PyLimit> {
+        let limit: limit::PyLimit = self.current_node.clone().unwrap().into();
+        Ok(limit)
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -116,6 +123,7 @@ impl PyLogicalPlan {
             LogicalPlan::TableScan(_table_scan) => "TableScan",
             LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
             LogicalPlan::Limit(_limit) => "Limit",
+            LogicalPlan::Offset(_offset) => "Offset",
             LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
             LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
             LogicalPlan::DropTable(_drop_table) => "DropTable",
@@ -127,6 +135,7 @@ impl PyLogicalPlan {
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
+            LogicalPlan::CreateView(_create_view) => "CreateView",
         })
     }
 
