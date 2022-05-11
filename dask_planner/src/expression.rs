@@ -70,9 +70,9 @@ impl PyExpr {
         Ok(field.unqualified_column().name.clone())
     }
 
-    fn _rex_type(&self, expr: Expr) -> RexType {
-        match &expr {
-            Expr::Alias(expr, name) => RexType::Reference,
+    fn _rex_type(&self, expr: &Expr) -> RexType {
+        match expr {
+            Expr::Alias(..) => RexType::Reference,
             Expr::Column(..) => RexType::Reference,
             Expr::ScalarVariable(..) => RexType::Literal,
             Expr::Literal(..) => RexType::Literal,
@@ -175,31 +175,8 @@ impl PyExpr {
 
     /// Determines the type of this Expr based on its variant
     #[pyo3(name = "getRexType")]
-    pub fn rex_type(&self) -> RexType {
-        match &self.expr {
-            Expr::Alias(..) => RexType::Reference,
-            Expr::Column(..) => RexType::Reference,
-            Expr::ScalarVariable(..) => RexType::Literal,
-            Expr::Literal(..) => RexType::Literal,
-            Expr::BinaryExpr { .. } => RexType::Call,
-            Expr::Not(..) => RexType::Call,
-            Expr::IsNotNull(..) => RexType::Call,
-            Expr::Negative(..) => RexType::Call,
-            Expr::GetIndexedField { .. } => RexType::Reference,
-            Expr::IsNull(..) => RexType::Call,
-            Expr::Between { .. } => RexType::Call,
-            Expr::Case { .. } => RexType::Call,
-            Expr::Cast { .. } => RexType::Call,
-            Expr::TryCast { .. } => RexType::Call,
-            Expr::Sort { .. } => RexType::Call,
-            Expr::ScalarFunction { .. } => RexType::Call,
-            Expr::AggregateFunction { .. } => RexType::Call,
-            Expr::WindowFunction { .. } => RexType::Call,
-            Expr::AggregateUDF { .. } => RexType::Call,
-            Expr::InList { .. } => RexType::Call,
-            Expr::Wildcard => RexType::Call,
-            _ => RexType::Other,
-        }
+    pub fn rex_type(&self) -> PyResult<RexType> {
+        Ok(self._rex_type(&self.expr))
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
@@ -275,21 +252,9 @@ impl PyExpr {
                 right: _,
             } => Ok(format!("{}", op)),
             Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast {
-                expr: _,
-                data_type: _,
-            } => Ok(String::from("cast")),
-            Expr::Between {
-                expr: _,
-                negated: _,
-                low: _,
-                high: _,
-            } => Ok(String::from("between")),
-            Expr::Case {
-                expr: _,
-                when_then_expr: _,
-                else_expr: _,
-            } => Ok(String::from("case")),
+            Expr::Cast { .. } => Ok(String::from("cast")),
+            Expr::Between { .. } => Ok(String::from("between")),
+            Expr::Case { .. } => Ok(String::from("case")),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
