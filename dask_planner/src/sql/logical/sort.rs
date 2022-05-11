@@ -46,21 +46,21 @@ impl PySort {
 
     #[pyo3(name = "getAscending")]
     pub fn get_ascending(&self) -> PyResult<Vec<bool>> {
-        Ok(self
+        self
             .sort
             .expr
             .iter()
             .map(|sortexpr| self.is_ascending(sortexpr))
-            .collect::<Result<Vec<_>, _>>()?)
+            .collect::<Result<Vec<_>, _>>()
     }
     #[pyo3(name = "getNullsFirst")]
     pub fn get_nulls_first(&self) -> PyResult<Vec<bool>> {
-        Ok(self
+        self
             .sort
             .expr
             .iter()
             .map(|sortexpr| self.is_nulls_first(sortexpr))
-            .collect::<Result<Vec<_>, _>>()?)
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
