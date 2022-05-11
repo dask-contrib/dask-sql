@@ -6,7 +6,6 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table_1,input_df",
     [
@@ -67,7 +66,6 @@ def test_sort(c, input_table_1, input_df, request):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table_1",
     ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],
@@ -90,7 +88,6 @@ def test_sort_by_alias(c, input_table_1, request):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan(gpu):
     c = Context()
@@ -181,7 +178,6 @@ def test_sort_with_nan(gpu):
     )
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan_more_columns(gpu):
     c = Context()
@@ -240,7 +236,6 @@ def test_sort_with_nan_more_columns(gpu):
     )
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_with_nan_many_partitions(gpu):
     c = Context()
@@ -281,7 +276,6 @@ def test_sort_with_nan_many_partitions(gpu):
     )
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_strings(c, gpu):
     string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
@@ -301,7 +295,6 @@ def test_sort_strings(c, gpu):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_sort_not_allowed(c, gpu):
     table_name = "gpu_user_table_1" if gpu else "user_table_1"
