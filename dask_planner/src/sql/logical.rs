@@ -9,7 +9,7 @@ mod filter;
 mod join;
 pub mod projection;
 
-pub use datafusion_expr::LogicalPlan;
+pub use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::common::Result;
 use datafusion::prelude::Column;

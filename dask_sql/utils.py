@@ -1,6 +1,5 @@
 import importlib
 import logging
-import re
 from collections import defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict
@@ -87,91 +86,12 @@ class ParsingException(Exception):
     exception in a nicer way
     """
 
-    JAVA_MSG_REGEX = r"^.*?line (?P<from_line>\d+), column (?P<from_col>\d+)"
-    JAVA_MSG_REGEX += r"(?: to line (?P<to_line>\d+), column (?P<to_col>\d+))?"
-
     def __init__(self, sql, validation_exception_string):
         """
         Create a new exception out of the SQL query and the exception text
         raise by calcite.
         """
-        message, from_line, from_col = self._extract_message(
-            sql, validation_exception_string
-        )
-        self.from_line = from_line
-        self.from_col = from_col
-
-        super().__init__(message)
-
-    @staticmethod
-    def _line_with_marker(line, marker_from=0, marker_to=None):
-        """
-        Add ^ markers under the line specified by the parameters.
-        """
-        if not marker_to:
-            marker_to = len(line)
-
-        return [line] + [" " * marker_from + "^" * (marker_to - marker_from + 1)]
-
-    def _extract_message(self, sql, validation_exception_string):
-        """
-        Produce a human-readable error message
-        out of the Java error message by extracting the column
-        and line statements and marking the SQL code with ^ below.
-
-        Typical error message look like:
-            org.apache.calcite.runtime.CalciteContextException: From line 3, column 12 to line 3, column 16: Column 'test' not found in any table
-            Lexical error at line 4, column 15.  Encountered: "\n" (10), after : "`Te"
-        """
-        message = validation_exception_string.strip()
-
-        match = re.match(self.JAVA_MSG_REGEX, message)
-        if not match:
-            # Don't understand this message - just return it
-            return message, 1, 1
-
-        match = match.groupdict()
-
-        from_line = int(match["from_line"]) - 1
-        from_col = int(match["from_col"]) - 1
-        to_line = int(match["to_line"]) - 1 if match["to_line"] else None
-        to_col = int(match["to_col"]) - 1 if match["to_col"] else None
-
-        # Add line markings below the sql code
-        sql = sql.splitlines()
-
-        if from_line == to_line:
-            sql = (
-                sql[:from_line]
-                + self._line_with_marker(sql[from_line], from_col, to_col)
-                + sql[from_line + 1 :]
-            )
-        elif to_line is None:
-            sql = (
-                sql[:from_line]
-                + self._line_with_marker(sql[from_line], from_col, from_col)
-                + sql[from_line + 1 :]
-            )
-        else:
-            sql = (
-                sql[:from_line]
-                + self._line_with_marker(sql[from_line], from_col)
-                + sum(
-                    [
-                        self._line_with_marker(sql[line])
-                        for line in range(from_line + 1, to_line)
-                    ],
-                    [],
-                )
-                + self._line_with_marker(sql[to_line], 0, to_col)
-                + sql[to_line + 1 :]
-            )
-
-        message = f"Can not parse the given SQL: {message}\n\n"
-        message += "The problem is probably somewhere here:\n"
-        message += "\n\t" + "\n\t".join(sql)
-
-        return message, from_line, from_col
+        super().__init__(validation_exception_string.strip())
 
 
 class LoggableDataFrame:
