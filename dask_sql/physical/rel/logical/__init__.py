@@ -1,5 +1,6 @@
 from .aggregate import DaskAggregatePlugin
 from .cross_join import DaskCrossJoinPlugin
+from .explain import ExplainPlugin
 from .filter import DaskFilterPlugin
 from .join import DaskJoinPlugin
 from .limit import DaskLimitPlugin
@@ -24,4 +25,5 @@ __all__ = [
     DaskValuesPlugin,
     DaskWindowPlugin,
     SamplePlugin,
+    ExplainPlugin,
 ]

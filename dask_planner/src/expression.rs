@@ -7,11 +7,11 @@ use std::convert::From;
 use datafusion::error::{DataFusionError, Result};
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
+use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
-pub use datafusion_expr::LogicalPlan;
+pub use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
@@ -499,8 +499,15 @@ impl PyExpr {
 
 /// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
 pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
-    // TODO this is not the implementation that we really want and will be improved
-    // once some changes are made in DataFusion
-    let fields = exprlist_to_fields(&[expr.clone()], &input_plan.schema())?;
-    Ok(fields[0].clone())
+    match expr {
+        Expr::Sort { expr, .. } => {
+            // DataFusion does not support create_name for sort expressions (since they never
+            // appear in projections) so we just delegate to the contained expression instead
+            expr_to_field(expr, input_plan)
+        }
+        _ => {
+            let fields = exprlist_to_fields(&[expr.clone()], &input_plan)?;
+            Ok(fields[0].clone())
+        }
+    }
 }
