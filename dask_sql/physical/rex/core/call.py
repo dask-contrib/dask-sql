@@ -191,7 +191,6 @@ class CaseOperation(Operation):
         where = operands[0]
         then = operands[1]
 
-        print(f"OPERANDS: {operands}")
         if len(operands) > 3:
             other = self.case(*operands[2:])
         elif len(operands) == 2:
