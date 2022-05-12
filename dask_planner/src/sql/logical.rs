@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 use datafusion::logical_plan::DFField;
 
 mod aggregate;
+mod explain;
 mod filter;
 mod join;
 pub mod projection;
@@ -52,6 +53,16 @@ impl PyLogicalPlan {
 impl PyLogicalPlan {
     /// LogicalPlan::Aggregate as PyAggregate
     pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
+    }
+
+    /// LogicalPlan::Explain as PyExplain
+    pub fn explain(&self) -> PyResult<explain::PyExplain> {
         self.current_node
             .as_ref()
             .map(|plan| plan.clone().into())
