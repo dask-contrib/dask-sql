@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod cross_join;
 mod filter;
 mod join;
 pub mod projection;
@@ -63,6 +64,12 @@ impl PyLogicalPlan {
     pub fn join(&self) -> PyResult<join::PyJoin> {
         let join: join::PyJoin = self.current_node.clone().unwrap().into();
         Ok(join)
+    }
+
+    /// LogicalPlan::CrossJoin as PyCrossJoin
+    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
+        let cross_join: cross_join::PyCrossJoin = self.current_node.clone().unwrap().into();
+        Ok(cross_join)
     }
 
     /// LogicalPlan::Aggregate as PyAggregate
