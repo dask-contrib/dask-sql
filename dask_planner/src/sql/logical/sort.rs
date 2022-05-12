@@ -1,7 +1,6 @@
 use crate::expression::PyExpr;
 
-pub use datafusion::logical_expr::LogicalPlan;
-use datafusion::logical_expr::{logical_plan::Sort, Expr};
+use datafusion::logical_expr::{logical_plan::Sort, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 #[pyclass(name = "Sort", module = "dask_planner", subclass)]
