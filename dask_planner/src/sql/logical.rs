@@ -6,6 +6,7 @@ mod aggregate;
 mod filter;
 mod join;
 mod limit;
+mod offset;
 pub mod projection;
 
 use datafusion::logical_expr::LogicalPlan;
@@ -76,6 +77,12 @@ impl PyLogicalPlan {
     pub fn limit(&self) -> PyResult<limit::PyLimit> {
         let limit: limit::PyLimit = self.current_node.clone().unwrap().into();
         Ok(limit)
+    }
+
+    /// LogicalPlan::Offset as PyOffset
+    pub fn offset(&self) -> PyResult<offset::PyOffset> {
+        let offset: offset::PyOffset = self.current_node.clone().unwrap().into();
+        Ok(offset)
     }
 
     /// Gets the "input" for the current LogicalPlan

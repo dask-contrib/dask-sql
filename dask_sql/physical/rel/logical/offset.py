@@ -25,13 +25,13 @@ class DaskOffsetPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        limit = rel.limit()
+        offset_node = rel.offset()
 
-        offset = limit.getOffset()
+        offset = offset_node.getOffset()
         if offset:
             offset = RexConverter.convert(rel, offset, df, context=context)
 
-        end = limit.getFetch()
+        end = offset_node.getFetch()
         if end:
             end = RexConverter.convert(rel, end, df, context=context)
 
