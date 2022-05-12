@@ -302,3 +302,53 @@ def test_sort_not_allowed(c, gpu):
     # Wrong column
     with pytest.raises(Exception):
         c.sql(f"SELECT * FROM {table_name} ORDER BY 42")
+
+
+@pytest.mark.xfail(Reason="Projection step before sort currently failing")
+@pytest.mark.parametrize(
+    "input_table_1",
+    ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],
+)
+def test_sort_by_old_alias(c, input_table_1, request):
+    user_table_1 = request.getfixturevalue(input_table_1)
+
+    df_result = c.sql(
+        f"""
+    SELECT
+        b AS my_column
+    FROM {input_table_1}
+    ORDER BY b, user_id DESC
+    """
+    ).rename(columns={"my_column": "b"})
+    df_expected = user_table_1.sort_values(["b", "user_id"], ascending=[True, False])[
+        ["b"]
+    ]
+
+    assert_eq(df_result, df_expected, check_index=False)
+
+    df_result = c.sql(
+        f"""
+    SELECT
+        b*-1 AS my_column
+    FROM {input_table_1}
+    ORDER BY b, user_id DESC
+    """
+    ).rename(columns={"my_column": "b"})
+    df_expected = user_table_1.sort_values(["b", "user_id"], ascending=[True, False])[
+        ["b"]
+    ]
+    df_expected["b"] *= -1
+    assert_eq(df_result, df_expected, check_index=False)
+
+    df_result = c.sql(
+        f"""
+    SELECT
+        b*-1 AS my_column
+    FROM {input_table_1}
+    ORDER BY my_column, user_id DESC
+    """
+    ).rename(columns={"my_column": "b"})
+    df_expected["b"] *= -1
+    df_expected = user_table_1.sort_values(["b", "user_id"], ascending=[True, False])[
+        ["b"]
+    ]
