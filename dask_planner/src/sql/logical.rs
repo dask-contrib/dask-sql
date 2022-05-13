@@ -48,56 +48,40 @@ impl PyLogicalPlan {
     }
 }
 
+/// Convert a LogicalPlan to a Python equivalent type
+fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyResult<T> {
+    current_node
+        .map(|plan| plan.clone().into())
+        .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+            "current_node was None",
+        ))
+}
+
 #[pymethods]
 impl PyLogicalPlan {
     /// LogicalPlan::Aggregate as PyAggregate
     pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan::<aggregate::PyAggregate>(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan::<explain::PyExplain>(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Filter as PyFilter
     pub fn filter(&self) -> PyResult<filter::PyFilter> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan::<filter::PyFilter>(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan::<join::PyJoin>(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan::<projection::PyProjection>(self.current_node.as_ref())
     }
 
     /// Gets the "input" for the current LogicalPlan
