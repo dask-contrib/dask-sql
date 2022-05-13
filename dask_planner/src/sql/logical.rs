@@ -1,7 +1,6 @@
 use crate::sql::table;
 use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
-use datafusion::logical_plan::DFField;
 
 mod aggregate;
 mod explain;
@@ -14,7 +13,6 @@ pub use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::common::Result;
 use datafusion::prelude::Column;
-use pyo3::ffi::Py_FatalError;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

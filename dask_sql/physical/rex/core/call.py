@@ -193,6 +193,9 @@ class CaseOperation(Operation):
 
         if len(operands) > 3:
             other = self.case(*operands[2:])
+        elif len(operands) == 2:
+            # CASE/WHEN statement without an ELSE
+            other = None
         else:
             other = operands[2]
 
@@ -765,6 +768,18 @@ class DatePartOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class BetweenOperation(Operation):
+    """
+    Function for finding rows between two scalar values
+    """
+
+    def __init__(self):
+        super().__init__(self.between)
+
+    def between(self, series: dd.Series, low, high):
+        return series.between(low, high, inclusive="both")
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -785,6 +800,7 @@ class RexCallPlugin(BaseRexPlugin):
 
     OPERATION_MAPPING = {
         # "binary" functions
+        "between": BetweenOperation(),
         "and": ReduceOperation(operation=operator.and_),
         "or": ReduceOperation(operation=operator.or_),
         ">": ReduceOperation(operation=operator.gt),
@@ -873,20 +889,17 @@ class RexCallPlugin(BaseRexPlugin):
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
-        logger.debug(f"Expression Operands: {expr.getOperands()}")
+
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(rel, o, dc, context=context)
             for o in expr.getOperands()
         ]
 
-        logger.debug(f"Operands: {operands}")
-
         # Now use the operator name in the mapping
         # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
         schema_name = "root"
         operator_name = expr.getOperatorName().lower()
-        logger.debug(f"Operator Name: {operator_name}")
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]

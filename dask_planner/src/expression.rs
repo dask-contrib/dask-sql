@@ -2,7 +2,7 @@ use crate::sql::logical;
 use crate::sql::types::RexType;
 
 use pyo3::prelude::*;
-use std::convert::{From, Into};
+use std::convert::From;
 
 use datafusion::error::{DataFusionError, Result};
 
@@ -64,9 +64,37 @@ impl PyExpr {
         }
     }
 
-    fn _column_name(&self, plan: LogicalPlan) -> Result<String> {
+    /// Determines the name of the `Expr` instance by examining the LogicalPlan
+    pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
         Ok(field.unqualified_column().name.clone())
+    }
+
+    fn _rex_type(&self, expr: &Expr) -> RexType {
+        match expr {
+            Expr::Alias(..) => RexType::Reference,
+            Expr::Column(..) => RexType::Reference,
+            Expr::ScalarVariable(..) => RexType::Literal,
+            Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. } => RexType::Call,
+            Expr::Not(..) => RexType::Call,
+            Expr::IsNotNull(..) => RexType::Call,
+            Expr::Negative(..) => RexType::Call,
+            Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::IsNull(..) => RexType::Call,
+            Expr::Between { .. } => RexType::Call,
+            Expr::Case { .. } => RexType::Call,
+            Expr::Cast { .. } => RexType::Call,
+            Expr::TryCast { .. } => RexType::Call,
+            Expr::Sort { .. } => RexType::Call,
+            Expr::ScalarFunction { .. } => RexType::Call,
+            Expr::AggregateFunction { .. } => RexType::Call,
+            Expr::WindowFunction { .. } => RexType::Call,
+            Expr::AggregateUDF { .. } => RexType::Call,
+            Expr::InList { .. } => RexType::Call,
+            Expr::Wildcard => RexType::Call,
+            _ => RexType::Other,
+        }
     }
 }
 
@@ -147,36 +175,13 @@ impl PyExpr {
 
     /// Determines the type of this Expr based on its variant
     #[pyo3(name = "getRexType")]
-    pub fn rex_type(&self) -> RexType {
-        match &self.expr {
-            Expr::Alias(expr, name) => RexType::Reference,
-            Expr::Column(..) => RexType::Reference,
-            Expr::ScalarVariable(..) => RexType::Literal,
-            Expr::Literal(..) => RexType::Literal,
-            Expr::BinaryExpr { .. } => RexType::Call,
-            Expr::Not(..) => RexType::Call,
-            Expr::IsNotNull(..) => RexType::Call,
-            Expr::Negative(..) => RexType::Call,
-            Expr::GetIndexedField { .. } => RexType::Reference,
-            Expr::IsNull(..) => RexType::Call,
-            Expr::Between { .. } => RexType::Call,
-            Expr::Case { .. } => RexType::Call,
-            Expr::Cast { .. } => RexType::Call,
-            Expr::TryCast { .. } => RexType::Call,
-            Expr::Sort { .. } => RexType::Call,
-            Expr::ScalarFunction { .. } => RexType::Call,
-            Expr::AggregateFunction { .. } => RexType::Call,
-            Expr::WindowFunction { .. } => RexType::Call,
-            Expr::AggregateUDF { .. } => RexType::Call,
-            Expr::InList { .. } => RexType::Call,
-            Expr::Wildcard => RexType::Call,
-            _ => RexType::Other,
-        }
+    pub fn rex_type(&self) -> PyResult<RexType> {
+        Ok(self._rex_type(&self.expr))
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
     pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
-        self._column_name(plan.current_node())
+        self._column_name(&plan.current_node())
             .map_err(|e| py_runtime_err(e))
     }
 
@@ -184,16 +189,10 @@ impl PyExpr {
     #[pyo3(name = "getOperands")]
     pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, op: _, right } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                let left_desc: Expr = *left.clone();
-                let py_left: PyExpr = PyExpr::from(left_desc, self.input_plan.clone());
-                operands.push(py_left);
-                let right_desc: Expr = *right.clone();
-                let py_right: PyExpr = PyExpr::from(right_desc, self.input_plan.clone());
-                operands.push(py_right);
-                Ok(operands)
-            }
+            Expr::BinaryExpr { left, right, .. } => Ok(vec![
+                PyExpr::from(*left.clone(), self.input_plan.clone()),
+                PyExpr::from(*right.clone(), self.input_plan.clone()),
+            ]),
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
@@ -203,15 +202,44 @@ impl PyExpr {
                 Ok(operands)
             }
             Expr::Cast { expr, data_type: _ } => {
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
+            }
+            Expr::Case {
+                expr,
+                when_then_expr,
+                else_expr,
+            } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
-                let ex: Expr = *expr.clone();
-                let py_ex: PyExpr = PyExpr::from(ex, self.input_plan.clone());
-                operands.push(py_ex);
+
+                if let Some(e) = expr {
+                    operands.push(PyExpr::from(*e.clone(), self.input_plan.clone()));
+                };
+
+                for (when, then) in when_then_expr {
+                    operands.push(PyExpr::from(*when.clone(), self.input_plan.clone()));
+                    operands.push(PyExpr::from(*then.clone(), self.input_plan.clone()));
+                }
+
+                if let Some(e) = else_expr {
+                    operands.push(PyExpr::from(*e.clone(), self.input_plan.clone()));
+                };
+
                 Ok(operands)
             }
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "unknown Expr type encountered",
-            )),
+            Expr::Between {
+                expr,
+                negated: _,
+                low,
+                high,
+            } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*low.clone(), self.input_plan.clone()),
+                PyExpr::from(*high.clone(), self.input_plan.clone()),
+            ]),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
         }
     }
 
@@ -224,13 +252,13 @@ impl PyExpr {
                 right: _,
             } => Ok(format!("{}", op)),
             Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast {
-                expr: _,
-                data_type: _,
-            } => Ok(String::from("cast")),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Catch all triggered ....",
-            )),
+            Expr::Cast { .. } => Ok("cast".to_string()),
+            Expr::Between { .. } => Ok("between".to_string()),
+            Expr::Case { .. } => Ok("case".to_string()),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Catch all triggered for get_operator_name: {:?}",
+                &self.expr
+            ))),
         }
     }
 

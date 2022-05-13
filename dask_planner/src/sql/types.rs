@@ -49,8 +49,6 @@ impl DaskTypeMap {
     #[new]
     #[args(sql_type, py_kwargs = "**")]
     fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> Self {
-        // println!("sql_type={:?} - py_kwargs={:?}", sql_type, py_kwargs);
-
         let d_type: DataType = match sql_type {
             SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
                 let (unit, tz) = match py_kwargs {
@@ -206,8 +204,7 @@ impl SqlTypeName {
             SqlTypeName::DATE => DataType::Date64,
             SqlTypeName::VARCHAR => DataType::Utf8,
             _ => {
-                println!("Type: {:?}", self);
-                todo!();
+                todo!("Type: {:?}", self);
             }
         }
     }

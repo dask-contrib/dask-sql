@@ -125,7 +125,6 @@ impl DaskTable {
                 qualified_name.push(table_scan.table_name);
             }
             _ => {
-                println!("Nothing matches");
                 qualified_name.push(self.name.clone());
             }
         }

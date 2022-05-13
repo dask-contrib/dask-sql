@@ -12,7 +12,6 @@ def test_select(c, df):
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_alias(c, df):
     result_df = c.sql("SELECT a as b, b as a FROM df")
 
@@ -49,7 +48,6 @@ def test_select_different_types(c):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_expr(c, df):
     result_df = c.sql("SELECT a + 1 AS a, b AS bla, a - 1 FROM df")
     result_df = result_df
@@ -58,7 +56,7 @@ def test_select_expr(c, df):
         {
             "a": df["a"] + 1,
             "bla": df["b"],
-            '"df"."a" - 1': df["a"] - 1,
+            "df.a - Int64(1)": df["a"] - 1,
         }
     )
     assert_eq(result_df, expected_df)
@@ -200,7 +198,6 @@ def test_timestamp_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_multi_case_when(c):
     df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
     c.create_table("df", df)
@@ -208,10 +205,26 @@ def test_multi_case_when(c):
     actual_df = c.sql(
         """
     SELECT
-        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS "C"
     FROM df
     """
     )
-    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int32)
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int64)
+
+    assert_eq(actual_df, expected_df)
+
+
+def test_case_when_no_else(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 END AS "C"
+    FROM df
+    """
+    )
+    expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
 
     assert_eq(actual_df, expected_df)

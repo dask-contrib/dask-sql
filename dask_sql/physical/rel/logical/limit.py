@@ -9,7 +9,7 @@ from dask_sql.physical.utils.map import map_on_partition_index
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class DaskLimitPlugin(BaseRelPlugin):
@@ -18,11 +18,9 @@ class DaskLimitPlugin(BaseRelPlugin):
     (LIMIT).
     """
 
-    class_name = "com.dask.sql.nodes.DaskLimit"
+    class_name = "Limit"
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
