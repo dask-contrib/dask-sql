@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-from dask.blockwise import BlockIndex
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -62,12 +61,14 @@ class DaskLimitPlugin(BaseRelPlugin):
         # TODO: compute `cumsum` here when dask#9067 is resolved
         partition_borders = df.map_partitions(lambda x: len(x))
 
-        def limit_partition_func(df, partition_index, partition_borders):
+        def limit_partition_func(df, partition_borders, partition_info=None):
             """Limit the partition to values contained within the specified window, returning an empty dataframe if there are none"""
 
             # TODO: remove the `cumsum` call here when dask#9067 is resolved
             partition_borders = partition_borders.cumsum().to_dict()
-            partition_index = partition_index[0]
+            partition_index = (
+                partition_info["number"] if partition_info is not None else 0
+            )
 
             this_partition_border_left = (
                 partition_borders[partition_index - 1] if partition_index > 0 else 0
@@ -90,6 +91,5 @@ class DaskLimitPlugin(BaseRelPlugin):
 
         return df.map_partitions(
             limit_partition_func,
-            BlockIndex(numblocks=(df.npartitions,)),
             partition_borders=partition_borders,
         )
