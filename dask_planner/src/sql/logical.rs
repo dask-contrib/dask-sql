@@ -8,6 +8,7 @@ mod explain;
 mod filter;
 mod join;
 pub mod projection;
+mod sort;
 
 pub use datafusion::logical_expr::LogicalPlan;
 
@@ -92,6 +93,16 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
+    }
+
+    /// LogicalPlan::Sort as PySort
+    pub fn sort(&self) -> PyResult<sort::PySort> {
         self.current_node
             .as_ref()
             .map(|plan| plan.clone().into())
