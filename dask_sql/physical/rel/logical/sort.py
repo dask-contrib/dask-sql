@@ -27,17 +27,6 @@ class DaskSortPlugin(BaseRelPlugin):
         ]
         sort_ascending = rel.sort().getAscending()
         sort_null_first = rel.sort().getNullsFirst()
-        # TODO: Commented out to pass flake8, will be fixed in sort PR
-        # sort_collation = rel.getCollation().getFieldCollations()
-        # sort_columns = [
-        #     cc.get_backend_by_frontend_index(int(x.getFieldIndex()))
-        #     for x in sort_collation
-        # ]
-
-        # ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
-        # FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
-        # sort_ascending = [x.getDirection() == ASCENDING for x in sort_collation]
-        # sort_null_first = [x.nullDirection == FIRST for x in sort_collation]
 
         df = df.persist()
         df = apply_sort(df, sort_columns, sort_ascending, sort_null_first)
