@@ -61,27 +61,27 @@ fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyRes
 impl PyLogicalPlan {
     /// LogicalPlan::Aggregate as PyAggregate
     pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        to_py_plan::<aggregate::PyAggregate>(self.current_node.as_ref())
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        to_py_plan::<explain::PyExplain>(self.current_node.as_ref())
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Filter as PyFilter
     pub fn filter(&self) -> PyResult<filter::PyFilter> {
-        to_py_plan::<filter::PyFilter>(self.current_node.as_ref())
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
-        to_py_plan::<join::PyJoin>(self.current_node.as_ref())
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        to_py_plan::<projection::PyProjection>(self.current_node.as_ref())
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// Gets the "input" for the current LogicalPlan
