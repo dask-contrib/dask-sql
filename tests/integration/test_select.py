@@ -118,42 +118,50 @@ from tests.utils import assert_eq
 #     assert_eq(result_df, datetime_table)
 
 
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "long_table",
+        pytest.param("gpu_long_table", marks=pytest.mark.gpu),
+    ],
+)
 # @pytest.mark.parametrize(
-#     "input_table",
-#     [
-#         "long_table",
-#         pytest.param("gpu_long_table", marks=pytest.mark.gpu),
-#     ],
+#     "limit,offset",
+#     [(100, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
 # )
-# # @pytest.mark.parametrize(
-# #     "limit,offset",
-# #     [(100, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
-# # )
+# @pytest.mark.parametrize(
+#     "limit,offset",
+#     [(100, 99), (100, 100), (101, 101)],
+# )
+@pytest.mark.parametrize(
+    "limit,offset",
+    [(100, 99)],
+)
+def test_limit(c, input_table, limit, offset, request):
+    long_table = request.getfixturevalue(input_table)
+
+    print(f"Long_Table: {long_table.shape[0]}")
+
+    if not limit:
+        query = f"SELECT * FROM long_table OFFSET {offset}"
+    else:
+        query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
+
+    print(f"Query: {query}")
+
+    assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
+
+
 # @pytest.mark.parametrize(
 #     "limit,offset",
 #     [(100, 0)],
 # )
-# def test_limit(c, input_table, limit, offset, request):
-#     long_table = request.getfixturevalue(input_table)
+# def test_limit(c, limit, offset, request):
+#     long_table = request.getfixturevalue("long_table")
 
-#     if not limit:
-#         query = f"SELECT * FROM long_table OFFSET {offset}"
-#     else:
-#         query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
+#     query = f"SELECT * FROM long_table LIMIT {limit} OFFSET {offset}"
 
 #     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
-
-
-@pytest.mark.parametrize(
-    "limit,offset",
-    [(100, 0)],
-)
-def test_limit(c, limit, offset, request):
-    long_table = request.getfixturevalue("long_table")
-
-    query = f"SELECT * FROM long_table LIMIT {limit}"
-
-    assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
 # @pytest.mark.parametrize(

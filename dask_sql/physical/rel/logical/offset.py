@@ -31,14 +31,19 @@ class DaskOffsetPlugin(BaseRelPlugin):
         if offset:
             offset = RexConverter.convert(rel, offset, df, context=context)
 
-        end = offset_node.getFetch()
-        if end:
-            end = RexConverter.convert(rel, end, df, context=context)
+        # TODO: `Fetch` is not currently supported
+        # end = offset_node.getFetch()
+        # if end:
+        #     end = RexConverter.convert(rel, end, df, context=context)
 
-            if offset:
-                end += offset
+        #     if offset:
+        #         end += offset
+        end = df.shape[0].compute()
+        print(f"End Size: {end} other: {len(df)}")
 
         df = self._apply_offset(df, offset, end)
+
+        print(f"Size of DF: {df.shape[0].compute()} after applying Offset: {offset}")
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again

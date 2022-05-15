@@ -26,7 +26,7 @@ class DaskLimitPlugin(BaseRelPlugin):
 
         # If an offset was present it would have already been processed at this point.
         # Therefore it is always safe to start at 0 when applying the limit
-        df = df.iloc[:limit]
+        df = df.head(limit, npartitions=-1, compute=False)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again
