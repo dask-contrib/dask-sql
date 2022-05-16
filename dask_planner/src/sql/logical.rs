@@ -149,6 +149,7 @@ impl PyLogicalPlan {
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
+            LogicalPlan::CreateView(_) => "CreateView",
         })
     }
 
@@ -165,7 +166,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
         let schema = self.original_plan.schema();
-        let mut rel_fields: Vec<RelDataTypeField> = schema
+        let rel_fields: Vec<RelDataTypeField> = schema
             .fields()
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))

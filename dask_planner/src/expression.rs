@@ -4,7 +4,7 @@ use crate::sql::types::RexType;
 use pyo3::prelude::*;
 use std::convert::From;
 
-use datafusion::error::{DataFusionError, Result};
+use datafusion::error::Result;
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
