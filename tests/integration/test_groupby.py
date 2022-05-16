@@ -22,7 +22,6 @@ def timeseries_df(c):
     return None
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by(c):
     return_df = c.sql(
         """
@@ -80,7 +79,9 @@ def test_group_by_all(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
+)
 def test_group_by_filtered(c):
     return_df = c.sql(
         """
@@ -181,7 +182,9 @@ def test_group_by_nan(c):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
+)
 def test_aggregations(c):
     return_df = c.sql(
         """
@@ -253,7 +256,9 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
+)
 def test_stats_aggregation(c, timeseries_df):
     # test regr_count
     regr_count = c.sql(
@@ -369,7 +374,6 @@ def test_stats_aggregation(c, timeseries_df):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
