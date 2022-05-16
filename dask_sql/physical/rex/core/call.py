@@ -193,6 +193,9 @@ class CaseOperation(Operation):
 
         if len(operands) > 3:
             other = self.case(*operands[2:])
+        elif len(operands) == 2:
+            # CASE/WHEN statement without an ELSE
+            other = None
         else:
             other = operands[2]
 

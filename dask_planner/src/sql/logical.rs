@@ -8,6 +8,7 @@ mod explain;
 mod filter;
 mod join;
 pub mod projection;
+mod sort;
 
 pub use datafusion::logical_expr::LogicalPlan;
 
@@ -88,6 +89,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Sort as PySort
+    pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -144,6 +150,7 @@ impl PyLogicalPlan {
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
+            LogicalPlan::CreateView(_) => "CreateView",
         })
     }
 
@@ -160,7 +167,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
         let schema = self.original_plan.schema();
-        let mut rel_fields: Vec<RelDataTypeField> = schema
+        let rel_fields: Vec<RelDataTypeField> = schema
             .fields()
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))
