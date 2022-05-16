@@ -14,9 +14,9 @@ use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan}
 
 use pyo3::prelude::*;
 
+use datafusion::datasource::TableType;
 use std::any::Any;
 use std::sync::Arc;
-use datafusion::datasource::TableType;
 
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
@@ -67,7 +67,6 @@ impl TableProvider for DaskTableProvider {
     fn table_type(&self) -> TableType {
         TableType::Base
     }
-
 
     async fn scan(
         &self,
