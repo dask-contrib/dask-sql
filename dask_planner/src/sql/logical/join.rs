@@ -1,9 +1,13 @@
+use crate::expression::PyExpr;
 use crate::sql::column;
 
-use crate::expression::PyExpr;
+use datafusion::logical_expr::logical_plan::Join;
+use datafusion::logical_expr::{logical_plan::JoinType, LogicalPlan};
 use datafusion::logical_plan::Operator;
-use datafusion_expr::{col, logical_plan::Join, Expr};
-pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
+use datafusion::prelude::{col, Expr};
+
+// use datafusion_expr::{col, logical_plan::Join, Expr};
+// pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
 

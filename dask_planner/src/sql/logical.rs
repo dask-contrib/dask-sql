@@ -3,14 +3,16 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod explain;
 mod filter;
 mod join;
 pub mod projection;
+mod sort;
 
-pub use datafusion_expr::LogicalPlan;
+pub use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::common::{DataFusionError, Result};
-use datafusion::logical_plan::{DFField, DFSchema, DFSchemaRef};
+use datafusion::logical_plan::DFSchemaRef;
 use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_type_err;
@@ -46,30 +48,50 @@ impl PyLogicalPlan {
     }
 }
 
+/// Convert a LogicalPlan to a Python equivalent type
+fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyResult<T> {
+    current_node
+        .map(|plan| plan.clone().into())
+        .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+            "current_node was None",
+        ))
+}
+
 #[pymethods]
 impl PyLogicalPlan {
-    /// LogicalPlan::Projection as PyProjection
-    pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        Ok(proj)
+    /// LogicalPlan::Aggregate as PyAggregate
+    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Explain as PyExplain
+    pub fn explain(&self) -> PyResult<explain::PyExplain> {
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Filter as PyFilter
     pub fn filter(&self) -> PyResult<filter::PyFilter> {
-        let filter: filter::PyFilter = self.current_node.clone().unwrap().into();
-        Ok(filter)
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
-        let join: join::PyJoin = self.current_node.clone().unwrap().into();
-        Ok(join)
+        to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::Aggregate as PyAggregate
-    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
-        Ok(agg)
+    /// LogicalPlan::Projection as PyProjection
+    pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Sort as PySort
+    pub fn sort(&self) -> PyResult<sort::PySort> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
     /// Gets the "input" for the current LogicalPlan
@@ -122,7 +144,7 @@ impl PyLogicalPlan {
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
             Ok(dask_table) => Ok(dask_table.name.clone()),
-            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            Err(_e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "Unable to determine current node table name",
             )),
         }
@@ -154,6 +176,7 @@ impl PyLogicalPlan {
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
+            LogicalPlan::CreateView(_) => "CreateView",
         })
     }
 
@@ -170,7 +193,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
         let schema = self.original_plan.schema();
-        let mut rel_fields: Vec<RelDataTypeField> = schema
+        let rel_fields: Vec<RelDataTypeField> = schema
             .fields()
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))

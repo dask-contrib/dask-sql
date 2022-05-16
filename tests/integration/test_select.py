@@ -222,3 +222,19 @@ def test_multi_case_when(c):
     expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int64)
 
     assert_eq(actual_df, expected_df)
+
+
+def test_case_when_no_else(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 END AS "C"
+    FROM df
+    """
+    )
+    expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
+
+    assert_eq(actual_df, expected_df)

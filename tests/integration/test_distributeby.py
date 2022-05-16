@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/537"
+)
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_distribute_by(c, gpu):
     df = pd.DataFrame({"id": [0, 1, 2, 1, 2, 3], "val": [0, 1, 2, 1, 2, 3]})

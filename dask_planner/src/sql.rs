@@ -12,11 +12,11 @@ use crate::sql::exceptions::ParsingException;
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
 use datafusion::error::DataFusionError;
+use datafusion::logical_expr::ScalarFunctionImplementation;
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
-use datafusion_expr::ScalarFunctionImplementation;
 
 use std::collections::HashMap;
 use std::sync::Arc;

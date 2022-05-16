@@ -61,3 +61,6 @@ dask-worker-space/
 node_modules/
 docs/source/_build/
 dask_planner/Cargo.lock
+
+# Ignore development specific local testing files
+dev_tests

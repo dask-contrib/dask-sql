@@ -4,14 +4,14 @@ use crate::sql::types::RexType;
 use pyo3::prelude::*;
 use std::convert::From;
 
-use datafusion::error::{DataFusionError, Result};
+use datafusion::error::Result;
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion_expr::{lit, BuiltinScalarFunction, Expr};
+use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
-pub use datafusion_expr::LogicalPlan;
+pub use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
@@ -68,6 +68,33 @@ impl PyExpr {
     pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
         Ok(field.unqualified_column().name.clone())
+    }
+
+    fn _rex_type(&self, expr: &Expr) -> RexType {
+        match expr {
+            Expr::Alias(..) => RexType::Reference,
+            Expr::Column(..) => RexType::Reference,
+            Expr::ScalarVariable(..) => RexType::Literal,
+            Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. } => RexType::Call,
+            Expr::Not(..) => RexType::Call,
+            Expr::IsNotNull(..) => RexType::Call,
+            Expr::Negative(..) => RexType::Call,
+            Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::IsNull(..) => RexType::Call,
+            Expr::Between { .. } => RexType::Call,
+            Expr::Case { .. } => RexType::Call,
+            Expr::Cast { .. } => RexType::Call,
+            Expr::TryCast { .. } => RexType::Call,
+            Expr::Sort { .. } => RexType::Call,
+            Expr::ScalarFunction { .. } => RexType::Call,
+            Expr::AggregateFunction { .. } => RexType::Call,
+            Expr::WindowFunction { .. } => RexType::Call,
+            Expr::AggregateUDF { .. } => RexType::Call,
+            Expr::InList { .. } => RexType::Call,
+            Expr::Wildcard => RexType::Call,
+            _ => RexType::Other,
+        }
     }
 }
 
@@ -135,7 +162,7 @@ impl PyExpr {
             Expr::Case { .. } => panic!("Case!!!"),
             Expr::Cast { .. } => "Cast",
             Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => panic!("Sort!!!"),
+            Expr::Sort { .. } => "Sort",
             Expr::ScalarFunction { .. } => "ScalarFunction",
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
@@ -148,31 +175,8 @@ impl PyExpr {
 
     /// Determines the type of this Expr based on its variant
     #[pyo3(name = "getRexType")]
-    pub fn rex_type(&self) -> RexType {
-        match &self.expr {
-            Expr::Alias(..) => RexType::Reference,
-            Expr::Column(..) => RexType::Reference,
-            Expr::ScalarVariable(..) => RexType::Literal,
-            Expr::Literal(..) => RexType::Literal,
-            Expr::BinaryExpr { .. } => RexType::Call,
-            Expr::Not(..) => RexType::Call,
-            Expr::IsNotNull(..) => RexType::Call,
-            Expr::Negative(..) => RexType::Call,
-            Expr::GetIndexedField { .. } => RexType::Reference,
-            Expr::IsNull(..) => RexType::Call,
-            Expr::Between { .. } => RexType::Call,
-            Expr::Case { .. } => RexType::Call,
-            Expr::Cast { .. } => RexType::Call,
-            Expr::TryCast { .. } => RexType::Call,
-            Expr::Sort { .. } => RexType::Call,
-            Expr::ScalarFunction { .. } => RexType::Call,
-            Expr::AggregateFunction { .. } => RexType::Call,
-            Expr::WindowFunction { .. } => RexType::Call,
-            Expr::AggregateUDF { .. } => RexType::Call,
-            Expr::InList { .. } => RexType::Call,
-            Expr::Wildcard => RexType::Call,
-            _ => RexType::Other,
-        }
+    pub fn rex_type(&self) -> PyResult<RexType> {
+        Ok(self._rex_type(&self.expr))
     }
 
     /// Python friendly shim code to get the name of a column referenced by an expression
@@ -185,7 +189,7 @@ impl PyExpr {
     #[pyo3(name = "getOperands")]
     pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, op: _, right } => Ok(vec![
+            Expr::BinaryExpr { left, right, .. } => Ok(vec![
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
@@ -248,21 +252,9 @@ impl PyExpr {
                 right: _,
             } => Ok(format!("{}", op)),
             Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast {
-                expr: _,
-                data_type: _,
-            } => Ok(String::from("cast")),
-            Expr::Between {
-                expr: _,
-                negated: _,
-                low: _,
-                high: _,
-            } => Ok(String::from("between")),
-            Expr::Case {
-                expr: _,
-                when_then_expr: _,
-                else_expr: _,
-            } => Ok(String::from("case")),
+            Expr::Cast { .. } => Ok("cast".to_string()),
+            Expr::Between { .. } => Ok("between".to_string()),
+            Expr::Case { .. } => Ok("case".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
@@ -507,8 +499,15 @@ impl PyExpr {
 
 /// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
 pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
-    // TODO this is not the implementation that we really want and will be improved
-    // once some changes are made in DataFusion
-    let fields = exprlist_to_fields(&[expr.clone()], &input_plan.schema())?;
-    Ok(fields[0].clone())
+    match expr {
+        Expr::Sort { expr, .. } => {
+            // DataFusion does not support create_name for sort expressions (since they never
+            // appear in projections) so we just delegate to the contained expression instead
+            expr_to_field(expr, input_plan)
+        }
+        _ => {
+            let fields = exprlist_to_fields(&[expr.clone()], &input_plan)?;
+            Ok(fields[0].clone())
+        }
+    }
 }
