@@ -162,7 +162,7 @@ impl PyExpr {
             Expr::Case { .. } => panic!("Case!!!"),
             Expr::Cast { .. } => "Cast",
             Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => panic!("Sort!!!"),
+            Expr::Sort { .. } => "Sort",
             Expr::ScalarFunction { .. } => "ScalarFunction",
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
@@ -189,7 +189,7 @@ impl PyExpr {
     #[pyo3(name = "getOperands")]
     pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, op: _, right } => Ok(vec![
+            Expr::BinaryExpr { left, right, .. } => Ok(vec![
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
@@ -252,9 +252,9 @@ impl PyExpr {
                 right: _,
             } => Ok(format!("{}", op)),
             Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast { .. } => Ok(String::from("cast")),
-            Expr::Between { .. } => Ok(String::from("between")),
-            Expr::Case { .. } => Ok(String::from("case")),
+            Expr::Cast { .. } => Ok("cast".to_string()),
+            Expr::Between { .. } => Ok("between".to_string()),
+            Expr::Case { .. } => Ok("case".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr

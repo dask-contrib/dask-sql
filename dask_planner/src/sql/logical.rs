@@ -3,11 +3,13 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod explain;
 mod filter;
 mod join;
 mod limit;
 mod offset;
 pub mod projection;
+mod sort;
 
 use datafusion::logical_expr::LogicalPlan;
 
@@ -47,30 +49,50 @@ impl PyLogicalPlan {
     }
 }
 
+/// Convert a LogicalPlan to a Python equivalent type
+fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyResult<T> {
+    current_node
+        .map(|plan| plan.clone().into())
+        .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+            "current_node was None",
+        ))
+}
+
 #[pymethods]
 impl PyLogicalPlan {
-    /// LogicalPlan::Projection as PyProjection
-    pub fn projection(&self) -> PyResult<projection::PyProjection> {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
-        Ok(proj)
+    /// LogicalPlan::Aggregate as PyAggregate
+    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Explain as PyExplain
+    pub fn explain(&self) -> PyResult<explain::PyExplain> {
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Filter as PyFilter
     pub fn filter(&self) -> PyResult<filter::PyFilter> {
-        let filter: filter::PyFilter = self.current_node.clone().unwrap().into();
-        Ok(filter)
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
-        let join: join::PyJoin = self.current_node.clone().unwrap().into();
-        Ok(join)
+        to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::Aggregate as PyAggregate
-    pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
-        let agg: aggregate::PyAggregate = self.current_node.clone().unwrap().into();
-        Ok(agg)
+    /// LogicalPlan::Projection as PyProjection
+    pub fn projection(&self) -> PyResult<projection::PyProjection> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Sort as PySort
+    pub fn sort(&self) -> PyResult<sort::PySort> {
+        self.current_node
+            .as_ref()
+            .map(|plan| plan.clone().into())
+            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "current_node was None",
+            ))
     }
 
     /// LogicalPlan::Limit as PyLimit

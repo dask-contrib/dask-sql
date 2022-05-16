@@ -174,7 +174,7 @@ impl DaskSQLContext {
         planner
             .statement_to_plan(statement.statement)
             .map(|k| {
-                println!("Statement: {:?}", k);
+                // println!("Statement: {:?}", k);
                 logical::PyLogicalPlan {
                     original_plan: k,
                     current_node: None,
