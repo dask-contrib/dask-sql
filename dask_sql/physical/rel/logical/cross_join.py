@@ -1,8 +1,8 @@
 import logging
-import time
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+import utils
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -32,7 +32,7 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
         df_rhs = dc_rhs.df
 
         # Create a 'key' column in both DataFrames to join on
-        cross_join_key = "cross_join_key_" + str(time.time_ns())
+        cross_join_key = utils.new_temporary_column(df_lhs)
         df_lhs[cross_join_key] = 1
         df_rhs[cross_join_key] = 1
 
