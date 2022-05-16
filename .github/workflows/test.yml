@@ -173,8 +173,8 @@ jobs:
         run: |
           docker-compose -f .github/docker-compose.yaml up -d
 
-          # Wait for installation
-          sleep 40
+          # periodically ping logs until a connection has been established; assume failure after 2 minutes
+          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
 
           docker logs dask-scheduler
           docker logs dask-worker
