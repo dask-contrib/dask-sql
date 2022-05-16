@@ -113,6 +113,7 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           mamba install dask/label/dev::dask
+          mamba install dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
@@ -165,8 +166,7 @@ jobs:
       - name: Optionally install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          mamba install dask/label/dev::dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
         run: |

@@ -95,12 +95,63 @@ jobs:
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
 
+  cluster-dev:
+    name: "Test upstream dev in a dask cluster"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+      - name: Download the pre-build jar
+        uses: actions/download-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/
+      - name: Install dependencies
+        run: |
+          mamba install python-blosc lz4 -c conda-forge
+
+          which python
+          pip list
+          mamba list
+      - name: Install upstream dev Dask / dask-ml
+        run: |
+          mamba install dask/label/dev::dask
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
+      - name: run a dask cluster
+        run: |
+          docker-compose -f .github/docker-compose.yaml up -d
+
+          # periodically ping logs until a connection has been established; assume failure after 2 minutes
+          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
+
+          docker logs dask-scheduler
+          docker logs dask-worker
+      - name: Test with pytest while running an independent dask cluster
+        run: |
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --junitxml=junit/test-cluster-results.xml --cov-report=xml -n auto tests --dist loadfile
+
   report-failures:
     name: Open issue for upstream dev failures
-    needs: test-dev
+    needs: [test-dev, cluster-dev]
     if: |
       always()
-      && needs.test-dev.result == 'failure'
+      && (
+        needs.test-dev.result == 'failure' || needs.cluster-dev.result == 'failure'
+      )
     runs-on: ubuntu-latest
     defaults:
       run:
