@@ -179,7 +179,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
         let schema = self.original_plan.schema();
-        let mut rel_fields: Vec<RelDataTypeField> = schema
+        let rel_fields: Vec<RelDataTypeField> = schema
             .fields()
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))

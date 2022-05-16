@@ -64,7 +64,7 @@ impl TableProvider for DaskTableProvider {
     }
 
     fn table_type(&self) -> TableType {
-        todo!()
+        TableType::Base
     }
 
     async fn scan(
