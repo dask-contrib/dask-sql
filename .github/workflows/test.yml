@@ -113,7 +113,6 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           mamba install dask/label/dev::dask
-          mamba install dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
