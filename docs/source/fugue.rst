@@ -8,7 +8,7 @@ In order to offer a "best of both worlds" solution, dask-sql includes several op
 dask-sql as a FugueSQL engine
 -----------------------------
 
-FugueSQL users unfamiliar with dask-sql can take advantage of its functionality with minimal code changes by passing :obj:`dask_sql.integrations.fugue.DaskSQLExecutionEngine` into the ``FugueSQLWorkflow`` being used to execute commands.
+FugueSQL users unfamiliar with dask-sql can take advantage of its functionality with minimal code changes by passing :class:`dask_sql.integrations.fugue.DaskSQLExecutionEngine` into the ``FugueSQLWorkflow`` being used to execute commands.
 For more information and sample usage, see `Fugue — dask-sql as a FugueSQL engine <https://fugue-tutorials.readthedocs.io/tutorials/integrations/dasksql.html>`_.
 
 Using FugueSQL on an existing ``Context``
