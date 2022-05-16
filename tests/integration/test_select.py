@@ -127,7 +127,7 @@ def test_timezones(c, datetime_table):
 )
 @pytest.mark.parametrize(
     "limit,offset",
-    [(100, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
+    [(101, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
 )
 def test_limit(c, input_table, limit, offset, request):
     long_table = request.getfixturevalue(input_table)

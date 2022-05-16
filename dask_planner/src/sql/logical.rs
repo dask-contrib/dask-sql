@@ -80,6 +80,16 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Limit as PyLimit
+    pub fn limit(&self) -> PyResult<limit::PyLimit> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Offset as PyOffset
+    pub fn offset(&self) -> PyResult<offset::PyOffset> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
         to_py_plan(self.current_node.as_ref())
@@ -93,18 +103,6 @@ impl PyLogicalPlan {
             .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
                 "current_node was None",
             ))
-    }
-
-    /// LogicalPlan::Limit as PyLimit
-    pub fn limit(&self) -> PyResult<limit::PyLimit> {
-        let limit: limit::PyLimit = self.current_node.clone().unwrap().into();
-        Ok(limit)
-    }
-
-    /// LogicalPlan::Offset as PyOffset
-    pub fn offset(&self) -> PyResult<offset::PyOffset> {
-        let offset: offset::PyOffset = self.current_node.clone().unwrap().into();
-        Ok(offset)
     }
 
     /// Gets the "input" for the current LogicalPlan
