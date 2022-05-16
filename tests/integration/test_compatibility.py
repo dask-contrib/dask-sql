@@ -99,7 +99,6 @@ def test_basic_select_from():
     eq_sqlite("SELECT *, -(1.0+a)/3 AS x, +(2.5) AS y FROM a AS x", a=df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_case_when():
     a = make_rand_df(100, a=(int, 20), b=(str, 30), c=(float, 40))
     eq_sqlite(
@@ -116,7 +115,6 @@ def test_case_when():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop_duplicates():
     # simplest
     a = make_rand_df(100, a=int, b=int)
@@ -147,7 +145,6 @@ def test_drop_duplicates():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_order_by_no_limit():
     a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
     eq_sqlite(
@@ -183,7 +180,9 @@ def test_order_by_limit():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/530"
+)
 def test_where():
     df = make_rand_df(100, a=(int, 30), b=(str, 30), c=(float, 30))
     eq_sqlite("SELECT * FROM a WHERE TRUE OR TRUE", a=df)
@@ -205,7 +204,9 @@ def test_where():
     eq_sqlite("SELECT * FROM a WHERE a*b IS NULL OR (b*c<0.5 AND c*a<0.5)", a=df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/531"
+)
 def test_in_between():
     df = make_rand_df(10, a=(int, 3), b=(str, 3))
     eq_sqlite("SELECT * FROM a WHERE a IN (2,4,6)", a=df)
@@ -214,7 +215,7 @@ def test_in_between():
     eq_sqlite("SELECT * FROM a WHERE a NOT BETWEEN 2 AND 4+1 AND a IS NOT NULL", a=df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.skip(reason="WIP DataFusion")
 def test_join_inner():
     a = make_rand_df(100, a=(int, 40), b=(str, 40), c=(float, 40))
     b = make_rand_df(80, d=(float, 10), a=(int, 10), b=(str, 10))
