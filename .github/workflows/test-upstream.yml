@@ -131,7 +131,7 @@ jobs:
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
         run: |
-          docker-compose -f .github/docker-compose.yaml up -d
+          docker-compose -f .github/cluster-upstream.yml up -d
 
           # periodically ping logs until a connection has been established; assume failure after 2 minutes
           timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
