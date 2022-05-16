@@ -14,6 +14,7 @@ use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan}
 
 use pyo3::prelude::*;
 
+use datafusion::datasource::TableType;
 use std::any::Any;
 use std::sync::Arc;
 
@@ -61,6 +62,10 @@ impl TableProvider for DaskTableProvider {
 
     fn schema(&self) -> SchemaRef {
         self.source.schema.clone()
+    }
+
+    fn table_type(&self) -> TableType {
+        TableType::Base
     }
 
     async fn scan(

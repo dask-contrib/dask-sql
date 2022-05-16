@@ -1,7 +1,7 @@
 use crate::sql::types::DaskTypeMap;
 use crate::sql::types::SqlTypeName;
 
-use datafusion::error::{DataFusionError, Result};
+use datafusion::error::Result;
 use datafusion::logical_plan::{DFField, DFSchema};
 
 use std::fmt;
@@ -26,7 +26,7 @@ impl RelDataTypeField {
                 sql_type: SqlTypeName::from_arrow(field.data_type()),
                 data_type: field.data_type().clone(),
             },
-            index: schema.index_of(field.name())?,
+            index: schema.index_of_column_by_name(None, field.name())?,
         })
     }
 }
