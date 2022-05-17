@@ -12,7 +12,7 @@ rust-version = "1.59"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
 pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
-datafusion = { git="https://github.com/jdye64/arrow-datafusion/", branch = "limit-offset" }
+datafusion = { git="https://github.com/apache/arrow-datafusion/", rev = "b1e3a521b7e0ad49c5430bc07bf3026aa2cbb231" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
