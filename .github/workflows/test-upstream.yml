@@ -90,6 +90,7 @@ jobs:
           echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
       - name: Install upstream dev Dask / dask-ml
         run: |
+          mamba update dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
@@ -130,6 +131,7 @@ jobs:
           mamba list
       - name: Install upstream dev dask-ml
         run: |
+          mamba update dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
         run: |
