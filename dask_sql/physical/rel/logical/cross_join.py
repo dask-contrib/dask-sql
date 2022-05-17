@@ -2,8 +2,8 @@ import logging
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-import utils
 
+import dask_sql.utils as utils
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
