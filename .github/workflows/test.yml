@@ -92,10 +92,7 @@ jobs:
           use-mamba: true
           python-version: ${{ matrix.python }}
           channel-priority: strict
-          channels: |
-            needs.detect-ci-trigger.outputs.triggered == 'true'
-            && 'dask/label/dev,conda-forge,nodefaults'
-            || 'conda-forge,nodefaults'
+          channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -151,10 +148,7 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
-          channels: |
-            needs.detect-ci-trigger.outputs.triggered == 'true'
-            && 'dask/label/dev,conda-forge,nodefaults'
-            || 'conda-forge,nodefaults'
+          channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
