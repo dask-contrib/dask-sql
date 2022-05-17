@@ -91,6 +91,11 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
+          channel-priority: strict
+          channels: |
+            needs.detect-ci-trigger.outputs.triggered == 'true'
+            && 'dask/label/dev,conda-forge,nodefaults'
+            || 'conda-forge,nodefaults'
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -111,7 +116,6 @@ jobs:
       - name: Optionally install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          mamba install dask/label/dev::dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
@@ -146,6 +150,11 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: "3.8"
+          channel-priority: strict
+          channels: |
+            needs.detect-ci-trigger.outputs.triggered == 'true'
+            && 'dask/label/dev,conda-forge,nodefaults'
+            || 'conda-forge,nodefaults'
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
       - name: Download the pre-build jar
@@ -153,17 +162,16 @@ jobs:
         with:
           name: jar
           path: dask_sql/jar/
-      - name: Install dependencies
+      - name: Install cluster dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
 
           which python
           pip list
           mamba list
-      - name: Optionally install upstream dev Dask / dask-ml
+      - name: Optionally install upstream dev dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          mamba install dask/label/dev::dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
         env:
