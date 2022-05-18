@@ -53,7 +53,7 @@ fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
 ) -> PyResult<T> {
     match current_node {
         Some(plan) => plan.clone().try_into().into(),
-        _ => py_type_err("failed to convert plan"),
+        _ => Err(py_type_err("failed to convert plan")),
     }
 }
 
