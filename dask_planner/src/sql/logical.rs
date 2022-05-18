@@ -52,11 +52,8 @@ fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
     current_node: Option<&LogicalPlan>,
 ) -> PyResult<T> {
     match current_node {
-        Some(plan) => {
-            let x = plan.clone().try_into();
-            x.into()
-        }
-        _ => todo!(),
+        Some(plan) => plan.clone().try_into().into(),
+        _ => py_type_err("failed to convert plan"),
     }
 }
 
