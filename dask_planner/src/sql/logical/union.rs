@@ -14,6 +14,9 @@ pub struct PyUnion {
 impl PyUnion {
     #[pyo3(name = "all")]
     pub fn all(&mut self) -> PyResult<bool> {
+        println!("{:?}", self.union.inputs[0]);
+        println!("{:?}", self.union.schema.metadata());
+        println!("{:?}", self.union.alias);
         Ok(false)
     }
     
