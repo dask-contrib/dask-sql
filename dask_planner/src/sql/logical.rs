@@ -42,7 +42,7 @@ impl PyLogicalPlan {
 
     /// Gets the index of the column from the input schema
     pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().try_into().unwrap();
+        let proj: projection::PyProjection = self.projection().unwrap();
         proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
