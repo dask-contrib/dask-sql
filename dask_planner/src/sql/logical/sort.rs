@@ -67,7 +67,7 @@ impl TryFrom<LogicalPlan> for PySort {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Sort(srt) => Ok(PySort { sort: srt }),
+            LogicalPlan::Sort(sort) => Ok(PySort { sort }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

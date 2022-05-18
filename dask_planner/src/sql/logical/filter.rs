@@ -29,7 +29,7 @@ impl TryFrom<LogicalPlan> for PyFilter {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Filter(filter) => Ok(PyFilter { filter: filter }),
+            LogicalPlan::Filter(filter) => Ok(PyFilter { filter }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

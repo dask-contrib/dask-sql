@@ -82,7 +82,7 @@ impl TryFrom<LogicalPlan> for PyAggregate {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Aggregate(agg) => Ok(PyAggregate { aggregate: agg }),
+            LogicalPlan::Aggregate(aggregate) => Ok(PyAggregate { aggregate }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

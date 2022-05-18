@@ -26,7 +26,7 @@ impl TryFrom<LogicalPlan> for PyExplain {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Explain(expln) => Ok(PyExplain { explain: expln }),
+            LogicalPlan::Explain(explain) => Ok(PyExplain { explain }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }
