@@ -138,7 +138,6 @@ impl PyLogicalPlan {
             LogicalPlan::Aggregate(_aggregate) => "Aggregate",
             LogicalPlan::Sort(_sort) => "Sort",
             LogicalPlan::Join(_join) => "Join",
-            LogicalPlan::Union(_union) => "Union",
             LogicalPlan::CrossJoin(_cross_join) => "CrossJoin",
             LogicalPlan::Repartition(_repartition) => "Repartition",
             LogicalPlan::Union(_union) => "Union",
