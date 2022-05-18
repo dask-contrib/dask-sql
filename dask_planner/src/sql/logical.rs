@@ -6,6 +6,7 @@ mod aggregate;
 mod explain;
 mod filter;
 mod join;
+mod union;
 pub mod projection;
 mod sort;
 
@@ -78,6 +79,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Union as PyUnion
+    pub fn union(&self) -> PyResult<union::PyUnion> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
         to_py_plan(self.current_node.as_ref())
@@ -132,6 +138,7 @@ impl PyLogicalPlan {
             LogicalPlan::Aggregate(_aggregate) => "Aggregate",
             LogicalPlan::Sort(_sort) => "Sort",
             LogicalPlan::Join(_join) => "Join",
+            LogicalPlan::Union(_union) => "Union",
             LogicalPlan::CrossJoin(_cross_join) => "CrossJoin",
             LogicalPlan::Repartition(_repartition) => "Repartition",
             LogicalPlan::Union(_union) => "Union",
