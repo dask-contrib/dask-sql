@@ -7,7 +7,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class DaskUnionPlugin(BaseRelPlugin):
@@ -16,10 +16,10 @@ class DaskUnionPlugin(BaseRelPlugin):
     It just concatonates the two data frames.
     """
 
-    class_name = "com.dask.sql.nodes.DaskUnion"
+    class_name = "Union"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self, rel: "LogicalPlan", context: "dask_sql.Context"
     ) -> DataContainer:
         first_dc, second_dc = self.assert_inputs(rel, 2, context)
 
@@ -56,11 +56,11 @@ class DaskUnionPlugin(BaseRelPlugin):
         first_df = first_dc.assign()
         second_df = second_dc.assign()
 
-        self.check_columns_from_row_type(first_df, rel.getExpectedInputRowType(0))
-        self.check_columns_from_row_type(second_df, rel.getExpectedInputRowType(1))
+        self.check_columns_from_row_type(first_df, rel.getRowType())
+        self.check_columns_from_row_type(second_df, rel.getRowType())
 
         df = dd.concat([first_df, second_df])
-
+        # import pdb;pdb.set_trace()
         if not rel.all:
             df = df.drop_duplicates()
 
