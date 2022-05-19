@@ -40,7 +40,9 @@ _PYTHON_TO_SQL = {
 }
 
 if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-    _PYTHON_TO_SQL.update({pd.Float32Dtype(): "FLOAT", pd.Float64Dtype(): "FLOAT"})
+    _PYTHON_TO_SQL.update(
+        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.DOUBLE}
+    )
 
 # Default mapping between SQL types and python types
 # for values
