@@ -8,6 +8,7 @@ mod filter;
 mod join;
 pub mod projection;
 mod sort;
+mod window;
 
 pub use datafusion::logical_expr::LogicalPlan;
 
@@ -91,6 +92,10 @@ impl PyLogicalPlan {
             .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
                 "current_node was None",
             ))
+    }
+
+    pub fn window(&self) -> PyResult<window::PyWindow> {
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// Gets the "input" for the current LogicalPlan
