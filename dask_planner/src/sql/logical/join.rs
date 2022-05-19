@@ -1,7 +1,7 @@
 use crate::sql::column;
 
 use datafusion::logical_expr::logical_plan::Join;
-use datafusion::logical_expr::{logical_plan::JoinType, LogicalPlan};
+use datafusion::logical_plan::{JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
 
@@ -51,7 +51,7 @@ impl PyJoin {
 impl From<LogicalPlan> for PyJoin {
     fn from(logical_plan: LogicalPlan) -> PyJoin {
         match logical_plan {
-            LogicalPlan::Join(join) => PyJoin { join },
+            LogicalPlan::Join(join) => PyJoin { join: join },
             _ => panic!("something went wrong here"),
         }
     }
