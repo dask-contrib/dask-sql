@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod cross_join;
 mod explain;
 mod filter;
 mod join;
@@ -43,24 +44,30 @@ impl PyLogicalPlan {
 
     /// Gets the index of the column from the input schema
     pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
+        let proj: projection::PyProjection = self.projection().unwrap();
         proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
 /// Convert a LogicalPlan to a Python equivalent type
-fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyResult<T> {
-    current_node
-        .map(|plan| plan.clone().into())
-        .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-            "current_node was None",
-        ))
+fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
+    current_node: Option<&LogicalPlan>,
+) -> PyResult<T> {
+    match current_node {
+        Some(plan) => plan.clone().try_into().into(),
+        _ => Err(py_type_err("current_node was None")),
+    }
 }
 
 #[pymethods]
 impl PyLogicalPlan {
     /// LogicalPlan::Aggregate as PyAggregate
     pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::CrossJoin as PyCrossJoin
+    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -86,12 +93,7 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan(self.current_node.as_ref())
     }
 
     pub fn window(&self) -> PyResult<window::PyWindow> {
