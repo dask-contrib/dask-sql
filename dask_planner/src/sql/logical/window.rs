@@ -1,4 +1,5 @@
 use crate::expression::PyExpr;
+use crate::sql::exceptions::py_type_err;
 use datafusion::logical_expr::{logical_plan::Window, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
@@ -39,11 +40,13 @@ impl PyWindow {
     }
 }
 
-impl From<LogicalPlan> for PyWindow {
-    fn from(logical_plan: LogicalPlan) -> PyWindow {
+impl TryFrom<LogicalPlan> for PyWindow {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Window(window) => PyWindow { window },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Window(window) => Ok(PyWindow { window }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }
