@@ -110,7 +110,7 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-def test_join_cross(c, request):
+def test_join_cross(c, request, user_table_1, department_table):
     return_df = c.sql(
         """
     SELECT user_id, b, department_name
@@ -118,8 +118,6 @@ def test_join_cross(c, request):
     """
     )
 
-    user_table_1 = request.getfixturevalue("user_table_1")
-    department_table = request.getfixturevalue("department_table")
     user_table_1["key"] = 1
     department_table["key"] = 1
 
