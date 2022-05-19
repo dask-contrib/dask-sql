@@ -110,7 +110,7 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-def test_join_cross(c, request, user_table_1, department_table):
+def test_join_cross(c, user_table_1, department_table):
     return_df = c.sql(
         """
     SELECT user_id, b, department_name
