@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod cross_join;
 mod explain;
 mod filter;
 mod join;
@@ -61,6 +62,11 @@ fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
 impl PyLogicalPlan {
     /// LogicalPlan::Aggregate as PyAggregate
     pub fn aggregate(&self) -> PyResult<aggregate::PyAggregate> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::CrossJoin as PyCrossJoin
+    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
         to_py_plan(self.current_node.as_ref())
     }
 
