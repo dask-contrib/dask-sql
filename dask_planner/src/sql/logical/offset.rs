@@ -15,7 +15,6 @@ pub struct PyOffset {
 impl PyOffset {
     #[pyo3(name = "getOffset")]
     pub fn offset(&self) -> PyResult<PyExpr> {
-        // TODO: Waiting on DataFusion issue: https://github.com/apache/arrow-datafusion/issues/2377
         Ok(PyExpr::from(
             Expr::Literal(ScalarValue::UInt64(Some(self.offset.offset as u64))),
             Some(self.offset.input.clone()),
