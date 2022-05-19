@@ -242,15 +242,16 @@ class DaskWindowPlugin(BaseRelPlugin):
         # Unfortunately they are only referenced by their index,
         # (which come after the real columns), so we need
         # to always substract the number of real columns.
-        constants = list(rel.getConstants())
-        constant_count_offset = len(dc.column_container.columns)
+        # constants = list(rel.getConstants())
+        # constant_count_offset = len(dc.column_container.columns)
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
-
-        for window in rel.getGroups():
+        constants = []
+        constant_count_offset = 0
+        for window in rel.window().getGroups():
             dc = self._apply_window(
-                window, constants, constant_count_offset, dc, field_names, context
+                rel, window, constants, constant_count_offset, dc, field_names, context
             )
 
         # Finally, fix the output schema if needed
@@ -265,6 +266,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _apply_window(
         self,
+        rel,
         # window: org.apache.calcite.rel.core.Window.Group,
         window,
         # constants: List[org.apache.calcite.rex.RexLiteral],
@@ -281,7 +283,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Now extract the groupby and order information
         sort_columns, sort_ascending, sort_null_first = self._extract_ordering(
-            window, cc
+            rel, window, cc
         )
         logger.debug(
             f"Before applying the function, sorting according to {sort_columns}."
@@ -370,24 +372,22 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         return df, group_columns
 
-    def _extract_ordering(self, window, cc: ColumnContainer) -> Tuple[str, str, str]:
+    def _extract_ordering(
+        self, rel, window, cc: ColumnContainer
+    ) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
         logger.debug(
             "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
         )
         # TODO: This was commented out for flake8 CI passing and needs to be handled
-        # order_keys = list(window.orderKeys.getFieldCollations())
-        # sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
-        # sort_columns = [
-        #     cc.get_backend_by_frontend_index(i) for i in sort_columns_indices
-        # ]
-
-        # ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
-        # FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
-        # sort_ascending = [x.getDirection() == ASCENDING for x in order_keys]
-        # sort_null_first = [x.nullDirection == FIRST for x in order_keys]
-
-        # return sort_columns, sort_ascending, sort_null_first
+        sort_expressions = rel.window().getCollation(window)
+        sort_columns = [
+            cc.get_backend_by_frontend_name(expr.column_name(rel))
+            for expr in sort_expressions
+        ]
+        sort_ascending = [expr.isSortAscending() for expr in sort_expressions]
+        sort_null_first = [expr.isSortNullsFirst() for expr in sort_expressions]
+        return sort_columns, sort_ascending, sort_null_first
 
     def _extract_operations(
         self,
