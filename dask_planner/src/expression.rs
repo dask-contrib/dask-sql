@@ -17,15 +17,16 @@ use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_runtime_err;
 use datafusion::common::DFField;
-use datafusion::logical_plan::exprlist_to_fields;
+use datafusion::logical_plan::{exprlist_to_fields, DFSchema};
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyExpr {
-    pub input_plan: Option<Arc<LogicalPlan>>,
     pub expr: Expr,
+    // Why a Vec here? Because BinaryExpr on Join might have multiple LogicalPlans
+    pub input_plan: Option<Vec<Arc<LogicalPlan>>>,
 }
 
 impl From<PyExpr> for Expr {
@@ -57,7 +58,7 @@ impl PyExpr {
     /// However in this case Expr does not contain the contextual
     /// `LogicalPlan` instance that we need so we need to make a instance
     /// function to take and create the PyExpr.
-    pub fn from(expr: Expr, input: Option<Arc<LogicalPlan>>) -> PyExpr {
+    pub fn from(expr: Expr, input: Option<Vec<Arc<LogicalPlan>>>) -> PyExpr {
         PyExpr {
             input_plan: input,
             expr: expr,
@@ -123,16 +124,31 @@ impl PyExpr {
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
-        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+        let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(plan) => {
-                let name: Result<String> = self.expr.name(plan.schema());
-                match name {
-                    Ok(fq_name) => Ok(plan
-                        .schema()
-                        .index_of_column(&Column::from_qualified_name(&fq_name))
-                        .unwrap()),
-                    Err(e) => panic!("{:?}", e),
+            Some(inputs_plans) => {
+                if inputs_plans.len() == 1 {
+                    let name: Result<String> = self.expr.name(inputs_plans[0].schema());
+                    match name {
+                        Ok(fq_name) => Ok(inputs_plans[0]
+                            .schema()
+                            .index_of_column(&Column::from_qualified_name(&fq_name))
+                            .unwrap()),
+                        Err(e) => panic!("{:?}", e),
+                    }
+                } else if inputs_plans.len() == 2 {
+                    let left_schema: &DFSchema = inputs_plans[0].schema();
+                    let right_schema: &DFSchema = inputs_plans[1].schema();
+                    let join_schema: DFSchema = left_schema.join(&right_schema).unwrap();
+                    let name: Result<String> = self.expr.name(&join_schema);
+                    match name {
+                        Ok(fq_name) => Ok(join_schema
+                            .index_of_column(&Column::from_qualified_name(&fq_name))
+                            .unwrap()),
+                        Err(e) => panic!("{:?}", e),
+                    }
+                } else {
+                    panic!("Not really sure what we should do right here???");
                 }
             }
             None => {

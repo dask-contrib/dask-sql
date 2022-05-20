@@ -18,7 +18,7 @@ impl PyFilter {
     pub fn get_condition(&mut self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
             self.filter.predicate.clone(),
-            Some(self.filter.input.clone()),
+            Some(vec![self.filter.input.clone()]),
         ))
     }
 }

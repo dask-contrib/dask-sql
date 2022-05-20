@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod cross_join;
 mod explain;
 mod filter;
 mod join;
@@ -64,6 +65,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CrossJoin as PyCrossJoin
+    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
         to_py_plan(self.current_node.as_ref())
@@ -86,12 +92,7 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
-        self.current_node
-            .as_ref()
-            .map(|plan| plan.clone().into())
-            .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-                "current_node was None",
-            ))
+        to_py_plan(self.current_node.as_ref())
     }
 
     /// Gets the "input" for the current LogicalPlan
@@ -177,6 +178,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_) => "CreateView",
+            LogicalPlan::Offset(_) => "Offset",
         })
     }
 

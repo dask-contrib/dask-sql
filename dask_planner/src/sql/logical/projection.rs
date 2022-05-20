@@ -18,7 +18,7 @@ impl PyProjection {
         match &local_expr.expr {
             Expr::Alias(expr, _name) => {
                 let py_expr: PyExpr =
-                    PyExpr::from(*expr.clone(), Some(self.projection.input.clone()));
+                    PyExpr::from(*expr.clone(), Some(vec![self.projection.input.clone()]));
                 projs.extend_from_slice(self.projected_expressions(&py_expr).as_slice());
             }
             _ => projs.push(local_expr.clone()),
@@ -33,8 +33,9 @@ impl PyProjection {
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
         for expression in self.projection.expr.clone() {
-            let mut py_expr: PyExpr = PyExpr::from(expression, Some(self.projection.input.clone()));
-            py_expr.input_plan = Some(self.projection.input.clone());
+            let mut py_expr: PyExpr =
+                PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
+            py_expr.input_plan = Some(vec![self.projection.input.clone()]);
             for expr in self.projected_expressions(&py_expr) {
                 if let Ok(name) = expr._column_name(&*self.projection.input) {
                     named.push((name, expr.clone()));

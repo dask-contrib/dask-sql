@@ -38,7 +38,10 @@ impl PySort {
     pub fn sort_expressions(&self) -> PyResult<Vec<PyExpr>> {
         let mut sort_exprs: Vec<PyExpr> = Vec::new();
         for expr in &self.sort.expr {
-            sort_exprs.push(PyExpr::from(expr.clone(), Some(self.sort.input.clone())));
+            sort_exprs.push(PyExpr::from(
+                expr.clone(),
+                Some(vec![self.sort.input.clone()]),
+            ));
         }
         Ok(sort_exprs)
     }

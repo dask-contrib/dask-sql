@@ -2,12 +2,8 @@ use crate::expression::PyExpr;
 use crate::sql::column;
 
 use datafusion::logical_expr::logical_plan::Join;
-use datafusion::logical_expr::{logical_plan::JoinType, LogicalPlan};
-use datafusion::logical_plan::Operator;
+use datafusion::logical_plan::{JoinType, LogicalPlan, Operator};
 use datafusion::prelude::{col, Expr};
-
-// use datafusion_expr::{col, logical_plan::Join, Expr};
-// pub use datafusion_expr::{logical_plan::JoinType, LogicalPlan};
 
 use pyo3::prelude::*;
 
@@ -21,13 +17,23 @@ pub struct PyJoin {
 impl PyJoin {
     #[pyo3(name = "getCondition")]
     pub fn join_condition(&self) -> PyExpr {
-        let ex: Expr = Expr::BinaryExpr {
-            left: Box::new(col("user_id")),
-            op: Operator::Eq,
-            right: Box::new(col("user_id")),
-        };
-        // TODO: Is left really the correct place to get the logical plan from here??
-        PyExpr::from(ex, Some(self.join.left.clone()))
+        // TODO: This logic should be altered once https://github.com/apache/arrow-datafusion/issues/2496 is complete
+        if self.join.on.len() == 1 {
+            let (left_col, right_col) = &self.join.on[0];
+            let ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            PyExpr::from(
+                ex,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )
+        } else {
+            panic!("Encountered a Join with more than a single column for the join condition. This is not currently supported
+            until DataFusion makes some changes to allow for Joining logic other than just Equijoin.")
+        }
     }
 
     #[pyo3(name = "getJoinConditions")]
@@ -68,7 +74,7 @@ impl PyJoin {
 impl From<LogicalPlan> for PyJoin {
     fn from(logical_plan: LogicalPlan) -> PyJoin {
         match logical_plan {
-            LogicalPlan::Join(join) => PyJoin { join },
+            LogicalPlan::Join(join) => PyJoin { join: join },
             _ => panic!("something went wrong here"),
         }
     }

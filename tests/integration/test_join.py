@@ -110,6 +110,22 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+def test_join_cross(c, user_table_1, department_table):
+    return_df = c.sql(
+        """
+    SELECT user_id, b, department_name
+    FROM user_table_1, department_table
+    """
+    )
+
+    user_table_1["key"] = 1
+    department_table["key"] = 1
+
+    expected_df = dd.merge(user_table_1, department_table, on="key").drop("key", 1)
+
+    assert_eq(return_df, expected_df, check_index=False)
+
+
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_join_complex(c):
     return_df = c.sql(

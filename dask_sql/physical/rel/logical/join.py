@@ -82,13 +82,12 @@ class DaskJoinPlugin(BaseRelPlugin):
         # As this is probably non-sense for large tables, but there is no other
         # known solution so far.
 
-        # TODO: Change back
-        # join_condition = rel.getCondition()
-
         join_condition = join.getCondition()
         lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
+        print(
+            f"Joining with type {join_type} on columns {lhs_on}, {rhs_on} with filter_condition: {filter_condition}"
+        )
 
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
@@ -100,6 +99,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
         if lhs_on:
+            print(f"lhs_on: {lhs_on} rhs_on: {rhs_on} join_type: {join_type}")
             # 5. Now we can finally merge on these columns
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
@@ -204,12 +204,12 @@ class DaskJoinPlugin(BaseRelPlugin):
         rhs_on: List[str],
         join_type: str,
     ) -> dd.DataFrame:
-        logger.debug(f"df_lhs_renamed: \n{df_lhs_renamed.head()}")
-        logger.debug(f"\n\ndf_rhs_renamed: \n{df_rhs_renamed.head()}")
-        logger.debug(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
+        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
-        lhs_columns_to_add = {f"common_{i}": df_lhs_renamed[i] for i in lhs_on}
-        logger.debug(f"lhs_columns_to_add: {lhs_columns_to_add}")
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed["lhs_" + str(i)] for i in lhs_on
+        }
+        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]
             for i, index in enumerate(rhs_on)
