@@ -7,14 +7,13 @@ use crate::sql::types::SqlTypeName;
 use async_trait::async_trait;
 
 use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-pub use datafusion::datasource::TableProvider;
+use datafusion::datasource::{TableProvider, TableType};
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::{Expr, LogicalPlan, TableSource};
 use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
 
 use pyo3::prelude::*;
 
-use datafusion::datasource::TableType;
 use std::any::Any;
 use std::sync::Arc;
 

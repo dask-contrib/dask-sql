@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 
 use datafusion::logical_expr::logical_plan::Filter;
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use pyo3::prelude::*;
 

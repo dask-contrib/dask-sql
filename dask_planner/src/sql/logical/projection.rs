@@ -1,6 +1,6 @@
 use crate::expression::PyExpr;
 
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 use datafusion::logical_expr::{logical_plan::Projection, Expr};
 
 use pyo3::prelude::*;

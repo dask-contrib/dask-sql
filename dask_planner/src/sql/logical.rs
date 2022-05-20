@@ -7,10 +7,12 @@ mod cross_join;
 mod explain;
 mod filter;
 mod join;
+mod limit;
+mod offset;
 pub mod projection;
 mod sort;
 
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::common::{DataFusionError, Result};
 use datafusion::logical_plan::DFSchemaRef;
@@ -82,6 +84,16 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Join as PyJoin
     pub fn join(&self) -> PyResult<join::PyJoin> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Limit as PyLimit
+    pub fn limit(&self) -> PyResult<limit::PyLimit> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Offset as PyOffset
+    pub fn offset(&self) -> PyResult<offset::PyOffset> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -166,6 +178,7 @@ impl PyLogicalPlan {
             LogicalPlan::TableScan(_table_scan) => "TableScan",
             LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
             LogicalPlan::Limit(_limit) => "Limit",
+            LogicalPlan::Offset(_offset) => "Offset",
             LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
             LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
             LogicalPlan::DropTable(_drop_table) => "DropTable",
@@ -177,8 +190,7 @@ impl PyLogicalPlan {
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
-            LogicalPlan::CreateView(_) => "CreateView",
-            LogicalPlan::Offset(_) => "Offset",
+            LogicalPlan::CreateView(_create_view) => "CreateView",
         })
     }
 

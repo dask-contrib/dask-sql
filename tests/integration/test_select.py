@@ -76,7 +76,6 @@ def test_select_of_select(c, df):
         ) AS "inner"
         """
     )
-
     expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
     assert_eq(result_df, expected_df)
 
@@ -119,12 +118,11 @@ def test_timezones(c, datetime_table):
     assert_eq(result_df, datetime_table)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
         "long_table",
-        # pytest.param("gpu_long_table", marks=pytest.mark.gpu),
+        pytest.param("gpu_long_table", marks=pytest.mark.gpu),
     ],
 )
 @pytest.mark.parametrize(
@@ -194,17 +192,7 @@ def test_timestamp_casting(c, input_table, request):
         """
     )
 
-    expected_df = datetime_table
-    expected_df["timezone"] = (
-        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
-    expected_df["no_timezone"] = (
-        expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
-    expected_df["utc_timezone"] = (
-        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
-    )
-
+    expected_df = datetime_table.astype("<M8[ns]")
     assert_eq(result_df, expected_df)
 
 
