@@ -5,6 +5,7 @@ use datafusion::logical_expr::logical_plan::Join;
 use datafusion::logical_plan::{JoinType, LogicalPlan, Operator};
 use datafusion::prelude::{col, Expr};
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
@@ -71,11 +72,13 @@ impl PyJoin {
     }
 }
 
-impl From<LogicalPlan> for PyJoin {
-    fn from(logical_plan: LogicalPlan) -> PyJoin {
+impl TryFrom<LogicalPlan> for PyJoin {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Join(join) => PyJoin { join: join },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Join(join) => Ok(PyJoin { join }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

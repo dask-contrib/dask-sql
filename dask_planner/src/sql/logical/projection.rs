@@ -3,6 +3,7 @@ use crate::expression::PyExpr;
 use datafusion::logical_expr::LogicalPlan;
 use datafusion::logical_expr::{logical_plan::Projection, Expr};
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Projection", module = "dask_planner", subclass)]
@@ -46,13 +47,13 @@ impl PyProjection {
     }
 }
 
-impl From<LogicalPlan> for PyProjection {
-    fn from(logical_plan: LogicalPlan) -> PyProjection {
+impl TryFrom<LogicalPlan> for PyProjection {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Projection(projection) => PyProjection {
-                projection: projection,
-            },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Projection(projection) => Ok(PyProjection { projection }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

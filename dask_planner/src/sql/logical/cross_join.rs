@@ -1,5 +1,6 @@
 use datafusion::logical_plan::{CrossJoin, LogicalPlan};
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "CrossJoin", module = "dask_planner", subclass)]
@@ -8,13 +9,13 @@ pub struct PyCrossJoin {
     cross_join: CrossJoin,
 }
 
-impl From<LogicalPlan> for PyCrossJoin {
-    fn from(logical_plan: LogicalPlan) -> PyCrossJoin {
+impl TryFrom<LogicalPlan> for PyCrossJoin {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::CrossJoin(cross_join) => PyCrossJoin {
-                cross_join: cross_join,
-            },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::CrossJoin(cross_join) => Ok(PyCrossJoin { cross_join }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

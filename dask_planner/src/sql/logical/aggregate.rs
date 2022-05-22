@@ -3,6 +3,7 @@ use crate::expression::PyExpr;
 use datafusion::logical_expr::LogicalPlan;
 use datafusion::logical_expr::{logical_plan::Aggregate, Expr};
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
@@ -76,11 +77,13 @@ impl PyAggregate {
     }
 }
 
-impl From<LogicalPlan> for PyAggregate {
-    fn from(logical_plan: LogicalPlan) -> PyAggregate {
+impl TryFrom<LogicalPlan> for PyAggregate {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Aggregate(agg) => PyAggregate { aggregate: agg },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Aggregate(aggregate) => Ok(PyAggregate { aggregate }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

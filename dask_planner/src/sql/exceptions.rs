@@ -1,9 +1,10 @@
 use datafusion::error::DataFusionError;
 use pyo3::{create_exception, PyErr};
+use std::fmt::Debug;
 
 create_exception!(rust, ParsingException, pyo3::exceptions::PyException);
 
-pub fn py_type_err(e: DataFusionError) -> PyErr {
+pub fn py_type_err(e: impl Debug) -> PyErr {
     PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!("{:?}", e))
 }
 

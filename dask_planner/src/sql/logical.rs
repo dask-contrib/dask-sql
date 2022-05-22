@@ -46,18 +46,19 @@ impl PyLogicalPlan {
 
     /// Gets the index of the column from the input schema
     pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.current_node.clone().unwrap().into();
+        let proj: projection::PyProjection = self.projection().unwrap();
         proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
 /// Convert a LogicalPlan to a Python equivalent type
-fn to_py_plan<T: From<LogicalPlan>>(current_node: Option<&LogicalPlan>) -> PyResult<T> {
-    current_node
-        .map(|plan| plan.clone().into())
-        .ok_or(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
-            "current_node was None",
-        ))
+fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
+    current_node: Option<&LogicalPlan>,
+) -> PyResult<T> {
+    match current_node {
+        Some(plan) => plan.clone().try_into().into(),
+        _ => Err(py_type_err("current_node was None")),
+    }
 }
 
 #[pymethods]
