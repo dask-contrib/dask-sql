@@ -1,4 +1,5 @@
 use crate::expression::PyExpr;
+use crate::sql::exceptions::py_type_err;
 
 use datafusion::scalar::ScalarValue;
 use pyo3::prelude::*;
@@ -31,11 +32,13 @@ impl PyOffset {
     }
 }
 
-impl From<LogicalPlan> for PyOffset {
-    fn from(logical_plan: LogicalPlan) -> PyOffset {
+impl TryFrom<LogicalPlan> for PyOffset {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Offset(offset) => PyOffset { offset: offset },
-            _ => panic!("Issue #501"),
+            LogicalPlan::Offset(offset) => Ok(PyOffset { offset: offset }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }
