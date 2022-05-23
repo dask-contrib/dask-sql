@@ -24,20 +24,17 @@ class DaskOffsetPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        offset_node = rel.offset()
+        offset = RexConverter.convert(
+            rel, rel.offset().getOffset(), df, context=context
+        )
 
-        offset = offset_node.getOffset()
-        if offset:
-            offset = RexConverter.convert(rel, offset, df, context=context)
-
-        end = df.shape[0].compute()
-        df = self._apply_offset(df, offset, end)
+        df = self._apply_offset(df, offset)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again
         return DataContainer(df, cc)
 
-    def _apply_offset(self, df: dd.DataFrame, offset: int, end: int) -> dd.DataFrame:
+    def _apply_offset(self, df: dd.DataFrame, offset: int) -> dd.DataFrame:
         """
         Limit the dataframe to the window [offset, end].
 
@@ -48,7 +45,7 @@ class DaskOffsetPlugin(BaseRelPlugin):
         # TODO: compute `cumsum` here when dask#9067 is resolved
         partition_borders = df.map_partitions(lambda x: len(x))
 
-        def limit_partition_func(df, partition_borders, partition_info=None):
+        def offset_partition_func(df, partition_borders, partition_info=None):
             """Limit the partition to values contained within the specified window, returning an empty dataframe if there are none"""
 
             # TODO: remove the `cumsum` call here when dask#9067 is resolved
@@ -57,26 +54,19 @@ class DaskOffsetPlugin(BaseRelPlugin):
                 partition_info["number"] if partition_info is not None else 0
             )
 
-            this_partition_border_left = (
+            partition_border_left = (
                 partition_borders[partition_index - 1] if partition_index > 0 else 0
             )
-            this_partition_border_right = partition_borders[partition_index]
+            partition_border_right = partition_borders[partition_index]
 
-            if (end and end < this_partition_border_left) or (
-                offset and offset >= this_partition_border_right
-            ):
+            if offset >= partition_border_right:
                 return df.iloc[0:0]
 
-            from_index = max(offset - this_partition_border_left, 0) if offset else 0
-            to_index = (
-                min(end, this_partition_border_right)
-                if end
-                else this_partition_border_right
-            ) - this_partition_border_left
+            from_index = max(offset - partition_border_left, 0)
 
-            return df.iloc[from_index:to_index]
+            return df.iloc[from_index:]
 
         return df.map_partitions(
-            limit_partition_func,
+            offset_partition_func,
             partition_borders=partition_borders,
         )
