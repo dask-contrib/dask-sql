@@ -41,7 +41,7 @@ dependencies:
 - uvicorn>=0.11.3
 - c-compiler
 - cxx-compiler
-- gcc_linux-64=9.3.0
+- gcc_linux-64
 - sysroot_linux-64==2.17
 - pip:
   - fugue[sql]>=0.5.3
