@@ -39,6 +39,9 @@ dependencies:
 - triad>=0.5.4
 - tzlocal>=2.1
 - uvicorn>=0.11.3
-- cfn-lint>=0.4.0
+- c-compiler
+- cxx-compiler
+- gcc_linux-64=9.3.0
+- sysroot_linux-64==2.17
 - pip:
   - fugue[sql]>=0.5.3
