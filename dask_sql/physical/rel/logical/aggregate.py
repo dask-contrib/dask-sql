@@ -209,6 +209,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         """
         df = dc.df
         cc = dc.column_container
+        breakpoint()
 
         # We might need it later.
         # If not, lets hope that adding a single column should not

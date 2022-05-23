@@ -1,4 +1,5 @@
 use crate::expression::PyExpr;
+use crate::sql::exceptions::py_type_err;
 
 use datafusion::scalar::ScalarValue;
 use pyo3::prelude::*;
@@ -22,11 +23,13 @@ impl PyLimit {
     }
 }
 
-impl From<LogicalPlan> for PyLimit {
-    fn from(logical_plan: LogicalPlan) -> PyLimit {
+impl TryFrom<LogicalPlan> for PyLimit {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Limit(limit) => PyLimit { limit: limit },
-            _ => panic!("something went wrong here!!!????"),
+            LogicalPlan::Limit(limit) => Ok(PyLimit { limit: limit }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }
