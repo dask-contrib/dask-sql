@@ -85,10 +85,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         join_condition = join.getCondition()
         lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        print(
-            f"Joining with type {join_type} on columns {lhs_on}, {rhs_on} with filter_condition: {filter_condition}"
-        )
-
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
         # of lhs and rhs put side-by-side (in this order)
@@ -99,7 +95,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         # We therefore create new columns on purpose, which have a distinct name.
         assert len(lhs_on) == len(rhs_on)
         if lhs_on:
-            print(f"lhs_on: {lhs_on} rhs_on: {rhs_on} join_type: {join_type}")
             # 5. Now we can finally merge on these columns
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
             # plus the added columns
@@ -170,14 +165,17 @@ class DaskJoinPlugin(BaseRelPlugin):
         # and to rename them like the rel specifies
         row_type = rel.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
+
         cc = cc.rename(
             {
                 from_col: to_col
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
+
         cc = self.fix_column_to_row_type(cc, row_type)
         dc = DataContainer(df, cc)
+        dc = DataContainer(dc.assign(), cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
         if filter_condition:
@@ -204,12 +202,10 @@ class DaskJoinPlugin(BaseRelPlugin):
         rhs_on: List[str],
         join_type: str,
     ) -> dd.DataFrame:
-        print(f"_join_on_columns: rhs_on: {rhs_on}, lhs_on: {lhs_on}")
 
         lhs_columns_to_add = {
             f"common_{i}": df_lhs_renamed["lhs_" + str(i)] for i in lhs_on
         }
-        print(f"lhs_columns_to_add: {lhs_columns_to_add}")
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]
             for i, index in enumerate(rhs_on)

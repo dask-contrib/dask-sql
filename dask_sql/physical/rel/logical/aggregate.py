@@ -158,8 +158,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        # We make our life easier with having unique column names
-        cc = cc.make_unique()
+        # # We make our life easier with having unique column names
+        # cc = cc.make_unique()
 
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
@@ -190,10 +190,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df_agg.columns = df_agg.columns.get_level_values(-1)
         cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
 
-        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
-        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        logger.debug("Leaving aggregate.py and return the dataframe")
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
 
     def _do_aggregations(
@@ -209,6 +208,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         """
         df = dc.df
         cc = dc.column_container
+
         breakpoint()
 
         # We might need it later.
@@ -225,11 +225,22 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
-        logger.debug(f"Collected Aggregations: {collected_aggregations}")
-        logger.debug(f"Output Column Order: {output_column_order}")
-
         if not collected_aggregations:
-            return df[group_columns].drop_duplicates(), output_column_order
+            frontend_indexes = [
+                cc.columns.index(group_name) for group_name in group_columns
+            ]
+            backend_names = cc.get_backend_by_frontend_index(frontend_indexes)
+            non_collected_df = (
+                df[backend_names]
+                .drop_duplicates()
+                .rename(
+                    columns={
+                        from_col: to_col
+                        for from_col, to_col in zip(backend_names, output_column_order)
+                    }
+                )
+            )
+            return non_collected_df, output_column_order
 
         # SQL needs to have a column with the grouped values as the first
         # output column.
@@ -310,14 +321,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
             schema_name = "root"
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
-            logger.debug(f"AggregationName: {aggregation_name}")
 
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
-            logger.debug(f"Number of Inputs: {len(inputs)}")
-            logger.debug(
-                f"Input: {inputs[0]} of type: {inputs[0].getExprType()} with column name: {inputs[0].column_name(rel)}"
-            )
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
