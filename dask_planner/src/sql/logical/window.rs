@@ -22,8 +22,8 @@ impl PyWindow {
     }
 
     /// Returns order by columns from a sort expression
-    #[pyo3(name = "getCollation")]
-    pub fn get_sort_expr(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
+    #[pyo3(name = "getSortExprs")]
+    pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
             Expr::WindowFunction { order_by, .. } => {
                 let mut sort_exprs: Vec<PyExpr> = Vec::new();
@@ -31,6 +31,52 @@ impl PyWindow {
                     sort_exprs.push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
                 }
                 Ok(sort_exprs)
+            }
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Provided Expr {:?} is not a WindowFunction type",
+                expr
+            ))),
+        }
+    }
+
+    /// Return partition by columns from a sort expression
+    #[pyo3(name = "getPartitionExprs")]
+    pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
+        match expr.expr {
+            Expr::WindowFunction { partition_by, .. } => {
+                let mut partition_exprs = Vec::new();
+                for expr in partition_by {
+                    partition_exprs
+                        .push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+                }
+                Ok(partition_exprs)
+            }
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Provided Expr {:?} is not a WindowFunction type",
+                expr
+            ))),
+        }
+    }
+
+    /// Return window function name
+    #[pyo3(name = "getWindowFuncName")]
+    pub fn window_func_name(&self, expr: PyExpr) -> PyResult<String> {
+        Ok(match expr.expr {
+            Expr::WindowFunction { fun, .. } => fun.to_string(),
+            _ => panic!("Encountered a non Window type in window_func_name"),
+        })
+    }
+
+    /// Return input args for window function
+    #[pyo3(name = "getArgs")]
+    pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
+        match expr.expr {
+            Expr::WindowFunction { args, .. } => {
+                let mut operands = Vec::new();
+                for expr in args {
+                    operands.push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+                }
+                Ok(operands)
             }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
