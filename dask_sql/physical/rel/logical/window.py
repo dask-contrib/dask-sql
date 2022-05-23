@@ -289,14 +289,14 @@ class DaskWindowPlugin(BaseRelPlugin):
             f"Before applying the function, sorting according to {sort_columns}."
         )
 
-        df, group_columns = self._extract_groupby(df, window, dc, context)
+        df, group_columns = self._extract_groupby(df, rel, window, dc, context)
         logger.debug(
             f"Before applying the function, partitioning according to {group_columns}."
         )
         # TODO: optimize by re-using already present columns
         temporary_columns += group_columns
 
-        operations, df = self._extract_operations(window, df, dc, context)
+        operations, df = self._extract_operations(rel, window, df, dc, context)
         for _, _, cols in operations:
             temporary_columns += cols
 
@@ -348,16 +348,17 @@ class DaskWindowPlugin(BaseRelPlugin):
     def _extract_groupby(
         self,
         df: dd.DataFrame,
+        rel,
         # window: org.apache.calcite.rel.core.Window.Group,
         window,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
-        partition_keys = list(window.keys)
+        partition_keys = list(rel.window().getPartitionExprs(window))
         if partition_keys:
             group_columns = [
-                df[dc.column_container.get_backend_by_frontend_index(o)]
+                df[dc.column_container.get_backend_by_frontend_name(o.column_name(rel))]
                 for o in partition_keys
             ]
             group_columns = get_groupby_with_nulls_cols(df, group_columns)
@@ -380,7 +381,7 @@ class DaskWindowPlugin(BaseRelPlugin):
             "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
         )
         # TODO: This was commented out for flake8 CI passing and needs to be handled
-        sort_expressions = rel.window().getCollation(window)
+        sort_expressions = rel.window().getSortExprs(window)
         sort_columns = [
             cc.get_backend_by_frontend_name(expr.column_name(rel))
             for expr in sort_expressions
@@ -391,6 +392,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _extract_operations(
         self,
+        rel,
         window,
         df: dd.DataFrame,
         dc: DataContainer,
@@ -398,33 +400,29 @@ class DaskWindowPlugin(BaseRelPlugin):
     ) -> List[Tuple[Callable, str, List[str]]]:
         # Finally apply the actual function on each group separately
         operations = []
-        for agg_call in window.aggCalls:
-            operator = agg_call.getOperator()
-            operator_name = str(operator.getName())
-            operator_name = operator_name.lower()
+        operator_name = rel.window().getWindowFuncName(window)
+        operator_name = operator_name.lower()
 
+        try:
+            operation = self.OPERATION_MAPPING[operator_name]
+        except KeyError:  # pragma: no cover
             try:
-                operation = self.OPERATION_MAPPING[operator_name]
+                operation = context.schema[context.schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
-                try:
-                    operation = context.schema[context.schema_name].functions[
-                        operator_name
-                    ]
-                except KeyError:  # pragma: no cover
-                    raise NotImplementedError(f"{operator_name} not (yet) implemented")
+                raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
-            logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
+        logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
 
-            # TODO: can be optimized by re-using already present columns
-            temporary_operand_columns = {
-                new_temporary_column(df): RexConverter.convert(o, dc, context=context)
-                for o in agg_call.getOperands()
-            }
-            df = df.assign(**temporary_operand_columns)
-            temporary_operand_columns = list(temporary_operand_columns.keys())
+        # TODO: can be optimized by re-using already present columns
+        temporary_operand_columns = {
+            new_temporary_column(df): RexConverter.convert(rel, o, dc, context=context)
+            for o in rel.window().getArgs(window)
+        }
+        df = df.assign(**temporary_operand_columns)
+        temporary_operand_columns = list(temporary_operand_columns.keys())
 
-            operations.append(
-                (operation, new_temporary_column(df), temporary_operand_columns)
-            )
+        operations.append(
+            (operation, new_temporary_column(df), temporary_operand_columns)
+        )
 
         return operations, df
