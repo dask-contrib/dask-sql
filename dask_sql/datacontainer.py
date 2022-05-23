@@ -122,8 +122,7 @@ class ColumnContainer:
         frontend (SQL) column with the given index.
         """
         frontend_column = self._frontend_columns[index]
-        backend_column = self._frontend_backend_mapping[frontend_column]
-        return backend_column
+        return self.get_backend_by_frontend_name(frontend_column)
 
     def get_backend_by_frontend_name(self, column: str) -> str:
         """

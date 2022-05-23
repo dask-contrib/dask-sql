@@ -209,8 +209,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        breakpoint()
-
         # We might need it later.
         # If not, lets hope that adding a single column should not
         # be a huge problem...
@@ -226,21 +224,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
         )
 
         if not collected_aggregations:
-            frontend_indexes = [
-                cc.columns.index(group_name) for group_name in group_columns
+            backend_names = [
+                cc.get_backend_by_frontend_name(group_name)
+                for group_name in group_columns
             ]
-            backend_names = cc.get_backend_by_frontend_index(frontend_indexes)
-            non_collected_df = (
-                df[backend_names]
-                .drop_duplicates()
-                .rename(
-                    columns={
-                        from_col: to_col
-                        for from_col, to_col in zip(backend_names, output_column_order)
-                    }
-                )
-            )
-            return non_collected_df, output_column_order
+            return df[backend_names].drop_duplicates(), output_column_order
 
         # SQL needs to have a column with the grouped values as the first
         # output column.

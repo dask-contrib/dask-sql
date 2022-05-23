@@ -104,7 +104,6 @@ class BaseRelPlugin:
         for field_name, field_type in field_types.items():
             expected_type = sql_to_python_type(field_type.getSqlType())
             df_field_name = cc.get_backend_by_frontend_name(field_name)
-
             df = cast_column_type(df, df_field_name, expected_type)
 
         return DataContainer(df, dc.column_container)
