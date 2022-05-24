@@ -1,6 +1,8 @@
 use crate::expression::PyExpr;
 use crate::sql::column;
 
+use datafusion::physical_plan::expressions::Column;
+
 use datafusion::logical_expr::logical_plan::Join;
 use datafusion::logical_plan::{JoinType, LogicalPlan, Operator};
 use datafusion::prelude::{col, Expr};
@@ -26,14 +28,76 @@ impl PyJoin {
                 op: Operator::Eq,
                 right: Box::new(col(&right_col.name)),
             };
-
             PyExpr::from(
                 ex,
                 Some(vec![self.join.left.clone(), self.join.right.clone()]),
             )
+        } else if self.join.on.len() == 2 {
+            let (left_col, right_col) = &self.join.on[0];
+            let left_ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            let (left_col, right_col) = &self.join.on[1];
+            let right_ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            let root: Expr = Expr::BinaryExpr {
+                left: Box::new(left_ex),
+                op: Operator::Eq,
+                right: Box::new(right_ex),
+            };
+
+            PyExpr::from(
+                root,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )
+        } else if self.join.on.len() == 3 {
+            let (left_col, right_col) = &self.join.on[0];
+            let left_ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            let (left_col, right_col) = &self.join.on[1];
+            let right_ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            let left_root: Expr = Expr::BinaryExpr {
+                left: Box::new(left_ex),
+                op: Operator::Eq,
+                right: Box::new(right_ex),
+            };
+
+            let (left_col, right_col) = &self.join.on[2];
+            let right_ex: Expr = Expr::BinaryExpr {
+                left: Box::new(col(&left_col.name)),
+                op: Operator::Eq,
+                right: Box::new(col(&right_col.name)),
+            };
+
+            let root: Expr = Expr::BinaryExpr {
+                left: Box::new(left_root),
+                op: Operator::Eq,
+                right: Box::new(right_ex),
+            };
+
+            PyExpr::from(
+                root,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )
         } else {
-            panic!("Encountered a Join with more than a single column for the join condition. This is not currently supported
-            until DataFusion makes some changes to allow for Joining logic other than just Equijoin.")
+            panic!("Join Length: {}, Encountered a Join with more than a single column for the join condition. This is not currently supported
+            until DataFusion makes some changes to allow for Joining logic other than just Equijoin.", self.join.on.len())
         }
     }
 

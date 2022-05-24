@@ -83,6 +83,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         # As this is probably non-sense for large tables, but there is no other
         # known solution so far.
 
+        # TODO: Thought, make this a Vector when multiple conditions,
+        # Discuss with DataFusion community since conditions are not currently presented that way.
+        # ?: Could this expression be generated as a compound PyExpr? BinaryExpr AND BinaryExpr for example?
         join_condition = join.getCondition()
         lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
@@ -183,7 +186,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             filter_condition = reduce(
                 operator.and_,
                 [
-                    RexConverter.convert(rex, dc, context=context)
+                    RexConverter.convert(rel, rex, dc, context=context)
                     for rex in filter_condition
                 ],
             )
@@ -236,7 +239,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
+        df = dd.merge(
+            df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type
+        ).drop(columns=added_columns)
 
         return df
 

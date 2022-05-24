@@ -137,12 +137,12 @@ impl PyExpr {
                         Err(e) => panic!("{:?}", e),
                     }
                 } else if inputs_plans.len() == 2 {
-                    let left_schema: &DFSchema = inputs_plans[0].schema();
-                    let right_schema: &DFSchema = inputs_plans[1].schema();
-                    let join_schema: DFSchema = left_schema.join(&right_schema).unwrap();
-                    let name: Result<String> = self.expr.name(&join_schema);
+                    let mut left_schema: DFSchema = (**inputs_plans[0].schema()).clone();
+                    let right_schema: DFSchema = (**inputs_plans[1].schema()).clone();
+                    left_schema.merge(&right_schema);
+                    let name: Result<String> = self.expr.name(&left_schema);
                     match name {
-                        Ok(fq_name) => Ok(join_schema
+                        Ok(fq_name) => Ok(left_schema
                             .index_of_column(&Column::from_qualified_name(&fq_name))
                             .unwrap()),
                         Err(e) => panic!("{:?}", e),
