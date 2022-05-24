@@ -4,6 +4,11 @@ on:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
 
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
@@ -11,9 +16,6 @@ jobs:
     name: Build the jar on ubuntu
     runs-on: ubuntu-latest
     if: github.repository == 'dask-contrib/dask-sql'
-    defaults:
-      run:
-        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -45,9 +47,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
-    defaults:
-      run:
-        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -194,9 +193,6 @@ jobs:
         needs.test-dev.result == 'failure' || needs.cluster-dev.result == 'failure'
       )
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@v2
       - name: Report failures
