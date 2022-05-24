@@ -181,17 +181,11 @@ impl PyWindowFrameBound {
     }
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
-    pub fn get_offset(&self) -> PyResult<u64> {
+    pub fn get_offset(&self) -> Option<u64> {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) => match val {
-                Some(val) => Ok(val),
-                None => Ok(0),
-            },
-            WindowFrameBound::CurrentRow => Ok(0),
-            WindowFrameBound::Following(val) => match val {
-                Some(val) => Ok(val),
-                None => Ok(0),
-            },
+            WindowFrameBound::Preceding(val) => val,
+            WindowFrameBound::CurrentRow => None,
+            WindowFrameBound::Following(val) => val,
         }
     }
     /// Returns if the frame bound is preceding
