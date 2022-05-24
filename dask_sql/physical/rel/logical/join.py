@@ -43,6 +43,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "LEFT": "left",
         "RIGHT": "right",
         "FULL": "outer",
+        "SEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -206,7 +207,8 @@ class DaskJoinPlugin(BaseRelPlugin):
     ) -> dd.DataFrame:
 
         lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed["lhs_" + str(i)] for i in lhs_on
+            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
+            for i, index in enumerate(lhs_on)
         }
         rhs_columns_to_add = {
             f"common_{i}": df_rhs_renamed.iloc[:, index]
