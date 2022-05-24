@@ -164,8 +164,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
 
-        logger.debug(f"group_columns: {group_columns}")
-
         dc = DataContainer(df, cc)
 
         if not group_columns:
@@ -298,9 +296,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         collected_aggregations = defaultdict(list)
 
         for expr in rel.aggregate().getNamedAggCalls():
-            logger.debug(f"Aggregate Call: {expr}")
-            logger.debug(f"Expr Type: {expr.getExprType()}")
-
             # Determine the aggregation function to use
             assert (
                 expr.getExprType() == "AggregateFunction"
@@ -337,6 +332,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 input_col = two_columns_proxy
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(rel)
+
+                # DataFusion return column name a "UInt8(1)" for COUNT(*)
+                if input_col not in df.columns and input_col == "UInt8(1)":
+                    # COUNT(*) so use any field, just pick first column
+                    input_col = df.columns[0]
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
@@ -388,9 +388,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         groupby_agg_options: Dict[str, Any] = {},
     ):
         tmp_df = df
-
-        logger.debug(f"Additional Column Name: {additional_column_name}")
-        logger.debug(df.head())
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
