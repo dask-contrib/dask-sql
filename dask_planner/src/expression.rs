@@ -11,7 +11,7 @@ use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 

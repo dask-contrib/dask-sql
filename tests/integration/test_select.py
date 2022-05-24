@@ -76,7 +76,6 @@ def test_select_of_select(c, df):
         ) AS "inner"
         """
     )
-
     expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
     assert_eq(result_df, expected_df)
 
@@ -119,7 +118,6 @@ def test_timezones(c, datetime_table):
     assert_eq(result_df, datetime_table)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [

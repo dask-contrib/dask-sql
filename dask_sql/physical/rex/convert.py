@@ -13,16 +13,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-# _REX_TYPE_TO_PLUGIN = {
-#     "Alias": "InputRef",
-#     "Column": "InputRef",
-#     "BinaryExpr": "RexCall",
-#     "Literal": "RexLiteral",
-#     "ScalarFunction": "RexCall",
-#     "Cast": "RexCall",
-# }
-
 _REX_TYPE_TO_PLUGIN = {
     "RexType.Reference": "InputRef",
     "RexType.Call": "RexCall",
