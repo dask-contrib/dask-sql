@@ -21,78 +21,29 @@ impl PyJoin {
     #[pyo3(name = "getCondition")]
     pub fn join_condition(&self) -> PyExpr {
         // TODO: This logic should be altered once https://github.com/apache/arrow-datafusion/issues/2496 is complete
-        if self.join.on.len() == 1 {
+        if self.join.on.len() >= 1 {
             let (left_col, right_col) = &self.join.on[0];
-            let ex: Expr = Expr::BinaryExpr {
+            let mut root_expr: Expr = Expr::BinaryExpr {
                 left: Box::new(col(&left_col.name)),
                 op: Operator::Eq,
                 right: Box::new(col(&right_col.name)),
             };
+            for idx in 1..self.join.on.len() {
+                let (left_col, right_col) = &self.join.on[idx];
+                let ex: Expr = Expr::BinaryExpr {
+                    left: Box::new(col(&left_col.name)),
+                    op: Operator::Eq,
+                    right: Box::new(col(&right_col.name)),
+                };
+
+                root_expr = Expr::BinaryExpr {
+                    left: Box::new(root_expr),
+                    op: Operator::Eq,
+                    right: Box::new(ex),
+                }
+            }
             PyExpr::from(
-                ex,
-                Some(vec![self.join.left.clone(), self.join.right.clone()]),
-            )
-        } else if self.join.on.len() == 2 {
-            let (left_col, right_col) = &self.join.on[0];
-            let left_ex: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
-                op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
-            };
-
-            let (left_col, right_col) = &self.join.on[1];
-            let right_ex: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
-                op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
-            };
-
-            let root: Expr = Expr::BinaryExpr {
-                left: Box::new(left_ex),
-                op: Operator::Eq,
-                right: Box::new(right_ex),
-            };
-
-            PyExpr::from(
-                root,
-                Some(vec![self.join.left.clone(), self.join.right.clone()]),
-            )
-        } else if self.join.on.len() == 3 {
-            let (left_col, right_col) = &self.join.on[0];
-            let left_ex: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
-                op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
-            };
-
-            let (left_col, right_col) = &self.join.on[1];
-            let right_ex: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
-                op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
-            };
-
-            let left_root: Expr = Expr::BinaryExpr {
-                left: Box::new(left_ex),
-                op: Operator::Eq,
-                right: Box::new(right_ex),
-            };
-
-            let (left_col, right_col) = &self.join.on[2];
-            let right_ex: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
-                op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
-            };
-
-            let root: Expr = Expr::BinaryExpr {
-                left: Box::new(left_root),
-                op: Operator::Eq,
-                right: Box::new(right_ex),
-            };
-
-            PyExpr::from(
-                root,
+                root_expr,
                 Some(vec![self.join.left.clone(), self.join.right.clone()]),
             )
         } else {
