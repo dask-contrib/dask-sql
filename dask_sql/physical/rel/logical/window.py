@@ -81,13 +81,13 @@ class BoundDescription(
 
 
 def to_bound_description(
-    java_window,
+    windowFrame,
     constants,
     constant_count_offset: int,
 ) -> BoundDescription:
     """Convert the java object "java_window" to a python representation,
     replacing any literals or references to constants"""
-    offset = java_window.getOffset()
+    offset = windowFrame.getOffset()
     if offset:
         # if isinstance(offset, org.apache.calcite.rex.RexInputRef):
         #     # For calcite, the constant pool are normal "columns",
@@ -104,10 +104,10 @@ def to_bound_description(
         offset = None
 
     return BoundDescription(
-        is_unbounded=bool(java_window.isUnbounded()),
-        is_preceding=bool(java_window.isPreceding()),
-        is_following=bool(java_window.isFollowing()),
-        is_current_row=bool(java_window.isCurrentRow()),
+        is_unbounded=bool(windowFrame.isUnbounded()),
+        is_preceding=bool(windowFrame.isPreceding()),
+        is_following=bool(windowFrame.isFollowing()),
+        is_current_row=bool(windowFrame.isCurrentRow()),
         offset=offset,
     )
 
@@ -304,18 +304,42 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         logger.debug(f"Will create {newly_created_columns} new columns")
 
+        # Calcite always creates window bounds when not specified as unbound preceding and current row
+        if not rel.window().getWindowFrame(window):
+            lower_bound = BoundDescription(
+                is_unbounded=True,
+                is_preceding=True,
+                is_following=False,
+                is_current_row=False,
+                offset=None,
+            )
+            upper_bound = BoundDescription(
+                is_unbounded=False,
+                is_preceding=False,
+                is_following=False,
+                is_current_row=True,
+                offset=None,
+            )
+        else:
+            lower_bound = to_bound_description(
+                rel.window().getWindowFrame(window).getLowerBound(),
+                constants,
+                constant_count_offset,
+            )
+            upper_bound = to_bound_description(
+                rel.window().getWindowFrame(window).getUpperBound(),
+                constants,
+                constant_count_offset,
+            )
+
         # Apply the windowing operation
         filled_map = partial(
             map_on_each_group,
             sort_columns=sort_columns,
             sort_ascending=sort_ascending,
             sort_null_first=sort_null_first,
-            lower_bound=to_bound_description(
-                window.lowerBound, constants, constant_count_offset
-            ),
-            upper_bound=to_bound_description(
-                window.upperBound, constants, constant_count_offset
-            ),
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
             operations=operations,
         )
 
@@ -400,6 +424,9 @@ class DaskWindowPlugin(BaseRelPlugin):
     ) -> List[Tuple[Callable, str, List[str]]]:
         # Finally apply the actual function on each group separately
         operations = []
+
+        # TODO: datafusion returns only window func expression per window
+        # This can be optimized in the physical plan to collect all aggs for a given window
         operator_name = rel.window().getWindowFuncName(window)
         operator_name = operator_name.lower()
 
