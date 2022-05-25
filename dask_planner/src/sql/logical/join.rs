@@ -24,16 +24,16 @@ impl PyJoin {
         if self.join.on.len() >= 1 {
             let (left_col, right_col) = &self.join.on[0];
             let mut root_expr: Expr = Expr::BinaryExpr {
-                left: Box::new(col(&left_col.name)),
+                left: Box::new(Expr::Column(left_col.clone())),
                 op: Operator::Eq,
-                right: Box::new(col(&right_col.name)),
+                right: Box::new(Expr::Column(right_col.clone())),
             };
             for idx in 1..self.join.on.len() {
                 let (left_col, right_col) = &self.join.on[idx];
                 let ex: Expr = Expr::BinaryExpr {
-                    left: Box::new(col(&left_col.name)),
+                    left: Box::new(Expr::Column(left_col.clone())),
                     op: Operator::Eq,
-                    right: Box::new(col(&right_col.name)),
+                    right: Box::new(Expr::Column(right_col.clone())),
                 };
 
                 root_expr = Expr::BinaryExpr {

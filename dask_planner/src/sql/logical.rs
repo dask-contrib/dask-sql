@@ -143,7 +143,7 @@ impl PyLogicalPlan {
         match &self.current_node {
             Some(e) => {
                 let sch: &DFSchemaRef = e.schema();
-                println!("DFSchemaRef: {:?}", sch);
+                // println!("DFSchemaRef: {:?}", sch);
                 //TODO: Where can I actually get this in the context of the running query?
                 Ok("root")
             }

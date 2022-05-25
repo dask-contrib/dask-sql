@@ -36,7 +36,6 @@ impl PyProjection {
         for expression in self.projection.expr.clone() {
             let mut py_expr: PyExpr =
                 PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
-            py_expr.input_plan = Some(vec![self.projection.input.clone()]);
             for expr in self.projected_expressions(&py_expr) {
                 if let Ok(name) = expr._column_name(&*self.projection.input) {
                     named.push((name, expr.clone()));

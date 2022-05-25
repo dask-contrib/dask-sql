@@ -158,6 +158,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
+        # # We make our life easier with having unique column names
+        # cc = cc.make_unique()
+
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
 

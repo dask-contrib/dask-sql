@@ -68,7 +68,7 @@ impl PyExpr {
     /// Determines the name of the `Expr` instance by examining the LogicalPlan
     pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
-        Ok(field.unqualified_column().name.clone())
+        Ok(field.qualified_column().flat_name().clone())
     }
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
@@ -126,27 +126,54 @@ impl PyExpr {
     pub fn index(&self) -> PyResult<usize> {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(inputs_plans) => {
-                if inputs_plans.len() == 1 {
-                    let name: Result<String> = self.expr.name(inputs_plans[0].schema());
+            Some(input_plans) => {
+                if input_plans.len() == 1 {
+                    let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
-                        Ok(fq_name) => Ok(inputs_plans[0]
+                        Ok(fq_name) => Ok(input_plans[0]
                             .schema()
                             .index_of_column(&Column::from_qualified_name(&fq_name))
                             .unwrap()),
                         Err(e) => panic!("{:?}", e),
                     }
-                } else if inputs_plans.len() >= 2 {
-                    let mut base_schema: DFSchema = (**inputs_plans[0].schema()).clone();
-                    for input_idx in 1..inputs_plans.len() {
-                        let input_schema: DFSchema = (**inputs_plans[input_idx].schema()).clone();
+                } else if input_plans.len() >= 2 {
+                    let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
+                    for input_idx in 1..input_plans.len() {
+                        let input_schema: DFSchema = (**input_plans[input_idx].schema()).clone();
                         base_schema.merge(&input_schema);
                     }
                     let name: Result<String> = self.expr.name(&base_schema);
                     match name {
-                        Ok(fq_name) => Ok(base_schema
-                            .index_of_column(&Column::from_qualified_name(&fq_name))
-                            .unwrap()),
+                        Ok(fq_name) => {
+                            let idx: Result<usize> =
+                                base_schema.index_of_column(&Column::from_qualified_name(&fq_name));
+                            match idx {
+                                Ok(index) => Ok(index),
+                                Err(e) => {
+                                    println!("HJERE");
+                                    let qualified_fields: Vec<&DFField> =
+                                        base_schema.fields_with_unqualified_name(&fq_name);
+                                    println!("Qualified Fields Size: {:?}", qualified_fields.len());
+                                    for qf in &qualified_fields {
+                                        println!("Qualified Field: {:?}", qf);
+                                        if qf.name().eq(&fq_name) {
+                                            println!(
+                                                "Using Qualified Name: {:?}",
+                                                &qf.qualified_name()
+                                            );
+                                            let qualifier: String = qf.qualifier().unwrap().clone();
+                                            let qual: Option<&str> = Some(&qualifier);
+                                            let index: usize = base_schema
+                                                .index_of_column_by_name(qual, &qf.name())
+                                                .unwrap();
+                                            println!("Index here: {:?}", index);
+                                            return Ok(index);
+                                        }
+                                    }
+                                    panic!("Unable to find match for column with name: '{}' in DFSchema", &fq_name);
+                                }
+                            }
+                        }
                         Err(e) => panic!("{:?}", e),
                     }
                 } else {
