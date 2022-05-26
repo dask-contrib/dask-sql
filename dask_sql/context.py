@@ -490,7 +490,6 @@ class Context:
             if dc is None:
                 return
 
-            breakpoint()
             if select_names:
                 # Rename any columns named EXPR$* to a more human readable name
                 cc = dc.column_container

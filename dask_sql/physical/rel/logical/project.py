@@ -55,6 +55,8 @@ class DaskProjectPlugin(BaseRelPlugin):
             # this is only the case if the expr is a RexInputRef
             if expr.getRexType() == RexType.Reference:
                 index = expr.getIndex()
+                # TODO: This is getting rhs_0 instead of lhs_0 ....
+                breakpoint()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
                     f"Not re-adding the same column {key} (but just referencing it)"

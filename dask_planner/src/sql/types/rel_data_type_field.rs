@@ -52,9 +52,22 @@ impl RelDataTypeField {
         }
     }
 
+    #[pyo3(name = "getQualifier")]
+    pub fn qualifier(&self) -> Option<String> {
+        self.qualifier.clone()
+    }
+
     #[pyo3(name = "getName")]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    #[pyo3(name = "getQualifiedName")]
+    pub fn qualified_name(&self) -> String {
+        match &self.qualifier() {
+            Some(qualifier) => format!("{}.{}", &qualifier, self.name()),
+            None => format!("{}", self.name()),
+        }
     }
 
     #[pyo3(name = "getIndex")]

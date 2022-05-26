@@ -83,7 +83,7 @@ impl RelDataType {
         assert!(!self.field_list.is_empty());
         let mut field_names: Vec<String> = Vec::new();
         for field in &self.field_list {
-            field_names.push(String::from(field.name()));
+            field_names.push(String::from(field.qualified_name()));
         }
         field_names
     }

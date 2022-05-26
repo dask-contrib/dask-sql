@@ -130,10 +130,13 @@ impl PyExpr {
                 if input_plans.len() == 1 {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
-                        Ok(fq_name) => Ok(input_plans[0]
-                            .schema()
-                            .index_of_column(&Column::from_qualified_name(&fq_name))
-                            .unwrap()),
+                        Ok(fq_name) => {
+                            //panic!("fq_name: {:?} input_plan[0].schema: {:?} Index_of_column: {:?}", &fq_name, input_plans[0].schema(), input_plans[0].schema().index_of_column(&Column::from_qualified_name(&fq_name)));
+                            Ok(input_plans[0]
+                                .schema()
+                                .index_of_column(&Column::from_qualified_name(&fq_name))
+                                .unwrap())
+                        }
                         Err(e) => panic!("{:?}", e),
                     }
                 } else if input_plans.len() >= 2 {
