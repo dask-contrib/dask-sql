@@ -106,7 +106,7 @@ setup(
             "sphinx>=3.2.1",
             "pyarrow>=1.0.0",
             "dask-ml>=2022.1.22",
-            "scikit-learn>=0.24.2",
+            "scikit-learn>=1.0.0",
             "intake>=0.6.0",
             "pre-commit",
             "black==22.3.0",
