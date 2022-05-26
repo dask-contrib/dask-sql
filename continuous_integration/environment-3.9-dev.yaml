@@ -2,8 +2,6 @@ name: dask-sql
 channels:
 - conda-forge
 - nodefaults
-- rapidsai-nightly
-- nvidia
 dependencies:
 - adagio>=0.2.3
 - antlr4-python3-runtime>=4.9.2, <4.10.0 # Remove max pin after qpd(fugue dependency) updates their conda recipe

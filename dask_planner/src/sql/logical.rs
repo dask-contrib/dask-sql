@@ -117,14 +117,14 @@ impl PyLogicalPlan {
         Ok(py_inputs)
     }
 
-    /// Examines the current_node and get the fields associated with it
-    pub fn get_field_names(&mut self) -> PyResult<Vec<String>> {
-        let mut field_names: Vec<String> = Vec::new();
-        for field in self.current_node().schema().fields() {
-            field_names.push(String::from(field.name()));
-        }
-        Ok(field_names)
-    }
+    // /// Examines the current_node and get the fields associated with it
+    // pub fn get_field_names(&mut self) -> PyResult<Vec<String>> {
+    //     let mut field_names: Vec<String> = Vec::new();
+    //     for field in self.current_node().schema().fields() {
+    //         field_names.push(String::from(field.name()));
+    //     }
+    //     Ok(field_names)
+    // }
 
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned

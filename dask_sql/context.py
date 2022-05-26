@@ -822,13 +822,8 @@ class Context:
 
         rel = nonOptimizedRel
         logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
-        # # Optimization might remove some alias projects. Make sure to keep them here.
-        # select_names = [
-        #     str(name)
-        #     for name in nonOptimizedRelNode.getRowType().getFieldNames()
-        # ]
-
-        select_names = rel.get_field_names()
+        # Optimization might remove some alias projects. Make sure to keep them here.
+        select_names = [str(name) for name in rel.getRowType().getFieldNames()]
 
         # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
         # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)

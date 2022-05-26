@@ -81,6 +81,7 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
+        # dc = DataContainer(dc.assign(), ColumnContainer(cc.columns))
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
 
         return dc
