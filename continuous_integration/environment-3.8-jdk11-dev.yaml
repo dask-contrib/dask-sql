@@ -3,13 +3,9 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
-- adagio
-- antlr4-python3-runtime<4.10  # fugue dependency; remove when we conda install fugue
-- ciso8601
 - dask-ml=2022.1.22
 - dask=2022.3.0
 - fastapi=0.61.1
-- fs
 - intake=0.6.0
 - jpype1=1.0.2
 - jsonschema
@@ -20,7 +16,6 @@ dependencies:
 - nest-asyncio
 - openjdk=11
 - pandas=1.0.2
-- pip
 - pre-commit
 - prompt_toolkit
 - psycopg2
@@ -31,12 +26,18 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.8
-- qpd  # fugue dependency; remove when we conda install fugue
 - scikit-learn=1.0.0
 - sphinx
 - tpot
-- triad
 - tzlocal=2.1
 - uvicorn=0.11.3
+# fugue dependencies; remove when we conda install fugue
+- adagio
+- antlr4-python3-runtime<4.10
+- ciso8601
+- fs
+- pip
+- qpd
+- triad
 - pip:
   - fugue[sql]==0.5.3
