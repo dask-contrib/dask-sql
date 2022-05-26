@@ -98,7 +98,8 @@ class BaseRelPlugin:
         cc = dc.column_container
 
         field_types = {
-            str(field.getName()): field.getType() for field in row_type.getFieldList()
+            str(field.getQualifiedName()): field.getType()
+            for field in row_type.getFieldList()
         }
 
         for field_name, field_type in field_types.items():
