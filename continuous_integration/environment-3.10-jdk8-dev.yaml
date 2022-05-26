@@ -6,12 +6,12 @@ dependencies:
 - adagio
 - antlr4-python3-runtime
 - ciso8601
-- dask-ml
-- dask
-- fastapi
+- dask-ml>=2022.1.22
+- dask>=2022.3.0
+- fastapi>=0.61.1
 - fs
-- intake
-- jpype1
+- intake>=0.6.0
+- jpype1>=1.0.2
 - jsonschema
 - lightgbm
 - maven
@@ -19,23 +19,23 @@ dependencies:
 - mock
 - nest-asyncio
 - openjdk=8
-- pandas
+- pandas>=1.0.0
 - pip
 - pre-commit
 - prompt_toolkit
 - psycopg2
-- pyarrow
+- pyarrow>=1.0.0
 - pygments
 - pyhive
 - pytest-cov
 - pytest-xdist
 - pytest
 - python=3.10
-- scikit-learn
+- scikit-learn>=0.24.2
 - sphinx
 - tpot
 - triad
-- tzlocal
-- uvicorn
+- tzlocal>=2.1
+- uvicorn>=0.11.3
 - pip:
-  - fugue[sql]
+  - fugue[sql]>=0.5.3
