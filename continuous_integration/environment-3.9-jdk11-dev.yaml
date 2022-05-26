@@ -7,10 +7,10 @@ dependencies:
 - antlr4-python3-runtime
 - ciso8601
 - dask-ml
+- dask
 - fastapi
 - fs
 - intake
-- isort=5.7.0
 - jpype1
 - jsonschema
 - lightgbm
@@ -37,6 +37,5 @@ dependencies:
 - triad
 - tzlocal
 - uvicorn
-- cfn-lint
 - pip:
   - fugue[sql]
