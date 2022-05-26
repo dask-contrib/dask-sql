@@ -88,7 +88,7 @@ setup(
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2022.3.0",
-        "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
+        "pandas>=1.0.2",
         "jpype1>=1.0.2",
         "fastapi>=0.61.1",
         "uvicorn>=0.11.3",

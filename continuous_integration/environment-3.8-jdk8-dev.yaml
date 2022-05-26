@@ -4,7 +4,7 @@ channels:
 - nodefaults
 dependencies:
 - adagio
-- antlr4-python3-runtime
+- antlr4-python3-runtime  # fugue dependency; remove when we conda install fugue
 - ciso8601
 - dask-ml=2022.1.22
 - dask=2022.3.0
@@ -19,7 +19,7 @@ dependencies:
 - mock
 - nest-asyncio
 - openjdk=8
-- pandas=1.0.0
+- pandas=1.0.2
 - pip
 - pre-commit
 - prompt_toolkit
@@ -31,6 +31,7 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.8
+- qpd  # fugue dependency; remove when we conda install fugue
 - scikit-learn=1.0.0
 - sphinx
 - tpot
