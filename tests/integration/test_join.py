@@ -105,9 +105,6 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/531"
-)
 def test_join_cross(c, user_table_1, department_table):
     return_df = c.sql(
         """
