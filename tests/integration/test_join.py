@@ -17,7 +17,7 @@ def test_join(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"lhs.user_id": [1, 1, 2, 2], "lhs.b": [3, 3, 1, 3], "rhs.c": [1, 2, 3, 3]}
+        {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
 
     assert_eq(return_df, expected_df, check_index=False)
@@ -33,7 +33,7 @@ def test_join_inner(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"lhs.user_id": [1, 1, 2, 2], "lhs.b": [3, 3, 1, 3], "rhs.c": [1, 2, 3, 3]}
+        {"user_id": [1, 1, 2, 2], "b": [3, 3, 1, 3], "c": [1, 2, 3, 3]}
     )
 
     assert_eq(return_df, expected_df, check_index=False)
@@ -52,9 +52,9 @@ def test_join_outer(c):
         {
             # That is strange. Unfortunately, it seems dask fills in the
             # missing rows with NaN, not with NA...
-            "lhs.user_id": [1, 1, 2, 2, 3, np.NaN],
-            "lhs.b": [3, 3, 1, 3, 3, np.NaN],
-            "rhs.c": [1, 2, 3, 3, np.NaN, 4],
+            "user_id": [1, 1, 2, 2, 3, np.NaN],
+            "b": [3, 3, 1, 3, 3, np.NaN],
+            "c": [1, 2, 3, 3, np.NaN, 4],
         }
     )
 
@@ -74,9 +74,9 @@ def test_join_left(c):
         {
             # That is strange. Unfortunately, it seems dask fills in the
             # missing rows with NaN, not with NA...
-            "lhs.user_id": [1, 1, 2, 2, 3],
-            "lhs.b": [3, 3, 1, 3, 3],
-            "rhs.c": [1, 2, 3, 3, np.NaN],
+            "user_id": [1, 1, 2, 2, 3],
+            "b": [3, 3, 1, 3, 3],
+            "c": [1, 2, 3, 3, np.NaN],
         }
     )
 
@@ -96,9 +96,9 @@ def test_join_right(c):
         {
             # That is strange. Unfortunately, it seems dask fills in the
             # missing rows with NaN, not with NA...
-            "lhs.user_id": [1, 1, 2, 2, np.NaN],
-            "lhs.b": [3, 3, 1, 3, np.NaN],
-            "rhs.c": [1, 2, 3, 3, 4],
+            "user_id": [1, 1, 2, 2, np.NaN],
+            "b": [3, 3, 1, 3, np.NaN],
+            "c": [1, 2, 3, 3, 4],
         }
     )
 
@@ -134,7 +134,7 @@ def test_join_complex(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"lhs.a": [1, 1, 1, 2, 2, 3], "rhs.b": [1.1, 2.2, 3.3, 2.2, 3.3, 3.3]}
+        {"a": [1, 1, 1, 2, 2, 3], "b": [1.1, 2.2, 3.3, 2.2, 3.3, 3.3]}
     )
 
     assert_eq(return_df, expected_df, check_index=False)
@@ -167,7 +167,7 @@ def test_join_complex(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"lhs.user_id": [2, 2], "lhs.b": [1, 3], "rhs.user_id": [2, 2], "rhs.c": [3, 3]}
+        {"lhs.user_id": [2, 2], "b": [1, 3], "rhs.user_id": [2, 2], "c": [3, 3]}
     )
 
     assert_eq(return_df, expected_df, check_index=False)
@@ -185,9 +185,9 @@ def test_join_literal(c):
     expected_df = pd.DataFrame(
         {
             "lhs.user_id": [2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
-            "lhs.b": [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+            "b": [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
             "rhs.user_id": [1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4],
-            "rhs.c": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
+            "c": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
         }
     )
 
@@ -201,9 +201,7 @@ def test_join_literal(c):
     ON False
     """
     )
-    expected_df = pd.DataFrame(
-        {"lhs.user_id": [], "lhs.b": [], "rhs.user_id": [], "rhs.c": []}
-    )
+    expected_df = pd.DataFrame({"lhs.user_id": [], "b": [], "rhs.user_id": [], "c": []})
 
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 

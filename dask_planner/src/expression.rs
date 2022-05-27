@@ -130,13 +130,10 @@ impl PyExpr {
                 if input_plans.len() == 1 {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
-                        Ok(fq_name) => {
-                            //panic!("fq_name: {:?} input_plan[0].schema: {:?} Index_of_column: {:?}", &fq_name, input_plans[0].schema(), input_plans[0].schema().index_of_column(&Column::from_qualified_name(&fq_name)));
-                            Ok(input_plans[0]
-                                .schema()
-                                .index_of_column(&Column::from_qualified_name(&fq_name))
-                                .unwrap())
-                        }
+                        Ok(fq_name) => Ok(input_plans[0]
+                            .schema()
+                            .index_of_column(&Column::from_qualified_name(&fq_name))
+                            .unwrap()),
                         Err(e) => panic!("{:?}", e),
                     }
                 } else if input_plans.len() >= 2 {
@@ -153,23 +150,19 @@ impl PyExpr {
                             match idx {
                                 Ok(index) => Ok(index),
                                 Err(e) => {
-                                    println!("HJERE");
+                                    // This logic is encountered when an non-qualified column name is
+                                    // provided AND there exists more than one entry with that
+                                    // unqualified. This logic will attempt to narrow down to the
+                                    // qualified column name.
                                     let qualified_fields: Vec<&DFField> =
                                         base_schema.fields_with_unqualified_name(&fq_name);
-                                    println!("Qualified Fields Size: {:?}", qualified_fields.len());
                                     for qf in &qualified_fields {
-                                        println!("Qualified Field: {:?}", qf);
                                         if qf.name().eq(&fq_name) {
-                                            println!(
-                                                "Using Qualified Name: {:?}",
-                                                &qf.qualified_name()
-                                            );
                                             let qualifier: String = qf.qualifier().unwrap().clone();
                                             let qual: Option<&str> = Some(&qualifier);
                                             let index: usize = base_schema
                                                 .index_of_column_by_name(qual, &qf.name())
                                                 .unwrap();
-                                            println!("Index here: {:?}", index);
                                             return Ok(index);
                                         }
                                     }

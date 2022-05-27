@@ -9,7 +9,7 @@ use std::fmt;
 use pyo3::prelude::*;
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
-#[pyclass]
+#[pyclass(name = "RelDataTypeField", module = "dask_planner", subclass)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataTypeField {
     qualifier: Option<String>,

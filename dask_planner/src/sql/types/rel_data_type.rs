@@ -8,7 +8,7 @@ const PRECISION_NOT_SPECIFIED: i32 = i32::MIN;
 const SCALE_NOT_SPECIFIED: i32 = -1;
 
 /// RelDataType represents the type of a scalar expression or entire row returned from a relational expression.
-#[pyclass]
+#[pyclass(name = "RelDataType", module = "dask_planner", subclass)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataType {
     nullable: bool,

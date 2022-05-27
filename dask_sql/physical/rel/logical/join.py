@@ -192,6 +192,9 @@ class DaskJoinPlugin(BaseRelPlugin):
             dc = DataContainer(df, cc)
 
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        # # Rename underlying DataFrame column names back to their original values before returning
+        # df = dc.assign()
+        # dc = DataContainer(df, ColumnContainer(cc.columns))
         return dc
 
     def _join_on_columns(

@@ -480,8 +480,7 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, select_names, _ = self._get_ral(sql)
-            logger.debug(f"Rel: {rel} - select_names: {select_names} - {_}")
+            rel, select_fields, _ = self._get_ral(sql)
 
             dc = RelConverter.convert(rel, context=self)
 
@@ -490,8 +489,21 @@ class Context:
             if dc is None:
                 return
 
-            if select_names:
-                # Rename any columns named EXPR$* to a more human readable name
+            if len(select_fields) > 0:
+                select_names = []
+                for i, field in enumerate(select_fields):
+                    exists = False
+                    for idx, inner_field in enumerate(select_fields):
+                        if i != idx and field.getName() == inner_field.getName():
+                            exists = True
+                            break
+                    if exists:
+                        select_names.append(field.getQualifiedName())
+                    else:
+                        select_names.append(field.getName())
+
+                # Iterate through the list and subsequently determine if each index is null or not, maybe keep a unique map?
+                # Use FQ name if not unique and simple name if it is unique
                 cc = dc.column_container
                 cc = cc.rename(
                     {
@@ -823,50 +835,15 @@ class Context:
         rel = nonOptimizedRel
         logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
         # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [str(name) for name in rel.getRowType().getFieldNames()]
+        select_names = [field for field in rel.getRowType().getFieldList()]
 
         # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
         # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
         # rel_string = str(generator.getRelationalAlgebraString(rel))
         rel_string = rel.explain_original()
 
-        # # Internal, temporary results of calcite are sometimes
-        # # named EXPR$N (with N a number), which is not very helpful
-        # # to the user. We replace these cases therefore with
-        # # the actual query string. This logic probably fails in some
-        # # edge cases (if the outer SQLNode is not a select node),
-        # # but so far I did not find such a case.
-        # # So please raise an issue if you have found one!
-        # if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
-        #     sqlNode = sqlNode.query
-        #     sqlNodeClass = get_java_class(sqlNode)
-
-        # if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-        #     select_names = [
-        #         self._to_sql_string(s, default_dialect=default_dialect)
-        #         if current_name.startswith("EXPR$")
-        #         else current_name
-        #         for s, current_name in zip(sqlNode.getSelectList(), select_names)
-        #     ]
-        # else:
-        #     logger.debug(
-        #         "Not extracting output column names as the SQL is not a SELECT call"
-        #     )
-
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
-
-    # def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
-    #     if default_dialect is None:
-    #         default_dialect = (
-    #             com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
-    #         )
-
-    #     try:
-    #         return str(s.toSqlString(default_dialect))
-    #     # Have not seen any instance so far, but better be safe than sorry
-    #     except Exception:  # pragma: no cover
-    #         return str(s)
 
     def _get_tables_from_stack(self):
         """Helper function to return all dask/pandas dataframes from the calling stack"""

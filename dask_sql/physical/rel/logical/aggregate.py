@@ -158,8 +158,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        # # We make our life easier with having unique column names
-        # cc = cc.make_unique()
+        # We make our life easier with having unique column names
+        cc = cc.make_unique()
 
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
@@ -186,7 +186,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
-        cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
+        backend_output_column_order = [
+            cc.get_backend_by_frontend_name(oc) for oc in output_column_order
+        ]
+        cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
@@ -246,7 +249,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if key in collected_aggregations:
             aggregations = collected_aggregations.pop(key)
             df_result = self._perform_aggregation(
-                df,
+                DataContainer(df, cc),
                 None,
                 aggregations,
                 additional_column_name,
@@ -257,7 +260,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
-                df,
+                DataContainer(df, cc),
                 filter_column,
                 aggregations,
                 additional_column_name,
@@ -363,8 +366,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
                         f"Aggregation function {aggregation_name} not implemented (yet)."
                     )
             if isinstance(aggregation_function, AggregationSpecification):
+                backend_name = cc.get_backend_by_frontend_name(input_col)
                 aggregation_function = aggregation_function.get_supported_aggregation(
-                    df[input_col]
+                    df[backend_name]
                 )
 
             # Finally, extract the output column name
@@ -380,14 +384,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _perform_aggregation(
         self,
-        df: dd.DataFrame,
+        dc: DataContainer,
         filter_column: str,
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
         group_columns: List[str],
         groupby_agg_options: Dict[str, Any] = {},
     ):
-        tmp_df = df
+        tmp_df = dc.df
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
@@ -395,6 +399,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
         fast_groupby = True
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
+            input_col = dc.column_container.get_backend_by_frontend_name(input_col)
+            output_col = dc.column_container.get_backend_by_frontend_name(output_col)
             aggregations_dict[input_col][output_col] = aggregation_f
             if not isinstance(aggregation_f, str):
                 fast_groupby = False
@@ -407,11 +413,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # we might need a temporary column name if no groupby columns are specified
         if additional_column_name is None:
-            additional_column_name = new_temporary_column(df)
+            additional_column_name = new_temporary_column(dc.df)
 
         # perform groupby operation; if we are using custom aggreagations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
+            group_columns = [
+                dc.column_container.get_backend_by_frontend_name(group_name)
+                for group_name in group_columns
+            ]
             grouped_df = tmp_df.groupby(
                 by=(group_columns or [additional_column_name]), dropna=False
             )
