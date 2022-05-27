@@ -22,8 +22,11 @@ from tests.utils import assert_eq
 
 def cast_datetime_to_string(df):
     cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
-    # Casting to object first as
-    # directly converting to string looses second precision
+
+    if not cols:
+        return df
+
+    # Casting directly to string loses second precision
     df[cols] = df[cols].astype("object").astype("string")
     return df
 
