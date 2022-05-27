@@ -152,12 +152,9 @@ def test_group_by_nan(c):
     )
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
 
-    # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
-    # we cannot check here
     assert_eq(
         return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
-        check_dtype=False,
     )
 
     return_df = c.sql(

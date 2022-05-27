@@ -9,7 +9,7 @@ dependencies:
   - dask-sphinx-theme>=2.0.3
   - maven>=3.6.0
   - dask>=2022.3.0
-  - pandas>=1.0.5
+  - pandas>=1.1.0
   - fugue>=0.5.3
   - jpype1>=1.0.2
   - fastapi>=0.61.1
