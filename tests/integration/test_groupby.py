@@ -152,10 +152,8 @@ def test_group_by_nan(c):
     )
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
 
-    assert_eq(
-        return_df.sort_values("c").reset_index(drop=True),
-        expected_df.sort_values("c").reset_index(drop=True),
-    )
+    # we return nullable int dtype instead of float
+    assert_eq(return_df, expected_df, check_dtype=False)
 
     return_df = c.sql(
         """
