@@ -81,11 +81,8 @@ class AggregationSpecification:
                 if "cudf" in str(series._partition_type):
                     return built_in_aggregation
 
-                # With pandas StringDtype built-in aggregations work
-                # while with pandas ObjectDtype and Nulls built-in aggregations fail
-                if isinstance(series, dd.Series) and isinstance(
-                    series.dtype, pd.StringDtype
-                ):
+                # with pandas StringDtype built-in aggregations work
+                if isinstance(series.dtype, pd.StringDtype):
                     return built_in_aggregation
 
         return self.custom_aggregation
@@ -375,6 +372,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
+        # and our pandas version support dropna for groupbys
         aggregations_dict = defaultdict(dict)
         fast_groupby = True
         for aggregation in aggregations:
