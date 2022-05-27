@@ -32,5 +32,4 @@ class RexInputRefPlugin(BaseRexPlugin):
         # The column is references by index
         index = rex.getIndex()
         backend_column_name = cc.get_backend_by_frontend_index(index)
-        # TODO: IF multiple columns with the same name exist here then we return those as a dataframe and that does not work!!!!
         return df[backend_column_name]

@@ -400,7 +400,17 @@ class DaskAggregatePlugin(BaseRelPlugin):
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
             input_col = dc.column_container.get_backend_by_frontend_name(input_col)
-            output_col = dc.column_container.get_backend_by_frontend_name(output_col)
+
+            # There can be cases where certain Expression values can be present here that
+            # need to remain here until the projection phase. If we get a keyerror here
+            # we assume one of those cases. Ex: UInt8(1), used to signify outputting all columns
+            try:
+                output_col = dc.column_container.get_backend_by_frontend_name(
+                    output_col
+                )
+            except KeyError:
+                logger.debug(f"Using original output_col value of '{output_col}'")
+
             aggregations_dict[input_col][output_col] = aggregation_f
             if not isinstance(aggregation_f, str):
                 fast_groupby = False
