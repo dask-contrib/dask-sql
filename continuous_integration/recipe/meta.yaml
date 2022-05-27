@@ -32,7 +32,7 @@ requirements:
     - pandas >=1.0.0
     - jpype1 >=1.0.2
     - openjdk >=8
-    - fastapi >=0.61.1
+    - fastapi >=0.69.0
     - uvicorn >=0.11.3
     - tzlocal >=2.1
     - prompt-toolkit

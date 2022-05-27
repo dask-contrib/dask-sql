@@ -10,7 +10,7 @@ pytest-xdist
 mock>=4.0.3
 sphinx>=3.2.1
 tzlocal>=2.1
-fastapi>=0.61.1
+fastapi>=0.69.0
 nest-asyncio>=1.4.3
 uvicorn>=0.11.3
 pyarrow>=1.0.1

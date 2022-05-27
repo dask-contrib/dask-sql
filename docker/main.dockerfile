@@ -11,7 +11,7 @@ RUN conda config --add channels conda-forge \
     "openjdk>=11" \
     "maven>=3.6.0" \
     "tzlocal>=2.1" \
-    "fastapi>=0.61.1" \
+    "fastapi>=0.69.0" \
     "uvicorn>=0.11.3" \
     "pyarrow>=1.0.1" \
     "prompt_toolkit>=3.0.8" \

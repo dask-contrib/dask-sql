@@ -100,89 +100,17 @@ def test_jdbc_has_columns(app_client, c):
         data=f"SELECT * from system.jdbc.columns where TABLE_NAME = '{table}'",
     )
     assert response.status_code == 200
-    result = get_result_or_error(app_client, response)
+    client_result = get_result_or_error(app_client, response)
 
-    assert_result(result, 24, 3)
-    assert result["data"] == [
-        [
-            "",
-            "a_schema",
-            "a_table",
-            "A_STR",
-            "VARCHAR",
-            "VARCHAR",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "VARCHAR",
-            "",
-            "",
-            "1",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-        ],
-        [
-            "",
-            "a_schema",
-            "a_table",
-            "AN_INT",
-            "INTEGER",
-            "INTEGER",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "INTEGER",
-            "",
-            "",
-            "2",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-        ],
-        [
-            "",
-            "a_schema",
-            "a_table",
-            "A_FLOAT",
-            "FLOAT",
-            "FLOAT",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "FLOAT",
-            "",
-            "",
-            "3",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-        ],
-    ]
+    # ordering of rows isn't consistent between fastapi versions
+    context_result = (
+        c.sql("SELECT * FROM system_jdbc.columns WHERE TABLE_NAME = 'a_table'")
+        .compute()
+        .values.tolist()
+    )
+
+    assert_result(client_result, 24, 3)
+    assert client_result["data"] == context_result
 
 
 def assert_result(result, col_len, data_len):
