@@ -336,7 +336,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(rel)
 
-                # DataFusion return column name a "UInt8(1)" for COUNT(*)
+                # DataFusion return column named "UInt8(1)" for COUNT(*)
                 if input_col not in df.columns and input_col == "UInt8(1)":
                     # COUNT(*) so use any field, just pick first column
                     input_col = df.columns[0]

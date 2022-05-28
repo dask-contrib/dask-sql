@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import logging
 import warnings
+from collections import Counter
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
@@ -489,21 +490,17 @@ class Context:
             if dc is None:
                 return
 
-            if len(select_fields) > 0:
-                select_names = []
-                for i, field in enumerate(select_fields):
-                    exists = False
-                    for idx, inner_field in enumerate(select_fields):
-                        if i != idx and field.getName() == inner_field.getName():
-                            exists = True
-                            break
-                    if exists:
-                        select_names.append(field.getQualifiedName())
-                    else:
-                        select_names.append(field.getName())
+            if select_fields:
+                # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
+                # names the output col is prepended with the fully qualified column name
+                field_counts = Counter([field.getName() for field in select_fields])
+                select_names = [
+                    field.getQualifiedName()
+                    if field_counts[field.getName()] > 1
+                    else field.getName()
+                    for field in select_fields
+                ]
 
-                # Iterate through the list and subsequently determine if each index is null or not, maybe keep a unique map?
-                # Use FQ name if not unique and simple name if it is unique
                 cc = dc.column_container
                 cc = cc.rename(
                     {

@@ -1,12 +1,9 @@
 import logging
 import operator
-import warnings
 from functools import reduce
 from typing import TYPE_CHECKING, List, Tuple
 
 import dask.dataframe as dd
-from dask.base import tokenize
-from dask.highlevelgraph import HighLevelGraph
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -105,55 +102,6 @@ class DaskJoinPlugin(BaseRelPlugin):
                 lhs_on,
                 rhs_on,
                 join_type,
-            )
-        else:
-            # 5. We are in the complex join case
-            # where we have no column to merge on
-            # This means we have no other chance than to merge
-            # everything with everything...
-
-            # TODO: we should implement a shortcut
-            # for filter conditions that are always false
-
-            def merge_single_partitions(lhs_partition, rhs_partition):
-                # Do a cross join with the two partitions
-                # TODO: it would be nice to apply the filter already here
-                # problem: this would mean we need to ship the rex to the
-                # workers (as this is executed on the workers),
-                # which is definitely not possible (java dependency, JVM start...)
-                lhs_partition = lhs_partition.assign(common=1)
-                rhs_partition = rhs_partition.assign(common=1)
-
-                return lhs_partition.merge(rhs_partition, on="common").drop(
-                    columns="common"
-                )
-
-            # Iterate nested over all partitions from lhs and rhs and merge them
-            name = "cross-join-" + tokenize(df_lhs_renamed, df_rhs_renamed)
-            dsk = {
-                (name, i * df_rhs_renamed.npartitions + j): (
-                    merge_single_partitions,
-                    (df_lhs_renamed._name, i),
-                    (df_rhs_renamed._name, j),
-                )
-                for i in range(df_lhs_renamed.npartitions)
-                for j in range(df_rhs_renamed.npartitions)
-            }
-
-            graph = HighLevelGraph.from_collections(
-                name, dsk, dependencies=[df_lhs_renamed, df_rhs_renamed]
-            )
-
-            meta = dd.dispatch.concat(
-                [df_lhs_renamed._meta_nonempty, df_rhs_renamed._meta_nonempty], axis=1
-            )
-            # TODO: Do we know the divisions in any way here?
-            divisions = [None] * (len(dsk) + 1)
-            df = dd.DataFrame(graph, name, meta=meta, divisions=divisions)
-
-            warnings.warn(
-                "Need to do a cross-join, which is typically very resource heavy",
-                ResourceWarning,
             )
 
         # 6. So the next step is to make sure
