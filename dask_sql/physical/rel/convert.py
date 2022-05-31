@@ -55,7 +55,6 @@ class RelConverter(Pluggable):
         node_type = rel.get_current_node_type()
 
         try:
-            # import pdb;pdb.set_trace()
             plugin_instance = cls.get_plugin(node_type)
             logger.debug(
                 f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."

@@ -35,7 +35,6 @@ class DaskUnionPlugin(BaseRelPlugin):
         # Late import to remove cycling dependency
         from dask_sql.physical.rel.convert import RelConverter
 
-        # import pdb;pdb.set_trace()
         objs_dc = [
             RelConverter.convert(input_rel, context) for input_rel in rel.get_inputs()
         ]
