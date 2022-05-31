@@ -94,6 +94,19 @@ class ParsingException(Exception):
         super().__init__(validation_exception_string.strip())
 
 
+class OptimizationException(Exception):
+    """
+    Helper class for formatting exceptions that occur while trying to
+    optimize a logical plan
+    """
+
+    def __init__(self, sql, exception_string):
+        """
+        Create a new exception out of the SQL query and the exception from DataFusion
+        """
+        super().__init__(exception_string.strip())
+
+
 class LoggableDataFrame:
     """Small helper class to print resulting dataframes or series in logging messages"""
 

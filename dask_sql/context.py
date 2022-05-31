@@ -11,7 +11,13 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_planner.rust import DaskSchema, DaskSQLContext, DaskTable, DFParsingException
+from dask_planner.rust import (
+    DaskSchema,
+    DaskSQLContext,
+    DaskTable,
+    DFOptimizationException,
+    DFParsingException,
+)
 
 try:
     import dask_cuda  # noqa: F401
@@ -31,7 +37,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import ParsingException
+from dask_sql.utils import OptimizationException, ParsingException
 
 if TYPE_CHECKING:
     from dask_planner.rust import Expression
@@ -481,7 +487,7 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, select_fields, _ = self._get_ral(sql)
+            rel, select_fields, _ = self._get_ral(sql, config_options)
 
             dc = RelConverter.convert(rel, context=self)
 
@@ -802,7 +808,7 @@ class Context:
 
         return dask_function
 
-    def _get_ral(self, sql):
+    def _get_ral(self, sql, config_options: Dict[str, Any] = None):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
@@ -829,17 +835,23 @@ class Context:
         except DFParsingException as pe:
             raise ParsingException(sql, str(pe)) from None
 
-        rel = nonOptimizedRel
-        logger.debug(f"_get_ral -> nonOptimizedRelNode: {nonOptimizedRel}")
+        # Optimize the `LogicalPlan` or skip if configured
+        if config_options is not None and "sql.skip_optimize" in config_options:
+            rel = nonOptimizedRel
+        else:
+            try:
+                rel = self.context.optimize_relational_algebra(nonOptimizedRel)
+            except DFOptimizationException as oe:
+                rel = nonOptimizedRel
+                raise OptimizationException(sql, str(oe)) from None
+
+        rel_string = rel.explain_original()
+        logger.debug(f"_get_ral -> LogicalPlan: {rel}")
+        logger.debug(f"Extracted relational algebra:\n {rel_string}")
+
         # Optimization might remove some alias projects. Make sure to keep them here.
         select_names = [field for field in rel.getRowType().getFieldList()]
 
-        # TODO: For POC we are not optimizing the relational algebra - Jeremy Dyer
-        # rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-        # rel_string = str(generator.getRelationalAlgebraString(rel))
-        rel_string = rel.explain_original()
-
-        logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
 
     def _get_tables_from_stack(self):

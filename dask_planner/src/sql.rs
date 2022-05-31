@@ -2,18 +2,20 @@ pub mod column;
 pub mod exceptions;
 pub mod function;
 pub mod logical;
+pub mod optimizer;
 pub mod schema;
 pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::ParsingException;
+use crate::sql::exceptions::{OptimizationException, ParsingException};
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
 use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::ScalarFunctionImplementation;
+use datafusion::logical_plan::{LogicalPlan, PlanVisitor};
 use datafusion::physical_plan::udaf::AggregateUDF;
 use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::sql::parser::DFParser;
@@ -178,5 +180,53 @@ impl DaskSQLContext {
                 current_node: None,
             })
             .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
+    }
+
+    /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
+    /// by applying a set of `optimizer` trait implementations against the
+    /// `LogicalPlan`
+    pub fn optimize_relational_algebra(
+        &self,
+        existing_plan: logical::PyLogicalPlan,
+    ) -> PyResult<logical::PyLogicalPlan> {
+        // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
+        let mut visitor = OptimizablePlanVisitor {};
+
+        match existing_plan.original_plan.accept(&mut visitor) {
+            Ok(valid) => {
+                if valid {
+                    optimizer::DaskSqlOptimizer::new()
+                        .run_optimizations(existing_plan.original_plan)
+                        .map(|k| logical::PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(|e| PyErr::new::<OptimizationException, _>(format!("{}", e)))
+                } else {
+                    // This LogicalPlan does not support Optimization. Return original
+                    Ok(existing_plan)
+                }
+            }
+            Err(e) => Err(PyErr::new::<OptimizationException, _>(format!("{}", e))),
+        }
+    }
+}
+
+/// Visits each AST node to determine if the plan is valid for optimization or not
+pub struct OptimizablePlanVisitor;
+
+impl PlanVisitor for OptimizablePlanVisitor {
+    type Error = DataFusionError;
+
+    fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
+        match plan {
+            LogicalPlan::Explain(..) => Ok(false),
+            _ => Ok(true),
+        }
+    }
+
+    fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        Ok(true)
     }
 }
