@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     import dask_sql
     from dask_planner.rust import LogicalPlan
 
+
 def _extract_df(obj_cc, obj_df, output_field_names):
     # For concatenating, they should have exactly the same fields
     assert len(obj_cc.columns) == len(output_field_names)
@@ -21,6 +22,7 @@ def _extract_df(obj_cc, obj_df, output_field_names):
     obj_dc = DataContainer(obj_df, obj_cc)
     return obj_dc.assign()
 
+
 class DaskUnionPlugin(BaseRelPlugin):
     """
     DaskUnion is used on UNION clauses.
@@ -29,22 +31,28 @@ class DaskUnionPlugin(BaseRelPlugin):
 
     class_name = "Union"
 
-    def convert(
-        self, rel: "LogicalPlan", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Late import to remove cycling dependency
         from dask_sql.physical.rel.convert import RelConverter
 
-        objs_dc = [RelConverter.convert(input_rel, context) for input_rel in rel.get_inputs()]
+        # import pdb;pdb.set_trace()
+        objs_dc = [
+            RelConverter.convert(input_rel, context) for input_rel in rel.get_inputs()
+        ]
 
         objs_df = [obj.df for obj in objs_dc]
         objs_cc = [obj.column_container for obj in objs_dc]
 
-        
         output_field_names = [str(x) for x in rel.getRowType().getFieldNames()]
         obj_dfs = []
         for i, obj_df in enumerate(objs_df):
-            obj_dfs.append(_extract_df(obj_cc=objs_cc[i], obj_df=obj_df, output_field_names=output_field_names))
+            obj_dfs.append(
+                _extract_df(
+                    obj_cc=objs_cc[i],
+                    obj_df=obj_df,
+                    output_field_names=output_field_names,
+                )
+            )
 
         _ = [self.check_columns_from_row_type(df, rel.getRowType()) for df in obj_dfs]
 

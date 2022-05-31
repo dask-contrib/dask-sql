@@ -1,6 +1,5 @@
-
 use datafusion::logical_expr::logical_plan::Union;
-pub use datafusion::logical_expr::{LogicalPlan};
+pub use datafusion::logical_expr::LogicalPlan;
 
 use pyo3::prelude::*;
 
@@ -19,7 +18,6 @@ impl PyUnion {
         println!("{:?}", self.union.alias);
         Ok(false)
     }
-    
 }
 
 impl TryFrom<LogicalPlan> for PyUnion {

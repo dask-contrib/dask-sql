@@ -6,12 +6,12 @@ mod aggregate;
 mod cross_join;
 mod explain;
 mod filter;
-mod union;
 mod join;
 mod limit;
 mod offset;
 pub mod projection;
 mod sort;
+mod union;
 
 use datafusion::logical_expr::LogicalPlan;
 
