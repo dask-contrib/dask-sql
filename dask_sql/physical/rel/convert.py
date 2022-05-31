@@ -68,6 +68,7 @@ class RelConverter(Pluggable):
                     f"'{node_type}' is a relational algebra operation which doesn't require a direct Dask task. \
                     Omitting it from the resulting Dask task graph."
                 )
+
                 return context.schema[rel.getCurrentNodeSchemaName()].tables[
                     rel.getCurrentNodeTableName()
                 ]
