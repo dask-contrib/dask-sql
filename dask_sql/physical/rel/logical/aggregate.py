@@ -164,8 +164,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_exprs = agg.getGroupSets()
         group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
 
-        logger.debug(f"group_columns: {group_columns}")
-
         dc = DataContainer(df, cc)
 
         if not group_columns:
@@ -188,12 +186,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
-        cc = ColumnContainer(df_agg.columns).limit_to(output_column_order)
+        backend_output_column_order = [
+            cc.get_backend_by_frontend_name(oc) for oc in output_column_order
+        ]
+        cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
-        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df_agg, cc)
-        # dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
-        logger.debug("Leaving aggregate.py and return the dataframe")
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         return dc
 
     def _do_aggregations(
@@ -224,11 +224,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
-        logger.debug(f"Collected Aggregations: {collected_aggregations}")
-        logger.debug(f"Output Column Order: {output_column_order}")
-
         if not collected_aggregations:
-            return df[group_columns].drop_duplicates(), output_column_order
+            backend_names = [
+                cc.get_backend_by_frontend_name(group_name)
+                for group_name in group_columns
+            ]
+            return df[backend_names].drop_duplicates(), output_column_order
 
         # SQL needs to have a column with the grouped values as the first
         # output column.
@@ -248,7 +249,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if key in collected_aggregations:
             aggregations = collected_aggregations.pop(key)
             df_result = self._perform_aggregation(
-                df,
+                DataContainer(df, cc),
                 None,
                 aggregations,
                 additional_column_name,
@@ -259,7 +260,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # Now we can also the the rest
         for filter_column, aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
-                df,
+                DataContainer(df, cc),
                 filter_column,
                 aggregations,
                 additional_column_name,
@@ -298,9 +299,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         collected_aggregations = defaultdict(list)
 
         for expr in rel.aggregate().getNamedAggCalls():
-            logger.debug(f"Aggregate Call: {expr}")
-            logger.debug(f"Expr Type: {expr.getExprType()}")
-
             # Determine the aggregation function to use
             assert (
                 expr.getExprType() == "AggregateFunction"
@@ -309,14 +307,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
             schema_name = "root"
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
-            logger.debug(f"AggregationName: {aggregation_name}")
 
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
-            logger.debug(f"Number of Inputs: {len(inputs)}")
-            logger.debug(
-                f"Input: {inputs[0]} of type: {inputs[0].getExprType()} with column name: {inputs[0].column_name(rel)}"
-            )
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
@@ -342,6 +335,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 input_col = two_columns_proxy
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(rel)
+
+                # DataFusion return column named "UInt8(1)" for COUNT(*)
+                if input_col not in df.columns and input_col == "UInt8(1)":
+                    # COUNT(*) so use any field, just pick first column
+                    input_col = df.columns[0]
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
@@ -368,8 +366,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
                         f"Aggregation function {aggregation_name} not implemented (yet)."
                     )
             if isinstance(aggregation_function, AggregationSpecification):
+                backend_name = cc.get_backend_by_frontend_name(input_col)
                 aggregation_function = aggregation_function.get_supported_aggregation(
-                    df[input_col]
+                    df[backend_name]
                 )
 
             # Finally, extract the output column name
@@ -385,17 +384,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _perform_aggregation(
         self,
-        df: dd.DataFrame,
+        dc: DataContainer,
         filter_column: str,
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
         group_columns: List[str],
         groupby_agg_options: Dict[str, Any] = {},
     ):
-        tmp_df = df
-
-        logger.debug(f"Additional Column Name: {additional_column_name}")
-        logger.debug(df.head())
+        tmp_df = dc.df
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
@@ -403,6 +399,18 @@ class DaskAggregatePlugin(BaseRelPlugin):
         fast_groupby = True
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
+            input_col = dc.column_container.get_backend_by_frontend_name(input_col)
+
+            # There can be cases where certain Expression values can be present here that
+            # need to remain here until the projection phase. If we get a keyerror here
+            # we assume one of those cases. Ex: UInt8(1), used to signify outputting all columns
+            try:
+                output_col = dc.column_container.get_backend_by_frontend_name(
+                    output_col
+                )
+            except KeyError:
+                logger.debug(f"Using original output_col value of '{output_col}'")
+
             aggregations_dict[input_col][output_col] = aggregation_f
             if not isinstance(aggregation_f, str):
                 fast_groupby = False
@@ -415,11 +423,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # we might need a temporary column name if no groupby columns are specified
         if additional_column_name is None:
-            additional_column_name = new_temporary_column(df)
+            additional_column_name = new_temporary_column(dc.df)
 
         # perform groupby operation; if we are using custom aggreagations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
+            group_columns = [
+                dc.column_container.get_backend_by_frontend_name(group_name)
+                for group_name in group_columns
+            ]
             grouped_df = tmp_df.groupby(
                 by=(group_columns or [additional_column_name]), dropna=False
             )

@@ -1,8 +1,9 @@
 use crate::expression::PyExpr;
 
 use datafusion::logical_expr::logical_plan::Filter;
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Filter", module = "dask_planner", subclass)]
@@ -18,16 +19,18 @@ impl PyFilter {
     pub fn get_condition(&mut self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
             self.filter.predicate.clone(),
-            Some(self.filter.input.clone()),
+            Some(vec![self.filter.input.clone()]),
         ))
     }
 }
 
-impl From<LogicalPlan> for PyFilter {
-    fn from(logical_plan: LogicalPlan) -> PyFilter {
+impl TryFrom<LogicalPlan> for PyFilter {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Filter(filter) => PyFilter { filter: filter },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Filter(filter) => Ok(PyFilter { filter }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

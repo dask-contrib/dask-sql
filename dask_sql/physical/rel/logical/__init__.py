@@ -1,8 +1,10 @@
 from .aggregate import DaskAggregatePlugin
+from .cross_join import DaskCrossJoinPlugin
 from .explain import ExplainPlugin
 from .filter import DaskFilterPlugin
 from .join import DaskJoinPlugin
 from .limit import DaskLimitPlugin
+from .offset import DaskOffsetPlugin
 from .project import DaskProjectPlugin
 from .sample import SamplePlugin
 from .sort import DaskSortPlugin
@@ -15,7 +17,9 @@ __all__ = [
     DaskAggregatePlugin,
     DaskFilterPlugin,
     DaskJoinPlugin,
+    DaskCrossJoinPlugin,
     DaskLimitPlugin,
+    DaskOffsetPlugin,
     DaskProjectPlugin,
     DaskSortPlugin,
     DaskTableScanPlugin,

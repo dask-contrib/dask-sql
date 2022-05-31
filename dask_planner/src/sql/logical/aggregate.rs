@@ -1,8 +1,9 @@
 use crate::expression::PyExpr;
 
+use datafusion::logical_expr::LogicalPlan;
 use datafusion::logical_expr::{logical_plan::Aggregate, Expr};
-pub use datafusion::logical_expr::{logical_plan::JoinType, LogicalPlan};
 
+use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
@@ -20,7 +21,7 @@ impl PyAggregate {
         for expr in &self.aggregate.group_expr {
             group_exprs.push(PyExpr::from(
                 expr.clone(),
-                Some(self.aggregate.input.clone()),
+                Some(vec![self.aggregate.input.clone()]),
             ));
         }
         Ok(group_exprs)
@@ -32,7 +33,7 @@ impl PyAggregate {
         for expr in &self.aggregate.aggr_expr {
             agg_exprs.push(PyExpr::from(
                 expr.clone(),
-                Some(self.aggregate.input.clone()),
+                Some(vec![self.aggregate.input.clone()]),
             ));
         }
         Ok(agg_exprs)
@@ -53,7 +54,7 @@ impl PyAggregate {
                 let mut exprs: Vec<PyExpr> = Vec::new();
                 for expr in args {
                     exprs.push(PyExpr {
-                        input_plan: Some(self.aggregate.input.clone()),
+                        input_plan: Some(vec![self.aggregate.input.clone()]),
                         expr: expr,
                     });
                 }
@@ -76,11 +77,13 @@ impl PyAggregate {
     }
 }
 
-impl From<LogicalPlan> for PyAggregate {
-    fn from(logical_plan: LogicalPlan) -> PyAggregate {
+impl TryFrom<LogicalPlan> for PyAggregate {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Aggregate(agg) => PyAggregate { aggregate: agg },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Aggregate(aggregate) => Ok(PyAggregate { aggregate }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }

@@ -11,21 +11,22 @@ use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
 
 use datafusion::scalar::ScalarValue;
 
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_runtime_err;
 use datafusion::common::DFField;
-use datafusion::logical_plan::exprlist_to_fields;
+use datafusion::logical_plan::{exprlist_to_fields, DFSchema};
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyExpr {
-    pub input_plan: Option<Arc<LogicalPlan>>,
     pub expr: Expr,
+    // Why a Vec here? Because BinaryExpr on Join might have multiple LogicalPlans
+    pub input_plan: Option<Vec<Arc<LogicalPlan>>>,
 }
 
 impl From<PyExpr> for Expr {
@@ -57,7 +58,7 @@ impl PyExpr {
     /// However in this case Expr does not contain the contextual
     /// `LogicalPlan` instance that we need so we need to make a instance
     /// function to take and create the PyExpr.
-    pub fn from(expr: Expr, input: Option<Arc<LogicalPlan>>) -> PyExpr {
+    pub fn from(expr: Expr, input: Option<Vec<Arc<LogicalPlan>>>) -> PyExpr {
         PyExpr {
             input_plan: input,
             expr: expr,
@@ -67,7 +68,7 @@ impl PyExpr {
     /// Determines the name of the `Expr` instance by examining the LogicalPlan
     pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, &plan)?;
-        Ok(field.unqualified_column().name.clone())
+        Ok(field.qualified_column().flat_name().clone())
     }
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
@@ -123,16 +124,56 @@ impl PyExpr {
     /// Gets the positional index of the Expr instance from the LogicalPlan DFSchema
     #[pyo3(name = "getIndex")]
     pub fn index(&self) -> PyResult<usize> {
-        let input: &Option<Arc<LogicalPlan>> = &self.input_plan;
+        let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(plan) => {
-                let name: Result<String> = self.expr.name(plan.schema());
-                match name {
-                    Ok(fq_name) => Ok(plan
-                        .schema()
-                        .index_of_column(&Column::from_qualified_name(&fq_name))
-                        .unwrap()),
-                    Err(e) => panic!("{:?}", e),
+            Some(input_plans) => {
+                if input_plans.len() == 1 {
+                    let name: Result<String> = self.expr.name(input_plans[0].schema());
+                    match name {
+                        Ok(fq_name) => Ok(input_plans[0]
+                            .schema()
+                            .index_of_column(&Column::from_qualified_name(&fq_name))
+                            .unwrap()),
+                        Err(e) => panic!("{:?}", e),
+                    }
+                } else if input_plans.len() >= 2 {
+                    let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
+                    for input_idx in 1..input_plans.len() {
+                        let input_schema: DFSchema = (**input_plans[input_idx].schema()).clone();
+                        base_schema.merge(&input_schema);
+                    }
+                    let name: Result<String> = self.expr.name(&base_schema);
+                    match name {
+                        Ok(fq_name) => {
+                            let idx: Result<usize> =
+                                base_schema.index_of_column(&Column::from_qualified_name(&fq_name));
+                            match idx {
+                                Ok(index) => Ok(index),
+                                Err(e) => {
+                                    // This logic is encountered when an non-qualified column name is
+                                    // provided AND there exists more than one entry with that
+                                    // unqualified. This logic will attempt to narrow down to the
+                                    // qualified column name.
+                                    let qualified_fields: Vec<&DFField> =
+                                        base_schema.fields_with_unqualified_name(&fq_name);
+                                    for qf in &qualified_fields {
+                                        if qf.name().eq(&fq_name) {
+                                            let qualifier: String = qf.qualifier().unwrap().clone();
+                                            let qual: Option<&str> = Some(&qualifier);
+                                            let index: usize = base_schema
+                                                .index_of_column_by_name(qual, &qf.name())
+                                                .unwrap();
+                                            return Ok(index);
+                                        }
+                                    }
+                                    panic!("Unable to find match for column with name: '{}' in DFSchema", &fq_name);
+                                }
+                            }
+                        }
+                        Err(e) => panic!("{:?}", e),
+                    }
+                } else {
+                    panic!("Not really sure what we should do right here???");
                 }
             }
             None => {

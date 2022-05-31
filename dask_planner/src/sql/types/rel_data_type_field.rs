@@ -9,9 +9,10 @@ use std::fmt;
 use pyo3::prelude::*;
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
-#[pyclass]
+#[pyclass(name = "RelDataTypeField", module = "dask_planner", subclass)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataTypeField {
+    qualifier: Option<String>,
     name: String,
     data_type: DaskTypeMap,
     index: usize,
@@ -20,13 +21,21 @@ pub struct RelDataTypeField {
 // Functions that should not be presented to Python are placed here
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
+        let qualifier: Option<&str> = match field.qualifier() {
+            Some(qualifier) => Some(&(*qualifier)),
+            None => None,
+        };
         Ok(RelDataTypeField {
+            qualifier: match qualifier {
+                Some(qualifier) => Some(qualifier.to_string()),
+                None => None,
+            },
             name: field.name().clone(),
             data_type: DaskTypeMap {
                 sql_type: SqlTypeName::from_arrow(field.data_type()),
                 data_type: field.data_type().clone(),
             },
-            index: schema.index_of_column_by_name(None, field.name())?,
+            index: schema.index_of_column_by_name(qualifier, field.name())?,
         })
     }
 }
@@ -36,15 +45,29 @@ impl RelDataTypeField {
     #[new]
     pub fn new(name: String, type_map: DaskTypeMap, index: usize) -> Self {
         Self {
+            qualifier: None,
             name: name,
             data_type: type_map,
             index: index,
         }
     }
 
+    #[pyo3(name = "getQualifier")]
+    pub fn qualifier(&self) -> Option<String> {
+        self.qualifier.clone()
+    }
+
     #[pyo3(name = "getName")]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    #[pyo3(name = "getQualifiedName")]
+    pub fn qualified_name(&self) -> String {
+        match &self.qualifier() {
+            Some(qualifier) => format!("{}.{}", &qualifier, self.name()),
+            None => format!("{}", self.name()),
+        }
     }
 
     #[pyo3(name = "getIndex")]

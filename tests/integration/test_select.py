@@ -62,9 +62,6 @@ def test_select_expr(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion, subquery - https://github.com/apache/arrow-datafusion/issues/2237"
-)
 def test_select_of_select(c, df):
     result_df = c.sql(
         """
@@ -76,19 +73,17 @@ def test_select_of_select(c, df):
         ) AS "inner"
         """
     )
-
     expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_select_of_select_with_casing(c, df):
     result_df = c.sql(
         """
-        SELECT AAA, aaa, aAa
+        SELECT "AAA", "aaa", "aAa"
         FROM
         (
-            SELECT a - 1 AS aAa, 2*b AS aaa, a + b AS AAA
+            SELECT a - 1 AS "aAa", 2*b AS "aaa", a + b AS "AAA"
             FROM df
         ) AS "inner"
         """
@@ -119,7 +114,6 @@ def test_timezones(c, datetime_table):
     assert_eq(result_df, datetime_table)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [

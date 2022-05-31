@@ -1,3 +1,4 @@
+use crate::sql::exceptions::py_type_err;
 use datafusion::logical_expr::{logical_plan::Explain, LogicalPlan};
 use pyo3::prelude::*;
 
@@ -20,11 +21,13 @@ impl PyExplain {
     }
 }
 
-impl From<LogicalPlan> for PyExplain {
-    fn from(logical_plan: LogicalPlan) -> PyExplain {
+impl TryFrom<LogicalPlan> for PyExplain {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Explain(expln) => PyExplain { explain: expln },
-            _ => panic!("something went wrong here"),
+            LogicalPlan::Explain(explain) => Ok(PyExplain { explain }),
+            _ => Err(py_type_err("unexpected plan")),
         }
     }
 }
