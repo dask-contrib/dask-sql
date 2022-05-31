@@ -203,9 +203,6 @@ def test_join_literal(c):
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/530"
-)
 def test_conditional_join(c):
     df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
@@ -230,9 +227,6 @@ def test_conditional_join(c):
     assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/530"
-)
 def test_join_on_unary_cond_only(c):
     df1 = pd.DataFrame({"a": [1, 2, 2, 5, 6], "b": ["w", "x", "y", None, "z"]})
     df2 = pd.DataFrame({"c": [None, 3, 2, 5], "d": ["h", "i", "j", "k"]})
