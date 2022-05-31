@@ -22,10 +22,12 @@ impl PyUnion {
     
 }
 
-impl From<LogicalPlan> for PyUnion {
-    fn from(logical_plan: LogicalPlan) -> PyUnion {
+impl TryFrom<LogicalPlan> for PyUnion {
+    type Error = PyErr;
+
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Union(union) => PyUnion { union },
+            LogicalPlan::Union(union) => Ok(PyUnion { union }),
             _ => panic!("something went wrong here"),
         }
     }
