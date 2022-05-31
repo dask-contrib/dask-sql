@@ -177,6 +177,10 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             table_from_logical_plan(&join.left)
         }
         LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
-        _ => todo!("table_from_logical_plan: unimplemented LogicalPlan type encountered"),
+        LogicalPlan::SubqueryAlias(alias) => table_from_logical_plan(&alias.input),
+        _ => todo!(
+            "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
+            plan
+        ),
     }
 }

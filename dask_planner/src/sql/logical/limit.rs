@@ -18,7 +18,7 @@ impl PyLimit {
     pub fn limit_n(&self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
             Expr::Literal(ScalarValue::UInt64(Some(self.limit.n.try_into().unwrap()))),
-            Some(self.limit.input.clone()),
+            Some(vec![self.limit.input.clone()]),
         ))
     }
 }

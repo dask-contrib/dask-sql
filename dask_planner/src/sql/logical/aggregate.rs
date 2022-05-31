@@ -21,7 +21,7 @@ impl PyAggregate {
         for expr in &self.aggregate.group_expr {
             group_exprs.push(PyExpr::from(
                 expr.clone(),
-                Some(self.aggregate.input.clone()),
+                Some(vec![self.aggregate.input.clone()]),
             ));
         }
         Ok(group_exprs)
@@ -33,7 +33,7 @@ impl PyAggregate {
         for expr in &self.aggregate.aggr_expr {
             agg_exprs.push(PyExpr::from(
                 expr.clone(),
-                Some(self.aggregate.input.clone()),
+                Some(vec![self.aggregate.input.clone()]),
             ));
         }
         Ok(agg_exprs)
@@ -54,7 +54,7 @@ impl PyAggregate {
                 let mut exprs: Vec<PyExpr> = Vec::new();
                 for expr in args {
                     exprs.push(PyExpr {
-                        input_plan: Some(self.aggregate.input.clone()),
+                        input_plan: Some(vec![self.aggregate.input.clone()]),
                         expr: expr,
                     });
                 }

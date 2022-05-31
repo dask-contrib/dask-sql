@@ -14,7 +14,8 @@ mod sort;
 
 use datafusion::logical_expr::LogicalPlan;
 
-use datafusion::common::Result;
+use datafusion::common::{DataFusionError, Result};
+use datafusion::logical_plan::DFSchemaRef;
 use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_type_err;
@@ -116,15 +117,6 @@ impl PyLogicalPlan {
         Ok(py_inputs)
     }
 
-    /// Examines the current_node and get the fields associated with it
-    pub fn get_field_names(&mut self) -> PyResult<Vec<String>> {
-        let mut field_names: Vec<String> = Vec::new();
-        for field in self.current_node().schema().fields() {
-            field_names.push(String::from(field.name()));
-        }
-        Ok(field_names)
-    }
-
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned
     #[pyo3(name = "getTable")]
@@ -133,6 +125,31 @@ impl PyLogicalPlan {
             Some(table) => Ok(table),
             None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
+            )),
+        }
+    }
+
+    #[pyo3(name = "getCurrentNodeSchemaName")]
+    pub fn get_current_node_schema_name(&self) -> PyResult<&str> {
+        match &self.current_node {
+            Some(e) => {
+                let sch: &DFSchemaRef = e.schema();
+                //TODO: Where can I actually get this in the context of the running query?
+                Ok("root")
+            }
+            None => Err(py_type_err(DataFusionError::Plan(format!(
+                "Current schema not found. Defaulting to {:?}",
+                "root"
+            )))),
+        }
+    }
+
+    #[pyo3(name = "getCurrentNodeTableName")]
+    pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
+        match self.table() {
+            Ok(dask_table) => Ok(dask_table.name.clone()),
+            Err(_e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Unable to determine current node table name",
             )),
         }
     }

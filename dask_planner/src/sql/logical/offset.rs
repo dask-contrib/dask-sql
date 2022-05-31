@@ -18,7 +18,7 @@ impl PyOffset {
     pub fn offset(&self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
             Expr::Literal(ScalarValue::UInt64(Some(self.offset.offset as u64))),
-            Some(self.offset.input.clone()),
+            Some(vec![self.offset.input.clone()]),
         ))
     }
 
@@ -27,7 +27,7 @@ impl PyOffset {
         // TODO: Still need to implement fetch size! For now get everything from offset on with '0'
         Ok(PyExpr::from(
             Expr::Literal(ScalarValue::UInt64(Some(0))),
-            Some(self.offset.input.clone()),
+            Some(vec![self.offset.input.clone()]),
         ))
     }
 }
