@@ -91,14 +91,16 @@ class ColumnContainer:
         duplicates in `from_columns`
         """
         cc = self._copy()
-        for column_from, column_to in zip(from_columns, to_columns):
-            backend_column = self._frontend_backend_mapping[str(column_from)]
-            cc._frontend_backend_mapping[str(column_to)] = backend_column
+        cc._frontend_backend_mapping.update(
+            {
+                str(column_to): self._frontend_backend_mapping[str(column_from)]
+                for column_from, column_to in zip(from_columns, to_columns)
+            }
+        )
 
         columns = dict(zip(from_columns, to_columns))
         cc._frontend_columns = [
-            str(columns[col]) if col in columns else col
-            for col in self._frontend_columns
+            str(columns.get(col, col)) for col in self._frontend_columns
         ]
 
         return cc
