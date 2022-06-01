@@ -127,8 +127,11 @@ impl PyExpr {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
             Some(input_plans) => {
+                println!("Input plans len(): {:?}", input_plans.len());
                 if input_plans.len() == 1 {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
+                    println!("Input Plan: {:?}", input_plans[0]);
+                    println!("name: {:?}", name);
                     match name {
                         Ok(fq_name) => Ok(input_plans[0]
                             .schema()

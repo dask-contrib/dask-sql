@@ -24,7 +24,6 @@ impl DaskSqlOptimizer {
     pub fn new() -> Self {
         let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
         rules.push(Box::new(CommonSubexprEliminate::new()));
-        // rules.push(Box::new(EliminateFilter::new()));
         rules.push(Box::new(EliminateLimit::new()));
         rules.push(Box::new(FilterPushDown::new()));
         rules.push(Box::new(LimitPushDown::new()));
