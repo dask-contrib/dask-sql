@@ -77,7 +77,6 @@ def test_sort(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_limit(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -102,7 +101,6 @@ def test_limit(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_groupby(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
