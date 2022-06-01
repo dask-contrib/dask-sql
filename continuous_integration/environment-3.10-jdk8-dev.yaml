@@ -15,7 +15,7 @@ dependencies:
 - mock
 - nest-asyncio
 - openjdk=8
-- pandas>=1.1.1
+- pandas>=1.1.2
 - pre-commit
 - prompt_toolkit
 - psycopg2

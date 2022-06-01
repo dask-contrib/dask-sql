@@ -287,6 +287,9 @@ def assert_query_gives_same_result(engine):
     def _assert_query_gives_same_result(query, sort_columns=None, **kwargs):
         sql_result = pd.read_sql_query(query, engine)
         dask_result = c.sql(query).compute()
+        res = c.sql(query)
+
+        breakpoint()
 
         # allow that the names are different
         # as expressions are handled differently
