@@ -12,6 +12,8 @@ dependencies:
 - lightgbm
 - maven
 - mlflow
+# remove windows constraint when mlflow issues are resolved
+- mlflow<1.26.1  # [win]
 - mock
 - nest-asyncio
 - openjdk=11
