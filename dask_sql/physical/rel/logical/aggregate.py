@@ -448,11 +448,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         for col in agg_result.columns:
             logger.debug(col)
-        logger.debug(f"agg_result: {agg_result.head()}")
 
         # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
-
-        logger.debug(f"agg_result after: {agg_result.head()}")
 
         return agg_result
