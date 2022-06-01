@@ -897,9 +897,6 @@ def test_nested_query():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/470"
-)
 def test_union():
     a = make_rand_df(30, b=(int, 10), c=(str, 10))
     b = make_rand_df(80, b=(int, 50), c=(str, 50))
@@ -961,9 +958,6 @@ def test_union():
 #     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/470"
-)
 def test_with():
     a = make_rand_df(30, a=(int, 10), b=(str, 10))
     b = make_rand_df(80, ax=(int, 10), bx=(str, 10))

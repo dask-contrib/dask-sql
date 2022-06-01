@@ -11,6 +11,7 @@ mod limit;
 mod offset;
 pub mod projection;
 mod sort;
+mod union;
 
 use datafusion::logical_expr::LogicalPlan;
 
@@ -75,6 +76,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Union as PyUnion
+    pub fn union(&self) -> PyResult<union::PyUnion> {
         to_py_plan(self.current_node.as_ref())
     }
 
