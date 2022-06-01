@@ -127,11 +127,8 @@ impl PyExpr {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
             Some(input_plans) => {
-                println!("Input plans len(): {:?}", input_plans.len());
                 if input_plans.len() == 1 {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
-                    println!("Input Plan: {:?}", input_plans[0]);
-                    println!("name: {:?}", name);
                     match name {
                         Ok(fq_name) => Ok(input_plans[0]
                             .schema()
@@ -280,6 +277,7 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
+            Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
@@ -299,6 +297,7 @@ impl PyExpr {
             Expr::Cast { .. } => Ok("cast".to_string()),
             Expr::Between { .. } => Ok("between".to_string()),
             Expr::Case { .. } => Ok("case".to_string()),
+            Expr::IsNotNull(..) => Ok("is not null".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
