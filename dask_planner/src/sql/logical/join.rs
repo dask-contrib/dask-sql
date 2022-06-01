@@ -1,7 +1,11 @@
+use crate::expression::PyExpr;
 use crate::sql::column;
 
+use datafusion::physical_plan::expressions::Column;
+
 use datafusion::logical_expr::logical_plan::Join;
-use datafusion::logical_plan::{JoinType, LogicalPlan};
+use datafusion::logical_plan::{JoinType, LogicalPlan, Operator};
+use datafusion::prelude::{col, Expr};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
@@ -14,6 +18,40 @@ pub struct PyJoin {
 
 #[pymethods]
 impl PyJoin {
+    #[pyo3(name = "getCondition")]
+    pub fn join_condition(&self) -> PyExpr {
+        // TODO: This logic should be altered once https://github.com/apache/arrow-datafusion/issues/2496 is complete
+        if self.join.on.len() >= 1 {
+            let (left_col, right_col) = &self.join.on[0];
+            let mut root_expr: Expr = Expr::BinaryExpr {
+                left: Box::new(Expr::Column(left_col.clone())),
+                op: Operator::Eq,
+                right: Box::new(Expr::Column(right_col.clone())),
+            };
+            for idx in 1..self.join.on.len() {
+                let (left_col, right_col) = &self.join.on[idx];
+                let ex: Expr = Expr::BinaryExpr {
+                    left: Box::new(Expr::Column(left_col.clone())),
+                    op: Operator::Eq,
+                    right: Box::new(Expr::Column(right_col.clone())),
+                };
+
+                root_expr = Expr::BinaryExpr {
+                    left: Box::new(root_expr),
+                    op: Operator::Eq,
+                    right: Box::new(ex),
+                }
+            }
+            PyExpr::from(
+                root_expr,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )
+        } else {
+            panic!("Join Length: {}, Encountered a Join with more than a single column for the join condition. This is not currently supported
+            until DataFusion makes some changes to allow for Joining logic other than just Equijoin.", self.join.on.len())
+        }
+    }
+
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
         let lhs_table_name: String = match &*self.join.left {

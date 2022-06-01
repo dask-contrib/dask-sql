@@ -7,14 +7,13 @@ use crate::sql::types::SqlTypeName;
 use async_trait::async_trait;
 
 use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-pub use datafusion::datasource::TableProvider;
+use datafusion::datasource::{TableProvider, TableType};
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::{Expr, LogicalPlan, TableSource};
 use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
 
 use pyo3::prelude::*;
 
-use datafusion::datasource::TableType;
 use std::any::Any;
 use std::sync::Arc;
 
@@ -178,6 +177,10 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             table_from_logical_plan(&join.left)
         }
         LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
-        _ => todo!("table_from_logical_plan: unimplemented LogicalPlan type encountered"),
+        LogicalPlan::SubqueryAlias(alias) => table_from_logical_plan(&alias.input),
+        _ => todo!(
+            "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
+            plan
+        ),
     }
 }

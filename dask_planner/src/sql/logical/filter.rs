@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 
 use datafusion::logical_expr::logical_plan::Filter;
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion::logical_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
@@ -19,7 +19,7 @@ impl PyFilter {
     pub fn get_condition(&mut self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
             self.filter.predicate.clone(),
-            Some(self.filter.input.clone()),
+            Some(vec![self.filter.input.clone()]),
         ))
     }
 }

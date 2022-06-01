@@ -36,6 +36,8 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
         df_lhs[cross_join_key] = 1
         df_rhs[cross_join_key] = 1
 
-        result = dd.merge(df_lhs, df_rhs, on=cross_join_key).drop(cross_join_key, 1)
+        result = dd.merge(df_lhs, df_rhs, on=cross_join_key, suffixes=("", "0")).drop(
+            cross_join_key, 1
+        )
 
         return DataContainer(result, ColumnContainer(result.columns))

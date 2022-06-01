@@ -53,7 +53,10 @@ impl PyWindow {
     pub fn get_window_expr(&self) -> PyResult<Vec<PyExpr>> {
         let mut window_exprs: Vec<PyExpr> = Vec::new();
         for expr in &self.window.window_expr {
-            window_exprs.push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+            window_exprs.push(PyExpr::from(
+                expr.clone(),
+                Some(vec![self.window.input.clone()]),
+            ));
         }
         Ok(window_exprs)
     }
@@ -65,7 +68,10 @@ impl PyWindow {
             Expr::WindowFunction { order_by, .. } => {
                 let mut sort_exprs: Vec<PyExpr> = Vec::new();
                 for expr in order_by {
-                    sort_exprs.push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+                    sort_exprs.push(PyExpr::from(
+                        expr.clone(),
+                        Some(vec![self.window.input.clone()]),
+                    ));
                 }
                 Ok(sort_exprs)
             }
@@ -83,8 +89,10 @@ impl PyWindow {
             Expr::WindowFunction { partition_by, .. } => {
                 let mut partition_exprs = Vec::new();
                 for expr in partition_by {
-                    partition_exprs
-                        .push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+                    partition_exprs.push(PyExpr::from(
+                        expr.clone(),
+                        Some(vec![self.window.input.clone()]),
+                    ));
                 }
                 Ok(partition_exprs)
             }
@@ -111,7 +119,10 @@ impl PyWindow {
             Expr::WindowFunction { args, .. } => {
                 let mut operands = Vec::new();
                 for expr in args {
-                    operands.push(PyExpr::from(expr.clone(), Some(self.window.input.clone())));
+                    operands.push(PyExpr::from(
+                        expr.clone(),
+                        Some(vec![self.window.input.clone()]),
+                    ));
                 }
                 Ok(operands)
             }
