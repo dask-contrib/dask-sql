@@ -8,4 +8,4 @@ sql:
 
   predicate_pushdown: True
 
-  skip_optimize: True
+  optimize: True

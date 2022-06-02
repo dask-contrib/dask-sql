@@ -37,7 +37,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import OptimizationException, ParsingException
+from dask_sql.utils import ParsingException
 
 if TYPE_CHECKING:
     from dask_planner.rust import Expression
@@ -836,14 +836,13 @@ class Context:
             raise ParsingException(sql, str(pe)) from None
 
         # Optimize the `LogicalPlan` or skip if configured
-        if dask_config.get("sql.skip_optimize"):
-            rel = nonOptimizedRel
-        else:
+        if dask_config.get("sql.optimize"):
             try:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
-            except DFOptimizationException as oe:
+            except DFOptimizationException:
                 rel = nonOptimizedRel
-                raise OptimizationException(sql, str(oe)) from None
+        else:
+            rel = nonOptimizedRel
 
         rel_string = rel.explain_original()
         logger.debug(f"_get_ral -> LogicalPlan: {rel}")
