@@ -31,3 +31,8 @@ properties:
         type: boolean
         description: |
           Whether to try pushing down filter predicates into IO (when possible).
+
+      skip_optimize:
+        type: boolean
+        description: |
+          Whether the first generated logical plan should be further optimized or used as is.

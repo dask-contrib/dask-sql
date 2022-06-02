@@ -487,7 +487,7 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, select_fields, _ = self._get_ral(sql, config_options)
+            rel, select_fields, _ = self._get_ral(sql)
 
             dc = RelConverter.convert(rel, context=self)
 
@@ -808,7 +808,7 @@ class Context:
 
         return dask_function
 
-    def _get_ral(self, sql, config_options: Dict[str, Any] = None):
+    def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
@@ -836,7 +836,7 @@ class Context:
             raise ParsingException(sql, str(pe)) from None
 
         # Optimize the `LogicalPlan` or skip if configured
-        if config_options is not None and "sql.skip_optimize" in config_options:
+        if dask_config.get("sql.skip_optimize"):
             rel = nonOptimizedRel
         else:
             try:

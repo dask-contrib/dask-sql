@@ -100,7 +100,7 @@ class OptimizationException(Exception):
     optimize a logical plan
     """
 
-    def __init__(self, sql, exception_string):
+    def __init__(self, exception_string):
         """
         Create a new exception out of the SQL query and the exception from DataFusion
         """
