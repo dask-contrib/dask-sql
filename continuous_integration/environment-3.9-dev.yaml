@@ -13,7 +13,7 @@ dependencies:
 - fs>=2.4.11
 - intake>=0.6.0
 - isort=5.7.0
-- jsonschema
+- jsonschema>=4.4.0
 - lightgbm>=3.2.1
 - mlflow>=1.19.0
 - mock>=4.0.3
