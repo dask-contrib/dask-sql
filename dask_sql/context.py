@@ -841,7 +841,7 @@ class Context:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
             except DFOptimizationException as oe:
                 rel = nonOptimizedRel
-                raise OptimizationException(sql, str(oe)) from None
+                raise OptimizationException(str(oe)) from None
         else:
             rel = nonOptimizedRel
 
