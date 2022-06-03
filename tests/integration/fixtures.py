@@ -5,9 +5,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.datasets import timeseries
 from dask.distributed import Client
-from pandas.testing import assert_frame_equal
+
+from tests.utils import assert_eq
 
 try:
     import cudf
@@ -21,18 +21,6 @@ except ImportError:
 
 # check if we want to connect to an independent cluster
 SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-
-
-@pytest.fixture()
-def timeseries_df(c):
-    pdf = timeseries(freq="1d").compute().reset_index(drop=True)
-    # impute nans in pandas dataframe
-    col1_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.2))
-    col2_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.3))
-    pdf.loc[col1_index, "x"] = np.nan
-    pdf.loc[col2_index, "y"] = np.nan
-    c.create_table("timeseries", pdf, persist=True)
-    return pdf
 
 
 @pytest.fixture()
@@ -311,7 +299,7 @@ def assert_query_gives_same_result(engine):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        assert_frame_equal(sql_result, dask_result, check_dtype=False, **kwargs)
+        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
 

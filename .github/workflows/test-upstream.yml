@@ -4,6 +4,11 @@ on:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
 
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   build:
     # This build step should be similar to the deploy build, to make sure we actually test
@@ -11,9 +16,6 @@ jobs:
     name: Build the jar on ubuntu
     runs-on: ubuntu-latest
     if: github.repository == 'dask-contrib/dask-sql'
-    defaults:
-      run:
-        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository
@@ -45,9 +47,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
-    defaults:
-      run:
-        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +69,7 @@ jobs:
           use-mamba: true
           python-version: ${{ matrix.python }}
           channel-priority: strict
+          channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Download the pre-build jar
@@ -89,23 +89,110 @@ jobs:
           echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
       - name: Install upstream dev Dask / dask-ml
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          mamba update dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
 
+  cluster-dev:
+    name: "Test upstream dev in a dask cluster"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
+          channels: dask/label/dev,conda-forge,nodefaults
+          activate-environment: dask-sql
+          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+      - name: Download the pre-build jar
+        uses: actions/download-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/
+      - name: Install cluster dependencies
+        run: |
+          mamba install python-blosc lz4 -c conda-forge
+
+          which python
+          pip list
+          mamba list
+      - name: Install upstream dev dask-ml
+        run: |
+          mamba update dask
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
+      - name: run a dask cluster
+        run: |
+          docker-compose -f .github/cluster-upstream.yml up -d
+
+          # periodically ping logs until a connection has been established; assume failure after 2 minutes
+          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
+
+          docker logs dask-scheduler
+          docker logs dask-worker
+      - name: Test with pytest while running an independent dask cluster
+        run: |
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --junitxml=junit/test-cluster-results.xml --cov-report=xml -n auto tests --dist loadfile
+
+  import-dev:
+    name: "Test importing with bare requirements and upstream dev"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.8"
+          mamba-version: "*"
+          channels: dask/label/dev,conda-forge,nodefaults
+          channel-priority: strict
+      - name: Download the pre-build jar
+        uses: actions/download-artifact@v1
+        with:
+          name: jar
+          path: dask_sql/jar/
+      - name: Install upstream dev Dask / dask-ml
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          mamba update dask
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
+      - name: Install dependencies and nothing else
+        run: |
+          pip install -e .
+
+          which python
+          pip list
+          mamba list
+      - name: Try to import dask-sql
+        run: |
+          python -c "import dask_sql; print('ok')"
+
   report-failures:
     name: Open issue for upstream dev failures
-    needs: test-dev
+    needs: [test-dev, cluster-dev]
     if: |
       always()
-      && needs.test-dev.result == 'failure'
+      && (
+        needs.test-dev.result == 'failure' || needs.cluster-dev.result == 'failure'
+      )
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@v2
       - name: Report failures

@@ -8,11 +8,6 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.core.call import IsNullOperation
@@ -83,7 +78,7 @@ class AggregationSpecification:
 
             if pd.api.types.is_string_dtype(series.dtype):
                 # If dask_cudf strings dtype, return built-in aggregation
-                if dask_cudf is not None and isinstance(series, dask_cudf.Series):
+                if "cudf" in str(series._partition_type):
                     return built_in_aggregation
 
                 # With pandas StringDtype built-in aggregations work

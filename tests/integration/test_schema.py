@@ -1,30 +1,30 @@
 import dask.dataframe as dd
 import numpy as np
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql.utils import ParsingException
+from tests.utils import assert_eq
 
 
 def test_table_schema(c, df):
-    original_df = c.sql("SELECT * FROM df").compute()
+    original_df = c.sql("SELECT * FROM df")
 
-    assert_frame_equal(original_df, c.sql("SELECT * FROM root.df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
     c.sql("CREATE SCHEMA foo")
-    assert_frame_equal(original_df, c.sql("SELECT * FROM df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM df"))
 
     c.sql('USE SCHEMA "foo"')
-    assert_frame_equal(original_df, c.sql("SELECT * FROM root.df").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
     c.sql("CREATE TABLE bar AS TABLE root.df")
-    assert_frame_equal(original_df, c.sql("SELECT * FROM bar").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
     with pytest.raises(KeyError):
         c.sql("CREATE TABLE other.bar AS TABLE df")
 
     c.sql('USE SCHEMA "root"')
-    assert_frame_equal(original_df, c.sql("SELECT * FROM foo.bar").compute())
+    assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
 
     with pytest.raises(ParsingException):
         c.sql("SELECT * FROM bar")

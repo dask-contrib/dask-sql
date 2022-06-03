@@ -7,11 +7,6 @@ from distributed.client import default_client
 from dask_sql.input_utils.base import BaseInputPlugin
 from dask_sql.input_utils.convert import InputUtil
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
 
 class LocationInputPlugin(BaseInputPlugin):
     """Input Plugin for everything, which can be read in from a file (on disk, remote etc.)"""
@@ -44,7 +39,9 @@ class LocationInputPlugin(BaseInputPlugin):
             format = extension.lstrip(".")
         try:
             if gpu:  # pragma: no cover
-                if not dask_cudf:
+                try:
+                    import dask_cudf
+                except ImportError:
                     raise ModuleNotFoundError(
                         "Setting `gpu=True` for table creation requires dask-cudf"
                     )

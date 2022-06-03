@@ -1,81 +1,35 @@
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql import Context
-
-try:
-    import cudf
-except ImportError:
-    cudf = None
+from tests.utils import assert_eq
 
 
 def test_schemas(c):
-    df = c.sql("SHOW SCHEMAS")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
 
-    assert_frame_equal(df, expected_df)
+    assert_eq(result_df, expected_df)
 
-    df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
     expected_df = pd.DataFrame({"Schema": ["information_schema"]})
 
-    assert_frame_equal(df.reset_index(drop=True), expected_df.reset_index(drop=True))
+    assert_eq(result_df, expected_df, check_index=False)
 
 
-def test_tables(c):
-    df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
-    df = df.compute()
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_tables(gpu):
+    c = Context()
+    c.create_table("table", pd.DataFrame(), gpu=gpu)
 
-    expected_df = pd.DataFrame(
-        {
-            "Table": [
-                "df",
-                "df_simple",
-                "df_wide",
-                "user_table_1",
-                "user_table_2",
-                "long_table",
-                "user_table_inf",
-                "user_table_nan",
-                "string_table",
-                "datetime_table",
-                "parquet_ddf",
-            ]
-            if cudf is None
-            else [
-                "df",
-                "df_simple",
-                "df_wide",
-                "user_table_1",
-                "user_table_2",
-                "long_table",
-                "user_table_inf",
-                "user_table_nan",
-                "string_table",
-                "datetime_table",
-                "parquet_ddf",
-                "gpu_user_table_1",
-                "gpu_df",
-                "gpu_long_table",
-                "gpu_string_table",
-            ]
-        }
-    )
+    result_df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
+    expected_df = pd.DataFrame({"Table": ["table"]})
 
-    assert_frame_equal(
-        df.sort_values("Table").reset_index(drop=True),
-        expected_df.sort_values("Table").reset_index(drop=True),
-    )
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_columns(c):
-    df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
-    df = df.compute()
-
+    result_df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
     expected_df = pd.DataFrame(
         {
             "Column": [
@@ -88,11 +42,11 @@ def test_columns(c):
         }
     )
 
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    assert_eq(result_df, expected_df)
 
-    df = c.sql('SHOW COLUMNS FROM "user_table_1"')
-    df = df.compute()
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    result_df = c.sql('SHOW COLUMNS FROM "user_table_1"')
+
+    assert_eq(result_df, expected_df)
 
 
 def test_wrong_input(c):
@@ -114,4 +68,4 @@ def test_show_tables_no_schema(c):
 
     actual_df = c.sql("show tables").compute()
     expected_df = pd.DataFrame({"Table": ["test"]})
-    assert_frame_equal(actual_df, expected_df)
+    assert_eq(actual_df, expected_df)
