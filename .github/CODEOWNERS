@@ -1,0 +1,5 @@
+# global codeowners
+*              @ayushdg @charlesbluca @galipremsagar
+
+# rust codeowners
+dask_planner/  @jdye64
