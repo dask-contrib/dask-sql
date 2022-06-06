@@ -25,13 +25,7 @@ impl PyJoin {
             .join
             .on
             .iter()
-            .map(|(l, r)| {
-                binary_expr(
-                    Expr::Column(l.clone()),
-                    Operator::Eq,
-                    Expr::Column(r.clone()),
-                )
-            })
+            .map(|(l, r)| Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
             .collect();
 
         // other filter conditions
