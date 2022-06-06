@@ -1,9 +1,8 @@
 use crate::expression::PyExpr;
 use crate::sql::column;
 
-use datafusion::common::Column;
 use datafusion::logical_expr::{
-    and, binary_expr, col,
+    and, binary_expr,
     logical_plan::{Join, JoinType, LogicalPlan},
     Expr, Operator,
 };

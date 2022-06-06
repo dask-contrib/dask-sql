@@ -40,33 +40,6 @@ impl TableSource for DaskTableSource {
     }
 }
 
-/// DaskTable wrapper that is compatible with DataFusion physical query plans
-pub struct DaskTableProvider {
-    source: Arc<DaskTableSource>,
-}
-
-impl DaskTableProvider {
-    pub fn new(source: Arc<DaskTableSource>) -> Self {
-        Self { source }
-    }
-}
-
-/// Implement TableProvider, used for physical query plans and execution
-#[async_trait]
-impl TableSource for DaskTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn schema(&self) -> SchemaRef {
-        self.source.schema.clone()
-    }
-
-    fn table_type(&self) -> TableType {
-        TableType::Base
-    }
-}
-
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {

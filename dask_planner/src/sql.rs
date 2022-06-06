@@ -22,7 +22,7 @@ use datafusion::sql::planner::{ContextProvider, SqlToRel};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::sql::table::DaskTableProvider;
+use crate::sql::table::DaskTableSource;
 use pyo3::prelude::*;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
@@ -77,9 +77,7 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(DaskTableProvider::new(Arc::new(
-                        table::DaskTableSource::new(Arc::new(e)),
-                    )))),
+                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
