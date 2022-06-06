@@ -12,6 +12,7 @@ pub enum RexType {
     Literal,
     Call,
     Reference,
+    SubqueryAlias,
     Other,
 }
 
