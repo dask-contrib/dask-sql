@@ -13,9 +13,9 @@ use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
 use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::ScalarFunctionImplementation;
-use datafusion::physical_plan::udaf::AggregateUDF;
-use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::logical_expr::{
+    AggregateUDF, ScalarFunctionImplementation, ScalarUDF, TableSource,
+};
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
 
@@ -56,7 +56,7 @@ impl ContextProvider for DaskSQLContext {
     fn get_table_provider(
         &self,
         name: TableReference,
-    ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+    ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
         match self.schemas.get(&self.default_schema_name) {

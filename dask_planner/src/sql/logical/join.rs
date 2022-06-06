@@ -1,11 +1,12 @@
 use crate::expression::PyExpr;
 use crate::sql::column;
 
-use datafusion::physical_plan::expressions::Column;
-
-use datafusion::logical_expr::logical_plan::Join;
-use datafusion::logical_plan::{JoinType, LogicalPlan, Operator};
-use datafusion::prelude::{col, Expr};
+use datafusion::common::Column;
+use datafusion::logical_expr::{
+    col,
+    logical_plan::{Join, JoinType, LogicalPlan},
+    Expr, Operator,
+};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

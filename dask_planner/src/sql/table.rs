@@ -10,7 +10,6 @@ use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
 use datafusion::datasource::{TableProvider, TableType};
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::{Expr, LogicalPlan, TableSource};
-use datafusion::physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan};
 
 use pyo3::prelude::*;
 
@@ -54,7 +53,7 @@ impl DaskTableProvider {
 
 /// Implement TableProvider, used for physical query plans and execution
 #[async_trait]
-impl TableProvider for DaskTableProvider {
+impl TableSource for DaskTableProvider {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -65,17 +64,6 @@ impl TableProvider for DaskTableProvider {
 
     fn table_type(&self) -> TableType {
         TableType::Base
-    }
-
-    async fn scan(
-        &self,
-        projection: &Option<Vec<usize>>,
-        _filters: &[Expr],
-        _limit: Option<usize>,
-    ) -> Result<Arc<dyn ExecutionPlan>, DataFusionError> {
-        // even though there is no data, projections apply
-        let projected_schema = project_schema(&self.source.schema, projection.as_ref())?;
-        Ok(Arc::new(EmptyExec::new(false, projected_schema)))
     }
 }
 
