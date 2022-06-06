@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from tests.utils import assert_eq
 
@@ -33,7 +32,6 @@ def test_union_all(c, df):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_union_mixed(c, df, long_table):
     result_df = c.sql(
         """
