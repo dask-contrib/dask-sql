@@ -31,4 +31,6 @@ class RexSubqueryAliasPlugin(BaseRexPlugin):
         # Extract the LogicalPlan from the Expr instance
         sub_rel = rex.getSubqueryLogicalPlan()
 
-        return RelConverter.convert(sub_rel, context=context)
+        dc = RelConverter.convert(sub_rel, context=context)
+        breakpoint()
+        return dc.df

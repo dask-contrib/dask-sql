@@ -920,5 +920,7 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = expr
 
+        print(f"Operation: {operation}")
+        breakpoint()
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it
