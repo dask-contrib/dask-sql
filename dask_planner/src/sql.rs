@@ -12,19 +12,17 @@ use crate::sql::exceptions::{OptimizationException, ParsingException};
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
-use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::ScalarFunctionImplementation;
+use datafusion::logical_expr::{
+    AggregateUDF, ScalarFunctionImplementation, ScalarUDF, TableSource,
+};
 use datafusion::logical_plan::{LogicalPlan, PlanVisitor};
-use datafusion::physical_plan::udaf::AggregateUDF;
-use datafusion::physical_plan::udf::ScalarUDF;
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::sql::table::DaskTableProvider;
 use pyo3::prelude::*;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
@@ -58,7 +56,7 @@ impl ContextProvider for DaskSQLContext {
     fn get_table_provider(
         &self,
         name: TableReference,
-    ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+    ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
         match self.schemas.get(&self.default_schema_name) {
@@ -79,9 +77,7 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(DaskTableProvider::new(Arc::new(
-                        table::DaskTableSource::new(Arc::new(e)),
-                    )))),
+                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table

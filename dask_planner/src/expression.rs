@@ -16,8 +16,8 @@ use datafusion::logical_expr::LogicalPlan;
 use datafusion::prelude::Column;
 
 use crate::sql::exceptions::py_runtime_err;
-use datafusion::common::DFField;
-use datafusion::logical_plan::{exprlist_to_fields, DFSchema};
+use datafusion::common::{DFField, DFSchema};
+use datafusion::logical_expr::utils::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame

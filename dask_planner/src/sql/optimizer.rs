@@ -1,11 +1,10 @@
 use datafusion::error::DataFusionError;
-use datafusion::execution::context::ExecutionProps;
 use datafusion::logical_expr::LogicalPlan;
-use datafusion::optimizer::eliminate_filter::EliminateFilter;
 use datafusion::optimizer::eliminate_limit::EliminateLimit;
 use datafusion::optimizer::filter_push_down::FilterPushDown;
 use datafusion::optimizer::limit_push_down::LimitPushDown;
 use datafusion::optimizer::optimizer::OptimizerRule;
+use datafusion::optimizer::OptimizerConfig;
 
 use datafusion::optimizer::common_subexpr_eliminate::CommonSubexprEliminate;
 use datafusion::optimizer::projection_push_down::ProjectionPushDown;
@@ -43,7 +42,7 @@ impl DaskSqlOptimizer {
     ) -> Result<LogicalPlan, DataFusionError> {
         let mut resulting_plan: LogicalPlan = plan;
         for optimization in &self.optimizations {
-            match optimization.optimize(&resulting_plan, &ExecutionProps::new()) {
+            match optimization.optimize(&resulting_plan, &OptimizerConfig::new()) {
                 Ok(optimized_plan) => resulting_plan = optimized_plan,
                 Err(e) => {
                     return Err(e);
