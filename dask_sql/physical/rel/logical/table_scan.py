@@ -57,8 +57,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
         if table_scan.containsProjections():
             field_specifications = table_scan.getTableScanProjects()
         else:
-            row_type = table.getRowType()
-            field_specifications = [str(f) for f in row_type.getFieldNames()]
+            field_specifications = [str(f) for f in table.getRowType().getFieldNames()]
 
         cc = cc.limit_to(field_specifications)
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
