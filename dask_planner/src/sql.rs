@@ -2,27 +2,27 @@ pub mod column;
 pub mod exceptions;
 pub mod function;
 pub mod logical;
+pub mod optimizer;
 pub mod schema;
 pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::ParsingException;
+use crate::sql::exceptions::{OptimizationException, ParsingException};
 
 use datafusion::arrow::datatypes::{Field, Schema};
 use datafusion::catalog::{ResolvedTableReference, TableReference};
-use datafusion::datasource::TableProvider;
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::ScalarFunctionImplementation;
-use datafusion::physical_plan::udaf::AggregateUDF;
-use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::logical_expr::{
+    AggregateUDF, ScalarFunctionImplementation, ScalarUDF, TableSource,
+};
+use datafusion::logical_plan::{LogicalPlan, PlanVisitor};
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::planner::{ContextProvider, SqlToRel};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::sql::table::DaskTableProvider;
 use pyo3::prelude::*;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
@@ -56,7 +56,7 @@ impl ContextProvider for DaskSQLContext {
     fn get_table_provider(
         &self,
         name: TableReference,
-    ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+    ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
         match self.schemas.get(&self.default_schema_name) {
@@ -77,9 +77,7 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(DaskTableProvider::new(Arc::new(
-                        table::DaskTableSource::new(Arc::new(e)),
-                    )))),
+                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
@@ -178,5 +176,53 @@ impl DaskSQLContext {
                 current_node: None,
             })
             .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
+    }
+
+    /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
+    /// by applying a set of `optimizer` trait implementations against the
+    /// `LogicalPlan`
+    pub fn optimize_relational_algebra(
+        &self,
+        existing_plan: logical::PyLogicalPlan,
+    ) -> PyResult<logical::PyLogicalPlan> {
+        // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
+        let mut visitor = OptimizablePlanVisitor {};
+
+        match existing_plan.original_plan.accept(&mut visitor) {
+            Ok(valid) => {
+                if valid {
+                    optimizer::DaskSqlOptimizer::new()
+                        .run_optimizations(existing_plan.original_plan)
+                        .map(|k| logical::PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(|e| PyErr::new::<OptimizationException, _>(format!("{}", e)))
+                } else {
+                    // This LogicalPlan does not support Optimization. Return original
+                    Ok(existing_plan)
+                }
+            }
+            Err(e) => Err(PyErr::new::<OptimizationException, _>(format!("{}", e))),
+        }
+    }
+}
+
+/// Visits each AST node to determine if the plan is valid for optimization or not
+pub struct OptimizablePlanVisitor;
+
+impl PlanVisitor for OptimizablePlanVisitor {
+    type Error = DataFusionError;
+
+    fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
+        match plan {
+            LogicalPlan::Explain(..) => Ok(false),
+            _ => Ok(true),
+        }
+    }
+
+    fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        Ok(true)
     }
 }
