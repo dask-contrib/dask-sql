@@ -232,3 +232,21 @@ def test_singular_column_projection_simple(c):
     single_col_result = c.sql("SELECT b from df")
 
     assert_eq(wildcard_result["b"], single_col_result["b"])
+
+
+@pytest.mark.parametrize(
+    "input_cols",
+    [
+        ["a"],
+        ["a", "b"],
+    ],
+)
+def test_predicate_pushdown(c, parquet_ddf, input_cols):
+    c.create_table("parquet_table", parquet_ddf)
+
+    projection_list = ", ".join(input_cols)
+    result = c.sql(f"SELECT {projection_list} from parquet_table")
+
+    # There are 5 columns in the table, ensure only specified ones are read
+    assert_eq(len(result.columns), len(input_cols))
+    assert all(x in input_cols for x in result.columns)
