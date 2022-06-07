@@ -222,3 +222,13 @@ def test_case_when_no_else(c):
     expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
 
     assert_eq(actual_df, expected_df)
+
+
+def test_singular_column_projection_simple(c):
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    c.create_table("df", df)
+
+    wildcard_result = c.sql("SELECT * from df").compute()
+    single_col_result = c.sql("SELECT b from df").compute()
+
+    assert_eq(wildcard_result["b"], single_col_result["b"])

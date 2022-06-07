@@ -9,8 +9,9 @@ mod filter;
 mod join;
 mod limit;
 mod offset;
-pub mod projection;
+mod projection;
 mod sort;
+mod table_scan;
 mod union;
 
 use datafusion::logical_expr::LogicalPlan;
@@ -111,6 +112,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::TableScan as PyTableScan
+    pub fn table_scan(&self) -> PyResult<table_scan::PyTableScan> {
         to_py_plan(self.current_node.as_ref())
     }
 

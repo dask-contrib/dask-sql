@@ -76,8 +76,7 @@ impl RelDataType {
         self.field_list.clone()
     }
 
-    /// Returns the names of the fields in a struct type. The field count
-    /// is equal to the size of the returned list.
+    /// Returns the names of all of the columns in a given DaskTable
     #[pyo3(name = "getFieldNames")]
     pub fn field_names(&self) -> Vec<String> {
         assert!(!self.field_list.is_empty());

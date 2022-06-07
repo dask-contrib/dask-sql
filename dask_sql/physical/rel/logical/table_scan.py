@@ -33,6 +33,9 @@ class DaskTableScanPlugin(BaseRelPlugin):
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
+        # Rust table_scan instance handle
+        table_scan = rel.table_scan()
+
         # The table(s) we need to return
         table = rel.getTable()
 
@@ -48,11 +51,16 @@ class DaskTableScanPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        # Make sure we only return the requested columns
-        row_type = table.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
-        cc = cc.limit_to(field_specifications)
+        # If the 'TableScan' instance contains projected columns only retrieve those columns
+        # otherwise get all projected columns from the 'Projection' instance, which is contained
+        # in the 'RelDataType' instance, aka 'row_type'
+        if table_scan.containsProjections():
+            field_specifications = table_scan.getTableScanProjects()
+        else:
+            row_type = table.getRowType()
+            field_specifications = [str(f) for f in row_type.getFieldNames()]
 
+        cc = cc.limit_to(field_specifications)
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
