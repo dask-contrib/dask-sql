@@ -239,6 +239,9 @@ def test_singular_column_projection_simple(c):
     [
         ["a"],
         ["a", "b"],
+        ["a", "d"],
+        ["d", "a"],
+        ["a", "b", "d"],
     ],
 )
 def test_predicate_pushdown(c, parquet_ddf, input_cols):
