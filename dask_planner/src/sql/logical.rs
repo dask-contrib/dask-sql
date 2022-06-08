@@ -13,11 +13,8 @@ pub mod projection;
 mod sort;
 mod union;
 
-use datafusion::logical_expr::LogicalPlan;
-
-use datafusion::common::{DataFusionError, Result};
-use datafusion::logical_plan::DFSchemaRef;
-use datafusion::prelude::Column;
+use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
+use datafusion_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

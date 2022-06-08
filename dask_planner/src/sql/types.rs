@@ -1,4 +1,4 @@
-use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 
 pub mod rel_data_type;
 pub mod rel_data_type_field;

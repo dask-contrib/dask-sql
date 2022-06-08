@@ -33,8 +33,10 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
 
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
+    breakpoint()
     out = df[filter_condition]
     if dask_config.get("sql.predicate_pushdown"):
+        breakpoint()
         return attempt_predicate_pushdown(out)
     else:
         return out

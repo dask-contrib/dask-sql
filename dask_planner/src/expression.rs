@@ -1,23 +1,11 @@
-use crate::sql::logical::{self, PyLogicalPlan};
+use crate::sql::exceptions::py_runtime_err;
+use crate::sql::logical;
 use crate::sql::types::RexType;
-
+use arrow::datatypes::DataType;
+use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
+use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
 use std::convert::From;
-
-use datafusion::error::Result;
-
-use datafusion::arrow::datatypes::DataType;
-use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
-
-use datafusion::scalar::ScalarValue;
-
-use datafusion::logical_expr::LogicalPlan;
-
-use datafusion::prelude::Column;
-
-use crate::sql::exceptions::py_runtime_err;
-use datafusion::common::{DFField, DFSchema};
-use datafusion::logical_expr::utils::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
@@ -114,7 +102,7 @@ impl PyExpr {
     /// Extracts the LogicalPlan from a Subquery, or supported Subquery sub-type, from
     /// the expression instance
     #[pyo3(name = "getSubqueryLogicalPlan")]
-    pub fn subquery_plan(&self) -> PyResult<PyLogicalPlan> {
+    pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
         match &self.expr {
             Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(

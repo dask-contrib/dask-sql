@@ -1,4 +1,4 @@
-use datafusion::error::DataFusionError;
+use datafusion_common::DataFusionError;
 use pyo3::{create_exception, PyErr};
 use std::fmt::Debug;
 
