@@ -1,5 +1,5 @@
 use crate::sql::exceptions::py_type_err;
-use datafusion::logical_expr::{logical_plan::Explain, LogicalPlan};
+use datafusion_expr::{logical_plan::Explain, LogicalPlan};
 use pyo3::prelude::*;
 
 #[pyclass(name = "Explain", module = "dask_planner", subclass)]

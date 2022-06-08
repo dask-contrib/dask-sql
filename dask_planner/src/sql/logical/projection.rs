@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::logical_expr::{logical_plan::Projection, Expr};
+use datafusion_expr::LogicalPlan;
+use datafusion_expr::{logical_plan::Projection, Expr};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

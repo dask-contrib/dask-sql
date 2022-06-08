@@ -1,10 +1,10 @@
 use crate::expression::PyExpr;
 use crate::sql::exceptions::py_type_err;
 
-use datafusion::scalar::ScalarValue;
+use datafusion_common::ScalarValue;
 use pyo3::prelude::*;
 
-use datafusion::logical_expr::{logical_plan::Limit, Expr, LogicalPlan};
+use datafusion_expr::{logical_plan::Limit, Expr, LogicalPlan};
 
 #[pyclass(name = "Limit", module = "dask_planner", subclass)]
 #[derive(Clone)]

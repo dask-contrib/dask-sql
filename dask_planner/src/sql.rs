@@ -10,15 +10,16 @@ pub mod types;
 
 use crate::sql::exceptions::{OptimizationException, ParsingException};
 
-use datafusion::arrow::datatypes::{Field, Schema};
-use datafusion::catalog::{ResolvedTableReference, TableReference};
-use datafusion::error::DataFusionError;
-use datafusion::logical_expr::{
-    AggregateUDF, ScalarFunctionImplementation, ScalarUDF, TableSource,
+use arrow::datatypes::{Field, Schema};
+use datafusion_common::DataFusionError;
+use datafusion_expr::{
+    AggregateUDF, LogicalPlan, PlanVisitor, ScalarFunctionImplementation, ScalarUDF, TableSource,
 };
-use datafusion::logical_plan::{LogicalPlan, PlanVisitor};
-use datafusion::sql::parser::DFParser;
-use datafusion::sql::planner::{ContextProvider, SqlToRel};
+use datafusion_sql::{
+    parser::DFParser,
+    planner::{ContextProvider, SqlToRel},
+    ResolvedTableReference, TableReference,
+};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -34,7 +35,7 @@ use pyo3::prelude::*;
 /// ```
 /// use datafusion::prelude::*;
 ///
-/// # use datafusion::error::Result;
+/// # use datafusion_common::Result;
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
 /// let mut ctx = DaskSQLContext::new();
@@ -101,7 +102,7 @@ impl ContextProvider for DaskSQLContext {
         unimplemented!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
     }
 
-    fn get_variable_type(&self, _: &[String]) -> Option<datafusion::arrow::datatypes::DataType> {
+    fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 }
