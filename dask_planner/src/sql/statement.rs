@@ -1,4 +1,4 @@
-use datafusion::sql::parser::Statement;
+use datafusion_sql::parser::Statement;
 
 use pyo3::prelude::*;
 

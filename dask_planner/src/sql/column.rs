@@ -1,4 +1,4 @@
-use datafusion::prelude::Column;
+use datafusion_common::Column;
 
 use pyo3::prelude::*;
 

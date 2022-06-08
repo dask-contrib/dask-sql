@@ -6,8 +6,8 @@ use crate::sql::types::SqlTypeName;
 
 use async_trait::async_trait;
 
-use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-use datafusion::logical_expr::{LogicalPlan, TableSource};
+use arrow::datatypes::{DataType, Field, SchemaRef};
+use datafusion_expr::{LogicalPlan, TableSource};
 
 use pyo3::prelude::*;
 
