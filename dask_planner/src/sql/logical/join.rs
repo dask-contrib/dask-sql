@@ -2,9 +2,9 @@ use crate::expression::PyExpr;
 use crate::sql::column;
 
 use datafusion::logical_expr::{
-    and, binary_expr,
+    and,
     logical_plan::{Join, JoinType, LogicalPlan},
-    Expr, Operator,
+    Expr,
 };
 
 use crate::sql::exceptions::py_type_err;

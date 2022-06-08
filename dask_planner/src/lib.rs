@@ -33,6 +33,10 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
         "DFParsingException",
         py.get_type::<sql::exceptions::ParsingException>(),
     )?;
+    m.add(
+        "DFOptimizationException",
+        py.get_type::<sql::exceptions::OptimizationException>(),
+    )?;
 
     Ok(())
 }

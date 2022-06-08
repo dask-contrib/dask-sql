@@ -7,9 +7,7 @@ use crate::sql::types::SqlTypeName;
 use async_trait::async_trait;
 
 use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-use datafusion::datasource::{TableProvider, TableType};
-use datafusion::error::DataFusionError;
-use datafusion::logical_expr::{Expr, LogicalPlan, TableSource};
+use datafusion::logical_expr::{LogicalPlan, TableSource};
 
 use pyo3::prelude::*;
 

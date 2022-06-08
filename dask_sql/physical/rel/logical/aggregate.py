@@ -186,9 +186,13 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
-        backend_output_column_order = [
-            cc.get_backend_by_frontend_name(oc) for oc in output_column_order
-        ]
+
+        if len(output_column_order) == 1 and output_column_order[0] == "UInt8(1)":
+            backend_output_column_order = [df_agg.columns[0]]
+        else:
+            backend_output_column_order = [
+                cc.get_backend_by_frontend_name(oc) for oc in output_column_order
+            ]
         cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
@@ -425,7 +429,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if additional_column_name is None:
             additional_column_name = new_temporary_column(dc.df)
 
-        # perform groupby operation; if we are using custom aggreagations, we must handle
+        # perform groupby operation; if we are using custom aggregations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
             group_columns = [
@@ -448,11 +452,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         for col in agg_result.columns:
             logger.debug(col)
-        logger.debug(f"agg_result: {agg_result.head()}")
 
         # fix the column names to a single level
         agg_result.columns = agg_result.columns.get_level_values(-1)
-
-        logger.debug(f"agg_result after: {agg_result.head()}")
 
         return agg_result
