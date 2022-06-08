@@ -1,15 +1,11 @@
-use datafusion::error::DataFusionError;
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::optimizer::eliminate_limit::EliminateLimit;
-use datafusion::optimizer::filter_push_down::FilterPushDown;
-use datafusion::optimizer::limit_push_down::LimitPushDown;
-use datafusion::optimizer::optimizer::OptimizerRule;
-use datafusion::optimizer::OptimizerConfig;
-
-use datafusion::optimizer::common_subexpr_eliminate::CommonSubexprEliminate;
-use datafusion::optimizer::projection_push_down::ProjectionPushDown;
-use datafusion::optimizer::single_distinct_to_groupby::SingleDistinctToGroupBy;
-use datafusion::optimizer::subquery_filter_to_join::SubqueryFilterToJoin;
+use datafusion_common::DataFusionError;
+use datafusion_expr::LogicalPlan;
+use datafusion_optimizer::{
+    common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
+    filter_push_down::FilterPushDown, limit_push_down::LimitPushDown, optimizer::OptimizerRule,
+    projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
+    subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
+};
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance

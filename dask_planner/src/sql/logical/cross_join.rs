@@ -1,4 +1,4 @@
-use datafusion::logical_plan::{CrossJoin, LogicalPlan};
+use datafusion_expr::logical_plan::{CrossJoin, LogicalPlan};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

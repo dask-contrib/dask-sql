@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 use crate::sql::column;
 
-use datafusion::logical_expr::{
+use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
     Expr,
