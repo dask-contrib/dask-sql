@@ -1,7 +1,6 @@
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::logical_plan::TableScan;
-
 use crate::sql::exceptions::py_type_err;
+use crate::sql::logical;
+use datafusion_expr::logical_plan::TableScan;
 use pyo3::prelude::*;
 
 #[pyclass(name = "TableScan", module = "dask_planner", subclass)]
@@ -34,12 +33,12 @@ impl PyTableScan {
     }
 }
 
-impl TryFrom<LogicalPlan> for PyTableScan {
+impl TryFrom<logical::LogicalPlan> for PyTableScan {
     type Error = PyErr;
 
-    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::TableScan(table_scan) => Ok(PyTableScan { table_scan }),
+            logical::LogicalPlan::TableScan(table_scan) => Ok(PyTableScan { table_scan }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }
