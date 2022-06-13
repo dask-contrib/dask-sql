@@ -98,6 +98,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
    api
    server
    cmd
+   fugue
    how_does_it_work
    configuration
 

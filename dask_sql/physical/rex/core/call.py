@@ -169,11 +169,10 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, datetime.timedelta):
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
-        else:  # pragma: no cover
-            result = da.trunc(result)
-            return result
+        else:
+            return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):
@@ -224,9 +223,6 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):  # pragma: no cover
-            return operand
-
         output_type = str(rex.getType())
         python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
@@ -818,6 +814,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
+        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),

@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from dask import dataframe as dd
 
-from dask_sql.utils import Pluggable, is_frame
+from dask_sql.utils import ParsingException, Pluggable, is_frame
 
 
 def test_is_frame_for_frame():
@@ -52,3 +52,54 @@ def test_overwrite():
 
     assert PluginTest1.get_plugin("some_key") == "value_2"
     assert PluginTest1().get_plugin("some_key") == "value_2"
+
+
+def test_exception_parsing():
+    e = ParsingException(
+        "SELECT * FROM df",
+        """org.apache.calcite.runtime.CalciteContextException: From line 1, column 3 to line 1, column 4: Message""",
+    )
+
+    expected = """Can not parse the given SQL: org.apache.calcite.runtime.CalciteContextException: From line 1, column 3 to line 1, column 4: Message
+
+The problem is probably somewhere here:
+
+\tSELECT * FROM df
+\t  ^^"""
+    assert str(e) == expected
+
+    e = ParsingException(
+        "SELECT * FROM df",
+        """Lexical error at line 1, column 3.  Message""",
+    )
+
+    expected = """Can not parse the given SQL: Lexical error at line 1, column 3.  Message
+
+The problem is probably somewhere here:
+
+\tSELECT * FROM df
+\t  ^"""
+    assert str(e) == expected
+
+    e = ParsingException(
+        "SELECT *\nFROM df\nWHERE x = 3",
+        """From line 1, column 3 to line 2, column 3: Message""",
+    )
+
+    expected = """Can not parse the given SQL: From line 1, column 3 to line 2, column 3: Message
+
+The problem is probably somewhere here:
+
+\tSELECT *
+\t  ^^^^^^^
+\tFROM df
+\t^^^
+\tWHERE x = 3"""
+    assert str(e) == expected
+
+    e = ParsingException(
+        "SELECT *",
+        "Message",
+    )
+
+    assert str(e) == "Message"

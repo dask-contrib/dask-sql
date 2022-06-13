@@ -371,3 +371,34 @@ def test_drop(c):
 
     with pytest.raises(dask_sql.utils.ParsingException):
         c.sql("SELECT a FROM new_table")
+
+
+def test_create_gpu_error(c, df, temporary_data_file):
+    try:
+        import cudf
+    except ImportError:
+        cudf = None
+
+    if cudf is not None:
+        pytest.skip("GPU-related import errors only need to be checked on CPU")
+
+    with pytest.raises(ModuleNotFoundError):
+        c.create_table("new_table", df, gpu=True)
+
+    with pytest.raises(ModuleNotFoundError):
+        c.create_table("new_table", dd.from_pandas(df, npartitions=2), gpu=True)
+
+    df.to_csv(temporary_data_file, index=False)
+
+    with pytest.raises(ModuleNotFoundError):
+        c.sql(
+            f"""
+            CREATE TABLE
+                new_table
+            WITH (
+                location = '{temporary_data_file}',
+                format = 'csv',
+                gpu = True
+            )
+        """
+        )
