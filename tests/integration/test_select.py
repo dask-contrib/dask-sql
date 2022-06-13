@@ -244,11 +244,9 @@ def test_singular_column_projection_simple(c):
         ["a", "b", "d"],
     ],
 )
-def test_predicate_pushdown(c, parquet_ddf, input_cols):
-    c.create_table("parquet_table", parquet_ddf)
-
+def test_multiple_column_projection(c, input_cols):
     projection_list = ", ".join(input_cols)
-    result = c.sql(f"SELECT {projection_list} from parquet_table")
+    result = c.sql(f"SELECT {projection_list} from parquet_ddf")
 
     # There are 5 columns in the table, ensure only specified ones are read
     assert_eq(len(result.columns), len(input_cols))
