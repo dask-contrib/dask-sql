@@ -1,4 +1,3 @@
-import datetime
 import logging
 import operator
 import re
@@ -162,17 +161,7 @@ class IntDivisionOperator(Operation):
 
     def div(self, lhs, rhs):
         result = lhs / rhs
-
-        # Specialized code for literals like "1000µs"
-        # For some reasons, Calcite decides to represent
-        # 1000µs as 1000µs * 1000 / 1000
-        # We do not need to truncate in this case
-        # So far, I did not spot any other occurrence
-        # of this function.
-        if isinstance(result, (datetime.timedelta, np.timedelta64)):
-            return result
-        else:
-            return da.trunc(result).astype(np.int64)
+        return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):
@@ -814,7 +803,6 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
-        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
