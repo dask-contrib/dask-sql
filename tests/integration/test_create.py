@@ -373,6 +373,7 @@ def test_drop(c):
         c.sql("SELECT a FROM new_table")
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_create_gpu_error(c, df, temporary_data_file):
     try:
         import cudf

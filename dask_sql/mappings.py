@@ -193,11 +193,7 @@ def sql_to_python_type(sql_type: "SqlTypeName") -> type:
     """Turn an SQL type into a dataframe dtype"""
     if sql_type == SqlTypeName.VARCHAR or sql_type == SqlTypeName.CHAR:
         return pd.StringDtype()
-    elif (
-        sql_type == SqlTypeName.TIME
-        or sql_type == SqlTypeName.TIMESTAMP
-        or sql_type.startswith("INTERVAL")
-    ):
+    elif sql_type == SqlTypeName.TIME or sql_type == SqlTypeName.TIMESTAMP:
         return np.dtype("<M8[ns]")
     elif sql_type == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE:
         # Everything is converted to UTC
