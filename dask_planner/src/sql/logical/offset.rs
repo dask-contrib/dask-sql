@@ -37,7 +37,7 @@ impl TryFrom<LogicalPlan> for PyOffset {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Offset(offset) => Ok(PyOffset { offset: offset }),
+            LogicalPlan::Offset(offset) => Ok(PyOffset { offset }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

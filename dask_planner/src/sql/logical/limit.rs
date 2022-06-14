@@ -28,7 +28,7 @@ impl TryFrom<LogicalPlan> for PyLimit {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Limit(limit) => Ok(PyLimit { limit: limit }),
+            LogicalPlan::Limit(limit) => Ok(PyLimit { limit }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

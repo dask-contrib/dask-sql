@@ -33,7 +33,7 @@ impl PyJoin {
             filters.push(filter.clone());
         }
 
-        assert!(filters.len() > 0);
+        assert!(!filters.is_empty());
 
         let root_expr = filters[1..]
             .iter()

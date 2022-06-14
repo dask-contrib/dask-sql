@@ -21,14 +21,11 @@ pub struct RelDataTypeField {
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
         let qualifier: Option<&str> = match field.qualifier() {
-            Some(qualifier) => Some(&(*qualifier)),
+            Some(qualifier) => Some(qualifier),
             None => None,
         };
         Ok(RelDataTypeField {
-            qualifier: match qualifier {
-                Some(qualifier) => Some(qualifier.to_string()),
-                None => None,
-            },
+            qualifier: qualifier.map(|qualifier| qualifier.to_string()),
             name: field.name().clone(),
             data_type: DaskTypeMap {
                 sql_type: SqlTypeName::from_arrow(field.data_type()),
@@ -45,9 +42,9 @@ impl RelDataTypeField {
     pub fn new(name: String, type_map: DaskTypeMap, index: usize) -> Self {
         Self {
             qualifier: None,
-            name: name,
+            name,
             data_type: type_map,
-            index: index,
+            index,
         }
     }
 
@@ -65,7 +62,7 @@ impl RelDataTypeField {
     pub fn qualified_name(&self) -> String {
         match &self.qualifier() {
             Some(qualifier) => format!("{}.{}", &qualifier, self.name()),
-            None => format!("{}", self.name()),
+            None => self.name().to_string(),
         }
     }
 
