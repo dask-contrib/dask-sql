@@ -405,17 +405,26 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert return_df.npartitions == split_out if split_out else 1
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
+    return_df = c.sql(
+        f"""
+        SELECT DISTINCT(user_id) FROM {input_table}
+        """,
+        config_options={"sql.groupby.split_out": split_out},
+    )
+    expected_df = user_table[["user_id"]].drop_duplicates()
+    assert return_df.npartitions == split_out if split_out else 1
+    assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
-@pytest.mark.skip(reason="WIP DataFusion")
+
 @pytest.mark.parametrize(
     "gpu,split_every,expected_keys",
     [
-        (False, 2, 74),
-        (False, 3, 68),
-        (False, 4, 64),
-        pytest.param(True, 2, 107, marks=pytest.mark.gpu),
-        pytest.param(True, 3, 101, marks=pytest.mark.gpu),
-        pytest.param(True, 4, 97, marks=pytest.mark.gpu),
+        (False, 2, 72),
+        (False, 3, 66),
+        (False, 4, 62),
+        pytest.param(True, 2, 105, marks=pytest.mark.gpu),
+        pytest.param(True, 3, 99, marks=pytest.mark.gpu),
+        pytest.param(True, 4, 95, marks=pytest.mark.gpu),
     ],
 )
 def test_groupby_split_every(c, gpu, split_every, expected_keys):
