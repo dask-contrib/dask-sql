@@ -14,7 +14,7 @@ impl PySort {
     /// Returns if a sort expressions denotes an ascending sort
     fn is_ascending(&self, expr: &Expr) -> Result<bool, PyErr> {
         match expr {
-            Expr::Sort { asc, .. } => Ok(asc.clone()),
+            Expr::Sort { asc, .. } => Ok(*asc),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Provided Expr {:?} is not a sort type",
                 expr
@@ -24,7 +24,7 @@ impl PySort {
     /// Returns if nulls should be placed first in a sort expression
     fn is_nulls_first(&self, expr: &Expr) -> Result<bool, PyErr> {
         match &expr {
-            Expr::Sort { nulls_first, .. } => Ok(nulls_first.clone()),
+            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Provided Expr {:?} is not a sort type",
                 expr

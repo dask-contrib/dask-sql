@@ -35,8 +35,8 @@ pub struct DaskTypeMap {
 impl DaskTypeMap {
     pub fn from(sql_type: SqlTypeName, data_type: DataType) -> Self {
         DaskTypeMap {
-            sql_type: sql_type,
-            data_type: data_type,
+            sql_type,
+            data_type,
         }
     }
 
@@ -120,7 +120,7 @@ impl DaskTypeMap {
         };
 
         DaskTypeMap {
-            sql_type: sql_type,
+            sql_type,
             data_type: d_type,
         }
     }
@@ -303,7 +303,7 @@ impl SqlTypeName {
             "DECIMAL" => SqlTypeName::DECIMAL,
             "DYNAMIC_STAT" => SqlTypeName::DYNAMIC_STAR,
             "UNKNOWN" => SqlTypeName::UNKNOWN,
-            _ => unimplemented!("SqlTypeName::from_string() for str type: {:?}", input_type),
+            _ => unimplemented!("SqlTypeName::from_string() for str type: {}", input_type),
         }
     }
 }
