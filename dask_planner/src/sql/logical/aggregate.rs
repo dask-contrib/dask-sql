@@ -54,7 +54,7 @@ impl PyAggregate {
                 for expr in args {
                     exprs.push(PyExpr {
                         input_plan: Some(vec![self.aggregate.input.clone()]),
-                        expr: expr,
+                        expr,
                     });
                 }
                 exprs

@@ -21,7 +21,7 @@ impl RelDataType {
     #[new]
     pub fn new(nullable: bool, fields: Vec<RelDataTypeField>) -> Self {
         Self {
-            nullable: nullable,
+            nullable,
             field_list: fields,
         }
     }
@@ -36,7 +36,7 @@ impl RelDataType {
     pub fn field(&self, field_name: String, case_sensitive: bool) -> RelDataTypeField {
         assert!(!self.field_list.is_empty());
         let field_map: HashMap<String, RelDataTypeField> = self.field_map();
-        if case_sensitive && field_map.len() > 0 {
+        if case_sensitive && !field_map.is_empty() {
             field_map.get(&field_name).unwrap().clone()
         } else {
             for field in &self.field_list {
@@ -83,7 +83,7 @@ impl RelDataType {
         assert!(!self.field_list.is_empty());
         let mut field_names: Vec<String> = Vec::new();
         for field in &self.field_list {
-            field_names.push(String::from(field.qualified_name()));
+            field_names.push(field.qualified_name());
         }
         field_names
     }
@@ -97,7 +97,7 @@ impl RelDataType {
 
     #[pyo3(name = "isStruct")]
     pub fn is_struct(&self) -> bool {
-        self.field_list.len() > 0
+        !self.field_list.is_empty()
     }
 
     /// Queries whether this type allows null values.

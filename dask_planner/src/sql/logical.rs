@@ -54,7 +54,7 @@ fn to_py_plan<T: TryFrom<LogicalPlan, Error = PyErr>>(
     current_node: Option<&LogicalPlan>,
 ) -> PyResult<T> {
     match current_node {
-        Some(plan) => plan.clone().try_into().into(),
+        Some(plan) => plan.clone().try_into(),
         _ => Err(py_type_err("current_node was None")),
     }
 }
@@ -136,7 +136,7 @@ impl PyLogicalPlan {
     pub fn get_current_node_schema_name(&self) -> PyResult<&str> {
         match &self.current_node {
             Some(e) => {
-                let sch: &DFSchemaRef = e.schema();
+                let _sch: &DFSchemaRef = e.schema();
                 //TODO: Where can I actually get this in the context of the running query?
                 Ok("root")
             }
@@ -150,7 +150,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getCurrentNodeTableName")]
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
-            Ok(dask_table) => Ok(dask_table.name.clone()),
+            Ok(dask_table) => Ok(dask_table.name),
             Err(_e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
                 "Unable to determine current node table name",
             )),
@@ -206,7 +206,7 @@ impl PyLogicalPlan {
             .iter()
             .map(|f| RelDataTypeField::from(f, schema.as_ref()))
             .collect::<Result<Vec<_>>>()
-            .map_err(|e| py_type_err(e))?;
+            .map_err(py_type_err)?;
         Ok(RelDataType::new(false, rel_fields))
     }
 }
