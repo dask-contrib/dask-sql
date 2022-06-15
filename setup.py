@@ -19,7 +19,7 @@ def install_java_libraries(dir):
         raise OSError(
             "Can not find the mvn (maven) binary. Make sure to install maven before building the jar."
         )
-    command = [maven_command, "clean", "install", "-f", "pom.xml"]
+    command = [maven_command, "clean", "package", "-f", "pom.xml"]
     subprocess.check_call(command, cwd=os.path.join(dir, "planner"))
 
     # copy generated jar to python package
