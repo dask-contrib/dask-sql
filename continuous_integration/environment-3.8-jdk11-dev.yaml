@@ -11,7 +11,7 @@ dependencies:
 - jsonschema
 - lightgbm
 - maven
-- mlflow<1.26.1  # remove constraint when Windows mlflow issues are resolved
+- mlflow
 - mock
 - nest-asyncio
 - openjdk=11
