@@ -13,7 +13,7 @@ RUN conda config --add channels conda-forge \
     "tzlocal>=2.1" \
     "fastapi>=0.69.0" \
     "uvicorn>=0.11.3" \
-    "pyarrow>=1.0.1" \
+    "pyarrow>=3.0.0" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     "dask-ml>=2022.1.22" \

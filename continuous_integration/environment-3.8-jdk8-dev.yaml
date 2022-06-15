@@ -18,9 +18,8 @@ dependencies:
 - pandas=1.1.2
 - pre-commit
 - prompt_toolkit
-- protobuf>=3.20.1
 - psycopg2
-- pyarrow=1.0.1
+- pyarrow=3.0.0
 - pygments
 - pyhive
 - pytest-cov
