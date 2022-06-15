@@ -11,13 +11,13 @@ RUN conda config --add channels conda-forge \
     "openjdk>=11" \
     "maven>=3.6.0" \
     "tzlocal>=2.1" \
-    "fastapi>=0.61.1" \
+    "fastapi>=0.69.0" \
     "uvicorn>=0.11.3" \
-    "pyarrow>=1.0.0" \
+    "pyarrow>=3.0.0" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     "dask-ml>=2022.1.22" \
-    "scikit-learn>=0.24.2" \
+    "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
 

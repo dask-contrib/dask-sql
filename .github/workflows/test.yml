@@ -147,11 +147,11 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
           channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
+          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
       - name: Download the pre-build jar
         uses: actions/download-artifact@v1
         with:
