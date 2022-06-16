@@ -115,19 +115,19 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            if pd.api.types.is_datetime64_dtype(operands[0].dtype):
-                # Doing math against dates requires special types. Introduce those here.
-                # Other operand that isn't date ... don't hardcode here
-                operands = list(operands)
-                breakpoint()
-                if isinstance(operands[0], dd.Series):
-                    operands[1] = pd.Timedelta(operands[1], "D")
-                else:
-                    operands[1] = np.timedelta64(operands[1], "D")
+            # Doing math against dates requires a Timedelta so update
+            # the existing operand here as required.
+            updated_operands = []
+            for operand in operands:
+                if pd.api.types.is_datetime64_dtype(operand):
+                    if isinstance(operands, dd.Series):
+                        operand = pd.Timedelta(operand, "D")
+                updated_operands.append(operand)
+
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
             )
-            return reduce(enriched_with_kwargs(kwargs), operands)
+            return reduce(enriched_with_kwargs(kwargs), updated_operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
@@ -910,7 +910,6 @@ class RexCallPlugin(BaseRexPlugin):
         operator_name = expr.getOperatorName().lower()
 
         try:
-            print(f"Operator Name: {operator_name}")
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
