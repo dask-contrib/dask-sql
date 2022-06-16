@@ -29,6 +29,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
+        if: |
+          github.event_name == 'push'
+          && github.ref == 'refs/heads/main'
+          && github.repository == 'dask-contrib/dask-sql'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
