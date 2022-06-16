@@ -1,6 +1,7 @@
 use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
+mod dialect;
 mod expression;
 mod sql;
 

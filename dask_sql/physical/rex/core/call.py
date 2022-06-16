@@ -551,6 +551,7 @@ class ExtractOperation(Operation):
 
     def extract(self, what, df: SeriesOrScalar):
         df = convert_to_datetime(df)
+        breakpoint()
 
         if what == "CENTURY":
             return da.trunc(df.year / 100)
@@ -898,6 +899,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
+        "year": ExtractOperation(),
     }
 
     def convert(

@@ -8,7 +8,10 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::{OptimizationException, ParsingException};
+use crate::{
+    dialect::DaskSqlDialect,
+    sql::exceptions::{OptimizationException, ParsingException},
+};
 
 use arrow::datatypes::{Field, Schema};
 use datafusion_common::DataFusionError;
@@ -148,7 +151,8 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
-        match DFParser::parse_sql(sql) {
+        let dd: DaskSqlDialect = DaskSqlDialect {};
+        match DFParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
