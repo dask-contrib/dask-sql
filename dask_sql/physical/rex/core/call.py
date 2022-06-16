@@ -114,20 +114,33 @@ class ReduceOperation(Operation):
         super().__init__(self.reduce)
 
     def reduce(self, *operands, **kwargs):
-        if len(operands) > 1:
+        if len(operands) > 2:
+            raise RuntimeError(
+                f"ReduceOperation encountered unexpected operands list of size {len(operands)}. \
+                    This likely signifies a change in upstream DataFusion that has yet to be ported in Dask-SQL"
+            )
+        if len(operands) == 2:
             # Doing math against dates requires a Timedelta so update
             # the existing operand here as required.
-            updated_operands = []
-            for operand in operands:
-                if pd.api.types.is_datetime64_dtype(operand):
-                    if isinstance(operands, dd.Series):
-                        operand = pd.Timedelta(operand, "D")
-                updated_operands.append(operand)
+            date_operands = [
+                idx for idx in {0, 1} if pd.api.types.is_datetime64_dtype(operands[idx])
+            ]
+
+            # We only need to change something if one operand is a datetime64 and the other is not
+            if len(date_operands) == 1:
+                operands = list(operands)
+                # Use boolean negation to get the `other` operand that is not a datetime type
+                other_operand = operands[int(not date_operands[0])]
+                # Default to `Day`/`D` since that is what PostgreSQL does
+                if isinstance(other_operand, np.int64):
+                    operands[int(not date_operands[0])] = np.timedelta64(
+                        other_operand, "D"
+                    )
 
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
             )
-            return reduce(enriched_with_kwargs(kwargs), updated_operands)
+            return reduce(enriched_with_kwargs(kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
