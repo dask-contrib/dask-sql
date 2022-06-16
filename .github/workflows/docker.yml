@@ -52,6 +52,7 @@ jobs:
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
           push: ${{ github.ref == 'refs/head/main' && github.repository == 'dask-contrib/dask-sql' }}
+          load: true
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
