@@ -32,5 +32,4 @@ class RexSubqueryAliasPlugin(BaseRexPlugin):
         sub_rel = rex.getSubqueryLogicalPlan()
 
         dc = RelConverter.convert(sub_rel, context=context)
-        breakpoint()
         return dc.df

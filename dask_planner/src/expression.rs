@@ -290,16 +290,15 @@ impl PyExpr {
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
             Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
+                expr: _,
+                subquery: _,
+                negated: _,
             } => {
-                panic!("HERE!!!")
+                unimplemented!("InSubquery")
             }
             Expr::ScalarSubquery(subquery) => {
-                let plan = &subquery.subquery;
-                println!("SubQuery Plan: {:?}", plan);
-                panic!("Subquery")
+                let _plan = &subquery.subquery;
+                unimplemented!("ScalarSubquery")
             }
             Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(

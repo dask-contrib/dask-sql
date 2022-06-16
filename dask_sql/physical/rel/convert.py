@@ -72,7 +72,6 @@ class RelConverter(Pluggable):
                     rel.getCurrentNodeTableName()
                 ]
             else:
-                breakpoint()
                 raise NotImplementedError(
                     f"No relational conversion for node type {node_type} available (yet)."
                 )
