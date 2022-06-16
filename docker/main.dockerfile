@@ -6,7 +6,7 @@ LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 # Install dependencies for dask-sql
 COPY docker/conda.txt /opt/dask_sql/
 RUN conda config --add channels conda-forge \
-    && /opt/conda/bin/conda install --freeze-installed \
+    && /opt/conda/bin/mamba install --freeze-installed \
     "jpype1>=1.0.2" \
     "openjdk>=11" \
     "maven>=3.6.0" \
@@ -18,7 +18,7 @@ RUN conda config --add channels conda-forge \
     "pygments>=2.7.1" \
     "dask-ml>=2022.1.22" \
     "scikit-learn>=1.0.0" \
-    "intake>=0.6.0" \
+    "intake>=0.6.0" -y \
     && conda clean -ay
 
 # install dask-sql
