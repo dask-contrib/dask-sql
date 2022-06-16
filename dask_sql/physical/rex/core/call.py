@@ -115,6 +115,15 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
+            if pd.api.types.is_datetime64_dtype(operands[0].dtype):
+                # Doing math against dates requires special types. Introduce those here.
+                # Other operand that isn't date ... don't hardcode here
+                operands = list(operands)
+                breakpoint()
+                if isinstance(operands[0], dd.Series):
+                    operands[1] = pd.Timedelta(operands[1], "D")
+                else:
+                    operands[1] = np.timedelta64(operands[1], "D")
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
             )
@@ -169,11 +178,10 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, datetime.timedelta):
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
         else:  # pragma: no cover
-            result = da.trunc(result)
-            return result
+            return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):
@@ -902,6 +910,7 @@ class RexCallPlugin(BaseRexPlugin):
         operator_name = expr.getOperatorName().lower()
 
         try:
+            print(f"Operator Name: {operator_name}")
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:

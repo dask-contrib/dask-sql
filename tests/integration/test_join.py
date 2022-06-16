@@ -346,3 +346,10 @@ def test_intersect(c):
     """
     )
     assert len(actual_df["COUNT(UInt8(1))"]) == 0
+
+    actual_df = c.sql(
+        """
+    select * from df_simple intersect select * from df_simple
+    """
+    )
+    assert actual_df.shape[0].compute() == 3
