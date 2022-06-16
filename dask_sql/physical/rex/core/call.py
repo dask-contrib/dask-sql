@@ -114,28 +114,25 @@ class ReduceOperation(Operation):
         super().__init__(self.reduce)
 
     def reduce(self, *operands, **kwargs):
-        if len(operands) > 2:
-            raise RuntimeError(
-                f"ReduceOperation encountered unexpected operands list of size {len(operands)}. \
-                    This likely signifies a change in upstream DataFusion that has yet to be ported in Dask-SQL"
-            )
-        if len(operands) == 2:
-            # Doing math against dates requires a Timedelta so update
-            # the existing operand here as required.
+        if len(operands) > 1:
+            # Doing math against dates requires a Timedelta
+            # Find all the operands that are of a datetime64 type
             date_operands = [
                 idx for idx in {0, 1} if pd.api.types.is_datetime64_dtype(operands[idx])
             ]
 
-            # We only need to change something if one operand is a datetime64 and the other is not
-            if len(date_operands) == 1:
+            # If there are datetime64 operands we need to make sure that the other operands
+            # in the list are Timedelta for the operation to work.
+            if date_operands:
+                # Operands is a Set, since we are altering it must convert to a List
                 operands = list(operands)
-                # Use boolean negation to get the `other` operand that is not a datetime type
-                other_operand = operands[int(not date_operands[0])]
-                # Default to `Day`/`D` since that is what PostgreSQL does
-                if isinstance(other_operand, np.int64):
-                    operands[int(not date_operands[0])] = np.timedelta64(
-                        other_operand, "D"
-                    )
+
+                # Knowing there are datetime types in the operands check for incompatable other types
+                # If found, convert them to Timedelta
+                for idx, operand in enumerate(operands):
+                    # Default to `Day`/`D` since that is what PostgreSQL does
+                    if isinstance(operand, np.int64):
+                        operands[idx] = np.timedelta64(operand, "D")
 
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
