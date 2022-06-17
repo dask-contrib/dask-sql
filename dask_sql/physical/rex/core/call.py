@@ -131,7 +131,7 @@ class ReduceOperation(Operation):
                 # If found, convert them to Timedelta
                 for idx, operand in enumerate(operands):
                     # Default to `Day`/`D` since that is what PostgreSQL does
-                    if isinstance(operand, np.int64):
+                    if isinstance(operand, np.int64, str):
                         operands[idx] = np.timedelta64(operand, "D")
 
             enriched_with_kwargs = lambda kwargs: (
