@@ -222,3 +222,32 @@ def test_case_when_no_else(c):
     expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
 
     assert_eq(actual_df, expected_df)
+
+
+def test_singular_column_projection_simple(c):
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    c.create_table("df", df)
+
+    wildcard_result = c.sql("SELECT * from df")
+    single_col_result = c.sql("SELECT b from df")
+
+    assert_eq(wildcard_result["b"], single_col_result["b"])
+
+
+@pytest.mark.parametrize(
+    "input_cols",
+    [
+        ["a"],
+        ["a", "b"],
+        ["a", "d"],
+        ["d", "a"],
+        ["a", "b", "d"],
+    ],
+)
+def test_multiple_column_projection(c, input_cols):
+    projection_list = ", ".join(input_cols)
+    result = c.sql(f"SELECT {projection_list} from parquet_ddf")
+
+    # There are 5 columns in the table, ensure only specified ones are read
+    assert_eq(len(result.columns), len(input_cols))
+    assert all(x in input_cols for x in result.columns)
