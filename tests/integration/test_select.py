@@ -203,9 +203,10 @@ def test_multi_case_when(c):
     FROM df
     """
     )
-    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int64)
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]})
 
-    assert_eq(actual_df, expected_df)
+    # dtype varies between int32/int64 depending on pandas version
+    assert_eq(actual_df, expected_df, check_dtype=False)
 
 
 def test_case_when_no_else(c):

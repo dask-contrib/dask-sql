@@ -3,7 +3,7 @@ version: '3'
 services:
     dask-scheduler:
         container_name: dask-scheduler
-        image: daskdev/dask:dev
+        image: daskdev/dask:dev-py3.9
         command: dask-scheduler
         environment:
             USE_MAMBA: "true"
@@ -12,10 +12,10 @@ services:
             - "8786:8786"
     dask-worker:
         container_name: dask-worker
-        image: daskdev/dask:dev
+        image: daskdev/dask:dev-py3.9
         command: dask-worker dask-scheduler:8786
         environment:
             USE_MAMBA: "true"
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pyarrow>=1.0.0 libstdcxx-ng>=12.1.0"
+            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pyarrow>=3.0.0 libstdcxx-ng>=12.1.0"
         volumes:
             - /tmp:/tmp

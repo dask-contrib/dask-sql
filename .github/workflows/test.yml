@@ -107,11 +107,11 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
           channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-dev.yaml
+          environment-file: continuous_integration/environment-3.9-dev.yaml
       - name: Setup Rust Toolchain
         uses: actions-rs/toolchain@v1
         id: rust-toolchain
