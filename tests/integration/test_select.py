@@ -222,7 +222,8 @@ def test_case_when_no_else(c):
     )
     expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
 
-    assert_eq(actual_df, expected_df)
+    # dtype varies between float64/object depending on pandas version
+    assert_eq(actual_df, expected_df, check_dtype=False)
 
 
 def test_singular_column_projection_simple(c):
