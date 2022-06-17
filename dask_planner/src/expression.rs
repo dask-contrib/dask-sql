@@ -1,22 +1,11 @@
+use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
+use arrow::datatypes::DataType;
+use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
+use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
 use std::convert::From;
-
-use datafusion::error::Result;
-
-use datafusion::arrow::datatypes::DataType;
-use datafusion::logical_expr::{lit, BuiltinScalarFunction, Expr};
-
-use datafusion::scalar::ScalarValue;
-
-use datafusion::logical_expr::LogicalPlan;
-
-use datafusion::prelude::Column;
-
-use crate::sql::exceptions::{py_runtime_err, py_type_err};
-use datafusion::common::{DFField, DFSchema};
-use datafusion::logical_expr::utils::exprlist_to_fields;
 use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
@@ -60,14 +49,14 @@ impl PyExpr {
     pub fn from(expr: Expr, input: Option<Vec<Arc<LogicalPlan>>>) -> PyExpr {
         PyExpr {
             input_plan: input,
-            expr: expr,
+            expr,
         }
     }
 
     /// Determines the name of the `Expr` instance by examining the LogicalPlan
     pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
-        let field = expr_to_field(&self.expr, &plan)?;
-        Ok(field.qualified_column().flat_name().clone())
+        let field = expr_to_field(&self.expr, plan)?;
+        Ok(field.qualified_column().flat_name())
     }
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
@@ -148,7 +137,7 @@ impl PyExpr {
                                 base_schema.index_of_column(&Column::from_qualified_name(&fq_name));
                             match idx {
                                 Ok(index) => Ok(index),
-                                Err(e) => {
+                                Err(_) => {
                                     // This logic is encountered when an non-qualified column name is
                                     // provided AND there exists more than one entry with that
                                     // unqualified. This logic will attempt to narrow down to the
@@ -160,7 +149,7 @@ impl PyExpr {
                                             let qualifier: String = qf.qualifier().unwrap().clone();
                                             let qual: Option<&str> = Some(&qualifier);
                                             let index: usize = base_schema
-                                                .index_of_column_by_name(qual, &qf.name())
+                                                .index_of_column_by_name(qual, qf.name())
                                                 .unwrap();
                                             return Ok(index);
                                         }
@@ -222,7 +211,7 @@ impl PyExpr {
     /// Python friendly shim code to get the name of a column referenced by an expression
     pub fn column_name(&self, mut plan: logical::PyLogicalPlan) -> PyResult<String> {
         self._column_name(&plan.current_node())
-            .map_err(|e| py_runtime_err(e))
+            .map_err(py_runtime_err)
     }
 
     /// Gets the operands for a BinaryExpr call
@@ -572,7 +561,7 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
             expr_to_field(expr, input_plan)
         }
         _ => {
-            let fields = exprlist_to_fields(&[expr.clone()], &input_plan)?;
+            let fields = exprlist_to_fields(&[expr.clone()], input_plan)?;
             Ok(fields[0].clone())
         }
     }

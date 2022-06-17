@@ -1,5 +1,4 @@
-use datafusion::logical_expr::logical_plan::Union;
-pub use datafusion::logical_expr::LogicalPlan;
+use datafusion_expr::{logical_plan::Union, LogicalPlan};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;

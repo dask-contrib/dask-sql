@@ -1,8 +1,6 @@
 use crate::expression::PyExpr;
 use crate::sql::exceptions::py_type_err;
-use datafusion::logical_expr::{
-    logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound,
-};
+use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
 use pyo3::prelude::*;
 
 #[pyclass(name = "Window", module = "dask_planner", subclass)]

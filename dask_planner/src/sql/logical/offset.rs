@@ -1,10 +1,10 @@
 use crate::expression::PyExpr;
 use crate::sql::exceptions::py_type_err;
 
-use datafusion::scalar::ScalarValue;
+use datafusion_common::ScalarValue;
 use pyo3::prelude::*;
 
-use datafusion::logical_expr::{logical_plan::Offset, Expr, LogicalPlan};
+use datafusion_expr::{logical_plan::Offset, Expr, LogicalPlan};
 
 #[pyclass(name = "Offset", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -37,7 +37,7 @@ impl TryFrom<LogicalPlan> for PyOffset {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            LogicalPlan::Offset(offset) => Ok(PyOffset { offset: offset }),
+            LogicalPlan::Offset(offset) => Ok(PyOffset { offset }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }

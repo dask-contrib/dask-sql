@@ -1,7 +1,6 @@
 use crate::expression::PyExpr;
 
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::logical_expr::{logical_plan::Projection, Expr};
+use datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
@@ -34,7 +33,7 @@ impl PyProjection {
     fn named_projects(&mut self) -> PyResult<Vec<(String, PyExpr)>> {
         let mut named: Vec<(String, PyExpr)> = Vec::new();
         for expression in self.projection.expr.clone() {
-            let mut py_expr: PyExpr =
+            let py_expr: PyExpr =
                 PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
             for expr in self.projected_expressions(&py_expr) {
                 if let Ok(name) = expr._column_name(&*self.projection.input) {

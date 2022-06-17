@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 
 use crate::sql::exceptions::py_type_err;
-use datafusion::logical_expr::{logical_plan::Sort, LogicalPlan};
+use datafusion_expr::{logical_plan::Sort, LogicalPlan};
 use pyo3::prelude::*;
 
 #[pyclass(name = "Sort", module = "dask_planner", subclass)]

@@ -1,7 +1,6 @@
 use crate::expression::PyExpr;
 
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::logical_expr::{logical_plan::Aggregate, Expr};
+use datafusion_expr::{logical_plan::Aggregate, Expr, LogicalPlan};
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
@@ -55,7 +54,7 @@ impl PyAggregate {
                 for expr in args {
                     exprs.push(PyExpr {
                         input_plan: Some(vec![self.aggregate.input.clone()]),
-                        expr: expr,
+                        expr,
                     });
                 }
                 exprs

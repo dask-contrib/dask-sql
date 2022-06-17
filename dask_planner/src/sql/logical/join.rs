@@ -1,7 +1,7 @@
 use crate::expression::PyExpr;
 use crate::sql::column;
 
-use datafusion::logical_expr::{
+use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
     Expr,
@@ -33,7 +33,7 @@ impl PyJoin {
             filters.push(filter.clone());
         }
 
-        assert!(filters.len() > 0);
+        assert!(!filters.is_empty());
 
         let root_expr = filters[1..]
             .iter()
