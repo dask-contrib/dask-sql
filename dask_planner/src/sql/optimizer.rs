@@ -7,6 +7,8 @@ use datafusion_optimizer::{
     subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
 };
 
+mod filter_null_join_keys;
+
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
@@ -25,6 +27,9 @@ impl DaskSqlOptimizer {
         rules.push(Box::new(ProjectionPushDown::new()));
         rules.push(Box::new(SingleDistinctToGroupBy::new()));
         rules.push(Box::new(SubqueryFilterToJoin::new()));
+        rules.push(Box::new(
+            filter_null_join_keys::FilterNullJoinKeys::default(),
+        ));
         Self {
             optimizations: rules,
         }
