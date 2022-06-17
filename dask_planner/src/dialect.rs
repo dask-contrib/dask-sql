@@ -30,9 +30,3 @@ impl Dialect for DaskSqlDialect {
         true
     }
 }
-
-// impl DaskSqlDialect {
-//     pub fn new() -> Self {
-//         DaskSqlDialect{}
-//     }
-// }

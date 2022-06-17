@@ -551,7 +551,6 @@ class ExtractOperation(Operation):
 
     def extract(self, what, df: SeriesOrScalar):
         df = convert_to_datetime(df)
-        breakpoint()
 
         if what == "CENTURY":
             return da.trunc(df.year / 100)
@@ -585,6 +584,15 @@ class ExtractOperation(Operation):
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
+class YearOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract_year)
+
+    def extract_year(self, df: SeriesOrScalar):
+        df = convert_to_datetime(df)
+        return df.year
 
 
 class CeilFloorOperation(PredicateBasedOperation):
@@ -899,7 +907,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
-        "year": ExtractOperation(),
+        "year": YearOperation(),
     }
 
     def convert(
