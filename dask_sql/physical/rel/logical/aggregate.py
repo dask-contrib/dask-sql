@@ -228,7 +228,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
-        groupby_agg_options = dask_config.get("sql.groupby")
+        groupby_agg_options = dask_config.get("sql.aggregate")
 
         if not collected_aggregations:
             backend_names = [

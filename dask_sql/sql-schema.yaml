@@ -4,7 +4,7 @@ properties:
     type: object
     properties:
 
-      groupby:
+      aggregate:
         type: object
         properties:
 
