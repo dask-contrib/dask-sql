@@ -11,12 +11,12 @@ properties:
           split_out:
             type: integer
             description: |
-              Number of output partitions for a groupby operation
+              Number of output partitions from an aggregation operation
 
           split_every:
             type: [integer, "null"]
             description: |
-              Number of branches per reduction step for a groupby operation.
+              Number of branches per reduction step from an aggregation operation.
 
       identifier:
         type: object
