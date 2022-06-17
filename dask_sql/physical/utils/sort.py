@@ -6,11 +6,6 @@ from dask.utils import M
 
 from dask_sql.utils import make_pickable_without_dask_sql
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
 
 def apply_sort(
     df: dd.DataFrame,
@@ -35,10 +30,7 @@ def apply_sort(
 
     # dask / dask-cudf don't support lists of ascending / null positions
     if len(sort_columns) == 1 or (
-        dask_cudf is not None
-        and isinstance(df, dask_cudf.DataFrame)
-        and single_ascending
-        and single_null_first
+        "cudf" in str(df._partition_type) and single_ascending and single_null_first
     ):
         try:
             return df.sort_values(
