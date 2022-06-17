@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 from typing import Any
 
+import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -281,6 +282,16 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
         return None
+
+    current_float = pd.api.types.is_float_dtype(current_type)
+    expected_integer = pd.api.types.is_integer_dtype(expected_type)
+    if current_float and expected_integer:
+        logger.debug("...truncating...")
+        # Currently "trunc" can not be applied to NA (the pandas missing value type),
+        # because NA is a different type. It works with np.NaN though.
+        # For our use case, that does not matter, as the conversion to integer later
+        # will convert both NA and np.NaN to NA.
+        col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

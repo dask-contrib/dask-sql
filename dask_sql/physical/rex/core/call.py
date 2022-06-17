@@ -115,25 +115,6 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            # Doing math against dates requires a Timedelta
-            # Find all the operands that are of a datetime64 type
-            date_operands = [
-                idx for idx in {0, 1} if pd.api.types.is_datetime64_dtype(operands[idx])
-            ]
-
-            # If there are datetime64 operands we need to make sure that the other operands
-            # in the list are Timedelta for the operation to work.
-            if date_operands:
-                # Operands is a Set, since we are altering it must convert to a List
-                operands = list(operands)
-
-                # Knowing there are datetime types in the operands check for incompatable other types
-                # If found, convert them to Timedelta
-                for idx, operand in enumerate(operands):
-                    # Default to `Day`/`D` since that is what PostgreSQL does
-                    if isinstance(operand, np.int64):
-                        operands[idx] = np.timedelta64(operand, "D")
-
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
             )
@@ -188,10 +169,11 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, (datetime.timedelta, np.timedelta64)):
+        if isinstance(result, datetime.timedelta):
             return result
         else:  # pragma: no cover
-            return da.trunc(result).astype(np.int64)
+            result = da.trunc(result)
+            return result
 
 
 class CaseOperation(Operation):
@@ -242,6 +224,9 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
+        if not is_frame(operand):  # pragma: no cover
+            return operand
+
         output_type = str(rex.getType())
         python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
