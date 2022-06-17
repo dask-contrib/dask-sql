@@ -22,14 +22,14 @@ impl DaskSqlOptimizer {
         let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
         rules.push(Box::new(CommonSubexprEliminate::new()));
         rules.push(Box::new(EliminateLimit::new()));
+        rules.push(Box::new(
+            filter_null_join_keys::FilterNullJoinKeys::default(),
+        ));
         rules.push(Box::new(FilterPushDown::new()));
         rules.push(Box::new(LimitPushDown::new()));
         rules.push(Box::new(ProjectionPushDown::new()));
         rules.push(Box::new(SingleDistinctToGroupBy::new()));
         rules.push(Box::new(SubqueryFilterToJoin::new()));
-        rules.push(Box::new(
-            filter_null_join_keys::FilterNullJoinKeys::default(),
-        ));
         Self {
             optimizations: rules,
         }
