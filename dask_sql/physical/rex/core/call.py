@@ -131,8 +131,14 @@ class ReduceOperation(Operation):
                 # If found, convert them to Timedelta
                 for idx, operand in enumerate(operands):
                     # Default to `Day`/`D` since that is what PostgreSQL does
-                    if isinstance(operand, (np.int64, str)):
+                    # TODO: Would be nice to have the scalar conversion pushed further
+                    # up in the processing chain here for clauses like `DATE '2022-06-16'`
+                    # for example so at the point the operand reaches here it is already
+                    # a date type
+                    if isinstance(operand, np.int64):
                         operands[idx] = np.timedelta64(operand, "D")
+                    elif isinstance(operand, str):
+                        operands[idx] = np.datetime64(operand)
 
             enriched_with_kwargs = lambda kwargs: (
                 lambda x, y: self.operation(x, y, **kwargs)
