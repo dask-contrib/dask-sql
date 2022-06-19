@@ -353,3 +353,12 @@ def test_intersect(c):
     """
     )
     assert actual_df.shape[0].compute() == 3
+
+
+def test_intersect_multi_col(c):
+    pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+
+    c.create_table("df1", pdf)
+    c.create_table("df2", pdf)
+
+    c.sql("select * from df1 intersect select * from df2")
