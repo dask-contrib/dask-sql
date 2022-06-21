@@ -31,5 +31,7 @@ class RexInputRefPlugin(BaseRexPlugin):
 
         # The column is references by index
         index = rex.getIndex()
+        if index == 3:
+            breakpoint()
         backend_column_name = cc.get_backend_by_frontend_index(index)
         return df[backend_column_name]
