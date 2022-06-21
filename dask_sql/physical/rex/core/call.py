@@ -2,7 +2,7 @@ import datetime
 import logging
 import operator
 import re
-from functools import reduce
+from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
@@ -34,6 +34,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
+
+
+def as_timelike(op):
+    if isinstance(op, np.int64):
+        return np.timedelta64(op, "D")
+    elif isinstance(op, str):
+        return np.datetime64(op)
+    elif pd.api.types.is_datetime64_dtype(op):
+        return op
+    else:
+        raise ValueError(f"Don't know how to make {type(op)} timelike")
 
 
 class Operation:
@@ -115,35 +126,39 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            # Doing math against dates requires a Timedelta
-            # Find all the operands that are of a datetime64 type
-            date_operands = [
-                idx for idx in {0, 1} if pd.api.types.is_datetime64_dtype(operands[idx])
-            ]
+            if any(map(pd.api.types.is_datetime64_dtype, operands)):
+                operands = tuple(map(as_timelike, operands))
+            return reduce(partial(self.operation, **kwargs), operands)
+        # if len(operands) > 1:
+        #     # Doing math against dates requires a Timedelta
+        #     # Find all the operands that are of a datetime64 type
+        #     date_operands = [
+        #         idx for idx in {0, 1} if pd.api.types.is_datetime64_dtype(operands[idx])
+        #     ]
 
-            # If there are datetime64 operands we need to make sure that the other operands
-            # in the list are Timedelta for the operation to work.
-            if date_operands:
-                # Operands is a Set, since we are altering it must convert to a List
-                operands = list(operands)
+        #     # If there are datetime64 operands we need to make sure that the other operands
+        #     # in the list are Timedelta for the operation to work.
+        #     if date_operands:
+        #         # Operands is a Set, since we are altering it must convert to a List
+        #         operands = list(operands)
 
-                # Knowing there are datetime types in the operands check for incompatable other types
-                # If found, convert them to Timedelta
-                for idx, operand in enumerate(operands):
-                    # Default to `Day`/`D` since that is what PostgreSQL does
-                    # TODO: Would be nice to have the scalar conversion pushed further
-                    # up in the processing chain here for clauses like `DATE '2022-06-16'`
-                    # for example so at the point the operand reaches here it is already
-                    # a date type
-                    if isinstance(operand, np.int64):
-                        operands[idx] = np.timedelta64(operand, "D")
-                    elif isinstance(operand, str):
-                        operands[idx] = np.datetime64(operand)
+        #         # Knowing there are datetime types in the operands check for incompatable other types
+        #         # If found, convert them to Timedelta
+        #         for idx, operand in enumerate(operands):
+        #             # Default to `Day`/`D` since that is what PostgreSQL does
+        #             # TODO: Would be nice to have the scalar conversion pushed further
+        #             # up in the processing chain here for clauses like `DATE '2022-06-16'`
+        #             # for example so at the point the operand reaches here it is already
+        #             # a date type
+        #             if isinstance(operand, np.int64):
+        #                 operands[idx] = np.timedelta64(operand, "D")
+        #             elif isinstance(operand, str):
+        #                 operands[idx] = np.datetime64(operand)
 
-            enriched_with_kwargs = lambda kwargs: (
-                lambda x, y: self.operation(x, y, **kwargs)
-            )
-            return reduce(enriched_with_kwargs(kwargs), operands)
+        #     enriched_with_kwargs = lambda kwargs: (
+        #         lambda x, y: self.operation(x, y, **kwargs)
+        #     )
+        #     return reduce(enriched_with_kwargs(kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 

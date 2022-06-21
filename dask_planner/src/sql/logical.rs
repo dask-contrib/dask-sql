@@ -20,7 +20,8 @@ use datafusion_expr::LogicalPlan;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -208,14 +209,28 @@ impl PyLogicalPlan {
 
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
-        let mut all_rel_fields: HashSet<RelDataTypeField> = HashSet::new();
-        for schema in self.original_plan.all_schemas() {
-            for field in schema.fields() {
-                all_rel_fields.insert(RelDataTypeField::from(field, schema.as_ref()).unwrap());
-            }
-        }
-        let v: Vec<_> = all_rel_fields.into_iter().collect();
-        Ok(RelDataType::new(false, v))
+        // let all_rel_fields: BTreeSet<_> = BTreeSet::from_iter(
+        //     self.original_plan
+        //         .all_schemas()
+        //         .iter()
+        //         .flat_map(|schema| {
+        //             schema
+        //                 .fields()
+        //                 .iter()
+        //                 .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+        //         })
+        //         .collect::<Result<Vec<_>>>()
+        //         .map_err(py_type_err)?,
+        // );
+        // Ok(RelDataType::new(false, all_rel_fields.into_iter().collect::<_>()))
+        let schema = self.original_plan.schema();
+        let rel_fields: Vec<RelDataTypeField> = schema
+            .fields()
+            .iter()
+            .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+            .collect::<Result<Vec<_>>>()
+            .map_err(|e| py_type_err(e))?;
+        Ok(RelDataType::new(false, rel_fields))
     }
 }
 
