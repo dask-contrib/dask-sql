@@ -82,7 +82,12 @@ impl PyExpr {
             Expr::AggregateUDF { .. } => RexType::Call,
             Expr::InList { .. } => RexType::Call,
             Expr::Wildcard => RexType::Call,
-            _ => RexType::Other,
+            Expr::ScalarUDF { .. } => RexType::Call,
+            Expr::Exists { .. } => RexType::Call,
+            Expr::InSubquery { .. } => RexType::Call,
+            Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
+            Expr::QualifiedWildcard { .. } => RexType::Reference,
+            Expr::GroupingSet(..) => RexType::Call,
         }
     }
 }
@@ -92,6 +97,20 @@ impl PyExpr {
     #[staticmethod]
     pub fn literal(value: PyScalarValue) -> PyExpr {
         PyExpr::from(lit(value.scalar_value), None)
+    }
+
+    /// Extracts the LogicalPlan from a Subquery, or supported Subquery sub-type, from
+    /// the expression instance
+    #[pyo3(name = "getSubqueryLogicalPlan")]
+    pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
+        match &self.expr {
+            Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
+                Only Subquery and related variants are supported for this operation.",
+                &self.expr
+            ))),
+        }
     }
 
     /// If this Expression instances references an existing
@@ -198,7 +217,12 @@ impl PyExpr {
             Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
             Expr::InList { .. } => panic!("InList!!!"),
             Expr::Wildcard => panic!("Wildcard!!!"),
-            _ => "OTHER",
+            Expr::InSubquery { .. } => "Subquery",
+            Expr::ScalarUDF { .. } => "ScalarUDF",
+            Expr::Exists { .. } => "Exists",
+            Expr::ScalarSubquery(..) => "ScalarSubquery",
+            Expr::QualifiedWildcard { .. } => "Wildcard",
+            Expr::GroupingSet(..) => "GroupingSet",
         })
     }
 
@@ -265,6 +289,17 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
+            Expr::InSubquery {
+                expr: _,
+                subquery: _,
+                negated: _,
+            } => {
+                unimplemented!("InSubquery")
+            }
+            Expr::ScalarSubquery(subquery) => {
+                let _plan = &subquery.subquery;
+                unimplemented!("ScalarSubquery")
+            }
             Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",

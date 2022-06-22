@@ -315,3 +315,41 @@ def test_conditional_join_with_limit(c):
     )
 
     dd.assert_eq(actual_df, expected_df, check_index=False)
+
+
+def test_intersect(c):
+
+    # Join df_simple against itself
+    actual_df = c.sql(
+        """
+    select count(*) from (
+    select * from df_simple
+    intersect
+    select * from df_simple
+    ) hot_item
+    limit 100
+    """
+    )
+    assert actual_df["COUNT(UInt8(1))"].compute()[0] == 3
+
+    # Join df_simple against itself, and then that result against df_wide. Nothing should match so therefore result should be 0
+    actual_df = c.sql(
+        """
+    select count(*) from (
+    select * from df_simple
+    intersect
+    select * from df_simple
+    intersect
+    select * from df_wide
+    ) hot_item
+    limit 100
+    """
+    )
+    assert len(actual_df["COUNT(UInt8(1))"]) == 0
+
+    actual_df = c.sql(
+        """
+    select * from df_simple intersect select * from df_simple
+    """
+    )
+    assert actual_df.shape[0].compute() == 3

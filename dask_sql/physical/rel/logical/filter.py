@@ -65,6 +65,5 @@ class DaskFilterPlugin(BaseRelPlugin):
         df_condition = RexConverter.convert(rel, condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
-        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        # No column type has changed, so no need to convert again
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         return DataContainer(df, cc)
