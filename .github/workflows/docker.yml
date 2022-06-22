@@ -22,9 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCKER_PUSH: ${{ github.event_name == 'push' && github.repository == 'dask-contrib/dask-sql' }}
-    run: |
-      echo ${{ env.DOCKER_PUSH }}
     steps:
+      - name: Test env value
+        run: |
+          echo ${{ env.DOCKER_PUSH }}
       - name: Check out the repo
         uses: actions/checkout@v2
       - name: Set up QEMU
