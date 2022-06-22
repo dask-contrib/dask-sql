@@ -30,10 +30,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
-        if: |
-          github.event_name == 'push'
-          && github.ref == 'refs/heads/main'
-          && github.repository == 'dask-contrib/dask-sql'
+        if: ${{ env.DOCKER_PUSH }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -49,11 +46,11 @@ jobs:
           context: .
           file: ./docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ env.DOCKER_PUSH && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
-          push: ${{ github.ref == 'refs/head/main' && github.repository == 'dask-contrib/dask-sql' }}
-          load: true
+          push: ${{ env.DOCKER_PUSH }}
+          load: ${{ !env.DOCKER_PUSH }}
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
@@ -65,7 +62,7 @@ jobs:
           context: .
           file: ./docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ env.DOCKER_PUSH && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
           labels: ${{ steps.docker_meta_cloud.outputs.labels }}
-          push: ${{ github.ref == 'refs/head/main' && github.repository == 'dask-contrib/dask-sql' }}
+          push: ${{ env.DOCKER_PUSH }}
