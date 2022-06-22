@@ -6,7 +6,6 @@ import pytest
 from dask_sql import Context
 from tests.utils import assert_eq
 
-
 # def test_join(c):
 #     return_df = c.sql(
 #         """
@@ -362,3 +361,13 @@ def test_intersect_multi_col(c):
     c.create_table("df2", pdf)
 
     c.sql("select * from df1 intersect select * from df2")
+
+
+# select * from df1 intersect select * from df2 ...
+# Semi Join: #df1.a = #df2.a, #df1.b = #df2.b, #df1.c = #df2.c
+#   Projection: #df1.a, #df1.b, #df1.c
+#   Aggregate: groupBy=[[#df1.a, #df1.b, #df1.c]], aggr=[[]]
+#       Projection: #df1.a, #df1.b, #df1.c
+#           TableScan: df1 projection=Some([a, b, c])
+#       Projection: #df2.a, #df2.b, #df2.c
+#           TableScan: df2 projection=Some([a, b, c])'

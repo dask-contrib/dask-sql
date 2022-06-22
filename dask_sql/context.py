@@ -87,6 +87,9 @@ class Context:
         # Set the logging level for this SQL context
         logging.basicConfig(level=logging_level)
 
+        # Stack/List of Logical operators performed
+        self.operations = []
+
         # Name of the root catalog
         self.catalog_name = self.DEFAULT_CATALOG_NAME
         # Name of the root schema
@@ -520,6 +523,8 @@ class Context:
             df = dc.assign()
             if not return_futures:
                 df = df.compute()
+
+            print(f"Operations: {self.operations}")
 
         return df
 

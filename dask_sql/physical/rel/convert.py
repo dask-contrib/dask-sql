@@ -59,6 +59,7 @@ class RelConverter(Pluggable):
             logger.debug(
                 f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
             )
+            context.operations.append(node_type)
             df = plugin_instance.convert(rel, context=context)
             logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
             return df
