@@ -97,9 +97,11 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
-        println!("Name: {:?}", name);
-        let f: ScalarFunctionImplementation =
-            Arc::new(|_| Err(DataFusionError::NotImplemented("FOUND ME!!!".to_string())));
+        let f: ScalarFunctionImplementation = Arc::new(|_| {
+            Err(DataFusionError::NotImplemented(
+                "Year function implementation".to_string(),
+            ))
+        });
         if "year".eq(name) {
             let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
@@ -109,7 +111,6 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
-        // unimplemented!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
         None
     }
 
