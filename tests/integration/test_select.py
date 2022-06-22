@@ -228,7 +228,7 @@ def test_case_when_no_else(c):
     assert_eq(actual_df, expected_df, check_dtype=False)
 
 
-def test_singular_column_projection_simple(c):
+def test_singular_column_selection(c):
     df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
     c.create_table("df", df)
 
