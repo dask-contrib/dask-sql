@@ -1,5 +1,3 @@
-import math
-
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -418,9 +416,8 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
 
-@pytest.mark.parametrize("split_every", [2, 3, 4])
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_groupby_split_every(c, gpu, split_every):
+def test_groupby_split_every(c, gpu):
     input_ddf = dd.from_pandas(
         pd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
         npartitions=16,
@@ -428,66 +425,67 @@ def test_groupby_split_every(c, gpu, split_every):
 
     c.create_table("split_every_input", input_ddf, gpu=gpu)
 
-    return_df = c.sql(
-        """
-        SELECT
+    query_string = """
+    SELECT
         user_id, SUM(b) AS "S"
-        FROM split_every_input
-        GROUP BY user_id
-        """,
-        config_options={"sql.aggregate.split_every": split_every},
+    FROM split_every_input
+    GROUP BY user_id
+    """
+    split_every_2_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 2},
     )
+    split_every_3_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 3},
+    )
+    split_every_4_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 4},
+    )
+
     expected_df = (
         input_ddf.groupby(by="user_id")
-        .agg({"b": "sum"}, split_every=split_every)
+        .agg({"b": "sum"})
         .reset_index(drop=False)
         .rename(columns={"b": "S"})
         .sort_values("user_id")
     )
-    got_agg_keys = [
-        key
-        for key in return_df.dask.keys()
-        if (key[0].startswith("aggregate-combine") and key[-1] > 0)
-        or (key[0].startswith("aggregate-agg"))
-        # For dask-cudf groupby operations
-        or (key[0].startswith("groupby_tree_reduce") and key[-1] > 0)
-    ]
-    assert len(got_agg_keys) == num_expected_agg_keys(
-        input_ddf.npartitions, split_every
+    assert (
+        len(split_every_2_df.dask.keys())
+        >= len(split_every_3_df.dask.keys())
+        >= len(split_every_4_df.dask.keys())
     )
-    assert_eq(return_df, expected_df, check_index=False)
 
-    return_df = c.sql(
-        """
-        SELECT DISTINCT(user_id) FROM split_every_input
-        """,
-        config_options={"sql.aggregate.split_every": split_every},
+    assert_eq(split_every_2_df, expected_df, check_index=False)
+    assert_eq(split_every_3_df, expected_df, check_index=False)
+    assert_eq(split_every_4_df, expected_df, check_index=False)
+
+    query_string = """
+    SELECT DISTINCT(user_id) FROM split_every_input
+    """
+    split_every_2_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 2},
     )
+    split_every_3_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 3},
+    )
+    split_every_4_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 4},
+    )
+
     expected_df = input_ddf[["user_id"]].drop_duplicates()
-    got_agg_keys = [
-        key
-        for key in return_df.dask.keys()
-        if (key[0].startswith("drop-duplicates-combine") and key[-1] > 0)
-        or (key[0].startswith("drop-duplicates-agg"))
-    ]
-    assert len(got_agg_keys) == num_expected_agg_keys(
-        input_ddf.npartitions, split_every
+
+    assert (
+        len(split_every_2_df.dask.keys())
+        >= len(split_every_3_df.dask.keys())
+        >= len(split_every_4_df.dask.keys())
     )
-    assert_eq(return_df, expected_df, check_index=False)
+    assert_eq(split_every_2_df, expected_df, check_index=False)
+    assert_eq(split_every_3_df, expected_df, check_index=False)
+    assert_eq(split_every_4_df, expected_df, check_index=False)
 
     c.drop_table("split_every_input")
-
-
-def num_expected_agg_keys(npartitions, split_every):
-    """
-    Returns expected number of tree reduction operations in a aggregate reduction
-    """
-    if split_every >= npartitions:
-        return 1
-    num_keys = 0
-    # Number of levels in the tree reduction
-    upper_bound = math.ceil(math.log(npartitions, split_every))
-    # Accumulating the number of operations at each level
-    for i in range(1, upper_bound + 1):
-        num_keys += math.ceil(npartitions / split_every**i)
-    return num_keys
