@@ -8,13 +8,14 @@ import pytest
 from tests.utils import assert_eq
 
 
-def test_year(c, df):
+def test_year(c, datetime_table):
     result_df = c.sql(
         """
     SELECT year(timezone) from datetime_table
     """
     )
-    assert result_df.shape[0].compute() == 6
+    assert result_df.shape[0].compute() == datetime_table.shape[0]
+    assert result_df.compute().iloc[0][0] == 2014
 
 
 @pytest.mark.skip(
@@ -25,7 +26,7 @@ def test_case(c, df):
         """
     SELECT
         (CASE WHEN a = 3 THEN 1 END) AS "S1",
-        (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
+        (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",df.shape[0]
         (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
         (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4",
         CASE
