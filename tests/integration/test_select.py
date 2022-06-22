@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+from dask.dataframe.optimize import optimize_dataframe_getitem
+from dask.utils_test import hlg_layer
 
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
@@ -226,14 +228,16 @@ def test_case_when_no_else(c):
     assert_eq(actual_df, expected_df, check_dtype=False)
 
 
-def test_singular_column_projection_simple(c):
-    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
-    c.create_table("df", df)
+def test_singular_column_projection_simple(c, parquet_ddf):
+    single_col_result = c.sql("SELECT b from parquet_ddf")
 
-    wildcard_result = c.sql("SELECT * from df")
-    single_col_result = c.sql("SELECT b from df")
-
-    assert_eq(wildcard_result["b"], single_col_result["b"])
+    assert hlg_layer(
+        optimize_dataframe_getitem(
+            single_col_result.dask, single_col_result.__dask_keys__()
+        ),
+        "read-parquet",
+    ).columns == ["b"]
+    assert_eq(single_col_result["b"], parquet_ddf["b"])
 
 
 @pytest.mark.parametrize(
@@ -246,10 +250,15 @@ def test_singular_column_projection_simple(c):
         ["a", "b", "d"],
     ],
 )
-def test_multiple_column_projection(c, input_cols):
+def test_multiple_column_projection(c, parquet_ddf, input_cols):
     projection_list = ", ".join(input_cols)
     result = c.sql(f"SELECT {projection_list} from parquet_ddf")
 
     # There are 5 columns in the table, ensure only specified ones are read
     assert_eq(len(result.columns), len(input_cols))
-    assert all(x in input_cols for x in result.columns)
+    assert sorted(
+        hlg_layer(
+            optimize_dataframe_getitem(result.dask, result.__dask_keys__()),
+            "read-parquet",
+        ).columns
+    ) == sorted(input_cols)
