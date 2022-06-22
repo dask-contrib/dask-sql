@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCKER_PUSH: ${{ github.event_name == 'push' && github.repository == 'dask-contrib/dask-sql' }}
+    run: |
+      echo ${{ env.DOCKER_PUSH }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
