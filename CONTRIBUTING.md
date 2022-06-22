@@ -28,9 +28,9 @@ The Conda process will take awhile to complete, once finished you will have a re
 
 ##### Standalone
 
-- Python >= 3.8
-- rust >= 1.60.0
-- setuptools-rust >= 1.1.2
+- `Python` >= 3.8
+- `rust` >= 1.60.0
+- `setuptools-rust` >= 1.1.2
     - This handle package will setup and handle building your Rust code for you
 
 ## Documentation to add
