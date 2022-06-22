@@ -26,7 +26,7 @@ def test_case(c, df):
         """
     SELECT
         (CASE WHEN a = 3 THEN 1 END) AS "S1",
-        (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",df.shape[0]
+        (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
         (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
         (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4",
         CASE
