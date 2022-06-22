@@ -73,15 +73,15 @@ def fsql_dask(
     register: bool = False,
     fugue_conf: Any = None,
 ) -> Dict[str, dd.DataFrame]:
-    """Fugue SQL utility function that can consume Context directly. Fugue SQL is a language
+    """FugueSQL utility function that can consume Context directly. FugueSQL is a language
     extending standard SQL. It makes SQL eligible to describe end to end workflows. It also
     enables you to invoke python extensions in the SQL like language.
 
     For more, please read
-    `Fugue SQl Tutorial <https://fugue-tutorials.readthedocs.io/en/latest/tutorials/fugue_sql/index.html/>`_
+    `FugueSQL Tutorial <https://fugue-tutorials.readthedocs.io/en/latest/tutorials/fugue_sql/index.html/>`_
 
     Args:
-        sql: (:obj:`str`): Fugue SQL statement
+        sql (:obj:`str`): Fugue SQL statement
         ctx (:class:`dask_sql.Context`): The context to operate on, defaults to None
         register (:obj:`bool`): Whether to register named steps back to the context
           (if provided), defaults to False
@@ -89,26 +89,30 @@ def fsql_dask(
 
     Example:
         .. code-block:: python
-            # schema: *
-            def median(df:pd.DataFrame) -> pd.DataFrame:
+
+            # define a custom prepartition function for FugueSQL
+            def median(df: pd.DataFrame) -> pd.DataFrame:
                 df["y"] = df["y"].median()
                 return df.head(1)
 
-            # Create a context with tables df1, df2
+            # create a context with some tables
             c = Context()
             ...
-            result = fsql_dask('''
-            j = SELECT df1.*, df2.x
-                FROM df1 INNER JOIN df2 ON df1.key = df2.key
-                PERSIST  # using persist because j will be used twice
-            TAKE 5 ROWS PREPARTITION BY x PRESORT key
-            PRINT
-            TRANSFORM j PREPARTITION BY x USING median
-            PRINT
-            ''', c, register=True)
+
+            # run a FugueSQL query using the context as input
+            query = '''
+                j = SELECT df1.*, df2.x
+                    FROM df1 INNER JOIN df2 ON df1.key = df2.key
+                    PERSIST
+                TAKE 5 ROWS PREPARTITION BY x PRESORT key
+                PRINT
+                TRANSFORM j PREPARTITION BY x USING median
+                PRINT
+                '''
+            result = fsql_dask(query, c, register=True)
+
             assert "j" in result
             assert "j" in c.tables
-
     """
     _global, _local = get_caller_global_local_vars()
 
