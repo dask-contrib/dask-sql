@@ -49,11 +49,11 @@ jobs:
           context: .
           file: ./docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: ${{ env.DOCKER_PUSH && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
+          platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
-          push: ${{ env.DOCKER_PUSH }}
-          load: ${{ !env.DOCKER_PUSH }}
+          push: ${{ fromJSON(env.DOCKER_PUSH) }}
+          load: ${{ !fromJSON(env.DOCKER_PUSH) }}
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
@@ -65,7 +65,7 @@ jobs:
           context: .
           file: ./docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: ${{ env.DOCKER_PUSH && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
+          platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
           labels: ${{ steps.docker_meta_cloud.outputs.labels }}
-          push: ${{ env.DOCKER_PUSH }}
+          push: ${{ fromJSON(env.DOCKER_PUSH) }}
