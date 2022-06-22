@@ -54,6 +54,9 @@ jobs:
           labels: ${{ steps.docker_meta_main.outputs.labels }}
           push: ${{ fromJSON(env.DOCKER_PUSH) }}
           load: ${{ !fromJSON(env.DOCKER_PUSH) }}
+      - name: Check images
+        run: |
+          docker images ls -a
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
