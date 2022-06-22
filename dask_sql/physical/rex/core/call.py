@@ -2,7 +2,7 @@ import datetime
 import logging
 import operator
 import re
-from functools import reduce
+from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
@@ -34,6 +34,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
+
+
+def as_timelike(op):
+    if isinstance(op, np.int64):
+        return np.timedelta64(op, "D")
+    elif isinstance(op, str):
+        return np.datetime64(op)
+    elif pd.api.types.is_datetime64_dtype(op):
+        return op
+    else:
+        raise ValueError(f"Don't know how to make {type(op)} timelike")
 
 
 class Operation:
@@ -115,10 +126,9 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            enriched_with_kwargs = lambda kwargs: (
-                lambda x, y: self.operation(x, y, **kwargs)
-            )
-            return reduce(enriched_with_kwargs(kwargs), operands)
+            if any(map(pd.api.types.is_datetime64_dtype, operands)):
+                operands = tuple(map(as_timelike, operands))
+            return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
@@ -169,11 +179,10 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, datetime.timedelta):
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
         else:  # pragma: no cover
-            result = da.trunc(result)
-            return result
+            return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):

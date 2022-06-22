@@ -74,7 +74,7 @@ def test_string_filter(c, string_table):
         "datetime_table",
         pytest.param(
             "gpu_datetime_table",
-            marks=(pytest.mark.gpu, pytest.mark.skip(reason="WIP DataFusion")),
+            marks=(pytest.mark.gpu),
         ),
     ],
 )
@@ -100,7 +100,7 @@ def test_filter_cast_date(c, input_table, request):
         "datetime_table",
         pytest.param(
             "gpu_datetime_table",
-            marks=(pytest.mark.gpu, pytest.mark.skip(reason="WIP DataFusion")),
+            marks=(pytest.mark.gpu),
         ),
     ],
 )
