@@ -65,6 +65,11 @@ jobs:
         uses: crazy-max/ghaction-docker-meta@v1
         with:
           images: nbraun/dask-sql-cloud
+      - name: Check images_2
+        run: |
+          df -h
+          docker image ls
+          docker image inspect ${{ steps.docker_meta_main.outputs.tags }}
       - name: Build and push cloud image
         uses: docker/build-push-action@v2
         with:
