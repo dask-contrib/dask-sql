@@ -8,12 +8,16 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::{OptimizationException, ParsingException};
+use crate::{
+    dialect::DaskSqlDialect,
+    sql::exceptions::{OptimizationException, ParsingException},
+};
 
-use arrow::datatypes::{Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::DataFusionError;
 use datafusion_expr::{
-    AggregateUDF, LogicalPlan, PlanVisitor, ScalarFunctionImplementation, ScalarUDF, TableSource,
+    AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
+    ScalarUDF, Signature, TableSource, Volatility,
 };
 use datafusion_sql::{
     parser::DFParser,
@@ -92,14 +96,22 @@ impl ContextProvider for DaskSQLContext {
         }
     }
 
-    fn get_function_meta(&self, _name: &str) -> Option<Arc<ScalarUDF>> {
-        let _f: ScalarFunctionImplementation =
-            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+    fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
+        let f: ScalarFunctionImplementation = Arc::new(|_| {
+            Err(DataFusionError::NotImplemented(
+                "Year function implementation".to_string(),
+            ))
+        });
+        if "year".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &f)));
+        }
         None
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
-        unimplemented!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
+        None
     }
 
     fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
@@ -148,7 +160,8 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
-        match DFParser::parse_sql(sql) {
+        let dd: DaskSqlDialect = DaskSqlDialect {};
+        match DFParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {

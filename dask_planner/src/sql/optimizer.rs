@@ -2,11 +2,12 @@ use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
-    filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
-    limit_push_down::LimitPushDown, optimizer::OptimizerRule,
+    filter_push_down::FilterPushDown, limit_push_down::LimitPushDown, optimizer::OptimizerRule,
     projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
     subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
 };
+
+mod filter_null_join_keys;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -21,7 +22,9 @@ impl DaskSqlOptimizer {
         let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
         rules.push(Box::new(CommonSubexprEliminate::new()));
         rules.push(Box::new(EliminateLimit::new()));
-        rules.push(Box::new(FilterNullJoinKeys::default()));
+        rules.push(Box::new(
+            filter_null_join_keys::FilterNullJoinKeys::default(),
+        ));
         rules.push(Box::new(FilterPushDown::new()));
         rules.push(Box::new(LimitPushDown::new()));
         rules.push(Box::new(ProjectionPushDown::new()));

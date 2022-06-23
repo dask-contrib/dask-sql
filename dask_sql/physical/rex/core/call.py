@@ -577,6 +577,15 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class YearOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract_year)
+
+    def extract_year(self, df: SeriesOrScalar):
+        df = convert_to_datetime(df)
+        return df.year
+
+
 class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
@@ -889,6 +898,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
+        "year": YearOperation(),
     }
 
     def convert(
