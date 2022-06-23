@@ -56,7 +56,11 @@ jobs:
           load: ${{ !fromJSON(env.DOCKER_PUSH) }}
       - name: Check images
         run: |
+          df -h
+          docker buildx du --verbose
           docker images ls -a
+          docker image inspect ${{ steps.docker_meta_main.outputs.tags }}
+
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
