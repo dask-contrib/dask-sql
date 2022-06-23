@@ -4,7 +4,6 @@ from .explain import ExplainPlugin
 from .filter import DaskFilterPlugin
 from .join import DaskJoinPlugin
 from .limit import DaskLimitPlugin
-from .offset import DaskOffsetPlugin
 from .project import DaskProjectPlugin
 from .sample import SamplePlugin
 from .sort import DaskSortPlugin
@@ -19,7 +18,6 @@ __all__ = [
     DaskJoinPlugin,
     DaskCrossJoinPlugin,
     DaskLimitPlugin,
-    DaskOffsetPlugin,
     DaskProjectPlugin,
     DaskSortPlugin,
     DaskTableScanPlugin,
