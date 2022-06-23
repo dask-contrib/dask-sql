@@ -12,11 +12,11 @@ rust-version = "1.59"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
 pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
-arrow = { version = "15.0.0", features = ["prettyprint"] }
-datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "bbb674a0bf16fb754afb7b6451d42061f23e96c8" }
-datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "bbb674a0bf16fb754afb7b6451d42061f23e96c8" }
-datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "bbb674a0bf16fb754afb7b6451d42061f23e96c8" }
-datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "bbb674a0bf16fb754afb7b6451d42061f23e96c8" }
+arrow = { version = "16.0.0", features = ["prettyprint"] }
+datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "3da59e8877620a095efae102b0177e7e6a76f65b" }
+datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "3da59e8877620a095efae102b0177e7e6a76f65b" }
+datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "3da59e8877620a095efae102b0177e7e6a76f65b" }
+datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "3da59e8877620a095efae102b0177e7e6a76f65b" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
