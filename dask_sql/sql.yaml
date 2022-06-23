@@ -1,5 +1,5 @@
 sql:
-  groupby:
+  aggregate:
     split_out: 1
     split_every: null
 

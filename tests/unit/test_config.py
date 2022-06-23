@@ -12,7 +12,7 @@ import dask_sql  # noqa: F401
 def test_custom_yaml(tmpdir):
     custom_config = {}
     custom_config["sql"] = dask_config.get("sql")
-    custom_config["sql"]["groupby"]["split_out"] = 16
+    custom_config["sql"]["aggregate"]["split_out"] = 16
     custom_config["sql"]["foo"] = {"bar": [1, 2, 3], "baz": None}
 
     with open(os.path.join(tmpdir, "custom-sql.yaml"), mode="w") as f:
@@ -26,9 +26,9 @@ def test_custom_yaml(tmpdir):
 
 
 def test_env_variable():
-    with mock.patch.dict("os.environ", {"DASK_SQL__GROUPBY__SPLIT_OUT": "200"}):
+    with mock.patch.dict("os.environ", {"DASK_SQL__AGGREGATE__SPLIT_OUT": "200"}):
         dask_config.refresh()
-        assert dask_config.get("sql.groupby.split-out") == 200
+        assert dask_config.get("sql.aggregate.split-out") == 200
     dask_config.refresh()
 
 
