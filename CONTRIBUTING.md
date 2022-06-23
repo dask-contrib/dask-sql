@@ -2,7 +2,7 @@
 
 ## Architecture Diagram
 
-TODO: Diagram showing high level touch points across the code base.
+![Dask-SQL Sequence Diagram](assets/dask-sql-sequence.jpg)
 
 ## Rust Developers Guide
 
@@ -33,7 +33,7 @@ The Conda process will take awhile to complete, once finished you will have a re
 - `setuptools-rust` >= 1.1.2
     - This handle package will setup and handle building your Rust code for you
 
-## Documentation to add
+## Documentation TODO
 - [ ] Architecture Diagram
 - [x] Setup dev environment
 - [ ] Version of Rust and specs
@@ -41,6 +41,14 @@ The Conda process will take awhile to complete, once finished you will have a re
 - [ ] building
 - [ ] testing
 - [ ] Rust learning resources
+- [ ] Types mapping, Arrow datatypes
+- [ ] RexTypes explaination, show simple query and show it broken down into its parts in a diagram
+- [ ] Understand Rust code layout
+- [ ] Rust Datastructures local to Dask-SQL
+- [ ] links and notes on how to build DataFusion documentation locally
+- [ ] Registering tables with DaskSqlContext, also functions
+- [ ] PyO3 documentation links
+- [ ] Short section showing how Rust works with PyO3
 
 ## Rust Learning Resources
  - TODO, need to build this list ...
