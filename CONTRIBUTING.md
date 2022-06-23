@@ -18,9 +18,6 @@ conda env create -f {DASK_SQL_HOME}/continuous_integration/environment-3.10-dev.
 
 The Conda process will take awhile to complete, once finished you will have a resulting environment named `dask-sql` which can be activated and used by running `conda activate dask-sql`
 
-## Python Developers Guide
-TODO
-
 ## Rust Developers Guide
 
 Dask-SQL utilizes [Apache Arrow Datafusion](https://github.com/apache/arrow-datafusion) for parsing, planning, and optimizing SQL queries. DataFusion is written in Rust and therefore requires some Rust experience to be productive. Luckily, there are tons of great Rust learning resources on the internet. We have listed some of our favorite ones [here](#rust-learning-resources)
@@ -114,21 +111,18 @@ While working in the Rust codebase there are a few datastructures that you shoul
 - [Lets Get Rusty "LGR" YouTube series](https://www.youtube.com/c/LetsGetRusty)
 
 ## Documentation TODO
-- [ ] Python dev guide
 - [ ] SQL Parsing overview diagram
 - [ ] Architecture diagram
 - [x] Setup dev environment
 - [x] Version of Rust and specs
-- [ ] Updating version of datafusion
+- [x] Updating version of datafusion
 - [x] Building
-- [ ] Testing
-- [ ] Python & Rust with PyO3
 - [x] Rust learning resources
-- [ ] Types mapping, Arrow datatypes
-- [ ] RexTypes explaination, show simple query and show it broken down into its parts in a diagram
 - [x] Rust Datastructures local to Dask-SQL
 - [x] Build DataFusion documentation locally
+- [ ] Python & Rust with PyO3
+- [ ] Types mapping, Arrow datatypes
+- [ ] RexTypes explaination, show simple query and show it broken down into its parts in a diagram
 - [ ] Registering tables with DaskSqlContext, also functions
 - [ ] Creating your own optimizer
-- [ ] Rust & PyO3
 - [ ] Simple diagram of PyExpr, showing something like 2+2 but broken down into a tree looking diagram
