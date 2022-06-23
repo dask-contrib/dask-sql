@@ -249,8 +249,7 @@ impl PyExpr {
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
-                    let py_arg: PyExpr = PyExpr::from(arg.clone(), self.input_plan.clone());
-                    operands.push(py_arg);
+                    operands.push(PyExpr::from(arg.clone(), self.input_plan.clone()));
                 }
                 Ok(operands)
             }
@@ -301,6 +300,10 @@ impl PyExpr {
                 unimplemented!("ScalarSubquery")
             }
             Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
+            Expr::ScalarUDF { args, .. } => Ok(args
+                .iter()
+                .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
+                .collect()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
@@ -321,6 +324,7 @@ impl PyExpr {
             Expr::Between { .. } => Ok("between".to_string()),
             Expr::Case { .. } => Ok("case".to_string()),
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
+            Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr

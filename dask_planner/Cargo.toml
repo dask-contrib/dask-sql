@@ -21,6 +21,7 @@ uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
 async-trait = "0.1.41"
+sqlparser = "0.17"
 
 
 [lib]
