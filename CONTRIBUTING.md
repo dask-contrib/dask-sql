@@ -1,6 +1,6 @@
 # Contributing to Dask-SQL
 
-## Architecture Diagram
+## SQL Parsing Overview
 
 ![Dask-SQL Sequence Diagram](assets/dask-sql-sequence.jpg)
 
@@ -10,11 +10,7 @@ Dask-SQL utilizes [Apache Arrow Datafusion](https://github.com/apache/arrow-data
 
 ### Environment Setup
 
-#### Prerequisites
-
-The bare minimum requirements to get started with development are listed below. The complete list of requirements can be seen at [conda environment file](continuous_integration/environment-3.10-dev.yaml) and is generally the best place to determine the latest version requirements.
-
-##### Conda Based - Recommended
+#### Conda
 Conda is used both by CI and the development team. Therefore Conda is the fully supported and preferred method for using and developing Dask-SQL.
 
 Installing Conda is outside the scope of this document. However a nice guide for installing on Linux can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html)
@@ -26,17 +22,11 @@ conda env create -f {DASK_SQL_HOME}/continuous_integration/environment-3.10-dev.
 
 The Conda process will take awhile to complete, once finished you will have a resulting environment named `dask-sql` which can be activated and used by running `conda activate dask-sql`
 
-##### Standalone
-
-- `Python` >= 3.8
-- `rust` >= 1.60.0
-- `setuptools-rust` >= 1.1.2
-    - This handle package will setup and handle building your Rust code for you
-
 ## Documentation TODO
-- [ ] Architecture Diagram
+- [ ] SQL Parsing overview diagram
+- [ ] Architecture diagram
 - [x] Setup dev environment
-- [ ] Version of Rust and specs
+- [x] Version of Rust and specs
 - [ ] Updating version of datafusion
 - [ ] building
 - [ ] testing
