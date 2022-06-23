@@ -39,6 +39,36 @@ Note that while `setuptools-rust` is used by CI and should be used during your d
 #### Building
 ```python setup.py install```
 
+### Apache Arrow DataFusion
+The Dask-SQL Rust codebase makes heavy use [Apache Arrow DataFusion](https://github.com/apache/arrow-datafusion). Contributors should familiarize themselves with the [codebase](https://github.com/apache/arrow-datafusion) and [documentation](https://docs.rs/datafusion/latest/datafusion/).
+
+#### Purpose
+DataFusion provides Dask-SQL with key functionality.
+- Parsing SQL query strings into a `LogicalPlan` datastructure
+- Future integration points with [substrait.io](https://substrait.io/)
+- An optimization framework used as the baseline for creating custom highly efficient `LogicalPlan`s specific to Dask.
+
+#### DataFusion Modules
+DataFusion is broken down into a few modules. We consume those modules in our [Cargo.toml](dask_planner/Cargo.toml). The modules that we use currently are
+
+- `datafusion-common` - Datastructures and core logic
+- `datafusion-expr` - Expression based logic and operators
+- `datafusion-sql` - SQL components such as parsing and planning
+- `datafusion-optimizer` - Optimization logic and datastructures for modifying current plans into more efficient ones.
+
+#### Retrieving Upstream Dependencies
+During development you might find yourself needing some upstream DataFusion changes not present in the projects current version. Luckily this can easily be achieved by updating [Cargo.toml](dask_planner/Cargo.toml) and changing the `rev` to the SHA of the version you need. Note that the same SHA should be used for all DataFusion modules.
+
+After updating the `Cargo.toml` file the codebase can be re-built to reflect those changes by running `python setup.py install`
+
+#### Local Documentation
+Sometimes when building against the latest Github commits for DataFusion you may find that the features you are consuming do not have their documentation public yet. In this case it can be helpful to build the DataFusion documentation locally so that it can be referenced to assist with development. Here is a rough outline for building that documentation locally.
+
+- clone https://github.com/apache/arrow-datafusion
+- change into the `arrow-datafusion` directory
+- run `cargo doc`
+- navigate to `target/doc/datafusion/all.html` and open in your desired browser
+
 ### Datastructures
 While working in the Rust codebase there are a few datastructures that you should make yourself familiar with. This section does not aim to verbosely list out all of the datastructure with in the project but rather just the key datastructures that you are likely to encounter while working on almost any feature/issue. The aim is to give you a better overview of the codebase without having to manually dig through the all the source code.
 
@@ -84,22 +114,21 @@ While working in the Rust codebase there are a few datastructures that you shoul
 - [Lets Get Rusty "LGR" YouTube series](https://www.youtube.com/c/LetsGetRusty)
 
 ## Documentation TODO
-- [ ] Python developers guide section
+- [ ] Python dev guide
 - [ ] SQL Parsing overview diagram
 - [ ] Architecture diagram
 - [x] Setup dev environment
 - [x] Version of Rust and specs
 - [ ] Updating version of datafusion
-- [x] building
-- [ ] testing
+- [x] Building
+- [ ] Testing
 - [ ] Python & Rust with PyO3
 - [x] Rust learning resources
 - [ ] Types mapping, Arrow datatypes
 - [ ] RexTypes explaination, show simple query and show it broken down into its parts in a diagram
-- [ ] Understand Rust code layout
 - [x] Rust Datastructures local to Dask-SQL
-- [ ] links and notes on how to build DataFusion documentation locally
+- [x] Build DataFusion documentation locally
 - [ ] Registering tables with DaskSqlContext, also functions
-- [ ] PyO3 documentation links
-- [ ] Short section showing how Rust works with PyO3
+- [ ] Creating your own optimizer
+- [ ] Rust & PyO3
 - [ ] Simple diagram of PyExpr, showing something like 2+2 but broken down into a tree looking diagram
