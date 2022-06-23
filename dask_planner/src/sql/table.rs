@@ -38,6 +38,8 @@ impl TableSource for DaskTableSource {
         self.schema.clone()
     }
 
+    // temporarily disable clippy until TODO comment below is addressed
+    #[allow(clippy::if_same_then_else)]
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
@@ -62,10 +64,7 @@ impl TableSource for DaskTableSource {
 fn is_supported_push_down_expr(expr: &Expr) -> bool {
     match expr {
         // for now, we just attempt to push down simple IS NOT NULL filters on columns
-        Expr::IsNotNull(ref a) => match a.as_ref() {
-            Expr::Column(_) => true,
-            _ => false,
-        },
+        Expr::IsNotNull(ref a) => matches!(a.as_ref(), Expr::Column(_)),
         _ => false,
     }
 }
