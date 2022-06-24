@@ -7,10 +7,11 @@ use crate::sql::types::SqlTypeName;
 use async_trait::async_trait;
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
-use datafusion_expr::{LogicalPlan, TableSource};
+use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 
 use pyo3::prelude::*;
 
+use datafusion_optimizer::utils::split_conjunction;
 use std::any::Any;
 use std::sync::Arc;
 
@@ -35,6 +36,36 @@ impl TableSource for DaskTableSource {
 
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
+    }
+
+    // temporarily disable clippy until TODO comment below is addressed
+    #[allow(clippy::if_same_then_else)]
+    fn supports_filter_pushdown(
+        &self,
+        filter: &Expr,
+    ) -> datafusion_common::Result<TableProviderFilterPushDown> {
+        let mut filters = vec![];
+        split_conjunction(filter, &mut filters);
+        if filters.iter().all(|f| is_supported_push_down_expr(*f)) {
+            // TODO this should return Exact but we cannot make that change until we
+            // are actually pushing the TableScan filters down to the reader because
+            // returning Exact here would remove the Filter from the plan
+            Ok(TableProviderFilterPushDown::Inexact)
+        } else if filters.iter().any(|f| is_supported_push_down_expr(*f)) {
+            // we can partially apply the filter in the TableScan but we need
+            // to retain the Filter operator in the plan as well
+            Ok(TableProviderFilterPushDown::Inexact)
+        } else {
+            Ok(TableProviderFilterPushDown::Unsupported)
+        }
+    }
+}
+
+fn is_supported_push_down_expr(expr: &Expr) -> bool {
+    match expr {
+        // for now, we just attempt to push down simple IS NOT NULL filters on columns
+        Expr::IsNotNull(ref a) => matches!(a.as_ref(), Expr::Column(_)),
+        _ => false,
     }
 }
 

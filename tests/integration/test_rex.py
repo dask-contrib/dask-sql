@@ -8,6 +8,16 @@ import pytest
 from tests.utils import assert_eq
 
 
+def test_year(c, datetime_table):
+    result_df = c.sql(
+        """
+    SELECT year(timezone) from datetime_table
+    """
+    )
+    assert result_df.shape[0].compute() == datetime_table.shape[0]
+    assert result_df.compute().iloc[0][0] == 2014
+
+
 @pytest.mark.skip(
     reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
 )

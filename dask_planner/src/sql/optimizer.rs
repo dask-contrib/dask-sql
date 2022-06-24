@@ -2,7 +2,8 @@ use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
-    filter_push_down::FilterPushDown, limit_push_down::LimitPushDown, optimizer::OptimizerRule,
+    filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
+    limit_push_down::LimitPushDown, optimizer::OptimizerRule,
     projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
     subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
 };
@@ -20,6 +21,7 @@ impl DaskSqlOptimizer {
         let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
         rules.push(Box::new(CommonSubexprEliminate::new()));
         rules.push(Box::new(EliminateLimit::new()));
+        rules.push(Box::new(FilterNullJoinKeys::default()));
         rules.push(Box::new(FilterPushDown::new()));
         rules.push(Box::new(LimitPushDown::new()));
         rules.push(Box::new(ProjectionPushDown::new()));

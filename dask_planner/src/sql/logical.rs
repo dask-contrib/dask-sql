@@ -8,7 +8,6 @@ mod explain;
 mod filter;
 mod join;
 mod limit;
-mod offset;
 mod projection;
 mod sort;
 mod table_scan;
@@ -97,11 +96,6 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::Offset as PyOffset
-    pub fn offset(&self) -> PyResult<offset::PyOffset> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
         to_py_plan(self.current_node.as_ref())
@@ -178,7 +172,6 @@ impl PyLogicalPlan {
             LogicalPlan::TableScan(_table_scan) => "TableScan",
             LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
             LogicalPlan::Limit(_limit) => "Limit",
-            LogicalPlan::Offset(_offset) => "Offset",
             LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
             LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
             LogicalPlan::DropTable(_drop_table) => "DropTable",

@@ -225,12 +225,17 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
+        groupby_agg_options = dask_config.get("sql.aggregate")
+
         if not collected_aggregations:
             backend_names = [
                 cc.get_backend_by_frontend_name(group_name)
                 for group_name in group_columns
             ]
-            return df[backend_names].drop_duplicates(), output_column_order
+            return (
+                df[backend_names].drop_duplicates(**groupby_agg_options),
+                output_column_order,
+            )
 
         # SQL needs to have a column with the grouped values as the first
         # output column.
@@ -238,8 +243,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # are the same for a single group anyways, we just use the first row
         for col in group_columns:
             collected_aggregations[None].append((col, col, "first"))
-
-        groupby_agg_options = dask_config.get("sql.groupby")
 
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation

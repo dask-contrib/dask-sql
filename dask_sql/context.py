@@ -109,7 +109,6 @@ class Context:
         RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskCrossJoinPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskOffsetPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskProjectPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskTableScanPlugin, replace=False)
