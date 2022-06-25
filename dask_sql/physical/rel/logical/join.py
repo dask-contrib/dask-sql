@@ -173,7 +173,6 @@ class DaskJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-
         cc = self.fix_column_to_row_type(cc, row_type)
         dc = DataContainer(df, cc)
 

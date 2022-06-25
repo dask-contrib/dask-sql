@@ -523,8 +523,6 @@ class Context:
             if not return_futures:
                 df = df.compute()
 
-            print(f"Operations: {self.operations}")
-
         return df
 
     def explain(
