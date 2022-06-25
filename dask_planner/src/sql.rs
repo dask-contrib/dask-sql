@@ -55,6 +55,7 @@ pub struct DaskSQLContext {
     default_catalog_name: String,
     default_schema_name: String,
     schemas: HashMap<String, schema::DaskSchema>,
+    user_defined_functions: Vec<String>,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -97,16 +98,26 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
-        let f: ScalarFunctionImplementation = Arc::new(|_| {
+        let fun: ScalarFunctionImplementation = Arc::new(|_| {
             Err(DataFusionError::NotImplemented(
-                "Year function implementation".to_string(),
+                "".to_string(),
             ))
         });
         if "year".eq(name) {
             let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &f)));
+            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
+
+        // Loop through all of the user defined functions
+        for f in &self.user_defined_functions {
+            if f.eq(name) {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(f, &sig, &rtf, &fun)));
+            }
+        }
+
         None
     }
 
@@ -127,6 +138,7 @@ impl DaskSQLContext {
             default_catalog_name,
             default_schema_name,
             schemas: HashMap::new(),
+            user_defined_functions: Vec::new(),
         }
     }
 
@@ -137,6 +149,15 @@ impl DaskSQLContext {
         schema: schema::DaskSchema,
     ) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
+        Ok(true)
+    }
+
+    /// Register a UDF with the current DaskSQLContext
+    pub fn register_function(
+        &mut self,
+        function_name: String,
+    ) -> PyResult<bool> {
+        self.user_defined_functions.push(function_name);
         Ok(true)
     }
 

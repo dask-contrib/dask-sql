@@ -913,3 +913,6 @@ class Context:
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
         schema.functions[lower_name] = f
+
+        # Register the custom function with DataFusion so it is able to parse the queries
+        self.context.register_function(lower_name)
