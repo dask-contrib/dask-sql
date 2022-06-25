@@ -199,14 +199,40 @@ impl PyLogicalPlan {
 
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
-        let schema = self.original_plan.schema();
-        let rel_fields: Vec<RelDataTypeField> = schema
-            .fields()
-            .iter()
-            .map(|f| RelDataTypeField::from(f, schema.as_ref()))
-            .collect::<Result<Vec<_>>>()
-            .map_err(|e| py_type_err(e))?;
-        Ok(RelDataType::new(false, rel_fields))
+        match &self.original_plan {
+            LogicalPlan::Join(join) => {
+                let mut lhs_fields: Vec<RelDataTypeField> = join
+                    .left
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, join.left.schema().as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+
+                let mut rhs_fields: Vec<RelDataTypeField> = join
+                    .right
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, join.right.schema().as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+
+                lhs_fields.append(&mut rhs_fields);
+                Ok(RelDataType::new(false, lhs_fields))
+            }
+            _ => {
+                let schema = self.original_plan.schema();
+                let rel_fields: Vec<RelDataTypeField> = schema
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+                Ok(RelDataType::new(false, rel_fields))
+            }
+        }
     }
 }
 
