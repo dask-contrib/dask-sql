@@ -120,9 +120,6 @@ def test_filter_cast_timestamp(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/538"
-)
 def test_filter_year(c):
     df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
     df["dt"] = pd.to_datetime(df)
