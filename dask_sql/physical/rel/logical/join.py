@@ -252,7 +252,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         # Simplest case: ... ON lhs.a == rhs.b
         try:
             lhs_on, rhs_on = self._extract_lhs_rhs(join_condition)
-            return [lhs_on], [rhs_on], None
+            return lhs_on, rhs_on, None
         except AssertionError:
             pass
 
@@ -264,12 +264,11 @@ class DaskJoinPlugin(BaseRelPlugin):
             lhs_on = []
             rhs_on = []
             filter_condition = []
-
             for operand in operands:
                 try:
                     lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                    lhs_on.append(lhs_on_part)
-                    rhs_on.append(rhs_on_part)
+                    lhs_on.extend(lhs_on_part)
+                    rhs_on.extend(rhs_on_part)
                 except AssertionError:
                     filter_condition.append(operand)
 
@@ -282,30 +281,40 @@ class DaskJoinPlugin(BaseRelPlugin):
         assert str(rex.getRexType()) == "RexType.Call"
 
         operator_name = str(rex.getOperatorName())
-        assert operator_name == "="
+        assert operator_name in ["=", "AND"]
 
         operands = rex.getOperands()
         assert len(operands) == 2
 
-        operand_lhs = operands[0]
-        operand_rhs = operands[1]
+        if operator_name == "=":
 
-        if (
-            str(operand_lhs.getRexType()) == "RexType.Reference"
-            and str(operand_rhs.getRexType()) == "RexType.Reference"
-        ):
-            lhs_index = operand_lhs.getIndex()
-            rhs_index = operand_rhs.getIndex()
+            operand_lhs = operands[0]
+            operand_rhs = operands[1]
 
-            # The rhs table always comes after the lhs
-            # table. Therefore we have a very simple
-            # way of checking, which index comes from which
-            # input
-            if lhs_index > rhs_index:
-                lhs_index, rhs_index = rhs_index, lhs_index
+            if (
+                str(operand_lhs.getRexType()) == "RexType.Reference"
+                and str(operand_rhs.getRexType()) == "RexType.Reference"
+            ):
+                lhs_index = operand_lhs.getIndex()
+                rhs_index = operand_rhs.getIndex()
 
-            return lhs_index, rhs_index
+                # The rhs table always comes after the lhs
+                # table. Therefore we have a very simple
+                # way of checking, which index comes from which
+                # input
+                if lhs_index > rhs_index:
+                    lhs_index, rhs_index = rhs_index, lhs_index
 
-        raise AssertionError(
-            "Invalid join condition"
-        )  # pragma: no cover. Do not how how it could be triggered.
+                return [lhs_index], [rhs_index]
+
+            raise AssertionError(
+                "Invalid join condition"
+            )  # pragma: no cover. Do not how how it could be triggered.
+        else:
+            lhs_indices = []
+            rhs_indices = []
+            for operand in operands:
+                lhs_index, rhs_index = self._extract_lhs_rhs(operand)
+                lhs_indices.extend(lhs_index)
+                rhs_indices.extend(rhs_index)
+            return lhs_indices, rhs_indices
