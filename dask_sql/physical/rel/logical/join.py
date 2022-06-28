@@ -249,31 +249,19 @@ class DaskJoinPlugin(BaseRelPlugin):
         elif not str(join_condition.getRexType()) == "RexType.Call":
             raise NotImplementedError("Can not understand join condition.")
 
-        # Simplest case: ... ON lhs.a == rhs.b
+        lhs_on = []
+        rhs_on = []
+        filter_condition = []
         try:
-            lhs_on, rhs_on = self._extract_lhs_rhs(join_condition)
-            return lhs_on, rhs_on, None
+            lhs_on, rhs_on, filter_condition_part = self._extract_lhs_rhs(
+                join_condition
+            )
+            filter_condition.extend(filter_condition_part)
         except AssertionError:
-            pass
+            filter_condition.append(join_condition)
 
-        operator_name = str(join_condition.getOperatorName())
-        operands = join_condition.getOperands()
-        # More complicated: ... ON X AND Y AND Z.
-        # We can map this if one of them is again a "="
-        if operator_name == "AND":
-            lhs_on = []
-            rhs_on = []
-            filter_condition = []
-            for operand in operands:
-                try:
-                    lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                    lhs_on.extend(lhs_on_part)
-                    rhs_on.extend(rhs_on_part)
-                except AssertionError:
-                    filter_condition.append(operand)
-
-            if lhs_on and rhs_on:
-                return lhs_on, rhs_on, filter_condition
+        if lhs_on and rhs_on:
+            return lhs_on, rhs_on, filter_condition
 
         return [], [], [join_condition]
 
@@ -305,7 +293,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 if lhs_index > rhs_index:
                     lhs_index, rhs_index = rhs_index, lhs_index
 
-                return [lhs_index], [rhs_index]
+                return [lhs_index], [rhs_index], []
 
             raise AssertionError(
                 "Invalid join condition"
@@ -313,8 +301,16 @@ class DaskJoinPlugin(BaseRelPlugin):
         else:
             lhs_indices = []
             rhs_indices = []
+            filter_condititons = []
             for operand in operands:
-                lhs_index, rhs_index = self._extract_lhs_rhs(operand)
-                lhs_indices.extend(lhs_index)
-                rhs_indices.extend(rhs_index)
-            return lhs_indices, rhs_indices
+                try:
+                    lhs_index, rhs_index, filter_condititon = self._extract_lhs_rhs(
+                        operand
+                    )
+                    filter_condititons.extend(filter_condititon)
+                    lhs_indices.extend(lhs_index)
+                    rhs_indices.extend(rhs_index)
+                except AssertionError:
+                    filter_condititons.append(operand)
+
+            return lhs_indices, rhs_indices, filter_condititons
