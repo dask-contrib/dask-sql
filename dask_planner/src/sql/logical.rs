@@ -221,7 +221,7 @@ impl PyLogicalPlan {
 
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
-            }
+            },
             _ => {
                 let schema = self.original_plan.schema();
                 let rel_fields: Vec<RelDataTypeField> = schema
@@ -231,7 +231,7 @@ impl PyLogicalPlan {
                     .collect::<Result<Vec<_>>>()
                     .map_err(|e| py_type_err(e))?;
                 Ok(RelDataType::new(false, rel_fields))
-            }
+            },
         }
     }
 }
