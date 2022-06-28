@@ -301,16 +301,16 @@ class DaskJoinPlugin(BaseRelPlugin):
         else:
             lhs_indices = []
             rhs_indices = []
-            filter_condititons = []
+            filter_conditions = []
             for operand in operands:
                 try:
-                    lhs_index, rhs_index, filter_condititon = self._extract_lhs_rhs(
+                    lhs_index, rhs_index, filter_condition = self._extract_lhs_rhs(
                         operand
                     )
-                    filter_condititons.extend(filter_condititon)
+                    filter_conditions.extend(filter_condition)
                     lhs_indices.extend(lhs_index)
                     rhs_indices.extend(rhs_index)
                 except AssertionError:
-                    filter_condititons.append(operand)
+                    filter_conditions.append(operand)
 
-            return lhs_indices, rhs_indices, filter_condititons
+            return lhs_indices, rhs_indices, filter_conditions
