@@ -138,18 +138,19 @@ impl PyExpr {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
                         Ok(fq_name) => {
-                            let mut idx:usize = 0;
+                            let mut idx: usize = 0;
                             for schema in input_plans[0].all_schemas() {
-                                match schema.index_of_column(&Column::from_qualified_name(&fq_name)) {
+                                match schema.index_of_column(&Column::from_qualified_name(&fq_name))
+                                {
                                     Ok(e) => {
                                         idx = e;
                                         break;
-                                    },
-                                    Err(_e) => ()
+                                    }
+                                    Err(_e) => (),
                                 }
                             }
                             Ok(idx)
-                        },
+                        }
                         Err(e) => panic!("{:?}", e),
                     }
                 } else if input_plans.len() >= 2 {
@@ -224,7 +225,7 @@ impl PyExpr {
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
             Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => panic!("InList!!!"),
+            Expr::InList { .. } => "InList",
             Expr::Wildcard => panic!("Wildcard!!!"),
             Expr::InSubquery { .. } => "Subquery",
             Expr::ScalarUDF { .. } => "ScalarUDF",
