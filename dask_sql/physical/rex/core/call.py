@@ -791,11 +791,32 @@ class BetweenOperation(Operation):
     Function for finding rows between two scalar values
     """
 
+    needs_rex = True
+
     def __init__(self):
         super().__init__(self.between)
 
-    def between(self, series: dd.Series, low, high):
-        return series.between(low, high, inclusive="both")
+    def between(self, series: dd.Series, low, high, rex=None):
+        return (
+            ~series.between(low, high, inclusive="both")
+            if rex.isNegated()
+            else series.between(low, high, inclusive="both")
+        )
+
+
+class InListOperation(Operation):
+    """
+    Returns a boolean of whether an expression is/isn't in a set of values
+    """
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.inList)
+
+    def inList(self, series: dd.Series, *operands, rex=None):
+        result = series.isin(operands)
+        return ~result if rex.isNegated() else result
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -840,6 +861,7 @@ class RexCallPlugin(BaseRexPlugin):
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
         "not": NotOperation(),
+        "in list": InListOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
@@ -883,6 +905,7 @@ class RexCallPlugin(BaseRexPlugin):
         "position": PositionOperation(),
         "trim": TrimOperation(),
         "overlay": OverlayOperation(),
+        "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
         # date/time operations
