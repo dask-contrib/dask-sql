@@ -55,7 +55,6 @@ pub struct DaskSQLContext {
     default_catalog_name: String,
     default_schema_name: String,
     schemas: HashMap<String, schema::DaskSchema>,
-    user_defined_functions: Vec<String>,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -74,7 +73,11 @@ impl ContextProvider for DaskSQLContext {
                         let mut fields: Vec<Field> = Vec::new();
                         // Iterate through the DaskTable instance and create a Schema instance
                         for (column_name, column_type) in &table.columns {
-                            fields.push(Field::new(column_name, column_type.data_type(), true));
+                            fields.push(Field::new(
+                                column_name,
+                                DataType::from(column_type.data_type()),
+                                true,
+                            ));
                         }
 
                         resp = Some(Schema::new(fields));
@@ -98,23 +101,34 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
-        let fun: ScalarFunctionImplementation = Arc::new(|_| {
-            Err(DataFusionError::NotImplemented(
-                "".to_string(),
-            ))
-        });
+        let fun: ScalarFunctionImplementation =
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
         if "year".eq(name) {
             let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
             return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
 
+        println!("\n\nAll Schemas: {:?}", self.schemas);
+
         // Loop through all of the user defined functions
-        for f in &self.user_defined_functions {
-            if f.eq(name) {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-                return Some(Arc::new(ScalarUDF::new(f, &sig, &rtf, &fun)));
+        for (_schema_name, schema) in &self.schemas {
+            println!("Checking Schema Name: {_schema_name}");
+            println!("\n\nSchema: {:?}", schema);
+            for (fun_name, function) in &schema.functions {
+                println!("Checking fun_name: {:?} against name: {:?}", fun_name, name);
+                if fun_name.eq(name) {
+                    let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                    let d_type: DataType = function.return_type.clone().into();
+                    let rtf: ReturnTypeFunction =
+                        Arc::new(|d_type| Ok(Arc::new(d_type[0].clone())));
+                    return Some(Arc::new(ScalarUDF::new(
+                        fun_name.as_str(),
+                        &sig,
+                        &rtf,
+                        &fun,
+                    )));
+                }
             }
         }
 
@@ -138,7 +152,6 @@ impl DaskSQLContext {
             default_catalog_name,
             default_schema_name,
             schemas: HashMap::new(),
-            user_defined_functions: Vec::new(),
         }
     }
 
@@ -152,13 +165,22 @@ impl DaskSQLContext {
         Ok(true)
     }
 
-    /// Register a UDF with the current DaskSQLContext
+    /// Register a function with the current DaskSQLContext under the specified schema
     pub fn register_function(
         &mut self,
-        function_name: String,
+        schema_name: String,
+        function: function::DaskFunction,
     ) -> PyResult<bool> {
-        self.user_defined_functions.push(function_name);
-        Ok(true)
+        match self.schemas.get_mut(&schema_name) {
+            Some(schema) => {
+                schema.add_function(function);
+                Ok(true)
+            }
+            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Schema: {} not found in DaskSQLContext",
+                schema_name
+            ))),
+        }
     }
 
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext

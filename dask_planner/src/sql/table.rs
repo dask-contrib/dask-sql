@@ -152,7 +152,7 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 let data_type: &DataType = field.data_type();
                 cols.push((
                     String::from(field.name()),
-                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone()),
+                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone().into()),
                 ));
             }
 
