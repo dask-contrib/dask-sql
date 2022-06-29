@@ -113,10 +113,7 @@ impl ContextProvider for DaskSQLContext {
 
         // Loop through all of the user defined functions
         for (_schema_name, schema) in &self.schemas {
-            println!("Checking Schema Name: {_schema_name}");
-            println!("\n\nSchema: {:?}", schema);
             for (fun_name, function) in &schema.functions {
-                println!("Checking fun_name: {:?} against name: {:?}", fun_name, name);
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
                     let d_type: DataType = function.return_type.clone().into();
