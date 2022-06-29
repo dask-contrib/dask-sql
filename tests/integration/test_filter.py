@@ -150,12 +150,14 @@ def test_filter_year(c):
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
             [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
         ),
-        # https://github.com/dask-contrib/dask-sql/issues/531
-        # (
-        #     "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
-        #     lambda x: x[(x["b"] == 1) | (x["b"] == 6)],
-        #     [[("b", "<=", 1), ("b", ">=", 1)], [("b", "<=", 6), ("b", ">=", 6)]],
-        # ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
+            lambda x: x[(x["b"] == 1) | (x["b"] == 6)],
+            [[("b", "<=", 1), ("b", ">=", 1)], [("b", "<=", 6), ("b", ">=", 6)]],
+            marks=pytest.mark.xfail(
+                reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
+            ),
+        ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
@@ -172,15 +174,11 @@ def test_filter_year(c):
                 [("a", "==", 1), ("c", "==", "A")],
             ],
         ),
-        # https://github.com/dask-contrib/dask-sql/issues/538
-        # (
-        #     # The predicate-pushdown optimization will be skipped here,
-        #     # because datetime accessors are not supported. However,
-        #     # the query should still succeed.
-        #     "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
-        #     lambda x: x[x["d"].dt.year < 2015],
-        #     None,
-        # ),
+        (
+            "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
+            lambda x: x[x["d"].dt.year < 2015],
+            None,
+        ),
     ],
 )
 def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
