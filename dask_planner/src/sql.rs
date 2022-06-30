@@ -109,8 +109,6 @@ impl ContextProvider for DaskSQLContext {
             return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
 
-        println!("\n\nAll Schemas: {:?}", self.schemas);
-
         // Loop through all of the user defined functions
         for (_schema_name, schema) in &self.schemas {
             for (fun_name, function) in &schema.functions {
