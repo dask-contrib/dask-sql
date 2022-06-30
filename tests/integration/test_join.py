@@ -314,7 +314,7 @@ def test_conditional_join_with_limit(c):
     """
     )
 
-    dd.assert_eq(actual_df, expected_df, check_index=False)
+    assert_eq(actual_df, expected_df, check_index=False)
 
 
 def test_intersect(c):
@@ -356,9 +356,21 @@ def test_intersect(c):
 
 
 def test_intersect_multi_col(c):
-    pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+    df1 = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+    df2 = pd.DataFrame({"a": [1, 1, 1], "b": [4, 5, 6], "c": [7, 7, 7]})
 
-    c.create_table("df1", pdf)
-    c.create_table("df2", pdf)
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
 
-    c.sql("select * from df1 intersect select * from df2")
+    return_df = c.sql("select * from df1 intersect select * from df2")
+    expected_df = pd.DataFrame(
+        {
+            "df1.a": [1],
+            "df1.b": [4],
+            "df1.c": [7],
+            "df2.a": [1],
+            "df2.b": [4],
+            "df2.c": [7],
+        }
+    )
+    assert_eq(return_df, expected_df, check_index=False)
