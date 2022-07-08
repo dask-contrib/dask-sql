@@ -8,9 +8,6 @@ import pytest
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_custom_function(c, df):
     def f(x):
         return x**2
@@ -22,9 +19,6 @@ def test_custom_function(c, df):
     assert_eq(return_df, df[["a"]] ** 2)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_custom_function_row(c, df):
     def f(row):
         return row["x"] ** 2
@@ -36,9 +30,6 @@ def test_custom_function_row(c, df):
     assert_eq(return_df, df[["a"]] ** 2)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 @pytest.mark.parametrize("colnames", list(itertools.combinations(["a", "b", "c"], 2)))
 def test_custom_function_any_colnames(colnames, df_wide, c):
     # a third column is needed
@@ -141,9 +132,6 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_multiple_definitions(c, df_simple):
     def f(x):
         return x**2
@@ -195,9 +183,6 @@ def test_aggregate_function(c):
     assert_eq(return_df["test"], return_df["S"], check_names=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_reregistration(c):
     def f(x):
         return x**2
