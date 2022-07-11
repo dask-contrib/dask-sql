@@ -68,9 +68,7 @@ class RelConverter(Pluggable):
                     f"'{node_type}' is a relational algebra operation which doesn't require a direct Dask task. \
                     Omitting it from the resulting Dask task graph."
                 )
-                return context.schema[rel.getCurrentNodeSchemaName()].tables[
-                    rel.getCurrentNodeTableName()
-                ]
+                return BaseRelPlugin.assert_inputs(rel, 1, context)[0]
             else:
                 raise NotImplementedError(
                     f"No relational conversion for node type {node_type} available (yet)."
