@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Certain Relational Operators do not need specially mapped Dask operations.
 # Those operators are skipped when generating the Dask task graph
-_SKIPPABLE_RELATIONAL_OPERATORS = ["SubqueryAlias"]
+_SKIPPABLE_RELATIONAL_OPERATORS = ["EmptyRelation", "SubqueryAlias"]
 
 
 class RelConverter(Pluggable):
@@ -63,6 +63,9 @@ class RelConverter(Pluggable):
             logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
             return df
         except KeyError:  # pragma: no cover
+            print(f"node_type: {node_type}")
+            if node_type == "EmptyRelation":
+                breakpoint()
             if node_type in _SKIPPABLE_RELATIONAL_OPERATORS:
                 logger.debug(
                     f"'{node_type}' is a relational algebra operation which doesn't require a direct Dask task. \

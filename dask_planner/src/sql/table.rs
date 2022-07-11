@@ -7,6 +7,7 @@ use crate::sql::types::SqlTypeName;
 use async_trait::async_trait;
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
+use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 
 use pyo3::prelude::*;
@@ -168,6 +169,24 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
         }
         LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
         LogicalPlan::SubqueryAlias(alias) => table_from_logical_plan(&alias.input),
+        LogicalPlan::EmptyRelation(empty_relation) => {
+            let fields: &Vec<DFField> = empty_relation.schema.fields();
+
+            let mut cols: Vec<(String, DaskTypeMap)> = Vec::new();
+            for field in fields {
+                let data_type: &DataType = field.data_type();
+                cols.push((
+                    String::from(field.name()),
+                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone()),
+                ));
+            }
+
+            Some(DaskTable {
+                name: String::from("EmptyRelation"),
+                statistics: DaskStatistics { row_count: 0.0 },
+                columns: cols,
+            })
+        }
         _ => todo!(
             "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
             plan

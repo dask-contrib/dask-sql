@@ -72,6 +72,7 @@ class DaskProjectPlugin(BaseRelPlugin):
         if new_columns:
             df = df.assign(**new_columns)
 
+        breakpoint()
         # and the new mappings
         for key, backend_column_name in new_mappings.items():
             cc = cc.add(key, backend_column_name)

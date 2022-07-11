@@ -101,6 +101,7 @@ class Context:
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
+        RelConverter.add_plugin_class(logical.DaskEmptyRelationPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
