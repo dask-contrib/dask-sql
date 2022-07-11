@@ -847,6 +847,7 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "!=": ReduceOperation(operation=operator.ne),
         "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add, unary_operation=lambda x: x),
         "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
