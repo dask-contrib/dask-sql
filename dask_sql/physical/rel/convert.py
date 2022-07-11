@@ -63,9 +63,6 @@ class RelConverter(Pluggable):
             logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
             return df
         except KeyError:  # pragma: no cover
-            print(f"node_type: {node_type}")
-            if node_type == "EmptyRelation":
-                breakpoint()
             if node_type in _SKIPPABLE_RELATIONAL_OPERATORS:
                 logger.debug(
                     f"'{node_type}' is a relational algebra operation which doesn't require a direct Dask task. \
