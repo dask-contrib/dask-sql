@@ -152,4 +152,5 @@ class RexLiteralPlugin(BaseRexPlugin):
         logger.debug(
             f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
         )
+
         return python_value
