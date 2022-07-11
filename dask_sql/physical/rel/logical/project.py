@@ -1,9 +1,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-import dask.dataframe as dd
-import pandas as pd
-
 from dask_planner.rust import RexType
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -73,14 +70,6 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         # Actually add the new columns
         if new_columns:
-            # If the Dask DataFrame is currently empty we must do a little more work and convert the python
-            # literal into a Series so that Dask will assign the columns AND values
-            if len(df.columns) == 0:
-                new_columns = {
-                    k: dd.from_pandas(pd.Series([v]), npartitions=1).clear_divisions()
-                    for (k, v) in new_columns.items()
-                }
-
             df = df.assign(**new_columns)
 
         # and the new mappings
