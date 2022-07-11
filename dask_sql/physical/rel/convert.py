@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Certain Relational Operators do not need specially mapped Dask operations.
 # Those operators are skipped when generating the Dask task graph
-_SKIPPABLE_RELATIONAL_OPERATORS = ["EmptyRelation", "SubqueryAlias"]
+_SKIPPABLE_RELATIONAL_OPERATORS = ["SubqueryAlias"]
 
 
 class RelConverter(Pluggable):
