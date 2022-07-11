@@ -1,5 +1,4 @@
 use super::types::PyDataType;
-use arrow::datatypes::DataType;
 use pyo3::prelude::*;
 
 #[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
@@ -16,7 +15,7 @@ impl DaskFunction {
     pub fn new(function_name: String, return_type: PyDataType) -> Self {
         Self {
             name: function_name,
-            return_type: return_type,
+            return_type,
         }
     }
 }
