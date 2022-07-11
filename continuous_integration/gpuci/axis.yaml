@@ -10,4 +10,7 @@ LINUX_VER:
 RAPIDS_VER:
 - "22.08"
 
+RUST_VER:
+- "1.60"
+
 excludes:
