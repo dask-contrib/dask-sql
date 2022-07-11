@@ -185,12 +185,9 @@ impl DaskSQLContext {
         let planner = SqlToRel::new(self);
         planner
             .statement_to_plan(statement.statement)
-            .map(|k| {
-                println!("!!! LogicalPlan: {:?}", k);
-                logical::PyLogicalPlan {
-                    original_plan: k,
-                    current_node: None,
-                }
+            .map(|k| logical::PyLogicalPlan {
+                original_plan: k,
+                current_node: None,
             })
             .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
     }
