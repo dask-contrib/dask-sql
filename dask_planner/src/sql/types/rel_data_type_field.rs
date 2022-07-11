@@ -29,7 +29,7 @@ impl RelDataTypeField {
             name: field.name().clone(),
             data_type: DaskTypeMap {
                 sql_type: SqlTypeName::from_arrow(field.data_type()),
-                data_type: field.data_type().clone(),
+                data_type: field.data_type().clone().into(),
             },
             index: schema.index_of_column_by_name(qualifier, field.name())?,
         })

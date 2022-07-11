@@ -304,7 +304,6 @@ def test_sort_not_allowed(c, gpu):
         c.sql(f"SELECT * FROM {table_name} ORDER BY 42")
 
 
-@pytest.mark.xfail(Reason="Projection step before sort currently failing")
 @pytest.mark.parametrize(
     "input_table_1",
     ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],

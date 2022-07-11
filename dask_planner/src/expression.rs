@@ -217,7 +217,7 @@ impl PyExpr {
             Expr::Negative(..) => panic!("Negative!!!"),
             Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
             Expr::IsNull(..) => panic!("IsNull!!!"),
-            Expr::Between { .. } => panic!("Between!!!"),
+            Expr::Between { .. } => "Between",
             Expr::Case { .. } => panic!("Case!!!"),
             Expr::Cast { .. } => "Cast",
             Expr::TryCast { .. } => panic!("TryCast!!!"),
@@ -226,7 +226,7 @@ impl PyExpr {
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
             Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => panic!("InList!!!"),
+            Expr::InList { .. } => "InList",
             Expr::Wildcard => panic!("Wildcard!!!"),
             Expr::InSubquery { .. } => "Subquery",
             Expr::ScalarUDF { .. } => "ScalarUDF",
@@ -315,6 +315,15 @@ impl PyExpr {
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
                 .collect()),
+            Expr::InList { expr, list, .. } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                for list_elem in list {
+                    operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
+                }
+
+                Ok(operands)
+            }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
@@ -336,6 +345,7 @@ impl PyExpr {
             Expr::Case { .. } => Ok("case".to_string()),
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
+            Expr::InList { .. } => Ok("in list".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
@@ -603,6 +613,20 @@ impl PyExpr {
                 }
             },
             _ => panic!("getValue<T>() - Non literal value encountered"),
+        }
+    }
+
+    #[pyo3(name = "isNegated")]
+    pub fn is_negated(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Between { negated, .. }
+            | Expr::Exists { negated, .. }
+            | Expr::InList { negated, .. }
+            | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
         }
     }
 }

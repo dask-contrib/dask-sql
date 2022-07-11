@@ -209,15 +209,16 @@ def test_where():
     eq_sqlite("SELECT * FROM a WHERE a*b IS NULL OR (b*c<0.5 AND c*a<0.5)", a=df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/531"
-)
 def test_in_between():
     df = make_rand_df(10, a=(int, 3), b=(str, 3))
     eq_sqlite("SELECT * FROM a WHERE a IN (2,4,6)", a=df)
     eq_sqlite("SELECT * FROM a WHERE a BETWEEN 2 AND 4+1", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT IN (2,4,6) AND a IS NOT NULL", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT BETWEEN 2 AND 4+1 AND a IS NOT NULL", a=df)
+    eq_sqlite(
+        "SELECT * FROM a WHERE SUBSTR(b,1,2) IN ('ss','s') AND a NOT BETWEEN 3 AND 5 and a IS NOT NULL",
+        a=df,
+    )
 
 
 @pytest.mark.skip(
