@@ -28,20 +28,16 @@ pub enum RexType {
 /// instances in Rust.
 pub struct DaskTypeMap {
     sql_type: SqlTypeName,
-    data_type: DataType,
+    data_type: PyDataType,
 }
 
 /// Functions not exposed to Python
 impl DaskTypeMap {
-    pub fn from(sql_type: SqlTypeName, data_type: DataType) -> Self {
+    pub fn from(sql_type: SqlTypeName, data_type: PyDataType) -> Self {
         DaskTypeMap {
             sql_type,
             data_type,
         }
-    }
-
-    pub fn data_type(&self) -> DataType {
-        self.data_type.clone()
     }
 }
 
@@ -121,13 +117,36 @@ impl DaskTypeMap {
 
         DaskTypeMap {
             sql_type,
-            data_type: d_type,
+            data_type: d_type.into(),
         }
     }
 
     #[pyo3(name = "getSqlType")]
     pub fn sql_type(&self) -> SqlTypeName {
         self.sql_type.clone()
+    }
+
+    #[pyo3(name = "getDataType")]
+    pub fn data_type(&self) -> PyDataType {
+        self.data_type.clone()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[pyclass(name = "PyDataType", module = "datafusion", subclass)]
+pub struct PyDataType {
+    data_type: DataType,
+}
+
+impl From<PyDataType> for DataType {
+    fn from(data_type: PyDataType) -> DataType {
+        data_type.data_type
+    }
+}
+
+impl From<DataType> for PyDataType {
+    fn from(data_type: DataType) -> PyDataType {
+        PyDataType { data_type }
     }
 }
 

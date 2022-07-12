@@ -248,9 +248,6 @@ def test_join_on_unary_cond_only(c):
     assert_eq(actual_df, expected_df, check_index=False, check_dtype=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/531"
-)
 def test_join_case_projection_subquery():
     c = Context()
 

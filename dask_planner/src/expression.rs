@@ -3,6 +3,7 @@ use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
+use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
 use std::convert::From;
@@ -309,7 +310,9 @@ impl PyExpr {
                 let _plan = &subquery.subquery;
                 unimplemented!("ScalarSubquery")
             }
-            Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
+            Expr::IsNull(expr) | Expr::IsNotNull(expr) => {
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
+            }
             Expr::ScalarUDF { args, .. } => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
@@ -342,6 +345,7 @@ impl PyExpr {
             Expr::Cast { .. } => Ok("cast".to_string()),
             Expr::Between { .. } => Ok("between".to_string()),
             Expr::Case { .. } => Ok("case".to_string()),
+            Expr::IsNull(..) => Ok("is null".to_string()),
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),
@@ -356,6 +360,35 @@ impl PyExpr {
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
         match &self.expr {
+            Expr::BinaryExpr {
+                left: _,
+                op,
+                right: _,
+            } => match op {
+                Operator::Eq
+                | Operator::NotEq
+                | Operator::Lt
+                | Operator::LtEq
+                | Operator::Gt
+                | Operator::GtEq
+                | Operator::And
+                | Operator::Or
+                | Operator::Like
+                | Operator::NotLike
+                | Operator::IsDistinctFrom
+                | Operator::IsNotDistinctFrom
+                | Operator::RegexMatch
+                | Operator::RegexIMatch
+                | Operator::RegexNotMatch
+                | Operator::RegexNotIMatch
+                | Operator::BitwiseAnd
+                | Operator::BitwiseOr => Ok(String::from("BOOLEAN")),
+                Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
+                    Ok(String::from("BIGINT"))
+                }
+                Operator::Divide => Ok(String::from("FLOAT")),
+                Operator::StringConcat => Ok(String::from("VARCHAR")),
+            },
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => Ok(String::from("Boolean")),
@@ -376,6 +409,7 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => Ok(String::from("LargeBinary")),
                 ScalarValue::Date32(_value) => Ok(String::from("Date32")),
                 ScalarValue::Date64(_value) => Ok(String::from("Date64")),
+                ScalarValue::Null => Ok(String::from("Null")),
                 _ => {
                     panic!("CatchAll")
                 }

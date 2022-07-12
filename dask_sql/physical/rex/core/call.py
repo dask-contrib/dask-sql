@@ -74,7 +74,7 @@ class Operation:
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
-        new_op = Operation(lambda x: self(op(x)))
+        new_op = Operation(lambda *x: self(op(*x)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
 
@@ -852,6 +852,7 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "!=": ReduceOperation(operation=operator.ne),
         "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add, unary_operation=lambda x: x),
         "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
@@ -863,6 +864,7 @@ class RexCallPlugin(BaseRexPlugin):
         # special operations
         "cast": CastOperation(),
         "case": CaseOperation(),
+        "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
         "not": NotOperation(),

@@ -1,5 +1,6 @@
 from .aggregate import DaskAggregatePlugin
 from .cross_join import DaskCrossJoinPlugin
+from .empty import DaskEmptyRelationPlugin
 from .explain import ExplainPlugin
 from .filter import DaskFilterPlugin
 from .join import DaskJoinPlugin
@@ -15,6 +16,7 @@ from .window import DaskWindowPlugin
 
 __all__ = [
     DaskAggregatePlugin,
+    DaskEmptyRelationPlugin,
     DaskFilterPlugin,
     DaskJoinPlugin,
     DaskCrossJoinPlugin,

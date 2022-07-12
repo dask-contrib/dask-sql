@@ -12,6 +12,7 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_planner.rust import (
+    DaskFunction,
     DaskSchema,
     DaskSQLContext,
     DaskTable,
@@ -101,6 +102,7 @@ class Context:
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
+        RelConverter.add_plugin_class(logical.DaskEmptyRelationPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
@@ -774,26 +776,22 @@ class Context:
 
                 rust_schema.add_table(table)
 
-            # TODO: Custom functions are not in scope for the POC - Jeremy Dyer
-            # if not schema.functions:
-            #     logger.debug("No custom functions defined.")
-            # for function_description in schema.function_lists:
-            #     name = function_description.name
-            #     sql_return_type = python_to_sql_type(function_description.return_type)
-            #     if function_description.aggregation:
-            #         logger.debug(f"Adding function '{name}' to schema as aggregation.")
-            #         dask_function = DaskAggregateFunction(name, sql_return_type)
-            #     else:
-            #         logger.debug(
-            #             f"Adding function '{name}' to schema as scalar function."
-            #         )
-            #         dask_function = DaskScalarFunction(name, sql_return_type)
+            if not schema.functions:
+                logger.debug("No custom functions defined.")
+            for function_description in schema.function_lists:
+                name = function_description.name
+                sql_return_type = python_to_sql_type(function_description.return_type)
+                if function_description.aggregation:
+                    logger.debug(f"Adding function '{name}' to schema as aggregation.")
+                    # TODO: Not yet implemented
+                    # dask_function = DaskAggregateFunction(name, sql_return_type)
+                else:
+                    logger.debug(
+                        f"Adding function '{name}' to schema as scalar function."
+                    )
+                    dask_function = DaskFunction(name, sql_return_type.getDataType())
 
-            #     dask_function = self._add_parameters_from_description(
-            #         function_description, dask_function
-            #     )
-
-            #     java_schema.addFunction(dask_function)
+                rust_schema.add_function(dask_function)
 
             schema_list.append(rust_schema)
 
@@ -914,3 +912,9 @@ class Context:
             FunctionDescription(name.lower(), parameters, return_type, aggregation)
         )
         schema.functions[lower_name] = f
+
+        # Register the custom function with DataFusion so it is able to parse the queries
+        sql_return_type = python_to_sql_type(return_type)
+        self.context.register_function(
+            schema_name, DaskFunction(lower_name, sql_return_type.getDataType())
+        )

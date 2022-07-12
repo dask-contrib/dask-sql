@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
+    float: SqlTypeName.FLOAT,
     np.float32: SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
     pd.Int64Dtype(): SqlTypeName.BIGINT,
+    int: SqlTypeName.INTEGER,
     np.int32: SqlTypeName.INTEGER,
     pd.Int32Dtype(): SqlTypeName.INTEGER,
     np.int16: SqlTypeName.SMALLINT,
@@ -34,6 +36,7 @@ _PYTHON_TO_SQL = {
     pd.UInt8Dtype(): SqlTypeName.TINYINT,
     np.bool8: SqlTypeName.BOOLEAN,
     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
+    str: SqlTypeName.VARCHAR,
     np.object_: SqlTypeName.VARCHAR,
     pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
