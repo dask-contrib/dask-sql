@@ -126,7 +126,12 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            if any(map(pd.api.types.is_datetime64_dtype, operands)):
+            if any(
+                map(
+                    lambda op: is_frame(op) & pd.api.types.is_datetime64_dtype(op),
+                    operands,
+                )
+            ):
                 operands = tuple(map(as_timelike, operands))
             return reduce(partial(self.operation, **kwargs), operands)
         else:
