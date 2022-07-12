@@ -310,7 +310,9 @@ impl PyExpr {
                 let _plan = &subquery.subquery;
                 unimplemented!("ScalarSubquery")
             }
-            Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
+            Expr::IsNull(expr) | Expr::IsNotNull(expr) => {
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
+            }
             Expr::ScalarUDF { args, .. } => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
@@ -343,6 +345,7 @@ impl PyExpr {
             Expr::Cast { .. } => Ok("cast".to_string()),
             Expr::Between { .. } => Ok("between".to_string()),
             Expr::Case { .. } => Ok("case".to_string()),
+            Expr::IsNull(..) => Ok("is null".to_string()),
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),

@@ -256,7 +256,7 @@ def test_like(c, input_table, gpu, request):
     assert_eq(df, string_table2.iloc[[1]])
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+# @pytest.mark.skip(reason="WIP DataFusion")
 def test_null(c):
     df = c.sql(
         """
