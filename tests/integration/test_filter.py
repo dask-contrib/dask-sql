@@ -66,6 +66,11 @@ def test_string_filter(c, string_table):
         return_df,
         string_table.head(1),
     )
+    # Condition needs to specifically check on `M` since this the literal `M`
+    # was getting parsed as a datetime dtype
+    return_df = c.sql("SELECT * from string_table WHERE a = 'M'")
+    expected_df = string_table[string_table["a"] == "M"]
+    assert_eq(return_df, expected_df)
 
 
 @pytest.mark.parametrize(

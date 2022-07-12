@@ -133,9 +133,6 @@ def test_calc(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/612"
-)
 def test_filter(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
