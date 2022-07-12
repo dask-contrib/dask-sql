@@ -81,7 +81,6 @@ def test_literals(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_literal_null(c):
     df = c.sql(
         """
@@ -90,7 +89,7 @@ def test_literal_null(c):
     )
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
-    expected_df["I"] = expected_df["I"].astype("Int32")
+    expected_df["I"] = expected_df["I"].astype("Int64")
     assert_eq(df, expected_df)
 
 

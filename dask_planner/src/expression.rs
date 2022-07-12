@@ -406,6 +406,7 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => Ok(String::from("LargeBinary")),
                 ScalarValue::Date32(_value) => Ok(String::from("Date32")),
                 ScalarValue::Date64(_value) => Ok(String::from("Date64")),
+                ScalarValue::Null => Ok(String::from("Null")),
                 _ => {
                     panic!("CatchAll")
                 }
