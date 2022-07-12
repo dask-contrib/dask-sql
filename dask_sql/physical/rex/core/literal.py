@@ -142,6 +142,9 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
             literal_value = rex.getDateValue()
+        elif literal_type == "Null":
+            literal_type = SqlTypeName.NULL
+            literal_value = None
         else:
             raise RuntimeError("Failed to determine DataFusion Type in literal.py")
 
