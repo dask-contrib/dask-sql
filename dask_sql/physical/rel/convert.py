@@ -13,11 +13,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# Certain Relational Operators do not need specially mapped Dask operations.
-# Those operators are skipped when generating the Dask task graph
-_SKIPPABLE_RELATIONAL_OPERATORS = ["SubqueryAlias"]
-
-
 class RelConverter(Pluggable):
     """
     Helper to convert from rel to a python expression
@@ -56,20 +51,13 @@ class RelConverter(Pluggable):
 
         try:
             plugin_instance = cls.get_plugin(node_type)
-            logger.debug(
-                f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
-            )
-            df = plugin_instance.convert(rel, context=context)
-            logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
-            return df
         except KeyError:  # pragma: no cover
-            if node_type in _SKIPPABLE_RELATIONAL_OPERATORS:
-                logger.debug(
-                    f"'{node_type}' is a relational algebra operation which doesn't require a direct Dask task. \
-                    Omitting it from the resulting Dask task graph."
-                )
-                return BaseRelPlugin.assert_inputs(rel, 1, context)[0]
-            else:
-                raise NotImplementedError(
-                    f"No relational conversion for node type {node_type} available (yet)."
-                )
+            raise NotImplementedError(
+                f"No relational conversion for node type {node_type} available (yet)."
+            )
+        logger.debug(
+            f"Processing REL {rel} using {plugin_instance.__class__.__name__}..."
+        )
+        df = plugin_instance.convert(rel, context=context)
+        logger.debug(f"Processed REL {rel} into {LoggableDataFrame(df)}")
+        return df
