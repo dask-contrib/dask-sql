@@ -8,6 +8,7 @@ from .limit import DaskLimitPlugin
 from .project import DaskProjectPlugin
 from .sample import SamplePlugin
 from .sort import DaskSortPlugin
+from .subquery_alias import SubqueryAlias
 from .table_scan import DaskTableScanPlugin
 from .union import DaskUnionPlugin
 from .values import DaskValuesPlugin
@@ -28,4 +29,5 @@ __all__ = [
     DaskWindowPlugin,
     SamplePlugin,
     ExplainPlugin,
+    SubqueryAlias,
 ]

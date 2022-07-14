@@ -116,6 +116,7 @@ class Context:
         RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(logical.ExplainPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.SubqueryAlias, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)

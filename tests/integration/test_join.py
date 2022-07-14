@@ -371,3 +371,12 @@ def test_intersect_multi_col(c):
         }
     )
     assert_eq(return_df, expected_df, check_index=False)
+
+
+def test_join_alias_w_projection(c, parquet_ddf):
+    result_df = c.sql(
+        "SELECT t2.c as c_y from parquet_ddf t1, parquet_ddf t2 WHERE t1.a=t2.a and t1.c='A'"
+    )
+    expected_df = parquet_ddf.merge(parquet_ddf, on=["a"], how="inner")
+    expected_df = expected_df[expected_df["c_x"] == "A"][["c_y"]]
+    assert_eq(result_df, expected_df, check_index=False)
