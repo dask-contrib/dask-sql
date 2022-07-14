@@ -1,17 +1,18 @@
 # Contributing to Dask-SQL
 
-## SQL Parsing Overview
-
-![Dask-SQL Sequence Diagram](assets/dask-sql-sequence.jpg)
-
 ## Environment Setup
 
-### Conda
 Conda is used both by CI and the development team. Therefore Conda is the fully supported and preferred method for using and developing Dask-SQL.
 
 Installing Conda is outside the scope of this document. However a nice guide for installing on Linux can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html)
 
-Setting up your Conda environment for development is straightforward. To setup a new Conda environment you run
+Setting up your Conda environment for development is straightforward. First, clone the repository locally
+```
+DASK_SQL_HOME=${pwd}/dask-sql
+git clone https://github.com/dask-contrib/dask-sql.git
+cd $DASK_SQL_HOME
+```
+Then, run:
 ```
 conda env create -f {DASK_SQL_HOME}/continuous_integration/environment-3.10-dev.yaml
 ```
@@ -22,6 +23,15 @@ The Conda process will take awhile to complete, once finished you will have a re
 
 Dask-SQL utilizes [Apache Arrow Datafusion](https://github.com/apache/arrow-datafusion) for parsing, planning, and optimizing SQL queries. DataFusion is written in Rust and therefore requires some Rust experience to be productive. Luckily, there are tons of great Rust learning resources on the internet. We have listed some of our favorite ones [here](#rust-learning-resources)
 
+### Apache Arrow DataFusion
+The Dask-SQL Rust codebase makes heavy use [Apache Arrow DataFusion](https://github.com/apache/arrow-datafusion). Contributors should familiarize themselves with the [codebase](https://github.com/apache/arrow-datafusion) and [documentation](https://docs.rs/datafusion/latest/datafusion/).
+
+#### Purpose
+DataFusion provides Dask-SQL with key functionality.
+- Parsing SQL query strings into a `LogicalPlan` datastructure
+- Future integration points with [substrait.io](https://substrait.io/)
+- An optimization framework used as the baseline for creating custom highly efficient `LogicalPlan`s specific to Dask.
+
 ### Building
 Building the Dask-SQL Rust codebase is a straightforward process. If you create and activate the Dask-SQL Conda environment the Rust compiler and all necessary components will be installed for you during that process and therefore requires no further manual setup.
 
@@ -31,19 +41,8 @@ More details about the building setup can be found at [setup.py](setup.py) and s
 
 Note that while `setuptools-rust` is used by CI and should be used during your development cycle, if the need arises to do something more specific that is not yet supported by `setuptools-rust` you can opt to use `cargo` directly from the command line.
 
-#### Cleaning
-```python setup.py clean```
-#### Building
-```python setup.py install```
-
-### Apache Arrow DataFusion
-The Dask-SQL Rust codebase makes heavy use [Apache Arrow DataFusion](https://github.com/apache/arrow-datafusion). Contributors should familiarize themselves with the [codebase](https://github.com/apache/arrow-datafusion) and [documentation](https://docs.rs/datafusion/latest/datafusion/).
-
-#### Purpose
-DataFusion provides Dask-SQL with key functionality.
-- Parsing SQL query strings into a `LogicalPlan` datastructure
-- Future integration points with [substrait.io](https://substrait.io/)
-- An optimization framework used as the baseline for creating custom highly efficient `LogicalPlan`s specific to Dask.
+#### Building with Python
+Building Dask-SQL is straightforward with Python. To build run ```python setup.py install```. This will build both the Rust and Python codebase and install it into your locally activated conda environment. While not required, if you have updated dependencies for Rust you might prefer a clean build. To clean your setup run ```python setup.py clean``` and then run ```python setup.py install```
 
 #### DataFusion Modules
 DataFusion is broken down into a few modules. We consume those modules in our [Cargo.toml](dask_planner/Cargo.toml). The modules that we use currently are
