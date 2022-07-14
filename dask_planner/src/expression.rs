@@ -3,6 +3,7 @@ use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
+use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
 use std::convert::From;
@@ -82,7 +83,12 @@ impl PyExpr {
             Expr::AggregateUDF { .. } => RexType::Call,
             Expr::InList { .. } => RexType::Call,
             Expr::Wildcard => RexType::Call,
-            _ => RexType::Other,
+            Expr::ScalarUDF { .. } => RexType::Call,
+            Expr::Exists { .. } => RexType::Call,
+            Expr::InSubquery { .. } => RexType::Call,
+            Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
+            Expr::QualifiedWildcard { .. } => RexType::Reference,
+            Expr::GroupingSet(..) => RexType::Call,
         }
     }
 }
@@ -92,6 +98,20 @@ impl PyExpr {
     #[staticmethod]
     pub fn literal(value: PyScalarValue) -> PyExpr {
         PyExpr::from(lit(value.scalar_value), None)
+    }
+
+    /// Extracts the LogicalPlan from a Subquery, or supported Subquery sub-type, from
+    /// the expression instance
+    #[pyo3(name = "getSubqueryLogicalPlan")]
+    pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
+        match &self.expr {
+            Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
+                Only Subquery and related variants are supported for this operation.",
+                &self.expr
+            ))),
+        }
     }
 
     /// If this Expression instances references an existing
@@ -118,10 +138,20 @@ impl PyExpr {
                 if input_plans.len() == 1 {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
-                        Ok(fq_name) => Ok(input_plans[0]
-                            .schema()
-                            .index_of_column(&Column::from_qualified_name(&fq_name))
-                            .unwrap()),
+                        Ok(fq_name) => {
+                            let mut idx: usize = 0;
+                            for schema in input_plans[0].all_schemas() {
+                                match schema.index_of_column(&Column::from_qualified_name(&fq_name))
+                                {
+                                    Ok(e) => {
+                                        idx = e;
+                                        break;
+                                    }
+                                    Err(_e) => (),
+                                }
+                            }
+                            Ok(idx)
+                        }
                         Err(e) => panic!("{:?}", e),
                     }
                 } else if input_plans.len() >= 2 {
@@ -187,7 +217,7 @@ impl PyExpr {
             Expr::Negative(..) => panic!("Negative!!!"),
             Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
             Expr::IsNull(..) => panic!("IsNull!!!"),
-            Expr::Between { .. } => panic!("Between!!!"),
+            Expr::Between { .. } => "Between",
             Expr::Case { .. } => panic!("Case!!!"),
             Expr::Cast { .. } => "Cast",
             Expr::TryCast { .. } => panic!("TryCast!!!"),
@@ -196,9 +226,14 @@ impl PyExpr {
             Expr::AggregateFunction { .. } => "AggregateFunction",
             Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
             Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => panic!("InList!!!"),
+            Expr::InList { .. } => "InList",
             Expr::Wildcard => panic!("Wildcard!!!"),
-            _ => "OTHER",
+            Expr::InSubquery { .. } => "Subquery",
+            Expr::ScalarUDF { .. } => "ScalarUDF",
+            Expr::Exists { .. } => "Exists",
+            Expr::ScalarSubquery(..) => "ScalarSubquery",
+            Expr::QualifiedWildcard { .. } => "Wildcard",
+            Expr::GroupingSet(..) => "GroupingSet",
         })
     }
 
@@ -225,8 +260,7 @@ impl PyExpr {
             Expr::ScalarFunction { fun: _, args } => {
                 let mut operands: Vec<PyExpr> = Vec::new();
                 for arg in args {
-                    let py_arg: PyExpr = PyExpr::from(arg.clone(), self.input_plan.clone());
-                    operands.push(py_arg);
+                    operands.push(PyExpr::from(arg.clone(), self.input_plan.clone()));
                 }
                 Ok(operands)
             }
@@ -265,7 +299,33 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
-            Expr::IsNotNull(expr) => Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())]),
+            Expr::InSubquery {
+                expr: _,
+                subquery: _,
+                negated: _,
+            } => {
+                unimplemented!("InSubquery")
+            }
+            Expr::ScalarSubquery(subquery) => {
+                let _plan = &subquery.subquery;
+                unimplemented!("ScalarSubquery")
+            }
+            Expr::IsNull(expr) | Expr::IsNotNull(expr) => {
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
+            }
+            Expr::ScalarUDF { args, .. } => Ok(args
+                .iter()
+                .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
+                .collect()),
+            Expr::InList { expr, list, .. } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                for list_elem in list {
+                    operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
+                }
+
+                Ok(operands)
+            }
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
@@ -285,7 +345,10 @@ impl PyExpr {
             Expr::Cast { .. } => Ok("cast".to_string()),
             Expr::Between { .. } => Ok("between".to_string()),
             Expr::Case { .. } => Ok("case".to_string()),
+            Expr::IsNull(..) => Ok("is null".to_string()),
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
+            Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
+            Expr::InList { .. } => Ok("in list".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
@@ -297,6 +360,35 @@ impl PyExpr {
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
         match &self.expr {
+            Expr::BinaryExpr {
+                left: _,
+                op,
+                right: _,
+            } => match op {
+                Operator::Eq
+                | Operator::NotEq
+                | Operator::Lt
+                | Operator::LtEq
+                | Operator::Gt
+                | Operator::GtEq
+                | Operator::And
+                | Operator::Or
+                | Operator::Like
+                | Operator::NotLike
+                | Operator::IsDistinctFrom
+                | Operator::IsNotDistinctFrom
+                | Operator::RegexMatch
+                | Operator::RegexIMatch
+                | Operator::RegexNotMatch
+                | Operator::RegexNotIMatch
+                | Operator::BitwiseAnd
+                | Operator::BitwiseOr => Ok(String::from("BOOLEAN")),
+                Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
+                    Ok(String::from("BIGINT"))
+                }
+                Operator::Divide => Ok(String::from("FLOAT")),
+                Operator::StringConcat => Ok(String::from("VARCHAR")),
+            },
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => Ok(String::from("Boolean")),
@@ -317,6 +409,7 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => Ok(String::from("LargeBinary")),
                 ScalarValue::Date32(_value) => Ok(String::from("Date32")),
                 ScalarValue::Date64(_value) => Ok(String::from("Date64")),
+                ScalarValue::Null => Ok(String::from("Null")),
                 _ => {
                     panic!("CatchAll")
                 }
@@ -527,14 +620,28 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "isNegated")]
+    pub fn is_negated(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Between { negated, .. }
+            | Expr::Exists { negated, .. }
+            | Expr::InList { negated, .. }
+            | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
+        }
+    }
+
     /// Returns if a sort expressions is an ascending sort
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
-        match self.expr {
+        match &self.expr {
             Expr::Sort { asc, .. } => Ok(asc.clone()),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
-                self.expr
+                &self.expr
             ))),
         }
     }
@@ -542,7 +649,7 @@ impl PyExpr {
     /// Returns if nulls should be placed first in a sort expression
     #[pyo3(name = "isSortNullsFirst")]
     pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
-        match self.expr {
+        match &self.expr {
             Expr::Sort { nulls_first, .. } => Ok(nulls_first.clone()),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",

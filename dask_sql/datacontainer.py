@@ -152,7 +152,16 @@ class ColumnContainer:
         Get back the dask column, which is referenced by the
         frontend (SQL) column with the given name.
         """
-        backend_column = self._frontend_backend_mapping[column]
+
+        # `UInt8(1)` is the Datafusion indicator for a `COUNT(*)`. Be SQL definition
+        # this means the user wants the `COUNT` for any/all columns. Therefore we
+        # simply retrieve the first column in the mapping since by definition # rows,
+        # which is `COUNT`, will always be the same for all columns.
+        if column == "UInt8(1)":
+            # Make sure to get the backend column name here by using [1] instead of [0]. [0] is frontend
+            backend_column = list(self._frontend_backend_mapping.items())[0][1]
+        else:
+            backend_column = self._frontend_backend_mapping[column]
         return backend_column
 
     def make_unique(self, prefix="col"):

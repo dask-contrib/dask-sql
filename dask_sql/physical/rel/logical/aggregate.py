@@ -84,14 +84,11 @@ class AggregationSpecification:
 
             if pd.api.types.is_string_dtype(series.dtype):
                 # If dask_cudf strings dtype, return built-in aggregation
-                if dask_cudf is not None and isinstance(series, dask_cudf.Series):
+                if "cudf" in str(series._partition_type):
                     return built_in_aggregation
 
-                # With pandas StringDtype built-in aggregations work
-                # while with pandas ObjectDtype and Nulls built-in aggregations fail
-                if isinstance(series, dd.Series) and isinstance(
-                    series.dtype, pd.StringDtype
-                ):
+                # with pandas StringDtype built-in aggregations work
+                if isinstance(series.dtype, pd.StringDtype):
                     return built_in_aggregation
 
         return self.custom_aggregation
@@ -228,12 +225,17 @@ class DaskAggregatePlugin(BaseRelPlugin):
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
+        groupby_agg_options = dask_config.get("sql.aggregate")
+
         if not collected_aggregations:
             backend_names = [
                 cc.get_backend_by_frontend_name(group_name)
                 for group_name in group_columns
             ]
-            return df[backend_names].drop_duplicates(), output_column_order
+            return (
+                df[backend_names].drop_duplicates(**groupby_agg_options),
+                output_column_order,
+            )
 
         # SQL needs to have a column with the grouped values as the first
         # output column.
@@ -241,8 +243,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # are the same for a single group anyways, we just use the first row
         for col in group_columns:
             collected_aggregations[None].append((col, col, "first"))
-
-        groupby_agg_options = dask_config.get("sql.groupby")
 
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
@@ -399,6 +399,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         # format aggregations for Dask; also check if we can use fast path for
         # groupby, which is only supported if we are not using any custom aggregations
+        # and our pandas version support dropna for groupbys
         aggregations_dict = defaultdict(dict)
         fast_groupby = True
         for aggregation in aggregations:

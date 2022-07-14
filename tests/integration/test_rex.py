@@ -8,6 +8,16 @@ import pytest
 from tests.utils import assert_eq
 
 
+def test_year(c, datetime_table):
+    result_df = c.sql(
+        """
+    SELECT year(timezone) from datetime_table
+    """
+    )
+    assert result_df.shape[0].compute() == datetime_table.shape[0]
+    assert result_df.compute().iloc[0][0] == 2014
+
+
 @pytest.mark.skip(
     reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
 )
@@ -71,7 +81,6 @@ def test_literals(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_literal_null(c):
     df = c.sql(
         """
@@ -80,7 +89,7 @@ def test_literal_null(c):
     )
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
-    expected_df["I"] = expected_df["I"].astype("Int32")
+    expected_df["I"] = expected_df["I"].astype("Int64")
     assert_eq(df, expected_df)
 
 
@@ -247,7 +256,6 @@ def test_like(c, input_table, gpu, request):
     assert_eq(df, string_table2.iloc[[1]])
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_null(c):
     df = c.sql(
         """

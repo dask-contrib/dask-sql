@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+from dask.dataframe.optimize import optimize_dataframe_getitem
+from dask.utils_test import hlg_layer
 
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
@@ -203,9 +205,10 @@ def test_multi_case_when(c):
     FROM df
     """
     )
-    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]}, dtype=np.int64)
+    expected_df = pd.DataFrame({"C": [0, 1, 1, 1, 0]})
 
-    assert_eq(actual_df, expected_df)
+    # dtype varies between int32/int64 depending on pandas version
+    assert_eq(actual_df, expected_df, check_dtype=False)
 
 
 def test_case_when_no_else(c):
@@ -221,10 +224,11 @@ def test_case_when_no_else(c):
     )
     expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
 
-    assert_eq(actual_df, expected_df)
+    # dtype varies between float64/object depending on pandas version
+    assert_eq(actual_df, expected_df, check_dtype=False)
 
 
-def test_singular_column_projection_simple(c):
+def test_singular_column_selection(c):
     df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
     c.create_table("df", df)
 
@@ -244,10 +248,16 @@ def test_singular_column_projection_simple(c):
         ["a", "b", "d"],
     ],
 )
-def test_multiple_column_projection(c, input_cols):
+def test_multiple_column_projection(c, parquet_ddf, input_cols):
     projection_list = ", ".join(input_cols)
-    result = c.sql(f"SELECT {projection_list} from parquet_ddf")
+    result_df = c.sql(f"SELECT {projection_list} from parquet_ddf")
 
     # There are 5 columns in the table, ensure only specified ones are read
-    assert_eq(len(result.columns), len(input_cols))
-    assert all(x in input_cols for x in result.columns)
+    assert_eq(len(result_df.columns), len(input_cols))
+    assert_eq(parquet_ddf[input_cols], result_df)
+    assert sorted(
+        hlg_layer(
+            optimize_dataframe_getitem(result_df.dask, result_df.__dask_keys__()),
+            "read-parquet",
+        ).columns
+    ) == sorted(input_cols)

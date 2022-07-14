@@ -8,7 +8,6 @@ mod explain;
 mod filter;
 mod join;
 mod limit;
-mod offset;
 mod projection;
 mod sort;
 mod table_scan;
@@ -98,11 +97,6 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::Offset as PyOffset
-    pub fn offset(&self) -> PyResult<offset::PyOffset> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
     /// LogicalPlan::Projection as PyProjection
     pub fn projection(&self) -> PyResult<projection::PyProjection> {
         to_py_plan(self.current_node.as_ref())
@@ -184,7 +178,6 @@ impl PyLogicalPlan {
             LogicalPlan::TableScan(_table_scan) => "TableScan",
             LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
             LogicalPlan::Limit(_limit) => "Limit",
-            LogicalPlan::Offset(_offset) => "Offset",
             LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
             LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
             LogicalPlan::DropTable(_drop_table) => "DropTable",
@@ -212,14 +205,40 @@ impl PyLogicalPlan {
 
     #[pyo3(name = "getRowType")]
     pub fn row_type(&self) -> PyResult<RelDataType> {
-        let schema = self.original_plan.schema();
-        let rel_fields: Vec<RelDataTypeField> = schema
-            .fields()
-            .iter()
-            .map(|f| RelDataTypeField::from(f, schema.as_ref()))
-            .collect::<Result<Vec<_>>>()
-            .map_err(py_type_err)?;
-        Ok(RelDataType::new(false, rel_fields))
+        match &self.original_plan {
+            LogicalPlan::Join(join) => {
+                let mut lhs_fields: Vec<RelDataTypeField> = join
+                    .left
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, join.left.schema().as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+
+                let mut rhs_fields: Vec<RelDataTypeField> = join
+                    .right
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, join.right.schema().as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+
+                lhs_fields.append(&mut rhs_fields);
+                Ok(RelDataType::new(false, lhs_fields))
+            }
+            _ => {
+                let schema = self.original_plan.schema();
+                let rel_fields: Vec<RelDataTypeField> = schema
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+                Ok(RelDataType::new(false, rel_fields))
+            }
+        }
     }
 }
 

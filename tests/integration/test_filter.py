@@ -66,6 +66,11 @@ def test_string_filter(c, string_table):
         return_df,
         string_table.head(1),
     )
+    # Condition needs to specifically check on `M` since this the literal `M`
+    # was getting parsed as a datetime dtype
+    return_df = c.sql("SELECT * from string_table WHERE a = 'M'")
+    expected_df = string_table[string_table["a"] == "M"]
+    assert_eq(return_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -74,7 +79,7 @@ def test_string_filter(c, string_table):
         "datetime_table",
         pytest.param(
             "gpu_datetime_table",
-            marks=(pytest.mark.gpu, pytest.mark.skip(reason="WIP DataFusion")),
+            marks=(pytest.mark.gpu),
         ),
     ],
 )
@@ -100,7 +105,7 @@ def test_filter_cast_date(c, input_table, request):
         "datetime_table",
         pytest.param(
             "gpu_datetime_table",
-            marks=(pytest.mark.gpu, pytest.mark.skip(reason="WIP DataFusion")),
+            marks=(pytest.mark.gpu),
         ),
     ],
 )
@@ -120,9 +125,6 @@ def test_filter_cast_timestamp(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/538"
-)
 def test_filter_year(c):
     df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
     df["dt"] = pd.to_datetime(df)
@@ -135,9 +137,6 @@ def test_filter_year(c):
     assert_eq(expected_df, return_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/538"
-)
 @pytest.mark.parametrize(
     "query,df_func,filters",
     [
@@ -156,10 +155,13 @@ def test_filter_year(c):
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
             [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
         ),
-        (
+        pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
             lambda x: x[(x["b"] == 1) | (x["b"] == 6)],
             [[("b", "<=", 1), ("b", ">=", 1)], [("b", "<=", 6), ("b", ">=", 6)]],
+            marks=pytest.mark.xfail(
+                reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
+            ),
         ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
@@ -178,9 +180,6 @@ def test_filter_year(c):
             ],
         ),
         (
-            # The predicate-pushdown optimization will be skipped here,
-            # because datetime accessors are not supported. However,
-            # the query should still succeed.
             "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
             lambda x: x[x["d"].dt.year < 2015],
             None,

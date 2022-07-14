@@ -96,9 +96,7 @@ class RexLiteralPlugin(BaseRexPlugin):
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
-        logger.debug(f"Expression in literal.py: {rex}")
         literal_type = str(rex.getType())
-        logger.debug(f"literal_type: {literal_type}")
 
         # Call the Rust function to get the actual value and convert the Rust
         # type name back to a SQL type
@@ -144,11 +142,11 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
             literal_value = rex.getDateValue()
+        elif literal_type == "Null":
+            literal_type = SqlTypeName.NULL
+            literal_value = None
         else:
             raise RuntimeError("Failed to determine DataFusion Type in literal.py")
-
-        logger.debug(f"Expression in literal.py literal_value: {literal_value}")
-        logger.debug(f"Expression in literal.py literal_type: {literal_type}")
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):
         #     return SargPythonImplementation(literal_value, literal_type)

@@ -55,7 +55,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         # otherwise get all projected columns from the 'Projection' instance, which is contained
         # in the 'RelDataType' instance, aka 'row_type'
         if table_scan.containsProjections():
-            field_specifications = table_scan.getTableScanProjects()
+            field_specifications = (
+                table_scan.getTableScanProjects()
+            )  # Assumes these are column projections only and field names match table column names
+            df = df[field_specifications]
         else:
             field_specifications = [str(f) for f in table.getRowType().getFieldNames()]
 

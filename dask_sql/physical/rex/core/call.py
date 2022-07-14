@@ -2,7 +2,7 @@ import datetime
 import logging
 import operator
 import re
-from functools import reduce
+from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
@@ -36,6 +36,17 @@ logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
 
 
+def as_timelike(op):
+    if isinstance(op, np.int64):
+        return np.timedelta64(op, "D")
+    elif isinstance(op, str):
+        return np.datetime64(op)
+    elif pd.api.types.is_datetime64_dtype(op):
+        return op
+    else:
+        raise ValueError(f"Don't know how to make {type(op)} timelike")
+
+
 class Operation:
     """Helper wrapper around a function, which is used as operator"""
 
@@ -63,7 +74,7 @@ class Operation:
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
-        new_op = Operation(lambda x: self(op(x)))
+        new_op = Operation(lambda *x: self(op(*x)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
 
@@ -115,10 +126,14 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            enriched_with_kwargs = lambda kwargs: (
-                lambda x, y: self.operation(x, y, **kwargs)
-            )
-            return reduce(enriched_with_kwargs(kwargs), operands)
+            if any(
+                map(
+                    lambda op: is_frame(op) & pd.api.types.is_datetime64_dtype(op),
+                    operands,
+                )
+            ):
+                operands = tuple(map(as_timelike, operands))
+            return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
@@ -169,11 +184,10 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, datetime.timedelta):
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
         else:  # pragma: no cover
-            result = da.trunc(result)
-            return result
+            return da.trunc(result).astype(np.int64)
 
 
 class CaseOperation(Operation):
@@ -568,6 +582,15 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class YearOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract_year)
+
+    def extract_year(self, df: SeriesOrScalar):
+        df = convert_to_datetime(df)
+        return df.year
+
+
 class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
@@ -773,11 +796,32 @@ class BetweenOperation(Operation):
     Function for finding rows between two scalar values
     """
 
+    needs_rex = True
+
     def __init__(self):
         super().__init__(self.between)
 
-    def between(self, series: dd.Series, low, high):
-        return series.between(low, high, inclusive="both")
+    def between(self, series: dd.Series, low, high, rex=None):
+        return (
+            ~series.between(low, high, inclusive="both")
+            if rex.isNegated()
+            else series.between(low, high, inclusive="both")
+        )
+
+
+class InListOperation(Operation):
+    """
+    Returns a boolean of whether an expression is/isn't in a set of values
+    """
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.inList)
+
+    def inList(self, series: dd.Series, *operands, rex=None):
+        result = series.isin(operands)
+        return ~result if rex.isNegated() else result
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -808,6 +852,7 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "!=": ReduceOperation(operation=operator.ne),
         "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add, unary_operation=lambda x: x),
         "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
@@ -819,9 +864,11 @@ class RexCallPlugin(BaseRexPlugin):
         # special operations
         "cast": CastOperation(),
         "case": CaseOperation(),
+        "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
         "not": NotOperation(),
+        "in list": InListOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
@@ -865,6 +912,7 @@ class RexCallPlugin(BaseRexPlugin):
         "position": PositionOperation(),
         "trim": TrimOperation(),
         "overlay": OverlayOperation(),
+        "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
         # date/time operations
@@ -880,6 +928,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
+        "year": YearOperation(),
     }
 
     def convert(

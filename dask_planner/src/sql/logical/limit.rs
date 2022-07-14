@@ -14,10 +14,24 @@ pub struct PyLimit {
 
 #[pymethods]
 impl PyLimit {
-    #[pyo3(name = "getLimitN")]
-    pub fn limit_n(&self) -> PyResult<PyExpr> {
+    /// `OFFSET` specified in the query
+    #[pyo3(name = "getSkip")]
+    pub fn skip(&self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
-            Expr::Literal(ScalarValue::UInt64(Some(self.limit.n.try_into().unwrap()))),
+            Expr::Literal(ScalarValue::UInt64(Some(
+                self.limit.skip.unwrap_or(0) as u64
+            ))),
+            Some(vec![self.limit.input.clone()]),
+        ))
+    }
+
+    /// `LIMIT` specified in the query
+    #[pyo3(name = "getFetch")]
+    pub fn fetch(&self) -> PyResult<PyExpr> {
+        Ok(PyExpr::from(
+            Expr::Literal(ScalarValue::UInt64(Some(
+                self.limit.fetch.unwrap_or(0) as u64
+            ))),
             Some(vec![self.limit.input.clone()]),
         ))
     }

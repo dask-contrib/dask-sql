@@ -11,7 +11,6 @@ pub struct DaskSchema {
     #[pyo3(get, set)]
     pub(crate) name: String,
     pub(crate) tables: HashMap<String, table::DaskTable>,
-    #[allow(dead_code)]
     pub(crate) functions: HashMap<String, function::DaskFunction>,
 }
 
@@ -28,5 +27,9 @@ impl DaskSchema {
 
     pub fn add_table(&mut self, table: table::DaskTable) {
         self.tables.insert(table.name.clone(), table);
+    }
+
+    pub fn add_function(&mut self, function: function::DaskFunction) {
+        self.functions.insert(function.name.clone(), function);
     }
 }

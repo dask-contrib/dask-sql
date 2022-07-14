@@ -8,12 +8,16 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::{OptimizationException, ParsingException};
+use crate::{
+    dialect::DaskSqlDialect,
+    sql::exceptions::{OptimizationException, ParsingException},
+};
 
-use arrow::datatypes::{Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::DataFusionError;
 use datafusion_expr::{
-    AggregateUDF, LogicalPlan, PlanVisitor, ScalarFunctionImplementation, ScalarUDF, TableSource,
+    AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
+    ScalarUDF, Signature, TableSource, Volatility,
 };
 use datafusion_sql::{
     parser::DFParser,
@@ -69,7 +73,11 @@ impl ContextProvider for DaskSQLContext {
                         let mut fields: Vec<Field> = Vec::new();
                         // Iterate through the DaskTable instance and create a Schema instance
                         for (column_name, column_type) in &table.columns {
-                            fields.push(Field::new(column_name, column_type.data_type(), false));
+                            fields.push(Field::new(
+                                column_name,
+                                DataType::from(column_type.data_type()),
+                                true,
+                            ));
                         }
 
                         resp = Some(Schema::new(fields));
@@ -92,14 +100,38 @@ impl ContextProvider for DaskSQLContext {
         }
     }
 
-    fn get_function_meta(&self, _name: &str) -> Option<Arc<ScalarUDF>> {
-        let _f: ScalarFunctionImplementation =
+    fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
+        let fun: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+        if "year".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
+        }
+
+        // Loop through all of the user defined functions
+        for (_schema_name, schema) in &self.schemas {
+            for (fun_name, function) in &schema.functions {
+                if fun_name.eq(name) {
+                    let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                    let d_type: DataType = function.return_type.clone().into();
+                    let rtf: ReturnTypeFunction =
+                        Arc::new(|d_type| Ok(Arc::new(d_type[0].clone())));
+                    return Some(Arc::new(ScalarUDF::new(
+                        fun_name.as_str(),
+                        &sig,
+                        &rtf,
+                        &fun,
+                    )));
+                }
+            }
+        }
+
         None
     }
 
     fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
-        unimplemented!("RUST: get_aggregate_meta is not yet implemented for DaskSQLContext");
+        None
     }
 
     fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
@@ -128,6 +160,24 @@ impl DaskSQLContext {
         Ok(true)
     }
 
+    /// Register a function with the current DaskSQLContext under the specified schema
+    pub fn register_function(
+        &mut self,
+        schema_name: String,
+        function: function::DaskFunction,
+    ) -> PyResult<bool> {
+        match self.schemas.get_mut(&schema_name) {
+            Some(schema) => {
+                schema.add_function(function);
+                Ok(true)
+            }
+            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Schema: {} not found in DaskSQLContext",
+                schema_name
+            ))),
+        }
+    }
+
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext
     pub fn register_table(
         &mut self,
@@ -148,7 +198,8 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
-        match DFParser::parse_sql(sql) {
+        let dd: DaskSqlDialect = DaskSqlDialect {};
+        match DFParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {

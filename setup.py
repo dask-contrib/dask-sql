@@ -43,8 +43,8 @@ setup(
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2022.3.0",
-        "pandas>=1.0.0",  # below 1.0, there were no nullable ext. types
-        "fastapi>=0.61.1",
+        "pandas>=1.1.2",
+        "fastapi>=0.69.0",
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",
         "prompt_toolkit",
@@ -58,8 +58,9 @@ setup(
             "pytest-cov>=2.10.1",
             "mock>=4.0.3",
             "sphinx>=3.2.1",
+            "pyarrow>=3.0.0",
             "dask-ml>=2022.1.22",
-            "scikit-learn>=0.24.2",
+            "scikit-learn>=1.0.0",
             "intake>=0.6.0",
             "pre-commit",
             "black==22.3.0",

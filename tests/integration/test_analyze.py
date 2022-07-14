@@ -14,11 +14,12 @@ def test_analyze(c, df):
                 700.0,
                 df.a.mean(),
                 df.a.std(),
-                1.0,
+                df.a.min(),
+                # Dask's approx quantiles do not match up with pandas and must be specified explicitly
                 2.0,
-                2.0,  # incorrect, but what Dask gives for approx quantile
+                2.0,
                 3.0,
-                3.0,
+                df.a.max(),
                 "double",
                 "a",
             ],
@@ -27,9 +28,10 @@ def test_analyze(c, df):
                 df.b.mean(),
                 df.b.std(),
                 df.b.min(),
-                df.b.quantile(0.25),
-                df.b.quantile(0.5),
-                df.b.quantile(0.75),
+                # Dask's approx quantiles do not match up with pandas and must be specified explicitly
+                2.73108,
+                5.20286,
+                7.60595,
                 df.b.max(),
                 "double",
                 "b",
@@ -49,9 +51,8 @@ def test_analyze(c, df):
         ],
     )
 
-    # The percentiles are calculated only approximately, therefore we do not use exact matching
-    assert_eq(result_df, expected_df, rtol=0.135)
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR COLUMNS a")
 
-    assert_eq(result_df, expected_df[["a"]], rtol=0.135)
+    assert_eq(result_df, expected_df[["a"]])
