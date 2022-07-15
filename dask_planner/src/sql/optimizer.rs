@@ -43,7 +43,11 @@ impl DaskSqlOptimizer {
             match optimization.optimize(&resulting_plan, &mut OptimizerConfig::new()) {
                 Ok(optimized_plan) => resulting_plan = optimized_plan,
                 Err(e) => {
-                    return Err(e);
+                    println!(
+                        "Skipping optimizer rule {} due to unexpected error: {}",
+                        optimization.name(),
+                        e
+                    );
                 }
             }
         }
