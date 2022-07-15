@@ -17,6 +17,8 @@ Then, run:
 conda env create -f {DASK_SQL_HOME}/continuous_integration/environment-3.10-dev.yaml
 ```
 
+Note: There are several conda files provided for your convenience. Since Dask-SQL offers support for both GPU and CPU runtimes there are a total of 6 environment files with a GPU and CPU version for Python 3.8, 3.9, & 3.10.
+
 The Conda process will take awhile to complete, once finished you will have a resulting environment named `dask-sql` which can be activated and used by running `conda activate dask-sql`
 
 ## Rust Developers Guide
