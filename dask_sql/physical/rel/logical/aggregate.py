@@ -131,6 +131,23 @@ class DaskAggregatePlugin(BaseRelPlugin):
             )
         ),
         "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
+        "stddev": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddevsamp": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddevpop": AggregationSpecification(
+            dd.Aggregation(
+                "stddevpop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                )
+                ** (1 / 2),
+            )
+        ),
         "bit_and": AggregationSpecification(
             ReduceAggregation("bit_and", operator.and_)
         ),
