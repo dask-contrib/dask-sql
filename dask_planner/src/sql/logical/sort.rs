@@ -1,4 +1,4 @@
-use crate::expression::PyExpr;
+use crate::expression::{py_expr_list, PyExpr};
 
 use crate::sql::exceptions::py_type_err;
 use datafusion_expr::{logical_plan::Sort, Expr, LogicalPlan};
@@ -37,14 +37,7 @@ impl PySort {
     /// Returns a Vec of the sort expressions
     #[pyo3(name = "getCollation")]
     pub fn sort_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        let mut sort_exprs: Vec<PyExpr> = Vec::new();
-        for expr in &self.sort.expr {
-            sort_exprs.push(PyExpr::from(
-                expr.clone(),
-                Some(vec![self.sort.input.clone()]),
-            ));
-        }
-        Ok(sort_exprs)
+        py_expr_list(self.sort.input.clone(), &self.sort.expr)
     }
 
     #[pyo3(name = "getAscending")]
