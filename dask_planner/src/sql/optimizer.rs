@@ -1,5 +1,7 @@
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
+use datafusion_optimizer::eliminate_filter::EliminateFilter;
+use datafusion_optimizer::simplify_expressions::SimplifyExpressions;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
@@ -19,6 +21,8 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
+        rules.push(Box::new(SimplifyExpressions::new()));
+        rules.push(Box::new(EliminateFilter::new()));
         rules.push(Box::new(CommonSubexprEliminate::new()));
         rules.push(Box::new(EliminateLimit::new()));
         rules.push(Box::new(FilterNullJoinKeys::default()));
