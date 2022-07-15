@@ -17,12 +17,12 @@ impl PyAggregate {
     /// Returns a Vec of the group expressions
     #[pyo3(name = "getGroupSets")]
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        py_expr_list(self.aggregate.input.clone(), &self.aggregate.group_expr)
+        py_expr_list(&self.aggregate.input, &self.aggregate.group_expr)
     }
 
     #[pyo3(name = "getNamedAggCalls")]
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        py_expr_list(self.aggregate.input.clone(), &self.aggregate.aggr_expr)
+        py_expr_list(&self.aggregate.input, &self.aggregate.aggr_expr)
     }
 
     #[pyo3(name = "getAggregationFuncName")]
@@ -37,7 +37,7 @@ impl PyAggregate {
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
             Expr::AggregateFunction { fun: _, args, .. } => {
-                py_expr_list(self.aggregate.input.clone(), &args)
+                py_expr_list(&self.aggregate.input, &args)
             }
             _ => panic!("Encountered a non Aggregate type in agg_func_name"),
         }

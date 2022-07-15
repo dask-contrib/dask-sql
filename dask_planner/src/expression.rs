@@ -43,7 +43,7 @@ impl From<ScalarValue> for PyScalarValue {
 }
 
 /// Convert a list of DataFusion Expr to PyExpr
-pub fn py_expr_list(input: Arc<LogicalPlan>, expr: &[Expr]) -> PyResult<Vec<PyExpr>> {
+pub fn py_expr_list(input: &Arc<LogicalPlan>, expr: &[Expr]) -> PyResult<Vec<PyExpr>> {
     Ok(expr
         .iter()
         .map(|e| PyExpr::from(e.clone(), Some(vec![input.clone()])))

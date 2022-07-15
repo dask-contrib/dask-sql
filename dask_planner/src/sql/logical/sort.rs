@@ -37,7 +37,7 @@ impl PySort {
     /// Returns a Vec of the sort expressions
     #[pyo3(name = "getCollation")]
     pub fn sort_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        py_expr_list(self.sort.input.clone(), &self.sort.expr)
+        py_expr_list(&self.sort.input, &self.sort.expr)
     }
 
     #[pyo3(name = "getAscending")]
