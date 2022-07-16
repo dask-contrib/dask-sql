@@ -109,6 +109,19 @@ You can run the tests (after installation) with
 
     pytest tests
 
+GPU-specific tests require additional dependencies specified in `continuous_integration/gpuci/environment.yaml`.
+These can be added to the development environment by running
+
+.. code-block:: bash
+
+    conda env update -n dask-sql -f continuous_integration/gpuci/environment.yaml
+
+And GPU-specific tests can be run with
+
+.. code-block:: bash
+
+    pytest tests -m gpu --rungpu
+
 This repository uses pre-commit hooks. To install them, call
 
 .. code-block:: bash
