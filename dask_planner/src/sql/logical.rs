@@ -120,12 +120,6 @@ impl PyLogicalPlan {
         Ok(py_inputs)
     }
 
-    /// Returns the `LogicalPlan` variant type of the current_node
-    #[pyo3(name = "getLogicalType")]
-    pub fn get_logical_type(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.current_node))
-    }
-
     /// If the LogicalPlan represents access to a Table that instance is returned
     /// otherwise None is returned
     #[pyo3(name = "getTable")]

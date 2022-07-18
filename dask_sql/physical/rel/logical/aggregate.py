@@ -150,9 +150,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        logical_type = rel.getLogicalType()
-        print(f"LogicalType: {logical_type}")
-
         agg = rel.aggregate()
 
         df = dc.df

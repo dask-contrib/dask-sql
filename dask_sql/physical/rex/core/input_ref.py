@@ -17,7 +17,7 @@ class RexInputRefPlugin(BaseRexPlugin):
     calculate a function in a column of a table.
     """
 
-    class_name = ["InputRef"]
+    class_name = "InputRef"
 
     def convert(
         self,

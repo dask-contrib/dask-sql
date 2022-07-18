@@ -21,7 +21,7 @@ class DaskProjectPlugin(BaseRelPlugin):
     (b) only select a subset of the columns
     """
 
-    class_name = ["Projection"]
+    class_name = "Projection"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Get the input of the previous step
