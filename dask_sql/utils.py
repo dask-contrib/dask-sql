@@ -67,8 +67,7 @@ class Pluggable:
         if not replace and all(name in Pluggable.__plugins[cls] for name in names):
             return
 
-        for name in names:
-            Pluggable.__plugins[cls][name] = plugin
+        Pluggable.__plugins[cls].update({name: plugin for name in names})
 
     @classmethod
     def get_plugin(cls, name):
