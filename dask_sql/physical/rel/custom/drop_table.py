@@ -19,7 +19,7 @@ class DropTablePlugin(BaseRelPlugin):
         DROP TABLE <table-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropTable"
+    class_name = ["com.dask.sql.parser.SqlDropTable"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

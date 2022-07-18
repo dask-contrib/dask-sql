@@ -36,7 +36,7 @@ class CreateTablePlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateTable"
+    class_name = ["com.dask.sql.parser.SqlCreateTable"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

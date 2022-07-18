@@ -18,7 +18,7 @@ class RexSubqueryAliasPlugin(BaseRexPlugin):
     we use the plugin approach instead of placing the logic inline
     """
 
-    class_name = "SubqueryAlias"
+    class_name = ["SubqueryAlias"]
 
     def convert(
         self,

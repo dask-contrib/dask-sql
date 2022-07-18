@@ -26,7 +26,7 @@ class CreateSchemaPlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateSchema"
+    class_name = ["com.dask.sql.parser.SqlCreateSchema"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

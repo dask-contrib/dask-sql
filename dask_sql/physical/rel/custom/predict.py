@@ -46,7 +46,7 @@ class PredictModelPlugin(BaseRelPlugin):
     but can also be used without writing a single line of code.
     """
 
-    class_name = "PredictModel"
+    class_name = ["PredictModel"]
 
     def convert(self, sql: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         sql_select = sql.getSelect()

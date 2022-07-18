@@ -22,7 +22,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = "com.dask.sql.parser.SqlShowColumns"
+    class_name = ["com.dask.sql.parser.SqlShowColumns"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

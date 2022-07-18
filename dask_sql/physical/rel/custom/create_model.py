@@ -105,7 +105,7 @@ class CreateModelPlugin(BaseRelPlugin):
           those models, which have a `fit_partial` method.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateModel"
+    class_name = ["com.dask.sql.parser.SqlCreateModel"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

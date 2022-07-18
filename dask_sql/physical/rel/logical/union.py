@@ -29,7 +29,7 @@ class DaskUnionPlugin(BaseRelPlugin):
     It just concatonates the two data frames.
     """
 
-    class_name = "Union"
+    class_name = ["Union"]
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Late import to remove cycling dependency

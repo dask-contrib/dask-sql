@@ -22,7 +22,7 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
     standard `Join`
     """
 
-    class_name = "CrossJoin"
+    class_name = ["CrossJoin"]
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # We now have two inputs (from left and right), so we fetch them both

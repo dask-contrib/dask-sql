@@ -17,7 +17,7 @@ class DaskLimitPlugin(BaseRelPlugin):
     (LIMIT).
     """
 
-    class_name = "Limit"
+    class_name = ["Limit"]
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)

@@ -18,7 +18,7 @@ class DropSchemaPlugin(BaseRelPlugin):
         DROP SCHEMA <schema-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropSchema"
+    class_name = ["com.dask.sql.parser.SqlDropSchema"]
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
