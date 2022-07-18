@@ -37,7 +37,7 @@ class InputUtil(Pluggable):
     def add_plugin_class(cls, plugin_class: BaseInputPlugin, replace=True):
         """Convenience function to add a class directly to the plugins"""
         logger.debug(f"Registering Input plugin for {plugin_class}")
-        cls.add_plugin([str(plugin_class)], plugin_class(), replace=replace)
+        cls.add_plugin(str(plugin_class), plugin_class(), replace=replace)
 
     @classmethod
     def to_dc(
