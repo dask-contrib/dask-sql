@@ -46,7 +46,7 @@ class DaskFilterPlugin(BaseRelPlugin):
     We just evaluate the filter (which is of type RexNode) and apply it
     """
 
-    class_name = ["Filter"]
+    class_name = "Filter"
 
     def convert(
         self,

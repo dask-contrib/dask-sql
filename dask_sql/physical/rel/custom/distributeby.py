@@ -20,7 +20,7 @@ class DistributeByPlugin(BaseRelPlugin):
         SELECT age, name FROM person DISTRIBUTE BY age
     """
 
-    class_name = ["com.dask.sql.parser.SqlDistributeBy"]
+    class_name = "com.dask.sql.parser.SqlDistributeBy"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

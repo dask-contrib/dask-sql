@@ -28,7 +28,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     as this is currently not implemented in dask-sql.
     """
 
-    class_name = ["com.dask.sql.parser.SqlAnalyzeTable"]
+    class_name = "com.dask.sql.parser.SqlAnalyzeTable"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

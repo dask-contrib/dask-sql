@@ -20,7 +20,7 @@ class DaskEmptyRelationPlugin(BaseRelPlugin):
     create an empty DataFrame that the remaining expressions can operate against.
     """
 
-    class_name = ["EmptyRelation"]
+    class_name = "EmptyRelation"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         return DataContainer(

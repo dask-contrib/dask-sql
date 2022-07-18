@@ -118,7 +118,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = ["Aggregate"]
+    class_name = "Aggregate"
 
     AGGREGATION_MAPPING = {
         "sum": AggregationSpecification("sum", AggregationOnPandas("sum")),

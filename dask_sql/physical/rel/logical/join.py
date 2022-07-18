@@ -36,7 +36,7 @@ class DaskJoinPlugin(BaseRelPlugin):
     but so far, it is the only solution...
     """
 
-    class_name = ["Join"]
+    class_name = "Join"
 
     JOIN_TYPE_MAPPING = {
         "INNER": "inner",

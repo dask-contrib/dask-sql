@@ -19,7 +19,7 @@ class DropModelPlugin(BaseRelPlugin):
         DROP MODEL <table-name>
     """
 
-    class_name = ["com.dask.sql.parser.SqlDropModel"]
+    class_name = "com.dask.sql.parser.SqlDropModel"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

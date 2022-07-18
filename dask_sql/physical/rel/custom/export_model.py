@@ -42,7 +42,7 @@ class ExportModelPlugin(BaseRelPlugin):
                 since later is sklearn compatible
     """
 
-    class_name = ["com.dask.sql.parser.SqlExportModel"]
+    class_name = "com.dask.sql.parser.SqlExportModel"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

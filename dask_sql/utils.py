@@ -2,7 +2,7 @@ import importlib
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -62,8 +62,11 @@ class Pluggable:
     __plugins = defaultdict(dict)
 
     @classmethod
-    def add_plugin(cls, names: List[str], plugin, replace=True):
+    def add_plugin(cls, names, plugin, replace=True):
         """Add a plugin with the given name"""
+        if isinstance(names, str):
+            names = [names]
+
         if not replace and all(name in Pluggable.__plugins[cls] for name in names):
             return
 

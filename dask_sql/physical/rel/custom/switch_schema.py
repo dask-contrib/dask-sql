@@ -18,7 +18,7 @@ class SwitchSchemaPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = ["com.dask.sql.parser.SqlUseSchema"]
+    class_name = "com.dask.sql.parser.SqlUseSchema"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

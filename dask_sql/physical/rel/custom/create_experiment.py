@@ -95,7 +95,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
     """
 
-    class_name = ["com.dask.sql.parser.SqlCreateExperiment"]
+    class_name = "com.dask.sql.parser.SqlCreateExperiment"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

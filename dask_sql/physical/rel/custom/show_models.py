@@ -21,7 +21,7 @@ class ShowModelsPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = ["com.dask.sql.parser.SqlShowModels"]
+    class_name = "com.dask.sql.parser.SqlShowModels"
 
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"

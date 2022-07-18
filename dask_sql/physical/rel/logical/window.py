@@ -218,7 +218,7 @@ class DaskWindowPlugin(BaseRelPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = ["Window"]
+    class_name = "Window"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately

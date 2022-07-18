@@ -23,7 +23,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
     Calcite will always refer to columns via index.
     """
 
-    class_name = ["TableScan"]
+    class_name = "TableScan"
 
     def convert(
         self,
