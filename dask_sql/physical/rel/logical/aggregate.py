@@ -118,7 +118,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = "Aggregate"
+    class_name = ["Aggregate", "Distinct"]
 
     AGGREGATION_MAPPING = {
         "sum": AggregationSpecification("sum", AggregationOnPandas("sum")),
@@ -149,6 +149,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
+
+        logical_type = rel.getLogicalType()
+        print(f"LogicalType: {logical_type}")
 
         agg = rel.aggregate()
 

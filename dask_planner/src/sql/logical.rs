@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod cross_join;
+mod distinct;
 mod explain;
 mod filter;
 mod join;
@@ -71,6 +72,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Distinct as PyDistinct
+    pub fn distinct(&self) -> PyResult<distinct::PyDistinct> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
         to_py_plan(self.current_node.as_ref())
@@ -118,6 +124,12 @@ impl PyLogicalPlan {
             py_inputs.push(input.clone().into());
         }
         Ok(py_inputs)
+    }
+
+    /// Returns the `LogicalPlan` variant type of the current_node
+    #[pyo3(name = "getLogicalType")]
+    pub fn get_logical_type(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.current_node))
     }
 
     /// If the LogicalPlan represents access to a Table that instance is returned

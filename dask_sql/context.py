@@ -104,7 +104,6 @@ class Context:
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskCrossJoinPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.DaskDistinctPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskEmptyRelationPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
