@@ -28,7 +28,7 @@ class PluginTest2(Pluggable):
 
 
 def test_add_plugin():
-    PluginTest1.add_plugin("some_key", "value")
+    PluginTest1.add_plugin(["some_key"], "value")
 
     assert PluginTest1.get_plugin("some_key") == "value"
     assert PluginTest1().get_plugin("some_key") == "value"
@@ -38,17 +38,17 @@ def test_add_plugin():
 
 
 def test_overwrite():
-    PluginTest1.add_plugin("some_key", "value")
+    PluginTest1.add_plugin(["some_key"], "value")
 
     assert PluginTest1.get_plugin("some_key") == "value"
     assert PluginTest1().get_plugin("some_key") == "value"
 
-    PluginTest1.add_plugin("some_key", "value_2")
+    PluginTest1.add_plugin(["some_key"], "value_2")
 
     assert PluginTest1.get_plugin("some_key") == "value_2"
     assert PluginTest1().get_plugin("some_key") == "value_2"
 
-    PluginTest1.add_plugin("some_key", "value_3", replace=False)
+    PluginTest1.add_plugin(["some_key"], "value_3", replace=False)
 
     assert PluginTest1.get_plugin("some_key") == "value_2"
     assert PluginTest1().get_plugin("some_key") == "value_2"
