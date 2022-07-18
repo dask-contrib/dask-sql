@@ -1,4 +1,4 @@
-use crate::expression::PyExpr;
+use crate::expression::{py_expr_list, PyExpr};
 
 use datafusion_expr::{logical_plan::Aggregate, logical_plan::Distinct, Expr, LogicalPlan};
 
@@ -17,30 +17,18 @@ impl PyAggregate {
     /// Returns a Vec of the group expressions
     #[pyo3(name = "getGroupSets")]
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        let mut group_exprs: Vec<PyExpr> = Vec::new();
         match &self.aggregate {
-            Some(e) => {
-                for expr in &e.group_expr {
-                    group_exprs.push(PyExpr::from(expr.clone(), Some(vec![e.input.clone()])));
-                }
-            }
-            None => (),
+            Some(e) => py_expr_list(&e.input, &e.group_expr),
+            None => Ok(vec![]),
         }
-        Ok(group_exprs)
     }
 
     #[pyo3(name = "getNamedAggCalls")]
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
-        let mut agg_exprs: Vec<PyExpr> = Vec::new();
         match &self.aggregate {
-            Some(e) => {
-                for expr in &e.aggr_expr {
-                    agg_exprs.push(PyExpr::from(expr.clone(), Some(vec![e.input.clone()])));
-                }
-            }
-            None => (),
+            Some(e) => py_expr_list(&e.input, &e.group_expr),
+            None => Ok(vec![]),
         }
-        Ok(agg_exprs)
     }
 
     #[pyo3(name = "getAggregationFuncName")]
@@ -53,24 +41,13 @@ impl PyAggregate {
 
     #[pyo3(name = "getArgs")]
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        Ok(match expr.expr {
-            Expr::AggregateFunction { fun: _, args, .. } => {
-                let mut exprs: Vec<PyExpr> = Vec::new();
-                match &self.aggregate {
-                    Some(e) => {
-                        for expr in args {
-                            exprs.push(PyExpr {
-                                input_plan: Some(vec![e.input.clone()]),
-                                expr,
-                            });
-                        }
-                    }
-                    None => (),
-                }
-                exprs
-            }
+        match expr.expr {
+            Expr::AggregateFunction { fun: _, args, .. } => match &self.aggregate {
+                Some(e) => py_expr_list(&e.input, &args),
+                None => Ok(vec![]),
+            },
             _ => panic!("Encountered a non Aggregate type in agg_func_name"),
-        })
+        }
     }
 
     #[pyo3(name = "isDistinct")]
