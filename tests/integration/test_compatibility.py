@@ -90,16 +90,16 @@ def make_rand_df(size: int, **kwargs):
     return pd.DataFrame(data)
 
 
-# @pytest.mark.skip(reason="WIP DataFusion")
-# def test_basic_select_from():
-#     df = make_rand_df(5, a=(int, 2), b=(str, 3), c=(float, 4))
-#     eq_sqlite("SELECT 1 AS a, 1.5 AS b, 'x' AS c")
-#     eq_sqlite("SELECT 1+2 AS a, 1.5*3 AS b, 'x' AS c")
-#     eq_sqlite("SELECT * FROM a", a=df)
-#     eq_sqlite("SELECT * FROM a AS x", a=df)
-#     eq_sqlite("SELECT b AS bb, a+1-2*3.0/4 AS cc, x.* FROM a AS x", a=df)
-#     eq_sqlite("SELECT *, 1 AS x, 2.5 AS y, 'z' AS z FROM a AS x", a=df)
-#     eq_sqlite("SELECT *, -(1.0+a)/3 AS x, +(2.5) AS y FROM a AS x", a=df)
+@pytest.mark.skip(reason="WIP DataFusion")
+def test_basic_select_from():
+    df = make_rand_df(5, a=(int, 2), b=(str, 3), c=(float, 4))
+    eq_sqlite("SELECT 1 AS a, 1.5 AS b, 'x' AS c")
+    eq_sqlite("SELECT 1+2 AS a, 1.5*3 AS b, 'x' AS c")
+    eq_sqlite("SELECT * FROM a", a=df)
+    eq_sqlite("SELECT * FROM a AS x", a=df)
+    eq_sqlite("SELECT b AS bb, a+1-2*3.0/4 AS cc, x.* FROM a AS x", a=df)
+    eq_sqlite("SELECT *, 1 AS x, 2.5 AS y, 'z' AS z FROM a AS x", a=df)
+    eq_sqlite("SELECT *, -(1.0+a)/3 AS x, +(2.5) AS y FROM a AS x", a=df)
 
 
 def test_case_when():
