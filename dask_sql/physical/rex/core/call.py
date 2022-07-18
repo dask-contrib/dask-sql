@@ -840,7 +840,7 @@ class RexCallPlugin(BaseRexPlugin):
     The inputs can either be a column or a scalar value.
     """
 
-    class_name = "RexCall"
+    class_name = ["RexCall"]
 
     OPERATION_MAPPING = {
         # "binary" functions

@@ -4,7 +4,6 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod cross_join;
-mod distinct;
 mod explain;
 mod filter;
 mod join;
@@ -69,11 +68,6 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::CrossJoin as PyCrossJoin
     pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
-    /// LogicalPlan::Distinct as PyDistinct
-    pub fn distinct(&self) -> PyResult<distinct::PyDistinct> {
         to_py_plan(self.current_node.as_ref())
     }
 

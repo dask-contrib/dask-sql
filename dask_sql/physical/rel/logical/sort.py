@@ -14,7 +14,7 @@ class DaskSortPlugin(BaseRelPlugin):
     DaskSort is used to sort by columns (ORDER BY).
     """
 
-    class_name = "Sort"
+    class_name = ["Sort"]
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)

@@ -87,7 +87,7 @@ class RexLiteralPlugin(BaseRexPlugin):
     e.g. in a filter.
     """
 
-    class_name = "RexLiteral"
+    class_name = ["RexLiteral"]
 
     def convert(
         self,

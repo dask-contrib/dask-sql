@@ -26,7 +26,7 @@ class DaskValuesPlugin(BaseRelPlugin):
     data samples.
     """
 
-    class_name = "com.dask.sql.nodes.DaskValues"
+    class_name = ["com.dask.sql.nodes.DaskValues"]
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
