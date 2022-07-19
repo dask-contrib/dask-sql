@@ -14,6 +14,26 @@ pub struct PyAggregate {
 
 #[pymethods]
 impl PyAggregate {
+    /// Determine the PyExprs that should be "Distinct-ed"
+    #[pyo3(name = "getDistinctColumns")]
+    pub fn distinct_columns(&self) -> PyResult<Vec<String>> {
+        match &self.distinct {
+            Some(e) => {
+                match &*e.input {
+                    // ANSI SQL requires that Unions have the same columns and names
+                    LogicalPlan::Union(union) => Ok(union.schema.field_names()),
+                    LogicalPlan::Projection(projection) => Ok(projection.schema.field_names()),
+                    LogicalPlan::Join(join) => Ok(join.schema.field_names()),
+                    LogicalPlan::TableScan(table_scan) => {
+                        Ok(table_scan.projected_schema.field_names())
+                    }
+                    _ => panic!("getDistinctColumn: unexpected Logical type: {:?}", e.input),
+                }
+            }
+            None => panic!("distinct_columns invoked for non distinct instance"),
+        }
+    }
+
     /// Returns a Vec of the group expressions
     #[pyo3(name = "getGroupSets")]
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
@@ -26,7 +46,7 @@ impl PyAggregate {
     #[pyo3(name = "getNamedAggCalls")]
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
         match &self.aggregate {
-            Some(e) => py_expr_list(&e.input, &e.group_expr),
+            Some(e) => py_expr_list(&e.input, &e.aggr_expr),
             None => Ok(vec![]),
         }
     }
@@ -51,14 +71,10 @@ impl PyAggregate {
     }
 
     #[pyo3(name = "isDistinct")]
-    pub fn distinct(&self, expr: PyExpr) -> PyResult<bool> {
-        Ok(match expr.expr {
-            Expr::AggregateFunction {
-                fun: _,
-                args: _,
-                distinct,
-            } => distinct,
-            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
+    pub fn distinct(&self) -> PyResult<bool> {
+        Ok(match self.distinct {
+            Some(_) => true,
+            None => false,
         })
     }
 }

@@ -170,6 +170,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # To reuse the code, we just create a new column at the end with a single value
             logger.debug("Performing full-table aggregation")
 
+            # If this is a Distinct operation we get the schema from the Distinct input
+            # plan and push those fields into the group_columns
+            if agg.isDistinct():
+                group_columns = agg.getDistinctColumns()
+
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
             rel,
@@ -348,10 +353,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 input_col = additional_column_name
             else:
                 raise NotImplementedError("Can not cope with more than one input")
-
-            # Extract flags (filtering/distinct)
-            if rel.aggregate().isDistinct(expr):  # pragma: no cover
-                raise ValueError("Arrow DataFusion should optimize them away!")
 
             # TODO: DataFusion does not yet have the concept of "filters" in aggregations
             filter_column = None

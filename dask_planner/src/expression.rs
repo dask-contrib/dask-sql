@@ -3,8 +3,8 @@ use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
-use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
+use datafusion_expr::{ExprSchemable, Operator};
 use pyo3::prelude::*;
 use std::convert::From;
 use std::sync::Arc;
@@ -657,3 +657,34 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
         }
     }
 }
+
+// /// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
+// pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
+//     println!("Entering expr_to_field");
+//     match expr {
+//         Expr::Sort { expr, .. } => {
+//             // DataFusion does not support create_name for sort expressions (since they never
+//             // appear in projections) so we just delegate to the contained expression instead
+//             expr_to_field(expr, input_plan)
+//         },
+//         _ => {
+//             println!("Invoking exprlist_to_fields with expr: {:?} and input: {:?}", expr, input_plan);
+//             let field = test(&expr, input_plan)?;
+//             println!("Field: {:?}", field);
+//             Ok(field.clone())
+//         }
+//     }
+// }
+
+// pub fn test(expr: &Expr, plan: &LogicalPlan) -> Result<DFField> {
+//     let input_schema: &Arc<DFSchema> = match &plan {
+//         LogicalPlan::Union(union) => {
+//             println!("Union Schema: {:?}", union.schema);
+//             println!("Union Alias: {:?}", union.alias);
+//             &union.schema
+//         },
+//         _ => plan.schema(),
+//     };
+//     println!("Input Schema: {:?}", input_schema);
+//     expr.to_field(input_schema)
+// }
