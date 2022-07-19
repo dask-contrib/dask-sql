@@ -18,18 +18,7 @@ impl PyAggregate {
     #[pyo3(name = "getDistinctColumns")]
     pub fn distinct_columns(&self) -> PyResult<Vec<String>> {
         match &self.distinct {
-            Some(e) => {
-                match &*e.input {
-                    // ANSI SQL requires that Unions have the same columns and names
-                    LogicalPlan::Union(union) => Ok(union.schema.field_names()),
-                    LogicalPlan::Projection(projection) => Ok(projection.schema.field_names()),
-                    LogicalPlan::Join(join) => Ok(join.schema.field_names()),
-                    LogicalPlan::TableScan(table_scan) => {
-                        Ok(table_scan.projected_schema.field_names())
-                    }
-                    _ => panic!("getDistinctColumn: unexpected Logical type: {:?}", e.input),
-                }
-            }
+            Some(e) => Ok(e.input.schema().field_names()),
             None => panic!("distinct_columns invoked for non distinct instance"),
         }
     }

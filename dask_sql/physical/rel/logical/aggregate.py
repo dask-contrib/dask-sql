@@ -159,7 +159,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
         cc = cc.make_unique()
 
         group_exprs = agg.getGroupSets()
-        group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
+        group_columns = (
+            agg.getDistinctColumns()
+            if agg.isDistinct()
+            else [group_expr.column_name(rel) for group_expr in group_exprs]
+        )
 
         dc = DataContainer(df, cc)
 
@@ -169,11 +173,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # data sample
             # To reuse the code, we just create a new column at the end with a single value
             logger.debug("Performing full-table aggregation")
-
-            # If this is a Distinct operation we get the schema from the Distinct input
-            # plan and push those fields into the group_columns
-            if agg.isDistinct():
-                group_columns = agg.getDistinctColumns()
 
         # Do all aggregates
         df_result, output_column_order = self._do_aggregations(
