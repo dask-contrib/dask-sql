@@ -11,7 +11,6 @@ from pandas.api.indexers import BaseIndexer
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
-from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.sort import sort_partition_func
 from dask_sql.utils import (
@@ -99,7 +98,7 @@ def to_bound_description(
         #     # prevent python to optimize it away and make coverage not respect the
         #     # pragma
         #     dummy = 0  # noqa: F841
-        offset = int(RexLiteralPlugin().convert(offset, None, None))
+        offset = int(offset)
     else:
         offset = None
 
@@ -257,8 +256,10 @@ class DaskWindowPlugin(BaseRelPlugin):
         # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
-
-        # cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = cc.limit_to(
+            cc.columns[constant_count_offset:] + cc.columns[0:constant_count_offset]
+        )
+        cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
 
@@ -362,7 +363,6 @@ class DaskWindowPlugin(BaseRelPlugin):
             # the fields are in the correct order by definition
             field_name = field_names[len(cc.columns) - constant_count_offset]
             cc = cc.add(field_name, c)
-
         dc = DataContainer(df, cc)
         logger.debug(
             f"Removed unneeded columns and registered new ones: {LoggableDataFrame(dc)}."
