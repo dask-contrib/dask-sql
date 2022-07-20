@@ -403,6 +403,7 @@ impl PyExpr {
                 ScalarValue::Float32(_value) => Ok(String::from("Float32")),
                 ScalarValue::Float64(_value) => Ok(String::from("Float64")),
                 ScalarValue::Decimal128(_value, ..) => Ok(String::from("Decimal128")),
+                ScalarValue::Dictionary(..) => Ok(String::from("Dictionary")),
                 ScalarValue::Int8(_value) => Ok(String::from("Int8")),
                 ScalarValue::Int16(_value) => Ok(String::from("Int16")),
                 ScalarValue::Int32(_value) => Ok(String::from("Int32")),
@@ -418,9 +419,15 @@ impl PyExpr {
                 ScalarValue::Date32(_value) => Ok(String::from("Date32")),
                 ScalarValue::Date64(_value) => Ok(String::from("Date64")),
                 ScalarValue::Null => Ok(String::from("Null")),
-                _ => {
-                    panic!("CatchAll")
-                }
+                ScalarValue::TimestampSecond(..) => Ok(String::from("TimestampSecond")),
+                ScalarValue::TimestampMillisecond(..) => Ok(String::from("TimestampMillisecond")),
+                ScalarValue::TimestampMicrosecond(..) => Ok(String::from("TimestampMicrosecond")),
+                ScalarValue::TimestampNanosecond(..) => Ok(String::from("TimestampNanosecond")),
+                ScalarValue::IntervalYearMonth(..) => Ok(String::from("IntervalYearMonth")),
+                ScalarValue::IntervalDayTime(..) => Ok(String::from("IntervalDayTime")),
+                ScalarValue::IntervalMonthDayNano(..) => Ok(String::from("IntervalMonthDayNano")),
+                ScalarValue::List(..) => Ok(String::from("List")),
+                ScalarValue::Struct(..) => Ok(String::from("Struct")),
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
                 BuiltinScalarFunction::Abs => Ok(String::from("Abs")),

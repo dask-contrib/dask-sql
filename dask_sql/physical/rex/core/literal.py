@@ -145,8 +145,37 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Null":
             literal_type = SqlTypeName.NULL
             literal_value = None
+        # elif literal_type == "TimestampSecond":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "TimestampMillisecond":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "TimestampMicrosecond":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "TimestampNanosecond":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "IntervalYearMonth":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "IntervalDayTime":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "IntervalMonthDayNano":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "List":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
+        # elif literal_type == "Struct":
+        #     literal_type = SqlTypeName.
+        #     literal_value =
         else:
-            raise RuntimeError("Failed to determine DataFusion Type in literal.py")
+            raise RuntimeError(
+                f"Failed to map literal type {literal_type} to python type in literal.py"
+            )
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):
         #     return SargPythonImplementation(literal_value, literal_type)
