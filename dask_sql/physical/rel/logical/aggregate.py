@@ -118,7 +118,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     these things via HINTs.
     """
 
-    class_name = "Aggregate"
+    class_name = ["Aggregate", "Distinct"]
 
     AGGREGATION_MAPPING = {
         "sum": AggregationSpecification("sum", AggregationOnPandas("sum")),
@@ -159,7 +159,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
         cc = cc.make_unique()
 
         group_exprs = agg.getGroupSets()
-        group_columns = [group_expr.column_name(rel) for group_expr in group_exprs]
+        group_columns = (
+            agg.getDistinctColumns()
+            if agg.isDistinct()
+            else [group_expr.column_name(rel) for group_expr in group_exprs]
+        )
 
         dc = DataContainer(df, cc)
 
@@ -348,10 +352,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 input_col = additional_column_name
             else:
                 raise NotImplementedError("Can not cope with more than one input")
-
-            # Extract flags (filtering/distinct)
-            if rel.aggregate().isDistinct(expr):  # pragma: no cover
-                raise ValueError("Arrow DataFusion should optimize them away!")
 
             # TODO: DataFusion does not yet have the concept of "filters" in aggregations
             filter_column = None

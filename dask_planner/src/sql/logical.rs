@@ -160,6 +160,7 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
+            LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",
             LogicalPlan::Window(_window) => "Window",
@@ -221,6 +222,16 @@ impl PyLogicalPlan {
 
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
+            }
+            LogicalPlan::Distinct(distinct) => {
+                let schema = distinct.input.schema();
+                let rel_fields: Vec<RelDataTypeField> = schema
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+                Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
                 let schema = self.original_plan.schema();
