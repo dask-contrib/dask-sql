@@ -635,6 +635,19 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getIntervalDayTimeValue")]
+    pub fn interval_day_time_value(&mut self) -> i64 {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::IntervalDayTime(iv) => iv.clone().unwrap(),
+                _ => {
+                    panic!("getValue<T>() - Unexpected value")
+                }
+            },
+            _ => panic!("getValue<T>() - Non literal value encountered"),
+        }
+    }
+
     #[pyo3(name = "isNegated")]
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {
