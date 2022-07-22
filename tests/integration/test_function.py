@@ -201,13 +201,15 @@ def test_reregistration(c):
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64, replace=True)
 
 
-@pytest.mark.parametrize("invalid_dtype", [np.timedelta64, None, "a string"])
-def test_unsupported_dtype(c):
+@pytest.mark.parametrize("dtype", [np.timedelta64, None, "a string"])
+def test_unsupported_dtype(c, dtype):
     def f(x):
         return x**2
 
+    # test that an invalid return type raises
     with pytest.raises(NotImplementedError):
-        c.register_function(f, "f", [("x", np.int64)], np.timedelta64)
+        c.register_function(f, "f", [("x", np.int64)], dtype)
 
+    # test that an invalid param type raises
     with pytest.raises(NotImplementedError):
-        c.register_function(f, "f", [("x", np.timedelta64)], np.int64)
+        c.register_function(f, "f", [("x", dtype)], np.int64)
