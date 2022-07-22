@@ -1,6 +1,7 @@
 try:
     import fugue
     import fugue_dask
+    from dask.distributed import Client
     from fugue import WorkflowDataFrame, register_execution_engine
     from fugue_sql import FugueSQLWorkflow
     from triad.utils.convert import get_caller_global_local_vars
@@ -15,9 +16,20 @@ import dask.dataframe as dd
 
 from dask_sql.context import Context
 
-register_execution_engine(
-    "dask", lambda conf: DaskSQLExecutionEngine(conf), on_dup="overwrite"
-)
+
+def register_engines() -> None:
+    register_execution_engine(
+        "dask",
+        lambda conf, **kwargs: DaskSQLExecutionEngine(conf=conf),
+        on_dup="overwrite",
+    )
+    register_execution_engine(
+        Client,
+        lambda engine, conf, **kwargs: DaskSQLExecutionEngine(
+            dask_client=engine, conf=conf
+        ),
+        on_dup="overwrite",
+    )
 
 
 class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):

@@ -1,6 +1,7 @@
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.distributed import Client
 
 from dask_sql import Context
 from tests.integration.fixtures import skip_if_external_scheduler
@@ -14,6 +15,7 @@ if fugue_sql:
 
 
 def test_simple_statement():
+    client = Client(processes=True)
     with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
         df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
         dag("SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result")
@@ -28,6 +30,14 @@ def test_simple_statement():
         "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result",
         df=pdf,
     ).run("dask")
+
+    return_df = result["result"].as_pandas()
+    assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
+
+    result = fugue_sql.fsql(
+        "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result",
+        df=pdf,
+    ).run(client)
 
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
