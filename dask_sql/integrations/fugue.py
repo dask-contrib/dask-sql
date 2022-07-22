@@ -18,6 +18,9 @@ from dask_sql.context import Context
 
 
 def register_engines() -> None:
+    """Register (overwrite) the default Dask execution engine of Fugue. This
+    function is invoked as an entrypoint, users don't need to call it explicitly.
+    """
     register_execution_engine(
         "dask",
         lambda conf, **kwargs: DaskSQLExecutionEngine(conf=conf),
