@@ -112,7 +112,8 @@ setup(
             "black==22.3.0",
             "isort==5.7.0",
         ],
-        "fugue": ["fugue[sql]>=0.5.3"],
+        # FIXME: tests are failing with fugue 0.7.0
+        "fugue": ["fugue[sql]>=0.5.3,<0.7.0"],
     },
     entry_points={
         "console_scripts": [

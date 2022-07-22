@@ -40,4 +40,5 @@ dependencies:
 - qpd
 - triad
 - pip:
-  - fugue[sql]>=0.5.3
+  # FIXME: tests are failing with fugue 0.7.0
+  - fugue[sql]>=0.5.3,<0.7.0
