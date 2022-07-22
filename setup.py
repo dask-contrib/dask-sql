@@ -112,7 +112,7 @@ setup(
             "black==22.3.0",
             "isort==5.7.0",
         ],
-        # TODO: remove max version constraint when fugue adds back python 3.9+ support
+        # FIXME: tests are failing with fugue 0.7.0
         "fugue": ["fugue[sql]>=0.5.3,<0.7.0"],
     },
     entry_points={
