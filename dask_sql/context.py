@@ -899,10 +899,6 @@ class Context:
     ):
         """Helper function to do the function or aggregation registration"""
 
-        # validate UDF metadata
-        for dt in (*(param[1] for param in parameters), return_type):
-            _ = python_to_sql_type(dt)
-
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
 

@@ -88,6 +88,11 @@ _SQL_TO_PYTHON_FRAMES = {
 def python_to_sql_type(python_type):
     """Mapping between python and SQL types."""
 
+    if python_type in (int, float):
+        python_type = np.dtype(python_type)
+    elif python_type is str:
+        python_type = np.dtype("object")
+
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
