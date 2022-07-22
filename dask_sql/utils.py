@@ -62,12 +62,15 @@ class Pluggable:
     __plugins = defaultdict(dict)
 
     @classmethod
-    def add_plugin(cls, name, plugin, replace=True):
+    def add_plugin(cls, names, plugin, replace=True):
         """Add a plugin with the given name"""
-        if not replace and name in Pluggable.__plugins[cls]:
+        if isinstance(names, str):
+            names = [names]
+
+        if not replace and all(name in Pluggable.__plugins[cls] for name in names):
             return
 
-        Pluggable.__plugins[cls][name] = plugin
+        Pluggable.__plugins[cls].update({name: plugin for name in names})
 
     @classmethod
     def get_plugin(cls, name):
