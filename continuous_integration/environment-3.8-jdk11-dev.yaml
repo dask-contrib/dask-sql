@@ -40,4 +40,4 @@ dependencies:
 - qpd
 - triad
 - pip:
-  - fugue[sql]==0.5.3
+  - fugue>=0.7.0
