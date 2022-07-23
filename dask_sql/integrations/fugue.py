@@ -4,6 +4,7 @@ try:
     from dask.distributed import Client
     from fugue import WorkflowDataFrame, register_execution_engine
     from fugue_sql import FugueSQLWorkflow
+    from triad import run_at_def
     from triad.utils.convert import get_caller_global_local_vars
 except ImportError:  # pragma: no cover
     raise ImportError(
@@ -17,6 +18,7 @@ import dask.dataframe as dd
 from dask_sql.context import Context
 
 
+@run_at_def
 def register_engines() -> None:
     """Register (overwrite) the default Dask execution engine of Fugue. This
     function is invoked as an entrypoint, users don't need to call it explicitly.
