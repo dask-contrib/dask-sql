@@ -1,7 +1,6 @@
 import dask.dataframe as dd
 import pandas as pd
 import pytest
-from dask.distributed import Client
 
 from dask_sql import Context
 from tests.integration.fixtures import skip_if_external_scheduler
@@ -14,8 +13,7 @@ if fugue_sql:
     from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
 
 
-def test_simple_statement():
-    client = Client(processes=True)
+def test_simple_statement(client):
     with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
         df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
         dag("SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result")
@@ -41,12 +39,13 @@ def test_simple_statement():
 
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
+    client.close()
 
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
 @skip_if_external_scheduler
-def test_fsql():
+def test_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
         assert_eq(df, pd.DataFrame({"a": [1]}))
 
