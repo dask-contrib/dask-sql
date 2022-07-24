@@ -13,6 +13,7 @@ if fugue_sql:
     from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
 
 
+@skip_if_external_scheduler
 def test_simple_statement(client):
     with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
         df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
