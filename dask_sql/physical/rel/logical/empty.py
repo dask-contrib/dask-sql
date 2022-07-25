@@ -23,9 +23,13 @@ class DaskEmptyRelationPlugin(BaseRelPlugin):
     class_name = "EmptyRelation"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        empty_relation = rel.empty_relation()
-        col_names = empty_relation.emptyColumnNames()
+        col_names = (
+            rel.empty_relation().emptyColumnNames()
+            if len(rel.empty_relation().emptyColumnNames()) > 0
+            else ["_empty"]
+        )
+        data = None if len(rel.empty_relation().emptyColumnNames()) > 0 else [0]
         return DataContainer(
-            dd.from_pandas(pd.DataFrame(columns=col_names), npartitions=1),
+            dd.from_pandas(pd.DataFrame(data, columns=col_names), npartitions=1),
             ColumnContainer(col_names),
         )

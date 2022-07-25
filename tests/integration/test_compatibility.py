@@ -51,9 +51,6 @@ def eq_sqlite(sql, **dfs):
     dask_result = dask_result.fillna(np.NaN)
     sqlite_result = sqlite_result.fillna(np.NaN)
 
-    print(f"Dask Result: {dask_result.head()}")
-    print(f"Sqlite Result: {sqlite_result}")
-
     assert_eq(dask_result, sqlite_result, check_dtype=False)
 
 
