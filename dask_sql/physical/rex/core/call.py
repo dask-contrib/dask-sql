@@ -298,8 +298,8 @@ class IsTrueOperation(Operation):
         return not pd.isna(df) and df is not None and not np.isnan(df) and bool(df)
 
 
-class InverseOperation(Operation):
-    """The inverse operator"""
+class NegativeOperation(Operation):
+    """The negative operator"""
 
     def __init__(self):
         super().__init__(self.negative_)
@@ -880,7 +880,7 @@ class RexCallPlugin(BaseRexPlugin):
         "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
-        "negative": InverseOperation(),
+        "negative": NegativeOperation(),
         "not": NotOperation(),
         "in list": InListOperation(),
         "is null": IsNullOperation(),
