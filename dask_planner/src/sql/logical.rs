@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod cross_join;
+mod empty_relation;
 mod explain;
 mod filter;
 mod join;
@@ -68,6 +69,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::CrossJoin as PyCrossJoin
     pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::EmptyRelation as PyEmptyRelation
+    pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
         to_py_plan(self.current_node.as_ref())
     }
 
