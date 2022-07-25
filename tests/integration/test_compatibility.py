@@ -90,7 +90,6 @@ def make_rand_df(size: int, **kwargs):
     return pd.DataFrame(data)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_basic_select_from():
     df = make_rand_df(5, a=(int, 2), b=(str, 3), c=(float, 4))
     eq_sqlite("SELECT 1 AS a, 1.5 AS b, 'x' AS c")

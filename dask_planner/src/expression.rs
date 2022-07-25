@@ -368,6 +368,7 @@ impl PyExpr {
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),
+            Expr::Negative(..) => Ok("negative".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
