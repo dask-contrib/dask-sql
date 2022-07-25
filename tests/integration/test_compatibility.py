@@ -51,6 +51,9 @@ def eq_sqlite(sql, **dfs):
     dask_result = dask_result.fillna(np.NaN)
     sqlite_result = sqlite_result.fillna(np.NaN)
 
+    print(f"Dask Result: {dask_result.head()}")
+    print(f"Sqlite Result: {sqlite_result}")
+
     assert_eq(dask_result, sqlite_result, check_dtype=False)
 
 
@@ -158,9 +161,6 @@ def test_order_by_no_limit():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/530"
-)
 def test_order_by_limit():
     a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
     eq_sqlite(
