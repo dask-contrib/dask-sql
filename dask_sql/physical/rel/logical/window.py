@@ -65,6 +65,11 @@ class MinOperation(OverOperation):
         return partitioned_group[value_col].min()
 
 
+class AvgOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].mean()
+
+
 class BoundDescription(
     namedtuple(
         "BoundDescription",
@@ -170,13 +175,13 @@ def map_on_each_group(
     if lower_bound.is_unbounded and (
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
-        windowed_group = partitioned_group.expanding(min_periods=0)
+        windowed_group = partitioned_group.expanding(min_periods=1)
     elif lower_bound.is_preceding and (
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
         windowed_group = partitioned_group.rolling(
             window=lower_bound.offset + 1,
-            min_periods=0,
+            min_periods=1,
         )
     else:
         lower_offset = lower_bound.offset if not lower_bound.is_current_row else 0
@@ -187,7 +192,7 @@ def map_on_each_group(
             upper_offset *= -1
 
         indexer = Indexer(lower_offset, upper_offset)
-        windowed_group = partitioned_group.rolling(window=indexer, min_periods=0)
+        windowed_group = partitioned_group.rolling(window=indexer, min_periods=1)
 
     # Calculate the results
     new_columns = {}
@@ -230,6 +235,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         "single_value": FirstValueOperation(),
         "first_value": FirstValueOperation(),
         "last_value": LastValueOperation(),
+        "avg": AvgOperation(),
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -305,7 +311,8 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         logger.debug(f"Will create {newly_created_columns} new columns")
 
-        # Calcite always creates window bounds when not specified as unbound preceding and current row
+        # Calcite always creates window bounds when not specified as unbound preceding and current row (if no order by)
+        # unbounded preceding and unbounded following if there's an order by
         if not rel.window().getWindowFrame(window):
             lower_bound = BoundDescription(
                 is_unbounded=True,
@@ -314,12 +321,22 @@ class DaskWindowPlugin(BaseRelPlugin):
                 is_current_row=False,
                 offset=None,
             )
-            upper_bound = BoundDescription(
-                is_unbounded=False,
-                is_preceding=False,
-                is_following=False,
-                is_current_row=True,
-                offset=None,
+            upper_bound = (
+                BoundDescription(
+                    is_unbounded=False,
+                    is_preceding=False,
+                    is_following=False,
+                    is_current_row=True,
+                    offset=None,
+                )
+                if sort_columns
+                else BoundDescription(
+                    is_unbounded=True,
+                    is_preceding=False,
+                    is_following=True,
+                    is_current_row=False,
+                    offset=None,
+                )
             )
         else:
             lower_bound = to_bound_description(
