@@ -13,7 +13,7 @@ dependencies:
 - mlflow
 - mock
 - nest-asyncio
-- pandas=1.1.2
+- pandas=1.4.0
 - pre-commit
 - prompt_toolkit
 - psycopg2
