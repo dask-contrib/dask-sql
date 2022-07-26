@@ -86,7 +86,7 @@ def test_over_calls(c, user_table_1):
         -- SINGLE_VALUE(user_id*10 - b) OVER (PARTITION BY user_id ORDER BY b) AS "O3",
         LAST_VALUE(user_id*10 - b) OVER (PARTITION BY user_id ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "O4",
         SUM(user_id) OVER (PARTITION BY user_id ORDER BY b) AS "O5",
-        -- AVG(user_id) OVER (PARTITION BY user_id ORDER BY b) AS "O6",
+        AVG(user_id) OVER (PARTITION BY user_id ORDER BY b) AS "O6",
         COUNT(*) OVER (PARTITION BY user_id ORDER BY b) AS "O7",
         COUNT(b) OVER (PARTITION BY user_id ORDER BY b) AS "O7b",
         MAX(b) OVER (PARTITION BY user_id ORDER BY b) AS "O8",
@@ -103,7 +103,7 @@ def test_over_calls(c, user_table_1):
             # "O3": [19, 7, 19, 27],
             "O4": [17, 7, 17, 27],
             "O5": [4, 1, 2, 3],
-            # "O6": [2, 1, 2, 3],
+            "O6": [2, 1, 2, 3],
             "O7": [2, 1, 1, 1],
             "O7b": [2, 1, 1, 1],
             "O8": [3, 3, 1, 3],
@@ -131,6 +131,7 @@ def test_over_with_windows(c):
         SUM(a) OVER (ORDER BY a ROWS BETWEEN UNBOUNDED PRECEDING AND 3 FOLLOWING) AS "O7",
         SUM(a) OVER (ORDER BY a ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "O8",
         SUM(a) OVER (ORDER BY a ROWS BETWEEN 3 FOLLOWING AND 3 FOLLOWING) AS "O9",
+        COUNT(a) OVER (ORDER BY a ROWS BETWEEN 3 FOLLOWING AND 3 FOLLOWING) AS "O9a",
         SUM(a) OVER (ORDER BY a ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS "O10"
     FROM tmp
     """
@@ -147,6 +148,7 @@ def test_over_with_windows(c):
             "O7": [6, 10, 10, 10, 10],
             "O8": [10, 10, 10, 10, 10],
             "O9": [3, 4, None, None, None],
+            "O9a": [1, 1, 0, 0, 0],
             "O10": [None, 0, 1, 3, 6],
         }
     )
