@@ -26,6 +26,7 @@ def _register_engines() -> None:
         lambda conf, **kwargs: DaskSQLExecutionEngine(conf=conf),
         on_dup="overwrite",
     )
+
     register_execution_engine(
         Client,
         lambda engine, conf, **kwargs: DaskSQLExecutionEngine(
