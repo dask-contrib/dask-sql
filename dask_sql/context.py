@@ -748,7 +748,7 @@ class Context:
                 logger.debug("No custom functions defined.")
             for function_description in schema.function_lists:
                 name = function_description.name
-                sql_return_type = python_to_sql_type(function_description.return_type)
+                sql_return_type = function_description.return_type
                 if function_description.aggregation:
                     logger.debug(f"Adding function '{name}' to schema as aggregation.")
                     dask_function = DaskAggregateFunction(name, sql_return_type)
@@ -771,10 +771,7 @@ class Context:
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
         for parameter in function_description.parameters:
-            param_name, param_type = parameter
-            sql_param_type = python_to_sql_type(param_type)
-
-            dask_function.addParameter(param_name, sql_param_type, False)
+            dask_function.addParameter(*parameter, False)
 
         return dask_function
 
@@ -898,8 +895,15 @@ class Context:
         row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
+
         schema_name = schema_name or self.schema_name
         schema = self.schema[schema_name]
+
+        # validate and cache UDF metadata
+        sql_parameters = [
+            (name, python_to_sql_type(param_type)) for name, param_type in parameters
+        ]
+        sql_return_type = python_to_sql_type(return_type)
 
         if not aggregation:
             f = UDF(f, row_udf, parameters, return_type)
@@ -920,9 +924,13 @@ class Context:
                 )
 
         schema.function_lists.append(
-            FunctionDescription(name.upper(), parameters, return_type, aggregation)
+            FunctionDescription(
+                name.upper(), sql_parameters, sql_return_type, aggregation
+            )
         )
         schema.function_lists.append(
-            FunctionDescription(name.lower(), parameters, return_type, aggregation)
+            FunctionDescription(
+                name.lower(), sql_parameters, sql_return_type, aggregation
+            )
         )
         schema.functions[lower_name] = f
