@@ -18,5 +18,5 @@ dependencies:
   - pygments
   - tabulate
   - nest-asyncio
-  - setuptools-rust>=1.2.0
+  - setuptools-rust>=1.4.1
   - rust>=1.60.0
