@@ -112,14 +112,16 @@ setup(
             "black==22.3.0",
             "isort==5.7.0",
         ],
-        # FIXME: tests are failing with fugue 0.7.0
-        "fugue": ["fugue[sql]>=0.5.3,<0.7.0"],
+        "fugue": ["fugue>=0.7.0"],
     },
     entry_points={
         "console_scripts": [
             "dask-sql-server = dask_sql.server.app:main",
             "dask-sql = dask_sql.cmd:main",
-        ]
+        ],
+        "fugue.plugins": [
+            "dasksql = dask_sql.integrations.fugue:_register_engines[fugue]"
+        ],
     },
     zip_safe=False,
     cmdclass=cmdclass,
