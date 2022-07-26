@@ -92,7 +92,7 @@ def to_bound_description(
     """Convert the java object "java_window" to a python representation,
     replacing any literals or references to constants"""
     offset = windowFrame.getOffset()
-    if offset:
+    if offset is not None:
         # if isinstance(offset, org.apache.calcite.rex.RexInputRef):
         #     # For calcite, the constant pool are normal "columns",
         #     # starting at (number of real columns + 1).
