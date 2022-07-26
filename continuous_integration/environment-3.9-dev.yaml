@@ -13,7 +13,7 @@ dependencies:
 - mlflow
 - mock
 - nest-asyncio
-- pandas>=1.1.2
+- pandas>=1.4.0
 - pre-commit
 - prompt_toolkit
 - psycopg2
@@ -26,7 +26,7 @@ dependencies:
 - python=3.9
 - rust>=1.60.0
 - scikit-learn>=1.0.0
-- setuptools-rust>=1.1.2
+- setuptools-rust>=1.4.1
 - sphinx
 - tpot
 - tzlocal>=2.1
