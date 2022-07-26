@@ -4,8 +4,6 @@ from typing import Any, Dict, List, Tuple, Union
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_sql.mappings import python_to_sql_type
-
 ColumnType = Union[str, int]
 
 FunctionDescription = namedtuple(
@@ -199,10 +197,6 @@ class UDF:
         self.func = func
 
         self.names = [param[0] for param in params]
-
-        # validate UDF metadata
-        for dt in (*(param[1] for param in params), return_type):
-            _ = python_to_sql_type(dt)
 
         self.meta = (None, return_type)
 

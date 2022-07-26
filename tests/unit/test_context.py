@@ -6,6 +6,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
+from dask_sql.mappings import python_to_sql_type
 from tests.utils import assert_eq
 
 try:
@@ -198,6 +199,11 @@ def test_tables_from_stack(gpu):
     g(gpu=gpu)
 
 
+int_sql_type = python_to_sql_type(int)
+float_sql_type = python_to_sql_type(float)
+str_sql_type = python_to_sql_type(str)
+
+
 def test_function_adding():
     c = Context()
 
@@ -211,12 +217,12 @@ def test_function_adding():
     assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
-    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int)]
-    assert c.schema[c.schema_name].function_lists[0].return_type == float
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int_sql_type)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == float_sql_type
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
-    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int)]
-    assert c.schema[c.schema_name].function_lists[1].return_type == float
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int_sql_type)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == float_sql_type
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
@@ -226,12 +232,16 @@ def test_function_adding():
     assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 4
     assert c.schema[c.schema_name].function_lists[2].name == "F"
-    assert c.schema[c.schema_name].function_lists[2].parameters == [("x", float)]
-    assert c.schema[c.schema_name].function_lists[2].return_type == int
+    assert c.schema[c.schema_name].function_lists[2].parameters == [
+        ("x", float_sql_type)
+    ]
+    assert c.schema[c.schema_name].function_lists[2].return_type == int_sql_type
     assert not c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
-    assert c.schema[c.schema_name].function_lists[3].parameters == [("x", float)]
-    assert c.schema[c.schema_name].function_lists[3].return_type == int
+    assert c.schema[c.schema_name].function_lists[3].parameters == [
+        ("x", float_sql_type)
+    ]
+    assert c.schema[c.schema_name].function_lists[3].return_type == int_sql_type
     assert not c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
@@ -242,12 +252,12 @@ def test_function_adding():
     assert c.schema[c.schema_name].functions["f"].func == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
-    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str)]
-    assert c.schema[c.schema_name].function_lists[0].return_type == str
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str_sql_type)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == str_sql_type
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
-    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
-    assert c.schema[c.schema_name].function_lists[1].return_type == str
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str_sql_type)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == str_sql_type
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
 
@@ -264,12 +274,12 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].functions["f"] == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
-    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int)]
-    assert c.schema[c.schema_name].function_lists[0].return_type == float
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", int_sql_type)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == float_sql_type
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
-    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int)]
-    assert c.schema[c.schema_name].function_lists[1].return_type == float
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", int_sql_type)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == float_sql_type
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
@@ -279,12 +289,16 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].functions["f"] == f
     assert len(c.schema[c.schema_name].function_lists) == 4
     assert c.schema[c.schema_name].function_lists[2].name == "F"
-    assert c.schema[c.schema_name].function_lists[2].parameters == [("x", float)]
-    assert c.schema[c.schema_name].function_lists[2].return_type == int
+    assert c.schema[c.schema_name].function_lists[2].parameters == [
+        ("x", float_sql_type)
+    ]
+    assert c.schema[c.schema_name].function_lists[2].return_type == int_sql_type
     assert c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
-    assert c.schema[c.schema_name].function_lists[3].parameters == [("x", float)]
-    assert c.schema[c.schema_name].function_lists[3].return_type == int
+    assert c.schema[c.schema_name].function_lists[3].parameters == [
+        ("x", float_sql_type)
+    ]
+    assert c.schema[c.schema_name].function_lists[3].return_type == int_sql_type
     assert c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
@@ -295,12 +309,12 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].functions["f"] == f
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
-    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str)]
-    assert c.schema[c.schema_name].function_lists[0].return_type == str
+    assert c.schema[c.schema_name].function_lists[0].parameters == [("x", str_sql_type)]
+    assert c.schema[c.schema_name].function_lists[0].return_type == str_sql_type
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
-    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str)]
-    assert c.schema[c.schema_name].function_lists[1].return_type == str
+    assert c.schema[c.schema_name].function_lists[1].parameters == [("x", str_sql_type)]
+    assert c.schema[c.schema_name].function_lists[1].return_type == str_sql_type
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
 
