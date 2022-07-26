@@ -40,7 +40,6 @@ def test_simple_statement(client):
 
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
-    client.close()
 
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
