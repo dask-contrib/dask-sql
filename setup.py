@@ -120,7 +120,7 @@ setup(
             "dask-sql = dask_sql.cmd:main",
         ],
         "fugue.plugins": [
-            "dasksql = dask_sql.integrations.fugue:register_engines[fugue]"
+            "dasksql = dask_sql.integrations.fugue:_register_engines[fugue]"
         ],
     },
     zip_safe=False,

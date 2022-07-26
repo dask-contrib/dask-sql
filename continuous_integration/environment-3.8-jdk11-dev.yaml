@@ -32,4 +32,4 @@ dependencies:
 - tzlocal=2.1
 - uvicorn=0.11.3
 - pip:
-  - fugue>=0.7.0
+  - fugue==0.7.0
