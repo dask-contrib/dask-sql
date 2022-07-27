@@ -755,6 +755,17 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
+class CoalesceOperation(Operation):
+    def __init__(self):
+        super().__init__(self.coalesce)
+
+    def coalesce(self, *operands):
+        for operand in operands:
+            if not pd.isna(operand):
+                return operand
+        return
+
+
 class DatePartOperation(Operation):
     """
     Function for performing PostgreSQL like functions in a more convenient setting.
@@ -894,6 +905,7 @@ class RexCallPlugin(BaseRexPlugin):
         "rand": RandOperation(),
         "rand_integer": RandIntegerOperation(),
         "search": SearchOperation(),
+        "coalesce": CoalesceOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),

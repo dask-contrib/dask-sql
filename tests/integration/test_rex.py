@@ -288,6 +288,36 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+def test_coalesce(c):
+    df = dd.from_pandas(pd.DataFrame({"b": [1, 2, 3]}), npartitions=1)
+    c.create_table("df", df)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(3, 5) as c1,
+            COALESCE(SUM(b), NULL) as c2,
+            COALESCE(NULL, 'hi') as c3,
+            COALESCE(NULL, NULL, 'bye', 5/0) as c4,
+            COALESCE(NULL, 3/2, NULL, 'fly') as c5
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [3],
+            "c2": [6],
+            "c3": ["hi"],
+            "c4": ["bye"],
+            "c5": [1.5],
+        }
+    )
+
+    expected_df["c5"] = expected_df["c5"].astype("string")
+    assert_eq(df, expected_df)
+
+
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
