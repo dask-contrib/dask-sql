@@ -30,6 +30,9 @@ export CUDA_REL=${CUDA_VERSION%.*}
 # SETUP - Check environment
 ################################################################################
 
+gpuci_logger "Download TPC-DS datasets"
+gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb ./tpc-ds/
+
 gpuci_logger "Check environment variables"
 env
 
