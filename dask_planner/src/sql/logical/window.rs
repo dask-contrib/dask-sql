@@ -52,7 +52,7 @@ impl PyWindow {
         py_expr_list(&self.window.input, &self.window.window_expr)
     }
 
-    /// Returns order by columns from a sort expression
+    /// Returns order by columns in a window function expression
     #[pyo3(name = "getSortExprs")]
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
@@ -64,7 +64,7 @@ impl PyWindow {
         }
     }
 
-    /// Return partition by columns from a sort expression
+    /// Return partition by columns in a window function expression
     #[pyo3(name = "getPartitionExprs")]
     pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
@@ -102,7 +102,7 @@ impl PyWindow {
         }
     }
 
-    /// Returns a Pywindow frame for a given windowFunction Expression
+    /// Returns a Pywindow frame for a given window function expression
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
         match expr.expr {
@@ -117,7 +117,7 @@ impl PyWindow {
 
 #[pymethods]
 impl PyWindowFrame {
-    /// Returns window expressions
+    /// Returns the window frame units for the bounds
     #[pyo3(name = "getFrameUnit")]
     pub fn get_frame_units(&self) -> PyResult<String> {
         Ok(self.window_frame.units.to_string())
@@ -152,7 +152,7 @@ impl PyWindowFrameBound {
             _ => false,
         }
     }
-    /// Returns if the frame bound is preceding
+    /// Returns if the frame bound is following
     #[pyo3(name = "isFollowing")]
     pub fn is_following(&self) -> bool {
         match self.frame_bound {
@@ -168,7 +168,7 @@ impl PyWindowFrameBound {
             WindowFrameBound::CurrentRow => None,
         }
     }
-    /// Returns if the frame bound is preceding
+    /// Returns if the frame bound is unbounded
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> bool {
         match self.frame_bound {

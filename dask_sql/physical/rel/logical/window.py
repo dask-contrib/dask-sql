@@ -92,8 +92,6 @@ def to_bound_description(
     offset = windowFrame.getOffset()
     if offset is not None:
         offset = int(offset)
-    else:
-        offset = None
 
     return BoundDescription(
         is_unbounded=bool(windowFrame.isUnbounded()),
