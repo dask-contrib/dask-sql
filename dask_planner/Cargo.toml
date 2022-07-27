@@ -22,7 +22,6 @@ mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
 async-trait = "0.1.41"
 sqlparser = "0.18"
-serde_json = { version="1.0.79", features = ["std"] }
 
 
 [lib]
