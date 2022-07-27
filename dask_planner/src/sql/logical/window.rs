@@ -1,4 +1,4 @@
-use crate::expression::PyExpr;
+use crate::expression::{py_expr_list, PyExpr};
 use crate::sql::exceptions::py_type_err;
 use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
 use pyo3::prelude::*;
@@ -49,30 +49,14 @@ impl PyWindow {
     /// Returns window expressions
     #[pyo3(name = "getGroups")]
     pub fn get_window_expr(&self) -> PyResult<Vec<PyExpr>> {
-        let mut window_exprs: Vec<PyExpr> = Vec::new();
-        for expr in &self.window.window_expr {
-            window_exprs.push(PyExpr::from(
-                expr.clone(),
-                Some(vec![self.window.input.clone()]),
-            ));
-        }
-        Ok(window_exprs)
+        py_expr_list(&self.window.input, &self.window.window_expr)
     }
 
     /// Returns order by columns from a sort expression
     #[pyo3(name = "getSortExprs")]
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
-            Expr::WindowFunction { order_by, .. } => {
-                let mut sort_exprs: Vec<PyExpr> = Vec::new();
-                for expr in order_by {
-                    sort_exprs.push(PyExpr::from(
-                        expr.clone(),
-                        Some(vec![self.window.input.clone()]),
-                    ));
-                }
-                Ok(sort_exprs)
-            }
+            Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
                 expr
@@ -85,15 +69,20 @@ impl PyWindow {
     pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
             Expr::WindowFunction { partition_by, .. } => {
-                let mut partition_exprs = Vec::new();
-                for expr in partition_by {
-                    partition_exprs.push(PyExpr::from(
-                        expr.clone(),
-                        Some(vec![self.window.input.clone()]),
-                    ));
-                }
-                Ok(partition_exprs)
+                py_expr_list(&self.window.input, &partition_by)
             }
+            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Provided Expr {:?} is not a WindowFunction type",
+                expr
+            ))),
+        }
+    }
+
+    /// Return input args for window function
+    #[pyo3(name = "getArgs")]
+    pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
+        match expr.expr {
+            Expr::WindowFunction { args, .. } => py_expr_list(&self.window.input, &args),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
                 expr
@@ -110,26 +99,6 @@ impl PyWindow {
         })
     }
 
-    /// Return input args for window function
-    #[pyo3(name = "getArgs")]
-    pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        match expr.expr {
-            Expr::WindowFunction { args, .. } => {
-                let mut operands = Vec::new();
-                for expr in args {
-                    operands.push(PyExpr::from(
-                        expr.clone(),
-                        Some(vec![self.window.input.clone()]),
-                    ));
-                }
-                Ok(operands)
-            }
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
-                "Provided Expr {:?} is not a WindowFunction type",
-                expr
-            ))),
-        }
-    }
     /// Returns a Pywindow frame for a given windowFunction Expression
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
@@ -192,24 +161,19 @@ impl PyWindowFrameBound {
     #[pyo3(name = "getOffset")]
     pub fn get_offset(&self) -> Option<u64> {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) => val,
+            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => val,
             WindowFrameBound::CurrentRow => None,
-            WindowFrameBound::Following(val) => val,
         }
     }
     /// Returns if the frame bound is preceding
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> bool {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) => match val {
+            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => match val {
                 Some(_) => false,
                 None => true,
             },
             WindowFrameBound::CurrentRow => false,
-            WindowFrameBound::Following(val) => match val {
-                Some(_) => false,
-                None => true,
-            },
         }
     }
 }
