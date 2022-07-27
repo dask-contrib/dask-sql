@@ -77,8 +77,8 @@ class BoundDescription(
     )
 ):
     """
-    Small helper class to wrap a org.apache.calcite.rex.RexWindowBounds
-    Java object, as we can not ship it to to the dask workers
+    Small helper class to wrap a PyWindowFrame
+    object. We can directly ship PyWindowFrame to workers in the future
     """
 
     pass
@@ -86,23 +86,11 @@ class BoundDescription(
 
 def to_bound_description(
     windowFrame,
-    constants,
-    constant_count_offset: int,
 ) -> BoundDescription:
-    """Convert the java object "java_window" to a python representation,
+    """Convert the PyWindowFrame object to a BoundDescription representation,
     replacing any literals or references to constants"""
     offset = windowFrame.getOffset()
     if offset is not None:
-        # if isinstance(offset, org.apache.calcite.rex.RexInputRef):
-        #     # For calcite, the constant pool are normal "columns",
-        #     # starting at (number of real columns + 1).
-        #     # Here, we do the de-referencing.
-        #     index = offset.getIndex() - constant_count_offset
-        #     offset = constants[index]
-        # else:  # pragma: no cover
-        #     # prevent python to optimize it away and make coverage not respect the
-        #     # pragma
-        #     dummy = 0  # noqa: F841
         offset = int(offset)
     else:
         offset = None
@@ -228,7 +216,6 @@ class DaskWindowPlugin(BaseRelPlugin):
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
         "$sum0": SumOperation(),
         "sum": SumOperation(),
-        # Is replaced by a sum and count by calcite: "avg": ExplodedOperation(AvgOperation()),
         "count": CountOperation(),
         "max": MaxOperation(),
         "min": MinOperation(),
@@ -241,29 +228,20 @@ class DaskWindowPlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        # During optimization, some constants might end up in an internal
-        # constant pool. We need to dereference them here, as they
-        # are treated as "normal" columns.
-        # Unfortunately they are only referenced by their index,
-        # (which come after the real columns), so we need
-        # to always substract the number of real columns.
-        # constants = list(rel.getConstants())
-        # constant_count_offset = len(dc.column_container.columns)
-
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
         constants = []
-        constant_count_offset = len(dc.column_container.columns)
+        input_column_count = len(dc.column_container.columns)
         for window in rel.window().getGroups():
             dc = self._apply_window(
-                rel, window, constants, constant_count_offset, dc, field_names, context
+                rel, window, constants, input_column_count, dc, field_names, context
             )
 
         # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
         cc = cc.limit_to(
-            cc.columns[constant_count_offset:] + cc.columns[0:constant_count_offset]
+            cc.columns[input_column_count:] + cc.columns[0:input_column_count]
         )
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
@@ -274,11 +252,8 @@ class DaskWindowPlugin(BaseRelPlugin):
     def _apply_window(
         self,
         rel,
-        # window: org.apache.calcite.rel.core.Window.Group,
         window,
-        # constants: List[org.apache.calcite.rex.RexLiteral],
-        constants,
-        constant_count_offset: int,
+        input_column_count: int,
         dc: DataContainer,
         field_names: List[str],
         context: "dask_sql.Context",
@@ -311,7 +286,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         logger.debug(f"Will create {newly_created_columns} new columns")
 
-        # Calcite always creates window bounds when not specified as unbound preceding and current row (if no order by)
+        # Default window bounds when not specified as unbound preceding and current row (if no order by)
         # unbounded preceding and unbounded following if there's an order by
         if not rel.window().getWindowFrame(window):
             lower_bound = BoundDescription(
@@ -341,13 +316,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         else:
             lower_bound = to_bound_description(
                 rel.window().getWindowFrame(window).getLowerBound(),
-                constants,
-                constant_count_offset,
             )
             upper_bound = to_bound_description(
                 rel.window().getWindowFrame(window).getUpperBound(),
-                constants,
-                constant_count_offset,
             )
 
         # Apply the windowing operation
@@ -378,7 +349,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         for c in newly_created_columns:
             # the fields are in the correct order by definition
-            field_name = field_names[len(cc.columns) - constant_count_offset]
+            field_name = field_names[len(cc.columns) - input_column_count]
             cc = cc.add(field_name, c)
         dc = DataContainer(df, cc)
         logger.debug(
@@ -390,7 +361,6 @@ class DaskWindowPlugin(BaseRelPlugin):
         self,
         df: dd.DataFrame,
         rel,
-        # window: org.apache.calcite.rel.core.Window.Group,
         window,
         dc: DataContainer,
         context: "dask_sql.Context",
