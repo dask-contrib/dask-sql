@@ -37,6 +37,12 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
+gpuci_logger "Install awscli"
+gpuci_mamba_retry install -y -c conda-forge awscli 
+
+gpuci_logger "Download TPC-DS dataset"
+gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb ./tpc-ds/
+
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
 
