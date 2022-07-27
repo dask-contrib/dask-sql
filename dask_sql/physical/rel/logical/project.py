@@ -44,13 +44,6 @@ class DaskProjectPlugin(BaseRelPlugin):
             key = str(key)
             column_names.append(key)
 
-            random_name = new_temporary_column(df)
-            new_columns[random_name] = RexConverter.convert(
-                rel, expr, dc, context=context
-            )
-
-            new_mappings[key] = random_name
-
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
             if expr.getRexType() == RexType.Reference:

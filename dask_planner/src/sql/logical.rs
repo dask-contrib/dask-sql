@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod cross_join;
+mod empty_relation;
 mod explain;
 mod filter;
 mod join;
@@ -69,6 +70,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::CrossJoin as PyCrossJoin
     pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::EmptyRelation as PyEmptyRelation
+    pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -166,6 +172,7 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
+            LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",
             LogicalPlan::Window(_window) => "Window",
@@ -227,6 +234,16 @@ impl PyLogicalPlan {
 
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
+            }
+            LogicalPlan::Distinct(distinct) => {
+                let schema = distinct.input.schema();
+                let rel_fields: Vec<RelDataTypeField> = schema
+                    .fields()
+                    .iter()
+                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+                    .collect::<Result<Vec<_>>>()
+                    .map_err(|e| py_type_err(e))?;
+                Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
                 let schema = self.original_plan.schema();
