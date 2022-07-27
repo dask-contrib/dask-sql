@@ -230,11 +230,10 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
-        constants = []
         input_column_count = len(dc.column_container.columns)
         for window in rel.window().getGroups():
             dc = self._apply_window(
-                rel, window, constants, input_column_count, dc, field_names, context
+                rel, window, input_column_count, dc, field_names, context
             )
 
         # Finally, fix the output schema if needed
