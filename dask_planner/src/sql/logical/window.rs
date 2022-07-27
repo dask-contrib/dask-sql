@@ -57,7 +57,7 @@ impl PyWindow {
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
             Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
                 expr
             ))),
@@ -71,7 +71,7 @@ impl PyWindow {
             Expr::WindowFunction { partition_by, .. } => {
                 py_expr_list(&self.window.input, &partition_by)
             }
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
                 expr
             ))),
@@ -83,7 +83,7 @@ impl PyWindow {
     pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
             Expr::WindowFunction { args, .. } => py_expr_list(&self.window.input, &args),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
                 expr
             ))),
@@ -93,10 +93,13 @@ impl PyWindow {
     /// Return window function name
     #[pyo3(name = "getWindowFuncName")]
     pub fn window_func_name(&self, expr: PyExpr) -> PyResult<String> {
-        Ok(match expr.expr {
-            Expr::WindowFunction { fun, .. } => fun.to_string(),
-            _ => panic!("Encountered a non Window type in window_func_name"),
-        })
+        match expr.expr {
+            Expr::WindowFunction { fun, .. } => Ok(fun.to_string()),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} is not a WindowFunction type",
+                expr
+            ))),
+        }
     }
 
     /// Returns a Pywindow frame for a given windowFunction Expression
