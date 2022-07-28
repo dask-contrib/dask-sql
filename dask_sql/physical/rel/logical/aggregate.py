@@ -161,7 +161,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_exprs = agg.getGroupSets()
         group_columns = (
             agg.getDistinctColumns()
-            if agg.isDistinct()
+            if agg.isDistinctNode()
             else [group_expr.column_name(rel) for group_expr in group_exprs]
         )
 
@@ -318,6 +318,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
+            breakpoint()
+            # isAggExprDistinct
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
