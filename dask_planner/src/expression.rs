@@ -658,7 +658,7 @@ impl PyExpr {
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { asc, .. } => Ok(asc.clone()),
+            Expr::Sort { asc, .. } => Ok(*asc),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr
@@ -670,7 +670,7 @@ impl PyExpr {
     #[pyo3(name = "isSortNullsFirst")]
     pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { nulls_first, .. } => Ok(nulls_first.clone()),
+            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr

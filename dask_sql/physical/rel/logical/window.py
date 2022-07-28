@@ -89,16 +89,12 @@ def to_bound_description(
 ) -> BoundDescription:
     """Convert the PyWindowFrame object to a BoundDescription representation,
     replacing any literals or references to constants"""
-    offset = windowFrame.getOffset()
-    if offset is not None:
-        offset = int(offset)
-
     return BoundDescription(
         is_unbounded=bool(windowFrame.isUnbounded()),
         is_preceding=bool(windowFrame.isPreceding()),
         is_following=bool(windowFrame.isFollowing()),
         is_current_row=bool(windowFrame.isCurrentRow()),
-        offset=offset,
+        offset=windowFrame.getOffset(),
     )
 
 
