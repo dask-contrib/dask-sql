@@ -41,10 +41,12 @@ gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
 gpuci_logger "Download TPC-DS dataset"
-gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ ./data/sf1/parquet_2gb/ --recursive
+gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ tests/unit/data/ --recursive
 
 gpuci_logger "Pull in query files"
-git clone https://github.com/databricks/spark-sql-perf.git tpc-ds
+git clone https://github.com/databricks/spark-sql-perf.git
+mkdir -p tests/unit/queries
+cp spark-sql-perf/src/main/resources/tpcds_2_4/* tests/unit/queries
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
@@ -64,4 +66,4 @@ conda config --show-sources
 conda list --show-channel-urls
 
 gpuci_logger "Python py.test for dask-sql"
-py.test $WORKSPACE -n 4 -v -m gpu --rungpu --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term
+py.test $WORKSPACE -n 4 -v -m gpu --runqueries --rungpu --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term
