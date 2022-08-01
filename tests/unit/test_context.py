@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.mappings import python_to_sql_type
 from tests.utils import assert_eq
 
 try:

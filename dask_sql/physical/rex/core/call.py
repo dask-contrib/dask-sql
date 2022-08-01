@@ -16,7 +16,6 @@ from dask.utils import random_state_data
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import get_java_class
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -983,16 +982,3 @@ class RexCallPlugin(BaseRexPlugin):
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it
-
-
-def check_special_operator(operator: "org.apache.calcite.sql.fun"):
-    """
-    Check for special operator classes that have an overloaded name with other
-    operator type/kinds.
-
-    eg: sqlDatetimeSubtractionOperator has the sqltype and kind of the `-` or `minus` operation.
-    """
-    special_op_to_name = {
-        "org.apache.calcite.sql.fun.SqlDatetimeSubtractionOperator": "datetime_subtraction"
-    }
-    return special_op_to_name.get(get_java_class(operator), None)
