@@ -876,7 +876,6 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
-        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
