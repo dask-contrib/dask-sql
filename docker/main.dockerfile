@@ -14,7 +14,7 @@ RUN conda config --add channels conda-forge \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     "dask-ml>=2022.1.22" \
-    "setuptools-rust>=1.1.2" \
+    "setuptools-rust>=1.4.1" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay

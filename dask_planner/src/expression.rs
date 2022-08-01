@@ -257,24 +257,46 @@ impl PyExpr {
             .map_err(py_runtime_err)
     }
 
-    /// Gets the operands for a BinaryExpr call
+    /// Row expressions, Rex(s), operate on the concept of operands. This maps to expressions that are used in
+    /// the "call" logic of the Dask-SQL python codebase. Different variants of Expressions, Expr(s),
+    /// store those operands in different datastructures. This function examines the Expr variant and returns
+    /// the operands to the calling logic as a Vec of PyExpr instances.
     #[pyo3(name = "getOperands")]
     pub fn get_operands(&self) -> PyResult<Vec<PyExpr>> {
         match &self.expr {
-            Expr::BinaryExpr { left, right, .. } => Ok(vec![
-                PyExpr::from(*left.clone(), self.input_plan.clone()),
-                PyExpr::from(*right.clone(), self.input_plan.clone()),
-            ]),
-            Expr::ScalarFunction { fun: _, args } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                for arg in args {
-                    operands.push(PyExpr::from(arg.clone(), self.input_plan.clone()));
-                }
-                Ok(operands)
+            // Expr variants that are themselves the operand to return
+            Expr::Column(..) | Expr::ScalarVariable(..) | Expr::Literal(..) => {
+                Ok(vec![PyExpr::from(
+                    self.expr.clone(),
+                    self.input_plan.clone(),
+                )])
             }
-            Expr::Cast { expr, data_type: _ } => {
+
+            // Expr(s) that house the Expr instance to return in their bounded params
+            Expr::Alias(expr, ..)
+            | Expr::Not(expr)
+            | Expr::IsNull(expr)
+            | Expr::IsNotNull(expr)
+            | Expr::Negative(expr)
+            | Expr::GetIndexedField { expr, .. }
+            | Expr::Cast { expr, .. }
+            | Expr::TryCast { expr, .. }
+            | Expr::Sort { expr, .. }
+            | Expr::InSubquery { expr, .. } => {
                 Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
             }
+
+            // Expr variants containing a collection of Expr(s) for operands
+            Expr::AggregateFunction { args, .. }
+            | Expr::AggregateUDF { args, .. }
+            | Expr::ScalarFunction { args, .. }
+            | Expr::ScalarUDF { args, .. }
+            | Expr::WindowFunction { args, .. } => Ok(args
+                .iter()
+                .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
+                .collect()),
+
+            // Expr(s) that require more specific processing
             Expr::Case {
                 expr,
                 when_then_expr,
@@ -297,6 +319,19 @@ impl PyExpr {
 
                 Ok(operands)
             }
+            Expr::InList { expr, list, .. } => {
+                let mut operands: Vec<PyExpr> = Vec::new();
+                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                for list_elem in list {
+                    operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
+                }
+
+                Ok(operands)
+            }
+            Expr::BinaryExpr { left, right, .. } => Ok(vec![
+                PyExpr::from(*left.clone(), self.input_plan.clone()),
+                PyExpr::from(*right.clone(), self.input_plan.clone()),
+            ]),
             Expr::Between {
                 expr,
                 negated: _,
@@ -307,37 +342,13 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
-            Expr::InSubquery {
-                expr: _,
-                subquery: _,
-                negated: _,
-            } => {
-                unimplemented!("InSubquery")
-            }
-            Expr::ScalarSubquery(subquery) => {
-                let _plan = &subquery.subquery;
-                unimplemented!("ScalarSubquery")
-            }
-            Expr::IsNull(expr) | Expr::IsNotNull(expr) => {
-                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
-            }
-            Expr::ScalarUDF { args, .. } => Ok(args
-                .iter()
-                .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
-                .collect()),
-            Expr::InList { expr, list, .. } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
-                for list_elem in list {
-                    operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
-                }
 
-                Ok(operands)
-            }
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
-                "unknown Expr type {:?} encountered",
-                &self.expr
-            ))),
+            // Currently un-support/implemented Expr types for Rex Call operations
+            Expr::GroupingSet(..)
+            | Expr::Wildcard
+            | Expr::QualifiedWildcard { .. }
+            | Expr::ScalarSubquery(..)
+            | Expr::Exists { .. } => unimplemented!("Unimplmented Expr type"),
         }
     }
 
@@ -357,6 +368,7 @@ impl PyExpr {
             Expr::IsNotNull(..) => Ok("is not null".to_string()),
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),
+            Expr::Negative(..) => Ok("negative".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr

@@ -43,7 +43,7 @@ setup(
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe,distributed]>=2022.3.0",
-        "pandas>=1.1.2",
+        "pandas>=1.4.0",
         "fastapi>=0.69.0",
         "uvicorn>=0.11.3",
         "tzlocal>=2.1",
