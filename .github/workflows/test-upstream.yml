@@ -38,6 +38,15 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install hive testing dependencies for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -68,6 +77,15 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install cluster dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
@@ -105,6 +123,15 @@ jobs:
           mamba-version: "*"
           channels: dask/label/dev,conda-forge,nodefaults
           channel-priority: strict
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
+        with:
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
