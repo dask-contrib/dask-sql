@@ -4,8 +4,8 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 
-from dask_planner.rust import SqlTypeName
 from dask_sql import Context
+from dask_sql.mappings import python_to_sql_type
 from tests.utils import assert_eq
 
 try:
@@ -196,6 +196,11 @@ def test_tables_from_stack(gpu):
     g(gpu=gpu)
 
 
+int_sql_type = python_to_sql_type(int).getSqlType()
+float_sql_type = python_to_sql_type(float).getSqlType()
+str_sql_type = python_to_sql_type(str).getSqlType()
+
+
 def test_function_adding():
     c = Context()
 
@@ -212,22 +217,22 @@ def test_function_adding():
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
@@ -241,22 +246,22 @@ def test_function_adding():
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[2].parameters[0][1].getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[2].return_type.getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[3].parameters[0][1].getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[3].return_type.getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[3].aggregation
 
@@ -271,22 +276,22 @@ def test_function_adding():
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
@@ -307,22 +312,22 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
@@ -336,22 +341,22 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[2].parameters[0][1].getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[2].return_type.getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[3].parameters[0][1].getSqlType()
-        == SqlTypeName.DOUBLE
+        == float_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[3].return_type.getSqlType()
-        == SqlTypeName.BIGINT
+        == int_sql_type
     )
     assert c.schema[c.schema_name].function_lists[3].aggregation
 
@@ -366,22 +371,22 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
         c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert (
         c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == SqlTypeName.VARCHAR
+        == str_sql_type
     )
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
