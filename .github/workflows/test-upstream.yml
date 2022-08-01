@@ -13,6 +13,7 @@ jobs:
   test-dev:
     name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
     runs-on: ${{ matrix.os }}
+    if: github.repository == 'dask-contrib/dask-sql'
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     defaults:
@@ -57,11 +58,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -71,12 +67,7 @@ jobs:
           channel-priority: strict
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/
+          environment-file: continuous_integration/environment-3.9-dev.yaml
       - name: Install cluster dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
@@ -107,11 +98,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -119,11 +105,6 @@ jobs:
           mamba-version: "*"
           channels: dask/label/dev,conda-forge,nodefaults
           channel-priority: strict
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/
       - name: Install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |

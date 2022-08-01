@@ -124,6 +124,19 @@ You can run the tests (after installation) with
 
     pytest tests
 
+GPU-specific tests require additional dependencies specified in `continuous_integration/gpuci/environment.yaml`.
+These can be added to the development environment by running
+
+```
+conda env update -n dask-sql -f continuous_integration/gpuci/environment.yaml
+```
+
+And GPU-specific tests can be run with
+
+```
+pytest tests -m gpu --rungpu
+```
+
 ## SQL Server
 
 `dask-sql` comes with a small test implementation for a SQL server.

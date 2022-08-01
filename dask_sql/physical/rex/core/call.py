@@ -16,6 +16,7 @@ from dask.utils import random_state_data
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -186,7 +187,7 @@ class IntDivisionOperator(Operation):
         # of this function.
         if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
-        else:  # pragma: no cover
+        else:
             return da.trunc(result).astype(np.int64)
 
 
@@ -238,9 +239,6 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):  # pragma: no cover
-            return operand
-
         output_type = str(rex.getType())
         python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
@@ -876,6 +874,7 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
+        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
@@ -960,8 +959,7 @@ class RexCallPlugin(BaseRexPlugin):
         ]
 
         # Now use the operator name in the mapping
-        # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
-        schema_name = "root"
+        schema_name = context.schema_name
         operator_name = expr.getOperatorName().lower()
 
         try:
@@ -985,3 +983,16 @@ class RexCallPlugin(BaseRexPlugin):
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it
+
+
+def check_special_operator(operator: "org.apache.calcite.sql.fun"):
+    """
+    Check for special operator classes that have an overloaded name with other
+    operator type/kinds.
+
+    eg: sqlDatetimeSubtractionOperator has the sqltype and kind of the `-` or `minus` operation.
+    """
+    special_op_to_name = {
+        "org.apache.calcite.sql.fun.SqlDatetimeSubtractionOperator": "datetime_subtraction"
+    }
+    return special_op_to_name.get(get_java_class(operator), None)
