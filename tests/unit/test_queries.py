@@ -46,7 +46,7 @@ def gpu_c():
 @pytest.mark.queries
 @pytest.mark.parametrize(
     "context,client",
-    ["c,client", pytest.param("gpu_c,gpu_client", marks=pytest.mark.gpu)],
+    [("c", "client"), pytest.param("gpu_c", "gpu_client", marks=pytest.mark.gpu)],
 )
 @pytest.mark.parametrize("query", QUERIES)
 def test_query(context, client, query, request):
