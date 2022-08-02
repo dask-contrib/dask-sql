@@ -407,8 +407,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # TODO: datafusion returns only window func expression per window
         # This can be optimized in the physical plan to collect all aggs for a given window
-        operator_name = rel.window().getWindowFuncName(window)
-        operator_name = operator_name.lower()
+        operator_name = rel.window().getWindowFuncName(window).lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
