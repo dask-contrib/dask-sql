@@ -229,11 +229,6 @@ class UDF:
 
         self.names = [param[0] for param in params]
 
-        if return_type is None:
-            # These UDFs go through apply and without providing
-            # a return type, dask will attempt to guess it, and
-            # dask might be wrong.
-            raise ValueError("Return type must be provided")
         self.meta = (None, return_type)
 
     def __call__(self, *args, **kwargs):
@@ -249,7 +244,6 @@ class UDF:
             df = column_args[0].to_frame(self.names[0])
             for name, col in zip(self.names[1:], column_args[1:]):
                 df[name] = col
-
             result = df.apply(
                 self.func, axis=1, args=tuple(scalar_args), meta=self.meta
             ).astype(self.meta[1])
