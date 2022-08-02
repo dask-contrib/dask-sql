@@ -80,10 +80,10 @@ XFAIL_QUERIES = (
 )
 
 QUERIES = [
-    pytest.param(f"q{i}a.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else None)
+    pytest.param(f"q{i}a.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ())
     if i in {14, 23, 24, 39}
     else pytest.param(
-        f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else None
+        f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ()
     )
     for i in range(1, 100)
 ]
