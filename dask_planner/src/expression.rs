@@ -220,7 +220,7 @@ impl PyExpr {
             Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(..) => "Literal",
             Expr::BinaryExpr { .. } => "BinaryExpr",
-            Expr::Not(..) => panic!("Not!!!"),
+            Expr::Not(..) => "Not",
             Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
             Expr::Negative(..) => panic!("Negative!!!"),
             Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
@@ -369,6 +369,7 @@ impl PyExpr {
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),
             Expr::Negative(..) => Ok("negative".to_string()),
+            Expr::Not(..) => Ok("not".to_string()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
