@@ -447,13 +447,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if additional_column_name is None:
             additional_column_name = new_temporary_column(dc.df)
 
+        group_columns = [
+            dc.column_container.get_backend_by_frontend_name(group_name)
+            for group_name in group_columns
+        ]
+
         # perform groupby operation; if we are using custom aggregations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
-            group_columns = [
-                dc.column_container.get_backend_by_frontend_name(group_name)
-                for group_name in group_columns
-            ]
             grouped_df = tmp_df.groupby(
                 by=(group_columns or [additional_column_name]), dropna=False
             )
