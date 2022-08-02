@@ -48,18 +48,15 @@ impl OptimizerRule for EliminateAggDistinct {
                 // Apply optimizer rule to current input
                 let optimized_input = self.optimize(input, optimizer_config)?;
 
-                // Examine aggr_expr vec looking for inner DISTINCT operations
-                let values: Vec<&Expr> = aggr_expr
-                    .iter()
-                    .map(|f| {
-                        println!("Expr: {:?}", f);
-                        println!("Something after this");
-                        f
-                    })
-                    .collect();
-
-                println!("Did this show up?");
-                println!("Trigger now: {:?}", values);
+                // // Examine aggr_expr vec looking for inner DISTINCT operations
+                // let values: Vec<&Expr> = aggr_expr
+                //     .iter()
+                //     .map(|f| {
+                //         println!("Expr: {:?}", f);
+                //         println!("Something after this");
+                //         f
+                //     })
+                //     .collect();
 
                 for ex in aggr_expr {
                     match ex {
@@ -70,7 +67,16 @@ impl OptimizerRule for EliminateAggDistinct {
                         } => {
                             println!("AggregationFunction");
                             if *distinct {
-                                panic!("DISTINCT!!!");
+                                let original_input = input.clone();
+
+                                // Create a new Distinct Aggregate input as this aggregate functions input
+                                let new_agg = LogicalPlan::Aggregate(Aggregate {
+                                    input: Arc::new(plan.clone()),
+                                    group_expr: vec![],
+                                    aggr_expr: vec![],
+                                    schema: input.schema().clone(),
+                                });
+                                return Ok(new_agg);
                             }
                         }
                         _ => (),
@@ -124,9 +130,9 @@ mod tests {
 
     fn test_table_scan() -> LogicalPlan {
         let schema = Schema::new(vec![
-            Field::new("a", DataType::Boolean, false),
-            Field::new("b", DataType::Boolean, false),
-            Field::new("c", DataType::Boolean, false),
+            Field::new("a", DataType::UInt32, false),
+            Field::new("b", DataType::UInt32, false),
+            Field::new("c", DataType::UInt32, false),
             Field::new("d", DataType::UInt32, false),
         ]);
         table_scan(Some("test"), &schema, None)
@@ -138,17 +144,20 @@ mod tests {
     /// Test for single IN subquery filter
     #[test]
     fn in_subquery_simple() -> Result<()> {
-        let table_scan = test_table_scan();
-        let plan = LogicalPlanBuilder::from(table_scan)
+        let plan = LogicalPlanBuilder::from(test_table_scan())
             .aggregate(vec![col("test.b")], vec![count_distinct(col("test.b"))])?
             .project(vec![col("test.b")])?
             .build()?;
 
-        let expected = "Projection: #test.b [b:UInt32]\
-        \n  Semi Join: #test.c = #sq.c [a:UInt32, b:UInt32, c:UInt32]\
-        \n      TableScan: sq [a:UInt32, b:UInt32, c:UInt32]";
+        // let expected = "Projection: #test.b [b:UInt32]\
+        // \n  Aggregate: groupBy=[[]], aggr=[[]] [a:UInt32, b:UInt32, c:UInt32, d:UInt32]\
+        // \n    Aggregate: groupBy=[[#test.b]], aggr=[[COUNT(DISTINCT #test.b)]] [b:UInt32, COUNT(DISTINCT test.b):Int64;N]\
+        // \n      TableScan: test [a:UInt32, b:UInt32, c:UInt32, d:UInt32]";
 
-        //COUNT(DISTINCT a) AS cd_a
+        let expected = "Projection: #test.b [b:UInt32]\
+        \n  Aggregate: groupBy=[[#test.b]], aggr=[[COUNT(#test.b)]] [b:UInt32]\
+        \n    Aggregate: groupBy=[], aggr=[[DISTINCT]] [b:UInt32]\
+        \n      TableScan: test [a:UInt32, b:UInt32, c:UInt32, d:UInt32]";
 
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
