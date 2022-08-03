@@ -1,4 +1,4 @@
-use crate::sql::exceptions::py_runtime_err;
+use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
@@ -649,6 +649,30 @@ impl PyExpr {
             | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
             _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
                 "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns if a sort expressions is an ascending sort
+    #[pyo3(name = "isSortAscending")]
+    pub fn is_sort_ascending(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Sort { asc, .. } => Ok(*asc),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} is not a sort type",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns if nulls should be placed first in a sort expression
+    #[pyo3(name = "isSortNullsFirst")]
+    pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} is not a sort type",
                 &self.expr
             ))),
         }
