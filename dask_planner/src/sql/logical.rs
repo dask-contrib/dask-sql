@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod create_memory_table;
 mod cross_join;
 mod empty_relation;
 mod explain;
@@ -120,6 +121,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::TableScan as PyTableScan
     pub fn table_scan(&self) -> PyResult<table_scan::PyTableScan> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::CreateMemoryTable as PyCreateMemoryTable
+    pub fn create_memory_table(&self) -> PyResult<create_memory_table::PyCreateMemoryTable> {
         to_py_plan(self.current_node.as_ref())
     }
 
