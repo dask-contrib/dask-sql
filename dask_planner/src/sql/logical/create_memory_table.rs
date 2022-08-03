@@ -43,7 +43,7 @@ impl PyCreateMemoryTable {
     pub fn get_if_not_exists(&self) -> PyResult<bool> {
         match &self.create_memory_table {
             Some(create_memory_table) => Ok(create_memory_table.if_not_exists),
-            None => Ok(false),
+            None => Ok(false), // TODO: in the future we may want to set this based on dialect
         }
     }
 
