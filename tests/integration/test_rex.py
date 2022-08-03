@@ -317,6 +317,8 @@ def test_coalesce(c):
     expected_df["c5"] = expected_df["c5"].astype("string")
     assert_eq(df, expected_df)
 
+    c.drop_table("df")
+
 
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_boolean_operations(c):
