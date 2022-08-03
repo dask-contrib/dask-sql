@@ -603,14 +603,6 @@ class YearOperation(Operation):
         df = convert_to_datetime(df)
         return df.year
 
-class CotOperation(Operation):
-    def __init__(self):
-        super().__init__(self.do_cot)
-
-    def do_cot(self, df: SeriesOrScalar):
-        df = 1 / np.tan(df)
-        return df
-
 
 class CeilFloorOperation(PredicateBasedOperation):
     """
@@ -951,7 +943,6 @@ class RexCallPlugin(BaseRexPlugin):
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),
-        "cot": CotOperation(),
     }
 
     def convert(
