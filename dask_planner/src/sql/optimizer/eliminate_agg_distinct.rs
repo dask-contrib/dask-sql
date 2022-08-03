@@ -1,5 +1,24 @@
-//! Optimizer rule eliminating DISTINCT operations contained in AggregateFunction
-//! operations
+//! Optimizer rule eliminating/moving Aggregate Expr(s) with a `DISTINCT` inner Expr.
+//!
+//! Dask-SQL performs a `DISTINCT` operation with its Aggregation code base. That Aggregation
+//! is expected to have a specific format however. It should be an Aggregation LogicalPlan
+//! variant that has `group_expr` = "column you want to distinct" with NO `agg_expr` present
+//!
+//! A query like
+//! ```text
+//! SELECT
+//!     COUNT(DISTINCT b) AS cntd_b
+//! FROM test
+//! ```
+//!
+//! Would typically produce a LogicalPlan like ...
+//! ```text
+//! Projection: #COUNT(DISTINCT test.a)
+//!   Projection: #COUNT(alias1) AS COUNT(DISTINCT test.a)
+//!     Aggregate: groupBy=[[]], aggr=[[COUNT(#alias1)]]
+//!       Aggregate: groupBy=[[#test.a AS alias1]], aggr=[[]]
+//!         TableScan: test projection=[a]
+//! ```
 //!
 //! It handles standalone parts of logical conjunction expressions, i.e.
 //! ```text
@@ -167,6 +186,7 @@ mod tests {
     use datafusion_expr::{
         col, count, count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
+        sum,
     };
     use std::sync::Arc;
 
@@ -222,18 +242,20 @@ mod tests {
 
     ///
     ///SELECT
-    /// COUNT(a) AS c_a,
-    /// COUNT(DISTINCT a) AS cd_a
+    /// COUNT(b) AS cnt_b,
+    /// COUNT(DISTINCT b) AS cntd_b
     ///FROM test
     ///
     #[test]
     fn count_distinct_multi() -> Result<()> {
+        let grp_exprs: Vec<Expr> = vec![];
+
         let plan = LogicalPlanBuilder::from(test_table_scan())
             .aggregate(
-                vec![col("test.a")],
-                vec![count(col("test.a")), count_distinct(col("test.a"))],
+                vec![col("test.b")],
+                vec![count(col("test.b")), count_distinct(col("test.b"))],
             )?
-            .project(vec![col("test.a")])?
+            .project(vec![col("test.b")])?
             .build()?;
 
         let expected = "Projection: #test.b [b:UInt32]\
