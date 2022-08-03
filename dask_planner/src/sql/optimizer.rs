@@ -8,8 +8,8 @@ use datafusion_optimizer::{
     subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
 };
 
-mod elim;
-use elim::EliminateAggDistinct;
+mod eliminate_agg_distinct;
+use eliminate_agg_distinct::EliminateAggDistinct;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance

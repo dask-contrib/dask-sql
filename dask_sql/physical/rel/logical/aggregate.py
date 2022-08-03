@@ -232,6 +232,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         groupby_agg_options = dask_config.get("sql.aggregate")
 
         if not collected_aggregations:
+            breakpoint()
             backend_names = [
                 cc.get_backend_by_frontend_name(group_name)
                 for group_name in group_columns
@@ -318,8 +319,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
             # Gather information about the input column
             inputs = rel.aggregate().getArgs(expr)
-            breakpoint()
-            # isAggExprDistinct
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
