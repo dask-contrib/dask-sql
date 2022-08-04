@@ -288,9 +288,10 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
-def test_coalesce(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_coalesce(c, gpu):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", df)
+    c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
