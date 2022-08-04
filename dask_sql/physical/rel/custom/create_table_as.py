@@ -51,6 +51,10 @@ class CreateTableAsPlugin(BaseRelPlugin):
 
         input_rel = create_memory_table.getInput()
 
+        # TODO: we currently always persist for CREATE TABLE AS and never persist for CREATE VIEW AS;
+        # should this be configured by the user? https://github.com/dask-contrib/dask-sql/issues/269
+        persist = create_memory_table.isTable()
+
         logger.debug(
             f"Creating new table with name {table_name} and logical plan {input_rel}"
         )
@@ -58,5 +62,6 @@ class CreateTableAsPlugin(BaseRelPlugin):
         context.create_table(
             table_name,
             context._compute_table_from_rel(input_rel),
+            persist=persist,
             schema_name=schema_name,
         )
