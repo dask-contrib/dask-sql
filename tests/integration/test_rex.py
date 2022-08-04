@@ -92,25 +92,44 @@ def test_literal_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="Depends on https://github.com/dask-contrib/dask-sql/issues/659"
-)
 def test_random(c):
-    query = 'SELECT RAND(0) AS "0", RAND_INTEGER(0, 10) AS "1"'
+    query_with_seed = """
+            SELECT
+                RAND(0) AS "0",
+                RAND_INTEGER(0, 10) AS "1"
+            """
 
-    result_df = c.sql(query)
+    result_df = c.sql(query_with_seed)
 
     # assert that repeated queries give the same result
-    assert_eq(result_df, c.sql(query))
+    assert_eq(result_df, c.sql(query_with_seed))
 
     # assert output
     result_df = result_df.compute()
 
     assert result_df["0"].dtype == "float64"
-    assert result_df["1"].dtype == "Int32"
+    assert result_df["1"].dtype == "Int64"
 
     assert 0 <= result_df["0"][0] < 1
     assert 0 <= result_df["1"][0] < 10
+
+    query_wo_seed = """
+        SELECT
+            RAND() AS "0",
+            RANDOM() AS "1",
+            RAND_INTEGER(30) AS "2"
+        """
+    result_df = c.sql(query_wo_seed)
+    result_df = result_df.compute()
+    # assert output types
+
+    assert result_df["0"].dtype == "float64"
+    assert result_df["1"].dtype == "float64"
+    assert result_df["2"].dtype == "Int64"
+
+    assert 0 <= result_df["0"][0] < 1
+    assert 0 <= result_df["1"][0] < 1
+    assert 0 <= result_df["2"][0] < 30
 
 
 @pytest.mark.parametrize(

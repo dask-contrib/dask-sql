@@ -892,6 +892,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
         "rand": RandOperation(),
+        "random": RandOperation(),
         "rand_integer": RandIntegerOperation(),
         "search": SearchOperation(),
         # Unary math functions
