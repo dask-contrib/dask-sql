@@ -103,15 +103,32 @@ impl ContextProvider for DaskSQLContext {
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
         let fun: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
-        if "year".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
-        }
-        if "cot".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-            return Some(Arc::new(ScalarUDF::new("cot", &sig, &rtf, &fun)));
+
+        match name {
+            "year" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "cot" => {
+                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Volatile);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand_integer" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Int64, DataType::Int64],
+                    Volatility::Volatile,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            _ => (),
         }
 
         // Loop through all of the user defined functions
