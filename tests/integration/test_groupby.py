@@ -251,7 +251,8 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-def test_stddev(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_stddev(c, gpu):
     df = pd.DataFrame(
         {
             "a": [1, 1, 2, 1, 2],
@@ -259,7 +260,7 @@ def test_stddev(c):
         }
     )
 
-    c.create_table("df", df)
+    c.create_table("df", df, gpu=gpu)
 
     return_df = c.sql(
         """
@@ -279,11 +280,10 @@ def test_stddev(c):
         SELECT
             STDDEV_SAMP(b) AS ss
         FROM df
-        GROUP BY df.a
         """
     )
 
-    expected_df = pd.DataFrame({"ss": df.groupby("a").std()["b"]})
+    expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
 
     assert_eq(return_df, expected_df.reset_index(drop=True))
 
@@ -297,6 +297,27 @@ def test_stddev(c):
     )
 
     expected_df = pd.DataFrame({"sp": df.groupby("a").std(ddof=0)["b"]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV(a) as s,
+            STDDEV_SAMP(a) ss,
+            STDDEV_POP(b) sp
+        FROM
+            df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "s": [df.std()["a"]],
+            "ss": [df.std()["a"]],
+            "sp": [df.std(ddof=0)["b"]],
+        }
+    )
 
     assert_eq(return_df, expected_df.reset_index(drop=True))
 
