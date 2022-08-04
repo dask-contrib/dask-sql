@@ -54,13 +54,12 @@ def test_case(c, df):
     assert_eq(result_df, expected_df, check_dtype=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_literals(c):
     df = c.sql(
         """SELECT 'a string äö' AS "S",
                     4.4 AS "F",
                     -4564347464 AS "I",
-                    TIME '08:08:00.091' AS "T",
+                    -- TIME '08:08:00.091' AS "T",
                     TIMESTAMP '2022-04-06 17:33:21' AS "DT",
                     DATE '1991-06-02' AS "D",
                     INTERVAL '1' DAY AS "IN"
@@ -72,7 +71,7 @@ def test_literals(c):
             "S": ["a string äö"],
             "F": [4.4],
             "I": [-4564347464],
-            "T": [pd.to_datetime("1970-01-01 08:08:00.091")],
+            # "T": [pd.to_datetime("1970-01-01 08:08:00.091")], Depends on https://github.com/apache/arrow-datafusion/issues/2883"
             "DT": [pd.to_datetime("2022-04-06 17:33:21")],
             "D": [pd.to_datetime("1991-06-02 00:00")],
             "IN": [pd.to_timedelta("1d")],
@@ -93,7 +92,9 @@ def test_literal_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="Depends on https://github.com/dask-contrib/dask-sql/issues/659"
+)
 def test_random(c):
     query = 'SELECT RAND(0) AS "0", RAND_INTEGER(0, 10) AS "1"'
 
@@ -112,7 +113,6 @@ def test_random(c):
     assert 0 <= result_df["1"][0] < 10
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "input_table",
     [
@@ -135,7 +135,6 @@ def test_not(c, input_table, request):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_operators(c, df):
     result_df = c.sql(
         """
@@ -170,7 +169,9 @@ def test_operators(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.skip(
+    reason="Depends on https://github.com/apache/arrow-datafusion/issues/3016"
+)
 @pytest.mark.parametrize(
     "input_table,gpu",
     [
@@ -288,7 +289,6 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
     df["b"] = df["b"].apply(
@@ -300,11 +300,11 @@ def test_boolean_operations(c):
         """
         SELECT
             b IS TRUE AS t,
-            b IS FALSE AS f,
-            b IS NOT TRUE AS nt,
-            b IS NOT FALSE AS nf,
-            b IS UNKNOWN AS u,
-            b IS NOT UNKNOWN AS nu
+            b IS FALSE AS f
+            -- b IS NOT TRUE AS nt,
+            -- b IS NOT FALSE AS nf,
+            -- b IS UNKNOWN AS u,
+            -- b IS NOT UNKNOWN AS nu
         FROM df"""
     )
 
@@ -325,7 +325,6 @@ def test_boolean_operations(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_math_operations(c, df):
     result_df = c.sql(
         """
@@ -386,7 +385,6 @@ def test_math_operations(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_integer_div(c, df_simple):
     df = c.sql(
         """
@@ -407,7 +405,6 @@ def test_integer_div(c, df_simple):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_subqueries(c, user_table_1, user_table_2):
     df = c.sql(
         """
@@ -427,7 +424,6 @@ def test_subqueries(c, user_table_1, user_table_2):
     assert_eq(df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_string_functions(c, gpu):
     if gpu:
