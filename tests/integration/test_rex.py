@@ -333,30 +333,29 @@ def test_math_operations(c, df):
             , ACOS(b) AS "acos"
             , ASIN(b) AS "asin"
             , ATAN(b) AS "atan"
+            -- , ATAN2(a, b) AS "atan2"
+            -- , CBRT(b) AS "cbrt"
             , CEIL(b) AS "ceil"
             , COS(b) AS "cos"
             , COT(b) AS "cot"
+            -- , DEGREES(b) AS "degrees"
             , EXP(b) AS "exp"
             , FLOOR(b) AS "floor"
             , LOG10(b) AS "log10"
             , LN(b) AS "ln"
+            -- , MOD(b, 4) AS "mod"
             , POWER(b, 2) AS "power"
             , POWER(b, a) AS "power2"
+            -- , RADIANS(b) AS "radians"
             , ROUND(b) AS "round"
             , ROUND(b, 3) AS "round2"
+            -- , SIGN(b) AS "sign"
             , SIN(b) AS "sin"
             , TAN(b) AS "tan"
+            -- , TRUNCATE(b) AS "truncate"
         FROM df
     """
     )
-    # TODO: The following functions need to be implemented and tested:
-    # , ATAN2(a, b) AS "atan2"
-    # , CBRT(b) AS "cbrt"
-    # , DEGREES(b) AS "degrees"
-    # , MOD(b, 4) AS "mod"
-    # , RADIANS(b) AS "radians"
-    # , SIGN(b) AS "sign"
-    # , TRUNCATE(b) AS "truncate"
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["abs"] = df.b.abs()
