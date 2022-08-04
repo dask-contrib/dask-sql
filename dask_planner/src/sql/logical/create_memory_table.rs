@@ -15,28 +15,33 @@ impl PyCreateMemoryTable {
     #[pyo3(name = "getName")]
     pub fn get_name(&self) -> PyResult<String> {
         match &self.create_memory_table {
-            Some(create_memory_table) => Ok(format!("{}", create_memory_table.name)),
+            Some(create_memory_table) => Ok(create_memory_table.name.clone()),
             None => match &self.create_view {
-                Some(create_view) => Ok(format!("{}", create_view.name)),
-                None => panic!("Encountered a non CreateMemoryTable/CreateView type in get_name"),
+                Some(create_view) => Ok(create_view.name.clone()),
+                None => Err(py_type_err(
+                    "Encountered a non CreateMemoryTable/CreateView type in get_input",
+                )),
             },
         }
     }
 
     #[pyo3(name = "getInput")]
     pub fn get_input(&self) -> PyResult<PyLogicalPlan> {
-        Ok(PyLogicalPlan {
-            original_plan: match &self.create_memory_table {
-                Some(create_memory_table) => (*create_memory_table.input).clone(),
-                None => match &self.create_view {
-                    Some(create_view) => (*create_view.input).clone(),
-                    None => {
-                        panic!("Encountered a non CreateMemoryTable/CreateView type in get_input")
-                    }
-                },
+        match &self.create_memory_table {
+            Some(create_memory_table) => Ok(PyLogicalPlan {
+                original_plan: (*create_memory_table.input).clone(),
+                current_node: None,
+            }),
+            None => match &self.create_view {
+                Some(create_view) => Ok(PyLogicalPlan {
+                    original_plan: (*create_view.input).clone(),
+                    current_node: None,
+                }),
+                None => Err(py_type_err(
+                    "Encountered a non CreateMemoryTable/CreateView type in get_input",
+                )),
             },
-            current_node: None,
-        })
+        }
     }
 
     #[pyo3(name = "getIfNotExists")]
@@ -53,8 +58,18 @@ impl PyCreateMemoryTable {
             Some(create_memory_table) => Ok(create_memory_table.or_replace),
             None => match &self.create_view {
                 Some(create_view) => Ok(create_view.or_replace),
-                None => panic!("Encountered a non CreateMemoryTable/CreateView type in get_name"),
+                None => Err(py_type_err(
+                    "Encountered a non CreateMemoryTable/CreateView type in get_input",
+                )),
             },
+        }
+    }
+
+    #[pyo3(name = "isTable")]
+    pub fn is_table(&self) -> PyResult<bool> {
+        match &self.create_memory_table {
+            Some(_) => Ok(true),
+            None => Ok(false),
         }
     }
 }
