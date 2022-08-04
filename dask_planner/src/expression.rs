@@ -216,35 +216,40 @@ impl PyExpr {
     /// the Rex conversion
     #[pyo3(name = "getExprType")]
     pub fn get_expr_type(&self) -> PyResult<String> {
-        match &self.expr {
-            Expr::Alias(..) => Ok("Alias".to_string()),
-            Expr::Column(..) => Ok("Column".to_string()),
-            Expr::ScalarVariable(..) => Err(py_type_err("ScalarVariable!!!")),
-            Expr::Literal(..) => Ok("Literal".to_string()),
-            Expr::BinaryExpr { .. } => Ok("BinaryExpr".to_string()),
-            Expr::Not(..) => Err(py_type_err("Not!!!")),
-            Expr::IsNotNull(..) => Err(py_type_err("IsNotNull!!!")),
-            Expr::Negative(..) => Err(py_type_err("Negative!!!")),
-            Expr::GetIndexedField { .. } => Err(py_type_err("GetIndexedField!!!")),
-            Expr::IsNull(..) => Err(py_type_err("IsNull!!!")),
-            Expr::Between { .. } => Ok("Between".to_string()),
-            Expr::Case { .. } => Err(py_type_err("Case!!!")),
-            Expr::Cast { .. } => Ok("Cast".to_string()),
-            Expr::TryCast { .. } => Err(py_type_err("TryCast!!!")),
-            Expr::Sort { .. } => Ok("Sort".to_string()),
-            Expr::ScalarFunction { .. } => Ok("ScalarFunction".to_string()),
-            Expr::AggregateFunction { .. } => Ok("AggregateFunction".to_string()),
-            Expr::WindowFunction { .. } => Err(py_type_err("WindowFunction!!!")),
-            Expr::AggregateUDF { .. } => Err(py_type_err("AggregateUDF!!!")),
-            Expr::InList { .. } => Ok("InList".to_string()),
-            Expr::Wildcard => Err(py_type_err("Wildcard!!!")),
-            Expr::InSubquery { .. } => Ok("Subquery".to_string()),
-            Expr::ScalarUDF { .. } => Ok("ScalarUDF".to_string()),
-            Expr::Exists { .. } => Ok("Exists".to_string()),
-            Expr::ScalarSubquery(..) => Ok("ScalarSubquery".to_string()),
-            Expr::QualifiedWildcard { .. } => Ok("Wildcard".to_string()),
-            Expr::GroupingSet(..) => Ok("GroupingSet".to_string()),
-        }
+        Ok(String::from(match &self.expr {
+            Expr::Alias(..)
+            | Expr::Column(..)
+            | Expr::Literal(..)
+            | Expr::BinaryExpr { .. }
+            | Expr::Between { .. }
+            | Expr::Cast { .. }
+            | Expr::Sort { .. }
+            | Expr::ScalarFunction { .. }
+            | Expr::AggregateFunction { .. }
+            | Expr::InList { .. }
+            | Expr::InSubquery { .. }
+            | Expr::ScalarUDF { .. }
+            | Expr::Exists { .. }
+            | Expr::ScalarSubquery(..)
+            | Expr::QualifiedWildcard { .. }
+            | Expr::GroupingSet(..) => self.expr.variant_name(),
+            Expr::ScalarVariable(..)
+            | Expr::Not(..)
+            | Expr::IsNotNull(..)
+            | Expr::Negative(..)
+            | Expr::GetIndexedField { .. }
+            | Expr::IsNull(..)
+            | Expr::Case { .. }
+            | Expr::TryCast { .. }
+            | Expr::WindowFunction { .. }
+            | Expr::AggregateUDF { .. }
+            | Expr::Wildcard => {
+                return Err(py_type_err(format!(
+                    "Encountered unsupported expression type: {}",
+                    &self.expr.variant_name()
+                )))
+            }
+        }))
     }
 
     /// Determines the type of this Expr based on its variant
