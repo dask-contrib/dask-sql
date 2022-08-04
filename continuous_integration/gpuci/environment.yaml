@@ -1,0 +1,17 @@
+name: gpuci
+channels:
+  - rapidsai
+  - rapidsai-nightly
+  - nvidia
+dependencies:
+  - rust>=1.60.0
+  - setuptools-rust>=1.2.0
+  - cudatoolkit=11.5
+  - cudf=22.08
+  - cuml=22.08
+  - dask-cudf=22.08
+  - dask-cuda=22.08
+  - numpy>=1.20.0
+  - ucx-proc=*=gpu
+  - ucx-py=0.27
+  - xgboost=*=cuda_*
