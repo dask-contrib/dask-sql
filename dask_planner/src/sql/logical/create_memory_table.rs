@@ -15,9 +15,9 @@ impl PyCreateMemoryTable {
     #[pyo3(name = "getName")]
     pub fn get_name(&self) -> PyResult<String> {
         match &self.create_memory_table {
-            Some(create_memory_table) => Ok(format!("{}", create_memory_table.name)),
+            Some(create_memory_table) => Ok(create_memory_table.name.clone()),
             None => match &self.create_view {
-                Some(create_view) => Ok(format!("{}", create_view.name)),
+                Some(create_view) => Ok(create_view.name.clone()),
                 None => Err(py_type_err(
                     "Encountered a non CreateMemoryTable/CreateView type in get_input",
                 )),
