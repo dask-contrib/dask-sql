@@ -61,8 +61,8 @@ def test_literals(c):
                     -4564347464 AS "I",
                     -- TIME '08:08:00.091' AS "T",
                     TIMESTAMP '2022-04-06 17:33:21' AS "DT",
-                    DATE '1991-06-02' AS "D",
-                    INTERVAL '1' DAY AS "IN"
+                    DATE '1991-06-02' AS "D"
+                    -- INTERVAL '1' DAY AS "IN"
         """
     )
 
@@ -74,7 +74,7 @@ def test_literals(c):
             # "T": [pd.to_datetime("1970-01-01 08:08:00.091")], Depends on https://github.com/apache/arrow-datafusion/issues/2883"
             "DT": [pd.to_datetime("2022-04-06 17:33:21")],
             "D": [pd.to_datetime("1991-06-02 00:00")],
-            "IN": [pd.to_timedelta("1d")],
+            # "IN": [pd.to_timedelta("1d")],
         }
     )
     assert_eq(df, expected_df)
