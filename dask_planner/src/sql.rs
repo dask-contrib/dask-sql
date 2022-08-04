@@ -108,10 +108,45 @@ impl ContextProvider for DaskSQLContext {
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
             return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
+        if "atan2".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64, DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("atan2", &sig, &rtf, &fun)));
+        }
+        if "cbrt".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("cbrt", &sig, &rtf, &fun)));
+        }
         if "cot".eq(name) {
             let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
             return Some(Arc::new(ScalarUDF::new("cot", &sig, &rtf, &fun)));
+        }
+        if "degrees".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("degrees", &sig, &rtf, &fun)));
+        }
+        if "mod".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64, DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("mod", &sig, &rtf, &fun)));
+        }
+        if "radians".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("radians", &sig, &rtf, &fun)));
+        }
+        if "sign".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("sign", &sig, &rtf, &fun)));
+        }
+        if "truncate".eq(name) {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new("truncate", &sig, &rtf, &fun)));
         }
 
         // Loop through all of the user defined functions
