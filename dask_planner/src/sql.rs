@@ -10,7 +10,7 @@ pub mod types;
 
 use crate::{
     dialect::DaskSqlDialect,
-    sql::exceptions::{OptimizationException, ParsingException},
+    sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
 };
 
 use arrow::datatypes::{DataType, Field, Schema};
@@ -171,7 +171,7 @@ impl DaskSQLContext {
                 schema.add_function(function);
                 Ok(true)
             }
-            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            None => Err(py_runtime_err(format!(
                 "Schema: {} not found in DaskSQLContext",
                 schema_name
             ))),
@@ -189,7 +189,7 @@ impl DaskSQLContext {
                 schema.add_table(table);
                 Ok(true)
             }
-            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            None => Err(py_runtime_err(format!(
                 "Schema: {} not found in DaskSQLContext",
                 schema_name
             ))),
@@ -211,7 +211,7 @@ impl DaskSQLContext {
                 );
                 Ok(statements)
             }
-            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
+            Err(e) => Err(py_parsing_exp(e)),
         }
     }
 
@@ -227,7 +227,7 @@ impl DaskSQLContext {
                 original_plan: k,
                 current_node: None,
             })
-            .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
+            .map_err(|e| py_parsing_exp(e))
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
@@ -249,13 +249,13 @@ impl DaskSQLContext {
                             original_plan: k,
                             current_node: None,
                         })
-                        .map_err(|e| PyErr::new::<OptimizationException, _>(format!("{}", e)))
+                        .map_err(|e| py_optimization_exp(e))
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
                     Ok(existing_plan)
                 }
             }
-            Err(e) => Err(PyErr::new::<OptimizationException, _>(format!("{}", e))),
+            Err(e) => Err(py_optimization_exp(e)),
         }
     }
 }

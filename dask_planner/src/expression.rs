@@ -114,7 +114,7 @@ impl PyExpr {
     pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
         match &self.expr {
             Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
                 Only Subquery and related variants are supported for this operation.",
                 &self.expr
@@ -369,7 +369,7 @@ impl PyExpr {
             Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
             Expr::InList { .. } => Ok("in list".to_string()),
             Expr::Negative(..) => Ok("negative".to_string()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "Catch all triggered for get_operator_name: {:?}",
                 &self.expr
             ))),
@@ -647,7 +647,7 @@ impl PyExpr {
             | Expr::Exists { negated, .. }
             | Expr::InList { negated, .. }
             | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            _ => Err(py_type_err(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
             ))),
