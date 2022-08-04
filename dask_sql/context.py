@@ -815,7 +815,7 @@ class Context:
 
         return rel, rel_string
 
-    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = False):
+    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
         dc = RelConverter.convert(rel, context=self)
 
         # Optimization might remove some alias projects. Make sure to keep them here.
