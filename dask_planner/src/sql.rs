@@ -109,7 +109,10 @@ impl ContextProvider for DaskSQLContext {
             return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
         if "atan2".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Float64, DataType::Float64], Volatility::Immutable);
+            let sig = Signature::variadic(
+                vec![DataType::Float64, DataType::Float64],
+                Volatility::Immutable,
+            );
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
             return Some(Arc::new(ScalarUDF::new("atan2", &sig, &rtf, &fun)));
         }
@@ -129,7 +132,10 @@ impl ContextProvider for DaskSQLContext {
             return Some(Arc::new(ScalarUDF::new("degrees", &sig, &rtf, &fun)));
         }
         if "mod".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Float64, DataType::Float64], Volatility::Immutable);
+            let sig = Signature::variadic(
+                vec![DataType::Float64, DataType::Float64],
+                Volatility::Immutable,
+            );
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
             return Some(Arc::new(ScalarUDF::new("mod", &sig, &rtf, &fun)));
         }
