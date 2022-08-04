@@ -13,7 +13,7 @@ pub struct PyDropTable {
 impl PyDropTable {
     #[pyo3(name = "getName")]
     pub fn get_name(&self) -> PyResult<String> {
-        Ok(format!("{}", self.drop_table.name))
+        Ok(self.drop_table.name.clone())
     }
 
     #[pyo3(name = "getIfExists")]
