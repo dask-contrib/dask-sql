@@ -352,26 +352,26 @@ def test_math_operations(c, df):
             , ACOS(b) AS "acos"
             , ASIN(b) AS "asin"
             , ATAN(b) AS "atan"
-            -- , ATAN2(a, b) AS "atan2"
-            -- , CBRT(b) AS "cbrt"
+            , ATAN2(a, b) AS "atan2"
+            , CBRT(b) AS "cbrt"
             , CEIL(b) AS "ceil"
             , COS(b) AS "cos"
             , COT(b) AS "cot"
-            -- , DEGREES(b) AS "degrees"
+            , DEGREES(b) AS "degrees"
             , EXP(b) AS "exp"
             , FLOOR(b) AS "floor"
             , LOG10(b) AS "log10"
             , LN(b) AS "ln"
-            -- , MOD(b, 4) AS "mod"
+            , MOD(b, 4) AS "mod"
             , POWER(b, 2) AS "power"
             , POWER(b, a) AS "power2"
-            -- , RADIANS(b) AS "radians"
+            , RADIANS(b) AS "radians"
             , ROUND(b) AS "round"
             , ROUND(b, 3) AS "round2"
-            -- , SIGN(b) AS "sign"
+            , SIGN(b) AS "sign"
             , SIN(b) AS "sin"
             , TAN(b) AS "tan"
-            -- , TRUNCATE(b) AS "truncate"
+            , TRUNCATE(b) AS "truncate"
         FROM df
     """
     )
@@ -381,26 +381,26 @@ def test_math_operations(c, df):
     expected_df["acos"] = np.arccos(df.b)
     expected_df["asin"] = np.arcsin(df.b)
     expected_df["atan"] = np.arctan(df.b)
-    # expected_df["atan2"] = np.arctan2(df.a, df.b)
-    # expected_df["cbrt"] = np.cbrt(df.b)
+    expected_df["atan2"] = np.arctan2(df.a, df.b)
+    expected_df["cbrt"] = np.cbrt(df.b)
     expected_df["ceil"] = np.ceil(df.b)
     expected_df["cos"] = np.cos(df.b)
     expected_df["cot"] = 1 / np.tan(df.b)
-    # expected_df["degrees"] = df.b / np.pi * 180
+    expected_df["degrees"] = df.b / np.pi * 180
     expected_df["exp"] = np.exp(df.b)
     expected_df["floor"] = np.floor(df.b)
     expected_df["log10"] = np.log10(df.b)
     expected_df["ln"] = np.log(df.b)
-    # expected_df["mod"] = np.mod(df.b, 4)
+    expected_df["mod"] = np.mod(df.b, 4)
     expected_df["power"] = np.power(df.b, 2)
     expected_df["power2"] = np.power(df.b, df.a)
-    # expected_df["radians"] = df.b / 180 * np.pi
+    expected_df["radians"] = df.b / 180 * np.pi
     expected_df["round"] = np.round(df.b)
     expected_df["round2"] = np.round(df.b, 3)
-    # expected_df["sign"] = np.sign(df.b)
+    expected_df["sign"] = np.sign(df.b)
     expected_df["sin"] = np.sin(df.b)
     expected_df["tan"] = np.tan(df.b)
-    # expected_df["truncate"] = np.trunc(df.b)
+    expected_df["truncate"] = np.trunc(df.b)
     assert_eq(result_df, expected_df)
 
 
