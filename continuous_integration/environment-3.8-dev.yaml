@@ -39,5 +39,6 @@ dependencies:
 - pip
 - qpd
 - triad
+- pytest-html
 - pip:
   - fugue[sql]==0.5.3

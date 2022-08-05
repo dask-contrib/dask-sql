@@ -82,13 +82,19 @@ jobs:
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Test with pytest
         run: |
-          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
+          pytest --html=pytest-html/test-results.html --self-contained-html --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
         if: always()
         uses: actions/upload-artifact@v1
         with:
           name: pytest-results
           path: junit/test-results.xml
+      - name: Upload pytest html test results
+        if: always()
+        uses: actions/upload-artifact@v1
+        with:
+          name: pytest-html-results.html
+          path: pytest-html/test-results.html
       - name: Upload coverage to Codecov
         if: github.repository == 'dask-contrib/dask-sql'
         uses: codecov/codecov-action@v2
