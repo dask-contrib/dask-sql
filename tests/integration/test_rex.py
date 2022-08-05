@@ -308,6 +308,9 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.skip(
+    reason="isTrue/False not supported by datafusion, isUnknown not supported by sqlparser"
+)
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
     df["b"] = df["b"].apply(
