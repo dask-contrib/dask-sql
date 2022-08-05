@@ -69,17 +69,23 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float64,
+    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
     "SqlTypeName.TINYINT": pd.Int8Dtype(),
     "SqlTypeName.BOOLEAN": pd.BooleanDtype(),
     "SqlTypeName.VARCHAR": pd.StringDtype(),
+    "SqlTypeName.CHAR": pd.StringDtype(),
     "SqlTypeName.DATE": np.dtype(
         "<M8[ns]"
     ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
+    "SqlTypeName.TIME": np.dtype("<M8[ns]"),
     "SqlTypeName.TIMESTAMP": np.dtype("<M8[ns]"),
+    "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
+        unit="ns", tz="UTC"
+    ),  # Everything is converted to UTC. So far, this did not break
+    "SqlTypeName.INTERVAL_DAY": np.dtype("<M8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
@@ -194,25 +200,12 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: "SqlTypeName") -> type:
     """Turn an SQL type into a dataframe dtype"""
-    if sql_type == SqlTypeName.VARCHAR or sql_type == SqlTypeName.CHAR:
-        return pd.StringDtype()
-    elif sql_type == SqlTypeName.TIME or sql_type == SqlTypeName.TIMESTAMP:
-        return np.dtype("<M8[ns]")
-    elif sql_type == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE:
-        # Everything is converted to UTC
-        # So far, this did not break
-        return pd.DatetimeTZDtype(unit="ns", tz="UTC")
-    elif sql_type == SqlTypeName.DECIMAL:
-        # We use np.float64 always, even though we might
-        # be able to use a smaller type
-        return np.float64
-    else:
-        try:
-            return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
-        except KeyError:  # pragma: no cover
-            raise NotImplementedError(
-                f"The SQL type {str(sql_type)} is not implemented (yet)"
-            )
+    try:
+        return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
+    except KeyError:  # pragma: no cover
+        raise NotImplementedError(
+            f"The SQL type {str(sql_type)} is not implemented (yet)"
+        )
 
 
 def similar_type(lhs: type, rhs: type) -> bool:
@@ -270,6 +263,7 @@ def cast_column_type(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
     )
 
+    # breakpoint()
     casted_column = cast_column_to_type(df[column_name], expected_type)
 
     if casted_column is not None:
