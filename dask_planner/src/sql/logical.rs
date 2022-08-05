@@ -13,6 +13,7 @@ mod projection;
 mod sort;
 mod table_scan;
 mod union;
+mod window;
 
 use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
@@ -109,6 +110,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Window as PyWindow
+    pub fn window(&self) -> PyResult<window::PyWindow> {
         to_py_plan(self.current_node.as_ref())
     }
 

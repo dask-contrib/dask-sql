@@ -55,16 +55,11 @@ def test_custom_function_any_colnames(colnames, df_wide, c):
 )
 @pytest.mark.parametrize(
     "retty",
-    [None, np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
+    [np.float64, np.float32, np.int64, np.int32, np.int16, np.int8, np.bool_],
 )
 def test_custom_function_row_return_types(c, df, retty):
     def f(row):
         return row["x"] ** 2
-
-    if retty is None:
-        with pytest.raises(ValueError):
-            c.register_function(f, "f", [("x", np.float64)], retty, row_udf=True)
-        return
 
     c.register_function(f, "f", [("x", np.float64)], retty, row_udf=True)
 
@@ -211,3 +206,17 @@ def test_reregistration(c):
         c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
 
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64, replace=True)
+
+
+@pytest.mark.parametrize("dtype", [np.timedelta64, None, "a string"])
+def test_unsupported_dtype(c, dtype):
+    def f(x):
+        return x**2
+
+    # test that an invalid return type raises
+    with pytest.raises(NotImplementedError):
+        c.register_function(f, "f", [("x", np.int64)], dtype)
+
+    # test that an invalid param type raises
+    with pytest.raises(NotImplementedError):
+        c.register_function(f, "f", [("x", dtype)], np.int64)

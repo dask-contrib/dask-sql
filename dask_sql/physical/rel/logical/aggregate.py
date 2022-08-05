@@ -8,13 +8,6 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-try:
-    import dask_cudf
-
-    from dask_planner.rust import LogicalPlan
-except ImportError:
-    dask_cudf = None
-
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.core.call import IsNullOperation
@@ -23,6 +16,7 @@ from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
