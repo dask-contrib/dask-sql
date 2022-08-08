@@ -42,7 +42,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         id: rust-toolchain
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Build the Rust DataFusion bindings
         run: |
@@ -81,7 +81,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         id: rust-toolchain
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Build the Rust DataFusion bindings
         run: |
@@ -127,7 +127,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         id: rust-toolchain
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Build the Rust DataFusion bindings
         run: |
