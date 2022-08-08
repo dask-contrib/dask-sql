@@ -126,10 +126,10 @@ impl PyExpr {
     /// Column in the SQL parse tree or not
     #[pyo3(name = "isInputReference")]
     pub fn is_input_reference(&self) -> PyResult<bool> {
-        match &self.expr {
-            Expr::Column(_col) => Ok(true),
-            _ => Ok(false),
-        }
+        Ok(match &self.expr {
+            Expr::Column(_col) => true,
+            _ => false,
+        })
     }
 
     #[pyo3(name = "toString")]
@@ -361,32 +361,34 @@ impl PyExpr {
 
     #[pyo3(name = "getOperatorName")]
     pub fn get_operator_name(&self) -> PyResult<String> {
-        match &self.expr {
+        Ok(match &self.expr {
             Expr::BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => Ok(format!("{}", op)),
-            Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast { .. } => Ok("cast".to_string()),
-            Expr::Between { .. } => Ok("between".to_string()),
-            Expr::Case { .. } => Ok("case".to_string()),
-            Expr::IsNull(..) => Ok("is null".to_string()),
-            Expr::IsNotNull(..) => Ok("is not null".to_string()),
-            Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
-            Expr::InList { .. } => Ok("in list".to_string()),
-            Expr::Negative(..) => Ok("negative".to_string()),
-            _ => Err(py_type_err(format!(
-                "Catch all triggered for get_operator_name: {:?}",
-                &self.expr
-            ))),
-        }
+            } => format!("{}", op),
+            Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
+            Expr::ScalarUDF { fun, .. } => fun.name.clone(),
+            Expr::Cast { .. } => "cast".to_string(),
+            Expr::Between { .. } => "between".to_string(),
+            Expr::Case { .. } => "case".to_string(),
+            Expr::IsNull(..) => "is null".to_string(),
+            Expr::IsNotNull(..) => "is not null".to_string(),
+            Expr::InList { .. } => "in list".to_string(),
+            Expr::Negative(..) => "negative".to_string(),
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_operator_name: {:?}",
+                    &self.expr
+                )))
+            }
+        })
     }
 
     /// Gets the ScalarValue represented by the Expression
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
-        match &self.expr {
+        Ok(String::from(match &self.expr {
             Expr::BinaryExpr {
                 left: _,
                 op,
@@ -409,78 +411,92 @@ impl PyExpr {
                 | Operator::RegexNotMatch
                 | Operator::RegexNotIMatch
                 | Operator::BitwiseAnd
-                | Operator::BitwiseOr => Ok("BOOLEAN".to_string()),
+                | Operator::BitwiseOr => "BOOLEAN",
                 Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
-                    Ok("BIGINT".to_string())
+                    "BIGINT"
                 }
-                Operator::Divide => Ok("FLOAT".to_string()),
-                Operator::StringConcat => Ok("VARCHAR".to_string()),
+                Operator::Divide => "FLOAT",
+                Operator::StringConcat => "VARCHAR",
             },
-            Expr::ScalarVariable(..) => Err(py_type_err("ScalarVariable!!!")),
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(_value) => Ok("Boolean".to_string()),
-                ScalarValue::Float32(_value) => Ok("Float32".to_string()),
-                ScalarValue::Float64(_value) => Ok("Float64".to_string()),
-                ScalarValue::Decimal128(_value, ..) => Ok("Decimal128".to_string()),
-                ScalarValue::Int8(_value) => Ok("Int8".to_string()),
-                ScalarValue::Int16(_value) => Ok("Int16".to_string()),
-                ScalarValue::Int32(_value) => Ok("Int32".to_string()),
-                ScalarValue::Int64(_value) => Ok("Int64".to_string()),
-                ScalarValue::UInt8(_value) => Ok("UInt8".to_string()),
-                ScalarValue::UInt16(_value) => Ok("UInt16".to_string()),
-                ScalarValue::UInt32(_value) => Ok("UInt32".to_string()),
-                ScalarValue::UInt64(_value) => Ok("UInt64".to_string()),
-                ScalarValue::Utf8(_value) => Ok("Utf8".to_string()),
-                ScalarValue::LargeUtf8(_value) => Ok("LargeUtf8".to_string()),
-                ScalarValue::Binary(_value) => Ok("Binary".to_string()),
-                ScalarValue::LargeBinary(_value) => Ok("LargeBinary".to_string()),
-                ScalarValue::Date32(_value) => Ok("Date32".to_string()),
-                ScalarValue::Date64(_value) => Ok("Date64".to_string()),
-                ScalarValue::Null => Ok("Null".to_string()),
-                _ => Err(py_type_err("CatchAll")),
+                ScalarValue::Null => "Null",
+                ScalarValue::Boolean(_value) => "Boolean",
+                ScalarValue::Float32(_value) => "Float32",
+                ScalarValue::Float64(_value) => "Float64",
+                ScalarValue::Decimal128(_value, ..) => "Decimal128",
+                ScalarValue::Int8(_value) => "Int8",
+                ScalarValue::Int16(_value) => "Int16",
+                ScalarValue::Int32(_value) => "Int32",
+                ScalarValue::Int64(_value) => "Int64",
+                ScalarValue::UInt8(_value) => "UInt8",
+                ScalarValue::UInt16(_value) => "UInt16",
+                ScalarValue::UInt32(_value) => "UInt32",
+                ScalarValue::UInt64(_value) => "UInt64",
+                ScalarValue::Utf8(_value) => "Utf8",
+                ScalarValue::LargeUtf8(_value) => "LargeUtf8",
+                ScalarValue::Binary(_value) => "Binary",
+                ScalarValue::LargeBinary(_value) => "LargeBinary",
+                ScalarValue::Date32(_value) => "Date32",
+                ScalarValue::Date64(_value) => "Date64",
+                _ => {
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for Literal in get_type; {:?}",
+                        scalar_value
+                    )))
+                }
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
-                BuiltinScalarFunction::Abs => Ok("Abs".to_string()),
-                BuiltinScalarFunction::DatePart => Ok("DatePart".to_string()),
-                _ => Err(py_type_err("fire here for scalar function")),
+                BuiltinScalarFunction::Abs => "Abs",
+                BuiltinScalarFunction::DatePart => "DatePart",
+                _ => {
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for ScalarFunction in get_type; {:?}",
+                        fun
+                    )))
+                }
             },
             Expr::Cast { expr: _, data_type } => match data_type {
-                DataType::Null => Ok("NULL".to_string()),
-                DataType::Boolean => Ok("BOOLEAN".to_string()),
-                DataType::Int8 => Ok("TINYINT".to_string()),
-                DataType::UInt8 => Ok("TINYINT".to_string()),
-                DataType::Int16 => Ok("SMALLINT".to_string()),
-                DataType::UInt16 => Ok("SMALLINT".to_string()),
-                DataType::Int32 => Ok("INTEGER".to_string()),
-                DataType::UInt32 => Ok("INTEGER".to_string()),
-                DataType::Int64 => Ok("BIGINT".to_string()),
-                DataType::UInt64 => Ok("BIGINT".to_string()),
-                DataType::Float32 => Ok("FLOAT".to_string()),
-                DataType::Float64 => Ok("DOUBLE".to_string()),
-                DataType::Timestamp { .. } => Ok("TIMESTAMP".to_string()),
-                DataType::Date32 => Ok("DATE".to_string()),
-                DataType::Date64 => Ok("DATE".to_string()),
-                DataType::Time32(..) => Ok("TIME32".to_string()),
-                DataType::Time64(..) => Ok("TIME64".to_string()),
-                DataType::Duration(..) => Ok("DURATION".to_string()),
-                DataType::Interval(..) => Ok("INTERVAL".to_string()),
-                DataType::Binary => Ok("BINARY".to_string()),
-                DataType::FixedSizeBinary(..) => Ok("FIXEDSIZEBINARY".to_string()),
-                DataType::LargeBinary => Ok("LARGEBINARY".to_string()),
-                DataType::Utf8 => Ok("VARCHAR".to_string()),
-                DataType::LargeUtf8 => Ok("BIGVARCHAR".to_string()),
-                DataType::List(..) => Ok("LIST".to_string()),
-                DataType::FixedSizeList(..) => Ok("FIXEDSIZELIST".to_string()),
-                DataType::LargeList(..) => Ok("LARGELIST".to_string()),
-                DataType::Struct(..) => Ok("STRUCT".to_string()),
-                DataType::Union(..) => Ok("UNION".to_string()),
-                DataType::Dictionary(..) => Ok("DICTIONARY".to_string()),
-                DataType::Decimal(..) => Ok("DECIMAL".to_string()),
-                DataType::Map(..) => Ok("MAP".to_string()),
-                _ => Err(py_type_err("This is not yet implemented!!!")),
+                DataType::Null => "NULL",
+                DataType::Boolean => "BOOLEAN",
+                DataType::Int8 | DataType::UInt8 => "TINYINT",
+                DataType::Int16 | DataType::UInt16 => "SMALLINT",
+                DataType::Int32 | DataType::UInt32 => "INTEGER",
+                DataType::Int64 | DataType::UInt64 => "BIGINT",
+                DataType::Float32 => "FLOAT",
+                DataType::Float64 => "DOUBLE",
+                DataType::Timestamp { .. } => "TIMESTAMP",
+                DataType::Date32 | DataType::Date64 => "DATE",
+                DataType::Time32(..) => "TIME32",
+                DataType::Time64(..) => "TIME64",
+                DataType::Duration(..) => "DURATION",
+                DataType::Interval(..) => "INTERVAL",
+                DataType::Binary => "BINARY",
+                DataType::FixedSizeBinary(..) => "FIXEDSIZEBINARY",
+                DataType::LargeBinary => "LARGEBINARY",
+                DataType::Utf8 => "VARCHAR",
+                DataType::LargeUtf8 => "BIGVARCHAR",
+                DataType::List(..) => "LIST",
+                DataType::FixedSizeList(..) => "FIXEDSIZELIST",
+                DataType::LargeList(..) => "LARGELIST",
+                DataType::Struct(..) => "STRUCT",
+                DataType::Union(..) => "UNION",
+                DataType::Dictionary(..) => "DICTIONARY",
+                DataType::Decimal(..) => "DECIMAL",
+                DataType::Map(..) => "MAP",
+                _ => {
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for Cast in get_type; {:?}",
+                        data_type
+                    )))
+                }
             },
-            _ => Err(py_type_err("OTHER")),
-        }
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_type; {:?}",
+                    &self.expr
+                )))
+            }
+        }))
     }
 
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
