@@ -6,6 +6,7 @@ dependencies:
 - dask-ml=2022.1.22
 - dask=2022.3.0
 - fastapi=0.69.0
+- fugue=0.7.0
 - intake=0.6.0
 - jsonschema
 - lightgbm
@@ -24,20 +25,10 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.8
-- rust=1.60.0
+- rust=1.62.1
 - scikit-learn=1.0.0
 - setuptools-rust=1.4.1
 - sphinx
 - tpot
 - tzlocal=2.1
 - uvicorn=0.11.3
-# fugue dependencies; remove when we conda install fugue
-- adagio
-- antlr4-python3-runtime<4.10
-- ciso8601
-- fs
-- pip
-- qpd
-- triad
-- pip:
-  - fugue[sql]==0.5.3

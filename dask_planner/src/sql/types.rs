@@ -109,10 +109,7 @@ impl DaskTypeMap {
                 };
                 DataType::Timestamp(unit, tz)
             }
-            _ => {
-                // panic!("stop here");
-                sql_type.to_arrow()
-            }
+            _ => sql_type.to_arrow(),
         };
 
         DaskTypeMap {
