@@ -186,7 +186,7 @@ class IntDivisionOperator(Operation):
         # of this function.
         if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
-        else:  # pragma: no cover
+        else:
             return da.trunc(result).astype(np.int64)
 
 
@@ -972,8 +972,7 @@ class RexCallPlugin(BaseRexPlugin):
         ]
 
         # Now use the operator name in the mapping
-        # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
-        schema_name = "root"
+        schema_name = context.schema_name
         operator_name = expr.getOperatorName().lower()
 
         try:
