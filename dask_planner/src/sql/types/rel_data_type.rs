@@ -1,3 +1,4 @@
+use crate::sql::exceptions::py_runtime_err;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 use std::collections::HashMap;
@@ -33,25 +34,25 @@ impl RelDataType {
     /// * `field_name` - A String containing the name of the field to find
     /// * `case_sensitive` - True if column name matching should be case sensitive and false otherwise
     #[pyo3(name = "getField")]
-    pub fn field(&self, field_name: String, case_sensitive: bool) -> RelDataTypeField {
+    pub fn field(&self, field_name: String, case_sensitive: bool) -> PyResult<RelDataTypeField> {
         assert!(!self.field_list.is_empty());
         let field_map: HashMap<String, RelDataTypeField> = self.field_map();
         if case_sensitive && !field_map.is_empty() {
-            field_map.get(&field_name).unwrap().clone()
+            Ok(field_map.get(&field_name).unwrap().clone())
         } else {
             for field in &self.field_list {
                 if (case_sensitive && field.name().eq(&field_name))
                     || (!case_sensitive && field.name().eq_ignore_ascii_case(&field_name))
                 {
-                    return field.clone();
+                    return Ok(field.clone());
                 }
             }
 
             // TODO: Throw a proper error here
-            panic!(
+            Err(py_runtime_err(format!(
                 "Unable to find RelDataTypeField with name {:?} in the RelDataType field_list",
-                field_name
-            );
+                field_name,
+            )))
         }
     }
 
