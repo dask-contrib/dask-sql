@@ -89,17 +89,7 @@ Install the package from the `conda-forge` channel:
 
 ### With `pip`
 
-`dask-sql` needs Java for the parsing of the SQL queries.
-Make sure you have a running java installation with version >= 8.
-
-To test if you have Java properly installed and set up, run
-
-    $ java -version
-    openjdk version "1.8.0_152-release"
-    OpenJDK Runtime Environment (build 1.8.0_152-release-1056-b12)
-    OpenJDK 64-Bit Server VM (build 25.152-b12, mixed mode)
-
-After installing Java, you can install the package with
+You can install the package with
 
     pip install dask-sql
 
@@ -111,19 +101,18 @@ If you want to have the newest (unreleased) `dask-sql` version or if you plan to
 
 Create a new conda environment and install the development environment:
 
-    conda env create -f continuous_integration/environment-3.9-jdk11-dev.yaml
+    conda env create -f continuous_integration/environment-3.9-dev.yaml
 
 It is not recommended to use `pip` instead of `conda` for the environment setup.
-If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
-Have a look into `environment-3.9-jdk11-dev.yaml` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To recompile the Java classes after changes have been made to the source contained in `planner/`, run
+The Rust DataFusion bindings are built as part of the `pip install`.
+If changes are made to the Rust source in `dask_planner/`, another build/install must be run to recompile the bindings:
 
-    python setup.py build_ext
+    python setup.py build install
 
 This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
 
@@ -195,5 +184,5 @@ At the core, `dask-sql` does two things:
 - translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
 - convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
 
-For the first step, Apache Calcite needs to know about the columns and types of the dask dataframes, therefore some java classes to store this information for dask dataframes are defined in `planner`.
-After the translation to a relational algebra is done (using `RelationalAlgebraGenerator.getRelationalAlgebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
+For the first step, Arrow DataFusion needs to know about the columns and types of the dask dataframes, therefore some Rust code to store this information for dask dataframes are defined in `dask_planner`.
+After the translation to a relational algebra is done (using `DaskSQLContext.logical_relational_algebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.

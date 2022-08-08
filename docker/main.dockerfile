@@ -7,9 +7,6 @@ LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 COPY docker/conda.txt /opt/dask_sql/
 RUN conda config --add channels conda-forge \
     && /opt/conda/bin/conda install --freeze-installed \
-    "jpype1>=1.0.2" \
-    "openjdk>=11" \
-    "maven>=3.6.0" \
     "tzlocal>=2.1" \
     "fastapi>=0.69.0" \
     "uvicorn>=0.11.3" \
@@ -17,6 +14,7 @@ RUN conda config --add channels conda-forge \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     "dask-ml>=2022.1.22" \
+    "setuptools-rust>=1.4.1" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
@@ -26,7 +24,7 @@ COPY setup.py /opt/dask_sql/
 COPY setup.cfg /opt/dask_sql/
 COPY versioneer.py /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
-COPY planner /opt/dask_sql/planner
+COPY dask_planner /opt/dask_sql/dask_planner
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
     && pip install -e .
@@ -35,5 +33,4 @@ RUN cd /opt/dask_sql/ \
 COPY scripts/startup_script.py /opt/dask_sql/startup_script.py
 
 EXPOSE 8080
-ENV JAVA_HOME /opt/conda
 ENTRYPOINT [ "/usr/bin/prepare.sh", "/opt/conda/bin/python", "/opt/dask_sql/startup_script.py" ]

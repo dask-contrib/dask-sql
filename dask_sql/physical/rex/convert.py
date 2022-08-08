@@ -4,15 +4,21 @@ from typing import TYPE_CHECKING, Any, Union
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import get_java_class
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
+
+_REX_TYPE_TO_PLUGIN = {
+    "RexType.Reference": "InputRef",
+    "RexType.Call": "RexCall",
+    "RexType.Literal": "RexLiteral",
+    "RexType.SubqueryAlias": "SubqueryAlias",
+}
 
 
 class RexConverter(Pluggable):
@@ -40,29 +46,30 @@ class RexConverter(Pluggable):
     @classmethod
     def convert(
         cls,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.DataFrame, Any]:
         """
-        Convert the given rel (java instance)
+        Convert the given Expression
         into a python expression (a dask dataframe)
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        class_name = get_java_class(rex)
+        expr_type = _REX_TYPE_TO_PLUGIN[str(rex.getRexType())]
 
         try:
-            plugin_instance = cls.get_plugin(class_name)
+            plugin_instance = cls.get_plugin(expr_type)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
-                f"No conversion for class {class_name} available (yet)."
+                f"No conversion for class {expr_type} available (yet)."
             )
 
         logger.debug(
             f"Processing REX {rex} using {plugin_instance.__class__.__name__}..."
         )
 
-        df = plugin_instance.convert(rex, dc, context=context)
+        df = plugin_instance.convert(rel, rex, dc, context=context)
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df

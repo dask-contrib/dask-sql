@@ -1,0 +1,34 @@
+name: dask-sql
+channels:
+- conda-forge
+- nodefaults
+dependencies:
+- dask-ml>=2022.1.22
+- dask>=2022.3.0
+- fastapi>=0.69.0
+- fugue>=0.7.0
+- intake>=0.6.0
+- jsonschema
+- lightgbm
+- maturin>=0.12.8
+- mlflow
+- mock
+- nest-asyncio
+- pandas>=1.4.0
+- pre-commit
+- prompt_toolkit
+- psycopg2
+- pyarrow>=3.0.0
+- pygments
+- pyhive
+- pytest-cov
+- pytest-xdist
+- pytest
+- python=3.10
+- rust>=1.62.1
+- scikit-learn>=1.0.0
+- setuptools-rust>=1.4.1
+- sphinx
+- tpot
+- tzlocal>=2.1
+- uvicorn>=0.11.3

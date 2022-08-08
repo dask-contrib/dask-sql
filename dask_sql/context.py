@@ -2,13 +2,23 @@ import asyncio
 import inspect
 import logging
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, Union
+from collections import Counter
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
+
+from dask_planner.rust import (
+    DaskFunction,
+    DaskSchema,
+    DaskSQLContext,
+    DaskTable,
+    DFOptimizationException,
+    DFParsingException,
+)
 
 try:
     import dask_cuda  # noqa: F401
@@ -25,11 +35,13 @@ from dask_sql.datacontainer import (
 )
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
-from dask_sql.java import com, get_java_class, java, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import ParsingException
+from dask_sql.utils import OptimizationException, ParsingException
+
+if TYPE_CHECKING:
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +77,19 @@ class Context:
 
     """
 
+    DEFAULT_CATALOG_NAME = "dask_sql"
     DEFAULT_SCHEMA_NAME = "root"
 
-    def __init__(self):
+    def __init__(self, logging_level=logging.INFO):
         """
         Create a new context.
         """
+
+        # Set the logging level for this SQL context
+        logging.basicConfig(level=logging_level)
+
+        # Name of the root catalog
+        self.catalog_name = self.DEFAULT_CATALOG_NAME
         # Name of the root schema
         self.schema_name = self.DEFAULT_SCHEMA_NAME
         # All schema information
@@ -78,8 +97,14 @@ class Context:
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
-        # Register any default plugins, if nothing was registered before.
+        # Create the `DaskSQLContext` Rust context
+        self.context = DaskSQLContext(self.catalog_name, self.schema_name)
+        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
+
+        # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskCrossJoinPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskEmptyRelationPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
@@ -90,6 +115,8 @@ class Context:
         RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.ExplainPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.SubqueryAlias, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
@@ -114,6 +141,7 @@ class Context:
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexSubqueryAliasPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
@@ -201,6 +229,9 @@ class Context:
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
+        logger.debug(
+            f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
+        )
         if "file_format" in kwargs:  # pragma: no cover
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
@@ -215,9 +246,13 @@ class Context:
             gpu=gpu,
             **kwargs,
         )
+
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
+
+        # Register the table with the Rust DaskSQLContext
+        self.context.register_table(schema_name, DaskTable(table_name, 100))
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -429,19 +464,14 @@ class Context:
         The SQL follows approximately the postgreSQL standard - however, not all
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
-
         For more information, see :ref:`sql`.
-
         Example:
             In this example, a query is called
             using the registered tables and then
             executed using dask.
-
             .. code-block:: python
-
                 result = c.sql("SELECT a, b FROM my_table")
                 print(result.compute())
-
         Args:
             sql (:obj:`str`): The query string to execute
             return_futures (:obj:`bool`): Return the unexecuted dask dataframe or the data itself.
@@ -452,39 +482,17 @@ class Context:
                 requires cuDF / dask-cuDF if enabled. Defaults to False.
             config_options (:obj:`Dict[str,Any]`): Specific configuration options to pass during
                 query execution
-
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
-
         """
         with dask_config.set(config_options):
             if dataframes is not None:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, select_names, _ = self._get_ral(sql)
+            rel, _ = self._get_ral(sql)
 
-            dc = RelConverter.convert(rel, context=self)
-
-            if dc is None:
-                return
-
-            if select_names:
-                # Rename any columns named EXPR$* to a more human readable name
-                cc = dc.column_container
-                cc = cc.rename(
-                    {
-                        df_col: select_name
-                        for df_col, select_name in zip(cc.columns, select_names)
-                    }
-                )
-                dc = DataContainer(dc.df, cc)
-
-            df = dc.assign()
-            if not return_futures:
-                df = df.compute()
-
-        return df
+            return self._compute_table_from_rel(rel, return_futures)
 
     def explain(
         self,
@@ -516,7 +524,7 @@ class Context:
             for df_name, df in dataframes.items():
                 self.create_table(df_name, df, gpu=gpu)
 
-        _, _, rel_string = self._get_ral(sql)
+        _, rel_string = self._get_ral(sql)
         return rel_string
 
     def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
@@ -679,9 +687,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(
-        self, identifier: "org.apache.calcite.sql.SqlIdentifier"
-    ) -> Tuple[str, str]:
+    def fqn(self, identifier: "Expression") -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -710,39 +716,34 @@ class Context:
         Create a list of schemas filled with the dataframes
         and functions we have currently in our schema list
         """
+        logger.debug(
+            f"There are {len(self.schema)} existing schema(s): {self.schema.keys()}"
+        )
         schema_list = []
 
-        DaskTable = com.dask.sql.schema.DaskTable
-        DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
-        DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
-        DaskSchema = com.dask.sql.schema.DaskSchema
-
         for schema_name, schema in self.schema.items():
-            java_schema = DaskSchema(schema_name)
+            logger.debug(f"Preparing Schema: '{schema_name}'")
+            rust_schema = DaskSchema(schema_name)
 
             if not schema.tables:
                 logger.warning("No tables are registered.")
 
             for name, dc in schema.tables.items():
                 row_count = (
-                    schema.statistics[name].row_count
+                    float(schema.statistics[name].row_count)
                     if name in schema.statistics
-                    else None
+                    else float(0)
                 )
-                if row_count is not None:
-                    row_count = float(row_count)
+
                 table = DaskTable(name, row_count)
                 df = dc.df
-                logger.debug(
-                    f"Adding table '{name}' to schema with columns: {list(df.columns)}"
-                )
+
                 for column in df.columns:
                     data_type = df[column].dtype
                     sql_data_type = python_to_sql_type(data_type)
+                    table.add_column(column, sql_data_type)
 
-                    table.addColumn(column, sql_data_type)
-
-                java_schema.addTable(table)
+                rust_schema.add_table(table)
 
             if not schema.functions:
                 logger.debug("No custom functions defined.")
@@ -751,20 +752,17 @@ class Context:
                 sql_return_type = function_description.return_type
                 if function_description.aggregation:
                     logger.debug(f"Adding function '{name}' to schema as aggregation.")
-                    dask_function = DaskAggregateFunction(name, sql_return_type)
+                    # TODO: Not yet implemented
+                    # dask_function = DaskAggregateFunction(name, sql_return_type)
                 else:
                     logger.debug(
                         f"Adding function '{name}' to schema as scalar function."
                     )
-                    dask_function = DaskScalarFunction(name, sql_return_type)
+                    dask_function = DaskFunction(name, sql_return_type.getDataType())
 
-                dask_function = self._add_parameters_from_description(
-                    function_description, dask_function
-                )
+                rust_schema.add_function(dask_function)
 
-                java_schema.addFunction(dask_function)
-
-            schema_list.append(java_schema)
+            schema_list.append(rust_schema)
 
         return schema_list
 
@@ -777,92 +775,82 @@ class Context:
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
+
+        logger.debug(f"Entering _get_ral('{sql}')")
+
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
-
-        RelationalAlgebraGeneratorBuilder = (
-            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
-        )
-
-        # True if the SQL query should be case sensitive and False otherwise
-        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
-
-        generator_builder = RelationalAlgebraGeneratorBuilder(
-            self.schema_name, case_sensitive, java.util.ArrayList()
-        )
         for schema in schemas:
-            generator_builder = generator_builder.addSchema(schema)
-        generator = generator_builder.build()
-        default_dialect = generator.getDialect()
+            self.context.register_schema(schema.name, schema)
 
-        logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+        sqlTree = self.context.parse_sql(sql)
+        logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
-        ValidationException = org.apache.calcite.tools.ValidationException
-        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
-        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
+        rel = sqlTree
+
+        # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
+        if len(sqlTree) > 1:
+            raise RuntimeError(
+                f"Multiple 'Statements' encountered for SQL {sql}. Please share this with the dev team!"
+            )
 
         try:
-            sqlNode = generator.getSqlNode(sql)
-            sqlNodeClass = get_java_class(sqlNode)
+            nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+        except DFParsingException as pe:
+            raise ParsingException(sql, str(pe)) from None
 
-            select_names = None
-            rel = sqlNode
-            rel_string = ""
-
-            if not sqlNodeClass.startswith("com.dask.sql.parser."):
-                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
-                # Optimization might remove some alias projects. Make sure to keep them here.
-                select_names = [
-                    str(name)
-                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
-                ]
-                rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
-                rel_string = str(generator.getRelationalAlgebraString(rel))
-        except (ValidationException, SqlParseException, CalciteContextException) as e:
-            logger.debug(f"Original exception raised by Java:\n {e}")
-            # We do not want to re-raise an exception here
-            # as this would print the full java stack trace
-            # if debug is not set.
-            # Instead, we raise a nice exception
-            raise ParsingException(sql, str(e.message())) from None
-
-        # Internal, temporary results of calcite are sometimes
-        # named EXPR$N (with N a number), which is not very helpful
-        # to the user. We replace these cases therefore with
-        # the actual query string. This logic probably fails in some
-        # edge cases (if the outer SQLNode is not a select node),
-        # but so far I did not find such a case.
-        # So please raise an issue if you have found one!
-        if sqlNodeClass == "org.apache.calcite.sql.SqlOrderBy":
-            sqlNode = sqlNode.query
-            sqlNodeClass = get_java_class(sqlNode)
-
-        if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
-            select_names = [
-                self._to_sql_string(s, default_dialect=default_dialect)
-                if current_name.startswith("EXPR$")
-                else current_name
-                for s, current_name in zip(sqlNode.getSelectList(), select_names)
-            ]
+        # Optimize the `LogicalPlan` or skip if configured
+        if dask_config.get("sql.optimize"):
+            try:
+                rel = self.context.optimize_relational_algebra(nonOptimizedRel)
+            except DFOptimizationException as oe:
+                rel = nonOptimizedRel
+                raise OptimizationException(str(oe)) from None
         else:
-            logger.debug(
-                "Not extracting output column names as the SQL is not a SELECT call"
-            )
+            rel = nonOptimizedRel
 
+        rel_string = rel.explain_original()
+        logger.debug(f"_get_ral -> LogicalPlan: {rel}")
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
-        return rel, select_names, rel_string
 
-    def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
-        if default_dialect is None:
-            default_dialect = (
-                com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
+        return rel, rel_string
+
+    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
+        dc = RelConverter.convert(rel, context=self)
+
+        # Optimization might remove some alias projects. Make sure to keep them here.
+        select_names = [field for field in rel.getRowType().getFieldList()]
+
+        if rel.get_current_node_type() == "Explain":
+            return dc
+        if dc is None:
+            return
+
+        if select_names:
+            # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
+            # names the output col is prepended with the fully qualified column name
+            field_counts = Counter([field.getName() for field in select_names])
+            select_names = [
+                field.getQualifiedName()
+                if field_counts[field.getName()] > 1
+                else field.getName()
+                for field in select_names
+            ]
+
+            cc = dc.column_container
+            cc = cc.rename(
+                {
+                    df_col: select_name
+                    for df_col, select_name in zip(cc.columns, select_names)
+                }
             )
+            dc = DataContainer(dc.df, cc)
 
-        try:
-            return str(s.toSqlString(default_dialect))
-        # Have not seen any instance so far, but better be safe than sorry
-        except Exception:  # pragma: no cover
-            return str(s)
+        df = dc.assign()
+        if not return_futures:
+            df = df.compute()
+
+        return df
 
     def _get_tables_from_stack(self):
         """Helper function to return all dask/pandas dataframes from the calling stack"""
@@ -934,3 +922,9 @@ class Context:
             )
         )
         schema.functions[lower_name] = f
+
+        # Register the custom function with DataFusion so it is able to parse the queries
+        sql_return_type = python_to_sql_type(return_type)
+        self.context.register_function(
+            schema_name, DaskFunction(lower_name, sql_return_type.getDataType())
+        )

@@ -1,5 +1,5 @@
 sql:
-  groupby:
+  aggregate:
     split_out: 1
     split_every: null
 
@@ -7,3 +7,5 @@ sql:
     case_sensitive: True
 
   predicate_pushdown: True
+
+  optimize: True

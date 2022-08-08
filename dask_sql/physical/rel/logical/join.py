@@ -9,13 +9,13 @@ from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -36,19 +36,20 @@ class DaskJoinPlugin(BaseRelPlugin):
     but so far, it is the only solution...
     """
 
-    class_name = "com.dask.sql.nodes.DaskJoin"
+    class_name = "Join"
 
     JOIN_TYPE_MAPPING = {
         "INNER": "inner",
         "LEFT": "left",
         "RIGHT": "right",
         "FULL": "outer",
+        "SEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
     }
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
+
+        join = rel.join()
 
         # 1. We now have two inputs (from left and right), so we fetch them both
         dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
@@ -69,7 +70,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         df_lhs_renamed = dc_lhs_renamed.assign()
         df_rhs_renamed = dc_rhs_renamed.assign()
 
-        join_type = rel.getJoinType()
+        join_type = join.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
 
         # 3. The join condition can have two forms, that we can understand
@@ -81,10 +82,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         # In all other cases, we need to do a full table cross join and filter afterwards.
         # As this is probably non-sense for large tables, but there is no other
         # known solution so far.
-        join_condition = rel.getCondition()
-        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
-        logger.debug(f"Joining with type {join_type} on columns {lhs_on}, {rhs_on}.")
+        join_condition = join.getCondition()
+        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
 
         # lhs_on and rhs_on are the indices of the columns to merge on.
         # The given column indices are for the full, merged table which consists
@@ -166,6 +166,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         # and to rename them like the rel specifies
         row_type = rel.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
+
         cc = cc.rename(
             {
                 from_col: to_col
@@ -181,7 +182,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             filter_condition = reduce(
                 operator.and_,
                 [
-                    RexConverter.convert(rex, dc, context=context)
+                    RexConverter.convert(rel, rex, dc, context=context)
                     for rex in filter_condition
                 ],
             )
@@ -190,6 +191,9 @@ class DaskJoinPlugin(BaseRelPlugin):
             dc = DataContainer(df, cc)
 
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        # # Rename underlying DataFrame column names back to their original values before returning
+        # df = dc.assign()
+        # dc = DataContainer(df, ColumnContainer(cc.columns))
         return dc
 
     def _join_on_columns(
@@ -200,8 +204,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         rhs_on: List[str],
         join_type: str,
     ) -> dd.DataFrame:
+
         lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed.iloc[:, index]
+            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
             for i, index in enumerate(lhs_on)
         }
         rhs_columns_to_add = {
@@ -230,78 +235,82 @@ class DaskJoinPlugin(BaseRelPlugin):
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type)
+        df = dd.merge(
+            df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type
+        ).drop(columns=added_columns)
 
         return df
 
     def _split_join_condition(
-        self, join_condition: "org.apache.calcite.rex.RexCall"
-    ) -> Tuple[List[str], List[str], List["org.apache.calcite.rex.RexCall"]]:
-
-        if isinstance(
-            join_condition,
-            (org.apache.calcite.rex.RexLiteral, org.apache.calcite.rex.RexInputRef),
-        ):
+        self, join_condition: "Expression"
+    ) -> Tuple[List[str], List[str], List["Expression"]]:
+        if str(join_condition.getRexType()) in ["RexType.Literal", "RexType.Reference"]:
             return [], [], [join_condition]
-        elif not isinstance(join_condition, org.apache.calcite.rex.RexCall):
+        elif not str(join_condition.getRexType()) == "RexType.Call":
             raise NotImplementedError("Can not understand join condition.")
 
-        # Simplest case: ... ON lhs.a == rhs.b
+        lhs_on = []
+        rhs_on = []
+        filter_condition = []
         try:
-            lhs_on, rhs_on = self._extract_lhs_rhs(join_condition)
-            return [lhs_on], [rhs_on], None
+            lhs_on, rhs_on, filter_condition_part = self._extract_lhs_rhs(
+                join_condition
+            )
+            filter_condition.extend(filter_condition_part)
         except AssertionError:
-            pass
+            filter_condition.append(join_condition)
 
-        operator_name = str(join_condition.getOperator().getName())
-        operands = join_condition.getOperands()
-        # More complicated: ... ON X AND Y AND Z.
-        # We can map this if one of them is again a "="
-        if operator_name == "AND":
-            lhs_on = []
-            rhs_on = []
-            filter_condition = []
-
-            for operand in operands:
-                try:
-                    lhs_on_part, rhs_on_part = self._extract_lhs_rhs(operand)
-                    lhs_on.append(lhs_on_part)
-                    rhs_on.append(rhs_on_part)
-                except AssertionError:
-                    filter_condition.append(operand)
-
-            if lhs_on and rhs_on:
-                return lhs_on, rhs_on, filter_condition
+        if lhs_on and rhs_on:
+            return lhs_on, rhs_on, filter_condition
 
         return [], [], [join_condition]
 
     def _extract_lhs_rhs(self, rex):
-        assert isinstance(rex, org.apache.calcite.rex.RexCall)
+        assert str(rex.getRexType()) == "RexType.Call"
 
-        operator_name = str(rex.getOperator().getName())
-        assert operator_name == "="
+        operator_name = str(rex.getOperatorName())
+        assert operator_name in ["=", "AND"]
 
         operands = rex.getOperands()
         assert len(operands) == 2
 
-        operand_lhs = operands[0]
-        operand_rhs = operands[1]
+        if operator_name == "=":
 
-        if isinstance(operand_lhs, org.apache.calcite.rex.RexInputRef) and isinstance(
-            operand_rhs, org.apache.calcite.rex.RexInputRef
-        ):
-            lhs_index = operand_lhs.getIndex()
-            rhs_index = operand_rhs.getIndex()
+            operand_lhs = operands[0]
+            operand_rhs = operands[1]
 
-            # The rhs table always comes after the lhs
-            # table. Therefore we have a very simple
-            # way of checking, which index comes from which
-            # input
-            if lhs_index > rhs_index:
-                lhs_index, rhs_index = rhs_index, lhs_index
+            if (
+                str(operand_lhs.getRexType()) == "RexType.Reference"
+                and str(operand_rhs.getRexType()) == "RexType.Reference"
+            ):
+                lhs_index = operand_lhs.getIndex()
+                rhs_index = operand_rhs.getIndex()
 
-            return lhs_index, rhs_index
+                # The rhs table always comes after the lhs
+                # table. Therefore we have a very simple
+                # way of checking, which index comes from which
+                # input
+                if lhs_index > rhs_index:
+                    lhs_index, rhs_index = rhs_index, lhs_index
 
-        raise AssertionError(
-            "Invalid join condition"
-        )  # pragma: no cover. Do not how how it could be triggered.
+                return [lhs_index], [rhs_index], []
+
+            raise AssertionError(
+                "Invalid join condition"
+            )  # pragma: no cover. Do not how how it could be triggered.
+        else:
+            lhs_indices = []
+            rhs_indices = []
+            filter_conditions = []
+            for operand in operands:
+                try:
+                    lhs_index, rhs_index, filter_condition = self._extract_lhs_rhs(
+                        operand
+                    )
+                    filter_conditions.extend(filter_condition)
+                    lhs_indices.extend(lhs_index)
+                    rhs_indices.extend(rhs_index)
+                except AssertionError:
+                    filter_conditions.append(operand)
+
+            return lhs_indices, rhs_indices, filter_conditions

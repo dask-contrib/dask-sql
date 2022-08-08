@@ -13,6 +13,9 @@ if fugue_sql:
     from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
 
 
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/459"
+)
 @skip_if_external_scheduler
 def test_simple_statement(client):
     with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
@@ -44,6 +47,9 @@ def test_simple_statement(client):
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/459"
+)
 @skip_if_external_scheduler
 def test_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
