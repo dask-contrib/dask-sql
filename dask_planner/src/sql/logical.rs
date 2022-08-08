@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod cross_join;
+mod empty_relation;
 mod explain;
 mod filter;
 mod join;
@@ -12,6 +13,7 @@ mod projection;
 mod sort;
 mod table_scan;
 mod union;
+mod window;
 
 use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
@@ -71,6 +73,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::EmptyRelation as PyEmptyRelation
+    pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
         to_py_plan(self.current_node.as_ref())
@@ -103,6 +110,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Window as PyWindow
+    pub fn window(&self) -> PyResult<window::PyWindow> {
         to_py_plan(self.current_node.as_ref())
     }
 

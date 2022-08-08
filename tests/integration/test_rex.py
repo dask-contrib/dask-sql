@@ -339,7 +339,6 @@ def test_boolean_operations(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_math_operations(c, df):
     result_df = c.sql(
         """

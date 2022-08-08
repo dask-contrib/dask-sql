@@ -108,6 +108,25 @@ impl ContextProvider for DaskSQLContext {
             let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
             return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
         }
+        if "atan2".eq(name) | "mod".eq(name) {
+            let sig = Signature::variadic(
+                vec![DataType::Float64, DataType::Float64],
+                Volatility::Immutable,
+            );
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+        }
+        if "cbrt".eq(name)
+            | "cot".eq(name)
+            | "degrees".eq(name)
+            | "radians".eq(name)
+            | "sign".eq(name)
+            | "truncate".eq(name)
+        {
+            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+            return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+        }
 
         // Loop through all of the user defined functions
         for (_schema_name, schema) in &self.schemas {

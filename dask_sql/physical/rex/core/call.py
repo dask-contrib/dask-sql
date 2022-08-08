@@ -186,7 +186,7 @@ class IntDivisionOperator(Operation):
         # of this function.
         if isinstance(result, (datetime.timedelta, np.timedelta64)):
             return result
-        else:  # pragma: no cover
+        else:
             return da.trunc(result).astype(np.int64)
 
 
@@ -296,6 +296,19 @@ class IsTrueOperation(Operation):
             return df.fillna(False)
 
         return not pd.isna(df) and df is not None and not np.isnan(df) and bool(df)
+
+
+class NegativeOperation(Operation):
+    """The negative operator"""
+
+    def __init__(self):
+        super().__init__(self.negative_)
+
+    def negative_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
+        return -df
 
 
 class NotOperation(Operation):
@@ -867,6 +880,7 @@ class RexCallPlugin(BaseRexPlugin):
         "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
+        "negative": NegativeOperation(),
         "not": NotOperation(),
         "in list": InListOperation(),
         "is null": IsNullOperation(),
@@ -946,8 +960,7 @@ class RexCallPlugin(BaseRexPlugin):
         ]
 
         # Now use the operator name in the mapping
-        # TODO: obviously this needs to not be hardcoded but not sure of the best place to pull the value from currently???
-        schema_name = "root"
+        schema_name = context.schema_name
         operator_name = expr.getOperatorName().lower()
 
         try:

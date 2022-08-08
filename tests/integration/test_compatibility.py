@@ -90,7 +90,6 @@ def make_rand_df(size: int, **kwargs):
     return pd.DataFrame(data)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_basic_select_from():
     df = make_rand_df(5, a=(int, 2), b=(str, 3), c=(float, 4))
     eq_sqlite("SELECT 1 AS a, 1.5 AS b, 'x' AS c")
@@ -159,9 +158,6 @@ def test_order_by_no_limit():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/530"
-)
 def test_order_by_limit():
     a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
     eq_sqlite(
@@ -479,9 +475,6 @@ def test_agg_min_max():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_row_number():
     a = make_rand_df(10, a=int, b=(float, 5))
     eq_sqlite(
@@ -513,9 +506,6 @@ def test_window_row_number():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_row_number_partition_by():
     a = make_rand_df(100, a=int, b=(float, 50))
     eq_sqlite(
@@ -609,9 +599,6 @@ def test_window_row_number_partition_by():
 #     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_sum_avg():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
     for func in ["SUM", "AVG"]:
@@ -650,9 +637,6 @@ def test_window_sum_avg():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_sum_avg_partition_by():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
     for func in ["SUM", "AVG"]:
@@ -689,9 +673,6 @@ def test_window_sum_avg_partition_by():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_min_max():
     for func in ["MIN", "MAX"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -741,9 +722,6 @@ def test_window_min_max():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_min_max_partition_by():
     for func in ["MIN", "MAX"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -777,9 +755,6 @@ def test_window_min_max_partition_by():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_count():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -834,9 +809,6 @@ def test_window_count():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_window_count_partition_by():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -885,9 +857,6 @@ def test_window_count_partition_by():
         )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/466"
-)
 def test_nested_query():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
     eq_sqlite(

@@ -8,8 +8,8 @@ dependencies:
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3
   - dask>=2022.3.0
-  - pandas>=1.1.2
-  - fugue>=0.5.3
+  - pandas>=1.4.0
+  - fugue>=0.7.0
   - jpype1>=1.0.2
   - fastapi>=0.69.0
   - uvicorn>=0.11.3
@@ -18,5 +18,5 @@ dependencies:
   - pygments
   - tabulate
   - nest-asyncio
-  - setuptools-rust>=1.2.0
+  - setuptools-rust>=1.4.1
   - rust>=1.60.0

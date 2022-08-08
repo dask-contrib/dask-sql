@@ -25,8 +25,8 @@ class DaskSortPlugin(BaseRelPlugin):
             cc.get_backend_by_frontend_name(expr.column_name(rel))
             for expr in sort_expressions
         ]
-        sort_ascending = rel.sort().getAscending()
-        sort_null_first = rel.sort().getNullsFirst()
+        sort_ascending = [expr.isSortAscending() for expr in sort_expressions]
+        sort_null_first = [expr.isSortNullsFirst() for expr in sort_expressions]
 
         df = df.persist()
         df = apply_sort(df, sort_columns, sort_ascending, sort_null_first)
