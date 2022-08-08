@@ -19,7 +19,9 @@ impl PyAggregate {
     pub fn distinct_columns(&self) -> PyResult<Vec<String>> {
         match &self.distinct {
             Some(e) => Ok(e.input.schema().field_names()),
-            None => panic!("distinct_columns invoked for non distinct instance"),
+            None => Err(py_type_err(
+                "distinct_columns invoked for non distinct instance",
+            )),
         }
     }
 
@@ -42,10 +44,12 @@ impl PyAggregate {
 
     #[pyo3(name = "getAggregationFuncName")]
     pub fn agg_func_name(&self, expr: PyExpr) -> PyResult<String> {
-        Ok(match expr.expr {
-            Expr::AggregateFunction { fun, .. } => fun.to_string(),
-            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
-        })
+        match expr.expr {
+            Expr::AggregateFunction { fun, .. } => Ok(fun.to_string()),
+            _ => Err(py_type_err(
+                "Encountered a non Aggregate type in agg_func_name",
+            )),
+        }
     }
 
     #[pyo3(name = "getArgs")]
@@ -55,7 +59,9 @@ impl PyAggregate {
                 Some(e) => py_expr_list(&e.input, &args),
                 None => Ok(vec![]),
             },
-            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
+            _ => Err(py_type_err(
+                "Encountered a non Aggregate type in agg_func_name",
+            )),
         }
     }
 

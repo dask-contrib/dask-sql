@@ -150,7 +150,7 @@ impl PyLogicalPlan {
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),
-            None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            None => Err(py_type_err(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
             )),
         }
@@ -175,9 +175,7 @@ impl PyLogicalPlan {
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
             Ok(dask_table) => Ok(dask_table.name),
-            Err(_e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Unable to determine current node table name",
-            )),
+            Err(_e) => Err(py_type_err("Unable to determine current node table name")),
         }
     }
 
