@@ -48,6 +48,7 @@ class DaskProjectPlugin(BaseRelPlugin):
             new_columns[random_name] = RexConverter.convert(
                 rel, expr, dc, context=context
             )
+            breakpoint()
 
             new_mappings[key] = random_name
 
@@ -81,6 +82,7 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
+        breakpoint()
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
 
         return dc

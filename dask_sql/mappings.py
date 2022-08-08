@@ -85,7 +85,7 @@ _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
         unit="ns", tz="UTC"
     ),  # Everything is converted to UTC. So far, this did not break
-    "SqlTypeName.INTERVAL_DAY": np.dtype("<M8[ns]"),
+    "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
@@ -263,7 +263,7 @@ def cast_column_type(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
     )
 
-    # breakpoint()
+    breakpoint()
     casted_column = cast_column_to_type(df[column_name], expected_type)
 
     if casted_column is not None:
@@ -291,4 +291,5 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         col = da.trunc(col.fillna(value=np.NaN))
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
+    breakpoint()
     return col.astype(expected_type)
