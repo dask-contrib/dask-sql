@@ -419,11 +419,11 @@ impl PyExpr {
                 Operator::StringConcat => "VARCHAR",
             },
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Null => "Null",
                 ScalarValue::Boolean(_value) => "Boolean",
                 ScalarValue::Float32(_value) => "Float32",
                 ScalarValue::Float64(_value) => "Float64",
                 ScalarValue::Decimal128(_value, ..) => "Decimal128",
+                ScalarValue::Dictionary(..) => "Dictionary",
                 ScalarValue::Int8(_value) => "Int8",
                 ScalarValue::Int16(_value) => "Int16",
                 ScalarValue::Int32(_value) => "Int32",
@@ -438,12 +438,16 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => "LargeBinary",
                 ScalarValue::Date32(_value) => "Date32",
                 ScalarValue::Date64(_value) => "Date64",
-                _ => {
-                    return Err(py_type_err(format!(
-                        "Catch all triggered for Literal in get_type; {:?}",
-                        scalar_value
-                    )))
-                }
+                ScalarValue::Null => "Null",
+                ScalarValue::TimestampSecond(..) => "TimestampSecond",
+                ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
+                ScalarValue::TimestampMicrosecond(..) => "TimestampMicrosecond",
+                ScalarValue::TimestampNanosecond(..) => "TimestampNanosecond",
+                ScalarValue::IntervalYearMonth(..) => "IntervalYearMonth",
+                ScalarValue::IntervalDayTime(..) => "IntervalDayTime",
+                ScalarValue::IntervalMonthDayNano(..) => "IntervalMonthDayNano",
+                ScalarValue::List(..) => "List",
+                ScalarValue::Struct(..) => "Struct",
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
                 BuiltinScalarFunction::Abs => "Abs",
@@ -630,6 +634,24 @@ impl PyExpr {
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getIntervalDayTimeValue")]
+    pub fn interval_day_time_value(&mut self) -> (i32, i32) {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::IntervalDayTime(iv) => {
+                    let interval = iv.unwrap() as u64;
+                    let days = (interval >> 32) as i32;
+                    let ms = interval as i32;
+                    (days, ms)
+                }
+                _ => {
+                    panic!("getValue<T>() - Unexpected value")
+                }
+            },
+            _ => panic!("getValue<T>() - Non literal value encountered"),
         }
     }
 

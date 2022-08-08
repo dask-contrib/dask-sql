@@ -54,6 +54,20 @@ def test_case(c, df):
     assert_eq(result_df, expected_df, check_dtype=False)
 
 
+def test_intervals(c):
+    df = c.sql(
+        """SELECT INTERVAL '3' DAY as "IN"
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "IN": [pd.to_timedelta("3d")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_literals(c):
     df = c.sql(
