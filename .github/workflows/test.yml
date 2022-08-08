@@ -126,10 +126,7 @@ jobs:
           path: junit/test-results.xml
       - name: Upload coverage to Codecov
         if: github.repository == 'dask-contrib/dask-sql'
-        uses: codecov/codecov-action@v2
-        with:
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v3
 
   cluster:
     name: "Test in a dask cluster"
