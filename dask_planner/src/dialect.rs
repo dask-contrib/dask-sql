@@ -1,6 +1,6 @@
 use core::iter::Peekable;
 use core::str::Chars;
-use sqlparser::dialect::Dialect;
+use datafusion_sql::sqlparser::dialect::Dialect;
 
 #[derive(Debug)]
 pub struct DaskSqlDialect {}
