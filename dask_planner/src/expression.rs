@@ -656,7 +656,7 @@ impl PyExpr {
                     let days = (interval >> 32) as i32;
                     let ms = interval as i32;
                     (days, ms)
-                },
+                }
                 _ => {
                     panic!("getValue<T>() - Unexpected value")
                 }
