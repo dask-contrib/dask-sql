@@ -146,9 +146,8 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_type = SqlTypeName.NULL
             literal_value = None
         elif literal_type == "IntervalDayTime":
-            literal_type = SqlTypeName.INTERVAL
+            literal_type = SqlTypeName.INTERVAL_DAY
             literal_value = rex.getIntervalDayTimeValue()
-            breakpoint()
         else:
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"

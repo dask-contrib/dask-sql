@@ -61,7 +61,6 @@ class RexConverter(Pluggable):
 
         try:
             plugin_instance = cls.get_plugin(expr_type)
-            breakpoint()
         except KeyError:  # pragma: no cover
             raise NotImplementedError(
                 f"No conversion for class {expr_type} available (yet)."

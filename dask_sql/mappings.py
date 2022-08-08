@@ -140,6 +140,8 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
         return literal_value
 
+    elif sql_type == SqlTypeName.INTERVAL_DAY:
+        return timedelta(days=literal_value[0], milliseconds=literal_value[1])
     elif sql_type == SqlTypeName.INTERVAL:
         # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
         try:
@@ -269,7 +271,6 @@ def cast_column_type(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
     )
 
-    breakpoint()
     casted_column = cast_column_to_type(df[column_name], expected_type)
 
     if casted_column is not None:
@@ -299,5 +300,4 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
             return col.astype(np.int64)
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
-    breakpoint()
     return col.astype(expected_type)
