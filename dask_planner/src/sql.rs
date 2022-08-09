@@ -134,8 +134,7 @@ impl ContextProvider for DaskSQLContext {
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
                     let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction =
-                        Arc::new(|d_type| Ok(Arc::new(d_type[0].clone())));
+                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
