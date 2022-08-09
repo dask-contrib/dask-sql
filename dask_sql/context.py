@@ -41,7 +41,7 @@ from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import OptimizationException, ParsingException
 
 if TYPE_CHECKING:
-    from dask_planner.rust import Expression
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -490,40 +490,9 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, select_fields, _ = self._get_ral(sql)
+            rel, _ = self._get_ral(sql)
 
-            dc = RelConverter.convert(rel, context=self)
-
-            if rel.get_current_node_type() == "Explain":
-                return dc
-            if dc is None:
-                return
-
-            if select_fields:
-                # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
-                # names the output col is prepended with the fully qualified column name
-                field_counts = Counter([field.getName() for field in select_fields])
-                select_names = [
-                    field.getQualifiedName()
-                    if field_counts[field.getName()] > 1
-                    else field.getName()
-                    for field in select_fields
-                ]
-
-                cc = dc.column_container
-                cc = cc.rename(
-                    {
-                        df_col: select_name
-                        for df_col, select_name in zip(cc.columns, select_names)
-                    }
-                )
-                dc = DataContainer(dc.df, cc)
-
-            df = dc.assign()
-            if not return_futures:
-                df = df.compute()
-
-        return df
+            return self._compute_table_from_rel(rel, return_futures)
 
     def explain(
         self,
@@ -555,7 +524,7 @@ class Context:
             for df_name, df in dataframes.items():
                 self.create_table(df_name, df, gpu=gpu)
 
-        _, _, rel_string = self._get_ral(sql)
+        _, rel_string = self._get_ral(sql)
         return rel_string
 
     def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
@@ -817,7 +786,6 @@ class Context:
         sqlTree = self.context.parse_sql(sql)
         logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
-        select_names = None
         rel = sqlTree
 
         # TODO: Need to understand if this list here is actually needed? For now just use the first entry.
@@ -845,10 +813,44 @@ class Context:
         logger.debug(f"_get_ral -> LogicalPlan: {rel}")
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
 
+        return rel, rel_string
+
+    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
+        dc = RelConverter.convert(rel, context=self)
+
         # Optimization might remove some alias projects. Make sure to keep them here.
         select_names = [field for field in rel.getRowType().getFieldList()]
 
-        return rel, select_names, rel_string
+        if rel.get_current_node_type() == "Explain":
+            return dc
+        if dc is None:
+            return
+
+        if select_names:
+            # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
+            # names the output col is prepended with the fully qualified column name
+            field_counts = Counter([field.getName() for field in select_names])
+            select_names = [
+                field.getQualifiedName()
+                if field_counts[field.getName()] > 1
+                else field.getName()
+                for field in select_names
+            ]
+
+            cc = dc.column_container
+            cc = cc.rename(
+                {
+                    df_col: select_name
+                    for df_col, select_name in zip(cc.columns, select_names)
+                }
+            )
+            dc = DataContainer(dc.df, cc)
+
+        df = dc.assign()
+        if not return_futures:
+            df = df.compute()
+
+        return df
 
     def _get_tables_from_stack(self):
         """Helper function to return all dask/pandas dataframes from the calling stack"""
