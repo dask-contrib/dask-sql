@@ -5,6 +5,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 mod aggregate;
 mod create_memory_table;
 mod cross_join;
+mod drop_table;
 mod empty_relation;
 mod explain;
 mod filter;
@@ -126,6 +127,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::CreateMemoryTable as PyCreateMemoryTable
     pub fn create_memory_table(&self) -> PyResult<create_memory_table::PyCreateMemoryTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::DropTable as DropTable
+    pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
         to_py_plan(self.current_node.as_ref())
     }
 
