@@ -13,15 +13,14 @@ tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync"
 rand = "0.7"
 pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
 arrow = { version = "19.0.0", features = ["prettyprint"] }
-datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
+datafusion-sql = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
+datafusion-expr = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
+datafusion-common = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
+datafusion-optimizer = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
 async-trait = "0.1.41"
-sqlparser = "0.18"
 
 
 [lib]
