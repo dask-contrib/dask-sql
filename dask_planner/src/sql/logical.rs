@@ -3,7 +3,9 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
+mod create_memory_table;
 mod cross_join;
+mod drop_table;
 mod empty_relation;
 mod explain;
 mod filter;
@@ -123,6 +125,16 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CreateMemoryTable as PyCreateMemoryTable
+    pub fn create_memory_table(&self) -> PyResult<create_memory_table::PyCreateMemoryTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::DropTable as DropTable
+    pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -138,7 +150,7 @@ impl PyLogicalPlan {
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
         match table::table_from_logical_plan(&self.current_node()) {
             Some(table) => Ok(table),
-            None => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            None => Err(py_type_err(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
             )),
         }
@@ -163,9 +175,7 @@ impl PyLogicalPlan {
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
             Ok(dask_table) => Ok(dask_table.name),
-            Err(_e) => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Unable to determine current node table name",
-            )),
+            Err(_e) => Err(py_type_err("Unable to determine current node table name")),
         }
     }
 

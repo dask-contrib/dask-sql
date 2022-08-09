@@ -145,8 +145,13 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Null":
             literal_type = SqlTypeName.NULL
             literal_value = None
+        elif literal_type == "IntervalDayTime":
+            literal_type = SqlTypeName.INTERVAL_DAY
+            literal_value = rex.getIntervalDayTimeValue()
         else:
-            raise RuntimeError("Failed to determine DataFusion Type in literal.py")
+            raise RuntimeError(
+                f"Failed to map literal type {literal_type} to python type in literal.py"
+            )
 
         # if isinstance(literal_value, org.apache.calcite.util.Sarg):
         #     return SargPythonImplementation(literal_value, literal_type)
