@@ -226,7 +226,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         groupby_agg_options = dask_config.get("sql.aggregate")
 
         if not collected_aggregations:
-            breakpoint()
             backend_names = [
                 cc.get_backend_by_frontend_name(group_name)
                 for group_name in group_columns

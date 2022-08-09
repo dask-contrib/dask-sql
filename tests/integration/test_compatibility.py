@@ -334,9 +334,9 @@ def test_agg_count():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
+# @pytest.mark.skip(
+#     reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
+# )
 def test_agg_sum_avg_no_group_by():
     eq_sqlite(
         """
