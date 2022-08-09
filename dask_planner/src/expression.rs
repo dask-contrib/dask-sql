@@ -485,7 +485,8 @@ impl PyExpr {
                 DataType::Struct(..) => "STRUCT",
                 DataType::Union(..) => "UNION",
                 DataType::Dictionary(..) => "DICTIONARY",
-                DataType::Decimal(..) => "DECIMAL",
+                DataType::Decimal128(..) => "DECIMAL",
+                DataType::Decimal256(..) => "DECIMAL",
                 DataType::Map(..) => "MAP",
                 _ => {
                     return Err(py_type_err(format!(

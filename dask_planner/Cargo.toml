@@ -6,13 +6,13 @@ description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.59"
+rust-version = "1.62"
 
 [dependencies]
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
-pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
-arrow = { version = "19.0.0", features = ["prettyprint"] }
+pyo3 = { version = "0.16.5", features = ["extension-module", "abi3", "abi3-py38"] }
+arrow = { version = "20.0.0", features = ["prettyprint"] }
 datafusion-sql = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
 datafusion-expr = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
 datafusion-common = { git="https://github.com/jdye64/arrow-datafusion/", branch = "dask-predict" }
