@@ -909,19 +909,17 @@ class Context:
             f = UDF(f, row_udf, parameters, return_type)
         lower_name = name.lower()
         if lower_name in schema.functions:
-            if replace:
-                schema.function_lists = list(
-                    filter(
-                        lambda f: f.name.lower() != lower_name,
-                        schema.function_lists,
-                    )
-                )
-                del schema.functions[lower_name]
-
-            elif schema.functions[lower_name] != f:
+            if not replace:
                 raise ValueError(
                     "Registering multiple functions with the same name is only permitted if replace=True"
                 )
+            schema.function_lists = list(
+                filter(
+                    lambda f: f.name.lower() != lower_name,
+                    schema.function_lists,
+                )
+            )
+            del schema.functions[lower_name]
 
         schema.function_lists.append(
             FunctionDescription(
@@ -930,7 +928,7 @@ class Context:
         )
         schema.function_lists.append(
             FunctionDescription(
-                name.lower(), sql_parameters, sql_return_type, aggregation
+                lower_name, sql_parameters, sql_return_type, aggregation
             )
         )
         schema.functions[lower_name] = f

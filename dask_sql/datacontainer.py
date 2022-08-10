@@ -220,11 +220,6 @@ class UDF:
             result = self.func(*args, **kwargs)
         return result
 
-    def __eq__(self, other):
-        if isinstance(other, UDF):
-            return self.func == other.func and self.row_udf == other.row_udf
-        return NotImplemented
-
     def __hash__(self):
         return (self.func, self.row_udf).__hash__()
 
