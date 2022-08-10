@@ -302,18 +302,20 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize("gpu", [False, True])
 def test_coalesce(c, gpu):
-    df = dd.from_pandas(pd.DataFrame({"b": [1, 2, 3]}), npartitions=1)
+    df = dd.from_pandas(
+        pd.DataFrame({"a": [1, 2, 3], "b": [np.nan, np.nan, np.nan]}), npartitions=1
+    )
     c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
         SELECT
             COALESCE(3, 5) as c1,
-            COALESCE(SUM(b), NULL) as c2,
+            COALESCE(SUM(a), NULL) as c2,
             COALESCE(NULL, 'hi') as c3,
-            COALESCE(NULL, NULL, 'bye', 5/0) as c4,
+            COALESCE(NULL, SUM(b), 'bye', 5/0) as c4,
             COALESCE(NULL, 3/2, NULL, 'fly') as c5
         FROM df
         """
