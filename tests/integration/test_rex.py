@@ -336,7 +336,7 @@ def test_boolean_operations(c):
         """
         SELECT
             b IS TRUE AS t,
-            b IS FALSE AS f
+            b IS FALSE AS f,
             b IS NOT TRUE AS nt,
             b IS NOT FALSE AS nf,
             b IS UNKNOWN AS u,
@@ -573,7 +573,7 @@ def test_date_functions(c):
             TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
             TIMESTAMPADD(MICROSECOND, 999*1000, d) as "plus_999_millisec",
             TIMESTAMPADD(MICROSECOND, 999, d) as "plus_999_microsec",
-            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt"
+            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
 
             CEIL(d TO DAY) as ceil_to_day,
             CEIL(d TO HOUR) as ceil_to_hour,
