@@ -165,7 +165,7 @@ def test_math_operations():
 
 def test_string_operations():
     a = "a normal string"
-    assert ops_mapping["char_length"](a) == 15
+    assert ops_mapping["characterlength"](a) == 15
     assert ops_mapping["upper"](a) == "A NORMAL STRING"
     assert ops_mapping["lower"](a) == "a normal string"
     assert ops_mapping["position"]("a", a, 4) == 7
