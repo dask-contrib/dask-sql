@@ -170,9 +170,10 @@ def test_string_operations():
     assert ops_mapping["lower"](a) == "a normal string"
     assert ops_mapping["position"]("a", a, 4) == 7
     assert ops_mapping["position"]("ZL", a) == 0
-    assert ops_mapping["trim"]("BOTH", "a", a) == " normal string"
-    assert ops_mapping["trim"]("LEADING", "a", a) == " normal string"
-    assert ops_mapping["trim"]("TRAILING", "a", a) == "a normal string"
+    assert ops_mapping["trim"](a, "a") == " normal string"
+    assert ops_mapping["btrim"](a, "a") == " normal string"
+    assert ops_mapping["ltrim"](a, "a") == " normal string"
+    assert ops_mapping["rtrim"](a, "a") == "a normal string"
     assert ops_mapping["overlay"](a, "XXX", 2) == "aXXXrmal string"
     assert ops_mapping["overlay"](a, "XXX", 2, 4) == "aXXXmal string"
     assert ops_mapping["overlay"](a, "XXX", 2, 1) == "aXXXnormal string"
