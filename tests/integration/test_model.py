@@ -19,7 +19,7 @@ except ImportError:
     xgboost = None
     dask_cudf = None
 
-pytest.importorskip("dask_ml")
+# pytest.importorskip("dask_ml")
 
 
 @pytest.mark.skip(reason="WIP DataFusion")

@@ -9,7 +9,7 @@ from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -105,14 +105,15 @@ class CreateModelPlugin(BaseRelPlugin):
           those models, which have a `fit_partial` method.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateModel"
+    class_name = "CreateModel"
 
     def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
+        self, rel: "LogicalPlan", context: "dask_sql.Context"
     ) -> DataContainer:
-        select = sql.getSelect()
-        schema_name, model_name = context.fqn(sql.getModelName())
-        kwargs = convert_sql_kwargs(sql.getKwargs())
+        model_instance = rel.create_model()
+        select = model_instance.getSelect()
+        schema_name, model_name = context.fqn(model_instance.getModelName())
+        kwargs = convert_sql_kwargs(model_instance.getKwargs())
 
         if model_name in context.schema[schema_name].models:
             if sql.getIfNotExists():

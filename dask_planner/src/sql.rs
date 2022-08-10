@@ -8,9 +8,7 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::{
-    sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
-};
+use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::DataFusionError;

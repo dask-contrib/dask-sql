@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod create_memory_table;
+mod create_model;
 mod cross_join;
 mod drop_table;
 mod empty_relation;
@@ -130,6 +131,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CreateModel as PyCreateModel
+    pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::DropTable as DropTable
     pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
         to_py_plan(self.current_node.as_ref())
@@ -182,6 +188,7 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
+            LogicalPlan::CreateModel(_) => "CreateModel",
             LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",
