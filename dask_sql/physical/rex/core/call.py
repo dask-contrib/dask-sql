@@ -761,7 +761,10 @@ class CoalesceOperation(Operation):
 
     def coalesce(self, *operands):
         for operand in operands:
-            if not pd.isna(operand):
+            if isinstance(operand, dd.Series):
+                if not operand.isna().compute()[0]:
+                    return operand
+            elif not pd.isna(operand):
                 return operand
         return
 
