@@ -19,7 +19,7 @@ except ImportError:
     xgboost = None
     dask_cudf = None
 
-# pytest.importorskip("dask_ml")
+pytest.importorskip("dask_ml")
 
 
 @pytest.mark.skip(reason="WIP DataFusion")
@@ -49,20 +49,26 @@ def check_trained_model(c, model_name=None):
 
 
 def test_create_model_parsing(c):
+    # c.sql(
+    #     """
+    #     CREATE MODEL my_model WITH (
+    #         model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+    #         wrap_predict = True,
+    #         target_column = 'target'
+    #     ) AS (
+    #         SELECT x, y, x*y > 0 AS target
+    #         FROM timeseries
+    #         LIMIT 100
+    #     )
+    # """
+    # )
     c.sql(
         """
-        CREATE MODEL my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            wrap_predict = True,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
-        )
+        CREATE MODEL my_model WITH (model_class = 'sklearn.ensemble.GradientBoostingClassifier')
     """
     )
-    print("result!")
+
+    check_trained_model(c)
 
 
 @pytest.fixture()
