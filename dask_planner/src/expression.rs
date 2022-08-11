@@ -113,7 +113,7 @@ impl PyExpr {
     #[pyo3(name = "getSubqueryLogicalPlan")]
     pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
         match &self.expr {
-            Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
+            Expr::ScalarSubquery(subquery) => Ok(subquery.subquery.as_ref().clone().into()),
             _ => Err(py_type_err(format!(
                 "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
                 Only Subquery and related variants are supported for this operation.",
@@ -126,10 +126,7 @@ impl PyExpr {
     /// Column in the SQL parse tree or not
     #[pyo3(name = "isInputReference")]
     pub fn is_input_reference(&self) -> PyResult<bool> {
-        Ok(match &self.expr {
-            Expr::Column(_col) => true,
-            _ => false,
-        })
+        Ok(matches!(&self.expr, Expr::Column(_col)))
     }
 
     #[pyo3(name = "toString")]
@@ -164,9 +161,8 @@ impl PyExpr {
                     }
                 } else if input_plans.len() >= 2 {
                     let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
-                    for input_idx in 1..input_plans.len() {
-                        let input_schema: DFSchema = (**input_plans[input_idx].schema()).clone();
-                        base_schema.merge(&input_schema);
+                    for plan in input_plans.iter().skip(1) {
+                        base_schema.merge(plan.schema().as_ref());
                     }
                     let name: Result<String> = self.expr.name(&base_schema);
                     match name {
@@ -486,7 +482,8 @@ impl PyExpr {
                 DataType::Struct(..) => "STRUCT",
                 DataType::Union(..) => "UNION",
                 DataType::Dictionary(..) => "DICTIONARY",
-                DataType::Decimal(..) => "DECIMAL",
+                DataType::Decimal128(..) => "DECIMAL",
+                DataType::Decimal256(..) => "DECIMAL",
                 DataType::Map(..) => "MAP",
                 _ => {
                     return Err(py_type_err(format!(
@@ -662,7 +659,7 @@ impl PyExpr {
             Expr::Between { negated, .. }
             | Expr::Exists { negated, .. }
             | Expr::InList { negated, .. }
-            | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
+            | Expr::InSubquery { negated, .. } => Ok(*negated),
             _ => Err(py_type_err(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr
