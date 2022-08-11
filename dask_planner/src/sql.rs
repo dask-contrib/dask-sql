@@ -25,6 +25,7 @@ use datafusion_sql::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::parser::DaskParser;
 use sqlparser::dialect::DaskDialect;
 
 use pyo3::prelude::*;
@@ -217,7 +218,7 @@ impl DaskSQLContext {
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
         let dd: DaskDialect = DaskDialect {};
-        match DFParser::parse_sql_with_dialect(sql, &dd) {
+        match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {

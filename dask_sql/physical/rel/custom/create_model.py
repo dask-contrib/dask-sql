@@ -107,13 +107,12 @@ class CreateModelPlugin(BaseRelPlugin):
 
     class_name = "CreateModel"
 
-    def convert(
-        self, rel: "LogicalPlan", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         model_instance = rel.create_model()
-        select = model_instance.getSelect()
+        select = model_instance.getSelectQuery()
         schema_name, model_name = context.fqn(model_instance.getModelName())
         kwargs = convert_sql_kwargs(model_instance.getKwargs())
+        breakpoint()
 
         if model_name in context.schema[schema_name].models:
             if sql.getIfNotExists():
