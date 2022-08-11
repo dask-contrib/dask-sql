@@ -67,7 +67,7 @@ impl ContextProvider for DaskSQLContext {
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
-                for (_table_name, table) in &schema.tables {
+                for table in schema.tables.values() {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
@@ -103,39 +103,49 @@ impl ContextProvider for DaskSQLContext {
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
         let fun: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
-        if "year".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
-        }
-        if "atan2".eq(name) | "mod".eq(name) {
-            let sig = Signature::variadic(
-                vec![DataType::Float64, DataType::Float64],
-                Volatility::Immutable,
-            );
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-            return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
-        }
-        if "cbrt".eq(name)
-            | "cot".eq(name)
-            | "degrees".eq(name)
-            | "radians".eq(name)
-            | "sign".eq(name)
-            | "truncate".eq(name)
-        {
-            let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-            return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+
+        match name {
+            "year" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "atan2" | "mod" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Float64, DataType::Float64],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
+                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Volatile);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand_integer" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Int64, DataType::Int64],
+                    Volatility::Volatile,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            _ => (),
         }
 
         // Loop through all of the user defined functions
-        for (_schema_name, schema) in &self.schemas {
+        for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
                     let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction =
-                        Arc::new(|d_type| Ok(Arc::new(d_type[0].clone())));
+                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
@@ -248,7 +258,7 @@ impl DaskSQLContext {
                         original_plan: k,
                         current_node: None,
                     })
-                    .map_err(|e| py_parsing_exp(e))
+                    .map_err(py_parsing_exp)
             }
             DaskStatement::CreateModel(create_model) => {
                 todo!()
@@ -275,7 +285,7 @@ impl DaskSQLContext {
                             original_plan: k,
                             current_node: None,
                         })
-                        .map_err(|e| py_optimization_exp(e))
+                        .map_err(py_optimization_exp)
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
                     Ok(existing_plan)

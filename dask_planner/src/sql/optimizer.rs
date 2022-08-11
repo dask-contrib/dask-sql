@@ -18,15 +18,16 @@ impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
-        let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
-        rules.push(Box::new(CommonSubexprEliminate::new()));
-        rules.push(Box::new(EliminateLimit::new()));
-        rules.push(Box::new(FilterNullJoinKeys::default()));
-        rules.push(Box::new(FilterPushDown::new()));
-        rules.push(Box::new(LimitPushDown::new()));
-        rules.push(Box::new(ProjectionPushDown::new()));
-        rules.push(Box::new(SingleDistinctToGroupBy::new()));
-        rules.push(Box::new(SubqueryFilterToJoin::new()));
+        let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(EliminateLimit::new()),
+            Box::new(FilterNullJoinKeys::default()),
+            Box::new(FilterPushDown::new()),
+            Box::new(LimitPushDown::new()),
+            Box::new(ProjectionPushDown::new()),
+            Box::new(SingleDistinctToGroupBy::new()),
+            Box::new(SubqueryFilterToJoin::new()),
+        ];
         Self {
             optimizations: rules,
         }

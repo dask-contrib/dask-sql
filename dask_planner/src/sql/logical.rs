@@ -237,7 +237,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, join.left.schema().as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
 
                 let mut rhs_fields: Vec<RelDataTypeField> = join
                     .right
@@ -246,7 +246,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, join.right.schema().as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
 
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
@@ -258,7 +258,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
                 Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
@@ -268,7 +268,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
                 Ok(RelDataType::new(false, rel_fields))
             }
         }
