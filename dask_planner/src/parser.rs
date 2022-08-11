@@ -3,15 +3,12 @@
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
 use crate::dialect::DaskDialect;
-use datafusion_expr::logical_plan::FileType;
-use datafusion_sql::parser::Statement as DFStatement;
 use datafusion_sql::sqlparser::{
     ast::{ColumnDef, ColumnOptionDef, Statement as SQLStatement, TableConstraint},
-    dialect::{keywords::Keyword, Dialect, GenericDialect},
+    dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use sqlparser::ast::Ident;
 use std::collections::VecDeque;
 
 // Use `Parser::expected` instead, if possible
@@ -34,7 +31,7 @@ pub struct CreateModel {
 ///
 /// Tokens parsed by `DFParser` are converted into these values.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Statement {
+pub enum DaskStatement {
     /// ANSI SQL AST node
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
@@ -64,7 +61,7 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse a SQL statement and produce a set of statements with dialect
-    pub fn parse_sql(sql: &str) -> Result<VecDeque<Statement>, ParserError> {
+    pub fn parse_sql(sql: &str) -> Result<VecDeque<DaskStatement>, ParserError> {
         let dialect = &DaskDialect {};
         DaskParser::parse_sql_with_dialect(sql, dialect)
     }
@@ -73,7 +70,7 @@ impl<'a> DaskParser<'a> {
     pub fn parse_sql_with_dialect(
         sql: &str,
         dialect: &dyn Dialect,
-    ) -> Result<VecDeque<Statement>, ParserError> {
+    ) -> Result<VecDeque<DaskStatement>, ParserError> {
         let mut parser = DaskParser::new_with_dialect(sql, dialect)?;
         let mut stmts = VecDeque::new();
         let mut expecting_statement_delimiter = false;
@@ -103,7 +100,7 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse a new expression
-    pub fn parse_statement(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_statement(&mut self) -> Result<DaskStatement, ParserError> {
         match self.parser.peek_token() {
             Token::Word(w) => {
                 match w.keyword {
@@ -115,7 +112,7 @@ impl<'a> DaskParser<'a> {
                     }
                     _ => {
                         // use the native parser
-                        Ok(Statement::Statement(Box::from(
+                        Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_statement()?,
                         )))
                     }
@@ -123,7 +120,7 @@ impl<'a> DaskParser<'a> {
             }
             _ => {
                 // use the native parser
-                Ok(Statement::Statement(Box::from(
+                Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_statement()?,
                 )))
             }
@@ -131,13 +128,15 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse a SQL CREATE statement
-    pub fn parse_create(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
         if let Ok(ident) = self.parser.parse_identifier() {
             println!("Identity value is: {:?}", ident.value);
             self.parse_create_model()
         } else {
             println!("Wasn't a match ... default to the native sqlparser parser");
-            Ok(Statement::Statement(Box::from(self.parser.parse_create()?)))
+            Ok(DaskStatement::Statement(Box::from(
+                self.parser.parse_create()?,
+            )))
         }
     }
 
@@ -210,7 +209,7 @@ impl<'a> DaskParser<'a> {
         })
     }
 
-    fn parse_create_model(&mut self) -> Result<Statement, ParserError> {
+    fn parse_create_model(&mut self) -> Result<DaskStatement, ParserError> {
         self.parser.expect_keyword(Keyword::TABLE)?;
         let if_not_exists =
             self.parser
@@ -224,7 +223,7 @@ impl<'a> DaskParser<'a> {
             name: table_name.to_string(),
             if_not_exists,
         };
-        Ok(Statement::CreateModel(create))
+        Ok(DaskStatement::CreateModel(create))
     }
 
     fn consume_token(&mut self, expected: &Token) -> bool {
@@ -235,26 +234,6 @@ impl<'a> DaskParser<'a> {
             true
         } else {
             false
-        }
-    }
-
-    fn parse_csv_has_header(&mut self) -> bool {
-        self.consume_token(&Token::make_keyword("WITH"))
-            & self.consume_token(&Token::make_keyword("HEADER"))
-            & self.consume_token(&Token::make_keyword("ROW"))
-    }
-
-    fn parse_has_delimiter(&mut self) -> bool {
-        self.consume_token(&Token::make_keyword("DELIMITER"))
-    }
-
-    fn parse_delimiter(&mut self) -> Result<char, ParserError> {
-        let token = self.parser.parse_literal_string()?;
-        match token.len() {
-            1 => Ok(token.chars().next().unwrap()),
-            _ => Err(ParserError::TokenizerError(
-                "Delimiter must be a single char".to_string(),
-            )),
         }
     }
 }

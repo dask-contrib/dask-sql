@@ -188,7 +188,6 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
-            LogicalPlan::CreateModel(_) => "CreateModel",
             LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",

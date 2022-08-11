@@ -17,7 +17,6 @@ use datafusion_expr::{
     ScalarUDF, Signature, TableSource, Volatility,
 };
 use datafusion_sql::{
-    parser::DFParser,
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
@@ -25,8 +24,8 @@ use datafusion_sql::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::parser::DaskParser;
-use sqlparser::dialect::DaskDialect;
+use crate::dialect::DaskDialect;
+use crate::parser::{DaskParser, DaskStatement};
 
 use pyo3::prelude::*;
 
@@ -239,14 +238,21 @@ impl DaskSQLContext {
         &self,
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
-        let planner = SqlToRel::new(self);
-        planner
-            .statement_to_plan(statement.statement)
-            .map(|k| logical::PyLogicalPlan {
-                original_plan: k,
-                current_node: None,
-            })
-            .map_err(|e| py_parsing_exp(e))
+        match statement.statement {
+            DaskStatement::Statement(statement) => {
+                let planner = SqlToRel::new(self);
+                planner
+                    .statement_to_plan(statement.as_ref().clone())
+                    .map(|k| logical::PyLogicalPlan {
+                        original_plan: k,
+                        current_node: None,
+                    })
+                    .map_err(|e| py_parsing_exp(e))
+            }
+            DaskStatement::CreateModel(create_model) => {
+                todo!()
+            }
+        }
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
