@@ -232,9 +232,9 @@ impl PyExpr {
             | Expr::Exists { .. }
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
+            | Expr::Not(..)
             | Expr::GroupingSet(..) => self.expr.variant_name(),
             Expr::ScalarVariable(..)
-            | Expr::Not(..)
             | Expr::IsNotNull(..)
             | Expr::Negative(..)
             | Expr::GetIndexedField { .. }
@@ -376,6 +376,7 @@ impl PyExpr {
             Expr::IsNotNull(..) => "is not null".to_string(),
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
+            Expr::Not(..) => "not".to_string(),
             _ => {
                 return Err(py_type_err(format!(
                     "Catch all triggered in get_operator_name: {:?}",
