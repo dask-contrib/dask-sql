@@ -17,6 +17,7 @@ use datafusion_expr::{
     ScalarUDF, Signature, TableSource, Volatility,
 };
 use datafusion_sql::{
+    parser::Statement as DFStatement,
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
@@ -242,7 +243,7 @@ impl DaskSQLContext {
             DaskStatement::Statement(statement) => {
                 let planner = SqlToRel::new(self);
                 planner
-                    .statement_to_plan(statement.as_ref().clone())
+                    .statement_to_plan(DFStatement::Statement(statement))
                     .map(|k| logical::PyLogicalPlan {
                         original_plan: k,
                         current_node: None,
