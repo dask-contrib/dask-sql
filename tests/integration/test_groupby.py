@@ -287,6 +287,10 @@ def test_stddev(c, gpu):
 
     assert_eq(return_df, expected_df.reset_index(drop=True))
 
+    if gpu:
+        c.drop_table("df")
+        pytest.skip()
+
     return_df = c.sql(
         """
         SELECT
