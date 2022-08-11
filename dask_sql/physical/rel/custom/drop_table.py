@@ -6,7 +6,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +19,17 @@ class DropTablePlugin(BaseRelPlugin):
         DROP TABLE <table-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropTable"
+    class_name = "DropTable"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, table_name = context.fqn(sql.getTableName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        # Rust create_memory_table instance handle
+        drop_table = rel.drop_table()
+
+        # can we avoid hardcoding the schema name?
+        schema_name, table_name = context.schema_name, drop_table.getName()
 
         if table_name not in context.schema[schema_name].tables:
-            if not sql.getIfExists():
+            if not drop_table.getIfExists():
                 raise RuntimeError(
                     f"A table with the name {table_name} is not present."
                 )
