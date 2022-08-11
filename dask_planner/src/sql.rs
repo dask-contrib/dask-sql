@@ -67,7 +67,7 @@ impl ContextProvider for DaskSQLContext {
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
-                for (_table_name, table) in &schema.tables {
+                for table in schema.tables.values() {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
@@ -140,7 +140,7 @@ impl ContextProvider for DaskSQLContext {
         }
 
         // Loop through all of the user defined functions
-        for (_schema_name, schema) in &self.schemas {
+        for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
@@ -256,7 +256,7 @@ impl DaskSQLContext {
                 original_plan: k,
                 current_node: None,
             })
-            .map_err(|e| py_parsing_exp(e))
+            .map_err(py_parsing_exp)
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
@@ -278,7 +278,7 @@ impl DaskSQLContext {
                             original_plan: k,
                             current_node: None,
                         })
-                        .map_err(|e| py_optimization_exp(e))
+                        .map_err(py_optimization_exp)
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
                     Ok(existing_plan)
