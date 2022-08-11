@@ -140,12 +140,21 @@ impl ContextProvider for DaskSQLContext {
         }
 
         // Loop through all of the user defined functions
-        for (_schema_name, schema) in &self.schemas {
+        let schemas = self.schemas.clone();
+        for (_schema_name, schema) in schemas {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                    let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
+                    let function = function.clone();
+                    let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
+                        let function = function.lock().unwrap();
+                        let vec_input_types: Vec<types::PyDataType> =
+                            input_types.iter().map(|t| t.clone().into()).collect();
+                        match function.return_types.get(&vec_input_types) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone().into())),
+                            None => Err(DataFusionError::NotImplemented("".to_string())),
+                        }
+                    });
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
@@ -187,24 +196,6 @@ impl DaskSQLContext {
     ) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
         Ok(true)
-    }
-
-    /// Register a function with the current DaskSQLContext under the specified schema
-    pub fn register_function(
-        &mut self,
-        schema_name: String,
-        function: function::DaskFunction,
-    ) -> PyResult<bool> {
-        match self.schemas.get_mut(&schema_name) {
-            Some(schema) => {
-                schema.add_function(function);
-                Ok(true)
-            }
-            None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
-            ))),
-        }
     }
 
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext

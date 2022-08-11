@@ -118,9 +118,6 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - need to address UDF replace behavior in main branch first"
-)
 def test_multiple_definitions(c, df_simple):
     def f(x):
         return x**2
