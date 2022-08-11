@@ -20,7 +20,7 @@ dependencies:
 - pre-commit
 - prompt_toolkit
 - psycopg2
-- pyarrow=3.0.0
+- pyarrow=6.0.1
 - pygments
 - pyhive
 - pytest-cov
