@@ -133,7 +133,13 @@ class ReduceOperation(Operation):
                 )
             ):
                 operands = tuple(map(as_timelike, operands))
-            return reduce(partial(self.operation, **kwargs), operands)
+            try:
+                return reduce(partial(self.operation, **kwargs), operands)
+            except ValueError:
+                return reduce(
+                    partial(self.operation, **kwargs),
+                    (operands[0], float(operands[1][operands[1].columns[0]].loc[0].compute()))
+                )
         else:
             return self.unary_operation(*operands, **kwargs)
 
