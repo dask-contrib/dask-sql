@@ -15,7 +15,7 @@ impl PyExplain {
     pub fn get_explain_string(&self) -> PyResult<Vec<String>> {
         let mut string_plans: Vec<String> = Vec::new();
         for stringified_plan in &self.explain.stringified_plans {
-            string_plans.push((&*stringified_plan.plan).clone());
+            string_plans.push((*stringified_plan.plan).clone());
         }
         Ok(string_plans)
     }
