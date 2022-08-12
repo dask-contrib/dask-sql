@@ -757,7 +757,8 @@ class Context:
                     #     name,
                     #     [param[1].getDataType() for param in sql_parameters],
                     #     sql_return_type.getDataType(),
-                    # )                else:
+                    # )
+                else:
                     logger.debug(
                         f"Adding function '{name}' to schema as scalar function."
                     )
@@ -770,13 +771,6 @@ class Context:
             schema_list.append(rust_schema)
 
         return schema_list
-
-    @staticmethod
-    def _add_parameters_from_description(function_description, dask_function):
-        for parameter in function_description.parameters:
-            dask_function.addParameter(*parameter, False)
-
-        return dask_function
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
