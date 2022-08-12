@@ -4,7 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod create_memory_table;
-// mod create_model;
+pub mod create_model;
 mod cross_join;
 mod drop_table;
 mod empty_relation;

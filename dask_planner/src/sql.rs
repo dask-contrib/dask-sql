@@ -21,12 +21,14 @@ use datafusion_sql::{
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
+use datafusion_expr::logical_plan::Extension;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
+use crate::sql::logical::create_model::CreateModelPlanNode;
 
 use pyo3::prelude::*;
 
@@ -261,7 +263,16 @@ impl DaskSQLContext {
                     .map_err(py_parsing_exp)
             }
             DaskStatement::CreateModel(create_model) => {
-                todo!()
+                Ok(logical::PyLogicalPlan {
+                    original_plan: LogicalPlan::Extension(Extension {
+                        node: Arc::new(CreateModelPlanNode {
+                            model_name: create_model.name,
+                            input: ???,
+                            expr: ???,
+                        })
+                    }),
+                    current_node: None,
+                })
             }
         }
     }
