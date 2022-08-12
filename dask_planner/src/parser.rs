@@ -4,12 +4,12 @@
 
 use crate::dialect::DaskDialect;
 use datafusion_sql::sqlparser::{
-    ast::{ColumnDef, ColumnOptionDef, Statement as SQLStatement, TableConstraint},
+    ast::{ColumnDef, ColumnOptionDef, Expr, Statement as SQLStatement, TableConstraint, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 // Use `Parser::expected` instead, if possible
 macro_rules! parser_err {
@@ -23,8 +23,6 @@ macro_rules! parser_err {
 pub struct CreateModel {
     /// model name
     pub name: String,
-    /// Option to not error if table already exists
-    pub if_not_exists: bool,
 }
 
 /// DataFusion Statement representations.
@@ -130,10 +128,10 @@ impl<'a> DaskParser<'a> {
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
         if let Ok(ident) = self.parser.parse_identifier() {
-            println!("Identity value is: {:?}", ident.value);
+            println!("!!!!!!!!!!!Identity value is: {:?}", ident.value);
             self.parse_create_model()
         } else {
-            println!("Wasn't a match ... default to the native sqlparser parser");
+            println!("!!!!!!!!!!!Wasn't a match ... default to the native sqlparser parser");
             Ok(DaskStatement::Statement(Box::from(
                 self.parser.parse_create()?,
             )))
@@ -210,18 +208,36 @@ impl<'a> DaskParser<'a> {
     }
 
     fn parse_create_model(&mut self) -> Result<DaskStatement, ParserError> {
-        self.parser.expect_keyword(Keyword::TABLE)?;
-        let if_not_exists =
-            self.parser
-                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
-        let table_name = self.parser.parse_object_name()?;
-        let (columns, _) = self.parse_columns()?;
-        self.parser
-            .expect_keywords(&[Keyword::STORED, Keyword::AS])?;
+        let model_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Parse all KV pairs into a Vec<BinaryExpr> instances
+        let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
+
+        let kv_pairs: HashMap<String, &Box<Expr>> = kv_binexprs
+            .iter()
+            .map(|f| match f {
+                Expr::BinaryOp { left, op, right } => (
+                    match *left.clone() {
+                        Expr::Value(value) => match value {
+                            Value::EscapedStringLiteral(key_val)
+                            | Value::SingleQuotedString(key_val)
+                            | Value::DoubleQuotedString(key_val) => key_val.clone(),
+                            _ => "".to_string(),
+                        },
+                        _ => "".to_string(),
+                    },
+                    right,
+                ),
+                _ => panic!("something"),
+            })
+            .collect();
+
+        self.parser.expect_token(&Token::RParen)?;
 
         let create = CreateModel {
-            name: table_name.to_string(),
-            if_not_exists,
+            name: model_name.to_string(),
         };
         Ok(DaskStatement::CreateModel(create))
     }
