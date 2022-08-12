@@ -287,6 +287,7 @@ def test_stddev(c, gpu):
 
     assert_eq(return_df, expected_df.reset_index(drop=True))
 
+    # Can be removed after addressing: https://github.com/dask-contrib/dask-sql/issues/681
     if gpu:
         c.drop_table("df")
         pytest.skip()
