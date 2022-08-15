@@ -3,8 +3,8 @@ use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
-use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
+use datafusion_expr::{ExprSchemable, Operator};
 use pyo3::prelude::*;
 use std::convert::From;
 use std::sync::Arc;
@@ -414,6 +414,13 @@ impl PyExpr {
                 }
                 Operator::Divide => "FLOAT",
                 Operator::StringConcat => "VARCHAR",
+                Operator::BitwiseShiftLeft | Operator::BitwiseShiftRight => {
+                    // the type here should be the same as the type of the left expression
+                    // but we can only compute that if we have the schema available
+                    return Err(py_type_err(
+                        "Bitwise shift operators unsupported in get_type".to_string(),
+                    ));
+                }
             },
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => "Boolean",
@@ -435,6 +442,7 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => "LargeBinary",
                 ScalarValue::Date32(_value) => "Date32",
                 ScalarValue::Date64(_value) => "Date64",
+                ScalarValue::Time64(_value) => "Time64",
                 ScalarValue::Null => "Null",
                 ScalarValue::TimestampSecond(..) => "TimestampSecond",
                 ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
