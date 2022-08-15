@@ -46,10 +46,12 @@ impl DaskSchema {
                     .return_types
                     .insert(input_types.clone(), return_type.clone());
             })
-            .or_insert(Arc::new(Mutex::new(DaskFunction::new(
-                name,
-                input_types,
-                return_type,
-            ))));
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(DaskFunction::new(
+                    name,
+                    input_types,
+                    return_type,
+                )))
+            });
     }
 }
