@@ -22,7 +22,7 @@ build:
 
 requirements:
   build:
-    - rust>=1.62.1
+    - {{ compiler('rust') }}
     - setuptools-rust>=1.4.1
   host:
     - pip
