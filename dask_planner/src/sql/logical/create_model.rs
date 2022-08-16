@@ -1,4 +1,3 @@
-use crate::parser::CreateModel;
 use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
 use pyo3::prelude::*;

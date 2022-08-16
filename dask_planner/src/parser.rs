@@ -4,7 +4,7 @@
 
 use crate::dialect::DaskDialect;
 use datafusion_sql::sqlparser::{
-    ast::{ColumnDef, ColumnOptionDef, Expr, Statement as SQLStatement, TableConstraint, Value},
+    ast::{Expr, Statement as SQLStatement, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
