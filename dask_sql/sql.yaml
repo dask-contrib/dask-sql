@@ -6,4 +6,7 @@ sql:
   identifier:
     case_sensitive: True
 
+  limit:
+    check-partitions: True
+
   predicate_pushdown: True

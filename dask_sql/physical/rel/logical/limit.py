@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+from dask import config as dask_config
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -50,16 +51,23 @@ class DaskLimitPlugin(BaseRelPlugin):
         Unfortunately, Dask does not currently support row selection through `iloc`, so this must be done using a custom partition function.
         However, it is sometimes possible to compute this window using `head` when an `offset` is not specified.
         """
-        if not offset:
-            # We do a (hopefully) very quick check: if the first partition
-            # is already enough, we will just use this
-            first_partition_length = len(df.partitions[0])
-            if first_partition_length >= end:
-                return df.head(end, compute=False)
-
         # compute the size of each partition
         # TODO: compute `cumsum` here when dask#9067 is resolved
         partition_borders = df.map_partitions(lambda x: len(x))
+
+        # if no offset is specified we can use `head` to compute the window
+        if not offset:
+            if dask_config.get("sql.limit.check-partitions"):
+                partition_borders = partition_borders.compute()
+                nrows = 0
+                for i, n in enumerate(partition_borders):
+                    nrows += n
+                    if end <= nrows:
+                        npartitions = i + 1
+                        break
+            else:
+                npartitions = -1
+            return df.head(end, npartitions=npartitions, compute=False)
 
         def limit_partition_func(df, partition_borders, partition_info=None):
             """Limit the partition to values contained within the specified window, returning an empty dataframe if there are none"""
