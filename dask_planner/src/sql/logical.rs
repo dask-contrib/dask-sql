@@ -6,6 +6,7 @@ mod aggregate;
 mod create_memory_table;
 pub mod create_model;
 mod cross_join;
+pub mod drop_model;
 mod drop_table;
 mod empty_relation;
 mod explain;

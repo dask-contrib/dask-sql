@@ -29,6 +29,7 @@ use std::sync::Arc;
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::drop_model::DropModelPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
@@ -308,6 +309,11 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         create_model.select,
                     )))?,
+                }),
+            })),
+            DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropModelPlanNode {
+                    model_name: drop_model.name,
                 }),
             })),
         }
