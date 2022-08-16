@@ -11,14 +11,13 @@ use datafusion_sql::sqlparser::{
 };
 use std::collections::{HashMap, VecDeque};
 
-// Use `Parser::expected` instead, if possible
 macro_rules! parser_err {
     ($MSG:expr) => {
         Err(ParserError::ParserError($MSG.to_string()))
     };
 }
 
-/// DataFusion extension DDL for `CREATE EXTERNAL TABLE`
+/// Dask-SQL extension DDL for `CREATE MODEL`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateModel {
     /// model name
@@ -27,9 +26,9 @@ pub struct CreateModel {
     pub select: SQLStatement,
 }
 
-/// DataFusion Statement representations.
+/// Dask-SQL Statement representations.
 ///
-/// Tokens parsed by `DFParser` are converted into these values.
+/// Tokens parsed by `DaskParser` are converted into these values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DaskStatement {
     /// ANSI SQL AST node
@@ -138,75 +137,7 @@ impl<'a> DaskParser<'a> {
         }
     }
 
-    // This is a copy of the equivalent implementation in sqlparser.
-    fn parse_columns(&mut self) -> Result<(Vec<ColumnDef>, Vec<TableConstraint>), ParserError> {
-        let mut columns = vec![];
-        let mut constraints = vec![];
-        if !self.parser.consume_token(&Token::LParen) || self.parser.consume_token(&Token::RParen) {
-            return Ok((columns, constraints));
-        }
-
-        loop {
-            if let Some(constraint) = self.parser.parse_optional_table_constraint()? {
-                constraints.push(constraint);
-            } else if let Token::Word(_) = self.parser.peek_token() {
-                let column_def = self.parse_column_def()?;
-                columns.push(column_def);
-            } else {
-                return self.expected(
-                    "column name or constraint definition",
-                    self.parser.peek_token(),
-                );
-            }
-            let comma = self.parser.consume_token(&Token::Comma);
-            if self.parser.consume_token(&Token::RParen) {
-                // allow a trailing comma, even though it's not in standard
-                break;
-            } else if !comma {
-                return self.expected(
-                    "',' or ')' after column definition",
-                    self.parser.peek_token(),
-                );
-            }
-        }
-
-        Ok((columns, constraints))
-    }
-
-    fn parse_column_def(&mut self) -> Result<ColumnDef, ParserError> {
-        let name = self.parser.parse_identifier()?;
-        let data_type = self.parser.parse_data_type()?;
-        let collation = if self.parser.parse_keyword(Keyword::COLLATE) {
-            Some(self.parser.parse_object_name()?)
-        } else {
-            None
-        };
-        let mut options = vec![];
-        loop {
-            if self.parser.parse_keyword(Keyword::CONSTRAINT) {
-                let name = Some(self.parser.parse_identifier()?);
-                if let Some(option) = self.parser.parse_optional_column_option()? {
-                    options.push(ColumnOptionDef { name, option });
-                } else {
-                    return self.expected(
-                        "constraint details after CONSTRAINT <name>",
-                        self.parser.peek_token(),
-                    );
-                }
-            } else if let Some(option) = self.parser.parse_optional_column_option()? {
-                options.push(ColumnOptionDef { name: None, option });
-            } else {
-                break;
-            };
-        }
-        Ok(ColumnDef {
-            name,
-            data_type,
-            collation,
-            options,
-        })
-    }
-
+    /// Parse Dask-SQL CREATE MODEL statement
     fn parse_create_model(&mut self) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
@@ -230,7 +161,7 @@ impl<'a> DaskParser<'a> {
                     },
                     right,
                 ),
-                _ => panic!("something"),
+                _ => panic!("Expected BinaryOp, Key/Value pairs, found: {}", f),
             })
             .collect();
 

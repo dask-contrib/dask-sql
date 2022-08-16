@@ -71,8 +71,8 @@ impl PyCreateModel {
     /// statement to be used to gather the dataset which should be used for the
     /// model. This function returns that portion of the statement.
     #[pyo3(name = "getSelectQuery")]
-    fn get_select_query(&self) -> PyResult<String> {
-        Ok("SELECT * FROM test".to_string())
+    fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
+        Ok(self.create_model.input.clone().into())
     }
 
     #[pyo3(name = "getModelName")]
