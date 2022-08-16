@@ -251,6 +251,84 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_stddev(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": [1, 1, 2, 1, 2],
+            "b": [4, 6, 3, 8, 5],
+        }
+    )
+
+    c.create_table("df", df, gpu=gpu)
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV(b) AS s
+        FROM df
+        GROUP BY df.a
+        """
+    )
+
+    expected_df = pd.DataFrame({"s": df.groupby("a").std()["b"]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV_SAMP(b) AS ss
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    # Can be removed after addressing: https://github.com/dask-contrib/dask-sql/issues/681
+    if gpu:
+        c.drop_table("df")
+        pytest.skip()
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV_POP(b) AS sp
+        FROM df
+        GROUP BY df.a
+        """
+    )
+
+    expected_df = pd.DataFrame({"sp": df.groupby("a").std(ddof=0)["b"]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV(a) as s,
+            STDDEV_SAMP(a) ss,
+            STDDEV_POP(b) sp
+        FROM
+            df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "s": [df.std()["a"]],
+            "ss": [df.std()["a"]],
+            "sp": [df.std(ddof=0)["b"]],
+        }
+    )
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    c.drop_table("df")
+
+
 @pytest.mark.skip(
     reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
 )
