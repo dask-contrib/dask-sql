@@ -4,7 +4,6 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod create_memory_table;
-mod cross_join;
 mod drop_table;
 mod empty_relation;
 mod explain;
@@ -14,10 +13,9 @@ mod limit;
 mod projection;
 mod sort;
 mod table_scan;
-mod union;
 mod window;
 
-use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
+use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
@@ -26,7 +24,7 @@ use pyo3::prelude::*;
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
-    /// The orginal LogicalPlan that was parsed by DataFusion from the input SQL
+    /// The original LogicalPlan that was parsed by DataFusion from the input SQL
     pub(crate) original_plan: LogicalPlan,
     /// The original_plan is traversed. current_node stores the current node of this traversal
     pub(crate) current_node: Option<LogicalPlan>,
@@ -44,12 +42,6 @@ impl PyLogicalPlan {
                 self.current_node.clone().unwrap()
             }
         }
-    }
-
-    /// Gets the index of the column from the input schema
-    pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.projection().unwrap();
-        proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
@@ -70,11 +62,6 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::CrossJoin as PyCrossJoin
-    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
     /// LogicalPlan::EmptyRelation as PyEmptyRelation
     pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
         to_py_plan(self.current_node.as_ref())
@@ -82,11 +69,6 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
-    /// LogicalPlan::Union as PyUnion
-    pub fn union(&self) -> PyResult<union::PyUnion> {
         to_py_plan(self.current_node.as_ref())
     }
 
