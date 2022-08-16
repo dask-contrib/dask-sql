@@ -198,7 +198,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateView(_create_view) => "CreateView",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
-                if let true = extension
+                if extension
                     .node
                     .as_any()
                     .downcast_ref::<CreateModelPlanNode>()
