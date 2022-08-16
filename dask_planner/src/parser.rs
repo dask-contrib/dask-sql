@@ -130,12 +130,29 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
-        let ident = self.parser.parse_identifier()?;
-        match ident.value.to_lowercase().as_str() {
-            "model" => self.parse_create_model(),
-            _ => Ok(DaskStatement::Statement(Box::from(
-                self.parser.parse_create()?,
-            ))),
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.as_str() {
+                    "model" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_model()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_create()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_create()?,
+                )))
+            }
         }
     }
 
