@@ -4,7 +4,7 @@
 
 use crate::dialect::DaskDialect;
 use datafusion_sql::sqlparser::{
-    ast::{ColumnDef, ColumnOptionDef, Expr, Statement as SQLStatement, TableConstraint, Value},
+    ast::{Expr, Statement as SQLStatement, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -34,7 +34,7 @@ pub enum DaskStatement {
     /// ANSI SQL AST node
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
-    CreateModel(CreateModel),
+    CreateModel(Box<CreateModel>),
 }
 
 /// SQL Parser
@@ -43,6 +43,7 @@ pub struct DaskParser<'a> {
 }
 
 impl<'a> DaskParser<'a> {
+    #[allow(dead_code)]
     /// Parse the specified tokens
     pub fn new(sql: &str) -> Result<Self, ParserError> {
         let dialect = &DaskDialect {};
@@ -59,6 +60,7 @@ impl<'a> DaskParser<'a> {
         })
     }
 
+    #[allow(dead_code)]
     /// Parse a SQL statement and produce a set of statements with dialect
     pub fn parse_sql(sql: &str) -> Result<VecDeque<DaskStatement>, ParserError> {
         let dialect = &DaskDialect {};
@@ -128,12 +130,14 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
-        if let Ok(ident) = self.parser.parse_identifier() {
-            self.parse_create_model()
-        } else {
-            Ok(DaskStatement::Statement(Box::from(
-                self.parser.parse_create()?,
-            )))
+        match self.parser.parse_identifier() {
+            Ok(ident) => match ident.value.to_lowercase().as_str() {
+                "create" => self.parse_create_model(),
+                _ => Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_create()?,
+                ))),
+            },
+            Err(e) => Err(e),
         }
     }
 
@@ -146,15 +150,15 @@ impl<'a> DaskParser<'a> {
         // Parse all KV pairs into a Vec<BinaryExpr> instances
         let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
 
-        let kv_pairs: HashMap<String, &Box<Expr>> = kv_binexprs
+        let _kv_pairs: HashMap<String, &Box<Expr>> = kv_binexprs
             .iter()
             .map(|f| match f {
-                Expr::BinaryOp { left, op, right } => (
+                Expr::BinaryOp { left, op: _, right } => (
                     match *left.clone() {
                         Expr::Value(value) => match value {
                             Value::EscapedStringLiteral(key_val)
                             | Value::SingleQuotedString(key_val)
-                            | Value::DoubleQuotedString(key_val) => key_val.clone(),
+                            | Value::DoubleQuotedString(key_val) => key_val,
                             _ => "".to_string(),
                         },
                         _ => "".to_string(),
@@ -174,17 +178,6 @@ impl<'a> DaskParser<'a> {
             name: model_name.to_string(),
             select: self.parser.parse_statement()?,
         };
-        Ok(DaskStatement::CreateModel(create))
-    }
-
-    fn consume_token(&mut self, expected: &Token) -> bool {
-        let token = self.parser.peek_token().to_string().to_uppercase();
-        let token = Token::make_keyword(&token);
-        if token == *expected {
-            self.parser.next_token();
-            true
-        } else {
-            false
-        }
+        Ok(DaskStatement::CreateModel(Box::new(create)))
     }
 }

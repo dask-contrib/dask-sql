@@ -24,7 +24,7 @@ repos:
       - id: cargo-check
         args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: clippy
-        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--', '-D', 'warnings']
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.2.0
     hooks:

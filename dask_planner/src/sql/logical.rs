@@ -5,7 +5,6 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 mod aggregate;
 mod create_memory_table;
 pub mod create_model;
-mod cross_join;
 mod drop_table;
 mod empty_relation;
 mod explain;
@@ -15,19 +14,20 @@ mod limit;
 mod projection;
 mod sort;
 mod table_scan;
-mod union;
 mod window;
 
-use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
+use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::create_model::CreateModelPlanNode;
+
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
-    /// The orginal LogicalPlan that was parsed by DataFusion from the input SQL
+    /// The original LogicalPlan that was parsed by DataFusion from the input SQL
     pub(crate) original_plan: LogicalPlan,
     /// The original_plan is traversed. current_node stores the current node of this traversal
     pub(crate) current_node: Option<LogicalPlan>,
@@ -45,12 +45,6 @@ impl PyLogicalPlan {
                 self.current_node.clone().unwrap()
             }
         }
-    }
-
-    /// Gets the index of the column from the input schema
-    pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.projection().unwrap();
-        proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
@@ -71,11 +65,6 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::CrossJoin as PyCrossJoin
-    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
     /// LogicalPlan::EmptyRelation as PyEmptyRelation
     pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
         to_py_plan(self.current_node.as_ref())
@@ -83,11 +72,6 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
-    /// LogicalPlan::Union as PyUnion
-    pub fn union(&self) -> PyResult<union::PyUnion> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -213,7 +197,19 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
             // Further examine and return the name that is a possible Dask-SQL Extension type
-            LogicalPlan::Extension(extension) => "CreateModel",
+            LogicalPlan::Extension(extension) => {
+                if let true = extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<CreateModelPlanNode>()
+                    .is_some()
+                {
+                    "CreateModel"
+                } else {
+                    // Default to generic `Extension`
+                    "Extension"
+                }
+            }
         })
     }
 

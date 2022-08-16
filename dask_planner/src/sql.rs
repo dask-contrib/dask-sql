@@ -254,7 +254,7 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
             .map(|e| PyLogicalPlan {
-                original_plan: e.clone(),
+                original_plan: e,
                 current_node: None,
             })
             .map_err(py_parsing_exp)
