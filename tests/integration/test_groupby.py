@@ -67,6 +67,8 @@ def test_group_by_multi(c, gpu):
 
     assert_eq(result_df, expected_df)
 
+    c.drop_table("df")
+
 
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_all(c, df):
