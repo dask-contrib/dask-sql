@@ -269,8 +269,8 @@ impl SqlTypeName {
 impl SqlTypeName {
     #[pyo3(name = "fromString")]
     #[staticmethod]
-    pub fn from_string(input_type: &str) -> Self {
-        match input_type {
+    pub fn from_string(input_type: String) -> Self {
+        match input_type.as_str() {
             "ANY" => SqlTypeName::ANY,
             "ARRAY" => SqlTypeName::ARRAY,
             "NULL" => SqlTypeName::NULL,
