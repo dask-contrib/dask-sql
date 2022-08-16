@@ -1,3 +1,4 @@
+use crate::parser::CreateModel;
 use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
 use pyo3::prelude::*;
@@ -10,6 +11,7 @@ use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::DFSchemaRef;
 
+#[derive(Clone)]
 pub struct CreateModelPlanNode {
     pub model_name: String,
     pub input: LogicalPlan,
@@ -79,15 +81,25 @@ impl PyCreateModel {
     }
 }
 
-// impl TryFrom<logical::LogicalPlan> for PyCreateModel {
-//     type Error = PyErr;
+impl TryFrom<logical::LogicalPlan> for PyCreateModel {
+    type Error = PyErr;
 
-//     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
-//         match logical_plan {
-//             logical::LogicalPlan::Extension(extension) => Ok(PyCreateModel {
-//                 create_model: *extension.node.clone(),
-//             }),
-//             _ => Err(py_type_err("unexpected plan")),
-//         }
-//     }
-// }
+    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+        match logical_plan {
+            logical::LogicalPlan::Extension(extension) => {
+                if let Some(ext) = extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<CreateModelPlanNode>()
+                {
+                    Ok(PyCreateModel {
+                        create_model: ext.clone(),
+                    })
+                } else {
+                    Err(py_type_err("unexpected plan"))
+                }
+            }
+            _ => Err(py_type_err("unexpected plan")),
+        }
+    }
+}

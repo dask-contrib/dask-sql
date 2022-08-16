@@ -131,10 +131,10 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    // /// LogicalPlan::CreateModel as PyCreateModel
-    // pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
-    //     to_py_plan(self.current_node.as_ref())
-    // }
+    /// LogicalPlan::CreateModel as PyCreateModel
+    pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
 
     /// LogicalPlan::DropTable as DropTable
     pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
@@ -213,17 +213,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
             // Further examine and return the name that is a possible Dask-SQL Extension type
-            LogicalPlan::Extension(extension) => {
-                /// Andy ... Doesn't exist but example ....
-                match extension.name {
-                    "CreateModel" => {
-                        ...
-                    },
-                    "DropModel" => {
-                        ....
-                    }
-                }
-            },
+            LogicalPlan::Extension(extension) => "CreateModel",
         })
     }
 
