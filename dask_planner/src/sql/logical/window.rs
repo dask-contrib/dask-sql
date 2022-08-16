@@ -106,10 +106,9 @@ impl PyWindow {
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
         match expr.expr {
-            Expr::WindowFunction { window_frame, .. } => match window_frame {
-                Some(window_frame) => Some(window_frame.into()),
-                None => None,
-            },
+            Expr::WindowFunction { window_frame, .. } => {
+                window_frame.map(|window_frame| window_frame.into())
+            }
             _ => None,
         }
     }
