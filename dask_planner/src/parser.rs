@@ -43,7 +43,7 @@ pub enum DaskStatement {
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
     /// Extension: `DROP MODEL`
-    DropModel(DropModel),
+    DropModel(Box<DropModel>),
 }
 
 /// SQL Parser
@@ -145,14 +145,29 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
-        match self.parser.parse_identifier() {
-            Ok(ident) => match ident.value.to_lowercase().as_str() {
-                "create" => self.parse_create_model(),
-                _ => Ok(DaskStatement::Statement(Box::from(
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.as_str() {
+                    "model" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_model()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_create()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_create()?,
-                ))),
-            },
-            Err(e) => Err(e),
+                )))
+            }
         }
     }
 
@@ -178,24 +193,22 @@ impl<'a> DaskParser<'a> {
         // Parse all KV pairs into a Vec<BinaryExpr> instances
         let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
 
-        let _kv_pairs: HashMap<String, &Box<Expr>> = kv_binexprs
+        let _kv_pairs: Vec<(String, &Box<Expr>)> = kv_binexprs
             .iter()
             .map(|f| match f {
-                Expr::BinaryOp { left, op: _, right } => (
-                    match *left.clone() {
-                        Expr::Value(value) => match value {
-                            Value::EscapedStringLiteral(key_val)
-                            | Value::SingleQuotedString(key_val)
-                            | Value::DoubleQuotedString(key_val) => key_val,
-                            _ => "".to_string(),
-                        },
-                        _ => "".to_string(),
+                Expr::BinaryOp { left, op: _, right } => match *left.clone() {
+                    Expr::Value(value) => match value {
+                        Value::EscapedStringLiteral(key_val)
+                        | Value::SingleQuotedString(key_val)
+                        | Value::DoubleQuotedString(key_val) => Ok((key_val, right)),
+                        _ => Ok(("".to_string(), right)),
                     },
-                    right,
-                ),
-                _ => panic!("Expected BinaryOp, Key/Value pairs, found: {}", f),
+                    _ => Ok(("".to_string(), right)),
+                },
+                _ => parser_err!(format!("Expected BinaryOp, Key/Value pairs, found: {}", f)),
             })
-            .collect();
+            .collect::<Result<Vec<_>, ParserError>>()?;
+        let _kv_pairs: HashMap<String, &Box<Expr>> = _kv_pairs.into_iter().collect();
 
         self.parser.expect_token(&Token::RParen)?;
 
@@ -216,6 +229,6 @@ impl<'a> DaskParser<'a> {
         let drop = DropModel {
             name: model_name.to_string(),
         };
-        Ok(DaskStatement::DropModel(drop))
+        Ok(DaskStatement::DropModel(Box::new(drop)))
     }
 }
