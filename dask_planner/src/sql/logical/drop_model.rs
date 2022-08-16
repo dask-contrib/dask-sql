@@ -8,11 +8,12 @@ use datafusion_expr::{Expr, LogicalPlan};
 use fmt::Debug;
 use std::{any::Any, fmt, sync::Arc};
 
-use datafusion_common::DFSchemaRef;
+use datafusion_common::{DFSchema, DFSchemaRef};
 
 #[derive(Clone)]
 pub struct DropModelPlanNode {
     pub model_name: String,
+    pub schema: DFSchemaRef,
 }
 
 impl Debug for DropModelPlanNode {
@@ -31,7 +32,7 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
     }
 
     fn schema(&self) -> &DFSchemaRef {
-        self.input.schema()
+        &self.schema
     }
 
     fn expressions(&self) -> Vec<Expr> {
@@ -47,12 +48,13 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
 
     fn from_template(
         &self,
-        exprs: &[Expr],
+        _exprs: &[Expr],
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
         Arc::new(DropModelPlanNode {
             model_name: self.model_name.clone(),
+            schema: Arc::new(DFSchema::empty()),
         })
     }
 }

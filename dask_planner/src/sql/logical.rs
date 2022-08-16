@@ -23,6 +23,9 @@ use datafusion_expr::LogicalPlan;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::create_model::CreateModelPlanNode;
+use self::drop_model::DropModelPlanNode;
+
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
@@ -196,7 +199,26 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
             // Further examine and return the name that is a possible Dask-SQL Extension type
-            LogicalPlan::Extension(extension) => "CreateModel",
+            LogicalPlan::Extension(extension) => {
+                if let true = extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<CreateModelPlanNode>()
+                    .is_some()
+                {
+                    "CreateModel"
+                } else if let true = extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<DropModelPlanNode>()
+                    .is_some()
+                {
+                    "DropModel"
+                } else {
+                    // Default to generic `Extension`
+                    "Extension"
+                }
+            }
         })
     }
 

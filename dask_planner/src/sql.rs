@@ -11,7 +11,7 @@ pub mod types;
 use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
 use arrow::datatypes::{DataType, Field, Schema};
-use datafusion_common::DataFusionError;
+use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
@@ -255,7 +255,7 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
             .map(|e| PyLogicalPlan {
-                original_plan: e.clone(),
+                original_plan: e,
                 current_node: None,
             })
             .map_err(py_parsing_exp)
@@ -314,6 +314,7 @@ impl DaskSQLContext {
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
                     model_name: drop_model.name,
+                    schema: Arc::new(DFSchema::empty()),
                 }),
             })),
         }

@@ -48,7 +48,7 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
 
     fn from_template(
         &self,
-        exprs: &[Expr],
+        _exprs: &[Expr],
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
