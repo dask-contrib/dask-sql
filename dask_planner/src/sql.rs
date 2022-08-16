@@ -226,9 +226,9 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
+    pub fn parse_sql(&self, sql: String) -> PyResult<Vec<statement::PyStatement>> {
         let dd: DaskSqlDialect = DaskSqlDialect {};
-        match DFParser::parse_sql_with_dialect(sql, &dd) {
+        match DFParser::parse_sql_with_dialect(sql.as_str(), &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
