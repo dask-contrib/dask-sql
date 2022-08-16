@@ -50,6 +50,7 @@ class RelConverter(Pluggable):
         node_type = rel.get_current_node_type()
 
         try:
+            breakpoint()
             plugin_instance = cls.get_plugin(node_type)
         except KeyError:  # pragma: no cover
             raise NotImplementedError(

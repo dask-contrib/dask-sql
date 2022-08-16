@@ -12,6 +12,7 @@ use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err
 
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::DataFusionError;
+use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
     ScalarUDF, Signature, TableSource, Volatility,
@@ -21,7 +22,6 @@ use datafusion_sql::{
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
-use datafusion_expr::logical_plan::Extension;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -30,6 +30,7 @@ use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
 
+use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
@@ -251,30 +252,12 @@ impl DaskSQLContext {
         &self,
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
-        match statement.statement {
-            DaskStatement::Statement(statement) => {
-                let planner = SqlToRel::new(self);
-                planner
-                    .statement_to_plan(DFStatement::Statement(statement))
-                    .map(|k| logical::PyLogicalPlan {
-                        original_plan: k,
-                        current_node: None,
-                    })
-                    .map_err(py_parsing_exp)
-            }
-            DaskStatement::CreateModel(create_model) => {
-                Ok(logical::PyLogicalPlan {
-                    original_plan: LogicalPlan::Extension(Extension {
-                        node: Arc::new(CreateModelPlanNode {
-                            model_name: create_model.name,
-                            input: ???,
-                            expr: ???,
-                        })
-                    }),
-                    current_node: None,
-                })
-            }
-        }
+        self._logical_relational_algebra(statement.statement)
+            .map(|e| PyLogicalPlan {
+                original_plan: e.clone(),
+                current_node: None,
+            })
+            .map_err(py_parsing_exp)
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
@@ -303,6 +286,30 @@ impl DaskSQLContext {
                 }
             }
             Err(e) => Err(py_optimization_exp(e)),
+        }
+    }
+}
+
+/// non-Python methods
+impl DaskSQLContext {
+    /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
+    pub fn _logical_relational_algebra(
+        &self,
+        dask_statement: DaskStatement,
+    ) -> Result<LogicalPlan, DataFusionError> {
+        match dask_statement {
+            DaskStatement::Statement(statement) => {
+                let planner = SqlToRel::new(self);
+                planner.statement_to_plan(DFStatement::Statement(statement))
+            }
+            DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateModelPlanNode {
+                    model_name: create_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        create_model.select,
+                    )))?,
+                }),
+            })),
         }
     }
 }

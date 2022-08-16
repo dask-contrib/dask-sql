@@ -23,6 +23,8 @@ macro_rules! parser_err {
 pub struct CreateModel {
     /// model name
     pub name: String,
+    /// input Query
+    pub select: SQLStatement,
 }
 
 /// DataFusion Statement representations.
@@ -128,10 +130,8 @@ impl<'a> DaskParser<'a> {
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
         if let Ok(ident) = self.parser.parse_identifier() {
-            println!("!!!!!!!!!!!Identity value is: {:?}", ident.value);
             self.parse_create_model()
         } else {
-            println!("!!!!!!!!!!!Wasn't a match ... default to the native sqlparser parser");
             Ok(DaskStatement::Statement(Box::from(
                 self.parser.parse_create()?,
             )))
@@ -236,8 +236,12 @@ impl<'a> DaskParser<'a> {
 
         self.parser.expect_token(&Token::RParen)?;
 
+        // Parse the "AS" before the SQLStatement
+        self.parser.expect_keyword(Keyword::AS)?;
+
         let create = CreateModel {
             name: model_name.to_string(),
+            select: self.parser.parse_statement()?,
         };
         Ok(DaskStatement::CreateModel(create))
     }

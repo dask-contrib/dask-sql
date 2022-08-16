@@ -19,10 +19,9 @@ except ImportError:
     xgboost = None
     dask_cudf = None
 
-# pytest.importorskip("dask_ml")
+pytest.importorskip("dask_ml")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def check_trained_model(c, model_name=None):
     if model_name is None:
         sql = """
@@ -48,29 +47,6 @@ def check_trained_model(c, model_name=None):
     assert len(result_df["target"]) > 0
 
 
-def test_create_model_parsing(c):
-    # c.sql(
-    #     """
-    #     CREATE MODEL my_model WITH (
-    #         model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-    #         wrap_predict = True,
-    #         target_column = 'target'
-    #     ) AS (
-    #         SELECT x, y, x*y > 0 AS target
-    #         FROM timeseries
-    #         LIMIT 100
-    #     )
-    # """
-    # )
-    c.sql(
-        """
-        CREATE MODEL my_model WITH (model_class = 'sklearn.ensemble.GradientBoostingClassifier')
-    """
-    )
-
-    check_trained_model(c)
-
-
 @pytest.fixture()
 def training_df(c):
     df = timeseries(freq="1d").reset_index(drop=True)
@@ -88,8 +64,6 @@ def gpu_training_df(c):
     return None
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-# @pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_training_and_prediction(c, training_df):
     c.sql(

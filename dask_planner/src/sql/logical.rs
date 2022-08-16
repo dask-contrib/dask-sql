@@ -207,12 +207,23 @@ impl PyLogicalPlan {
             LogicalPlan::Values(_values) => "Values",
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",
-            LogicalPlan::Extension(_extension) => "Extension",
             LogicalPlan::Subquery(_sub_query) => "Subquery",
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
+            // Further examine and return the name that is a possible Dask-SQL Extension type
+            LogicalPlan::Extension(extension) => {
+                /// Andy ... Doesn't exist but example ....
+                match extension.name {
+                    "CreateModel" => {
+                        ...
+                    },
+                    "DropModel" => {
+                        ....
+                    }
+                }
+            },
         })
     }
 
