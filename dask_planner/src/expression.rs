@@ -414,6 +414,13 @@ impl PyExpr {
                 }
                 Operator::Divide => "FLOAT",
                 Operator::StringConcat => "VARCHAR",
+                Operator::BitwiseShiftLeft | Operator::BitwiseShiftRight => {
+                    // the type here should be the same as the type of the left expression
+                    // but we can only compute that if we have the schema available
+                    return Err(py_type_err(
+                        "Bitwise shift operators unsupported in get_type".to_string(),
+                    ));
+                }
             },
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => "Boolean",
@@ -435,6 +442,7 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => "LargeBinary",
                 ScalarValue::Date32(_value) => "Date32",
                 ScalarValue::Date64(_value) => "Date64",
+                ScalarValue::Time64(_value) => "Time64",
                 ScalarValue::Null => "Null",
                 ScalarValue::TimestampSecond(..) => "TimestampSecond",
                 ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
