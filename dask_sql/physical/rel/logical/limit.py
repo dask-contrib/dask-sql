@@ -60,10 +60,11 @@ class DaskLimitPlugin(BaseRelPlugin):
             if dask_config.get("sql.limit.check-partitions"):
                 partition_borders = partition_borders.compute()
                 nrows = 0
-                for i, n in enumerate(partition_borders):
+                npartitions = 0
+                for n in partition_borders:
                     nrows += n
+                    npartitions += 1
                     if end <= nrows:
-                        npartitions = i + 1
                         break
             else:
                 npartitions = -1
