@@ -229,6 +229,7 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
+    #[allow(clippy::borrow_deref_ref)]
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
         let dd: DaskDialect = DaskDialect {};
         match DaskParser::parse_sql_with_dialect(sql, &dd) {
