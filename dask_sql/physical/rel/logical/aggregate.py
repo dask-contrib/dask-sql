@@ -125,6 +125,23 @@ class DaskAggregatePlugin(BaseRelPlugin):
             )
         ),
         "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
+        "stddev": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddevsamp": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddevpop": AggregationSpecification(
+            dd.Aggregation(
+                "stddevpop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                )
+                ** (1 / 2),
+            )
+        ),
         "bit_and": AggregationSpecification(
             ReduceAggregation("bit_and", operator.and_)
         ),
@@ -425,13 +442,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if additional_column_name is None:
             additional_column_name = new_temporary_column(dc.df)
 
+        group_columns = [
+            dc.column_container.get_backend_by_frontend_name(group_name)
+            for group_name in group_columns
+        ]
+
         # perform groupby operation; if we are using custom aggregations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
-            group_columns = [
-                dc.column_container.get_backend_by_frontend_name(group_name)
-                for group_name in group_columns
-            ]
             grouped_df = tmp_df.groupby(
                 by=(group_columns or [additional_column_name]), dropna=False
             )
