@@ -173,14 +173,29 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL DROP statement
     pub fn parse_drop(&mut self) -> Result<DaskStatement, ParserError> {
-        match self.parser.parse_identifier() {
-            Ok(ident) => match ident.value.to_lowercase().as_str() {
-                "model" => self.parse_drop_model(),
-                _ => Ok(DaskStatement::Statement(Box::from(
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.as_str() {
+                    "model" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_drop_model()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_drop()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_drop()?,
-                ))),
-            },
-            Err(e) => Err(e),
+                )))
+            }
         }
     }
 
