@@ -1,35 +1,27 @@
-use datafusion_sql::parser::Statement;
+use crate::parser::DaskStatement;
 
 use pyo3::prelude::*;
 
 #[pyclass(name = "Statement", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyStatement {
-    pub statement: Statement,
+    pub statement: DaskStatement,
 }
 
-impl From<PyStatement> for Statement {
-    fn from(statement: PyStatement) -> Statement {
+impl From<PyStatement> for DaskStatement {
+    fn from(statement: PyStatement) -> DaskStatement {
         statement.statement
     }
 }
 
-impl From<Statement> for PyStatement {
-    fn from(statement: Statement) -> PyStatement {
+impl From<DaskStatement> for PyStatement {
+    fn from(statement: DaskStatement) -> PyStatement {
         PyStatement { statement }
     }
 }
 
 impl PyStatement {
-    pub fn new(statement: Statement) -> Self {
+    pub fn new(statement: DaskStatement) -> Self {
         Self { statement }
-    }
-}
-
-#[pymethods]
-impl PyStatement {
-    #[staticmethod]
-    pub fn table_name() -> String {
-        String::from("Got here!!!")
     }
 }
