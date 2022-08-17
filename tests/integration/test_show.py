@@ -5,7 +5,6 @@ from dask_sql import Context
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_schemas(c):
     result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
