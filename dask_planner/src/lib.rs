@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 
 mod dialect;
 mod expression;
+mod parser;
 mod sql;
 
 #[global_allocator]

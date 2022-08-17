@@ -3,9 +3,9 @@ use core::str::Chars;
 use datafusion_sql::sqlparser::dialect::Dialect;
 
 #[derive(Debug)]
-pub struct DaskSqlDialect {}
+pub struct DaskDialect {}
 
-impl Dialect for DaskSqlDialect {
+impl Dialect for DaskDialect {
     fn is_identifier_start(&self, ch: char) -> bool {
         // See https://www.postgresql.org/docs/11/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
         // We don't yet support identifiers beginning with "letters with

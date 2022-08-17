@@ -4,6 +4,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 mod aggregate;
 mod create_memory_table;
+pub mod create_model;
 mod drop_table;
 mod empty_relation;
 mod explain;
@@ -20,6 +21,8 @@ use datafusion_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
+
+use self::create_model::CreateModelPlanNode;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -112,6 +115,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CreateModel as PyCreateModel
+    pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::DropTable as DropTable
     pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
         to_py_plan(self.current_node.as_ref())
@@ -183,12 +191,25 @@ impl PyLogicalPlan {
             LogicalPlan::Values(_values) => "Values",
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",
-            LogicalPlan::Extension(_extension) => "Extension",
             LogicalPlan::Subquery(_sub_query) => "Subquery",
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
+            // Further examine and return the name that is a possible Dask-SQL Extension type
+            LogicalPlan::Extension(extension) => {
+                if extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<CreateModelPlanNode>()
+                    .is_some()
+                {
+                    "CreateModel"
+                } else {
+                    // Default to generic `Extension`
+                    "Extension"
+                }
+            }
         })
     }
 
