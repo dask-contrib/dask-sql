@@ -7,6 +7,6 @@ sql:
     case_sensitive: True
 
   limit:
-    check-partitions: True
+    check-first-partition: True
 
   predicate_pushdown: True
