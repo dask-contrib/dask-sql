@@ -225,6 +225,7 @@ impl PyExpr {
             | Expr::InList { .. }
             | Expr::InSubquery { .. }
             | Expr::ScalarUDF { .. }
+            | Expr::AggregateUDF { .. }
             | Expr::Exists { .. }
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
@@ -238,7 +239,6 @@ impl PyExpr {
             | Expr::Case { .. }
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
-            | Expr::AggregateUDF { .. }
             | Expr::Wildcard => {
                 return Err(py_type_err(format!(
                     "Encountered unsupported expression type: {}",

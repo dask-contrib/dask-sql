@@ -16,8 +16,8 @@ use crate::{
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::DataFusionError;
 use datafusion_expr::{
-    AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
-    ScalarUDF, Signature, TableSource, Volatility,
+    AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
+    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource, Volatility,
 };
 use datafusion_sql::{
     parser::DFParser,
@@ -159,7 +159,32 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
+    fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
+        let acc: AccumulatorFunctionImplementation =
+            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
+
+        let st: StateTypeFunction =
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+
+        match name {
+            "every" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "bit_and" | "bit_or" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "single_value" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            _ => (),
+        }
+
         None
     }
 
