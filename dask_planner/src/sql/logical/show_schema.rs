@@ -2,7 +2,7 @@ use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
 use pyo3::prelude::*;
 
-use datafusion_expr::logical_plan::UserDefinedLogicalNode;
+use datafusion_expr::logical_plan::{Extension, UserDefinedLogicalNode};
 use datafusion_expr::{Expr, LogicalPlan};
 
 use fmt::Debug;
@@ -38,7 +38,7 @@ impl UserDefinedLogicalNode for ShowSchemasPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // DROP MODEL
+        // SHOW SCHEMAS
         vec![]
     }
 
@@ -67,10 +67,12 @@ pub struct PyShowSchema {
 impl PyShowSchema {
     #[pyo3(name = "getLike")]
     fn get_like(&self) -> PyResult<String> {
-        match &self.show_schema.like {
-            Some(e) => Ok(e.clone()),
-            None => Ok("".to_string()),
-        }
+        Ok(self
+            .show_schema
+            .like
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| "".to_string()))
     }
 }
 
@@ -79,18 +81,19 @@ impl TryFrom<logical::LogicalPlan> for PyShowSchema {
 
     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::Extension(extension) => {
-                if let Some(ext) = extension
-                    .node
+            LogicalPlan::Extension(Extension { node })
+                if node
                     .as_any()
                     .downcast_ref::<ShowSchemasPlanNode>()
-                {
-                    Ok(PyShowSchema {
-                        show_schema: ext.clone(),
-                    })
-                } else {
-                    Err(py_type_err("unexpected plan"))
-                }
+                    .is_some() =>
+            {
+                let ext = node
+                    .as_any()
+                    .downcast_ref::<ShowSchemasPlanNode>()
+                    .expect("ShowSchemasPlanNode");
+                Ok(PyShowSchema {
+                    show_schema: ext.clone(),
+                })
             }
             _ => Err(py_type_err("unexpected plan")),
         }
