@@ -26,6 +26,13 @@ pub struct CreateModel {
     pub select: SQLStatement,
 }
 
+/// Dask-SQL extension DDL for `DROP MODEL`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropModel {
+    /// model name
+    pub name: String,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -35,6 +42,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `DROP MODEL`
+    DropModel(Box<DropModel>),
 }
 
 /// SQL Parser
@@ -111,6 +120,12 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_create()
                     }
+                    Keyword::DROP => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_drop()
+                    }
                     _ => {
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
@@ -156,6 +171,34 @@ impl<'a> DaskParser<'a> {
         }
     }
 
+    /// Parse a SQL DROP statement
+    pub fn parse_drop(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.as_str() {
+                    "model" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_drop_model()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_drop()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_drop()?,
+                )))
+            }
+        }
+    }
+
     /// Parse Dask-SQL CREATE MODEL statement
     fn parse_create_model(&mut self) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
@@ -192,5 +235,15 @@ impl<'a> DaskParser<'a> {
             select: self.parser.parse_statement()?,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    /// Parse Dask-SQL DROP MODEL statement
+    fn parse_drop_model(&mut self) -> Result<DaskStatement, ParserError> {
+        let model_name = self.parser.parse_object_name()?;
+
+        let drop = DropModel {
+            name: model_name.to_string(),
+        };
+        Ok(DaskStatement::DropModel(Box::new(drop)))
     }
 }

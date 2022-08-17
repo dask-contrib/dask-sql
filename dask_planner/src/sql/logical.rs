@@ -2,19 +2,20 @@ use crate::sql::table;
 use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
-mod aggregate;
-mod create_memory_table;
+pub mod aggregate;
+pub mod create_memory_table;
 pub mod create_model;
-mod drop_table;
-mod empty_relation;
-mod explain;
-mod filter;
-mod join;
-mod limit;
-mod projection;
-mod sort;
-mod table_scan;
-mod window;
+pub mod drop_model;
+pub mod drop_table;
+pub mod empty_relation;
+pub mod explain;
+pub mod filter;
+pub mod join;
+pub mod limit;
+pub mod projection;
+pub mod sort;
+pub mod table_scan;
+pub mod window;
 
 use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
@@ -23,6 +24,7 @@ use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 use self::create_model::CreateModelPlanNode;
+use self::drop_model::DropModelPlanNode;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -205,6 +207,13 @@ impl PyLogicalPlan {
                     .is_some()
                 {
                     "CreateModel"
+                } else if extension
+                    .node
+                    .as_any()
+                    .downcast_ref::<DropModelPlanNode>()
+                    .is_some()
+                {
+                    "DropModel"
                 } else {
                     // Default to generic `Extension`
                     "Extension"
