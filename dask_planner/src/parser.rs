@@ -158,6 +158,11 @@ impl<'a> DaskParser<'a> {
                         self.parse_create_model(or_replace)
                     }
                     _ => {
+                        if or_replace {
+                            // Go back two tokens if OR REPLACE was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_create()?,
@@ -166,6 +171,11 @@ impl<'a> DaskParser<'a> {
                 }
             }
             _ => {
+                if or_replace {
+                    // Go back two tokens if OR REPLACE was consumed
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_create()?,
