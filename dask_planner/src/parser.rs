@@ -150,7 +150,7 @@ impl<'a> DaskParser<'a> {
         let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
-                match w.value.as_str() {
+                match w.value.to_lowercase().as_str() {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
@@ -178,7 +178,7 @@ impl<'a> DaskParser<'a> {
     pub fn parse_drop(&mut self) -> Result<DaskStatement, ParserError> {
         match self.parser.peek_token() {
             Token::Word(w) => {
-                match w.value.as_str() {
+                match w.value.to_lowercase().as_str() {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
