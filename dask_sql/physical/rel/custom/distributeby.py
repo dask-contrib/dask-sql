@@ -7,7 +7,7 @@ from dask_sql.utils import LoggableDataFrame
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,11 @@ class DistributeByPlugin(BaseRelPlugin):
         SELECT age, name FROM person DISTRIBUTE BY age
     """
 
-    class_name = "com.dask.sql.parser.SqlDistributeBy"
+    class_name = "DistributeBy"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        select = sql.getSelect()
-        distribute_list = [str(col) for col in sql.getDistributeList()]
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        select = rel.getSelect()
+        distribute_list = [str(col) for col in rel.getDistributeList()]
 
         sql_select_query = context._to_sql_string(select)
         df = context.sql(sql_select_query)
