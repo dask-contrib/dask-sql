@@ -30,6 +30,7 @@ use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
@@ -316,6 +317,12 @@ impl DaskSQLContext {
                 node: Arc::new(DropModelPlanNode {
                     model_name: drop_model.name,
                     schema: Arc::new(DFSchema::empty()),
+                }),
+            })),
+            DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowSchemasPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    like: show_schemas.like,
                 }),
             })),
         }
