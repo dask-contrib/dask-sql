@@ -11,7 +11,7 @@ pub mod types;
 use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
 use arrow::datatypes::{DataType, Field, Schema};
-use datafusion_common::DataFusionError;
+use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
@@ -29,6 +29,8 @@ use std::sync::Arc;
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
@@ -298,6 +300,19 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         create_model.select,
                     )))?,
+                    or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropModelPlanNode {
+                    model_name: drop_model.name,
+                    schema: Arc::new(DFSchema::empty()),
+                }),
+            })),
+            DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowSchemasPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    like: show_schemas.like,
                 }),
             })),
         }

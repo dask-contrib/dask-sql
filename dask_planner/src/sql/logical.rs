@@ -2,19 +2,21 @@ use crate::sql::table;
 use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
-mod aggregate;
-mod create_memory_table;
+pub mod aggregate;
+pub mod create_memory_table;
 pub mod create_model;
-mod drop_table;
-mod empty_relation;
-mod explain;
-mod filter;
-mod join;
-mod limit;
-mod projection;
-mod sort;
-mod table_scan;
-mod window;
+pub mod drop_model;
+pub mod drop_table;
+pub mod empty_relation;
+pub mod explain;
+pub mod filter;
+pub mod join;
+pub mod limit;
+pub mod projection;
+pub mod show_schema;
+pub mod sort;
+pub mod table_scan;
+pub mod window;
 
 use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
@@ -23,6 +25,8 @@ use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 use self::create_model::CreateModelPlanNode;
+use self::drop_model::DropModelPlanNode;
+use self::show_schema::ShowSchemasPlanNode;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -125,6 +129,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::ShowSchemas as ShowSchemas
+    pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -198,13 +207,13 @@ impl PyLogicalPlan {
             LogicalPlan::CreateView(_create_view) => "CreateView",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
-                if extension
-                    .node
-                    .as_any()
-                    .downcast_ref::<CreateModelPlanNode>()
-                    .is_some()
-                {
+                let node = extension.node.as_any();
+                if node.downcast_ref::<CreateModelPlanNode>().is_some() {
                     "CreateModel"
+                } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
+                    "DropModel"
+                } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
+                    "ShowSchemas"
                 } else {
                     // Default to generic `Extension`
                     "Extension"
