@@ -5,6 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pytest
 
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
@@ -78,7 +79,7 @@ def test_custom_function_row_args(c, df, k, op, retty):
         return op(row["a"], k)
 
     c.register_function(
-        f, "f", [("a", np.int64), ("k", const_type)], retty, row_udf=True
+        f, "f", [("a", np.float64), ("k", const_type)], retty, row_udf=True
     )
 
     return_df = c.sql(f"SELECT F(a, {k}) as a from df")
@@ -107,7 +108,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     c.register_function(
         f,
         "f",
-        [("a", np.int64), ("k1", const_type_k1), ("k2", const_type_k2)],
+        [("a", np.float64), ("k1", const_type_k1), ("k2", const_type_k2)],
         retty,
         row_udf=True,
     )
@@ -211,3 +212,14 @@ def test_unsupported_dtype(c, dtype):
     # test that an invalid param type raises
     with pytest.raises(NotImplementedError):
         c.register_function(f, "f", [("x", dtype)], np.int64)
+
+
+# TODO: explore implicitly casting inputs to the expected types consistently
+def test_wrong_input_type(c):
+    def f(a):
+        return a
+
+    c.register_function(f, "f", [("a", np.int64)], np.int64)
+
+    with pytest.raises(ParsingException):
+        c.sql("SELECT F(CAST(a AS INT)) AS a FROM df")
