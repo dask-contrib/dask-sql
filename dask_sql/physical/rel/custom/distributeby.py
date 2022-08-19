@@ -20,11 +20,13 @@ class DistributeByPlugin(BaseRelPlugin):
         SELECT age, name FROM person DISTRIBUTE BY age
     """
 
-    class_name = "DistributeBy"
+    # DataFusion provides the phrase `Repartition` in the LogicalPlan instead of `Distribute By`, it is the same thing
+    class_name = "Repartition"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        select = rel.getSelect()
-        distribute_list = [str(col) for col in rel.getDistributeList()]
+        distribute = rel.repartition_by()
+        select = distribute.getSelectQuery()
+        distribute_list = [str(col) for col in distribute.getDistributeList()]
 
         sql_select_query = context._to_sql_string(select)
         df = context.sql(sql_select_query)

@@ -800,7 +800,6 @@ class Context:
             raise ParsingException(sql, str(pe)) from None
 
         # Optimize the `LogicalPlan` or skip if configured
-        breakpoint()
         if dask_config.get("sql.optimize"):
             try:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
