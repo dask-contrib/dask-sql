@@ -79,10 +79,10 @@ def test_custom_function_row_args(c, df, k, op, retty):
         return op(row["a"], k)
 
     c.register_function(
-        f, "f", [("a", np.float64), ("k", const_type)], retty, row_udf=True
+        f, "f", [("a", np.int64), ("k", const_type)], retty, row_udf=True
     )
 
-    return_df = c.sql(f"SELECT F(a, {k}) as a from df")
+    return_df = c.sql(f"SELECT F(CAST(a AS BIGINT), {k}) as a from df")
     expected_df = op(df[["a"]], k).astype(retty)
 
     assert_eq(return_df, expected_df)
@@ -108,12 +108,12 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     c.register_function(
         f,
         "f",
-        [("a", np.float64), ("k1", const_type_k1), ("k2", const_type_k2)],
+        [("a", np.int64), ("k1", const_type_k1), ("k2", const_type_k2)],
         retty,
         row_udf=True,
     )
 
-    return_df = c.sql(f"SELECT F(a, {k1}, {k2}) as a from df")
+    return_df = c.sql(f"SELECT F(CAST(a AS BIGINT), {k1}, {k2}) as a from df")
     expected_df = op(op(df[["a"]], k1), k2).astype(retty)
 
     assert_eq(return_df, expected_df)
