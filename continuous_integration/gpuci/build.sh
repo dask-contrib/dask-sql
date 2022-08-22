@@ -40,13 +40,12 @@ conda activate dask_sql
 gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
-gpuci_logger "Download TPC-DS dataset"
+gpuci_logger "Download parquet dataset"
 gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ tests/unit/data/ --recursive
 
-gpuci_logger "Pull in query files"
-git clone https://github.com/databricks/spark-sql-perf.git
-mkdir -p tests/unit/queries
-cp spark-sql-perf/src/main/resources/tpcds_2_4/* tests/unit/queries
+gpuci_logger "Download query files"
+gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ tests/unit/queries/ --recursive
+ls -al tests/unit/queries
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
