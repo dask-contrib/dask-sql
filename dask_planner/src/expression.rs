@@ -323,8 +323,8 @@ impl PyExpr {
                 Ok(operands)
             }
             Expr::InList { expr, list, .. } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                let mut operands: Vec<PyExpr> =
+                    vec![PyExpr::from(*expr.clone(), self.input_plan.clone())];
                 for list_elem in list {
                     operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
                 }

@@ -113,7 +113,7 @@ def test_group_by_filtered(c):
         },
     )
 
-    assert_eq(return_df, expected_df)
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """

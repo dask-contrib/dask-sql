@@ -5,7 +5,6 @@ from dask_sql import Context
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_schemas(c):
     result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
@@ -18,7 +17,6 @@ def test_schemas(c):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_tables(gpu):
     c = Context()

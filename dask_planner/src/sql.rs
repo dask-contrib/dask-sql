@@ -8,19 +8,17 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::{
-    dialect::DaskSqlDialect,
-    sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
-};
+use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
 use arrow::datatypes::{DataType, Field, Schema};
-use datafusion_common::DataFusionError;
+use datafusion_common::{DFSchema, DataFusionError};
+use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
     ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource, Volatility,
 };
 use datafusion_sql::{
-    parser::DFParser,
+    parser::Statement as DFStatement,
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
@@ -28,7 +26,16 @@ use datafusion_sql::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::dialect::DaskDialect;
+use crate::parser::{DaskParser, DaskStatement};
+use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::show_schema::ShowSchemasPlanNode;
+
+use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
+
+use self::logical::show_tables::ShowTablesPlanNode;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -252,8 +259,8 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: String) -> PyResult<Vec<statement::PyStatement>> {
-        let dd: DaskSqlDialect = DaskSqlDialect {};
-        match DFParser::parse_sql_with_dialect(sql.as_str(), &dd) {
+        let dd: DaskDialect = DaskDialect {};
+        match DaskParser::parse_sql_with_dialect(sql.as_str(), &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
@@ -274,11 +281,9 @@ impl DaskSQLContext {
         &self,
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
-        let planner = SqlToRel::new(self);
-        planner
-            .statement_to_plan(statement.statement)
-            .map(|k| logical::PyLogicalPlan {
-                original_plan: k,
+        self._logical_relational_algebra(statement.statement)
+            .map(|e| PyLogicalPlan {
+                original_plan: e,
                 current_node: None,
             })
             .map_err(py_parsing_exp)
@@ -310,6 +315,49 @@ impl DaskSQLContext {
                 }
             }
             Err(e) => Err(py_optimization_exp(e)),
+        }
+    }
+}
+
+/// non-Python methods
+impl DaskSQLContext {
+    /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
+    pub fn _logical_relational_algebra(
+        &self,
+        dask_statement: DaskStatement,
+    ) -> Result<LogicalPlan, DataFusionError> {
+        match dask_statement {
+            DaskStatement::Statement(statement) => {
+                let planner = SqlToRel::new(self);
+                planner.statement_to_plan(DFStatement::Statement(statement))
+            }
+            DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateModelPlanNode {
+                    model_name: create_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        create_model.select,
+                    )))?,
+                    or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropModelPlanNode {
+                    model_name: drop_model.name,
+                    schema: Arc::new(DFSchema::empty()),
+                }),
+            })),
+            DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowSchemasPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    like: show_schemas.like,
+                }),
+            })),
+            DaskStatement::ShowTables(show_tables) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowTablesPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: show_tables.schema_name,
+                }),
+            })),
         }
     }
 }
