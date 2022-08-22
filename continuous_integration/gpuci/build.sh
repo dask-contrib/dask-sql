@@ -44,7 +44,7 @@ gpuci_logger "Download parquet dataset"
 gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ tests/unit/data/ --recursive
 
 gpuci_logger "Download query files"
-gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/parquet_2gb/ tests/unit/queries/ --recursive
+gpuci_retry aws s3 cp --only-show-errors s3://rapidsai-data/tpcx-bb-data/tpc-ds/sf1/queries/ tests/unit/queries/ --recursive
 ls -al tests/unit/queries
 
 gpuci_logger "Install dask"
