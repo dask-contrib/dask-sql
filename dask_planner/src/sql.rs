@@ -312,6 +312,7 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         create_model.select,
                     )))?,
+                    or_replace: create_model.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {

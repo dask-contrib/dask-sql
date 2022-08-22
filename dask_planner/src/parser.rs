@@ -24,6 +24,8 @@ pub struct CreateModel {
     pub name: String,
     /// input Query
     pub select: SQLStatement,
+    /// To replace the model or not
+    pub or_replace: bool,
 }
 
 /// Dask-SQL extension DDL for `DROP MODEL`
@@ -169,16 +171,22 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
+        let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
-                match w.value.as_str() {
+                match w.value.to_lowercase().as_str() {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_model()
+                        self.parse_create_model(or_replace)
                     }
                     _ => {
+                        if or_replace {
+                            // Go back two tokens if OR REPLACE was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_create()?,
@@ -187,6 +195,11 @@ impl<'a> DaskParser<'a> {
                 }
             }
             _ => {
+                if or_replace {
+                    // Go back two tokens if OR REPLACE was consumed
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_create()?,
@@ -199,7 +212,7 @@ impl<'a> DaskParser<'a> {
     pub fn parse_drop(&mut self) -> Result<DaskStatement, ParserError> {
         match self.parser.peek_token() {
             Token::Word(w) => {
-                match w.value.as_str() {
+                match w.value.to_lowercase().as_str() {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
@@ -283,7 +296,7 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE MODEL statement
-    fn parse_create_model(&mut self) -> Result<DaskStatement, ParserError> {
+    fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
         self.parser.expect_token(&Token::LParen)?;
@@ -316,6 +329,7 @@ impl<'a> DaskParser<'a> {
         let create = CreateModel {
             name: model_name.to_string(),
             select: self.parser.parse_statement()?,
+            or_replace,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }
