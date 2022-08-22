@@ -69,23 +69,35 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float64,
+    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
     "SqlTypeName.TINYINT": pd.Int8Dtype(),
     "SqlTypeName.BOOLEAN": pd.BooleanDtype(),
     "SqlTypeName.VARCHAR": pd.StringDtype(),
+    "SqlTypeName.CHAR": pd.StringDtype(),
     "SqlTypeName.DATE": np.dtype(
         "<M8[ns]"
     ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
+    "SqlTypeName.TIME": np.dtype("<M8[ns]"),
     "SqlTypeName.TIMESTAMP": np.dtype("<M8[ns]"),
+    "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
+        unit="ns", tz="UTC"
+    ),  # Everything is converted to UTC. So far, this did not break
+    "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
 
 def python_to_sql_type(python_type) -> "DaskTypeMap":
     """Mapping between python and SQL types."""
+
+    if python_type in (int, float):
+        python_type = np.dtype(python_type)
+    elif python_type is str:
+        python_type = np.dtype("object")
+
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
@@ -128,6 +140,8 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
         return literal_value
 
+    elif sql_type == SqlTypeName.INTERVAL_DAY:
+        return timedelta(days=literal_value[0], milliseconds=literal_value[1])
     elif sql_type == SqlTypeName.INTERVAL:
         # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
         try:
@@ -194,25 +208,12 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
 def sql_to_python_type(sql_type: "SqlTypeName") -> type:
     """Turn an SQL type into a dataframe dtype"""
-    if sql_type == SqlTypeName.VARCHAR or sql_type == SqlTypeName.CHAR:
-        return pd.StringDtype()
-    elif sql_type == SqlTypeName.TIME or sql_type == SqlTypeName.TIMESTAMP:
-        return np.dtype("<M8[ns]")
-    elif sql_type == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE:
-        # Everything is converted to UTC
-        # So far, this did not break
-        return pd.DatetimeTZDtype(unit="ns", tz="UTC")
-    elif sql_type == SqlTypeName.DECIMAL:
-        # We use np.float64 always, even though we might
-        # be able to use a smaller type
-        return np.float64
-    else:
-        try:
-            return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
-        except KeyError:  # pragma: no cover
-            raise NotImplementedError(
-                f"The SQL type {str(sql_type)} is not implemented (yet)"
-            )
+    try:
+        return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
+    except KeyError:  # pragma: no cover
+        raise NotImplementedError(
+            f"The SQL type {str(sql_type)} is not implemented (yet)"
+        )
 
 
 def similar_type(lhs: type, rhs: type) -> bool:
@@ -286,15 +287,17 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         logger.debug("...not converting.")
         return None
 
-    current_float = pd.api.types.is_float_dtype(current_type)
-    expected_integer = pd.api.types.is_integer_dtype(expected_type)
-    if current_float and expected_integer:
-        logger.debug("...truncating...")
-        # Currently "trunc" can not be applied to NA (the pandas missing value type),
-        # because NA is a different type. It works with np.NaN though.
-        # For our use case, that does not matter, as the conversion to integer later
-        # will convert both NA and np.NaN to NA.
-        col = da.trunc(col.fillna(value=np.NaN))
+    if pd.api.types.is_integer_dtype(expected_type):
+        if pd.api.types.is_float_dtype(current_type):
+            logger.debug("...truncating...")
+            # Currently "trunc" can not be applied to NA (the pandas missing value type),
+            # because NA is a different type. It works with np.NaN though.
+            # For our use case, that does not matter, as the conversion to integer later
+            # will convert both NA and np.NaN to NA.
+            col = da.trunc(col.fillna(value=np.NaN))
+        elif pd.api.types.is_timedelta64_dtype(current_type):
+            logger.debug(f"Explicitly casting from {current_type} to np.int64")
+            return col.astype(np.int64)
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

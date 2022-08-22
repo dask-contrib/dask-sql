@@ -5,9 +5,6 @@ services:
         container_name: dask-scheduler
         image: daskdev/dask:dev-py3.9
         command: dask-scheduler
-        environment:
-            USE_MAMBA: "true"
-            EXTRA_CONDA_PACKAGES: "cloudpickle>=1.5.0"  # match client cloudpickle version
         ports:
             - "8786:8786"
     dask-worker:
@@ -16,6 +13,6 @@ services:
         command: dask-worker dask-scheduler:8786
         environment:
             USE_MAMBA: "true"
-            EXTRA_CONDA_PACKAGES: "cloudpickle>=2.1.0 pyarrow>=3.0.0 libstdcxx-ng>=12.1.0"
+            EXTRA_CONDA_PACKAGES: "cloudpickle>=2.1.0 pyarrow>=6.0.1 libstdcxx-ng>=12.1.0"
         volumes:
             - /tmp:/tmp

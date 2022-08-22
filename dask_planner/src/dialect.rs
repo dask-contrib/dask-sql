@@ -1,19 +1,23 @@
 use core::iter::Peekable;
 use core::str::Chars;
-use sqlparser::dialect::Dialect;
+use datafusion_sql::sqlparser::dialect::Dialect;
 
 #[derive(Debug)]
-pub struct DaskSqlDialect {}
+pub struct DaskDialect {}
 
-impl Dialect for DaskSqlDialect {
+impl Dialect for DaskDialect {
     fn is_identifier_start(&self, ch: char) -> bool {
-        ('a'..='z').contains(&ch) || ('A'..='Z').contains(&ch)
+        // See https://www.postgresql.org/docs/11/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+        // We don't yet support identifiers beginning with "letters with
+        // diacritical marks and non-Latin letters"
+        ('a'..='z').contains(&ch) || ('A'..='Z').contains(&ch) || ch == '_'
     }
 
     fn is_identifier_part(&self, ch: char) -> bool {
         ('a'..='z').contains(&ch)
             || ('A'..='Z').contains(&ch)
             || ('0'..='9').contains(&ch)
+            || ch == '$'
             || ch == '_'
     }
 

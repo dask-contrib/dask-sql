@@ -8,19 +8,17 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::{
-    dialect::DaskSqlDialect,
-    sql::exceptions::{OptimizationException, ParsingException},
-};
+use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
 use arrow::datatypes::{DataType, Field, Schema};
-use datafusion_common::DataFusionError;
+use datafusion_common::{DFSchema, DataFusionError};
+use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
     ScalarUDF, Signature, TableSource, Volatility,
 };
 use datafusion_sql::{
-    parser::DFParser,
+    parser::Statement as DFStatement,
     planner::{ContextProvider, SqlToRel},
     ResolvedTableReference, TableReference,
 };
@@ -28,7 +26,16 @@ use datafusion_sql::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::dialect::DaskDialect;
+use crate::parser::{DaskParser, DaskStatement};
+use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::show_schema::ShowSchemasPlanNode;
+
+use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
+
+use self::logical::show_tables::ShowTablesPlanNode;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -67,7 +74,7 @@ impl ContextProvider for DaskSQLContext {
         match self.schemas.get(&self.default_schema_name) {
             Some(schema) => {
                 let mut resp = None;
-                for (_table_name, table) in &schema.tables {
+                for table in schema.tables.values() {
                     if table.name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
@@ -103,20 +110,49 @@ impl ContextProvider for DaskSQLContext {
     fn get_function_meta(&self, name: &str) -> Option<Arc<ScalarUDF>> {
         let fun: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
-        if "year".eq(name) {
-            let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-            let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-            return Some(Arc::new(ScalarUDF::new("year", &sig, &rtf, &fun)));
+
+        match name {
+            "year" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "atan2" | "mod" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Float64, DataType::Float64],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
+                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Volatile);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand_integer" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Int64, DataType::Int64],
+                    Volatility::Volatile,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            _ => (),
         }
 
         // Loop through all of the user defined functions
-        for (_schema_name, schema) in &self.schemas {
+        for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
                     let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction =
-                        Arc::new(|d_type| Ok(Arc::new(d_type[0].clone())));
+                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
@@ -171,7 +207,7 @@ impl DaskSQLContext {
                 schema.add_function(function);
                 Ok(true)
             }
-            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            None => Err(py_runtime_err(format!(
                 "Schema: {} not found in DaskSQLContext",
                 schema_name
             ))),
@@ -189,7 +225,7 @@ impl DaskSQLContext {
                 schema.add_table(table);
                 Ok(true)
             }
-            None => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            None => Err(py_runtime_err(format!(
                 "Schema: {} not found in DaskSQLContext",
                 schema_name
             ))),
@@ -197,9 +233,9 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
-        let dd: DaskSqlDialect = DaskSqlDialect {};
-        match DFParser::parse_sql_with_dialect(sql, &dd) {
+    pub fn parse_sql(&self, sql: String) -> PyResult<Vec<statement::PyStatement>> {
+        let dd: DaskDialect = DaskDialect {};
+        match DaskParser::parse_sql_with_dialect(sql.as_str(), &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
@@ -211,7 +247,7 @@ impl DaskSQLContext {
                 );
                 Ok(statements)
             }
-            Err(e) => Err(PyErr::new::<ParsingException, _>(format!("{}", e))),
+            Err(e) => Err(py_parsing_exp(e)),
         }
     }
 
@@ -220,14 +256,12 @@ impl DaskSQLContext {
         &self,
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
-        let planner = SqlToRel::new(self);
-        planner
-            .statement_to_plan(statement.statement)
-            .map(|k| logical::PyLogicalPlan {
-                original_plan: k,
+        self._logical_relational_algebra(statement.statement)
+            .map(|e| PyLogicalPlan {
+                original_plan: e,
                 current_node: None,
             })
-            .map_err(|e| PyErr::new::<ParsingException, _>(format!("{}", e)))
+            .map_err(py_parsing_exp)
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
@@ -249,13 +283,56 @@ impl DaskSQLContext {
                             original_plan: k,
                             current_node: None,
                         })
-                        .map_err(|e| PyErr::new::<OptimizationException, _>(format!("{}", e)))
+                        .map_err(py_optimization_exp)
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
                     Ok(existing_plan)
                 }
             }
-            Err(e) => Err(PyErr::new::<OptimizationException, _>(format!("{}", e))),
+            Err(e) => Err(py_optimization_exp(e)),
+        }
+    }
+}
+
+/// non-Python methods
+impl DaskSQLContext {
+    /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
+    pub fn _logical_relational_algebra(
+        &self,
+        dask_statement: DaskStatement,
+    ) -> Result<LogicalPlan, DataFusionError> {
+        match dask_statement {
+            DaskStatement::Statement(statement) => {
+                let planner = SqlToRel::new(self);
+                planner.statement_to_plan(DFStatement::Statement(statement))
+            }
+            DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateModelPlanNode {
+                    model_name: create_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        create_model.select,
+                    )))?,
+                    or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropModelPlanNode {
+                    model_name: drop_model.name,
+                    schema: Arc::new(DFSchema::empty()),
+                }),
+            })),
+            DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowSchemasPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    like: show_schemas.like,
+                }),
+            })),
+            DaskStatement::ShowTables(show_tables) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowTablesPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: show_tables.schema_name,
+                }),
+            })),
         }
     }
 }

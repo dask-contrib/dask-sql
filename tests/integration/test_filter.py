@@ -180,6 +180,9 @@ def test_filter_year(c):
             ],
         ),
         (
+            # The predicate-pushdown optimization will be skipped here,
+            # because datetime accessors are not supported. However,
+            # the query should still succeed.
             "SELECT * FROM parquet_ddf WHERE year(d) < 2015",
             lambda x: x[x["d"].dt.year < 2015],
             None,

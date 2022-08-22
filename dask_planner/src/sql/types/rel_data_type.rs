@@ -1,3 +1,4 @@
+use crate::sql::exceptions::py_runtime_err;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 use std::collections::HashMap;
@@ -33,25 +34,24 @@ impl RelDataType {
     /// * `field_name` - A String containing the name of the field to find
     /// * `case_sensitive` - True if column name matching should be case sensitive and false otherwise
     #[pyo3(name = "getField")]
-    pub fn field(&self, field_name: String, case_sensitive: bool) -> RelDataTypeField {
-        assert!(!self.field_list.is_empty());
+    pub fn field(&self, field_name: String, case_sensitive: bool) -> PyResult<RelDataTypeField> {
         let field_map: HashMap<String, RelDataTypeField> = self.field_map();
         if case_sensitive && !field_map.is_empty() {
-            field_map.get(&field_name).unwrap().clone()
+            Ok(field_map.get(&field_name).unwrap().clone())
         } else {
             for field in &self.field_list {
                 if (case_sensitive && field.name().eq(&field_name))
                     || (!case_sensitive && field.name().eq_ignore_ascii_case(&field_name))
                 {
-                    return field.clone();
+                    return Ok(field.clone());
                 }
             }
 
             // TODO: Throw a proper error here
-            panic!(
+            Err(py_runtime_err(format!(
                 "Unable to find RelDataTypeField with name {:?} in the RelDataType field_list",
-                field_name
-            );
+                field_name,
+            )))
         }
     }
 
@@ -72,14 +72,12 @@ impl RelDataType {
     /// Gets the fields in a struct type. The field count is equal to the size of the returned list.
     #[pyo3(name = "getFieldList")]
     pub fn field_list(&self) -> Vec<RelDataTypeField> {
-        assert!(!self.field_list.is_empty());
         self.field_list.clone()
     }
 
     /// Returns the names of all of the columns in a given DaskTable
     #[pyo3(name = "getFieldNames")]
     pub fn field_names(&self) -> Vec<String> {
-        assert!(!self.field_list.is_empty());
         let mut field_names: Vec<String> = Vec::new();
         for field in &self.field_list {
             field_names.push(field.qualified_name());
@@ -90,7 +88,6 @@ impl RelDataType {
     /// Returns the number of fields in a struct type.
     #[pyo3(name = "getFieldCount")]
     pub fn field_count(&self) -> usize {
-        assert!(!self.field_list.is_empty());
         self.field_list.len()
     }
 

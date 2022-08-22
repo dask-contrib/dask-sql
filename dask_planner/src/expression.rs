@@ -1,4 +1,4 @@
-use crate::sql::exceptions::py_runtime_err;
+use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
@@ -113,8 +113,8 @@ impl PyExpr {
     #[pyo3(name = "getSubqueryLogicalPlan")]
     pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
         match &self.expr {
-            Expr::ScalarSubquery(subquery) => Ok((&*subquery.subquery).clone().into()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            Expr::ScalarSubquery(subquery) => Ok(subquery.subquery.as_ref().clone().into()),
+            _ => Err(py_type_err(format!(
                 "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
                 Only Subquery and related variants are supported for this operation.",
                 &self.expr
@@ -126,10 +126,7 @@ impl PyExpr {
     /// Column in the SQL parse tree or not
     #[pyo3(name = "isInputReference")]
     pub fn is_input_reference(&self) -> PyResult<bool> {
-        match &self.expr {
-            Expr::Column(_col) => Ok(true),
-            _ => Ok(false),
-        }
+        Ok(matches!(&self.expr, Expr::Column(_col)))
     }
 
     #[pyo3(name = "toString")]
@@ -160,13 +157,12 @@ impl PyExpr {
                             }
                             Ok(idx)
                         }
-                        Err(e) => panic!("{:?}", e),
+                        Err(e) => Err(py_runtime_err(e)),
                     }
                 } else if input_plans.len() >= 2 {
                     let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
-                    for input_idx in 1..input_plans.len() {
-                        let input_schema: DFSchema = (**input_plans[input_idx].schema()).clone();
-                        base_schema.merge(&input_schema);
+                    for plan in input_plans.iter().skip(1) {
+                        base_schema.merge(plan.schema().as_ref());
                     }
                     let name: Result<String> = self.expr.name(&base_schema);
                     match name {
@@ -192,19 +188,21 @@ impl PyExpr {
                                             return Ok(index);
                                         }
                                     }
-                                    panic!("Unable to find match for column with name: '{}' in DFSchema", &fq_name);
+                                    Err(py_runtime_err(format!("Unable to find match for column with name: '{}' in DFSchema", &fq_name)))
                                 }
                             }
                         }
-                        Err(e) => panic!("{:?}", e),
+                        Err(e) => Err(py_runtime_err(e)),
                     }
                 } else {
-                    panic!("Not really sure what we should do right here???");
+                    Err(py_runtime_err(
+                        "Not really sure what we should do right here???",
+                    ))
                 }
             }
-            None => {
-                panic!("We need a valid LogicalPlan instance to get the Expr's index in the schema")
-            }
+            None => Err(py_runtime_err(
+                "We need a valid LogicalPlan instance to get the Expr's index in the schema",
+            )),
         }
     }
 
@@ -213,36 +211,41 @@ impl PyExpr {
     /// RexConverter plugin instance should be invoked to handle
     /// the Rex conversion
     #[pyo3(name = "getExprType")]
-    pub fn get_expr_type(&self) -> String {
-        String::from(match &self.expr {
-            Expr::Alias(..) => "Alias",
-            Expr::Column(..) => "Column",
-            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
-            Expr::Literal(..) => "Literal",
-            Expr::BinaryExpr { .. } => "BinaryExpr",
-            Expr::Not(..) => panic!("Not!!!"),
-            Expr::IsNotNull(..) => panic!("IsNotNull!!!"),
-            Expr::Negative(..) => panic!("Negative!!!"),
-            Expr::GetIndexedField { .. } => panic!("GetIndexedField!!!"),
-            Expr::IsNull(..) => panic!("IsNull!!!"),
-            Expr::Between { .. } => "Between",
-            Expr::Case { .. } => panic!("Case!!!"),
-            Expr::Cast { .. } => "Cast",
-            Expr::TryCast { .. } => panic!("TryCast!!!"),
-            Expr::Sort { .. } => "Sort",
-            Expr::ScalarFunction { .. } => "ScalarFunction",
-            Expr::AggregateFunction { .. } => "AggregateFunction",
-            Expr::WindowFunction { .. } => panic!("WindowFunction!!!"),
-            Expr::AggregateUDF { .. } => panic!("AggregateUDF!!!"),
-            Expr::InList { .. } => "InList",
-            Expr::Wildcard => panic!("Wildcard!!!"),
-            Expr::InSubquery { .. } => "Subquery",
-            Expr::ScalarUDF { .. } => "ScalarUDF",
-            Expr::Exists { .. } => "Exists",
-            Expr::ScalarSubquery(..) => "ScalarSubquery",
-            Expr::QualifiedWildcard { .. } => "Wildcard",
-            Expr::GroupingSet(..) => "GroupingSet",
-        })
+    pub fn get_expr_type(&self) -> PyResult<String> {
+        Ok(String::from(match &self.expr {
+            Expr::Alias(..)
+            | Expr::Column(..)
+            | Expr::Literal(..)
+            | Expr::BinaryExpr { .. }
+            | Expr::Between { .. }
+            | Expr::Cast { .. }
+            | Expr::Sort { .. }
+            | Expr::ScalarFunction { .. }
+            | Expr::AggregateFunction { .. }
+            | Expr::InList { .. }
+            | Expr::InSubquery { .. }
+            | Expr::ScalarUDF { .. }
+            | Expr::Exists { .. }
+            | Expr::ScalarSubquery(..)
+            | Expr::QualifiedWildcard { .. }
+            | Expr::Not(..)
+            | Expr::GroupingSet(..) => self.expr.variant_name(),
+            Expr::ScalarVariable(..)
+            | Expr::IsNotNull(..)
+            | Expr::Negative(..)
+            | Expr::GetIndexedField { .. }
+            | Expr::IsNull(..)
+            | Expr::Case { .. }
+            | Expr::TryCast { .. }
+            | Expr::WindowFunction { .. }
+            | Expr::AggregateUDF { .. }
+            | Expr::Wildcard => {
+                return Err(py_type_err(format!(
+                    "Encountered unsupported expression type: {}",
+                    &self.expr.variant_name()
+                )))
+            }
+        }))
     }
 
     /// Determines the type of this Expr based on its variant
@@ -320,8 +323,8 @@ impl PyExpr {
                 Ok(operands)
             }
             Expr::InList { expr, list, .. } => {
-                let mut operands: Vec<PyExpr> = Vec::new();
-                operands.push(PyExpr::from(*expr.clone(), self.input_plan.clone()));
+                let mut operands: Vec<PyExpr> =
+                    vec![PyExpr::from(*expr.clone(), self.input_plan.clone())];
                 for list_elem in list {
                     operands.push(PyExpr::from(list_elem.clone(), self.input_plan.clone()));
                 }
@@ -354,32 +357,35 @@ impl PyExpr {
 
     #[pyo3(name = "getOperatorName")]
     pub fn get_operator_name(&self) -> PyResult<String> {
-        match &self.expr {
+        Ok(match &self.expr {
             Expr::BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => Ok(format!("{}", op)),
-            Expr::ScalarFunction { fun, args: _ } => Ok(format!("{}", fun)),
-            Expr::Cast { .. } => Ok("cast".to_string()),
-            Expr::Between { .. } => Ok("between".to_string()),
-            Expr::Case { .. } => Ok("case".to_string()),
-            Expr::IsNull(..) => Ok("is null".to_string()),
-            Expr::IsNotNull(..) => Ok("is not null".to_string()),
-            Expr::ScalarUDF { fun, .. } => Ok(fun.name.clone()),
-            Expr::InList { .. } => Ok("in list".to_string()),
-            Expr::Negative(..) => Ok("negative".to_string()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
-                "Catch all triggered for get_operator_name: {:?}",
-                &self.expr
-            ))),
-        }
+            } => format!("{}", op),
+            Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
+            Expr::ScalarUDF { fun, .. } => fun.name.clone(),
+            Expr::Cast { .. } => "cast".to_string(),
+            Expr::Between { .. } => "between".to_string(),
+            Expr::Case { .. } => "case".to_string(),
+            Expr::IsNull(..) => "is null".to_string(),
+            Expr::IsNotNull(..) => "is not null".to_string(),
+            Expr::InList { .. } => "in list".to_string(),
+            Expr::Negative(..) => "negative".to_string(),
+            Expr::Not(..) => "not".to_string(),
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_operator_name: {:?}",
+                    &self.expr
+                )))
+            }
+        })
     }
 
     /// Gets the ScalarValue represented by the Expression
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
-        match &self.expr {
+        Ok(String::from(match &self.expr {
             Expr::BinaryExpr {
                 left: _,
                 op,
@@ -402,236 +408,251 @@ impl PyExpr {
                 | Operator::RegexNotMatch
                 | Operator::RegexNotIMatch
                 | Operator::BitwiseAnd
-                | Operator::BitwiseOr => Ok(String::from("BOOLEAN")),
+                | Operator::BitwiseOr => "BOOLEAN",
                 Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
-                    Ok(String::from("BIGINT"))
+                    "BIGINT"
                 }
-                Operator::Divide => Ok(String::from("FLOAT")),
-                Operator::StringConcat => Ok(String::from("VARCHAR")),
+                Operator::Divide => "FLOAT",
+                Operator::StringConcat => "VARCHAR",
+                Operator::BitwiseShiftLeft | Operator::BitwiseShiftRight => {
+                    // the type here should be the same as the type of the left expression
+                    // but we can only compute that if we have the schema available
+                    return Err(py_type_err(
+                        "Bitwise shift operators unsupported in get_type".to_string(),
+                    ));
+                }
             },
-            Expr::ScalarVariable(..) => panic!("ScalarVariable!!!"),
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(_value) => Ok(String::from("Boolean")),
-                ScalarValue::Float32(_value) => Ok(String::from("Float32")),
-                ScalarValue::Float64(_value) => Ok(String::from("Float64")),
-                ScalarValue::Decimal128(_value, ..) => Ok(String::from("Decimal128")),
-                ScalarValue::Int8(_value) => Ok(String::from("Int8")),
-                ScalarValue::Int16(_value) => Ok(String::from("Int16")),
-                ScalarValue::Int32(_value) => Ok(String::from("Int32")),
-                ScalarValue::Int64(_value) => Ok(String::from("Int64")),
-                ScalarValue::UInt8(_value) => Ok(String::from("UInt8")),
-                ScalarValue::UInt16(_value) => Ok(String::from("UInt16")),
-                ScalarValue::UInt32(_value) => Ok(String::from("UInt32")),
-                ScalarValue::UInt64(_value) => Ok(String::from("UInt64")),
-                ScalarValue::Utf8(_value) => Ok(String::from("Utf8")),
-                ScalarValue::LargeUtf8(_value) => Ok(String::from("LargeUtf8")),
-                ScalarValue::Binary(_value) => Ok(String::from("Binary")),
-                ScalarValue::LargeBinary(_value) => Ok(String::from("LargeBinary")),
-                ScalarValue::Date32(_value) => Ok(String::from("Date32")),
-                ScalarValue::Date64(_value) => Ok(String::from("Date64")),
-                ScalarValue::Null => Ok(String::from("Null")),
-                _ => {
-                    panic!("CatchAll")
-                }
+                ScalarValue::Boolean(_value) => "Boolean",
+                ScalarValue::Float32(_value) => "Float32",
+                ScalarValue::Float64(_value) => "Float64",
+                ScalarValue::Decimal128(_value, ..) => "Decimal128",
+                ScalarValue::Dictionary(..) => "Dictionary",
+                ScalarValue::Int8(_value) => "Int8",
+                ScalarValue::Int16(_value) => "Int16",
+                ScalarValue::Int32(_value) => "Int32",
+                ScalarValue::Int64(_value) => "Int64",
+                ScalarValue::UInt8(_value) => "UInt8",
+                ScalarValue::UInt16(_value) => "UInt16",
+                ScalarValue::UInt32(_value) => "UInt32",
+                ScalarValue::UInt64(_value) => "UInt64",
+                ScalarValue::Utf8(_value) => "Utf8",
+                ScalarValue::LargeUtf8(_value) => "LargeUtf8",
+                ScalarValue::Binary(_value) => "Binary",
+                ScalarValue::LargeBinary(_value) => "LargeBinary",
+                ScalarValue::Date32(_value) => "Date32",
+                ScalarValue::Date64(_value) => "Date64",
+                ScalarValue::Time64(_value) => "Time64",
+                ScalarValue::Null => "Null",
+                ScalarValue::TimestampSecond(..) => "TimestampSecond",
+                ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
+                ScalarValue::TimestampMicrosecond(..) => "TimestampMicrosecond",
+                ScalarValue::TimestampNanosecond(..) => "TimestampNanosecond",
+                ScalarValue::IntervalYearMonth(..) => "IntervalYearMonth",
+                ScalarValue::IntervalDayTime(..) => "IntervalDayTime",
+                ScalarValue::IntervalMonthDayNano(..) => "IntervalMonthDayNano",
+                ScalarValue::List(..) => "List",
+                ScalarValue::Struct(..) => "Struct",
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
-                BuiltinScalarFunction::Abs => Ok(String::from("Abs")),
-                BuiltinScalarFunction::DatePart => Ok(String::from("DatePart")),
+                BuiltinScalarFunction::Abs => "Abs",
+                BuiltinScalarFunction::DatePart => "DatePart",
                 _ => {
-                    panic!("fire here for scalar function")
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for ScalarFunction in get_type; {:?}",
+                        fun
+                    )))
                 }
             },
             Expr::Cast { expr: _, data_type } => match data_type {
-                DataType::Null => Ok(String::from("NULL")),
-                DataType::Boolean => Ok(String::from("BOOLEAN")),
-                DataType::Int8 => Ok(String::from("TINYINT")),
-                DataType::UInt8 => Ok(String::from("TINYINT")),
-                DataType::Int16 => Ok(String::from("SMALLINT")),
-                DataType::UInt16 => Ok(String::from("SMALLINT")),
-                DataType::Int32 => Ok(String::from("INTEGER")),
-                DataType::UInt32 => Ok(String::from("INTEGER")),
-                DataType::Int64 => Ok(String::from("BIGINT")),
-                DataType::UInt64 => Ok(String::from("BIGINT")),
-                DataType::Float32 => Ok(String::from("FLOAT")),
-                DataType::Float64 => Ok(String::from("DOUBLE")),
-                DataType::Timestamp { .. } => Ok(String::from("TIMESTAMP")),
-                DataType::Date32 => Ok(String::from("DATE")),
-                DataType::Date64 => Ok(String::from("DATE")),
-                DataType::Time32(..) => Ok(String::from("TIME32")),
-                DataType::Time64(..) => Ok(String::from("TIME64")),
-                DataType::Duration(..) => Ok(String::from("DURATION")),
-                DataType::Interval(..) => Ok(String::from("INTERVAL")),
-                DataType::Binary => Ok(String::from("BINARY")),
-                DataType::FixedSizeBinary(..) => Ok(String::from("FIXEDSIZEBINARY")),
-                DataType::LargeBinary => Ok(String::from("LARGEBINARY")),
-                DataType::Utf8 => Ok(String::from("VARCHAR")),
-                DataType::LargeUtf8 => Ok(String::from("BIGVARCHAR")),
-                DataType::List(..) => Ok(String::from("LIST")),
-                DataType::FixedSizeList(..) => Ok(String::from("FIXEDSIZELIST")),
-                DataType::LargeList(..) => Ok(String::from("LARGELIST")),
-                DataType::Struct(..) => Ok(String::from("STRUCT")),
-                DataType::Union(..) => Ok(String::from("UNION")),
-                DataType::Dictionary(..) => Ok(String::from("DICTIONARY")),
-                DataType::Decimal(..) => Ok(String::from("DECIMAL")),
-                DataType::Map(..) => Ok(String::from("MAP")),
+                DataType::Null => "NULL",
+                DataType::Boolean => "BOOLEAN",
+                DataType::Int8 | DataType::UInt8 => "TINYINT",
+                DataType::Int16 | DataType::UInt16 => "SMALLINT",
+                DataType::Int32 | DataType::UInt32 => "INTEGER",
+                DataType::Int64 | DataType::UInt64 => "BIGINT",
+                DataType::Float32 => "FLOAT",
+                DataType::Float64 => "DOUBLE",
+                DataType::Timestamp { .. } => "TIMESTAMP",
+                DataType::Date32 | DataType::Date64 => "DATE",
+                DataType::Time32(..) => "TIME32",
+                DataType::Time64(..) => "TIME64",
+                DataType::Duration(..) => "DURATION",
+                DataType::Interval(..) => "INTERVAL",
+                DataType::Binary => "BINARY",
+                DataType::FixedSizeBinary(..) => "FIXEDSIZEBINARY",
+                DataType::LargeBinary => "LARGEBINARY",
+                DataType::Utf8 => "VARCHAR",
+                DataType::LargeUtf8 => "BIGVARCHAR",
+                DataType::List(..) => "LIST",
+                DataType::FixedSizeList(..) => "FIXEDSIZELIST",
+                DataType::LargeList(..) => "LARGELIST",
+                DataType::Struct(..) => "STRUCT",
+                DataType::Union(..) => "UNION",
+                DataType::Dictionary(..) => "DICTIONARY",
+                DataType::Decimal128(..) => "DECIMAL",
+                DataType::Decimal256(..) => "DECIMAL",
+                DataType::Map(..) => "MAP",
                 _ => {
-                    panic!("This is not yet implemented!!!")
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for Cast in get_type; {:?}",
+                        data_type
+                    )))
                 }
             },
-            _ => panic!("OTHER"),
-        }
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_type; {:?}",
+                    &self.expr
+                )))
+            }
+        }))
     }
 
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
     /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
     #[pyo3(name = "getFloat32Value")]
-    pub fn float_32_value(&mut self) -> f32 {
+    pub fn float_32_value(&mut self) -> PyResult<f32> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float32(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Float32(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getFloat64Value")]
-    pub fn float_64_value(&mut self) -> f64 {
+    pub fn float_64_value(&mut self) -> PyResult<f64> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float64(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Float64(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getInt8Value")]
-    pub fn int_8_value(&mut self) -> i8 {
+    pub fn int_8_value(&mut self) -> PyResult<i8> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int8(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Int8(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getInt16Value")]
-    pub fn int_16_value(&mut self) -> i16 {
+    pub fn int_16_value(&mut self) -> PyResult<i16> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int16(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Int16(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getInt32Value")]
-    pub fn int_32_value(&mut self) -> i32 {
+    pub fn int_32_value(&mut self) -> PyResult<i32> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int32(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Int32(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getInt64Value")]
-    pub fn int_64_value(&mut self) -> i64 {
+    pub fn int_64_value(&mut self) -> PyResult<i64> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int64(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Int64(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getUInt8Value")]
-    pub fn uint_8_value(&mut self) -> u8 {
+    pub fn uint_8_value(&mut self) -> PyResult<u8> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt8(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::UInt8(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getUInt16Value")]
-    pub fn uint_16_value(&mut self) -> u16 {
+    pub fn uint_16_value(&mut self) -> PyResult<u16> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt16(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::UInt16(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getUInt32Value")]
-    pub fn uint_32_value(&mut self) -> u32 {
+    pub fn uint_32_value(&mut self) -> PyResult<u32> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt32(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::UInt32(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getUInt64Value")]
-    pub fn uint_64_value(&mut self) -> u64 {
+    pub fn uint_64_value(&mut self) -> PyResult<u64> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt64(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::UInt64(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getBoolValue")]
-    pub fn bool_value(&mut self) -> bool {
+    pub fn bool_value(&mut self) -> PyResult<bool> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(iv) => iv.unwrap(),
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::Boolean(iv) => Ok(iv.unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
     #[pyo3(name = "getStringValue")]
-    pub fn string_value(&mut self) -> String {
+    pub fn string_value(&mut self) -> PyResult<String> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Utf8(iv) => iv.clone().unwrap(),
+                ScalarValue::Utf8(iv) => Ok(iv.clone().unwrap()),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getIntervalDayTimeValue")]
+    pub fn interval_day_time_value(&mut self) -> (i32, i32) {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::IntervalDayTime(iv) => {
+                    let interval = iv.unwrap() as u64;
+                    let days = (interval >> 32) as i32;
+                    let ms = interval as i32;
+                    (days, ms)
+                }
                 _ => {
                     panic!("getValue<T>() - Unexpected value")
                 }
@@ -646,9 +667,33 @@ impl PyExpr {
             Expr::Between { negated, .. }
             | Expr::Exists { negated, .. }
             | Expr::InList { negated, .. }
-            | Expr::InSubquery { negated, .. } => Ok(negated.clone()),
-            _ => Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            | Expr::InSubquery { negated, .. } => Ok(*negated),
+            _ => Err(py_type_err(format!(
                 "unknown Expr type {:?} encountered",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns if a sort expressions is an ascending sort
+    #[pyo3(name = "isSortAscending")]
+    pub fn is_sort_ascending(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Sort { asc, .. } => Ok(*asc),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} is not a sort type",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns if nulls should be placed first in a sort expression
+    #[pyo3(name = "isSortNullsFirst")]
+    pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
+        match &self.expr {
+            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} is not a sort type",
                 &self.expr
             ))),
         }
