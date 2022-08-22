@@ -3,7 +3,6 @@ import os
 import pytest
 
 XFAIL_QUERIES = (
-    1,
     2,
     4,
     5,
@@ -25,7 +24,6 @@ XFAIL_QUERIES = (
     24,
     27,
     28,
-    30,
     32,
     34,
     35,
@@ -42,13 +40,11 @@ XFAIL_QUERIES = (
     49,
     50,
     51,
-    53,
     54,
     57,
     58,
     59,
     62,
-    63,
     64,
     66,
     67,
@@ -64,7 +60,6 @@ XFAIL_QUERIES = (
     80,
     81,
     82,
-    83,
     84,
     85,
     86,
@@ -80,11 +75,7 @@ XFAIL_QUERIES = (
 )
 
 QUERIES = [
-    pytest.param(f"q{i}a.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ())
-    if i in {14, 23, 24, 39}
-    else pytest.param(
-        f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ()
-    )
+    pytest.param(f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ())
     for i in range(1, 100)
 ]
 

@@ -5,7 +5,7 @@ pytest_plugins = ["tests.integration.fixtures"]
 
 def pytest_addoption(parser):
     parser.addoption("--rungpu", action="store_true", help="run tests meant for GPU")
-    parser.addoption("--runqueries", action="store_true", help="run TPC-DS queries")
+    parser.addoption("--runqueries", action="store_true", help="run test queries")
 
 
 def pytest_runtest_setup(item):
