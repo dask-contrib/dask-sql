@@ -17,7 +17,6 @@ def test_schemas(c):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_tables(gpu):
     c = Context()

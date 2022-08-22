@@ -42,6 +42,13 @@ pub struct ShowSchemas {
     pub like: Option<String>,
 }
 
+/// Dask-SQL extension DDL for `SHOW TABLES FROM`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShowTables {
+    /// schema name
+    pub schema_name: Option<String>,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -55,6 +62,8 @@ pub enum DaskStatement {
     DropModel(Box<DropModel>),
     // Extension: `SHOW SCHEMAS`
     ShowSchemas(Box<ShowSchemas>),
+    // Extension: `SHOW TABLES FROM`
+    ShowTables(Box<ShowTables>),
 }
 
 /// SQL Parser
@@ -238,6 +247,37 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_show_schemas()
                     }
+                    "tables" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        // If non ansi ... `FROM {schema_name}` is present custom parse
+                        // otherwise use sqlparser-rs
+                        match self.parser.peek_token() {
+                            Token::Word(w) => {
+                                match w.value.to_lowercase().as_str() {
+                                    "from" => {
+                                        // move one token forward
+                                        self.parser.next_token();
+                                        // use custom parsing
+                                        self.parse_show_tables()
+                                    }
+                                    _ => {
+                                        // use the native parser
+                                        Ok(DaskStatement::Statement(Box::from(
+                                            self.parser.parse_show()?,
+                                        )))
+                                    }
+                                }
+                            }
+                            _ => {
+                                // use the native parser
+                                Ok(DaskStatement::Statement(Box::from(
+                                    self.parser.parse_show()?,
+                                )))
+                            }
+                        }
+                    }
                     _ => {
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
@@ -324,6 +364,15 @@ impl<'a> DaskParser<'a> {
 
         Ok(DaskStatement::ShowSchemas(Box::new(ShowSchemas {
             like: like_val,
+        })))
+    }
+
+    /// Parse Dask-SQL SHOW TABLES FROM statement
+    fn parse_show_tables(&mut self) -> Result<DaskStatement, ParserError> {
+        let schema_name = Some(self.parser.parse_identifier()?.value);
+
+        Ok(DaskStatement::ShowTables(Box::new(ShowTables {
+            schema_name,
         })))
     }
 }
