@@ -28,6 +28,13 @@ pub struct CreateModel {
     pub or_replace: bool,
 }
 
+/// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateTable {
+    /// table name
+    pub name: String,
+}
+
 /// Dask-SQL extension DDL for `DROP MODEL`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DropModel {
@@ -58,6 +65,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE TABLE`
+    CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
     // Extension: `SHOW SCHEMAS`
@@ -180,6 +189,12 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_create_model(or_replace)
+                    }
+                    "table" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_table()
                     }
                     _ => {
                         if or_replace {
@@ -332,6 +347,40 @@ impl<'a> DaskParser<'a> {
             or_replace,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    /// Parse Dask-SQL CREATE TABLE ... WITH statement
+    fn parse_create_table(&mut self) -> Result<DaskStatement, ParserError> {
+        let table_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Parse all KV pairs into a Vec<BinaryExpr> instances
+        let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
+
+        let _kv_pairs: Vec<(String, &Box<Expr>)> = kv_binexprs
+            .iter()
+            .map(|f| match f {
+                Expr::BinaryOp { left, op: _, right } => match *left.clone() {
+                    Expr::Value(value) => match value {
+                        Value::EscapedStringLiteral(key_val)
+                        | Value::SingleQuotedString(key_val)
+                        | Value::DoubleQuotedString(key_val) => Ok((key_val, right)),
+                        _ => Ok(("".to_string(), right)),
+                    },
+                    _ => Ok(("".to_string(), right)),
+                },
+                _ => parser_err!(format!("Expected BinaryOp, Key/Value pairs, found: {}", f)),
+            })
+            .collect::<Result<Vec<_>, ParserError>>()?;
+        let _kv_pairs: HashMap<String, &Box<Expr>> = _kv_pairs.into_iter().collect();
+
+        self.parser.expect_token(&Token::RParen)?;
+
+        let create = CreateTable {
+            name: table_name.to_string(),
+        };
+        Ok(DaskStatement::CreateTable(Box::new(create)))
     }
 
     /// Parse Dask-SQL DROP MODEL statement

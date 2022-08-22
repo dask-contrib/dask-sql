@@ -6,7 +6,6 @@ import dask_sql
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_create_from_csv(c, df, temporary_data_file, gpu):
     df.to_csv(temporary_data_file, index=False)
