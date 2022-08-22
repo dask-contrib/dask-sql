@@ -1,7 +1,6 @@
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-import pytest
 
 from dask_sql import Context
 from tests.utils import assert_eq
@@ -121,9 +120,6 @@ def test_join_cross(c, user_table_1, department_table):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
-)
 def test_join_complex(c):
     return_df = c.sql(
         """
