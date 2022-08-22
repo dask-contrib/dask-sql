@@ -2,7 +2,7 @@ import datetime
 import logging
 import operator
 import re
-from functools import reduce
+from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
@@ -14,8 +14,8 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import get_java_class
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
@@ -30,10 +30,21 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
+
+
+def as_timelike(op):
+    if isinstance(op, np.int64):
+        return np.timedelta64(op, "D")
+    elif isinstance(op, str):
+        return np.datetime64(op)
+    elif pd.api.types.is_datetime64_dtype(op):
+        return op
+    else:
+        raise ValueError(f"Don't know how to make {type(op)} timelike")
 
 
 class Operation:
@@ -63,7 +74,7 @@ class Operation:
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
-        new_op = Operation(lambda x: self(op(x)))
+        new_op = Operation(lambda *x: self(op(*x)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
 
@@ -115,10 +126,14 @@ class ReduceOperation(Operation):
 
     def reduce(self, *operands, **kwargs):
         if len(operands) > 1:
-            enriched_with_kwargs = lambda kwargs: (
-                lambda x, y: self.operation(x, y, **kwargs)
-            )
-            return reduce(enriched_with_kwargs(kwargs), operands)
+            if any(
+                map(
+                    lambda op: is_frame(op) & pd.api.types.is_datetime64_dtype(op),
+                    operands,
+                )
+            ):
+                operands = tuple(map(as_timelike, operands))
+            return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
@@ -141,7 +156,7 @@ class SQLDivisionOperator(Operation):
         result = lhs / rhs
 
         output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
+        output_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
         is_float = pd.api.types.is_float_dtype(output_type)
         if not is_float:
@@ -192,6 +207,9 @@ class CaseOperation(Operation):
 
         if len(operands) > 3:
             other = self.case(*operands[2:])
+        elif len(operands) == 2:
+            # CASE/WHEN statement without an ELSE
+            other = None
         else:
             other = operands[2]
 
@@ -220,8 +238,11 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
+        if not is_frame(operand):  # pragma: no cover
+            return operand
+
         output_type = str(rex.getType())
-        python_type = sql_to_python_type(output_type.upper())
+        python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
 
         return_column = cast_column_to_type(operand, python_type)
 
@@ -275,6 +296,19 @@ class IsTrueOperation(Operation):
             return df.fillna(False)
 
         return not pd.isna(df) and df is not None and not np.isnan(df) and bool(df)
+
+
+class NegativeOperation(Operation):
+    """The negative operator"""
+
+    def __init__(self):
+        super().__init__(self.negative_)
+
+    def negative_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
+        return -df
 
 
 class NotOperation(Operation):
@@ -479,19 +513,22 @@ class SubStringOperation(Operation):
 class TrimOperation(Operation):
     """The trim operator (remove occurrences left and right of a string)"""
 
-    def __init__(self):
+    def __init__(self, flag="BOTH"):
+        self.flag = flag
         super().__init__(self.trim)
 
-    def trim(self, flags, search, s):
+    def trim(self, s, search):
         if is_frame(s):
             s = s.str
 
-        if flags == "LEADING":
+        if self.flag == "LEADING":
             strip_call = s.lstrip
-        elif flags == "TRAILING":
+        elif self.flag == "TRAILING":
             strip_call = s.rstrip
-        else:
+        elif self.flag == "BOTH":
             strip_call = s.strip
+        else:
+            raise ValueError(f"Trim type {self.flag} not recognized")
 
         return strip_call(search)
 
@@ -559,6 +596,15 @@ class ExtractOperation(Operation):
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
+class YearOperation(Operation):
+    def __init__(self):
+        super().__init__(self.extract_year)
+
+    def extract_year(self, df: SeriesOrScalar):
+        df = convert_to_datetime(df)
+        return df.year
 
 
 class CeilFloorOperation(PredicateBasedOperation):
@@ -712,41 +758,86 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
-class DatetimeSubOperation(Operation):
+class DatePartOperation(Operation):
     """
-    Datetime subtraction is a special case of the `minus` operation in calcite
-    which also specifies a sql interval return type for the operation.
+    Function for performing PostgreSQL like functions in a more convenient setting.
+    """
+
+    def __init__(self):
+        super().__init__(self.date_part)
+
+    def date_part(self, what, df: SeriesOrScalar):
+        what = what.upper()
+        df = convert_to_datetime(df)
+
+        if what == "YEAR":
+            return df.year
+
+        if what == "CENTURY":
+            return da.trunc(df.year / 100)
+        elif what == "DAY":
+            return df.day
+        elif what == "DECADE":
+            return da.trunc(df.year / 10)
+        elif what == "DOW":
+            return (df.dayofweek + 1) % 7
+        elif what == "DOY":
+            return df.dayofyear
+        elif what == "HOUR":
+            return df.hour
+        elif what == "MICROSECOND":
+            return df.microsecond
+        elif what == "MILLENNIUM":
+            return da.trunc(df.year / 1000)
+        elif what == "MILLISECOND":
+            return da.trunc(1000 * df.microsecond)
+        elif what == "MINUTE":
+            return df.minute
+        elif what == "MONTH":
+            return df.month
+        elif what == "QUARTER":
+            return df.quarter
+        elif what == "SECOND":
+            return df.second
+        elif what == "WEEK":
+            return df.week
+        elif what == "YEAR":
+            return df.year
+        else:
+            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
+class BetweenOperation(Operation):
+    """
+    Function for finding rows between two scalar values
     """
 
     needs_rex = True
 
     def __init__(self):
-        super().__init__(self.datetime_sub)
+        super().__init__(self.between)
 
-    def datetime_sub(self, *operands, rex=None):
-        output_type = str(rex.getType())
-        assert output_type.startswith("INTERVAL")
-        interval_unit = output_type.split()[1].lower()
-
-        subtraction_op = ReduceOperation(
-            operation=operator.sub, unary_operation=lambda x: -x
+    def between(self, series: dd.Series, low, high, rex=None):
+        return (
+            ~series.between(low, high, inclusive="both")
+            if rex.isNegated()
+            else series.between(low, high, inclusive="both")
         )
-        intermediate_res = subtraction_op(*operands)
 
-        # Special case output_type for datetime operations
-        if interval_unit in {"year", "quarter", "month"}:
-            # if interval_unit is INTERVAL YEAR, Calcite will covert to months
-            if not is_frame(intermediate_res):
-                # Numpy doesn't allow divsion by month time unit
-                result = intermediate_res.astype("timedelta64[M]")
-                # numpy -ve timedelta's are off by one vs sql when casted to month
-                result = result + 1 if result < 0 else result
-            else:
-                result = intermediate_res / np.timedelta64(1, "M")
-        else:
-            result = intermediate_res.astype("timedelta64[ms]")
 
-        return result
+class InListOperation(Operation):
+    """
+    Returns a boolean of whether an expression is/isn't in a set of values
+    """
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.inList)
+
+    def inList(self, series: dd.Series, *operands, rex=None):
+        result = series.isin(operands)
+        return ~result if rex.isNegated() else result
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -765,10 +856,11 @@ class RexCallPlugin(BaseRexPlugin):
     The inputs can either be a column or a scalar value.
     """
 
-    class_name = "org.apache.calcite.rex.RexCall"
+    class_name = "RexCall"
 
     OPERATION_MAPPING = {
         # "binary" functions
+        "between": BetweenOperation(),
         "and": ReduceOperation(operation=operator.and_),
         "or": ReduceOperation(operation=operator.or_),
         ">": ReduceOperation(operation=operator.gt),
@@ -776,6 +868,7 @@ class RexCallPlugin(BaseRexPlugin):
         "<": ReduceOperation(operation=operator.lt),
         "<=": ReduceOperation(operation=operator.le),
         "=": ReduceOperation(operation=operator.eq),
+        "!=": ReduceOperation(operation=operator.ne),
         "<>": ReduceOperation(operation=operator.ne),
         "+": ReduceOperation(operation=operator.add, unary_operation=lambda x: x),
         "-": ReduceOperation(operation=operator.sub, unary_operation=lambda x: -x),
@@ -786,11 +879,13 @@ class RexCallPlugin(BaseRexPlugin):
         "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
-        "reinterpret": CastOperation(),
         "case": CaseOperation(),
+        "not like": NotOperation().of(LikeOperation()),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
+        "negative": NegativeOperation(),
         "not": NotOperation(),
+        "in list": InListOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
@@ -800,6 +895,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
         "rand": RandOperation(),
+        "random": RandOperation(),
         "rand_integer": RandIntegerOperation(),
         "search": SearchOperation(),
         # Unary math functions
@@ -828,12 +924,18 @@ class RexCallPlugin(BaseRexPlugin):
         # string operations
         "||": ReduceOperation(operation=operator.add),
         "concat": ReduceOperation(operation=operator.add),
-        "char_length": TensorScalarOperation(lambda x: x.str.len(), lambda x: len(x)),
+        "characterlength": TensorScalarOperation(
+            lambda x: x.str.len(), lambda x: len(x)
+        ),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
         "position": PositionOperation(),
         "trim": TrimOperation(),
+        "ltrim": TrimOperation("LEADING"),
+        "rtrim": TrimOperation("TRAILING"),
+        "btrim": TrimOperation("BOTH"),
         "overlay": OverlayOperation(),
+        "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
         # date/time operations
@@ -847,25 +949,28 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
-        "datetime_subtraction": DatetimeSubOperation(),
+        # Temporary UDF functions that need to be moved after this POC
+        "datepart": DatePartOperation(),
+        "year": YearOperation(),
     }
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        expr: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> SeriesOrScalar:
+
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
-            RexConverter.convert(o, dc, context=context) for o in rex.getOperands()
+            RexConverter.convert(rel, o, dc, context=context)
+            for o in expr.getOperands()
         ]
 
         # Now use the operator name in the mapping
-        schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
-        if special_op := check_special_operator(rex.getOperator()):
-            operator_name = special_op
-        operator_name = operator_name.lower()
+        schema_name = context.schema_name
+        operator_name = expr.getOperatorName().lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
@@ -884,20 +989,7 @@ class RexCallPlugin(BaseRexPlugin):
         if Operation.op_needs_dc(operation):
             kwargs["dc"] = dc
         if Operation.op_needs_rex(operation):
-            kwargs["rex"] = rex
+            kwargs["rex"] = expr
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it
-
-
-def check_special_operator(operator: "org.apache.calcite.sql.fun"):
-    """
-    Check for special operator classes that have an overloaded name with other
-    operator type/kinds.
-
-    eg: sqlDatetimeSubtractionOperator has the sqltype and kind of the `-` or `minus` operation.
-    """
-    special_op_to_name = {
-        "org.apache.calcite.sql.fun.SqlDatetimeSubtractionOperator": "datetime_subtraction"
-    }
-    return special_op_to_name.get(get_java_class(operator), None)

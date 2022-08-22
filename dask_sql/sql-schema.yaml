@@ -4,19 +4,19 @@ properties:
     type: object
     properties:
 
-      groupby:
+      aggregate:
         type: object
         properties:
 
           split_out:
             type: integer
             description: |
-              Number of output partitions for a groupby operation
+              Number of output partitions from an aggregation operation
 
           split_every:
             type: [integer, "null"]
             description: |
-              Number of branches per reduction step for a groupby operation.
+              Number of branches per reduction step from an aggregation operation.
 
       identifier:
         type: object
@@ -31,3 +31,8 @@ properties:
         type: boolean
         description: |
           Whether to try pushing down filter predicates into IO (when possible).
+
+      optimize:
+        type: boolean
+        description: |
+          Whether the first generated logical plan should be further optimized or used as is.

@@ -3,11 +3,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +46,9 @@ class PredictModelPlugin(BaseRelPlugin):
     but can also be used without writing a single line of code.
     """
 
-    class_name = "com.dask.sql.parser.SqlPredictModel"
+    class_name = "PredictModel"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         sql_select = sql.getSelect()
         schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
         model_type = sql.getModelName().getIdentifierType()
@@ -60,7 +58,8 @@ class PredictModelPlugin(BaseRelPlugin):
             f"Predicting from {model_name} and query {sql_select} to {list(select_list)}"
         )
 
-        IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
+        # IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
+        IdentifierType = None
 
         if model_type == IdentifierType.REFERENCE:
             try:
@@ -89,9 +88,9 @@ class PredictModelPlugin(BaseRelPlugin):
 
         context.create_table(temporary_table, predicted_df)
 
-        sql_ns = org.apache.calcite.sql
+        sql_ns = []
         pos = sql.getParserPosition()
-        from_column_list = java.util.ArrayList()
+        from_column_list = []
         from_column_list.add(temporary_table)
         from_clause = sql_ns.SqlIdentifier(from_column_list, pos)  # TODO: correct pos
 

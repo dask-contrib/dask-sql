@@ -6,7 +6,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -32,29 +32,36 @@ class CreateTableAsPlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateTableAs"
+    class_name = ["CreateMemoryTable", "CreateView"]
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, table_name = context.fqn(sql.getTableName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        # Rust create_memory_table instance handle
+        create_memory_table = rel.create_memory_table()
+
+        # can we avoid hardcoding the schema name?
+        schema_name, table_name = context.schema_name, create_memory_table.getName()
 
         if table_name in context.schema[schema_name].tables:
-            if sql.getIfNotExists():
+            if create_memory_table.getIfNotExists():
                 return
-            elif not sql.getReplace():
+            elif not create_memory_table.getOrReplace():
                 raise RuntimeError(
                     f"A table with the name {table_name} is already present."
                 )
 
-        sql_select = sql.getSelect()
-        persist = bool(sql.isPersist())
+        input_rel = create_memory_table.getInput()
+
+        # TODO: we currently always persist for CREATE TABLE AS and never persist for CREATE VIEW AS;
+        # should this be configured by the user? https://github.com/dask-contrib/dask-sql/issues/269
+        persist = create_memory_table.isTable()
 
         logger.debug(
-            f"Creating new table with name {table_name} and query {sql_select}"
+            f"Creating new table with name {table_name} and logical plan {input_rel}"
         )
 
-        sql_select_query = context._to_sql_string(sql_select)
-        df = context.sql(sql_select_query)
-
-        context.create_table(table_name, df, persist=persist, schema_name=schema_name)
+        context.create_table(
+            table_name,
+            context._compute_table_from_rel(input_rel),
+            persist=persist,
+            schema_name=schema_name,
+        )

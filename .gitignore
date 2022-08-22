@@ -22,6 +22,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.so
 
 # Unit test / coverage reports
 htmlcov/
@@ -32,6 +33,7 @@ coverage.xml
 *.cover
 .pytest_cache/
 .hypothesis/
+.pytest-html
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -59,3 +61,7 @@ dask_sql/jar
 dask-worker-space/
 node_modules/
 docs/source/_build/
+dask_planner/Cargo.lock
+
+# Ignore development specific local testing files
+dev_tests

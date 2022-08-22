@@ -1,14 +1,18 @@
+import logging
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import com, org
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import Expression, LogicalPlan
+
+logger = logging.getLogger(__name__)
 
 
 class SargPythonImplementation:
@@ -22,26 +26,26 @@ class SargPythonImplementation:
     class Range:
         """Helper class to represent one of the ranges in a Sarg object"""
 
-        def __init__(self, range: com.google.common.collect.Range, literal_type: str):
-            self.lower_endpoint = None
-            self.lower_open = True
-            if range.hasLowerBound():
-                self.lower_endpoint = sql_to_python_value(
-                    literal_type, range.lowerEndpoint()
-                )
-                self.lower_open = (
-                    range.lowerBoundType() == com.google.common.collect.BoundType.OPEN
-                )
+        # def __init__(self, range: com.google.common.collect.Range, literal_type: str):
+        #     self.lower_endpoint = None
+        #     self.lower_open = True
+        #     if range.hasLowerBound():
+        #         self.lower_endpoint = sql_to_python_value(
+        #             literal_type, range.lowerEndpoint()
+        #         )
+        #         self.lower_open = (
+        #             range.lowerBoundType() == com.google.common.collect.BoundType.OPEN
+        #         )
 
-            self.upper_endpoint = None
-            self.upper_open = True
-            if range.hasUpperBound():
-                self.upper_endpoint = sql_to_python_value(
-                    literal_type, range.upperEndpoint()
-                )
-                self.upper_open = (
-                    range.upperBoundType() == com.google.common.collect.BoundType.OPEN
-                )
+        #     self.upper_endpoint = None
+        #     self.upper_open = True
+        #     if range.hasUpperBound():
+        #         self.upper_endpoint = sql_to_python_value(
+        #             literal_type, range.upperEndpoint()
+        #         )
+        #         self.upper_open = (
+        #             range.upperBoundType() == com.google.common.collect.BoundType.OPEN
+        #         )
 
         def filter_on(self, series: dd.Series):
             lower_condition = True
@@ -63,11 +67,11 @@ class SargPythonImplementation:
         def __repr__(self) -> str:
             return f"Range {self.lower_endpoint} - {self.upper_endpoint}"
 
-    def __init__(self, java_sarg: org.apache.calcite.util.Sarg, literal_type: str):
-        self.ranges = [
-            SargPythonImplementation.Range(r, literal_type)
-            for r in java_sarg.rangeSet.asRanges()
-        ]
+    # def __init__(self, java_sarg: org.apache.calcite.util.Sarg, literal_type: str):
+    #     self.ranges = [
+    #         SargPythonImplementation.Range(r, literal_type)
+    #         for r in java_sarg.rangeSet.asRanges()
+    #     ]
 
     def __repr__(self) -> str:
         return ",".join(map(str, self.ranges))
@@ -83,21 +87,78 @@ class RexLiteralPlugin(BaseRexPlugin):
     e.g. in a filter.
     """
 
-    class_name = "org.apache.calcite.rex.RexLiteral"
+    class_name = "RexLiteral"
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
-        literal_value = rex.getValue()
-
         literal_type = str(rex.getType())
 
-        if isinstance(literal_value, org.apache.calcite.util.Sarg):
-            return SargPythonImplementation(literal_value, literal_type)
+        # Call the Rust function to get the actual value and convert the Rust
+        # type name back to a SQL type
+        if literal_type == "Boolean":
+            literal_type = SqlTypeName.BOOLEAN
+            literal_value = rex.getBoolValue()
+        elif literal_type == "Float32":
+            literal_type = SqlTypeName.FLOAT
+            literal_value = rex.getFloat32Value()
+        elif literal_type == "Float64":
+            literal_type = SqlTypeName.DOUBLE
+            literal_value = rex.getFloat64Value()
+        elif literal_type == "UInt8":
+            literal_type = SqlTypeName.TINYINT
+            literal_value = rex.getUInt8Value()
+        elif literal_type == "UInt16":
+            literal_type = SqlTypeName.SMALLINT
+            literal_value = rex.getUInt16Value()
+        elif literal_type == "UInt32":
+            literal_type = SqlTypeName.INTEGER
+            literal_value = rex.getUInt32Value()
+        elif literal_type == "UInt64":
+            literal_type = SqlTypeName.BIGINT
+            literal_value = rex.getUInt64Value()
+        elif literal_type == "Int8":
+            literal_type = SqlTypeName.TINYINT
+            literal_value = rex.getInt8Value()
+        elif literal_type == "Int16":
+            literal_type = SqlTypeName.SMALLINT
+            literal_value = rex.getInt16Value()
+        elif literal_type == "Int32":
+            literal_type = SqlTypeName.INTEGER
+            literal_value = rex.getInt32Value()
+        elif literal_type == "Int64":
+            literal_type = SqlTypeName.BIGINT
+            literal_value = rex.getInt64Value()
+        elif literal_type == "Utf8":
+            literal_type = SqlTypeName.VARCHAR
+            literal_value = rex.getStringValue()
+        elif literal_type == "Date32":
+            literal_type = SqlTypeName.DATE
+            literal_value = rex.getDateValue()
+        elif literal_type == "Date64":
+            literal_type = SqlTypeName.DATE
+            literal_value = rex.getDateValue()
+        elif literal_type == "Null":
+            literal_type = SqlTypeName.NULL
+            literal_value = None
+        elif literal_type == "IntervalDayTime":
+            literal_type = SqlTypeName.INTERVAL_DAY
+            literal_value = rex.getIntervalDayTimeValue()
+        else:
+            raise RuntimeError(
+                f"Failed to map literal type {literal_type} to python type in literal.py"
+            )
+
+        # if isinstance(literal_value, org.apache.calcite.util.Sarg):
+        #     return SargPythonImplementation(literal_value, literal_type)
 
         python_value = sql_to_python_value(literal_type, literal_value)
+        logger.debug(
+            f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
+        )
 
         return python_value
