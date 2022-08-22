@@ -453,7 +453,7 @@ class Context:
 
     def sql(
         self,
-        sql: str,
+        sql: Any,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,

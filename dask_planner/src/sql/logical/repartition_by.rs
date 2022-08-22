@@ -3,7 +3,7 @@ use crate::{expression::PyExpr, sql::exceptions::py_type_err};
 use datafusion_expr::logical_plan::{Partitioning, Repartition};
 use pyo3::prelude::*;
 
-use datafusion_expr::LogicalPlan;
+use datafusion_expr::{Expr, LogicalPlan};
 
 #[pyclass(name = "RepartitionBy", module = "dask_planner", subclass)]
 pub struct PyRepartitionBy {
@@ -24,6 +24,20 @@ impl PyRepartitionBy {
             Partitioning::DistributeBy(distribute_list) => Ok(distribute_list
                 .iter()
                 .map(|e| PyExpr::from(e.clone(), Some(vec![self.repartition.input.clone()])))
+                .collect()),
+            _ => Err(py_type_err("unexpected repartition strategy")),
+        }
+    }
+
+    #[pyo3(name = "getDistributionColumns")]
+    fn get_distribute_columns(&self) -> PyResult<String> {
+        match &self.repartition.partitioning_scheme {
+            Partitioning::DistributeBy(distribute_list) => Ok(distribute_list
+                .iter()
+                .map(|e| match &e {
+                    Expr::Column(column) => column.name.clone(),
+                    _ => panic!("Encountered a type other than Expr::Column"),
+                })
                 .collect()),
             _ => Err(py_type_err("unexpected repartition strategy")),
         }

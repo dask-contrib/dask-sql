@@ -26,10 +26,10 @@ class DistributeByPlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         distribute = rel.repartition_by()
         select = distribute.getSelectQuery()
-        distribute_list = [str(col) for col in distribute.getDistributeList()]
+        distribute_list = [str(col) for col in distribute.getDistributionColumns()]
 
-        sql_select_query = context._to_sql_string(select)
-        df = context.sql(sql_select_query)
+        breakpoint()
+        df = context.sql(select)
         logger.debug(f"Extracted sub-dataframe as {LoggableDataFrame(df)}")
 
         logger.debug(f"Will now shuffle according to {distribute_list}")
