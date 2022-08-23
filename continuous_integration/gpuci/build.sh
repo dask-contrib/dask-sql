@@ -41,10 +41,10 @@ gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
 gpuci_logger "Download parquet dataset"
-gpuci_retry aws s3 cp --only-show-errors "${dask-sql-bucket-name}parquet_2gb/" tests/unit/data/ --recursive
+gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb/" tests/unit/data/ --recursive
 
 gpuci_logger "Download query files"
-gpuci_retry aws s3 cp --only-show-errors "${dask-sql-bucket-name}queries/" tests/unit/queries/ --recursive
+gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
 
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
