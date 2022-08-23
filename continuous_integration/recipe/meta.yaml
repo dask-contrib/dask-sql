@@ -23,7 +23,7 @@ build:
 requirements:
   build:
     - {{ compiler('rust') }}
-    - setuptools-rust>=1.4.1
+    - setuptools-rust >=1.4.1
   host:
     - pip
     - python >=3.8
