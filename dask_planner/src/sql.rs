@@ -241,10 +241,6 @@ impl DaskSQLContext {
                 for statement in k {
                     statements.push(statement.into());
                 }
-                assert!(
-                    statements.len() == 1,
-                    "More than 1 expected statement was encounterd!"
-                );
                 Ok(statements)
             }
             Err(e) => Err(py_parsing_exp(e)),
@@ -279,7 +275,7 @@ impl DaskSQLContext {
                 if valid {
                     optimizer::DaskSqlOptimizer::new()
                         .run_optimizations(existing_plan.original_plan)
-                        .map(|k| logical::PyLogicalPlan {
+                        .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,
                         })
