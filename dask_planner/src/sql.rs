@@ -186,7 +186,8 @@ impl ContextProvider for DaskSQLContext {
             }
             "single_value" => {
                 let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             _ => (),
