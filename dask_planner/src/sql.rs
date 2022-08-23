@@ -253,12 +253,9 @@ impl DaskSQLContext {
         statement: statement::PyStatement,
     ) -> PyResult<logical::PyLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
-            .map(|e| {
-                println!("Original LogicalPlan: {:?}", e);
-                PyLogicalPlan {
+            .map(|e| PyLogicalPlan {
                     original_plan: e,
                     current_node: None,
-                }
             })
             .map_err(py_parsing_exp)
     }
@@ -278,12 +275,9 @@ impl DaskSQLContext {
                 if valid {
                     optimizer::DaskSqlOptimizer::new()
                         .run_optimizations(existing_plan.original_plan)
-                        .map(|k| {
-                            println!("Optimized LogicalPlan: {:?}", k);
-                            PyLogicalPlan {
+                        .map(|k| PyLogicalPlan {
                                 original_plan: k,
                                 current_node: None,
-                            }
                         })
                         .map_err(py_optimization_exp)
                 } else {
