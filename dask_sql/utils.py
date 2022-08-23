@@ -139,9 +139,10 @@ def convert_sql_kwargs(
     def convert_literal(value: str):
         if value.lower() == "true":
             return True
-
-        if value.lower() == "false":
+        elif value.lower() == "false":
             return False
+        else:
+            return value
 
     return {
         str(key): convert_literal(str(value)) for key, value in dict(sql_kwargs).items()

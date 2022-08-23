@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import convert_sql_kwargs
 
 if TYPE_CHECKING:
     import dask_sql
@@ -51,7 +52,7 @@ class CreateTablePlugin(BaseRelPlugin):
                     f"A table with the name {table_name} is already present."
                 )
 
-        kwargs = create_table.getSQLWithOptions()
+        kwargs = convert_sql_kwargs(create_table.getSQLWithOptions())
 
         logger.debug(
             f"Creating new table with name {table_name} and parameters {kwargs}"
