@@ -198,7 +198,7 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_table()
+                        self.parse_create_table(or_replace)
                     }
                     _ => {
                         if or_replace {
@@ -354,17 +354,46 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE TABLE ... WITH statement
-    fn parse_create_table(&mut self) -> Result<DaskStatement, ParserError> {
-        let table_factor = self.parser.parse_table_factor()?;
-        let (tbl_schema, tbl_name) = DaskParser::elements_from_tablefactor(&table_factor);
-        let with_options = DaskParser::options_from_tablefactor(&table_factor);
+    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+        // Parser's current position is at `table_name`, peek if rest of statement contains an `AS`
+        let _table_name = self.parser.parse_identifier(); // `table_name`
+        let after_name_token = self.parser.peek_token(); // Token following `table_name`
 
-        let create = CreateTable {
-            table_schema: tbl_schema,
-            name: tbl_name,
-            with_options,
-        };
-        Ok(DaskStatement::CreateTable(Box::new(create)))
+        match after_name_token {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "as" => {
+                        self.parser.prev_token();
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_create_table(or_replace, false, None)?,
+                        )))
+                    }
+                    _ => {
+                        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+                        self.parser.prev_token();
+
+                        let table_factor = self.parser.parse_table_factor()?;
+                        let (tbl_schema, tbl_name) =
+                            DaskParser::elements_from_tablefactor(&table_factor);
+                        let with_options = DaskParser::options_from_tablefactor(&table_factor);
+
+                        let create = CreateTable {
+                            table_schema: tbl_schema,
+                            name: tbl_name,
+                            with_options,
+                        };
+                        Ok(DaskStatement::CreateTable(Box::new(create)))
+                    }
+                }
+            }
+            _ => {
+                self.parser.prev_token();
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_create_table(or_replace, false, None)?,
+                )))
+            }
+        }
     }
 
     /// Parse Dask-SQL DROP MODEL statement

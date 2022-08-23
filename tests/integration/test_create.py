@@ -115,7 +115,6 @@ def test_wrong_create(c):
         )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_create_from_query(c, df):
     c.sql(
         """
