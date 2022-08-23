@@ -3,6 +3,7 @@ pub mod exceptions;
 pub mod function;
 pub mod logical;
 pub mod optimizer;
+pub mod parser_utils;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -29,6 +30,7 @@ use std::sync::Arc;
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 
@@ -309,6 +311,14 @@ impl DaskSQLContext {
                         create_model.select,
                     )))?,
                     or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_schema: create_table.table_schema,
+                    table_name: create_table.name,
+                    with_options: create_table.with_options,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {

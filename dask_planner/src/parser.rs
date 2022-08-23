@@ -3,6 +3,7 @@
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
 use crate::dialect::DaskDialect;
+use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
     ast::{Expr, Statement as SQLStatement, Value},
     dialect::{keywords::Keyword, Dialect},
@@ -26,6 +27,17 @@ pub struct CreateModel {
     pub select: SQLStatement,
     /// To replace the model or not
     pub or_replace: bool,
+}
+
+/// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateTable {
+    /// table schema, "something" in "something.table_name"
+    pub table_schema: String,
+    /// table name
+    pub name: String,
+    /// with options
+    pub with_options: Vec<Expr>,
 }
 
 /// Dask-SQL extension DDL for `DROP MODEL`
@@ -58,6 +70,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE TABLE`
+    CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
     // Extension: `SHOW SCHEMAS`
@@ -180,6 +194,12 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_create_model(or_replace)
+                    }
+                    "table" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_table(or_replace)
                     }
                     _ => {
                         if or_replace {
@@ -332,6 +352,49 @@ impl<'a> DaskParser<'a> {
             or_replace,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    /// Parse Dask-SQL CREATE TABLE ... WITH statement
+    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+        // Parser's current position is at `table_name`, peek if rest of statement contains an `AS`
+        let _table_name = self.parser.parse_identifier(); // `table_name`
+        let after_name_token = self.parser.peek_token(); // Token following `table_name`
+
+        match after_name_token {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "as" => {
+                        self.parser.prev_token();
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_create_table(or_replace, false, None)?,
+                        )))
+                    }
+                    _ => {
+                        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+                        self.parser.prev_token();
+
+                        let table_factor = self.parser.parse_table_factor()?;
+                        let (tbl_schema, tbl_name) =
+                            DaskParserUtils::elements_from_tablefactor(&table_factor);
+                        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+
+                        let create = CreateTable {
+                            table_schema: tbl_schema,
+                            name: tbl_name,
+                            with_options,
+                        };
+                        Ok(DaskStatement::CreateTable(Box::new(create)))
+                    }
+                }
+            }
+            _ => {
+                self.parser.prev_token();
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_create_table(or_replace, false, None)?,
+                )))
+            }
+        }
     }
 
     /// Parse Dask-SQL DROP MODEL statement
