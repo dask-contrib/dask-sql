@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
 
@@ -137,34 +136,16 @@ def convert_sql_kwargs(
     Convert the Rust Vec of key/value pairs into a Dict containing the keys and values
     """
 
-    def convert_literal(value):
-        if isinstance(value, "LogicalPlan"):
-            operator_mapping = {
-                "ARRAY": list,
-                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
-                "MULTISET": set,
-                "ROW": tuple,
-            }
+    def convert_literal(value: str):
+        if value.lower() == "true":
+            return True
 
-            operator = operator_mapping[str(value.getOperator())]
-            operands = [convert_literal(o) for o in value.getOperandList()]
+        if value.lower() == "false":
+            return False
 
-            return operator(operands)
-        elif isinstance(value, "LogicalPlan"):
-            return convert_sql_kwargs(value.getMap())
-        else:
-            literal_type = str(value.getTypeName())
-
-            if literal_type == "CHAR":
-                return str(value.getStringValue())
-            elif literal_type == "DECIMAL" and value.isInteger():
-                literal_type = "BIGINT"
-
-            literal_value = value.getValue()
-            python_value = sql_to_python_value(literal_type, literal_value)
-            return python_value
-
-    return {str(key): convert_literal(value) for key, value in dict(sql_kwargs).items()}
+    return {
+        str(key): convert_literal(str(value)) for key, value in dict(sql_kwargs).items()
+    }
 
 
 def import_class(name: str) -> type:
