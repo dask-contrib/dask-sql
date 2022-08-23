@@ -150,14 +150,15 @@ impl ContextProvider for DaskSQLContext {
         for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
+                    // can't do this, MutexGuard<'_, DaskFunction> can't be sent between threads safelys
+                    // let function = function.clone().lock().unwrap();
+                    // let sig = Signature::one_of(function.return_types.keys().map(|v| TypeSignature::Exact(v)).collect(), Volatility::Immutable);
                     let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
                     let function = function.clone();
                     let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
                         let function = function.lock().unwrap();
-                        let vec_input_types: Vec<types::PyDataType> =
-                            input_types.iter().map(|t| t.clone().into()).collect();
-                        match function.return_types.get(&vec_input_types) {
-                            Some(return_type) => Ok(Arc::new(return_type.clone().into())),
+                        match function.return_types.get(&input_types.to_vec()) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::NotImplemented("".to_string())),
                         }
                     });

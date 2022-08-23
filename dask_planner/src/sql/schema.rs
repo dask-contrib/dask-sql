@@ -43,8 +43,7 @@ impl DaskSchema {
             .and_modify(|e| {
                 (*e).lock()
                     .unwrap()
-                    .return_types
-                    .insert(input_types.clone(), return_type.clone());
+                    .add_type_mapping(input_types.clone(), return_type.clone());
             })
             .or_insert_with(|| {
                 Arc::new(Mutex::new(DaskFunction::new(
