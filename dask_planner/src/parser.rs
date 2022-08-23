@@ -3,8 +3,9 @@
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
 use crate::dialect::DaskDialect;
+use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement, TableFactor, Value},
+    ast::{Expr, Statement as SQLStatement, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -374,8 +375,8 @@ impl<'a> DaskParser<'a> {
 
                         let table_factor = self.parser.parse_table_factor()?;
                         let (tbl_schema, tbl_name) =
-                            DaskParser::elements_from_tablefactor(&table_factor);
-                        let with_options = DaskParser::options_from_tablefactor(&table_factor);
+                            DaskParserUtils::elements_from_tablefactor(&table_factor);
+                        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
                         let create = CreateTable {
                             table_schema: tbl_schema,
@@ -436,49 +437,5 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
             schema_name,
         })))
-    }
-
-    /// Retrieves the table_schema and table_name from a `TableFactor` instance
-    fn elements_from_tablefactor(tbl_factor: &TableFactor) -> (String, String) {
-        match tbl_factor {
-            TableFactor::Table {
-                name,
-                alias: _,
-                args: _,
-                with_hints: _,
-            } => {
-                let identities: Vec<String> = name.0.iter().map(|f| f.value.clone()).collect();
-
-                assert!(identities.len() <= 2 && !identities.is_empty());
-
-                if identities.len() == 1 {
-                    ("".to_string(), identities[0].clone())
-                } else if identities.len() == 2 {
-                    (identities[0].clone(), identities[1].clone())
-                } else {
-                    ("".to_string(), "".to_string())
-                }
-            }
-            TableFactor::Derived { alias, .. }
-            | TableFactor::NestedJoin { alias, .. }
-            | TableFactor::TableFunction { alias, .. }
-            | TableFactor::UNNEST { alias, .. } => match alias {
-                Some(e) => ("".to_string(), e.name.value.clone()),
-                None => ("".to_string(), "".to_string()),
-            },
-        }
-    }
-
-    /// Gets the with options from the `TableFactor` instance
-    fn options_from_tablefactor(tbl_factor: &TableFactor) -> Vec<Expr> {
-        match tbl_factor {
-            TableFactor::Table { with_hints, .. } => with_hints.clone(),
-            TableFactor::Derived { .. }
-            | TableFactor::NestedJoin { .. }
-            | TableFactor::TableFunction { .. }
-            | TableFactor::UNNEST { .. } => {
-                vec![]
-            }
-        }
     }
 }

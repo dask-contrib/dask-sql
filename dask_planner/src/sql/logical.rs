@@ -14,6 +14,7 @@ pub mod filter;
 pub mod join;
 pub mod limit;
 pub mod projection;
+pub mod repartition_by;
 pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
@@ -135,6 +136,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
     pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Repartition as PyRepartitionBy
+    pub fn repartition_by(&self) -> PyResult<repartition_by::PyRepartitionBy> {
         to_py_plan(self.current_node.as_ref())
     }
 
