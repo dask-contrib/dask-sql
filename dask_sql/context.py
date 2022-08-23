@@ -489,11 +489,13 @@ class Context:
         """
         with dask_config.set(config_options):
             if dataframes is not None:
+                breakpoint()
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
             rel, _ = self._get_ral(sql)
 
+            breakpoint()
             return self._compute_table_from_rel(rel, return_futures)
 
     def explain(
@@ -730,6 +732,8 @@ class Context:
                     else float(0)
                 )
 
+                if name == "root.df":
+                    breakpoint()
                 table = DaskTable(schema_name, name, row_count)
                 df = dc.df
 
