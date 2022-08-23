@@ -4,7 +4,7 @@
 
 use crate::dialect::DaskDialect;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement, Value},
+    ast::{Expr, Statement as SQLStatement, TableFactor, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -31,8 +31,12 @@ pub struct CreateModel {
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTable {
+    /// table schema, "something" in "something.table_name"
+    pub table_schema: String,
     /// table name
     pub name: String,
+    /// with options
+    pub with_options: Vec<Expr>,
 }
 
 /// Dask-SQL extension DDL for `DROP MODEL`
@@ -351,34 +355,14 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL CREATE TABLE ... WITH statement
     fn parse_create_table(&mut self) -> Result<DaskStatement, ParserError> {
-        let table_name = self.parser.parse_object_name()?;
-        self.parser.expect_keyword(Keyword::WITH)?;
-        self.parser.expect_token(&Token::LParen)?;
-
-        // Parse all KV pairs into a Vec<BinaryExpr> instances
-        let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
-
-        let _kv_pairs: Vec<(String, &Box<Expr>)> = kv_binexprs
-            .iter()
-            .map(|f| match f {
-                Expr::BinaryOp { left, op: _, right } => match *left.clone() {
-                    Expr::Value(value) => match value {
-                        Value::EscapedStringLiteral(key_val)
-                        | Value::SingleQuotedString(key_val)
-                        | Value::DoubleQuotedString(key_val) => Ok((key_val, right)),
-                        _ => Ok(("".to_string(), right)),
-                    },
-                    _ => Ok(("".to_string(), right)),
-                },
-                _ => parser_err!(format!("Expected BinaryOp, Key/Value pairs, found: {}", f)),
-            })
-            .collect::<Result<Vec<_>, ParserError>>()?;
-        let _kv_pairs: HashMap<String, &Box<Expr>> = _kv_pairs.into_iter().collect();
-
-        self.parser.expect_token(&Token::RParen)?;
+        let table_factor = self.parser.parse_table_factor()?;
+        let (tbl_schema, tbl_name) = DaskParser::elements_from_tablefactor(&table_factor);
+        let with_options = DaskParser::options_from_tablefactor(&table_factor);
 
         let create = CreateTable {
-            name: table_name.to_string(),
+            table_schema: tbl_schema,
+            name: tbl_name,
+            with_options,
         };
         Ok(DaskStatement::CreateTable(Box::new(create)))
     }
@@ -423,5 +407,49 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
             schema_name,
         })))
+    }
+
+    /// Retrieves the table_schema and table_name from a `TableFactor` instance
+    fn elements_from_tablefactor(tbl_factor: &TableFactor) -> (String, String) {
+        match tbl_factor {
+            TableFactor::Table {
+                name,
+                alias: _,
+                args: _,
+                with_hints: _,
+            } => {
+                let identities: Vec<String> = name.0.iter().map(|f| f.value.clone()).collect();
+
+                assert!(identities.len() <= 2 && !identities.is_empty());
+
+                if identities.len() == 1 {
+                    ("".to_string(), identities[0].clone())
+                } else if identities.len() == 2 {
+                    (identities[0].clone(), identities[1].clone())
+                } else {
+                    ("".to_string(), "".to_string())
+                }
+            }
+            TableFactor::Derived { alias, .. }
+            | TableFactor::NestedJoin { alias, .. }
+            | TableFactor::TableFunction { alias, .. }
+            | TableFactor::UNNEST { alias, .. } => match alias {
+                Some(e) => ("".to_string(), e.name.value.clone()),
+                None => ("".to_string(), "".to_string()),
+            },
+        }
+    }
+
+    /// Gets the with options from the `TableFactor` instance
+    fn options_from_tablefactor(tbl_factor: &TableFactor) -> Vec<Expr> {
+        match tbl_factor {
+            TableFactor::Table { with_hints, .. } => with_hints.clone(),
+            TableFactor::Derived { .. }
+            | TableFactor::NestedJoin { .. }
+            | TableFactor::TableFunction { .. }
+            | TableFactor::UNNEST { .. } => {
+                vec![]
+            }
+        }
     }
 }

@@ -17,6 +17,8 @@ use datafusion_optimizer::utils::split_conjunction;
 use std::any::Any;
 use std::sync::Arc;
 
+use super::logical::create_table::CreateTablePlanNode;
+
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
@@ -212,6 +214,21 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
             })
+        }
+        LogicalPlan::Extension(ex) => {
+            if let Some(e) = ex.node.as_any().downcast_ref::<CreateTablePlanNode>() {
+                Some(DaskTable {
+                    schema: e.table_schema.clone(),
+                    name: e.table_name.clone(),
+                    statistics: DaskStatistics { row_count: 0.0 },
+                    columns: vec![],
+                })
+            } else {
+                todo!(
+                    "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
+                    plan
+                )
+            }
         }
         _ => todo!(
             "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",

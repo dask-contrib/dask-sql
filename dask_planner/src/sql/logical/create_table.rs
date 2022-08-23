@@ -4,8 +4,10 @@ use pyo3::prelude::*;
 
 use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
+use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
 
 use fmt::Debug;
+use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
@@ -13,7 +15,9 @@ use datafusion_common::{DFSchema, DFSchemaRef};
 #[derive(Clone)]
 pub struct CreateTablePlanNode {
     pub schema: DFSchemaRef,
+    pub table_schema: String, // "something" in `something.table_name`
     pub table_name: String,
+    pub with_options: Vec<SqlParserExpr>,
 }
 
 impl Debug for CreateTablePlanNode {
@@ -53,7 +57,9 @@ impl UserDefinedLogicalNode for CreateTablePlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(CreateTablePlanNode {
             schema: Arc::new(DFSchema::empty()),
+            table_schema: self.table_schema.clone(),
             table_name: self.table_name.clone(),
+            with_options: self.with_options.clone(),
         })
     }
 }
@@ -68,6 +74,46 @@ impl PyCreateTable {
     #[pyo3(name = "getTableName")]
     fn get_table_name(&self) -> PyResult<String> {
         Ok(self.create_table.table_name.clone())
+    }
+
+    #[pyo3(name = "getSQLWithOptions")]
+    fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
+        let mut options: HashMap<String, String> = HashMap::new();
+        for elem in &self.create_table.with_options {
+            if let SqlParserExpr::BinaryOp { left, op: _, right } = elem {
+                let key: Result<String, PyErr> = match *left.clone() {
+                    SqlParserExpr::Identifier(ident) => Ok(ident.value),
+                    _ => Err(py_type_err(format!(
+                        "unexpected `left` Value type encountered: {:?}",
+                        left
+                    ))),
+                };
+                let val: Result<String, PyErr> = match *right.clone() {
+                    SqlParserExpr::Value(value) => match value {
+                        Value::SingleQuotedString(e) => Ok(e.replace('\'', "")),
+                        Value::DoubleQuotedString(e) => Ok(e.replace('\"', "")),
+                        Value::Boolean(e) => {
+                            if e {
+                                Ok("True".to_string())
+                            } else {
+                                Ok("False".to_string())
+                            }
+                        }
+                        Value::Number(e, ..) => Ok(e),
+                        _ => Err(py_type_err(format!(
+                            "unexpected Value type encountered: {:?}",
+                            value
+                        ))),
+                    },
+                    _ => Err(py_type_err(format!(
+                        "encountered unexpected Expr type: {:?}",
+                        right
+                    ))),
+                };
+                options.insert(key?, val?);
+            }
+        }
+        Ok(options)
     }
 }
 

@@ -319,7 +319,9 @@ impl DaskSQLContext {
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    table_schema: create_table.table_schema,
                     table_name: create_table.name,
+                    with_options: create_table.with_options,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {

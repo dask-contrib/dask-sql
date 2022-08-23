@@ -2,7 +2,7 @@ import importlib
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, Dict
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -13,9 +13,6 @@ import pandas as pd
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
-
-if TYPE_CHECKING:
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -134,14 +131,10 @@ class LoggableDataFrame:
 
 
 def convert_sql_kwargs(
-    sql_kwargs: Dict["LogicalPlan", "LogicalPlan"],
+    sql_kwargs: Dict[str, str],
 ) -> Dict[str, Any]:
     """
-    Convert a HapMap (probably coming from a SqlKwargs class instance)
-    into its python equivalent. Basically calls convert_sql_kwargs
-    for each of the values, except for some special handling for
-    nested key-value parameters, ARRAYs etc. and CHARs (which unfortunately have
-    an additional "'" around them if used in convert_sql_kwargs directly).
+    Convert the Rust Vec of key/value pairs into a Dict containing the keys and values
     """
 
     def convert_literal(value):
