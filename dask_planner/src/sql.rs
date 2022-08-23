@@ -254,8 +254,8 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
             .map(|e| PyLogicalPlan {
-                    original_plan: e,
-                    current_node: None,
+                original_plan: e,
+                current_node: None,
             })
             .map_err(py_parsing_exp)
     }
@@ -276,8 +276,8 @@ impl DaskSQLContext {
                     optimizer::DaskSqlOptimizer::new()
                         .run_optimizations(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
-                                original_plan: k,
-                                current_node: None,
+                            original_plan: k,
+                            current_node: None,
                         })
                         .map_err(py_optimization_exp)
                 } else {

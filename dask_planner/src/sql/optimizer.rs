@@ -22,17 +22,17 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
-            // Box::new(CommonSubexprEliminate::new()),
-            // Box::new(DecorrelateWhereExists::new()),
-            // Box::new(DecorrelateWhereIn::new()),
-            // Box::new(DecorrelateScalarSubquery::new()),
-            // Box::new(EliminateLimit::new()),
-            // Box::new(FilterNullJoinKeys::default()),
-            // Box::new(FilterPushDown::new()),
-            // Box::new(LimitPushDown::new()),
-            // Box::new(ProjectionPushDown::new()),
-            // Box::new(SingleDistinctToGroupBy::new()),
-            // Box::new(SubqueryFilterToJoin::new()),
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(DecorrelateWhereExists::new()),
+            Box::new(DecorrelateWhereIn::new()),
+            Box::new(DecorrelateScalarSubquery::new()),
+            Box::new(EliminateLimit::new()),
+            Box::new(FilterNullJoinKeys::default()),
+            Box::new(FilterPushDown::new()),
+            Box::new(LimitPushDown::new()),
+            Box::new(ProjectionPushDown::new()),
+            Box::new(SingleDistinctToGroupBy::new()),
+            Box::new(SubqueryFilterToJoin::new()),
         ];
         Self {
             optimizations: rules,
