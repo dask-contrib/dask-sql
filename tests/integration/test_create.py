@@ -345,7 +345,6 @@ def test_replace_and_error(c, temporary_data_file, df):
     assert_eq(result_df, df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop(c):
     with pytest.raises(RuntimeError):
         c.sql("DROP TABLE new_table")
