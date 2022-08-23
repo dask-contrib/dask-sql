@@ -37,15 +37,8 @@ class DaskTableScanPlugin(BaseRelPlugin):
         table_scan = rel.table_scan()
 
         # The table(s) we need to return
-        table = rel.getTable()
-
-        # The table names are all names split by "."
-        # We assume to always have the form something.something
-        table_names = [str(n) for n in table.getQualifiedName(rel)]
-        assert len(table_names) == 2
-        schema_name = table_names[0]
-        table_name = table_names[1]
-        table_name = table_name.lower()
+        dask_table = rel.getTable()
+        schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
 
         dc = context.schema[schema_name].tables[table_name]
         df = dc.df
@@ -60,7 +53,9 @@ class DaskTableScanPlugin(BaseRelPlugin):
             )  # Assumes these are column projections only and field names match table column names
             df = df[field_specifications]
         else:
-            field_specifications = [str(f) for f in table.getRowType().getFieldNames()]
+            field_specifications = [
+                str(f) for f in table_scan.getRowType().getFieldNames()
+            ]
 
         cc = cc.limit_to(field_specifications)
         cc = self.fix_column_to_row_type(cc, rel.getRowType())

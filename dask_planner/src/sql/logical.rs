@@ -15,6 +15,7 @@ pub mod limit;
 pub mod projection;
 pub mod repartition_by;
 pub mod show_schema;
+pub mod show_tables;
 pub mod sort;
 pub mod table_scan;
 pub mod window;
@@ -28,6 +29,7 @@ use pyo3::prelude::*;
 use self::create_model::CreateModelPlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::show_schema::ShowSchemasPlanNode;
+use self::show_tables::ShowTablesPlanNode;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -140,6 +142,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::ShowTables as ShowTables
+    pub fn show_tables(&self) -> PyResult<show_tables::PyShowTables> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -220,6 +227,8 @@ impl PyLogicalPlan {
                     "DropModel"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
+                } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {
+                    "ShowTables"
                 } else {
                     // Default to generic `Extension`
                     "Extension"
