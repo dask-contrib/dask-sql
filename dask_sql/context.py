@@ -3,7 +3,7 @@ import inspect
 import logging
 import warnings
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -18,6 +18,7 @@ from dask_planner.rust import (
     DaskTable,
     DFOptimizationException,
     DFParsingException,
+    LogicalPlan,
 )
 
 try:
@@ -39,9 +40,6 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import OptimizationException, ParsingException
-
-if TYPE_CHECKING:
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -492,7 +490,14 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, _ = self._get_ral(sql)
+            if isinstance(sql, str):
+                rel, _ = self._get_ral(sql)
+            elif isinstance(sql, LogicalPlan):
+                rel = sql
+            else:
+                raise RuntimeError(
+                    f"Encountered unsupported `LogicalPlan` sql type: {type(sql)}"
+                )
 
             return self._compute_table_from_rel(rel, return_futures)
 
@@ -768,7 +773,7 @@ class Context:
 
         return dask_function
 
-    def _get_ral(self, sql):
+    def _get_ral(self, sql: str):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
