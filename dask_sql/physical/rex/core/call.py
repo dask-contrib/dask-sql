@@ -513,19 +513,22 @@ class SubStringOperation(Operation):
 class TrimOperation(Operation):
     """The trim operator (remove occurrences left and right of a string)"""
 
-    def __init__(self):
+    def __init__(self, flag="BOTH"):
+        self.flag = flag
         super().__init__(self.trim)
 
-    def trim(self, flags, search, s):
+    def trim(self, s, search):
         if is_frame(s):
             s = s.str
 
-        if flags == "LEADING":
+        if self.flag == "LEADING":
             strip_call = s.lstrip
-        elif flags == "TRAILING":
+        elif self.flag == "TRAILING":
             strip_call = s.rstrip
-        else:
+        elif self.flag == "BOTH":
             strip_call = s.strip
+        else:
+            raise ValueError(f"Trim type {self.flag} not recognized")
 
         return strip_call(search)
 
@@ -892,6 +895,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is unknown": IsNullOperation(),
         "is not unknown": NotOperation().of(IsNullOperation()),
         "rand": RandOperation(),
+        "random": RandOperation(),
         "rand_integer": RandIntegerOperation(),
         "search": SearchOperation(),
         # Unary math functions
@@ -920,11 +924,16 @@ class RexCallPlugin(BaseRexPlugin):
         # string operations
         "||": ReduceOperation(operation=operator.add),
         "concat": ReduceOperation(operation=operator.add),
-        "char_length": TensorScalarOperation(lambda x: x.str.len(), lambda x: len(x)),
+        "characterlength": TensorScalarOperation(
+            lambda x: x.str.len(), lambda x: len(x)
+        ),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
         "position": PositionOperation(),
         "trim": TrimOperation(),
+        "ltrim": TrimOperation("LEADING"),
+        "rtrim": TrimOperation("TRAILING"),
+        "btrim": TrimOperation("BOTH"),
         "overlay": OverlayOperation(),
         "substr": SubStringOperation(),
         "substring": SubStringOperation(),

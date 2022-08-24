@@ -2,31 +2,41 @@ use crate::sql::table;
 use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
-mod aggregate;
-mod create_memory_table;
-mod cross_join;
-mod drop_table;
-mod empty_relation;
-mod explain;
-mod filter;
-mod join;
-mod limit;
-mod projection;
-mod sort;
-mod table_scan;
-mod union;
-mod window;
+pub mod aggregate;
+pub mod create_memory_table;
+pub mod create_model;
+pub mod create_table;
+pub mod drop_model;
+pub mod drop_table;
+pub mod empty_relation;
+pub mod explain;
+pub mod filter;
+pub mod join;
+pub mod limit;
+pub mod projection;
+pub mod repartition_by;
+pub mod show_schema;
+pub mod show_tables;
+pub mod sort;
+pub mod table_scan;
+pub mod window;
 
-use datafusion_common::{Column, DFSchemaRef, DataFusionError, Result};
+use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
 
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::create_model::CreateModelPlanNode;
+use self::create_table::CreateTablePlanNode;
+use self::drop_model::DropModelPlanNode;
+use self::show_schema::ShowSchemasPlanNode;
+use self::show_tables::ShowTablesPlanNode;
+
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
-    /// The orginal LogicalPlan that was parsed by DataFusion from the input SQL
+    /// The original LogicalPlan that was parsed by DataFusion from the input SQL
     pub(crate) original_plan: LogicalPlan,
     /// The original_plan is traversed. current_node stores the current node of this traversal
     pub(crate) current_node: Option<LogicalPlan>,
@@ -44,12 +54,6 @@ impl PyLogicalPlan {
                 self.current_node.clone().unwrap()
             }
         }
-    }
-
-    /// Gets the index of the column from the input schema
-    pub(crate) fn get_index(&mut self, col: &Column) -> usize {
-        let proj: projection::PyProjection = self.projection().unwrap();
-        proj.projection.input.schema().index_of_column(col).unwrap()
     }
 }
 
@@ -70,11 +74,6 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::CrossJoin as PyCrossJoin
-    pub fn cross_join(&self) -> PyResult<cross_join::PyCrossJoin> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
     /// LogicalPlan::EmptyRelation as PyEmptyRelation
     pub fn empty_relation(&self) -> PyResult<empty_relation::PyEmptyRelation> {
         to_py_plan(self.current_node.as_ref())
@@ -82,11 +81,6 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Explain as PyExplain
     pub fn explain(&self) -> PyResult<explain::PyExplain> {
-        to_py_plan(self.current_node.as_ref())
-    }
-
-    /// LogicalPlan::Union as PyUnion
-    pub fn union(&self) -> PyResult<union::PyUnion> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -130,8 +124,33 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CreateModel as PyCreateModel
+    pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::DropTable as DropTable
     pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
+    pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Repartition as PyRepartitionBy
+    pub fn repartition_by(&self) -> PyResult<repartition_by::PyRepartitionBy> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::ShowTables as PyShowTables
+    pub fn show_tables(&self) -> PyResult<show_tables::PyShowTables> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::CreateTable as PyCreateTable
+    pub fn create_table(&self) -> PyResult<create_table::PyCreateTable> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -201,12 +220,29 @@ impl PyLogicalPlan {
             LogicalPlan::Values(_values) => "Values",
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",
-            LogicalPlan::Extension(_extension) => "Extension",
             LogicalPlan::Subquery(_sub_query) => "Subquery",
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
+            // Further examine and return the name that is a possible Dask-SQL Extension type
+            LogicalPlan::Extension(extension) => {
+                let node = extension.node.as_any();
+                if node.downcast_ref::<CreateModelPlanNode>().is_some() {
+                    "CreateModel"
+                } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
+                    "CreateTable"
+                } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
+                    "DropModel"
+                } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
+                    "ShowSchemas"
+                } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {
+                    "ShowTables"
+                } else {
+                    // Default to generic `Extension`
+                    "Extension"
+                }
+            }
         })
     }
 
@@ -231,7 +267,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, join.left.schema().as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
 
                 let mut rhs_fields: Vec<RelDataTypeField> = join
                     .right
@@ -240,7 +276,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, join.right.schema().as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
 
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
@@ -252,7 +288,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
                 Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
@@ -262,7 +298,7 @@ impl PyLogicalPlan {
                     .iter()
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
-                    .map_err(|e| py_type_err(e))?;
+                    .map_err(py_type_err)?;
                 Ok(RelDataType::new(false, rel_fields))
             }
         }

@@ -1,7 +1,10 @@
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
+use datafusion_optimizer::decorrelate_scalar_subquery::DecorrelateScalarSubquery;
+use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
+    common_subexpr_eliminate::CommonSubexprEliminate,
+    decorrelate_where_exists::DecorrelateWhereExists, eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
     limit_push_down::LimitPushDown, optimizer::OptimizerRule,
     projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
@@ -21,17 +24,21 @@ impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
-        let mut rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = Vec::new();
-        rules.push(Box::new(CommonSubexprEliminate::new()));
-        rules.push(Box::new(EliminateLimit::new()));
-        rules.push(Box::new(FilterNullJoinKeys::default()));
-        rules.push(Box::new(FilterPushDown::new()));
-        rules.push(Box::new(LimitPushDown::new()));
-        rules.push(Box::new(ProjectionPushDown::new()));
-        rules.push(Box::new(SingleDistinctToGroupBy::new()));
-        rules.push(Box::new(SubqueryFilterToJoin::new()));
-        // Dask-SQL specific optimizations
-        rules.push(Box::new(EliminateAggDistinct::new()));
+        let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(DecorrelateWhereExists::new()),
+            Box::new(DecorrelateWhereIn::new()),
+            Box::new(DecorrelateScalarSubquery::new()),
+            Box::new(EliminateLimit::new()),
+            Box::new(FilterNullJoinKeys::default()),
+            Box::new(FilterPushDown::new()),
+            Box::new(LimitPushDown::new()),
+            Box::new(ProjectionPushDown::new()),
+            Box::new(SingleDistinctToGroupBy::new()),
+            Box::new(SubqueryFilterToJoin::new()),
+            // Dask-SQL specific optimizations
+            Box::new(EliminateAggDistinct::new()),
+        ];
         Self {
             optimizations: rules,
         }

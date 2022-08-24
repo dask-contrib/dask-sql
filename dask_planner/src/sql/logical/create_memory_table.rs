@@ -73,10 +73,7 @@ impl PyCreateMemoryTable {
 
     #[pyo3(name = "isTable")]
     pub fn is_table(&self) -> PyResult<bool> {
-        Ok(match &self.create_memory_table {
-            Some(_) => true,
-            None => false,
-        })
+        Ok(self.create_memory_table.is_some())
     }
 }
 

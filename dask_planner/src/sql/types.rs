@@ -257,7 +257,8 @@ impl SqlTypeName {
             DataType::Utf8 => SqlTypeName::CHAR,
             DataType::LargeUtf8 => SqlTypeName::VARCHAR,
             DataType::Struct(_fields) => SqlTypeName::STRUCTURED,
-            DataType::Decimal(_precision, _scale) => SqlTypeName::DECIMAL,
+            DataType::Decimal128(_precision, _scale) => SqlTypeName::DECIMAL,
+            DataType::Decimal256(_precision, _scale) => SqlTypeName::DECIMAL,
             DataType::Map(_field, _bool) => SqlTypeName::MAP,
             _ => todo!(),
         }
@@ -268,8 +269,8 @@ impl SqlTypeName {
 impl SqlTypeName {
     #[pyo3(name = "fromString")]
     #[staticmethod]
-    pub fn from_string(input_type: &str) -> Self {
-        match input_type {
+    pub fn from_string(input_type: String) -> Self {
+        match input_type.as_str() {
             "ANY" => SqlTypeName::ANY,
             "ARRAY" => SqlTypeName::ARRAY,
             "NULL" => SqlTypeName::NULL,

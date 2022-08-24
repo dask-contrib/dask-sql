@@ -3,7 +3,7 @@ import inspect
 import logging
 import warnings
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -18,6 +18,7 @@ from dask_planner.rust import (
     DaskTable,
     DFOptimizationException,
     DFParsingException,
+    LogicalPlan,
 )
 
 try:
@@ -39,9 +40,6 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import OptimizationException, ParsingException
-
-if TYPE_CHECKING:
-    from dask_planner.rust import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -252,7 +250,9 @@ class Context:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
 
         # Register the table with the Rust DaskSQLContext
-        self.context.register_table(schema_name, DaskTable(table_name, 100))
+        self.context.register_table(
+            schema_name, DaskTable(schema_name, table_name, 100)
+        )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -453,7 +453,7 @@ class Context:
 
     def sql(
         self,
-        sql: str,
+        sql: Any,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
@@ -490,7 +490,14 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, _ = self._get_ral(sql)
+            if isinstance(sql, str):
+                rel, _ = self._get_ral(sql)
+            elif isinstance(sql, LogicalPlan):
+                rel = sql
+            else:
+                raise RuntimeError(
+                    f"Encountered unsupported `LogicalPlan` sql type: {type(sql)}"
+                )
 
             return self._compute_table_from_rel(rel, return_futures)
 
@@ -687,29 +694,22 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, identifier: "Expression") -> Tuple[str, str]:
+    def fqn(self, tbl: "DaskTable") -> Tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
         Args:
-            identifier (:obj:`str`): The Java identifier of the table or view
+            tbl (:obj:`DaskTable`): The Rust DaskTable instance of the view or table.
 
         Returns:
             :obj:`tuple` of :obj:`str`: The fully qualified name of the object
         """
-        components = [str(n) for n in identifier.names]
-        if len(components) == 2:
-            schema = components[0]
-            name = components[1]
-        elif len(components) == 1:
-            schema = self.schema_name
-            name = components[0]
-        else:
-            raise AttributeError(
-                f"Do not understand the identifier {identifier} (too many components)"
-            )
+        schema_name, table_name = tbl.getSchema(), tbl.getTableName()
 
-        return schema, name
+        if schema_name is None or schema_name == "":
+            schema_name = self.schema_name
+
+        return schema_name, table_name
 
     def _prepare_schemas(self):
         """
@@ -735,7 +735,7 @@ class Context:
                     else float(0)
                 )
 
-                table = DaskTable(name, row_count)
+                table = DaskTable(schema_name, name, row_count)
                 df = dc.df
 
                 for column in df.columns:
@@ -773,7 +773,7 @@ class Context:
 
         return dask_function
 
-    def _get_ral(self, sql):
+    def _get_ral(self, sql: str):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")

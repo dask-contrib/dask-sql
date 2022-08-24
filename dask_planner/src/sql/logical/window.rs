@@ -106,10 +106,9 @@ impl PyWindow {
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
         match expr.expr {
-            Expr::WindowFunction { window_frame, .. } => match window_frame {
-                Some(window_frame) => Some(window_frame.clone().into()),
-                None => None,
-            },
+            Expr::WindowFunction { window_frame, .. } => {
+                window_frame.map(|window_frame| window_frame.into())
+            }
             _ => None,
         }
     }
@@ -125,12 +124,12 @@ impl PyWindowFrame {
     /// Returns starting bound
     #[pyo3(name = "getLowerBound")]
     pub fn get_lower_bound(&self) -> PyResult<PyWindowFrameBound> {
-        Ok(self.window_frame.start_bound.clone().into())
+        Ok(self.window_frame.start_bound.into())
     }
     /// Returns end bound
     #[pyo3(name = "getUpperBound")]
     pub fn get_upper_bound(&self) -> PyResult<PyWindowFrameBound> {
-        Ok(self.window_frame.end_bound.clone().into())
+        Ok(self.window_frame.end_bound.into())
     }
 }
 
@@ -139,26 +138,19 @@ impl PyWindowFrameBound {
     /// Returns if the frame bound is current row
     #[pyo3(name = "isCurrentRow")]
     pub fn is_current_row(&self) -> bool {
-        match self.frame_bound {
-            WindowFrameBound::CurrentRow => true,
-            _ => false,
-        }
+        matches!(self.frame_bound, WindowFrameBound::CurrentRow)
     }
+
     /// Returns if the frame bound is preceding
     #[pyo3(name = "isPreceding")]
     pub fn is_preceding(&self) -> bool {
-        match self.frame_bound {
-            WindowFrameBound::Preceding(..) => true,
-            _ => false,
-        }
+        matches!(self.frame_bound, WindowFrameBound::Preceding(..))
     }
+
     /// Returns if the frame bound is following
     #[pyo3(name = "isFollowing")]
     pub fn is_following(&self) -> bool {
-        match self.frame_bound {
-            WindowFrameBound::Following(..) => true,
-            _ => false,
-        }
+        matches!(self.frame_bound, WindowFrameBound::Following(..))
     }
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
@@ -172,10 +164,7 @@ impl PyWindowFrameBound {
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> bool {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => match val {
-                Some(_) => false,
-                None => true,
-            },
+            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => val.is_none(),
             WindowFrameBound::CurrentRow => false,
         }
     }

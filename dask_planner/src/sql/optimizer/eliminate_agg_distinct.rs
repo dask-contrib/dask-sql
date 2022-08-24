@@ -29,17 +29,10 @@
 //!   WHERE t1.f IN (SELECT f FROM t2) OR t2.f = 'x'
 //! ```
 //! won't
-use arrow::datatypes::Schema;
-use datafusion_common::{DFField, DFSchema, DataFusionError, Result};
+use datafusion_common::{DFField, DFSchema, Result};
 use datafusion_expr::{
-    col,
-    expr_visitor::{ExprVisitable, ExpressionVisitor, Recursion},
-    logical_plan::{
-        builder::build_join_schema, Aggregate, Distinct, Filter, Join, JoinConstraint, JoinType,
-        LogicalPlan,
-    },
+    logical_plan::{Aggregate, LogicalPlan},
     Expr,
-    Expr::Column,
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 use std::collections::hash_map::HashMap;
@@ -65,7 +58,7 @@ impl OptimizerRule for EliminateAggDistinct {
         match plan {
             LogicalPlan::Aggregate(Aggregate {
                 input,
-                group_expr,
+                group_expr: _,
                 aggr_expr,
                 schema,
             }) => {
@@ -124,11 +117,8 @@ impl OptimizerRule for EliminateAggDistinct {
 
                                 // Loop through the args
                                 for arg in args {
-                                    match arg {
-                                        Expr::Column(_column) => {
-                                            distinct_column = Some(arg.clone());
-                                        }
-                                        _ => (),
+                                    if let Expr::Column(_column) = arg {
+                                        distinct_column = Some(arg.clone());
                                     }
                                 }
 
@@ -161,7 +151,7 @@ impl OptimizerRule for EliminateAggDistinct {
                         input: Arc::new(distinct_input),
                         group_expr: vec![],
                         aggr_expr: optimized_aggr_expr,
-                        schema: Arc::new(updated_schema.unwrap().clone()),
+                        schema: Arc::new(updated_schema.unwrap()),
                     });
                 }
 

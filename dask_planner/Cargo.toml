@@ -6,22 +6,21 @@ description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.59"
+rust-version = "1.62"
 
 [dependencies]
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 rand = "0.7"
-pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py38"] }
-arrow = { version = "19.0.0", features = ["prettyprint"] }
-datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
-datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "85d53634c4d26a3b9e545878e377860c14d01d7d" }
+pyo3 = { version = "0.16.5", features = ["extension-module", "abi3", "abi3-py38"] }
+arrow = { version = "20.0.0", features = ["prettyprint"] }
+datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "e1d4069de9d2aaf85655edd72744f176431c03d3" }
+datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "e1d4069de9d2aaf85655edd72744f176431c03d3" }
+datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "e1d4069de9d2aaf85655edd72744f176431c03d3" }
+datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "e1d4069de9d2aaf85655edd72744f176431c03d3" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
 async-trait = "0.1.41"
-sqlparser = "0.18"
 
 
 [lib]

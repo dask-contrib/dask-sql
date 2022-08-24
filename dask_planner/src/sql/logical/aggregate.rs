@@ -80,10 +80,7 @@ impl PyAggregate {
 
     #[pyo3(name = "isDistinctNode")]
     pub fn distinct_node(&self) -> PyResult<bool> {
-        Ok(match self.distinct {
-            Some(_) => true,
-            None => false,
-        })
+        Ok(self.distinct.is_some())
     }
 }
 
