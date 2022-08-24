@@ -146,6 +146,11 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
+            "current_timestamp" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
             _ => (),
         }
 
@@ -321,7 +326,6 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         predict_model.select,
                     )))?,
-                    with_options: predict_model.with_options,
                 }),
             })),
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {

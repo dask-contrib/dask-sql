@@ -38,8 +38,6 @@ pub struct PredictModel {
     pub name: String,
     /// input Query
     pub select: SQLStatement,
-    /// with options
-    pub with_options: Vec<Expr>,
 }
 
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
@@ -178,6 +176,44 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_drop()
+                    }
+                    Keyword::SELECT => {
+                        // Check for PREDICT token in statement
+                        let mut cnt = 1;
+                        loop {
+                            match self.parser.next_token() {
+                                Token::Word(w) => {
+                                    match w.value.to_lowercase().as_str() {
+                                        "predict" => {
+                                            return self.parse_predict_model();
+                                        }
+                                        _ => {
+                                            // Keep looking for PREDICT
+                                            cnt += 1;
+                                            continue;
+                                        }
+                                    }
+                                }
+                                Token::EOF => {
+                                    break;
+                                }
+                                _ => {
+                                    // Keep looking for PREDICT
+                                    cnt += 1;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // Reset the parser back to where we started
+                        for _ in 0..cnt {
+                            self.parser.prev_token();
+                        }
+
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_statement()?,
+                        )))
                     }
                     Keyword::SHOW => {
                         // move one token forwrd
@@ -341,6 +377,40 @@ impl<'a> DaskParser<'a> {
                 )))
             }
         }
+    }
+
+    /// Parse a SQL PREDICT statement
+    pub fn parse_predict_model(&mut self) -> Result<DaskStatement, ParserError> {
+        // PREDICT(
+        //     MODEL model_name,
+        //     SQLStatement
+        // )
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Expect `MODEL`
+        // This doesn't work? Somethign about Keyword in the equality comparison, therefore always fails.
+        // self.parser.expect_token(&Token::Word(Word {
+        //     value: "MODEL".to_string(),
+        //     quote_style: None,
+        //     keyword: Keyword::NONE,
+        // }))?;
+
+        let is_model = match self.parser.next_token() {
+            Token::Word(w) => matches!(w.value.to_lowercase().as_str(), "model"),
+            _ => false,
+        };
+        if !is_model {
+            panic!("Failed to parse expected model but not found!")
+        }
+
+        let model_name = self.parser.parse_object_name()?;
+        self.parser.expect_token(&Token::Comma)?;
+
+        let predict = PredictModel {
+            name: model_name.to_string(),
+            select: self.parser.parse_statement()?,
+        };
+        Ok(DaskStatement::PredictModel(Box::new(predict)))
     }
 
     /// Parse Dask-SQL CREATE MODEL statement
