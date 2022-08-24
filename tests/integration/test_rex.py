@@ -334,8 +334,8 @@ def test_boolean_operations(c):
         SELECT
             b IS TRUE AS t,
             b IS FALSE AS f,
-            -- b IS NOT TRUE AS nt,
-            -- b IS NOT FALSE AS nf,
+            b IS NOT TRUE AS nt,
+            b IS NOT FALSE AS nf,
             b IS UNKNOWN AS u,
             b IS NOT UNKNOWN AS nu
         FROM df"""
@@ -345,15 +345,15 @@ def test_boolean_operations(c):
         {
             "t": [True, False, False],
             "f": [False, True, False],
-            # "nt": [False, True, True],
-            # "nf": [True, False, True],
+            "nt": [False, True, True],
+            "nf": [True, False, True],
             "u": [False, False, True],
             "nu": [True, True, False],
         },
         dtype="bool",
     )
-    # expected_df["nt"] = expected_df["nt"].astype("boolean")
-    # expected_df["nf"] = expected_df["nf"].astype("boolean")
+    expected_df["nt"] = expected_df["nt"].astype("boolean")
+    expected_df["nf"] = expected_df["nf"].astype("boolean")
     expected_df["nu"] = expected_df["nu"].astype("boolean")
     assert_eq(df, expected_df)
 
