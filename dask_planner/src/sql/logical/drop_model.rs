@@ -13,6 +13,7 @@ use datafusion_common::{DFSchema, DFSchemaRef};
 #[derive(Clone)]
 pub struct DropModelPlanNode {
     pub model_name: String,
+    pub if_exists: bool,
     pub schema: DFSchemaRef,
 }
 
@@ -54,6 +55,7 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
         Arc::new(DropModelPlanNode {
             model_name: self.model_name.clone(),
+            if_exists: self.if_exists,
             schema: Arc::new(DFSchema::empty()),
         })
     }
@@ -69,6 +71,11 @@ impl PyDropModel {
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.drop_model.model_name.clone())
+    }
+
+    #[pyo3(name = "getIfExists")]
+    pub fn get_if_exists(&self) -> PyResult<bool> {
+        Ok(self.drop_model.if_exists)
     }
 }
 

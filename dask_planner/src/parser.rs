@@ -45,6 +45,7 @@ pub struct CreateTable {
 pub struct DropModel {
     /// model name
     pub name: String,
+    pub if_exists: bool,
 }
 
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
@@ -400,9 +401,11 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL DROP MODEL statement
     fn parse_drop_model(&mut self) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
+        let drop_if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
 
         let drop = DropModel {
             name: model_name.to_string(),
+            if_exists: drop_if_exists,
         };
         Ok(DaskStatement::DropModel(Box::new(drop)))
     }

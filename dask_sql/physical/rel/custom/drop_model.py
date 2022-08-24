@@ -6,7 +6,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +19,15 @@ class DropModelPlugin(BaseRelPlugin):
         DROP MODEL <table-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropModel"
+    class_name = "DropModel"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, model_name = context.fqn(sql.getModelName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        drop_model = rel.drop_model()
+
+        schema_name, model_name = context.schema_name, drop_model.getName()
 
         if model_name not in context.schema[schema_name].models:
-            if not sql.getIfExists():
+            if not drop_model.getIfExists():
                 raise RuntimeError(
                     f"A model with the name {model_name} is not present."
                 )

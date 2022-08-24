@@ -324,6 +324,7 @@ impl DaskSQLContext {
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
                     model_name: drop_model.name,
+                    if_exists: drop_model.if_exists,
                     schema: Arc::new(DFSchema::empty()),
                 }),
             })),
