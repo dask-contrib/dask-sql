@@ -47,7 +47,7 @@ class CreateTablePlugin(BaseRelPlugin):
         if table_name in context.schema[schema_name].tables:
             if create_table.getIfNotExists():
                 return
-            elif not create_table.getOrReplace():
+            elif not create_table.getReplace():
                 raise RuntimeError(
                     f"A table with the name {table_name} is already present."
                 )
