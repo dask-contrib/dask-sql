@@ -16,7 +16,7 @@ use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
-    ScalarUDF, Signature, TableSource, Volatility,
+    ScalarUDF, Signature, TableSource, TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
@@ -152,10 +152,17 @@ impl ContextProvider for DaskSQLContext {
         for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
-                    // can't do this, MutexGuard<'_, DaskFunction> can't be sent between threads safelys
-                    // let function = function.clone().lock().unwrap();
-                    // let sig = Signature::one_of(function.return_types.keys().map(|v| TypeSignature::Exact(v)).collect(), Volatility::Immutable);
-                    let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                    let sig = {
+                        let function = function.lock().unwrap();
+                        Signature::one_of(
+                            function
+                                .return_types
+                                .keys()
+                                .map(|v| TypeSignature::Exact(v.to_vec()))
+                                .collect(),
+                            Volatility::Immutable,
+                        )
+                    };
                     let function = function.clone();
                     let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
                         let function = function.lock().unwrap();
