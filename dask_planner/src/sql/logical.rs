@@ -135,6 +135,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::DropModel as DropModel
+    pub fn drop_model(&self) -> PyResult<drop_model::PyDropModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
     pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
         to_py_plan(self.current_node.as_ref())

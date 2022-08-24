@@ -313,6 +313,7 @@ impl DaskSQLContext {
                     )))?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
+                    with_options: create_model.with_options,
                 }),
             })),
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
@@ -337,6 +338,7 @@ impl DaskSQLContext {
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
                     model_name: drop_model.name,
+                    if_exists: drop_model.if_exists,
                     schema: Arc::new(DFSchema::empty()),
                 }),
             })),
