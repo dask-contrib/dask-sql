@@ -31,7 +31,7 @@ impl DaskSqlOptimizer {
             Box::new(FilterPushDown::new()),
             Box::new(LimitPushDown::new()),
             Box::new(ProjectionPushDown::new()),
-            Box::new(SingleDistinctToGroupBy::new()),
+            // Box::new(SingleDistinctToGroupBy::new()),
             Box::new(SubqueryFilterToJoin::new()),
         ];
         Self {

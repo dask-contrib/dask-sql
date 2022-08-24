@@ -31,6 +31,17 @@ pub struct CreateModel {
     pub or_replace: bool,
 }
 
+/// Dask-SQL extension DDL for `PREDICT`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredictModel {
+    /// model name
+    pub name: String,
+    /// input Query
+    pub select: SQLStatement,
+    /// with options
+    pub with_options: Vec<Expr>,
+}
+
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTable {
@@ -80,6 +91,8 @@ pub enum DaskStatement {
     CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
+    /// Extension: `PREDICT`
+    PredictModel(Box<PredictModel>),
     // Extension: `SHOW SCHEMAS`
     ShowSchemas(Box<ShowSchemas>),
     // Extension: `SHOW TABLES FROM`

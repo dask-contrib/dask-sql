@@ -13,6 +13,7 @@ pub mod explain;
 pub mod filter;
 pub mod join;
 pub mod limit;
+pub mod predict_model;
 pub mod projection;
 pub mod repartition_by;
 pub mod show_schema;
@@ -151,6 +152,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Extension::CreateTable as PyCreateTable
     pub fn create_table(&self) -> PyResult<create_table::PyCreateTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::PredictModel as PyPredictModel
+    pub fn predict_model(&self) -> PyResult<predict_model::PyPredictModel> {
         to_py_plan(self.current_node.as_ref())
     }
 

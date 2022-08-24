@@ -32,6 +32,7 @@ use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::predict_model::PredictModelPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
@@ -312,6 +313,15 @@ impl DaskSQLContext {
                     )))?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(PredictModelPlanNode {
+                    model_name: predict_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        predict_model.select,
+                    )))?,
+                    with_options: predict_model.with_options,
                 }),
             })),
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
