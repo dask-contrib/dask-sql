@@ -36,6 +36,10 @@ pub struct CreateTable {
     pub table_schema: String,
     /// table name
     pub name: String,
+    /// IF NOT EXISTS
+    pub if_not_exists: bool,
+    /// OR REPLACE
+    pub or_replace: bool,
     /// with options
     pub with_options: Vec<Expr>,
 }
@@ -185,6 +189,9 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
+        let if_not_exists =
+            self.parser
+                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -199,9 +206,15 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_table(or_replace)
+                        self.parse_create_table(if_not_exists, or_replace)
                     }
                     _ => {
+                        if if_not_exists {
+                            // Go back three tokens if IF NOT EXISTS was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         if or_replace {
                             // Go back two tokens if OR REPLACE was consumed
                             self.parser.prev_token();
@@ -355,7 +368,11 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE TABLE ... WITH statement
-    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+    fn parse_create_table(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
         // Parser's current position is at `table_name`, peek if rest of statement contains an `AS`
         let _table_name = self.parser.parse_identifier(); // `table_name`
         let after_name_token = self.parser.peek_token(); // Token following `table_name`
@@ -381,6 +398,8 @@ impl<'a> DaskParser<'a> {
                         let create = CreateTable {
                             table_schema: tbl_schema,
                             name: tbl_name,
+                            if_not_exists,
+                            or_replace,
                             with_options,
                         };
                         Ok(DaskStatement::CreateTable(Box::new(create)))
