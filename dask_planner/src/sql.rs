@@ -318,6 +318,8 @@ impl DaskSQLContext {
                     schema: Arc::new(DFSchema::empty()),
                     table_schema: create_table.table_schema,
                     table_name: create_table.name,
+                    if_not_exists: create_table.if_not_exists,
+                    or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
                 }),
             })),
