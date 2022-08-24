@@ -37,6 +37,15 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
+gpuci_logger "Install awscli"
+gpuci_mamba_retry install -y -c conda-forge awscli
+
+gpuci_logger "Download parquet dataset"
+gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb/" tests/unit/data/ --recursive
+
+gpuci_logger "Download query files"
+gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
+
 gpuci_logger "Install dask"
 python -m pip install git+https://github.com/dask/dask
 
@@ -55,4 +64,4 @@ conda config --show-sources
 conda list --show-channel-urls
 
 gpuci_logger "Python py.test for dask-sql"
-py.test $WORKSPACE -n 4 -v -m gpu --rungpu --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term
+py.test $WORKSPACE -n 4 -v -m gpu --runqueries --rungpu --junitxml="$WORKSPACE/junit-dask-sql.xml" --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term

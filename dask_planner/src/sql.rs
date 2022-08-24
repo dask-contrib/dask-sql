@@ -3,6 +3,7 @@ pub mod exceptions;
 pub mod function;
 pub mod logical;
 pub mod optimizer;
+pub mod parser_utils;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -29,6 +30,7 @@ use std::sync::Arc;
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::create_model::CreateModelPlanNode;
+use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 
@@ -232,10 +234,6 @@ impl DaskSQLContext {
                 for statement in k {
                     statements.push(statement.into());
                 }
-                assert!(
-                    statements.len() == 1,
-                    "More than 1 expected statement was encounterd!"
-                );
                 Ok(statements)
             }
             Err(e) => Err(py_parsing_exp(e)),
@@ -270,7 +268,7 @@ impl DaskSQLContext {
                 if valid {
                     optimizer::DaskSqlOptimizer::new()
                         .run_optimizations(existing_plan.original_plan)
-                        .map(|k| logical::PyLogicalPlan {
+                        .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,
                         })
@@ -304,6 +302,14 @@ impl DaskSQLContext {
                         create_model.select,
                     )))?,
                     or_replace: create_model.or_replace,
+                }),
+            })),
+            DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_schema: create_table.table_schema,
+                    table_name: create_table.name,
+                    with_options: create_table.with_options,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
