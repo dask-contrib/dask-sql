@@ -161,7 +161,10 @@ impl ContextProvider for DaskSQLContext {
                         let function = function.lock().unwrap();
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
-                            None => Err(DataFusionError::NotImplemented("".to_string())),
+                            None => Err(DataFusionError::Plan(format!(
+                                "UDF signature not found for input types {:?}",
+                                input_types
+                            ))),
                         }
                     });
                     return Some(Arc::new(ScalarUDF::new(
