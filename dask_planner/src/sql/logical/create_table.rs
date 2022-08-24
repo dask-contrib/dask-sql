@@ -17,6 +17,8 @@ pub struct CreateTablePlanNode {
     pub schema: DFSchemaRef,
     pub table_schema: String, // "something" in `something.table_name`
     pub table_name: String,
+    pub if_not_exists: bool,
+    pub or_replace: bool,
     pub with_options: Vec<SqlParserExpr>,
 }
 
@@ -59,6 +61,8 @@ impl UserDefinedLogicalNode for CreateTablePlanNode {
             schema: Arc::new(DFSchema::empty()),
             table_schema: self.table_schema.clone(),
             table_name: self.table_name.clone(),
+            if_not_exists: self.if_not_exists,
+            or_replace: self.or_replace,
             with_options: self.with_options.clone(),
         })
     }
@@ -74,6 +78,16 @@ impl PyCreateTable {
     #[pyo3(name = "getTableName")]
     fn get_table_name(&self) -> PyResult<String> {
         Ok(self.create_table.table_name.clone())
+    }
+
+    #[pyo3(name = "getIfNotExists")]
+    fn get_if_not_exists(&self) -> PyResult<bool> {
+        Ok(self.create_table.if_not_exists)
+    }
+
+    #[pyo3(name = "getOrReplace")]
+    fn get_or_replace(&self) -> PyResult<bool> {
+        Ok(self.create_table.or_replace)
     }
 
     #[pyo3(name = "getSQLWithOptions")]
