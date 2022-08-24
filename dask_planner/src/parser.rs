@@ -5,12 +5,12 @@
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement, Value},
+    ast::{Expr, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 macro_rules! parser_err {
     ($MSG:expr) => {
@@ -27,6 +27,8 @@ pub struct CreateModel {
     pub select: SQLStatement,
     /// To replace the model or not
     pub or_replace: bool,
+    /// with options
+    pub with_options: Vec<Expr>,
 }
 
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
@@ -320,29 +322,13 @@ impl<'a> DaskParser<'a> {
     fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
-        self.parser.expect_token(&Token::LParen)?;
 
-        // Parse all KV pairs into a Vec<BinaryExpr> instances
-        let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
 
-        let _kv_pairs: Vec<(String, &Box<Expr>)> = kv_binexprs
-            .iter()
-            .map(|f| match f {
-                Expr::BinaryOp { left, op: _, right } => match *left.clone() {
-                    Expr::Value(value) => match value {
-                        Value::EscapedStringLiteral(key_val)
-                        | Value::SingleQuotedString(key_val)
-                        | Value::DoubleQuotedString(key_val) => Ok((key_val, right)),
-                        _ => Ok(("".to_string(), right)),
-                    },
-                    _ => Ok(("".to_string(), right)),
-                },
-                _ => parser_err!(format!("Expected BinaryOp, Key/Value pairs, found: {}", f)),
-            })
-            .collect::<Result<Vec<_>, ParserError>>()?;
-        let _kv_pairs: HashMap<String, &Box<Expr>> = _kv_pairs.into_iter().collect();
-
-        self.parser.expect_token(&Token::RParen)?;
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
         // Parse the "AS" before the SQLStatement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -351,6 +337,7 @@ impl<'a> DaskParser<'a> {
             name: model_name.to_string(),
             select: self.parser.parse_statement()?,
             or_replace,
+            with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }

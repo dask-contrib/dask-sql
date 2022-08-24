@@ -311,6 +311,7 @@ impl DaskSQLContext {
                         create_model.select,
                     )))?,
                     or_replace: create_model.or_replace,
+                    with_options: create_model.with_options,
                 }),
             })),
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
