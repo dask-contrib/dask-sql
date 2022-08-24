@@ -153,7 +153,6 @@ def test_create_from_query(c, df):
     assert_eq(df, return_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -217,7 +216,6 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
     assert_eq(from_table, pd.DataFrame({"c": [700]}))
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_replace_and_error(c, temporary_data_file, df):
     c.sql(
         """
