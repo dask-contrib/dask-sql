@@ -52,7 +52,7 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
         _exprs: &[Expr],
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
-        assert_eq!(inputs.len(), 1, "input size inconsistent");
+        assert_eq!(inputs.len(), 0, "input size inconsistent");
         Arc::new(DropModelPlanNode {
             model_name: self.model_name.clone(),
             if_exists: self.if_exists,
