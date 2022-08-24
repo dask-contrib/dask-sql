@@ -310,6 +310,7 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         create_model.select,
                     )))?,
+                    if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
                 }),
             })),

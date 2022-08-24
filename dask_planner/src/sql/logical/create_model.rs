@@ -14,6 +14,7 @@ use datafusion_common::DFSchemaRef;
 pub struct CreateModelPlanNode {
     pub model_name: String,
     pub input: LogicalPlan,
+    pub if_not_exists: bool,
     pub or_replace: bool,
 }
 
@@ -56,6 +57,7 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
         Arc::new(CreateModelPlanNode {
             model_name: self.model_name.clone(),
             input: inputs[0].clone(),
+            if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
         })
     }
@@ -79,6 +81,11 @@ impl PyCreateModel {
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.create_model.model_name.clone())
+    }
+
+    #[pyo3(name = "getIfNotExists")]
+    fn get_if_not_exists(&self) -> PyResult<bool> {
+        Ok(self.create_model.if_not_exists)
     }
 
     #[pyo3(name = "getOrReplace")]
