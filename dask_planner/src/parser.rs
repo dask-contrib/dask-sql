@@ -358,7 +358,7 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }
 
-    /// Parse Dask-SQL CREATE TABLE ... WITH statement
+    /// Parse Dask-SQL CREATE [OR REPLACE] TABLE ... statement
     fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
         // parse [IF NOT EXISTS] `table_name` AS|WITH
         let if_not_exists =
