@@ -382,7 +382,7 @@ impl<'a> DaskParser<'a> {
                             self.parser.parse_create_table(or_replace, false, None)?,
                         )))
                     }
-                    _ => {
+                    "with" => {
                         // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
                         self.parser.prev_token();
 
@@ -400,10 +400,17 @@ impl<'a> DaskParser<'a> {
                         };
                         Ok(DaskStatement::CreateTable(Box::new(create)))
                     }
+                    _ => self.expected("'as' or 'with'", self.parser.peek_token()),
                 }
             }
             _ => {
                 self.parser.prev_token();
+                if if_not_exists {
+                    // Go back three tokens if IF NOT EXISTS was consumed
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_create_table(or_replace, false, None)?,
