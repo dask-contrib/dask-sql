@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import convert_sql_kwargs
 
 if TYPE_CHECKING:
     import dask_sql
@@ -48,32 +49,50 @@ class PredictModelPlugin(BaseRelPlugin):
 
     class_name = "PredictModel"
 
-    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        sql_select = sql.getSelect()
-        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
-        model_type = sql.getModelName().getIdentifierType()
-        select_list = sql.getSelectList()
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        predict_model = rel.predict_model()
+
+        sql_select = predict_model.getSelect()
+
+        # The table(s) we need to return
+        dask_table = rel.getTable()
+        schema_name, model_name = [n.lower() for n in context.fqn(dask_table)]
+
+        print(f"Model Schema: {schema_name}, Model Name: {model_name}")
+        print(f"Context Models: {context.schema[schema_name].models}")
+        model, training_columns = context.schema[schema_name].models[model_name]
+        kwargs = convert_sql_kwargs(model.getSQLWithOptions())
+
+        print(f"KWArgs: {kwargs}")
+        model_type = kwargs.pop("model_class", "")
+        print(f"Model Type: {model_type}")
+        select_list = model.getSelectQuery()
+        print(f"Select List: {select_list}")
 
         logger.debug(
-            f"Predicting from {model_name} and query {sql_select} to {list(select_list)}"
+            f"Predicting from {model_type} and query {sql_select} to {list(select_list)}"
         )
 
-        # IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
-        IdentifierType = None
+        # # IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
+        # IdentifierType = None
 
-        if model_type == IdentifierType.REFERENCE:
-            try:
-                model, training_columns = context.schema[schema_name].models[model_name]
-            except KeyError:
-                raise KeyError(f"No model registered with name {model_name}")
-        else:
-            raise NotImplementedError(f"Do not understand model type {model_type}")
+        # if model_type == IdentifierType.REFERENCE:
+        #     try:
+        #         model, training_columns = context.schema[schema_name].models[model_name]
+        #     except KeyError:
+        #         raise KeyError(f"No model registered with name {model_name}")
+        # else:
+        #     raise NotImplementedError(f"Do not understand model type {model_type}")
 
-        sql_select_query = context._to_sql_string(sql_select)
-        df = context.sql(sql_select_query)
+        # sql_select_query = context._to_sql_string(sql_select)
+        print("Right before context.sql")
+        df = context.sql(sql_select)
+        print(f"After getting DF {df}")
 
         prediction = model.predict(df[training_columns])
         predicted_df = df.assign(target=prediction)
+
+        print("Made it this far!")
 
         # Create a temporary context, which includes the
         # new "table" so that we can use the normal
@@ -89,13 +108,13 @@ class PredictModelPlugin(BaseRelPlugin):
         context.create_table(temporary_table, predicted_df)
 
         sql_ns = []
-        pos = sql.getParserPosition()
+        pos = rel.getParserPosition()
         from_column_list = []
         from_column_list.add(temporary_table)
         from_clause = sql_ns.SqlIdentifier(from_column_list, pos)  # TODO: correct pos
 
         outer_select = sql_ns.SqlSelect(
-            sql.getParserPosition(),
+            rel.getParserPosition(),
             None,  # keywordList,
             select_list,  # selectList,
             from_clause,  # from,

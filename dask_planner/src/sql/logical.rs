@@ -31,6 +31,7 @@ use pyo3::prelude::*;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::drop_model::DropModelPlanNode;
+use self::predict_model::PredictModelPlanNode;
 use self::show_schema::ShowSchemasPlanNode;
 use self::show_tables::ShowTablesPlanNode;
 
@@ -245,6 +246,8 @@ impl PyLogicalPlan {
                     "CreateTable"
                 } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
                     "DropModel"
+                } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
+                    "PredictModel"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
                 } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {

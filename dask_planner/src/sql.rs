@@ -323,6 +323,7 @@ impl DaskSQLContext {
             })),
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(PredictModelPlanNode {
+                    model_schema: predict_model.schema_name,
                     model_name: predict_model.name,
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         predict_model.select,

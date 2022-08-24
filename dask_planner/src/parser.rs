@@ -36,6 +36,8 @@ pub struct CreateModel {
 /// Dask-SQL extension DDL for `PREDICT`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictModel {
+    /// model schema
+    pub schema_name: String,
     /// model name
     pub name: String,
     /// input Query
@@ -406,12 +408,17 @@ impl<'a> DaskParser<'a> {
             panic!("Failed to parse expected model but not found!")
         }
 
-        let model_name = self.parser.parse_object_name()?;
+        let (mdl_schema, mdl_name) =
+            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?);
         self.parser.expect_token(&Token::Comma)?;
 
+        let sql_statement = self.parser.parse_statement()?;
+        self.parser.expect_token(&Token::RParen)?;
+
         let predict = PredictModel {
-            name: model_name.to_string(),
-            select: self.parser.parse_statement()?,
+            schema_name: mdl_schema,
+            name: mdl_name,
+            select: sql_statement,
         };
         Ok(DaskStatement::PredictModel(Box::new(predict)))
     }

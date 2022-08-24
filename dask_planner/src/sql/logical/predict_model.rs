@@ -10,8 +10,11 @@ use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::DFSchemaRef;
 
+use super::PyLogicalPlan;
+
 #[derive(Clone)]
 pub struct PredictModelPlanNode {
+    pub model_schema: String, // "something" in `something.model_name`
     pub model_name: String,
     pub input: LogicalPlan,
 }
@@ -52,6 +55,7 @@ impl UserDefinedLogicalNode for PredictModelPlanNode {
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(PredictModelPlanNode {
+            model_schema: self.model_schema.clone(),
             model_name: self.model_name.clone(),
             input: inputs[0].clone(),
         })
@@ -68,6 +72,11 @@ impl PyPredictModel {
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.predict_model.model_name.clone())
+    }
+
+    #[pyo3(name = "getSelect")]
+    fn get_select(&self) -> PyResult<PyLogicalPlan> {
+        Ok(PyLogicalPlan::from(self.predict_model.input.clone()))
     }
 }
 
