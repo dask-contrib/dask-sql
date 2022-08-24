@@ -55,6 +55,8 @@ impl OptimizerRule for EliminateAggDistinct {
         plan: &LogicalPlan,
         optimizer_config: &mut OptimizerConfig,
     ) -> Result<LogicalPlan> {
+        println!("Incoming LogicalPlan: {:?}", plan);
+
         match plan {
             LogicalPlan::Aggregate(Aggregate {
                 input,
@@ -159,6 +161,7 @@ impl OptimizerRule for EliminateAggDistinct {
             }
             _ => {
                 // Apply the optimization to all inputs of the plan
+                println!("Optimize children was invoked!!!");
                 utils::optimize_children(self, plan, optimizer_config)
             }
         }

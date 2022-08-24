@@ -158,6 +158,28 @@ def test_order_by_no_limit():
     )
 
 
+def test_complex_order():
+    a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
+    eq_sqlite(
+        """
+        CREATE OR REPLACE TABLE yearly_stations AS
+        SELECT
+        yr,
+        city,
+        count(distinct(station_id)) AS stations
+        FROM (
+            SELECT *
+            FROM precip
+            JOIN city_stations
+            ON precip.station_id = city_stations.station_id
+        )
+        GROUP BY yr, city
+        ORDER BY stations DESC
+        """,
+        a=a,
+    )
+
+
 def test_order_by_limit():
     a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
     eq_sqlite(
@@ -301,7 +323,6 @@ def test_agg_count_no_group_by():
     eq_sqlite(
         """
         SELECT
-            COUNT(a) AS c_a,
             COUNT(DISTINCT a) AS cd_a
         FROM a
         """,
