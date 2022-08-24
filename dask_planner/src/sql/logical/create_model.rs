@@ -4,8 +4,10 @@ use pyo3::prelude::*;
 
 use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
+use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
 
 use fmt::Debug;
+use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::DFSchemaRef;
@@ -16,6 +18,7 @@ pub struct CreateModelPlanNode {
     pub input: LogicalPlan,
     pub if_not_exists: bool,
     pub or_replace: bool,
+    pub with_options: Vec<SqlParserExpr>,
 }
 
 impl Debug for CreateModelPlanNode {
@@ -59,6 +62,7 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
             input: inputs[0].clone(),
             if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
+            with_options: self.with_options.clone(),
         })
     }
 }
@@ -91,6 +95,46 @@ impl PyCreateModel {
     #[pyo3(name = "getOrReplace")]
     pub fn get_or_replace(&self) -> PyResult<bool> {
         Ok(self.create_model.or_replace)
+    }
+
+    #[pyo3(name = "getSQLWithOptions")]
+    fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
+        let mut options: HashMap<String, String> = HashMap::new();
+        for elem in &self.create_model.with_options {
+            if let SqlParserExpr::BinaryOp { left, op: _, right } = elem {
+                let key: Result<String, PyErr> = match *left.clone() {
+                    SqlParserExpr::Identifier(ident) => Ok(ident.value),
+                    _ => Err(py_type_err(format!(
+                        "unexpected `left` Value type encountered: {:?}",
+                        left
+                    ))),
+                };
+                let val: Result<String, PyErr> = match *right.clone() {
+                    SqlParserExpr::Value(value) => match value {
+                        Value::SingleQuotedString(e) => Ok(e.replace('\'', "")),
+                        Value::DoubleQuotedString(e) => Ok(e.replace('\"', "")),
+                        Value::Boolean(e) => {
+                            if e {
+                                Ok("True".to_string())
+                            } else {
+                                Ok("False".to_string())
+                            }
+                        }
+                        Value::Number(e, ..) => Ok(e),
+                        _ => Err(py_type_err(format!(
+                            "unexpected Value type encountered: {:?}",
+                            value
+                        ))),
+                    },
+                    _ => Err(py_type_err(format!(
+                        "encountered unexpected Expr type: {:?}",
+                        right
+                    ))),
+                };
+                options.insert(key?, val?);
+            }
+        }
+        Ok(options)
     }
 }
 
