@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
@@ -52,7 +53,7 @@ def test_columns(c):
 def test_wrong_input(c):
     with pytest.raises(KeyError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"')
-    with pytest.raises(AttributeError):
+    with pytest.raises(ParsingException):
         c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
     with pytest.raises(KeyError):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
@@ -66,6 +67,6 @@ def test_show_tables_no_schema(c):
     df = pd.DataFrame({"id": [0, 1]})
     c.create_table("test", df)
 
-    actual_df = c.sql("show tables").compute()
+    actual_df = c.sql("show tables from root").compute()
     expected_df = pd.DataFrame({"Table": ["test"]})
     assert_eq(actual_df, expected_df)

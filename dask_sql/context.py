@@ -782,8 +782,10 @@ class Context:
         schemas = self._prepare_schemas()
         for schema in schemas:
             self.context.register_schema(schema.name, schema)
-
-        sqlTree = self.context.parse_sql(sql)
+        try:
+            sqlTree = self.context.parse_sql(sql)
+        except DFParsingException as pe:
+            raise ParsingException(sql, str(pe))
         logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
         rel = sqlTree
