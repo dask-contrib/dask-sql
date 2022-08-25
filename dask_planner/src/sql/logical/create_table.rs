@@ -85,8 +85,8 @@ impl PyCreateTable {
         Ok(self.create_table.if_not_exists)
     }
 
-    #[pyo3(name = "getReplace")]
-    fn get_replace(&self) -> PyResult<bool> {
+    #[pyo3(name = "getOrReplace")]
+    fn get_or_replace(&self) -> PyResult<bool> {
         Ok(self.create_table.or_replace)
     }
 

@@ -51,9 +51,9 @@ pub struct CreateTable {
     pub table_schema: String,
     /// table name
     pub name: String,
-    /// IF NOT EXISTS
+    /// if not exists
     pub if_not_exists: bool,
-    /// OR REPLACE
+    /// or replace
     pub or_replace: bool,
     /// with options
     pub with_options: Vec<Expr>,
@@ -262,7 +262,7 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_table(if_not_exists, or_replace)
+                        self.parse_create_table(if_not_exists)
                     }
                     _ => {
                         if if_not_exists {
@@ -452,26 +452,31 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }
 
-    /// Parse Dask-SQL CREATE TABLE ... WITH statement
-    fn parse_create_table(
-        &mut self,
-        if_not_exists: bool,
-        or_replace: bool,
-    ) -> Result<DaskStatement, ParserError> {
-        // Parser's current position is at `table_name`, peek if rest of statement contains an `AS`
-        let _table_name = self.parser.parse_identifier(); // `table_name`
-        let after_name_token = self.parser.peek_token(); // Token following `table_name`
+    /// Parse Dask-SQL CREATE [OR REPLACE] TABLE ... statement
+    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+        // parse [IF NOT EXISTS] `table_name` AS|WITH
+        let if_not_exists =
+            self.parser
+                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
+        let _table_name = self.parser.parse_identifier();
+        let after_name_token = self.parser.peek_token();
 
         match after_name_token {
             Token::Word(w) => {
                 match w.value.to_lowercase().as_str() {
                     "as" => {
                         self.parser.prev_token();
+                        if if_not_exists {
+                            // Go back three tokens if IF NOT EXISTS was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_create_table(or_replace, false, None)?,
                         )))
                     }
-                    _ => {
+                    "with" => {
                         // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
                         self.parser.prev_token();
 
@@ -489,10 +494,17 @@ impl<'a> DaskParser<'a> {
                         };
                         Ok(DaskStatement::CreateTable(Box::new(create)))
                     }
+                    _ => self.expected("'as' or 'with'", self.parser.peek_token()),
                 }
             }
             _ => {
                 self.parser.prev_token();
+                if if_not_exists {
+                    // Go back three tokens if IF NOT EXISTS was consumed
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                    self.parser.prev_token();
+                }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_create_table(or_replace, false, None)?,
