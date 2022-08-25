@@ -463,10 +463,12 @@ impl<'a> DaskParser<'a> {
         })))
     }
 
-    /// Parse Dask-SQL SHOW TABLES FROM statement
+    /// Parse Dask-SQL SHOW TABLES [FROM] statement
     fn parse_show_tables(&mut self) -> Result<DaskStatement, ParserError> {
-        let schema_name = Some(self.parser.parse_identifier()?.value);
-
+        let mut schema_name = None;
+        if !self.parser.consume_token(&Token::EOF) {
+            schema_name = Some(self.parser.parse_identifier()?.value);
+        }
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
             schema_name,
         })))

@@ -67,6 +67,6 @@ def test_show_tables_no_schema(c):
     df = pd.DataFrame({"id": [0, 1]})
     c.create_table("test", df)
 
-    actual_df = c.sql("show tables from root").compute()
+    actual_df = c.sql("show tables").compute()
     expected_df = pd.DataFrame({"Table": ["test"]})
     assert_eq(actual_df, expected_df)
