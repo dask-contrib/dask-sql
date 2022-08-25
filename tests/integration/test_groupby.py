@@ -36,6 +36,40 @@ def test_group_by(c):
     assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_group_by_multi(c, gpu):
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [1, 1, 2]})
+    c.create_table("df", df, gpu=gpu)
+
+    result_df = c.sql(
+        """
+        SELECT
+            SUM(a) AS s,
+            AVG(a) AS av,
+            COUNT(a) AS c
+        FROM
+            df
+        GROUP BY
+            b
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "s": df.groupby("b").sum()["a"],
+            "av": df.groupby("b").mean()["a"],
+            "c": df.groupby("b").count()["a"],
+        }
+    ).reset_index(drop=True)
+
+    result_df["c"] = result_df["c"].astype("int32")
+    expected_df["c"] = expected_df["c"].astype("int32")
+
+    assert_eq(result_df, expected_df)
+
+    c.drop_table("df")
+
+
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_all(c, df):
     result_df = c.sql(
