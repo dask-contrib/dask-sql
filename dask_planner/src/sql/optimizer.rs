@@ -1,3 +1,4 @@
+use crate::sql::rules::type_coercion::TypeCoercion;
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::decorrelate_scalar_subquery::DecorrelateScalarSubquery;
@@ -29,6 +30,7 @@ impl DaskSqlOptimizer {
             Box::new(EliminateLimit::new()),
             Box::new(FilterNullJoinKeys::default()),
             Box::new(FilterPushDown::new()),
+            Box::new(TypeCoercion::new()),
             Box::new(LimitPushDown::new()),
             Box::new(ProjectionPushDown::new()),
             Box::new(SingleDistinctToGroupBy::new()),
