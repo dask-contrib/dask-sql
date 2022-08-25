@@ -297,6 +297,7 @@ impl<'a> DaskParser<'a> {
                                         self.parse_show_tables()
                                     }
                                     _ => {
+                                        self.parser.prev_token();
                                         // use the native parser
                                         Ok(DaskStatement::Statement(Box::from(
                                             self.parser.parse_show()?,
@@ -306,9 +307,7 @@ impl<'a> DaskParser<'a> {
                             }
                             _ => {
                                 // use the native parser
-                                Ok(DaskStatement::Statement(Box::from(
-                                    self.parser.parse_show()?,
-                                )))
+                                self.parse_show_tables()
                             }
                         }
                     }
@@ -403,7 +402,7 @@ impl<'a> DaskParser<'a> {
 
                         let table_factor = self.parser.parse_table_factor()?;
                         let (tbl_schema, tbl_name) =
-                            DaskParserUtils::elements_from_tablefactor(&table_factor);
+                            DaskParserUtils::elements_from_tablefactor(&table_factor)?;
                         let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
                         let create = CreateTable {
@@ -480,7 +479,7 @@ impl<'a> DaskParser<'a> {
     fn parse_show_columns(&mut self) -> Result<DaskStatement, ParserError> {
         self.parser.expect_keyword(Keyword::FROM)?;
         let table_factor = self.parser.parse_table_factor()?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor);
+        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
         Ok(DaskStatement::ShowColumns(Box::new(ShowColumns {
             table_name: tbl_name,
             schema_name: match tbl_schema.as_str() {
