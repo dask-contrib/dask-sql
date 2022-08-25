@@ -215,8 +215,12 @@ class Context:
             gpu=gpu,
             **kwargs,
         )
+        # Register table names with the original case in addition to lower case name.
+        # see: https://github.com/dask-contrib/dask-sql/issues/481
+        self.schema[schema_name].tables[table_name] = dc
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
+            self.schema[schema_name].statistics[table_name] = statistics
             self.schema[schema_name].statistics[table_name.lower()] = statistics
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
