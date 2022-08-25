@@ -41,7 +41,7 @@ impl UserDefinedLogicalNode for PredictModelPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // CREATE TABLE
+        // PREDICT TABLE
         vec![]
     }
 

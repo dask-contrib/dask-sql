@@ -392,20 +392,14 @@ impl<'a> DaskParser<'a> {
         // )
         self.parser.expect_token(&Token::LParen)?;
 
-        // Expect `MODEL`
-        // This doesn't work? Somethign about Keyword in the equality comparison, therefore always fails.
-        // self.parser.expect_token(&Token::Word(Word {
-        //     value: "MODEL".to_string(),
-        //     quote_style: None,
-        //     keyword: Keyword::NONE,
-        // }))?;
-
         let is_model = match self.parser.next_token() {
             Token::Word(w) => matches!(w.value.to_lowercase().as_str(), "model"),
             _ => false,
         };
         if !is_model {
-            panic!("Failed to parse expected model but not found!")
+            return Err(ParserError::ParserError(
+                "parse_predict_model: Expected `MODEL`".to_string(),
+            ));
         }
 
         let (mdl_schema, mdl_name) =
