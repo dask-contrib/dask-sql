@@ -9,7 +9,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner import LogicalPlan
 
 
 class ShowColumnsPlugin(BaseRelPlugin):
@@ -22,16 +22,25 @@ class ShowColumnsPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = "com.dask.sql.parser.SqlShowColumns"
+    class_name = "ShowColumns"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, name = context.fqn(sql.getTable())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        schema_name = rel.show_columns().getSchemaName()
+        name = rel.show_columns().getTableName()
+        if not schema_name:
+            schema_name = context.DEFAULT_SCHEMA_NAME
+
         dc = context.schema[schema_name].tables[name]
 
         cols = dc.column_container.columns
-        dtypes = list(map(lambda x: str(python_to_sql_type(x)).lower(), dc.df.dtypes))
+        dtypes = list(
+            map(
+                lambda x: str(python_to_sql_type(x).getSqlType())
+                .rpartition(".")[2]
+                .lower(),
+                dc.df.dtypes,
+            )
+        )
         df = pd.DataFrame(
             {
                 "Column": cols,

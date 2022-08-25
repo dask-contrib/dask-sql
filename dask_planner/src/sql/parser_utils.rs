@@ -1,10 +1,13 @@
 use datafusion_sql::sqlparser::ast::{Expr, TableFactor};
+use datafusion_sql::sqlparser::parser::ParserError;
 
 pub struct DaskParserUtils;
 
 impl DaskParserUtils {
     /// Retrieves the table_schema and table_name from a `TableFactor` instance
-    pub fn elements_from_tablefactor(tbl_factor: &TableFactor) -> (String, String) {
+    pub fn elements_from_tablefactor(
+        tbl_factor: &TableFactor,
+    ) -> Result<(String, String), ParserError> {
         match tbl_factor {
             TableFactor::Table {
                 name,
@@ -14,20 +17,20 @@ impl DaskParserUtils {
             } => {
                 let identities: Vec<String> = name.0.iter().map(|f| f.value.clone()).collect();
 
-                assert!(identities.len() <= 2 && !identities.is_empty());
-
                 match identities.len() {
-                    1 => ("".to_string(), identities[0].clone()),
-                    2 => (identities[0].clone(), identities[1].clone()),
-                    _ => panic!("TableFactor name only supports 1 or 2 elements"),
+                    1 => Ok(("".to_string(), identities[0].clone())),
+                    2 => Ok((identities[0].clone(), identities[1].clone())),
+                    _ => Err(ParserError::ParserError(
+                        "TableFactor name only supports 1 or 2 elements".to_string(),
+                    )),
                 }
             }
             TableFactor::Derived { alias, .. }
             | TableFactor::NestedJoin { alias, .. }
             | TableFactor::TableFunction { alias, .. }
             | TableFactor::UNNEST { alias, .. } => match alias {
-                Some(e) => ("".to_string(), e.name.value.clone()),
-                None => ("".to_string(), "".to_string()),
+                Some(e) => Ok(("".to_string(), e.name.value.clone())),
+                None => Ok(("".to_string(), "".to_string())),
             },
         }
     }
