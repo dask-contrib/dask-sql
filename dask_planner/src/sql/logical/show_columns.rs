@@ -73,7 +73,7 @@ impl PyShowColumns {
     }
 
     #[pyo3(name = "getSchemaName")]
-    fn get_like(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<String> {
         Ok(self
             .show_columns
             .schema_name
