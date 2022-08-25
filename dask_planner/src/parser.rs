@@ -25,6 +25,8 @@ pub struct CreateModel {
     pub name: String,
     /// input Query
     pub select: SQLStatement,
+    /// if not exists
+    pub if_not_exists: bool,
     /// To replace the model or not
     pub or_replace: bool,
     /// with options
@@ -324,6 +326,10 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL CREATE MODEL statement
     fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+        // parse [IF NOT EXISTS] `model_name` WITH
+        let if_not_exists =
+            self.parser
+                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
 
@@ -340,6 +346,7 @@ impl<'a> DaskParser<'a> {
         let create = CreateModel {
             name: model_name.to_string(),
             select: self.parser.parse_statement()?,
+            if_not_exists,
             or_replace,
             with_options,
         };
