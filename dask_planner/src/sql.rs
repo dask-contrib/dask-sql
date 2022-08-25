@@ -121,6 +121,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampadd" => {
+                println!("!!!!!!Rust TIMESTAMPADD being called!!!!");
                 let sig = Signature::variadic(
                     vec![DataType::Int64, DataType::Int64, DataType::Int64],
                     Volatility::Immutable,
@@ -315,6 +316,7 @@ impl DaskSQLContext {
     ) -> Result<LogicalPlan, DataFusionError> {
         match dask_statement {
             DaskStatement::Statement(statement) => {
+                println!("Using Native parser");
                 let planner = SqlToRel::new(self);
                 planner.statement_to_plan(DFStatement::Statement(statement))
             }
