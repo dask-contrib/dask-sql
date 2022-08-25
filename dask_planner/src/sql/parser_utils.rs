@@ -14,7 +14,7 @@ impl DaskParserUtils {
             } => {
                 let identities: Vec<String> = name.0.iter().map(|f| f.value.clone()).collect();
 
-                assert!(identities.len() <= 2 && !identities.is_empty());
+                assert!(!identities.is_empty());
 
                 match identities.len() {
                     1 => ("".to_string(), identities[0].clone()),
