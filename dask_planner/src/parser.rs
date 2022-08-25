@@ -305,10 +305,7 @@ impl<'a> DaskParser<'a> {
                                     }
                                 }
                             }
-                            _ => {
-                                // use the native parser
-                                self.parse_show_tables()
-                            }
+                            _ => self.parse_show_tables(),
                         }
                     }
                     "columns" => {

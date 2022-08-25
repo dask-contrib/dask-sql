@@ -39,7 +39,7 @@ impl UserDefinedLogicalNode for ShowColumnsPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // SHOW TABLES FROM {schema_name}
+        // SHOW COLUMNS FROM {table_name}
         vec![]
     }
 
