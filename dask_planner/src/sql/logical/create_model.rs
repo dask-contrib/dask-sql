@@ -101,40 +101,44 @@ impl PyCreateModel {
     fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
         let mut options: HashMap<String, String> = HashMap::new();
         for elem in &self.create_model.with_options {
-            if let SqlParserExpr::BinaryOp { left, op: _, right } = elem {
-                let key: Result<String, PyErr> = match *left.clone() {
-                    SqlParserExpr::Identifier(ident) => Ok(ident.value),
-                    _ => Err(py_type_err(format!(
-                        "unexpected `left` Value type encountered: {:?}",
-                        left
-                    ))),
-                };
-                let val: Result<String, PyErr> = match *right.clone() {
-                    SqlParserExpr::Value(value) => match value {
-                        Value::SingleQuotedString(e) => Ok(e.replace('\'', "")),
-                        Value::DoubleQuotedString(e) => Ok(e.replace('\"', "")),
-                        Value::Boolean(e) => {
-                            if e {
-                                Ok("True".to_string())
-                            } else {
-                                Ok("False".to_string())
-                            }
-                        }
-                        Value::Number(e, ..) => Ok(e),
-                        _ => Err(py_type_err(format!(
-                            "unexpected Value type encountered: {:?}",
-                            value
-                        ))),
-                    },
-                    _ => Err(py_type_err(format!(
-                        "encountered unexpected Expr type: {:?}",
-                        right
-                    ))),
-                };
-                options.insert(key?, val?);
+            match elem {
+                SqlParserExpr::BinaryOp { left, op: _, right } => {
+                    options.insert(
+                        Self::_str_from_expr(*left.clone()),
+                        Self::_str_from_expr(*right.clone()),
+                    );
+                }
+                _ => {
+                    return Err(py_type_err(
+                        "Encountered non SqlParserExpr::BinaryOp expression, with arguments can only be of Key/Value pair types"));
+                }
             }
         }
         Ok(options)
+    }
+}
+
+impl PyCreateModel {
+    /// Given a SqlParserExpr instance retrieve the String value from it
+    fn _str_from_expr(expression: SqlParserExpr) -> String {
+        match expression {
+            SqlParserExpr::Identifier(ident) => ident.value,
+            SqlParserExpr::Value(value) => match value {
+                Value::SingleQuotedString(e) => e.replace('\'', ""),
+                Value::DoubleQuotedString(e) => e.replace('\"', ""),
+                Value::Boolean(e) => {
+                    if e {
+                        "True".to_string()
+                    } else {
+                        "False".to_string()
+                    }
+                }
+                Value::Number(e, ..) => e,
+                _ => unimplemented!("Unimplmented Value type: {:?}", value),
+            },
+            SqlParserExpr::Nested(nested_expr) => Self::_str_from_expr(*nested_expr),
+            _ => unimplemented!("Unimplmented SqlParserExpr type: {:?}", expression),
+        }
     }
 }
 

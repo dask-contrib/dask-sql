@@ -305,20 +305,17 @@ impl DaskSQLContext {
                 let planner = SqlToRel::new(self);
                 planner.statement_to_plan(DFStatement::Statement(statement))
             }
-            DaskStatement::CreateModel(create_model) => {
-                println!("Entering Create Model Parser");
-                Ok(LogicalPlan::Extension(Extension {
-                    node: Arc::new(CreateModelPlanNode {
-                        model_name: create_model.name,
-                        input: self._logical_relational_algebra(DaskStatement::Statement(
-                            Box::new(create_model.select),
-                        ))?,
-                        if_not_exists: create_model.if_not_exists,
-                        or_replace: create_model.or_replace,
-                        with_options: create_model.with_options,
-                    }),
-                }))
-            }
+            DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateModelPlanNode {
+                    model_name: create_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        create_model.select,
+                    )))?,
+                    if_not_exists: create_model.if_not_exists,
+                    or_replace: create_model.or_replace,
+                    with_options: create_model.with_options,
+                }),
+            })),
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(PredictModelPlanNode {
                     model_schema: predict_model.schema_name,
