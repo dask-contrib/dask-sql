@@ -120,15 +120,6 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
-            "timestampadd" => {
-                println!("!!!!!!Rust TIMESTAMPADD being called!!!!");
-                let sig = Signature::variadic(
-                    vec![DataType::Int64, DataType::Int64, DataType::Int64],
-                    Volatility::Immutable,
-                );
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
-            }
             "atan2" | "mod" => {
                 let sig = Signature::variadic(
                     vec![DataType::Float64, DataType::Float64],
@@ -153,11 +144,6 @@ impl ContextProvider for DaskSQLContext {
                     Volatility::Volatile,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
-                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
-            }
-            "current_timestamp" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             _ => (),
@@ -316,7 +302,6 @@ impl DaskSQLContext {
     ) -> Result<LogicalPlan, DataFusionError> {
         match dask_statement {
             DaskStatement::Statement(statement) => {
-                println!("Using Native parser");
                 let planner = SqlToRel::new(self);
                 planner.statement_to_plan(DFStatement::Statement(statement))
             }
