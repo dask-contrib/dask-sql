@@ -414,7 +414,7 @@ impl<'a> DaskParser<'a> {
         }
 
         let (mdl_schema, mdl_name) =
-            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?);
+            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
         let sql_statement = self.parser.parse_statement()?;
