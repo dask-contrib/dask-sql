@@ -158,34 +158,23 @@ impl PyExpr {
                     let name: Result<String> = self.expr.name(input_plans[0].schema());
                     match name {
                         Ok(fq_name) => {
-                            let mut idx: usize = 0;
-                            for schema in input_plans[0].all_schemas() {
-                                let (schema_name_opt, column_name) =
-                                    self._schema_column_from_fqn(&fq_name);
-                                match schema_name_opt {
-                                    Some(e) => {
-                                        match schema
-                                            .index_of_column_by_name(Some(e.as_str()), column_name)
-                                        {
-                                            Ok(e) => {
-                                                idx = e;
-                                                break;
-                                            }
-                                            Err(e) => py_runtime_err(e),
-                                        }
+                            let schema = input_plans[0].schema();
+                            let (schema_name_opt, column_name) =
+                                self._schema_column_from_fqn(&fq_name);
+                            match schema_name_opt {
+                                Some(e) => {
+                                    match schema
+                                        .index_of_column_by_name(Some(e.as_str()), column_name)
+                                    {
+                                        Ok(e) => Ok(e),
+                                        Err(e) => Err(py_runtime_err(e)),
                                     }
-                                    None => {
-                                        match schema.index_of_column_by_name(None, column_name) {
-                                            Ok(e) => {
-                                                idx = e;
-                                                break;
-                                            }
-                                            Err(e) => py_runtime_err(e),
-                                        }
-                                    }
-                                };
+                                }
+                                None => match schema.index_of_column_by_name(None, column_name) {
+                                    Ok(e) => Ok(e),
+                                    Err(e) => Err(py_runtime_err(e)),
+                                },
                             }
-                            Ok(idx)
                         }
                         Err(e) => Err(py_runtime_err(e)),
                     }
