@@ -3,10 +3,12 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 pub mod aggregate;
+pub mod create_catalog_schema;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
 pub mod drop_model;
+pub mod drop_schema;
 pub mod drop_table;
 pub mod empty_relation;
 pub mod explain;
@@ -21,6 +23,7 @@ pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
 pub mod table_scan;
+pub mod use_schema;
 pub mod window;
 
 use datafusion_common::{DFSchemaRef, DataFusionError, Result};
@@ -32,10 +35,12 @@ use pyo3::prelude::*;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::drop_model::DropModelPlanNode;
+use self::drop_schema::DropSchemaPlanNode;
 use self::predict_model::PredictModelPlanNode;
 use self::show_columns::ShowColumnsPlanNode;
 use self::show_schema::ShowSchemasPlanNode;
 use self::show_tables::ShowTablesPlanNode;
+use self::use_schema::UseSchemaPlanNode;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
@@ -167,8 +172,24 @@ impl PyLogicalPlan {
     pub fn predict_model(&self) -> PyResult<predict_model::PyPredictModel> {
         to_py_plan(self.current_node.as_ref())
     }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::CreateCatalogSchema as PyCreateCatalogSchema
+    pub fn create_catalog_schema(&self) -> PyResult<create_catalog_schema::PyCreateCatalogSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::DropSchema as PyDropSchema
+    pub fn drop_schema(&self) -> PyResult<drop_schema::PyDropSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::UseSchema as PyUseSchema
+    pub fn use_schema(&self) -> PyResult<use_schema::PyUseSchema> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -260,6 +281,10 @@ impl PyLogicalPlan {
                     "ShowTables"
                 } else if node.downcast_ref::<ShowColumnsPlanNode>().is_some() {
                     "ShowColumns"
+                } else if node.downcast_ref::<DropSchemaPlanNode>().is_some() {
+                    "DropSchema"
+                } else if node.downcast_ref::<UseSchemaPlanNode>().is_some() {
+                    "UseSchema"
                 } else {
                     // Default to generic `Extension`
                     "Extension"

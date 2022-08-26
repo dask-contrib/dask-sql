@@ -41,6 +41,9 @@ use crate::sql::logical::show_tables::ShowTablesPlanNode;
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
 
+use self::logical::drop_schema::DropSchemaPlanNode;
+use self::logical::use_schema::UseSchemaPlanNode;
+
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
 ///
@@ -361,6 +364,19 @@ impl DaskSQLContext {
                     schema: Arc::new(DFSchema::empty()),
                     table_name: show_columns.table_name,
                     schema_name: show_columns.schema_name,
+                }),
+            })),
+            DaskStatement::DropSchema(drop_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: drop_schema.schema_name,
+                    if_exists: drop_schema.if_exists,
+                }),
+            })),
+            DaskStatement::UseSchema(use_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(UseSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: use_schema.schema_name,
                 }),
             })),
         }

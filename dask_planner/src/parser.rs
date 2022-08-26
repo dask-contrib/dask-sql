@@ -89,6 +89,22 @@ pub struct ShowColumns {
     pub schema_name: Option<String>,
 }
 
+/// Dask-SQL extension DDL for `USE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropSchema {
+    /// schema name
+    pub schema_name: String,
+    /// if exists
+    pub if_exists: bool,
+}
+
+/// Dask-SQL extension DDL for `USE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UseSchema {
+    /// schema name
+    pub schema_name: String,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -110,6 +126,10 @@ pub enum DaskStatement {
     ShowTables(Box<ShowTables>),
     // Extension: `SHOW COLUMNS FROM`
     ShowColumns(Box<ShowColumns>),
+    // Exntension: `DROP SCHEMA`
+    DropSchema(Box<DropSchema>),
+    // Extension: `USE SCHEMA`
+    UseSchema(Box<UseSchema>),
 }
 
 /// SQL Parser
@@ -236,6 +256,12 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_show()
                     }
+                    Keyword::USE => {
+                        // move one token forwrd
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_use()
+                    }
                     _ => {
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
@@ -318,6 +344,21 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_drop_model()
                     }
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+
+                        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+
+                        let schema_name = self.parser.parse_identifier();
+
+                        let drop_schema = DropSchema {
+                            schema_name: schema_name?.value,
+                            if_exists,
+                        };
+                        Ok(DaskStatement::DropSchema(Box::new(drop_schema)))
+                    }
                     _ => {
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
@@ -377,6 +418,39 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show_columns()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_show()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_show()?,
+                )))
+            }
+        }
+    }
+
+    /// Parse a SQL USE SCHEMA statement
+    pub fn parse_use(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        let schema_name = self.parser.parse_identifier();
+
+                        let use_schema = UseSchema {
+                            schema_name: schema_name?.value,
+                        };
+                        Ok(DaskStatement::UseSchema(Box::new(use_schema)))
                     }
                     _ => {
                         // use the native parser
