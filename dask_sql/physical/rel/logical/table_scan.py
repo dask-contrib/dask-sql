@@ -44,7 +44,6 @@ class DaskTableScanPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
 
-        breakpoint()
         # If the 'TableScan' instance contains projected columns only retrieve those columns
         # otherwise get all projected columns from the 'Projection' instance, which is contained
         # in the 'RelDataType' instance, aka 'row_type'

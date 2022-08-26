@@ -101,6 +101,20 @@ impl PyExpr {
     }
 }
 
+impl PyExpr {
+    /// Split a fqn name into a tuple of (schema, column_name). It is valid that the
+    /// `schema` could be a compound identifier like `root.df` instead of just something
+    /// like `df`
+    fn _schema_column_from_fqn<'a>(&'a self, fqn: &'a str) -> (Option<String>, &str) {
+        let parts: Vec<&str> = fqn.split('.').collect();
+        match parts.len() {
+            3 => (Some(format!("{}.{}", parts[0], parts[1])), parts[2]),
+            2 => (Some(parts[0].to_string()), parts[1]),
+            _ => (None, fqn),
+        }
+    }
+}
+
 #[pymethods]
 impl PyExpr {
     #[staticmethod]
@@ -146,14 +160,30 @@ impl PyExpr {
                         Ok(fq_name) => {
                             let mut idx: usize = 0;
                             for schema in input_plans[0].all_schemas() {
-                                match schema.index_of_column(&Column::from_qualified_name(&fq_name))
-                                {
-                                    Ok(e) => {
-                                        idx = e;
-                                        break;
+                                let (schema_name_opt, column_name) =
+                                    self._schema_column_from_fqn(&fq_name);
+                                match schema_name_opt {
+                                    Some(e) => {
+                                        match schema
+                                            .index_of_column_by_name(Some(e.as_str()), column_name)
+                                        {
+                                            Ok(e) => {
+                                                idx = e;
+                                                break;
+                                            }
+                                            Err(_e) => panic!("Didn't find in index ..."),
+                                        }
                                     }
-                                    Err(_e) => (),
-                                }
+                                    None => {
+                                        match schema.index_of_column_by_name(None, column_name) {
+                                            Ok(e) => {
+                                                idx = e;
+                                                break;
+                                            }
+                                            Err(_e) => panic!("Didn't find in index ..."),
+                                        }
+                                    }
+                                };
                             }
                             Ok(idx)
                         }
