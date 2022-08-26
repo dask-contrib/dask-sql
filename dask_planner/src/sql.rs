@@ -4,6 +4,7 @@ pub mod function;
 pub mod logical;
 pub mod optimizer;
 pub mod parser_utils;
+pub mod rules;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -33,12 +34,12 @@ use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::predict_model::PredictModelPlanNode;
+use crate::sql::logical::show_columns::ShowColumnsPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
+use crate::sql::logical::show_tables::ShowTablesPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
-
-use self::logical::show_tables::ShowTablesPlanNode;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -352,6 +353,13 @@ impl DaskSQLContext {
                 node: Arc::new(ShowTablesPlanNode {
                     schema: Arc::new(DFSchema::empty()),
                     schema_name: show_tables.schema_name,
+                }),
+            })),
+            DaskStatement::ShowColumns(show_columns) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowColumnsPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_name: show_columns.table_name,
+                    schema_name: show_columns.schema_name,
                 }),
             })),
         }
