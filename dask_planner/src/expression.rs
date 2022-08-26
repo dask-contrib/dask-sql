@@ -180,7 +180,7 @@ impl PyExpr {
                                                 idx = e;
                                                 break;
                                             }
-                                            Err(_e) => panic!("Didn't find in index ..."),
+                                            Err(e) => py_runtime_err(e),
                                         }
                                     }
                                 };
