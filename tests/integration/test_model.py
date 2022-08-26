@@ -320,7 +320,6 @@ def test_correct_argument_passing(c, training_df):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_replace_and_error(c, training_df):
     c.sql(
         """
@@ -400,7 +399,6 @@ def test_replace_and_error(c, training_df):
     assert c.schema[c.schema_name].models["my_model"][0] != second_mock
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop_model(c, training_df):
     with pytest.raises(RuntimeError):
         c.sql("DROP MODEL my_model")

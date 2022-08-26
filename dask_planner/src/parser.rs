@@ -255,9 +255,6 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
-        let if_not_exists =
-            self.parser
-                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -266,7 +263,7 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_model(if_not_exists, or_replace)
+                        self.parse_create_model(or_replace)
                     }
                     "table" => {
                         // move one token forward
@@ -275,12 +272,6 @@ impl<'a> DaskParser<'a> {
                         self.parse_create_table(or_replace)
                     }
                     _ => {
-                        if if_not_exists {
-                            // Go back three tokens if IF NOT EXISTS was consumed
-                            self.parser.prev_token();
-                            self.parser.prev_token();
-                            self.parser.prev_token();
-                        }
                         if or_replace {
                             // Go back two tokens if OR REPLACE was consumed
                             self.parser.prev_token();
@@ -429,11 +420,11 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE MODEL statement
-    fn parse_create_model(
-        &mut self,
-        if_not_exists: bool,
-        or_replace: bool,
-    ) -> Result<DaskStatement, ParserError> {
+    fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+        // parse [IF NOT EXISTS] `model_name` WITH
+        let if_not_exists =
+            self.parser
+                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
 
@@ -520,8 +511,8 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL DROP MODEL statement
     fn parse_drop_model(&mut self) -> Result<DaskStatement, ParserError> {
-        let model_name = self.parser.parse_object_name()?;
         let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let model_name = self.parser.parse_object_name()?;
 
         let drop = DropModel {
             name: model_name.to_string(),
