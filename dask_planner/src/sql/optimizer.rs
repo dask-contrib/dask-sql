@@ -8,8 +8,8 @@ use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
     limit_push_down::LimitPushDown, optimizer::OptimizerRule,
-    projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
-    subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
+    projection_push_down::ProjectionPushDown, subquery_filter_to_join::SubqueryFilterToJoin,
+    OptimizerConfig,
 };
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
@@ -33,7 +33,7 @@ impl DaskSqlOptimizer {
             Box::new(TypeCoercion::new()),
             Box::new(LimitPushDown::new()),
             Box::new(ProjectionPushDown::new()),
-            Box::new(SingleDistinctToGroupBy::new()),
+            // Box::new(SingleDistinctToGroupBy::new()),
             Box::new(SubqueryFilterToJoin::new()),
         ];
         Self {

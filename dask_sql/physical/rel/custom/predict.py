@@ -48,30 +48,17 @@ class PredictModelPlugin(BaseRelPlugin):
 
     class_name = "PredictModel"
 
-    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        sql_select = sql.getSelect()
-        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
-        model_type = sql.getModelName().getIdentifierType()
-        select_list = sql.getSelectList()
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        predict_model = rel.predict_model()
 
-        logger.debug(
-            f"Predicting from {model_name} and query {sql_select} to {list(select_list)}"
-        )
+        sql_select = predict_model.getSelect()
 
-        # IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
-        IdentifierType = None
+        # The table(s) we need to return
+        dask_table = rel.getTable()
+        schema_name, model_name = [n.lower() for n in context.fqn(dask_table)]
 
-        if model_type == IdentifierType.REFERENCE:
-            try:
-                model, training_columns = context.schema[schema_name].models[model_name]
-            except KeyError:
-                raise KeyError(f"No model registered with name {model_name}")
-        else:
-            raise NotImplementedError(f"Do not understand model type {model_type}")
-
-        sql_select_query = context._to_sql_string(sql_select)
-        df = context.sql(sql_select_query)
-
+        model, training_columns = context.schema[schema_name].models[model_name]
+        df = context.sql(sql_select)
         prediction = model.predict(df[training_columns])
         predicted_df = df.assign(target=prediction)
 
@@ -88,32 +75,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
         context.create_table(temporary_table, predicted_df)
 
-        sql_ns = []
-        pos = sql.getParserPosition()
-        from_column_list = []
-        from_column_list.add(temporary_table)
-        from_clause = sql_ns.SqlIdentifier(from_column_list, pos)  # TODO: correct pos
-
-        outer_select = sql_ns.SqlSelect(
-            sql.getParserPosition(),
-            None,  # keywordList,
-            select_list,  # selectList,
-            from_clause,  # from,
-            None,  # where,
-            None,  # groupBy,
-            None,  # having,
-            None,  # windowDecls,
-            None,  # orderBy,
-            None,  # offset,
-            None,  # fetch,
-            None,  # hints
-        )
-
-        sql_outer_query = context._to_sql_string(outer_select)
-        df = context.sql(sql_outer_query)
-        context.drop_table(temporary_table)
-
-        cc = ColumnContainer(df.columns)
-        dc = DataContainer(df, cc)
+        cc = ColumnContainer(predicted_df.columns)
+        dc = DataContainer(predicted_df, cc)
 
         return dc

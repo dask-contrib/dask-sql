@@ -5,12 +5,12 @@
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement, Value},
+    ast::{Expr, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 macro_rules! parser_err {
     ($MSG:expr) => {
@@ -25,8 +25,23 @@ pub struct CreateModel {
     pub name: String,
     /// input Query
     pub select: SQLStatement,
+    /// IF NOT EXISTS
+    pub if_not_exists: bool,
     /// To replace the model or not
     pub or_replace: bool,
+    /// with options
+    pub with_options: Vec<Expr>,
+}
+
+/// Dask-SQL extension DDL for `PREDICT`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredictModel {
+    /// model schema
+    pub schema_name: String,
+    /// model name
+    pub name: String,
+    /// input Query
+    pub select: SQLStatement,
 }
 
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
@@ -49,6 +64,7 @@ pub struct CreateTable {
 pub struct DropModel {
     /// model name
     pub name: String,
+    pub if_exists: bool,
 }
 
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
@@ -86,6 +102,8 @@ pub enum DaskStatement {
     CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
+    /// Extension: `PREDICT`
+    PredictModel(Box<PredictModel>),
     // Extension: `SHOW SCHEMAS`
     ShowSchemas(Box<ShowSchemas>),
     // Extension: `SHOW TABLES FROM`
@@ -174,6 +192,44 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_drop()
                     }
+                    Keyword::SELECT => {
+                        // Check for PREDICT token in statement
+                        let mut cnt = 1;
+                        loop {
+                            match self.parser.next_token() {
+                                Token::Word(w) => {
+                                    match w.value.to_lowercase().as_str() {
+                                        "predict" => {
+                                            return self.parse_predict_model();
+                                        }
+                                        _ => {
+                                            // Keep looking for PREDICT
+                                            cnt += 1;
+                                            continue;
+                                        }
+                                    }
+                                }
+                                Token::EOF => {
+                                    break;
+                                }
+                                _ => {
+                                    // Keep looking for PREDICT
+                                    cnt += 1;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // Reset the parser back to where we started
+                        for _ in 0..cnt {
+                            self.parser.prev_token();
+                        }
+
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_statement()?,
+                        )))
+                    }
                     Keyword::SHOW => {
                         // move one token forwrd
                         self.parser.next_token();
@@ -199,6 +255,9 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
+        let if_not_exists =
+            self.parser
+                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -207,7 +266,7 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_model(or_replace)
+                        self.parse_create_model(if_not_exists, or_replace)
                     }
                     "table" => {
                         // move one token forward
@@ -216,6 +275,12 @@ impl<'a> DaskParser<'a> {
                         self.parse_create_table(or_replace)
                     }
                     _ => {
+                        if if_not_exists {
+                            // Go back three tokens if IF NOT EXISTS was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         if or_replace {
                             // Go back two tokens if OR REPLACE was consumed
                             self.parser.prev_token();
@@ -330,33 +395,54 @@ impl<'a> DaskParser<'a> {
         }
     }
 
-    /// Parse Dask-SQL CREATE MODEL statement
-    fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
-        let model_name = self.parser.parse_object_name()?;
-        self.parser.expect_keyword(Keyword::WITH)?;
+    /// Parse a SQL PREDICT statement
+    pub fn parse_predict_model(&mut self) -> Result<DaskStatement, ParserError> {
+        // PREDICT(
+        //     MODEL model_name,
+        //     SQLStatement
+        // )
         self.parser.expect_token(&Token::LParen)?;
 
-        // Parse all KV pairs into a Vec<BinaryExpr> instances
-        let kv_binexprs = self.parser.parse_comma_separated(Parser::parse_expr)?;
+        let is_model = match self.parser.next_token() {
+            Token::Word(w) => matches!(w.value.to_lowercase().as_str(), "model"),
+            _ => false,
+        };
+        if !is_model {
+            return Err(ParserError::ParserError(
+                "parse_predict_model: Expected `MODEL`".to_string(),
+            ));
+        }
 
-        let _kv_pairs: Vec<(String, &Box<Expr>)> = kv_binexprs
-            .iter()
-            .map(|f| match f {
-                Expr::BinaryOp { left, op: _, right } => match *left.clone() {
-                    Expr::Value(value) => match value {
-                        Value::EscapedStringLiteral(key_val)
-                        | Value::SingleQuotedString(key_val)
-                        | Value::DoubleQuotedString(key_val) => Ok((key_val, right)),
-                        _ => Ok(("".to_string(), right)),
-                    },
-                    _ => Ok(("".to_string(), right)),
-                },
-                _ => parser_err!(format!("Expected BinaryOp, Key/Value pairs, found: {}", f)),
-            })
-            .collect::<Result<Vec<_>, ParserError>>()?;
-        let _kv_pairs: HashMap<String, &Box<Expr>> = _kv_pairs.into_iter().collect();
+        let (mdl_schema, mdl_name) =
+            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?);
+        self.parser.expect_token(&Token::Comma)?;
 
+        let sql_statement = self.parser.parse_statement()?;
         self.parser.expect_token(&Token::RParen)?;
+
+        let predict = PredictModel {
+            schema_name: mdl_schema,
+            name: mdl_name,
+            select: sql_statement,
+        };
+        Ok(DaskStatement::PredictModel(Box::new(predict)))
+    }
+
+    /// Parse Dask-SQL CREATE MODEL statement
+    fn parse_create_model(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let model_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
+
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
         // Parse the "AS" before the SQLStatement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -364,7 +450,9 @@ impl<'a> DaskParser<'a> {
         let create = CreateModel {
             name: model_name.to_string(),
             select: self.parser.parse_statement()?,
+            if_not_exists,
             or_replace,
+            with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }
@@ -433,9 +521,11 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL DROP MODEL statement
     fn parse_drop_model(&mut self) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
+        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
 
         let drop = DropModel {
             name: model_name.to_string(),
+            if_exists,
         };
         Ok(DaskStatement::DropModel(Box::new(drop)))
     }
