@@ -22,12 +22,12 @@ build:
 
 requirements:
   build:
-    - rust>=1.62.1
-    - setuptools-rust>=1.4.1
+    - {{ compiler('rust') }}
+    - setuptools-rust >=1.4.1
   host:
     - pip
     - python >=3.8
-    - setuptools-rust>=1.4.1
+    - setuptools-rust >=1.4.1
   run:
     - python
     - dask >=2022.3.0

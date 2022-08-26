@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
@@ -28,7 +29,6 @@ def test_tables(gpu):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_columns(c):
     result_df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
     expected_df = pd.DataFrame(
@@ -50,11 +50,10 @@ def test_columns(c):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_input(c):
     with pytest.raises(KeyError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"')
-    with pytest.raises(AttributeError):
+    with pytest.raises(ParsingException):
         c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
     with pytest.raises(KeyError):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
@@ -62,7 +61,6 @@ def test_wrong_input(c):
         c.sql('SHOW TABLES FROM "wrong"')
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_show_tables_no_schema(c):
     c = Context()
 

@@ -202,9 +202,17 @@ class DaskAggregatePlugin(BaseRelPlugin):
         if len(output_column_order) == 1 and output_column_order[0] == "UInt8(1)":
             backend_output_column_order = [df_agg.columns[0]]
         else:
+
+            def try_get_backend_by_frontend_name(oc):
+                try:
+                    return cc.get_backend_by_frontend_name(oc)
+                except KeyError:
+                    return oc
+
             backend_output_column_order = [
-                cc.get_backend_by_frontend_name(oc) for oc in output_column_order
+                try_get_backend_by_frontend_name(oc) for oc in output_column_order
             ]
+
         cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
@@ -387,7 +395,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 )
 
             # Finally, extract the output column name
-            output_col = str(inputs[0].column_name(rel))
+            output_col = expr.toString()
 
             # Store the aggregation
             key = filter_column

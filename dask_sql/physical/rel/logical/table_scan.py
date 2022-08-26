@@ -55,7 +55,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
             df = df[field_specifications]
         else:
             field_specifications = [
-                str(f) for f in table_scan.getRowType().getFieldNames()
+                str(f) for f in dask_table.getRowType().getFieldNames()
             ]
 
         cc = cc.limit_to(field_specifications)

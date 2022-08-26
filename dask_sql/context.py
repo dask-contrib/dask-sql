@@ -3,7 +3,7 @@ import inspect
 import logging
 import warnings
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -12,12 +12,12 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_planner.rust import (
-    DaskFunction,
     DaskSchema,
     DaskSQLContext,
     DaskTable,
     DFOptimizationException,
     DFParsingException,
+    LogicalPlan,
 )
 
 try:
@@ -39,9 +39,6 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import OptimizationException, ParsingException
-
-if TYPE_CHECKING:
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -455,7 +452,7 @@ class Context:
 
     def sql(
         self,
-        sql: str,
+        sql: Any,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
@@ -493,7 +490,14 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            rel, _ = self._get_ral(sql)
+            if isinstance(sql, str):
+                rel, _ = self._get_ral(sql)
+            elif isinstance(sql, LogicalPlan):
+                rel = sql
+            else:
+                raise RuntimeError(
+                    f"Encountered unsupported `LogicalPlan` sql type: {type(sql)}"
+                )
 
             breakpoint()
             return self._compute_table_from_rel(rel, return_futures)
@@ -749,28 +753,28 @@ class Context:
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = function_description.return_type
+                sql_parameters = function_description.parameters
                 if function_description.aggregation:
                     logger.debug(f"Adding function '{name}' to schema as aggregation.")
                     # TODO: Not yet implemented
-                    # dask_function = DaskAggregateFunction(name, sql_return_type)
+                    # rust_schema.add_or_overload_aggregation(
+                    #     name,
+                    #     [param[1].getDataType() for param in sql_parameters],
+                    #     sql_return_type.getDataType(),
+                    # )
                 else:
                     logger.debug(
                         f"Adding function '{name}' to schema as scalar function."
                     )
-                    dask_function = DaskFunction(name, sql_return_type.getDataType())
-
-                rust_schema.add_function(dask_function)
+                    rust_schema.add_or_overload_function(
+                        name,
+                        [param[1].getDataType() for param in sql_parameters],
+                        sql_return_type.getDataType(),
+                    )
 
             schema_list.append(rust_schema)
 
         return schema_list
-
-    @staticmethod
-    def _add_parameters_from_description(function_description, dask_function):
-        for parameter in function_description.parameters:
-            dask_function.addParameter(*parameter, False)
-
-        return dask_function
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
@@ -781,8 +785,10 @@ class Context:
         schemas = self._prepare_schemas()
         for schema in schemas:
             self.context.register_schema(schema.name, schema)
-
-        sqlTree = self.context.parse_sql(sql)
+        try:
+            sqlTree = self.context.parse_sql(sql)
+        except DFParsingException as pe:
+            raise ParsingException(sql, str(pe))
         logger.debug(f"_get_ral -> sqlTree: {sqlTree}")
 
         rel = sqlTree
@@ -921,9 +927,3 @@ class Context:
             )
         )
         schema.functions[lower_name] = f
-
-        # Register the custom function with DataFusion so it is able to parse the queries
-        sql_return_type = python_to_sql_type(return_type)
-        self.context.register_function(
-            schema_name, DaskFunction(lower_name, sql_return_type.getDataType())
-        )

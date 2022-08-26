@@ -2,6 +2,7 @@ import datetime
 import logging
 import operator
 import re
+from datetime import timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -607,6 +608,31 @@ class YearOperation(Operation):
         return df.year
 
 
+class TimeStampAddOperation(Operation):
+    def __init__(self):
+        super().__init__(self.timestampadd)
+
+    def timestampadd(self, unit, interval, df: SeriesOrScalar):
+        df = convert_to_datetime(df)
+
+        if unit in {"DAY", "SQL_TSI_DAY"}:
+            return df + timedelta(days=interval)
+        elif unit in {"HOUR", "SQL_TSI_HOUR"}:
+            return df + timedelta(hours=interval)
+        elif unit == "MICROSECOND":
+            return df + timedelta(microseconds=interval)
+        elif unit == "MILLISECOND":
+            return df + timedelta(miliseconds=interval)
+        elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
+            return df + timedelta(minutes=interval)
+        elif unit in {"SECOND", "SQL_TSI_SECOND"}:
+            return df + timedelta(seconds=interval)
+        elif unit in {"WEEK", "SQL_TSI_WEEK"}:
+            return df + timedelta(days=interval * 7)
+        else:
+            raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
+
+
 class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
@@ -952,6 +978,7 @@ class RexCallPlugin(BaseRexPlugin):
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),
+        "timestampadd": TimeStampAddOperation(),
     }
 
     def convert(
