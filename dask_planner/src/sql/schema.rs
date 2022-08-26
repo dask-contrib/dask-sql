@@ -1,5 +1,8 @@
-use crate::sql::function;
+use super::types::PyDataType;
+use crate::sql::function::DaskFunction;
 use crate::sql::table;
+
+use ::std::sync::{Arc, Mutex};
 
 use pyo3::prelude::*;
 
@@ -11,7 +14,7 @@ pub struct DaskSchema {
     #[pyo3(get, set)]
     pub(crate) name: String,
     pub(crate) tables: HashMap<String, table::DaskTable>,
-    pub(crate) functions: HashMap<String, function::DaskFunction>,
+    pub(crate) functions: HashMap<String, Arc<Mutex<DaskFunction>>>,
 }
 
 #[pymethods]
@@ -29,7 +32,25 @@ impl DaskSchema {
         self.tables.insert(table.name.clone(), table);
     }
 
-    pub fn add_function(&mut self, function: function::DaskFunction) {
-        self.functions.insert(function.name.clone(), function);
+    pub fn add_or_overload_function(
+        &mut self,
+        name: String,
+        input_types: Vec<PyDataType>,
+        return_type: PyDataType,
+    ) {
+        self.functions
+            .entry(name.clone())
+            .and_modify(|e| {
+                (*e).lock()
+                    .unwrap()
+                    .add_type_mapping(input_types.clone(), return_type.clone());
+            })
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(DaskFunction::new(
+                    name,
+                    input_types,
+                    return_type,
+                )))
+            });
     }
 }

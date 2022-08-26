@@ -17,7 +17,7 @@ use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
-    ScalarUDF, Signature, TableSource, Volatility,
+    ScalarUDF, Signature, TableSource, TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
@@ -154,9 +154,28 @@ impl ContextProvider for DaskSQLContext {
         for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
-                    let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                    let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
+                    let sig = {
+                        let function = function.lock().unwrap();
+                        Signature::one_of(
+                            function
+                                .return_types
+                                .keys()
+                                .map(|v| TypeSignature::Exact(v.to_vec()))
+                                .collect(),
+                            Volatility::Immutable,
+                        )
+                    };
+                    let function = function.clone();
+                    let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
+                        let function = function.lock().unwrap();
+                        match function.return_types.get(&input_types.to_vec()) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone())),
+                            None => Err(DataFusionError::Plan(format!(
+                                "UDF signature not found for input types {:?}",
+                                input_types
+                            ))),
+                        }
+                    });
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
@@ -198,24 +217,6 @@ impl DaskSQLContext {
     ) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
         Ok(true)
-    }
-
-    /// Register a function with the current DaskSQLContext under the specified schema
-    pub fn register_function(
-        &mut self,
-        schema_name: String,
-        function: function::DaskFunction,
-    ) -> PyResult<bool> {
-        match self.schemas.get_mut(&schema_name) {
-            Some(schema) => {
-                schema.add_function(function);
-                Ok(true)
-            }
-            None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
-            ))),
-        }
     }
 
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext

@@ -12,7 +12,6 @@ from dask.base import optimize
 from dask.distributed import Client
 
 from dask_planner.rust import (
-    DaskFunction,
     DaskSchema,
     DaskSQLContext,
     DaskTable,
@@ -750,30 +749,30 @@ class Context:
             for function_description in schema.function_lists:
                 name = function_description.name
                 sql_return_type = function_description.return_type
+                sql_parameters = function_description.parameters
                 if function_description.aggregation:
                     logger.debug(f"Adding function '{name}' to schema as aggregation.")
                     # TODO: Not yet implemented
-                    # dask_function = DaskAggregateFunction(name, sql_return_type)
+                    # rust_schema.add_or_overload_aggregation(
+                    #     name,
+                    #     [param[1].getDataType() for param in sql_parameters],
+                    #     sql_return_type.getDataType(),
+                    # )
                 else:
                     logger.debug(
                         f"Adding function '{name}' to schema as scalar function."
                     )
-                    dask_function = DaskFunction(name, sql_return_type.getDataType())
-
-                rust_schema.add_function(dask_function)
+                    rust_schema.add_or_overload_function(
+                        name,
+                        [param[1].getDataType() for param in sql_parameters],
+                        sql_return_type.getDataType(),
+                    )
 
             schema_list.append(rust_schema)
 
         return schema_list
 
-    @staticmethod
-    def _add_parameters_from_description(function_description, dask_function):
-        for parameter in function_description.parameters:
-            dask_function.addParameter(*parameter, False)
-
-        return dask_function
-
-    def _get_ral(self, sql: str):
+    def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
@@ -924,9 +923,3 @@ class Context:
             )
         )
         schema.functions[lower_name] = f
-
-        # Register the custom function with DataFusion so it is able to parse the queries
-        sql_return_type = python_to_sql_type(return_type)
-        self.context.register_function(
-            schema_name, DaskFunction(lower_name, sql_return_type.getDataType())
-        )
