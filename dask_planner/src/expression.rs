@@ -625,7 +625,7 @@ impl PyExpr {
     pub fn bool_value(&mut self) -> PyResult<bool> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(iv) => Ok(iv.unwrap()),
+                ScalarValue::Boolean(Some(iv)) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
