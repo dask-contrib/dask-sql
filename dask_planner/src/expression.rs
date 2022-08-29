@@ -105,27 +105,30 @@ impl PyExpr {
     /// Split a fqn name into a tuple of (schema, column_name). It is valid that the
     /// `schema` could be a compound identifier like `root.df` instead of just something
     /// like `df`
-    fn _schema_column_from_fqn<'a>(&'a self, expr: &Expr, fqn: &'a str) -> (Option<String>, &str) {
+    fn _schema_column_from_fqn<'a>(
+        &'a self,
+        expr: &Expr,
+        fqn: &'a str,
+    ) -> (Option<String>, String) {
         match expr {
-            Expr::BinaryExpr { .. } => {
-                // | Expr::ScalarFunction { .. }
-                // | Expr::ScalarUDF { .. }
-                // | Expr::AggregateFunction { .. }
-                // | Expr::AggregateUDF { .. }
-                // | Expr::WindowFunction { .. } => {
-                (None, fqn)
-            }
-            _ => {
-                // IF the fqn contains a '(' character we assume it is a function
+            Expr::Column(column) => {
+                // Certain `Expr::Columns` might be of a function type
                 if fqn.contains('(') {
-                    return (None, fqn);
+                    return (column.relation.clone(), column.name.clone());
                 }
                 let parts: Vec<&str> = fqn.split('.').collect();
                 match parts.len() {
-                    3 => (Some(format!("{}.{}", parts[0], parts[1])), parts[2]),
-                    2 => (Some(parts[0].to_string()), parts[1]),
-                    _ => (None, fqn),
+                    3 => (
+                        Some(format!("{}.{}", parts[0], parts[1])),
+                        parts[2].to_string(),
+                    ),
+                    2 => (Some(parts[0].to_string()), parts[1].to_string()),
+                    _ => (column.relation.clone(), column.name.clone()),
                 }
+            }
+            _ => {
+                println!("Hitting this condition ....");
+                (None, fqn.to_string())
             }
         }
     }
@@ -180,9 +183,10 @@ impl PyExpr {
                                     self._schema_column_from_fqn(&self.expr, &fq_name);
                                 match schema_name_opt {
                                     Some(e) => {
-                                        match schema
-                                            .index_of_column_by_name(Some(e.as_str()), column_name)
-                                        {
+                                        match schema.index_of_column_by_name(
+                                            Some(e.as_str()),
+                                            column_name.as_str(),
+                                        ) {
                                             Ok(e) => {
                                                 idx = e;
                                                 break;
