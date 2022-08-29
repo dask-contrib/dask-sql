@@ -44,6 +44,17 @@ pub struct PredictModel {
     pub select: SQLStatement,
 }
 
+/// Dask-SQL extension DDL for `CREATE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateCatalogSchema {
+    /// schema_name
+    pub schema_name: String,
+    /// if not exists
+    pub if_not_exists: bool,
+    /// or replace
+    pub or_replace: bool,
+}
+
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTable {
@@ -114,6 +125,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE SCHEMA`
+    CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
     CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
@@ -281,9 +294,6 @@ impl<'a> DaskParser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<DaskStatement, ParserError> {
-        let if_not_exists =
-            self.parser
-                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let or_replace = self.parser.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -291,8 +301,28 @@ impl<'a> DaskParser<'a> {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
                         // use custom parsing
                         self.parse_create_model(if_not_exists, or_replace)
+                    }
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
+                        // use custom parsing
+                        self.parse_create_schema(if_not_exists, or_replace)
                     }
                     "table" => {
                         // move one token forward
@@ -301,17 +331,6 @@ impl<'a> DaskParser<'a> {
                         self.parse_create_table(or_replace)
                     }
                     _ => {
-                        if if_not_exists {
-                            // Go back three tokens if IF NOT EXISTS was consumed
-                            self.parser.prev_token();
-                            self.parser.prev_token();
-                            self.parser.prev_token();
-                        }
-                        if or_replace {
-                            // Go back two tokens if OR REPLACE was consumed
-                            self.parser.prev_token();
-                            self.parser.prev_token();
-                        }
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_create()?,
@@ -529,6 +548,22 @@ impl<'a> DaskParser<'a> {
             with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    /// Parse Dask-SQL CREATE {IF NOT EXISTS | OR REPLACE} SCHEMA ... statement
+    fn parse_create_schema(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let schema_name = self.parser.parse_identifier()?.value;
+
+        let create = CreateCatalogSchema {
+            schema_name,
+            if_not_exists,
+            or_replace,
+        };
+        Ok(DaskStatement::CreateCatalogSchema(Box::new(create)))
     }
 
     /// Parse Dask-SQL CREATE [OR REPLACE] TABLE ... statement

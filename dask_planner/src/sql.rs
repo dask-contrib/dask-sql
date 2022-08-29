@@ -41,6 +41,7 @@ use crate::sql::logical::show_tables::ShowTablesPlanNode;
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
 
+use self::logical::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::logical::drop_schema::DropSchemaPlanNode;
 use self::logical::use_schema::UseSchemaPlanNode;
 
@@ -330,6 +331,16 @@ impl DaskSQLContext {
                     )))?,
                 }),
             })),
+            DaskStatement::CreateCatalogSchema(create_schema) => {
+                Ok(LogicalPlan::Extension(Extension {
+                    node: Arc::new(CreateCatalogSchemaPlanNode {
+                        schema: Arc::new(DFSchema::empty()),
+                        schema_name: create_schema.schema_name,
+                        if_not_exists: create_schema.if_not_exists,
+                        or_replace: create_schema.or_replace,
+                    }),
+                }))
+            }
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),

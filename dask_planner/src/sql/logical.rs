@@ -32,6 +32,7 @@ use datafusion_expr::LogicalPlan;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::drop_model::DropModelPlanNode;
@@ -269,6 +270,8 @@ impl PyLogicalPlan {
                 let node = extension.node.as_any();
                 if node.downcast_ref::<CreateModelPlanNode>().is_some() {
                     "CreateModel"
+                } else if node.downcast_ref::<CreateCatalogSchemaPlanNode>().is_some() {
+                    "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
                     "CreateTable"
                 } else if node.downcast_ref::<DropModelPlanNode>().is_some() {

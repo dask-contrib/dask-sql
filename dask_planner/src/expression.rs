@@ -162,7 +162,7 @@ impl PyExpr {
                             for schema in input_plans[0].all_schemas() {
                                 let (schema_name_opt, column_name) =
                                     self._schema_column_from_fqn(&fq_name);
-                                match schema_name_opt {
+                                match &schema_name_opt {
                                     Some(e) => {
                                         match schema
                                             .index_of_column_by_name(Some(e.as_str()), column_name)
@@ -171,7 +171,13 @@ impl PyExpr {
                                                 idx = e;
                                                 break;
                                             }
-                                            Err(_e) => panic!("Didn't find in index ..."),
+                                            Err(_e) => {
+                                                println!(
+                                                    "Schema_name_opt: {:?} - Column_Name: {:?}",
+                                                    schema_name_opt, column_name
+                                                );
+                                                panic!("Didn't find in index ...")
+                                            }
                                         }
                                     }
                                     None => {
