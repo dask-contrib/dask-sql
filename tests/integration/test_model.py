@@ -458,7 +458,6 @@ def test_describe_model(c, training_df):
         c.sql("DESCRIBE MODEL undefined_model")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_export_model(c, training_df, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
@@ -523,7 +522,6 @@ def test_export_model(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
@@ -582,7 +580,6 @@ def test_mlflow_export(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="Windows is not officially supported for dask/xgboost",
@@ -619,7 +616,6 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     # Test only when mlflow & lightgbm was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")

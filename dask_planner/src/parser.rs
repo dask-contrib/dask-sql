@@ -68,6 +68,15 @@ pub struct DropModel {
     pub if_exists: bool,
 }
 
+/// Dask-SQL extension DDL for `EXPORT MODEL`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportModel {
+    /// model name
+    pub name: String,
+    /// with options
+    pub with_options: Vec<Expr>,
+}
+
 /// Dask-SQL extension DDL for `DESCRIBE MODEL`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescribeModel {
@@ -114,6 +123,8 @@ pub enum DaskStatement {
     CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
+    /// Extension: `EXPORT MODEL`
+    ExportModel(Box<ExportModel>),
     /// Extension: `DESCRIBE MODEL`
     DescribeModel(Box<DescribeModel>),
     /// Extension: `PREDICT`
@@ -259,10 +270,17 @@ impl<'a> DaskParser<'a> {
                         self.parse_describe()
                     }
                     _ => {
-                        // use the native parser
-                        Ok(DaskStatement::Statement(Box::from(
-                            self.parser.parse_statement()?,
-                        )))
+                        if w.value.to_lowercase().as_str() == "export" {
+                            // move one token forwrd
+                            self.parser.next_token();
+                            // use custom parsing
+                            self.parse_export_model()
+                        } else {
+                            // use the native parser
+                            Ok(DaskStatement::Statement(Box::from(
+                                self.parser.parse_statement()?,
+                            )))
+                        }
                     }
                 }
             }
@@ -560,6 +578,35 @@ impl<'a> DaskParser<'a> {
                 )))
             }
         }
+    }
+
+    /// Parse Dask-SQL EXPORT MODEL statement
+    fn parse_export_model(&mut self) -> Result<DaskStatement, ParserError> {
+        let is_model = match self.parser.next_token() {
+            Token::Word(w) => matches!(w.value.to_lowercase().as_str(), "model"),
+            _ => false,
+        };
+        if !is_model {
+            return Err(ParserError::ParserError(
+                "parse_export_model: Expected `MODEL`".to_string(),
+            ));
+        }
+
+        let model_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
+
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+
+        let export = ExportModel {
+            name: model_name.to_string(),
+            with_options,
+        };
+        Ok(DaskStatement::ExportModel(Box::new(export)))
     }
 
     /// Parse Dask-SQL DROP MODEL statement

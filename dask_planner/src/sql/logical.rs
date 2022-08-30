@@ -11,6 +11,7 @@ pub mod drop_model;
 pub mod drop_table;
 pub mod empty_relation;
 pub mod explain;
+pub mod export_model;
 pub mod filter;
 pub mod join;
 pub mod limit;
@@ -35,6 +36,7 @@ use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::describe_model::DescribeModelPlanNode;
 use self::drop_model::DropModelPlanNode;
+use self::export_model::ExportModelPlanNode;
 use self::predict_model::PredictModelPlanNode;
 use self::show_columns::ShowColumnsPlanNode;
 use self::show_models::ShowModelsPlanNode;
@@ -177,6 +179,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::ExportModel as PyExportModel
+    pub fn export_model(&self) -> PyResult<export_model::PyExportModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
@@ -264,6 +271,8 @@ impl PyLogicalPlan {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
                     "PredictModel"
+                } else if node.downcast_ref::<ExportModelPlanNode>().is_some() {
+                    "ExportModel"
                 } else if node.downcast_ref::<DescribeModelPlanNode>().is_some() {
                     "ShowModelParams"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
