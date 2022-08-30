@@ -46,7 +46,6 @@ class DaskProjectPlugin(BaseRelPlugin):
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
             if expr.getRexType() == RexType.Reference:
-                breakpoint()
                 index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(

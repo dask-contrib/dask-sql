@@ -469,7 +469,7 @@ def test_string_functions(c, gpu):
     df = c.sql(
         f"""
         SELECT
-            INITCAP(UPPER(a)) AS u,
+            INITCAP(UPPER(a)) AS u
             -- INITCAP(LOWER(a)) AS v
         FROM
             {input_table}
