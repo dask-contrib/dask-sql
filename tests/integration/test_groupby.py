@@ -211,9 +211,6 @@ def test_group_by_nan(c):
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_aggregations(c):
     return_df = c.sql(
         """
