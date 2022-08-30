@@ -17,6 +17,7 @@ pub mod predict_model;
 pub mod projection;
 pub mod repartition_by;
 pub mod show_columns;
+pub mod show_models;
 pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
@@ -34,6 +35,7 @@ use self::create_table::CreateTablePlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::predict_model::PredictModelPlanNode;
 use self::show_columns::ShowColumnsPlanNode;
+use self::show_models::ShowModelsPlanNode;
 use self::show_schema::ShowSchemasPlanNode;
 use self::show_tables::ShowTablesPlanNode;
 
@@ -167,6 +169,7 @@ impl PyLogicalPlan {
     pub fn predict_model(&self) -> PyResult<predict_model::PyPredictModel> {
         to_py_plan(self.current_node.as_ref())
     }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
@@ -260,6 +263,8 @@ impl PyLogicalPlan {
                     "ShowTables"
                 } else if node.downcast_ref::<ShowColumnsPlanNode>().is_some() {
                     "ShowColumns"
+                } else if node.downcast_ref::<ShowModelsPlanNode>().is_some() {
+                    "ShowModels"
                 } else {
                     // Default to generic `Extension`
                     "Extension"

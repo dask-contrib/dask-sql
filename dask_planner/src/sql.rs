@@ -35,6 +35,7 @@ use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::predict_model::PredictModelPlanNode;
 use crate::sql::logical::show_columns::ShowColumnsPlanNode;
+use crate::sql::logical::show_models::ShowModelsPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
 use crate::sql::logical::show_tables::ShowTablesPlanNode;
 
@@ -361,6 +362,11 @@ impl DaskSQLContext {
                     schema: Arc::new(DFSchema::empty()),
                     table_name: show_columns.table_name,
                     schema_name: show_columns.schema_name,
+                }),
+            })),
+            DaskStatement::ShowModels(_show_models) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowModelsPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
                 }),
             })),
         }

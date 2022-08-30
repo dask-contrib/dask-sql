@@ -89,6 +89,10 @@ pub struct ShowColumns {
     pub schema_name: Option<String>,
 }
 
+/// Dask-SQL extension DDL for `SHOW MODELS`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShowModels;
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -110,6 +114,8 @@ pub enum DaskStatement {
     ShowTables(Box<ShowTables>),
     // Extension: `SHOW COLUMNS FROM`
     ShowColumns(Box<ShowColumns>),
+    // Extension: `SHOW COLUMNS FROM`
+    ShowModels(Box<ShowModels>),
 }
 
 /// SQL Parser
@@ -326,7 +332,7 @@ impl<'a> DaskParser<'a> {
         }
     }
 
-    /// Parse a SQL SHOW SCHEMAS statement
+    /// Parse a SQL SHOW statement
     pub fn parse_show(&mut self) -> Result<DaskStatement, ParserError> {
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -368,6 +374,10 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show_columns()
+                    }
+                    "models" => {
+                        self.parser.next_token();
+                        Ok(DaskStatement::ShowModels(Box::new(ShowModels)))
                     }
                     _ => {
                         // use the native parser
