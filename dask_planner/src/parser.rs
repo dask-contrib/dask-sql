@@ -330,6 +330,12 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_create_table(or_replace)
                     }
+                    "view" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_table(or_replace)
+                    }
                     _ => {
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
