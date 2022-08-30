@@ -1,4 +1,4 @@
-use crate::sql::exceptions::{py_runtime_err, py_type_err};
+use crate::sql::exceptions::{py_field_not_found, py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
@@ -141,21 +141,17 @@ impl PyExpr {
         match input {
             Some(input_plans) => {
                 if input_plans.len() == 1 {
-                    let name: Result<String> = self.expr.name(input_plans[0].schema());
+                    let name = get_expr_name(&self.expr, input_plans[0].schema());
                     match name {
                         Ok(fq_name) => {
-                            let mut idx: usize = 0;
                             for schema in input_plans[0].all_schemas() {
                                 match schema.index_of_column(&Column::from_qualified_name(&fq_name))
                                 {
-                                    Ok(e) => {
-                                        idx = e;
-                                        break;
-                                    }
+                                    Ok(idx) => return Ok(idx),
                                     Err(_e) => (),
                                 }
                             }
-                            Ok(idx)
+                            Err(py_field_not_found(None, &fq_name, input_plans[0].schema()))
                         }
                         Err(e) => Err(py_runtime_err(e)),
                     }
@@ -188,7 +184,7 @@ impl PyExpr {
                                             return Ok(index);
                                         }
                                     }
-                                    Err(py_runtime_err(format!("Unable to find match for column with name: '{}' in DFSchema", &fq_name)))
+                                    Err(py_field_not_found(None, &fq_name, &base_schema))
                                 }
                             }
                         }
@@ -697,6 +693,13 @@ impl PyExpr {
                 &self.expr
             ))),
         }
+    }
+}
+
+fn get_expr_name(expr: &Expr, schema: &DFSchema) -> Result<String> {
+    match expr {
+        Expr::Alias(expr, _) => get_expr_name(expr, schema),
+        _ => expr.name(schema),
     }
 }
 
