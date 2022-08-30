@@ -335,7 +335,7 @@ impl<'a> DaskParser<'a> {
                         ]);
 
                         // use custom parsing
-                        self.parse_create_table(if_not_exists, or_replace)
+                        self.parse_create_table(if_not_exists)
                     }
                     "view" => {
                         // move one token forward
