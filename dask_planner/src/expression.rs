@@ -139,7 +139,7 @@ impl PyExpr {
     pub fn index(&self) -> PyResult<usize> {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(input_plans) if input_plans.len() > 0 => {
+            Some(input_plans) if !input_plans.is_empty() => {
                 let mut schema: DFSchema = (**input_plans[0].schema()).clone();
                 for plan in input_plans.iter().skip(1) {
                     schema.merge(plan.schema().as_ref());
