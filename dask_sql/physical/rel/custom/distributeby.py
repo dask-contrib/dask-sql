@@ -7,7 +7,7 @@ from dask_sql.utils import LoggableDataFrame
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +20,15 @@ class DistributeByPlugin(BaseRelPlugin):
         SELECT age, name FROM person DISTRIBUTE BY age
     """
 
-    class_name = "com.dask.sql.parser.SqlDistributeBy"
+    # DataFusion provides the phrase `Repartition` in the LogicalPlan instead of `Distribute By`, it is the same thing
+    class_name = "Repartition"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        select = sql.getSelect()
-        distribute_list = [str(col) for col in sql.getDistributeList()]
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        distribute = rel.repartition_by()
+        select = distribute.getSelectQuery()
+        distribute_list = distribute.getDistributionColumns()
 
-        sql_select_query = context._to_sql_string(select)
-        df = context.sql(sql_select_query)
+        df = context.sql(select)
         logger.debug(f"Extracted sub-dataframe as {LoggableDataFrame(df)}")
 
         logger.debug(f"Will now shuffle according to {distribute_list}")

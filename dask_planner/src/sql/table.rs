@@ -10,11 +10,15 @@ use arrow::datatypes::{DataType, Field, SchemaRef};
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 
+use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
 use datafusion_optimizer::utils::split_conjunction;
 use std::any::Any;
 use std::sync::Arc;
+
+use super::logical::create_table::CreateTablePlanNode;
+use super::logical::predict_model::PredictModelPlanNode;
 
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
@@ -88,6 +92,7 @@ impl DaskStatistics {
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
+    pub(crate) schema: String,
     pub(crate) name: String,
     #[allow(dead_code)]
     pub(crate) statistics: DaskStatistics,
@@ -97,9 +102,10 @@ pub struct DaskTable {
 #[pymethods]
 impl DaskTable {
     #[new]
-    pub fn new(table_name: String, row_count: f64) -> Self {
+    pub fn new(schema: String, name: String, row_count: f64) -> Self {
         Self {
-            name: table_name,
+            schema,
+            name,
             statistics: DaskStatistics::new(row_count),
             columns: Vec::new(),
         }
@@ -111,9 +117,19 @@ impl DaskTable {
         self.columns.push((column_name, type_map));
     }
 
+    #[pyo3(name = "getSchema")]
+    pub fn get_schema(&self) -> PyResult<String> {
+        Ok(self.schema.clone())
+    }
+
+    #[pyo3(name = "getTableName")]
+    pub fn get_table_name(&self) -> PyResult<String> {
+        Ok(self.name.clone())
+    }
+
     #[pyo3(name = "getQualifiedName")]
     pub fn qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
-        let mut qualified_name = Vec::from([String::from("root")]);
+        let mut qualified_name = Vec::from([self.schema.clone()]);
 
         match plan.original_plan {
             LogicalPlan::TableScan(table_scan) => {
@@ -157,7 +173,19 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 ));
             }
 
+            let table_ref: TableReference = table_scan.table_name.as_str().into();
+            let schema = match table_ref {
+                TableReference::Bare { table: _ } => "",
+                TableReference::Partial { schema, table: _ } => schema,
+                TableReference::Full {
+                    catalog: _,
+                    schema,
+                    table: _,
+                } => schema,
+            };
+
             Some(DaskTable {
+                schema: String::from(schema),
                 name: String::from(&table_scan.table_name),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
@@ -182,10 +210,34 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             }
 
             Some(DaskTable {
+                schema: String::from("EmptySchema"),
                 name: String::from("EmptyRelation"),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
             })
+        }
+        LogicalPlan::Extension(ex) => {
+            let node = ex.node.as_any();
+            if let Some(e) = node.downcast_ref::<CreateTablePlanNode>() {
+                Some(DaskTable {
+                    schema: e.table_schema.clone(),
+                    name: e.table_name.clone(),
+                    statistics: DaskStatistics { row_count: 0.0 },
+                    columns: vec![],
+                })
+            } else if let Some(e) = node.downcast_ref::<PredictModelPlanNode>() {
+                Some(DaskTable {
+                    schema: e.model_schema.clone(),
+                    name: e.model_name.clone(),
+                    statistics: DaskStatistics { row_count: 0.0 },
+                    columns: vec![],
+                })
+            } else {
+                todo!(
+                    "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
+                    plan
+                )
+            }
         }
         _ => todo!(
             "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",

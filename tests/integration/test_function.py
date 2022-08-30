@@ -1,10 +1,12 @@
 import itertools
 import operator
+import sys
 
 import dask.dataframe as dd
 import numpy as np
 import pytest
 
+from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
@@ -74,11 +76,14 @@ def test_custom_function_row_return_types(c, df, retty):
 def test_custom_function_row_args(c, df, k, op, retty):
     const_type = np.dtype(type(k)).type
 
+    if sys.platform == "win32" and const_type == np.int32:
+        const_type = np.int64
+
     def f(row, k):
         return op(row["a"], k)
 
     c.register_function(
-        f, "f", [("a", np.int64), ("k", const_type)], retty, row_udf=True
+        f, "f", [("a", np.float64), ("k", const_type)], retty, row_udf=True
     )
 
     return_df = c.sql(f"SELECT F(a, {k}) as a from df")
@@ -98,6 +103,12 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     const_type_k1 = np.dtype(type(k1)).type
     const_type_k2 = np.dtype(type(k2)).type
 
+    if sys.platform == "win32":
+        if const_type_k1 == np.int32:
+            const_type_k1 = np.int64
+        if const_type_k2 == np.int32:
+            const_type_k2 = np.int64
+
     def f(row, k1, k2):
         x = op(row["a"], k1)
         y = op(x, k2)
@@ -107,7 +118,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     c.register_function(
         f,
         "f",
-        [("a", np.int64), ("k1", const_type_k1), ("k2", const_type_k2)],
+        [("a", np.float), ("k1", const_type_k1), ("k2", const_type_k2)],
         retty,
         row_udf=True,
     )
@@ -118,9 +129,6 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - need to address UDF replace behavior in main branch first"
-)
 def test_multiple_definitions(c, df_simple):
     def f(x):
         return x**2
@@ -214,3 +222,14 @@ def test_unsupported_dtype(c, dtype):
     # test that an invalid param type raises
     with pytest.raises(NotImplementedError):
         c.register_function(f, "f", [("x", dtype)], np.int64)
+
+
+# TODO: explore implicitly casting inputs to the expected types consistently
+def test_wrong_input_type(c):
+    def f(a):
+        return a
+
+    c.register_function(f, "f", [("a", np.int64)], np.int64)
+
+    with pytest.raises(ParsingException):
+        c.sql("SELECT F(CAST(a AS INT)) AS a FROM df")

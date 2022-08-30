@@ -101,8 +101,12 @@ class RexLiteralPlugin(BaseRexPlugin):
         # Call the Rust function to get the actual value and convert the Rust
         # type name back to a SQL type
         if literal_type == "Boolean":
-            literal_type = SqlTypeName.BOOLEAN
-            literal_value = rex.getBoolValue()
+            try:
+                literal_type = SqlTypeName.BOOLEAN
+                literal_value = rex.getBoolValue()
+            except TypeError:
+                literal_type = SqlTypeName.NULL
+                literal_value = None
         elif literal_type == "Float32":
             literal_type = SqlTypeName.FLOAT
             literal_value = rex.getFloat32Value()
