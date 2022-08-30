@@ -17,7 +17,8 @@ use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
     AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
-    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource, TypeSignature, Volatility,
+    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource,
+    TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
