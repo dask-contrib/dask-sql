@@ -1,4 +1,4 @@
-use crate::sql::exceptions::{py_field_not_found, py_runtime_err, py_type_err};
+use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
