@@ -1,11 +1,9 @@
 import pandas as pd
-import pytest
 
 from dask_sql.mappings import python_to_sql_type
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_analyze(c, df):
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
 
@@ -16,7 +14,9 @@ def test_analyze(c, df):
         .append(
             pd.Series(
                 {
-                    col: str(python_to_sql_type(df[col].dtype)).lower()
+                    col: str(python_to_sql_type(df[col].dtype).getSqlType())
+                    .rpartition(".")[2]
+                    .lower()
                     for col in df.columns
                 },
                 name="data_type",
