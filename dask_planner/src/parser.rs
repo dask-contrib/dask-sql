@@ -327,8 +327,15 @@ impl<'a> DaskParser<'a> {
                     "table" => {
                         // move one token forward
                         self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
                         // use custom parsing
-                        self.parse_create_table(or_replace)
+                        self.parse_create_table(if_not_exists, or_replace)
                     }
                     "view" => {
                         // move one token forward
