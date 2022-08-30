@@ -148,7 +148,7 @@ impl PyExpr {
                     .and_then(|fq_name| {
                         schema.index_of_column(&Column::from_qualified_name(&fq_name))
                     })
-                    .map_err(|e| py_runtime_err(e))
+                    .map_err(py_runtime_err)
             }
             _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
