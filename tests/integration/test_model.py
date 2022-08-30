@@ -22,7 +22,6 @@ except ImportError:
 pytest.importorskip("dask_ml")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def check_trained_model(c, model_name=None):
     if model_name is None:
         sql = """
@@ -247,7 +246,6 @@ def test_show_models(c, training_df):
     assert_eq(result, expected)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_training_or_prediction(c, training_df):
     with pytest.raises(KeyError):
         c.sql(
