@@ -5,7 +5,7 @@
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement},
+    ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -637,7 +637,27 @@ impl<'a> DaskParser<'a> {
             true => vec![],
             false => {
                 self.parser.expect_keyword(Keyword::COLUMNS)?;
-                vec![] // TODO: implement parsing of column names
+                let mut values = vec![];
+                for select in self.parser.parse_projection()? {
+                    match select {
+                        SelectItem::UnnamedExpr(expr) => match expr {
+                            Expr::Identifier(ident) => values.push(ident.value),
+                            unexpected => {
+                                return parser_err!(format!(
+                                    "Expected Identifier, found: {}",
+                                    unexpected
+                                ))
+                            }
+                        },
+                        unexpected => {
+                            return parser_err!(format!(
+                                "Expected UnnamedExpr, found: {}",
+                                unexpected
+                            ))
+                        }
+                    }
+                }
+                values
             }
         };
         Ok(DaskStatement::AnalyzeTable(Box::new(AnalyzeTable {
