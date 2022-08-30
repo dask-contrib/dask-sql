@@ -64,7 +64,15 @@ pub struct CreateTable {
 pub struct DropModel {
     /// model name
     pub name: String,
+    /// if exists
     pub if_exists: bool,
+}
+
+/// Dask-SQL extension DDL for `DESCRIBE MODEL`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DescribeModel {
+    /// model name
+    pub name: String,
 }
 
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
@@ -106,6 +114,8 @@ pub enum DaskStatement {
     CreateTable(Box<CreateTable>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
+    /// Extension: `DESCRIBE MODEL`
+    DescribeModel(Box<DescribeModel>),
     /// Extension: `PREDICT`
     PredictModel(Box<PredictModel>),
     // Extension: `SHOW SCHEMAS`
@@ -241,6 +251,12 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show()
+                    }
+                    Keyword::DESCRIBE => {
+                        // move one token forwrd
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_describe()
                     }
                     _ => {
                         // use the native parser
@@ -396,6 +412,33 @@ impl<'a> DaskParser<'a> {
         }
     }
 
+    /// Parse a SQL DESCRIBE statement
+    pub fn parse_describe(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "model" => {
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_describe_model()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_show()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_show()?,
+                )))
+            }
+        }
+    }
+
     /// Parse a SQL PREDICT statement
     pub fn parse_predict_model(&mut self) -> Result<DaskStatement, ParserError> {
         // PREDICT(
@@ -529,6 +572,16 @@ impl<'a> DaskParser<'a> {
             if_exists,
         };
         Ok(DaskStatement::DropModel(Box::new(drop)))
+    }
+
+    /// Parse Dask-SQL DESRIBE MODEL statement
+    fn parse_describe_model(&mut self) -> Result<DaskStatement, ParserError> {
+        let model_name = self.parser.parse_object_name()?;
+
+        let describe = DescribeModel {
+            name: model_name.to_string(),
+        };
+        Ok(DaskStatement::DescribeModel(Box::new(describe)))
     }
 
     /// Parse Dask-SQL SHOW SCHEMAS statement

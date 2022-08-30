@@ -424,7 +424,6 @@ def test_drop_model(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_describe_model(c, training_df):
     c.sql(

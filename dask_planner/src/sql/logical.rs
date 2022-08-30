@@ -6,6 +6,7 @@ pub mod aggregate;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
+pub mod describe_model;
 pub mod drop_model;
 pub mod drop_table;
 pub mod empty_relation;
@@ -32,6 +33,7 @@ use pyo3::prelude::*;
 
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
+use self::describe_model::DescribeModelPlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::predict_model::PredictModelPlanNode;
 use self::show_columns::ShowColumnsPlanNode;
@@ -170,6 +172,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::DescribeModel as PyDescribeModel
+    pub fn describe_model(&self) -> PyResult<describe_model::PyDescribeModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
@@ -257,6 +264,8 @@ impl PyLogicalPlan {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
                     "PredictModel"
+                } else if node.downcast_ref::<DescribeModelPlanNode>().is_some() {
+                    "ShowModelParams"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
                 } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {
