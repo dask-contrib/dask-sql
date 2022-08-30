@@ -1,4 +1,3 @@
-use datafusion_common::{DFSchema, SchemaError};
 use pyo3::{create_exception, PyErr};
 use std::fmt::Debug;
 
