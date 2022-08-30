@@ -89,6 +89,14 @@ pub struct ShowColumns {
     pub schema_name: Option<String>,
 }
 
+/// Dask-SQL extension DDL for `ANALYZE TABLE`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalyzeTable {
+    pub table_name: String,
+    pub schema_name: Option<String>,
+    pub columns: Vec<String>,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -110,6 +118,8 @@ pub enum DaskStatement {
     ShowTables(Box<ShowTables>),
     // Extension: `SHOW COLUMNS FROM`
     ShowColumns(Box<ShowColumns>),
+    // Extension: `ANALYZE TABLE`
+    AnalyzeTable(Box<AnalyzeTable>),
 }
 
 /// SQL Parser
@@ -231,10 +241,15 @@ impl<'a> DaskParser<'a> {
                         )))
                     }
                     Keyword::SHOW => {
-                        // move one token forwrd
+                        // move one token forward
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show()
+                    }
+                    Keyword::ANALYZE => {
+                        // move one token foward
+                        self.parser.next_token();
+                        self.parse_analyze()
                     }
                     _ => {
                         // use the native parser
@@ -335,7 +350,7 @@ impl<'a> DaskParser<'a> {
         }
     }
 
-    /// Parse a SQL SHOW SCHEMAS statement
+    /// Parse a SQL SHOW statement
     pub fn parse_show(&mut self) -> Result<DaskStatement, ParserError> {
         match self.parser.peek_token() {
             Token::Word(w) => {
@@ -390,6 +405,34 @@ impl<'a> DaskParser<'a> {
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_show()?,
+                )))
+            }
+        }
+    }
+
+    /// Parse a SQL ANALYZE statement
+    pub fn parse_analyze(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "table" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_analyze_table()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_analyze()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_analyze()?,
                 )))
             }
         }
@@ -575,6 +618,35 @@ impl<'a> DaskParser<'a> {
                 "" => None,
                 _ => Some(tbl_schema),
             },
+        })))
+    }
+
+    /// Parse Dask-SQL ANALYZE TABLE <table>
+    fn parse_analyze_table(&mut self) -> Result<DaskStatement, ParserError> {
+        let table_factor = self.parser.parse_table_factor()?;
+        // parse_table_factor parses the following keyword as an alias, so we need to go back a token
+        // TODO: open an issue in sqlparser around this when possible
+        self.parser.prev_token();
+        self.parser
+            .expect_keywords(&[Keyword::COMPUTE, Keyword::STATISTICS, Keyword::FOR])?;
+        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let columns = match self
+            .parser
+            .parse_keywords(&[Keyword::ALL, Keyword::COLUMNS])
+        {
+            true => vec![],
+            false => {
+                self.parser.expect_keyword(Keyword::COLUMNS)?;
+                vec![] // TODO: implement parsing of column names
+            }
+        };
+        Ok(DaskStatement::AnalyzeTable(Box::new(AnalyzeTable {
+            table_name: tbl_name,
+            schema_name: match tbl_schema.as_str() {
+                "" => None,
+                _ => Some(tbl_schema),
+            },
+            columns,
         })))
     }
 }

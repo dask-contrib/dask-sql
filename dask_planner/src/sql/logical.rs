@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 pub mod aggregate;
+pub mod analyze_table;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
@@ -29,6 +30,7 @@ use datafusion_expr::LogicalPlan;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::analyze_table::AnalyzeTablePlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::drop_model::DropModelPlanNode;
@@ -171,6 +173,10 @@ impl PyLogicalPlan {
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
     }
+    /// LogicalPlan::Extension::ShowColumns as PyShowColumns
+    pub fn analyze_table(&self) -> PyResult<analyze_table::PyAnalyzeTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
 
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
@@ -260,6 +266,8 @@ impl PyLogicalPlan {
                     "ShowTables"
                 } else if node.downcast_ref::<ShowColumnsPlanNode>().is_some() {
                     "ShowColumns"
+                } else if node.downcast_ref::<AnalyzeTablePlanNode>().is_some() {
+                    "AnalyzeTable"
                 } else {
                     // Default to generic `Extension`
                     "Extension"
