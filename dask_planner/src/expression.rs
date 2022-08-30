@@ -141,20 +141,12 @@ impl PyExpr {
         match input {
             Some(input_plans) => {
                 if input_plans.len() == 1 {
-                    let name = get_expr_name(&self.expr, input_plans[0].schema());
-                    match name {
-                        Ok(fq_name) => {
-                            for schema in input_plans[0].all_schemas() {
-                                match schema.index_of_column(&Column::from_qualified_name(&fq_name))
-                                {
-                                    Ok(idx) => return Ok(idx),
-                                    Err(_e) => (),
-                                }
-                            }
-                            Err(py_field_not_found(None, &fq_name, input_plans[0].schema()))
-                        }
-                        Err(e) => Err(py_runtime_err(e)),
-                    }
+                    let schema = input_plans[0].schema();
+                    get_expr_name(&self.expr, schema)
+                        .and_then(|fq_name| {
+                            schema.index_of_column(&Column::from_qualified_name(&fq_name))
+                        })
+                        .map_err(|e| py_runtime_err(e))
                 } else if input_plans.len() >= 2 {
                     let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
                     for plan in input_plans.iter().skip(1) {
