@@ -23,12 +23,3 @@ pub fn py_parsing_exp(e: impl Debug) -> PyErr {
 pub fn py_optimization_exp(e: impl Debug) -> PyErr {
     PyErr::new::<OptimizationException, _>(format!("{:?}", e))
 }
-
-pub fn py_field_not_found(qualifier: Option<&str>, name: &str, schema: &DFSchema) -> PyErr {
-    let schema_error = SchemaError::FieldNotFound {
-        qualifier: qualifier.map(|s| s.to_string()),
-        name: name.to_string(),
-        valid_fields: Some(schema.field_names()),
-    };
-    py_runtime_err(format!("{}", schema_error))
-}

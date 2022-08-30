@@ -139,56 +139,18 @@ impl PyExpr {
     pub fn index(&self) -> PyResult<usize> {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(input_plans) => {
-                if input_plans.len() == 1 {
-                    let schema = input_plans[0].schema();
-                    get_expr_name(&self.expr, schema)
-                        .and_then(|fq_name| {
-                            schema.index_of_column(&Column::from_qualified_name(&fq_name))
-                        })
-                        .map_err(|e| py_runtime_err(e))
-                } else if input_plans.len() >= 2 {
-                    let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
-                    for plan in input_plans.iter().skip(1) {
-                        base_schema.merge(plan.schema().as_ref());
-                    }
-                    let name: Result<String> = self.expr.name(&base_schema);
-                    match name {
-                        Ok(fq_name) => {
-                            let idx: Result<usize> =
-                                base_schema.index_of_column(&Column::from_qualified_name(&fq_name));
-                            match idx {
-                                Ok(index) => Ok(index),
-                                Err(_) => {
-                                    // This logic is encountered when an non-qualified column name is
-                                    // provided AND there exists more than one entry with that
-                                    // unqualified. This logic will attempt to narrow down to the
-                                    // qualified column name.
-                                    let qualified_fields: Vec<&DFField> =
-                                        base_schema.fields_with_unqualified_name(&fq_name);
-                                    for qf in &qualified_fields {
-                                        if qf.name().eq(&fq_name) {
-                                            let qualifier: String = qf.qualifier().unwrap().clone();
-                                            let qual: Option<&str> = Some(&qualifier);
-                                            let index: usize = base_schema
-                                                .index_of_column_by_name(qual, qf.name())
-                                                .unwrap();
-                                            return Ok(index);
-                                        }
-                                    }
-                                    Err(py_field_not_found(None, &fq_name, &base_schema))
-                                }
-                            }
-                        }
-                        Err(e) => Err(py_runtime_err(e)),
-                    }
-                } else {
-                    Err(py_runtime_err(
-                        "Not really sure what we should do right here???",
-                    ))
+            Some(input_plans) if input_plans.len() > 0 => {
+                let mut schema: DFSchema = (**input_plans[0].schema()).clone();
+                for plan in input_plans.iter().skip(1) {
+                    schema.merge(plan.schema().as_ref());
                 }
+                get_expr_name(&self.expr, &schema)
+                    .and_then(|fq_name| {
+                        schema.index_of_column(&Column::from_qualified_name(&fq_name))
+                    })
+                    .map_err(|e| py_runtime_err(e))
             }
-            None => Err(py_runtime_err(
+            _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
             )),
         }
