@@ -116,17 +116,21 @@ def gpu_c():
 
 
 @pytest.mark.queries
-@pytest.mark.parametrize(
-    "context,client",
-    [("c", "client"), pytest.param("gpu_c", "gpu_client", marks=pytest.mark.gpu)],
-)
 @pytest.mark.parametrize("query", QUERIES)
-def test_query(context, client, query, request):
-    c = request.getfixturevalue(context)
-    client = request.getfixturevalue(client)
-
+def test_query(c, client, query):
     with open(f"{os.path.dirname(__file__)}/queries/{query}") as f:
         sql = f.read()
 
     res = c.sql(sql)
     res.compute(scheduler=client)
+
+
+@pytest.mark.gpu
+@pytest.mark.queries
+@pytest.mark.parametrize("query", QUERIES)
+def test_gpu_query(gpu_c, gpu_client, query):
+    with open(f"{os.path.dirname(__file__)}/queries/{query}") as f:
+        sql = f.read()
+
+    res = gpu_c.sql(sql)
+    res.compute(scheduler=gpu_client)
