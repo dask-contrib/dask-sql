@@ -3,6 +3,7 @@ use crate::sql::types::rel_data_type::RelDataType;
 use crate::sql::types::rel_data_type_field::RelDataTypeField;
 
 pub mod aggregate;
+pub mod analyze_table;
 pub mod create_catalog_schema;
 pub mod create_memory_table;
 pub mod create_model;
@@ -32,6 +33,7 @@ use datafusion_expr::LogicalPlan;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
+use self::analyze_table::AnalyzeTablePlanNode;
 use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
@@ -178,6 +180,10 @@ impl PyLogicalPlan {
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
     }
+    /// LogicalPlan::Extension::ShowColumns as PyShowColumns
+    pub fn analyze_table(&self) -> PyResult<analyze_table::PyAnalyzeTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
 
     /// LogicalPlan::CreateCatalogSchema as PyCreateCatalogSchema
     pub fn create_catalog_schema(&self) -> PyResult<create_catalog_schema::PyCreateCatalogSchema> {
@@ -288,6 +294,8 @@ impl PyLogicalPlan {
                     "DropSchema"
                 } else if node.downcast_ref::<UseSchemaPlanNode>().is_some() {
                     "UseSchema"
+                } else if node.downcast_ref::<AnalyzeTablePlanNode>().is_some() {
+                    "AnalyzeTable"
                 } else {
                     // Default to generic `Extension`
                     "Extension"

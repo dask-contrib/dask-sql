@@ -30,6 +30,7 @@ use std::sync::Arc;
 
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
+use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
@@ -388,6 +389,14 @@ impl DaskSQLContext {
                 node: Arc::new(UseSchemaPlanNode {
                     schema: Arc::new(DFSchema::empty()),
                     schema_name: use_schema.schema_name,
+                }),
+            })),
+            DaskStatement::AnalyzeTable(analyze_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AnalyzeTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_name: analyze_table.table_name,
+                    schema_name: analyze_table.schema_name,
+                    columns: analyze_table.columns,
                 }),
             })),
         }

@@ -101,20 +101,6 @@ impl PyExpr {
     }
 }
 
-impl PyExpr {
-    /// Split a fqn name into a tuple of (schema, column_name). It is valid that the
-    /// `schema` could be a compound identifier like `root.df` instead of just something
-    /// like `df`
-    fn _schema_column_from_fqn<'a>(&'a self, fqn: &'a str) -> (Option<String>, &str) {
-        let parts: Vec<&str> = fqn.split('.').collect();
-        match parts.len() {
-            3 => (Some(format!("{}.{}", parts[0], parts[1])), parts[2]),
-            2 => (Some(parts[0].to_string()), parts[1]),
-            _ => (None, fqn),
-        }
-    }
-}
-
 #[pymethods]
 impl PyExpr {
     #[staticmethod]
