@@ -84,7 +84,6 @@ def test_training_and_prediction(c, training_df):
     check_trained_model(c)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.gpu
 def test_cuml_training_and_prediction(c, gpu_training_df):
     model_query = """
@@ -102,7 +101,6 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
     check_trained_model(c)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.gpu
 @skip_if_external_scheduler
 def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
@@ -120,7 +118,6 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
     check_trained_model(c)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 @pytest.mark.gpu
 def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
@@ -138,7 +135,6 @@ def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
     check_trained_model(c)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 @pytest.mark.gpu
 def test_xgboost_training_prediction(c, gpu_training_df):
     model_query = """
