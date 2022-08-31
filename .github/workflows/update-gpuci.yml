@@ -57,10 +57,18 @@ jobs:
       - name: Update RAPIDS version
         uses: jacobtomlinson/gha-find-replace@v2
         with:
-          include: 'continuous_integration\/gpuci\/axis\.yaml'
+          include: 'continuous_integration/gpuci/**'
           find: "${{ env.RAPIDS_VER }}"
           replace: "${{ env.NEW_CUDF_VER }}"
-          regex: false
+          regex: true
+
+      - name: Update UCX-Py version
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          include: 'continuous_integration/gpuci/**'
+          find: "${{ env.UCX_PY_VER }}"
+          replace: "${{ env.NEW_UCX_PY_VER }}"
+          regex: true
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
@@ -79,4 +87,4 @@ jobs:
           body: |
             New cuDF and ucx-py nightly versions have been detected.
 
-            Updated `axis.yaml` to use `${{ env.NEW_CUDF_VER }}`.
+            Updated gpuCI to use RAPIDS ${{ env.NEW_CUDF_VER }} and UCX-Py ${{ env.NEW_UCX_PY_VER }}.

@@ -1,17 +1,47 @@
-name: gpuci
+name: dask-sql
 channels:
-  - rapidsai
-  - rapidsai-nightly
-  - nvidia
+- rapidsai
+- rapidsai-nightly
+- nvidia
+- conda-forge
+- nodefaults
 dependencies:
-  - rust>=1.60.0
-  - setuptools-rust>=1.2.0
-  - cudatoolkit=11.5
-  - cudf=22.08
-  - cuml=22.08
-  - dask-cudf=22.08
-  - dask-cuda=22.08
-  - numpy>=1.20.0
-  - ucx-proc=*=gpu
-  - ucx-py=0.27
-  - xgboost=*=cuda_*
+- dask-ml>=2022.1.22
+- dask>=2022.3.0
+- fastapi>=0.69.0
+- fugue>=0.7.0
+- intake>=0.6.0
+- jpype1>=1.0.2
+- jsonschema
+- lightgbm
+- maven
+- mlflow
+- mock
+- nest-asyncio
+- openjdk=11
+- pandas>=1.1.2
+- pre-commit
+- prompt_toolkit
+- psycopg2
+- pyarrow>=6.0.1
+- pygments
+- pyhive
+- pytest-cov
+- pytest-xdist
+- pytest
+- python=3.9
+- scikit-learn>=1.0.0
+- sphinx
+- tpot
+- tzlocal>=2.1
+- uvicorn>=0.11.3
+# GPU-specific requirements
+- cudatoolkit=11.5
+- cudf=22.10
+- cuml=22.10
+- dask-cudf=22.10
+- dask-cuda=22.10
+- numpy>=1.20.1
+- ucx-proc=*=gpu
+- ucx-py=0.28
+- xgboost=*=cuda_*
