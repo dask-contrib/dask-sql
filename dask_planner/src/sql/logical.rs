@@ -9,11 +9,13 @@ pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
 pub mod create_view;
+pub mod describe_model;
 pub mod drop_model;
 pub mod drop_schema;
 pub mod drop_table;
 pub mod empty_relation;
 pub mod explain;
+pub mod export_model;
 pub mod filter;
 pub mod join;
 pub mod limit;
@@ -21,6 +23,7 @@ pub mod predict_model;
 pub mod projection;
 pub mod repartition_by;
 pub mod show_columns;
+pub mod show_models;
 pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
@@ -39,10 +42,13 @@ use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::create_view::CreateViewPlanNode;
+use self::describe_model::DescribeModelPlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::drop_schema::DropSchemaPlanNode;
+use self::export_model::ExportModelPlanNode;
 use self::predict_model::PredictModelPlanNode;
 use self::show_columns::ShowColumnsPlanNode;
+use self::show_models::ShowModelsPlanNode;
 use self::show_schema::ShowSchemasPlanNode;
 use self::show_tables::ShowTablesPlanNode;
 use self::use_schema::UseSchemaPlanNode;
@@ -178,6 +184,16 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::DescribeModel as PyDescribeModel
+    pub fn describe_model(&self) -> PyResult<describe_model::PyDescribeModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::ExportModel as PyExportModel
+    pub fn export_model(&self) -> PyResult<export_model::PyExportModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
@@ -288,12 +304,18 @@ impl PyLogicalPlan {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
                     "PredictModel"
+                } else if node.downcast_ref::<ExportModelPlanNode>().is_some() {
+                    "ExportModel"
+                } else if node.downcast_ref::<DescribeModelPlanNode>().is_some() {
+                    "ShowModelParams"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
                 } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {
                     "ShowTables"
                 } else if node.downcast_ref::<ShowColumnsPlanNode>().is_some() {
                     "ShowColumns"
+                } else if node.downcast_ref::<ShowModelsPlanNode>().is_some() {
+                    "ShowModels"
                 } else if node.downcast_ref::<DropSchemaPlanNode>().is_some() {
                     "DropSchema"
                 } else if node.downcast_ref::<UseSchemaPlanNode>().is_some() {

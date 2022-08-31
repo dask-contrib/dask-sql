@@ -88,7 +88,24 @@ pub struct CreateView {
 pub struct DropModel {
     /// model name
     pub name: String,
+    /// if exists
     pub if_exists: bool,
+}
+
+/// Dask-SQL extension DDL for `EXPORT MODEL`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportModel {
+    /// model name
+    pub name: String,
+    /// with options
+    pub with_options: Vec<Expr>,
+}
+
+/// Dask-SQL extension DDL for `DESCRIBE MODEL`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DescribeModel {
+    /// model name
+    pub name: String,
 }
 
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
@@ -112,6 +129,10 @@ pub struct ShowColumns {
     pub table_name: String,
     pub schema_name: Option<String>,
 }
+
+/// Dask-SQL extension DDL for `SHOW MODELS`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShowModels;
 
 /// Dask-SQL extension DDL for `USE SCHEMA`
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,6 +175,10 @@ pub enum DaskStatement {
     CreateView(Box<CreateView>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
+    /// Extension: `EXPORT MODEL`
+    ExportModel(Box<ExportModel>),
+    /// Extension: `DESCRIBE MODEL`
+    DescribeModel(Box<DescribeModel>),
     /// Extension: `PREDICT`
     PredictModel(Box<PredictModel>),
     // Extension: `SHOW SCHEMAS`
@@ -162,6 +187,8 @@ pub enum DaskStatement {
     ShowTables(Box<ShowTables>),
     // Extension: `SHOW COLUMNS FROM`
     ShowColumns(Box<ShowColumns>),
+    // Extension: `SHOW COLUMNS FROM`
+    ShowModels(Box<ShowModels>),
     // Exntension: `DROP SCHEMA`
     DropSchema(Box<DropSchema>),
     // Extension: `USE SCHEMA`
@@ -294,6 +321,12 @@ impl<'a> DaskParser<'a> {
                         // use custom parsing
                         self.parse_show()
                     }
+                    Keyword::DESCRIBE => {
+                        // move one token forwrd
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_describe()
+                    }
                     Keyword::USE => {
                         // move one token forwrd
                         self.parser.next_token();
@@ -306,10 +339,20 @@ impl<'a> DaskParser<'a> {
                         self.parse_analyze()
                     }
                     _ => {
-                        // use the native parser
-                        Ok(DaskStatement::Statement(Box::from(
-                            self.parser.parse_statement()?,
-                        )))
+                        match w.value.to_lowercase().as_str() {
+                            "export" => {
+                                // move one token forwrd
+                                self.parser.next_token();
+                                // use custom parsing
+                                self.parse_export_model()
+                            }
+                            _ => {
+                                // use the native parser
+                                Ok(DaskStatement::Statement(Box::from(
+                                    self.parser.parse_statement()?,
+                                )))
+                            }
+                        }
                     }
                 }
             }
@@ -368,6 +411,11 @@ impl<'a> DaskParser<'a> {
                         self.parse_create_table(false, or_replace)
                     }
                     _ => {
+                        if or_replace {
+                            // Go back two tokens if OR REPLACE was consumed
+                            self.parser.prev_token();
+                            self.parser.prev_token();
+                        }
                         // use the native parser
                         Ok(DaskStatement::Statement(Box::from(
                             self.parser.parse_create()?,
@@ -474,6 +522,37 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show_columns()
+                    }
+                    "models" => {
+                        self.parser.next_token();
+                        Ok(DaskStatement::ShowModels(Box::new(ShowModels)))
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_show()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_show()?,
+                )))
+            }
+        }
+    }
+
+    /// Parse a SQL DESCRIBE statement
+    pub fn parse_describe(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "model" => {
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_describe_model()
                     }
                     _ => {
                         // use the native parser
@@ -705,16 +784,55 @@ impl<'a> DaskParser<'a> {
         }
     }
 
+    /// Parse Dask-SQL EXPORT MODEL statement
+    fn parse_export_model(&mut self) -> Result<DaskStatement, ParserError> {
+        let is_model = match self.parser.next_token() {
+            Token::Word(w) => matches!(w.value.to_lowercase().as_str(), "model"),
+            _ => false,
+        };
+        if !is_model {
+            return Err(ParserError::ParserError(
+                "parse_export_model: Expected `MODEL`".to_string(),
+            ));
+        }
+
+        let model_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
+
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+
+        let export = ExportModel {
+            name: model_name.to_string(),
+            with_options,
+        };
+        Ok(DaskStatement::ExportModel(Box::new(export)))
+    }
+
     /// Parse Dask-SQL DROP MODEL statement
     fn parse_drop_model(&mut self) -> Result<DaskStatement, ParserError> {
-        let model_name = self.parser.parse_object_name()?;
         let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let model_name = self.parser.parse_object_name()?;
 
         let drop = DropModel {
             name: model_name.to_string(),
             if_exists,
         };
         Ok(DaskStatement::DropModel(Box::new(drop)))
+    }
+
+    /// Parse Dask-SQL DESRIBE MODEL statement
+    fn parse_describe_model(&mut self) -> Result<DaskStatement, ParserError> {
+        let model_name = self.parser.parse_object_name()?;
+
+        let describe = DescribeModel {
+            name: model_name.to_string(),
+        };
+        Ok(DaskStatement::DescribeModel(Box::new(describe)))
     }
 
     /// Parse Dask-SQL SHOW SCHEMAS statement
