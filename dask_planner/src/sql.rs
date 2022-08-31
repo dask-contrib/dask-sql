@@ -165,6 +165,7 @@ impl ContextProvider for DaskSQLContext {
                     if function.aggregation.eq(&true) {
                         return None;
                     }
+                    let sig = {
                         Signature::one_of(
                             function
                                 .return_types
