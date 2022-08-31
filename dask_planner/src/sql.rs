@@ -176,7 +176,6 @@ impl ContextProvider for DaskSQLContext {
                     };
                     let function = function.clone();
                     let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
-                        let function = function.lock().unwrap();
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
