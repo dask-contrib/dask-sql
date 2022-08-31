@@ -9,7 +9,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class AnalyzeTablePlugin(BaseRelPlugin):
@@ -18,7 +18,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     on all or a subset of the columns..
     The SQL is:
 
-        ANALYZE TABLE <table> COMPUTE STATISTICS [FOR ALL COLUMNS | FOR COLUMNS a, b, ...]
+        ANALYZE TABLE <table> COMPUTE STATISTICS FOR [ALL COLUMNS | COLUMNS a, b, ...]
 
     The result is also a table, although it is created on the fly.
 
@@ -28,14 +28,16 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     as this is currently not implemented in dask-sql.
     """
 
-    class_name = "com.dask.sql.parser.SqlAnalyzeTable"
+    class_name = "AnalyzeTable"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, name = context.fqn(sql.getTableName())
-        dc = context.schema[schema_name].tables[name]
-        columns = list(map(str, sql.getColumnList()))
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        analyze_table = rel.analyze_table()
+
+        schema_name = analyze_table.getSchemaName() or context.DEFAULT_SCHEMA_NAME
+        table_name = analyze_table.getTableName()
+
+        dc = context.schema[schema_name].tables[table_name]
+        columns = analyze_table.getColumns()
 
         if not columns:
             columns = dc.column_container.columns
@@ -54,7 +56,9 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         statistics = statistics.append(
             pd.Series(
                 {
-                    col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
+                    col: str(python_to_sql_type(df[mapping(col)].dtype).getSqlType())
+                    .rpartition(".")[2]
+                    .lower()
                     for col in columns
                 },
                 name="data_type",

@@ -5,7 +5,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,16 @@ class CreateSchemaPlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateSchema"
+    class_name = "CreateCatalogSchema"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ):
-        schema_name = str(sql.getSchemaName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
+        create_schema = rel.create_catalog_schema()
+        schema_name = str(create_schema.getSchemaName())
 
         if schema_name in context.schema:
-            if sql.getIfNotExists():
+            if create_schema.getIfNotExists():
                 return
-            elif not sql.getReplace():
+            elif not create_schema.getReplace():
                 raise RuntimeError(
                     f"A Schema with the name {schema_name} is already present."
                 )

@@ -5,7 +5,7 @@
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, Statement as SQLStatement},
+    ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -44,6 +44,17 @@ pub struct PredictModel {
     pub select: SQLStatement,
 }
 
+/// Dask-SQL extension DDL for `CREATE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateCatalogSchema {
+    /// schema_name
+    pub schema_name: String,
+    /// if not exists
+    pub if_not_exists: bool,
+    /// or replace
+    pub or_replace: bool,
+}
+
 /// Dask-SQL extension DDL for `CREATE TABLE ... WITH`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTable {
@@ -57,6 +68,19 @@ pub struct CreateTable {
     pub or_replace: bool,
     /// with options
     pub with_options: Vec<Expr>,
+}
+
+/// Dask-SQL extension DDL for `CREATE VIEW`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateView {
+    /// view schema, "something" in "something.view_name"
+    pub view_schema: String,
+    /// view name
+    pub name: String,
+    /// if not exists
+    pub if_not_exists: bool,
+    /// or replace
+    pub or_replace: bool,
 }
 
 /// Dask-SQL extension DDL for `DROP MODEL`
@@ -110,6 +134,30 @@ pub struct ShowColumns {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowModels;
 
+/// Dask-SQL extension DDL for `USE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropSchema {
+    /// schema name
+    pub schema_name: String,
+    /// if exists
+    pub if_exists: bool,
+}
+
+/// Dask-SQL extension DDL for `USE SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UseSchema {
+    /// schema name
+    pub schema_name: String,
+}
+
+/// Dask-SQL extension DDL for `ANALYZE TABLE`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalyzeTable {
+    pub table_name: String,
+    pub schema_name: Option<String>,
+    pub columns: Vec<String>,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -119,8 +167,12 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE SCHEMA`
+    CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
     CreateTable(Box<CreateTable>),
+    /// Extension: `CREATE VIEW`
+    CreateView(Box<CreateView>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
     /// Extension: `EXPORT MODEL`
@@ -137,6 +189,12 @@ pub enum DaskStatement {
     ShowColumns(Box<ShowColumns>),
     // Extension: `SHOW COLUMNS FROM`
     ShowModels(Box<ShowModels>),
+    // Exntension: `DROP SCHEMA`
+    DropSchema(Box<DropSchema>),
+    // Extension: `USE SCHEMA`
+    UseSchema(Box<UseSchema>),
+    // Extension: `ANALYZE TABLE`
+    AnalyzeTable(Box<AnalyzeTable>),
 }
 
 /// SQL Parser
@@ -258,7 +316,7 @@ impl<'a> DaskParser<'a> {
                         )))
                     }
                     Keyword::SHOW => {
-                        // move one token forwrd
+                        // move one token forward
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_show()
@@ -268,6 +326,17 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_describe()
+                    }
+                    Keyword::USE => {
+                        // move one token forwrd
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_use()
+                    }
+                    Keyword::ANALYZE => {
+                        // move one token foward
+                        self.parser.next_token();
+                        self.parse_analyze()
                     }
                     _ => {
                         match w.value.to_lowercase().as_str() {
@@ -305,14 +374,41 @@ impl<'a> DaskParser<'a> {
                     "model" => {
                         // move one token forward
                         self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
                         // use custom parsing
-                        self.parse_create_model(or_replace)
+                        self.parse_create_model(if_not_exists, or_replace)
+                    }
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
+                        // use custom parsing
+                        self.parse_create_schema(if_not_exists, or_replace)
                     }
                     "table" => {
                         // move one token forward
                         self.parser.next_token();
+
                         // use custom parsing
-                        self.parse_create_table(or_replace)
+                        self.parse_create_table(true, or_replace)
+                    }
+                    "view" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_create_table(false, or_replace)
                     }
                     _ => {
                         if or_replace {
@@ -351,6 +447,21 @@ impl<'a> DaskParser<'a> {
                         self.parser.next_token();
                         // use custom parsing
                         self.parse_drop_model()
+                    }
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+
+                        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+
+                        let schema_name = self.parser.parse_identifier()?;
+
+                        let drop_schema = DropSchema {
+                            schema_name: schema_name.value,
+                            if_exists,
+                        };
+                        Ok(DaskStatement::DropSchema(Box::new(drop_schema)))
                     }
                     _ => {
                         // use the native parser
@@ -460,6 +571,61 @@ impl<'a> DaskParser<'a> {
         }
     }
 
+    /// Parse a SQL USE SCHEMA statement
+    pub fn parse_use(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "schema" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        let schema_name = self.parser.parse_identifier()?;
+
+                        let use_schema = UseSchema {
+                            schema_name: schema_name.value,
+                        };
+                        Ok(DaskStatement::UseSchema(Box::new(use_schema)))
+                    }
+                    _ => Ok(DaskStatement::Statement(Box::from(
+                        self.parser.parse_show()?,
+                    ))),
+                }
+            }
+            _ => Ok(DaskStatement::Statement(Box::from(
+                self.parser.parse_show()?,
+            ))),
+        }
+    }
+
+    /// Parse a SQL ANALYZE statement
+    pub fn parse_analyze(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.value.to_lowercase().as_str() {
+                    "table" => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        self.parse_analyze_table()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_analyze()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_analyze()?,
+                )))
+            }
+        }
+    }
+
     /// Parse a SQL PREDICT statement
     pub fn parse_predict_model(&mut self) -> Result<DaskStatement, ParserError> {
         // PREDICT(
@@ -494,11 +660,11 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE MODEL statement
-    fn parse_create_model(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
-        // parse [IF NOT EXISTS] `model_name` WITH
-        let if_not_exists =
-            self.parser
-                .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
+    fn parse_create_model(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
 
@@ -522,12 +688,38 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::CreateModel(Box::new(create)))
     }
 
+    /// Parse Dask-SQL CREATE {IF NOT EXISTS | OR REPLACE} SCHEMA ... statement
+    fn parse_create_schema(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let schema_name = self.parser.parse_identifier()?.value;
+
+        let create = CreateCatalogSchema {
+            schema_name,
+            if_not_exists,
+            or_replace,
+        };
+        Ok(DaskStatement::CreateCatalogSchema(Box::new(create)))
+    }
+
     /// Parse Dask-SQL CREATE [OR REPLACE] TABLE ... statement
-    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+    ///
+    /// # Arguments
+    ///
+    /// * `is_table` - Whether the "table" is a "TABLE" or "VIEW", True if "TABLE" and False otherwise.
+    /// * `or_replace` - True if the "TABLE" or "VIEW" should be replaced and False otherwise
+    fn parse_create_table(
+        &mut self,
+        is_table: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
         // parse [IF NOT EXISTS] `table_name` AS|WITH
         let if_not_exists =
             self.parser
                 .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
+
         let _table_name = self.parser.parse_identifier();
         let after_name_token = self.parser.peek_token();
 
@@ -537,14 +729,23 @@ impl<'a> DaskParser<'a> {
                     "as" => {
                         self.parser.prev_token();
                         if if_not_exists {
-                            // Go back three tokens if IF NOT EXISTS was consumed
+                            // Go back three tokens if IF NOT EXISTS was consumed, native parser consumes these tokens as well
                             self.parser.prev_token();
                             self.parser.prev_token();
                             self.parser.prev_token();
                         }
-                        Ok(DaskStatement::Statement(Box::from(
-                            self.parser.parse_create_table(or_replace, false, None)?,
-                        )))
+
+                        // True if TABLE and False if VIEW
+                        if is_table {
+                            Ok(DaskStatement::Statement(Box::from(
+                                self.parser.parse_create_table(or_replace, false, None)?,
+                            )))
+                        } else {
+                            self.parser.prev_token();
+                            Ok(DaskStatement::Statement(Box::from(
+                                self.parser.parse_create_view(or_replace)?,
+                            )))
+                        }
                     }
                     "with" => {
                         // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
@@ -679,6 +880,55 @@ impl<'a> DaskParser<'a> {
                 "" => None,
                 _ => Some(tbl_schema),
             },
+        })))
+    }
+
+    /// Parse Dask-SQL ANALYZE TABLE <table>
+    fn parse_analyze_table(&mut self) -> Result<DaskStatement, ParserError> {
+        let table_factor = self.parser.parse_table_factor()?;
+        // parse_table_factor parses the following keyword as an alias, so we need to go back a token
+        // TODO: open an issue in sqlparser around this when possible
+        self.parser.prev_token();
+        self.parser
+            .expect_keywords(&[Keyword::COMPUTE, Keyword::STATISTICS, Keyword::FOR])?;
+        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let columns = match self
+            .parser
+            .parse_keywords(&[Keyword::ALL, Keyword::COLUMNS])
+        {
+            true => vec![],
+            false => {
+                self.parser.expect_keyword(Keyword::COLUMNS)?;
+                let mut values = vec![];
+                for select in self.parser.parse_projection()? {
+                    match select {
+                        SelectItem::UnnamedExpr(expr) => match expr {
+                            Expr::Identifier(ident) => values.push(ident.value),
+                            unexpected => {
+                                return parser_err!(format!(
+                                    "Expected Identifier, found: {}",
+                                    unexpected
+                                ))
+                            }
+                        },
+                        unexpected => {
+                            return parser_err!(format!(
+                                "Expected UnnamedExpr, found: {}",
+                                unexpected
+                            ))
+                        }
+                    }
+                }
+                values
+            }
+        };
+        Ok(DaskStatement::AnalyzeTable(Box::new(AnalyzeTable {
+            table_name: tbl_name,
+            schema_name: match tbl_schema.as_str() {
+                "" => None,
+                _ => Some(tbl_schema),
+            },
+            columns,
         })))
     }
 }
