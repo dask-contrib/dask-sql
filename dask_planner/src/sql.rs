@@ -16,8 +16,9 @@ use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
-    AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
-    ScalarUDF, Signature, TableSource, TypeSignature, Volatility,
+    AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
+    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource,
+    TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
@@ -160,6 +161,9 @@ impl ContextProvider for DaskSQLContext {
         for schema in self.schemas.values() {
             for (fun_name, function) in &schema.functions {
                 if fun_name.eq(name) {
+                    if function.lock().unwrap().aggregation.eq(&true) {
+                        return None;
+                    }
                     let sig = {
                         let function = function.lock().unwrap();
                         Signature::one_of(
@@ -195,7 +199,73 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
+    fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
+        let acc: AccumulatorFunctionImplementation =
+            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
+
+        let st: StateTypeFunction =
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+
+        match name {
+            "every" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "bit_and" | "bit_or" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "single_value" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            _ => (),
+        }
+
+        // Loop through all of the user defined functions
+        for schema in self.schemas.values() {
+            for (fun_name, function) in &schema.functions {
+                if fun_name.eq(name) {
+                    if function.lock().unwrap().aggregation.eq(&false) {
+                        return None;
+                    }
+                    let sig = {
+                        let function = function.lock().unwrap();
+                        Signature::one_of(
+                            function
+                                .return_types
+                                .keys()
+                                .map(|v| TypeSignature::Exact(v.to_vec()))
+                                .collect(),
+                            Volatility::Immutable,
+                        )
+                    };
+                    let function = function.clone();
+                    let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
+                        let function = function.lock().unwrap();
+                        match function.return_types.get(&input_types.to_vec()) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone())),
+                            None => Err(DataFusionError::Plan(format!(
+                                "UDF signature not found for input types {:?}",
+                                input_types
+                            ))),
+                        }
+                    });
+                    return Some(Arc::new(AggregateUDF::new(
+                        fun_name,
+                        &sig,
+                        &rtf,
+                        &acc,
+                        &st,
+                    )));
+                }
+            }
+        }
+
         None
     }
 

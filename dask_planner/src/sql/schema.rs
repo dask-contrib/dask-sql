@@ -50,6 +50,30 @@ impl DaskSchema {
                     name,
                     input_types,
                     return_type,
+                    false,
+                )))
+            });
+    }
+
+    pub fn add_or_overload_aggregation(
+        &mut self,
+        name: String,
+        input_types: Vec<PyDataType>,
+        return_type: PyDataType,
+    ) {        
+        self.functions
+            .entry(name.clone())
+            .and_modify(|e| {
+                (*e).lock()
+                    .unwrap()
+                    .add_type_mapping(input_types.clone(), return_type.clone());
+            })
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(DaskFunction::new(
+                    name,
+                    input_types,
+                    return_type,
+                    true,
                 )))
             });
     }

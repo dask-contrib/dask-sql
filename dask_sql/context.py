@@ -752,12 +752,11 @@ class Context:
                 sql_parameters = function_description.parameters
                 if function_description.aggregation:
                     logger.debug(f"Adding function '{name}' to schema as aggregation.")
-                    # TODO: Not yet implemented
-                    # rust_schema.add_or_overload_aggregation(
-                    #     name,
-                    #     [param[1].getDataType() for param in sql_parameters],
-                    #     sql_return_type.getDataType(),
-                    # )
+                    rust_schema.add_or_overload_aggregation(
+                        name,
+                        [param[1].getDataType() for param in sql_parameters],
+                        sql_return_type.getDataType(),
+                    )
                 else:
                     logger.debug(
                         f"Adding function '{name}' to schema as scalar function."

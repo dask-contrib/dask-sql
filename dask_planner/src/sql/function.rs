@@ -10,6 +10,7 @@ pub struct DaskFunction {
     #[pyo3(get, set)]
     pub(crate) name: String,
     pub(crate) return_types: HashMap<Vec<DataType>, DataType>,
+    pub(crate) aggregation: bool,
 }
 
 impl DaskFunction {
@@ -17,10 +18,12 @@ impl DaskFunction {
         function_name: String,
         input_types: Vec<PyDataType>,
         return_type: PyDataType,
+        aggregation: bool,
     ) -> Self {
         let mut func = Self {
             name: function_name,
             return_types: HashMap::new(),
+            aggregation: aggregation,
         };
         func.add_type_mapping(input_types, return_type);
         func
