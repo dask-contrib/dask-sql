@@ -38,7 +38,6 @@ class CreateTableAsPlugin(BaseRelPlugin):
         # Rust create_memory_table instance handle
         create_memory_table = rel.create_memory_table()
 
-        # can we avoid hardcoding the schema name?
         schema_name, table_name = context.schema_name, create_memory_table.getName()
 
         if table_name in context.schema[schema_name].tables:

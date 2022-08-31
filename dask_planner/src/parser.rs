@@ -70,6 +70,19 @@ pub struct CreateTable {
     pub with_options: Vec<Expr>,
 }
 
+/// Dask-SQL extension DDL for `CREATE VIEW`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateView {
+    /// view schema, "something" in "something.view_name"
+    pub view_schema: String,
+    /// view name
+    pub name: String,
+    /// if not exists
+    pub if_not_exists: bool,
+    /// or replace
+    pub or_replace: bool,
+}
+
 /// Dask-SQL extension DDL for `DROP MODEL`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DropModel {
@@ -137,6 +150,8 @@ pub enum DaskStatement {
     CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
     CreateTable(Box<CreateTable>),
+    /// Extension: `CREATE VIEW`
+    CreateView(Box<CreateView>),
     /// Extension: `DROP MODEL`
     DropModel(Box<DropModel>),
     /// Extension: `PREDICT`
@@ -343,20 +358,14 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
 
-                        let if_not_exists = self.parser.parse_keywords(&[
-                            Keyword::IF,
-                            Keyword::NOT,
-                            Keyword::EXISTS,
-                        ]);
-
                         // use custom parsing
-                        self.parse_create_table(if_not_exists)
+                        self.parse_create_table(true, or_replace)
                     }
                     "view" => {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        self.parse_create_table(or_replace)
+                        self.parse_create_table(false, or_replace)
                     }
                     _ => {
                         // use the native parser
@@ -617,11 +626,21 @@ impl<'a> DaskParser<'a> {
     }
 
     /// Parse Dask-SQL CREATE [OR REPLACE] TABLE ... statement
-    fn parse_create_table(&mut self, or_replace: bool) -> Result<DaskStatement, ParserError> {
+    ///
+    /// # Arguments
+    ///
+    /// * `is_table` - Whether the "table" is a "TABLE" or "VIEW", True if "TABLE" and False otherwise.
+    /// * `or_replace` - True if the "TABLE" or "VIEW" should be replaced and False otherwise
+    fn parse_create_table(
+        &mut self,
+        is_table: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
         // parse [IF NOT EXISTS] `table_name` AS|WITH
         let if_not_exists =
             self.parser
                 .parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
+
         let _table_name = self.parser.parse_identifier();
         let after_name_token = self.parser.peek_token();
 
@@ -631,14 +650,24 @@ impl<'a> DaskParser<'a> {
                     "as" => {
                         self.parser.prev_token();
                         if if_not_exists {
-                            // Go back three tokens if IF NOT EXISTS was consumed
+                            // Go back three tokens if IF NOT EXISTS was consumed, native parser consumes these tokens as well
                             self.parser.prev_token();
                             self.parser.prev_token();
                             self.parser.prev_token();
                         }
-                        Ok(DaskStatement::Statement(Box::from(
-                            self.parser.parse_create_table(or_replace, false, None)?,
-                        )))
+
+                        // True if TABLE and False if VIEW
+                        match is_table {
+                            true => Ok(DaskStatement::Statement(Box::from(
+                                self.parser.parse_create_table(or_replace, false, None)?,
+                            ))),
+                            false => {
+                                self.parser.prev_token();
+                                Ok(DaskStatement::Statement(Box::from(
+                                    self.parser.parse_create_view(or_replace)?,
+                                )))
+                            }
+                        }
                     }
                     "with" => {
                         // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption

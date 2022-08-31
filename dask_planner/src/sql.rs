@@ -33,6 +33,7 @@ use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
+use crate::sql::logical::create_view::CreateViewPlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::predict_model::PredictModelPlanNode;
 use crate::sql::logical::show_columns::ShowColumnsPlanNode;
@@ -350,6 +351,15 @@ impl DaskSQLContext {
                     if_not_exists: create_table.if_not_exists,
                     or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
+                }),
+            })),
+            DaskStatement::CreateView(create_view) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateViewPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    view_schema: create_view.view_schema,
+                    view_name: create_view.name,
+                    if_not_exists: create_view.if_not_exists,
+                    or_replace: create_view.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {

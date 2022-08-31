@@ -8,6 +8,7 @@ pub mod create_catalog_schema;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
+pub mod create_view;
 pub mod drop_model;
 pub mod drop_schema;
 pub mod drop_table;
@@ -37,6 +38,7 @@ use self::analyze_table::AnalyzeTablePlanNode;
 use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
+use self::create_view::CreateViewPlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::drop_schema::DropSchemaPlanNode;
 use self::predict_model::PredictModelPlanNode;
@@ -280,6 +282,8 @@ impl PyLogicalPlan {
                     "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
                     "CreateTable"
+                } else if node.downcast_ref::<CreateViewPlanNode>().is_some() {
+                    "CreateView"
                 } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
