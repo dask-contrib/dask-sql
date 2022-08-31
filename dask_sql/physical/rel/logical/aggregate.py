@@ -327,12 +327,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         for expr in rel.aggregate().getNamedAggCalls():
             # Determine the aggregation function to use
-            assert (
-                expr.getExprType() == "AggregateFunction"
-            ), "Do not know how to handle this case!"
+            assert expr.getExprType() in {
+                "AggregateFunction",
+                "AggregateUDF",
+            }, "Do not know how to handle this case!"
 
-            # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
-            schema_name = "root"
+            schema_name = context.schema_name
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
 
             # Gather information about the input column
@@ -461,7 +461,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 by=(group_columns or [additional_column_name]), dropna=False
             )
         else:
-            group_columns = [tmp_df[group_column] for group_column in group_columns]
+            group_columns = [
+                tmp_df[dc.column_container.get_backend_by_frontend_name(group_column)]
+                for group_column in group_columns
+            ]
             group_columns_and_nulls = get_groupby_with_nulls_cols(
                 tmp_df, group_columns, additional_column_name
             )

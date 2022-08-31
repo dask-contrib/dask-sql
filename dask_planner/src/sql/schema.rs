@@ -37,6 +37,7 @@ impl DaskSchema {
         name: String,
         input_types: Vec<PyDataType>,
         return_type: PyDataType,
+        aggregation: bool,
     ) {
         self.functions
             .entry(name.clone())
@@ -50,6 +51,7 @@ impl DaskSchema {
                     name,
                     input_types,
                     return_type,
+                    aggregation,
                 )))
             });
     }

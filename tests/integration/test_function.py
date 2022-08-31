@@ -163,9 +163,6 @@ def test_multiple_definitions(c, df_simple):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_aggregate_function(c):
     fagg = dd.Aggregation("f", lambda x: x.sum(), lambda x: x.sum())
     c.register_aggregation(fagg, "fagg", [("x", np.float64)], np.float64)
