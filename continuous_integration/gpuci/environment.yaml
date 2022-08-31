@@ -11,15 +11,13 @@ dependencies:
 - fastapi>=0.69.0
 - fugue>=0.7.0
 - intake>=0.6.0
-- jpype1>=1.0.2
 - jsonschema
 - lightgbm
-- maven
+- maturin>=0.12.8
 - mlflow
 - mock
 - nest-asyncio
-- openjdk=11
-- pandas>=1.1.2
+- pandas>=1.4.0
 - pre-commit
 - prompt_toolkit
 - psycopg2
@@ -30,7 +28,9 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.9
+- rust=1.62.1
 - scikit-learn>=1.0.0
+- setuptools-rust>=1.4.1
 - sphinx
 - tpot
 - tzlocal>=2.1
