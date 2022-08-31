@@ -332,8 +332,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
 
-            # TODO: Generally we need a way to capture the current SQL schema here in case this is a custom aggregation function
-            schema_name = "root"
+            schema_name = context.schema_name
             aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
 
             # Gather information about the input column

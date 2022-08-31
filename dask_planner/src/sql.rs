@@ -159,13 +159,12 @@ impl ContextProvider for DaskSQLContext {
 
         // Loop through all of the user defined functions
         for schema in self.schemas.values() {
-            for (fun_name, function) in &schema.functions {
+            for (fun_name, func_mutex) in &schema.functions {
                 if fun_name.eq(name) {
-                    if function.lock().unwrap().aggregation.eq(&true) {
+                    let function = func_mutex.lock().unwrap();
+                    if function.aggregation.eq(&true) {
                         return None;
                     }
-                    let sig = {
-                        let function = function.lock().unwrap();
                         Signature::one_of(
                             function
                                 .return_types
@@ -201,7 +200,7 @@ impl ContextProvider for DaskSQLContext {
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
         let acc: AccumulatorFunctionImplementation =
-            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
@@ -228,13 +227,13 @@ impl ContextProvider for DaskSQLContext {
 
         // Loop through all of the user defined functions
         for schema in self.schemas.values() {
-            for (fun_name, function) in &schema.functions {
+            for (fun_name, func_mutex) in &schema.functions {
                 if fun_name.eq(name) {
-                    if function.lock().unwrap().aggregation.eq(&false) {
+                    let function = func_mutex.lock().unwrap();
+                    if function.aggregation.eq(&false) {
                         return None;
                     }
                     let sig = {
-                        let function = function.lock().unwrap();
                         Signature::one_of(
                             function
                                 .return_types
@@ -246,7 +245,6 @@ impl ContextProvider for DaskSQLContext {
                     };
                     let function = function.clone();
                     let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
-                        let function = function.lock().unwrap();
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
