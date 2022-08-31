@@ -255,13 +255,7 @@ impl ContextProvider for DaskSQLContext {
                             ))),
                         }
                     });
-                    return Some(Arc::new(AggregateUDF::new(
-                        fun_name,
-                        &sig,
-                        &rtf,
-                        &acc,
-                        &st,
-                    )));
+                    return Some(Arc::new(AggregateUDF::new(fun_name, &sig, &rtf, &acc, &st)));
                 }
             }
         }

@@ -18,12 +18,12 @@ impl DaskFunction {
         function_name: String,
         input_types: Vec<PyDataType>,
         return_type: PyDataType,
-        aggregation: bool,
+        aggregation_bool: bool,
     ) -> Self {
         let mut func = Self {
             name: function_name,
             return_types: HashMap::new(),
-            aggregation: aggregation,
+            aggregation: aggregation_bool,
         };
         func.add_type_mapping(input_types, return_type);
         func
