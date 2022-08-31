@@ -200,7 +200,7 @@ impl ContextProvider for DaskSQLContext {
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
         let acc: AccumulatorFunctionImplementation =
-            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
