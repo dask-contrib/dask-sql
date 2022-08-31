@@ -74,7 +74,7 @@ pub struct PyCreateCatalogSchema {
 #[pymethods]
 impl PyCreateCatalogSchema {
     #[pyo3(name = "getSchemaName")]
-    fn get_table_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<String> {
         Ok(self.create_catalog_schema.schema_name.clone())
     }
 

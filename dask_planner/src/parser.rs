@@ -407,10 +407,10 @@ impl<'a> DaskParser<'a> {
 
                         let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
 
-                        let schema_name = self.parser.parse_identifier();
+                        let schema_name = self.parser.parse_identifier()?;
 
                         let drop_schema = DropSchema {
-                            schema_name: schema_name?.value,
+                            schema_name: schema_name.value,
                             if_exists,
                         };
                         Ok(DaskStatement::DropSchema(Box::new(drop_schema)))
@@ -501,10 +501,10 @@ impl<'a> DaskParser<'a> {
                         // move one token forward
                         self.parser.next_token();
                         // use custom parsing
-                        let schema_name = self.parser.parse_identifier();
+                        let schema_name = self.parser.parse_identifier()?;
 
                         let use_schema = UseSchema {
-                            schema_name: schema_name?.value,
+                            schema_name: schema_name.value,
                         };
                         Ok(DaskStatement::UseSchema(Box::new(use_schema)))
                     }
@@ -657,16 +657,15 @@ impl<'a> DaskParser<'a> {
                         }
 
                         // True if TABLE and False if VIEW
-                        match is_table {
-                            true => Ok(DaskStatement::Statement(Box::from(
+                        if is_table {
+                            Ok(DaskStatement::Statement(Box::from(
                                 self.parser.parse_create_table(or_replace, false, None)?,
-                            ))),
-                            false => {
-                                self.parser.prev_token();
-                                Ok(DaskStatement::Statement(Box::from(
-                                    self.parser.parse_create_view(or_replace)?,
-                                )))
-                            }
+                            )))
+                        } else {
+                            self.parser.prev_token();
+                            Ok(DaskStatement::Statement(Box::from(
+                                self.parser.parse_create_view(or_replace)?,
+                            )))
                         }
                     }
                     "with" => {
