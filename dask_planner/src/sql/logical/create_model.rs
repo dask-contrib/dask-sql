@@ -1,10 +1,11 @@
 use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
+use crate::sql::parser_utils::DaskParserUtils;
 use pyo3::prelude::*;
 
 use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
-use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
+use datafusion_sql::sqlparser::ast::Expr as SqlParserExpr;
 
 use fmt::Debug;
 use std::collections::HashMap;
@@ -104,8 +105,8 @@ impl PyCreateModel {
             match elem {
                 SqlParserExpr::BinaryOp { left, op: _, right } => {
                     options.insert(
-                        Self::_str_from_expr(*left.clone()),
-                        Self::_str_from_expr(*right.clone()),
+                        DaskParserUtils::str_from_expr(*left.clone()),
+                        DaskParserUtils::str_from_expr(*right.clone()),
                     );
                 }
                 _ => {
@@ -115,30 +116,6 @@ impl PyCreateModel {
             }
         }
         Ok(options)
-    }
-}
-
-impl PyCreateModel {
-    /// Given a SqlParserExpr instance retrieve the String value from it
-    fn _str_from_expr(expression: SqlParserExpr) -> String {
-        match expression {
-            SqlParserExpr::Identifier(ident) => ident.value,
-            SqlParserExpr::Value(value) => match value {
-                Value::SingleQuotedString(e) => e.replace('\'', ""),
-                Value::DoubleQuotedString(e) => e.replace('\"', ""),
-                Value::Boolean(e) => {
-                    if e {
-                        "True".to_string()
-                    } else {
-                        "False".to_string()
-                    }
-                }
-                Value::Number(e, ..) => e,
-                _ => unimplemented!("Unimplmented Value type: {:?}", value),
-            },
-            SqlParserExpr::Nested(nested_expr) => Self::_str_from_expr(*nested_expr),
-            _ => unimplemented!("Unimplmented SqlParserExpr type: {:?}", expression),
-        }
     }
 }
 

@@ -1,4 +1,4 @@
-use datafusion_sql::sqlparser::ast::{Expr, TableFactor};
+use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, TableFactor, Value};
 use datafusion_sql::sqlparser::parser::ParserError;
 
 pub struct DaskParserUtils;
@@ -36,7 +36,7 @@ impl DaskParserUtils {
     }
 
     /// Gets the with options from the `TableFactor` instance
-    pub fn options_from_tablefactor(tbl_factor: &TableFactor) -> Vec<Expr> {
+    pub fn options_from_tablefactor(tbl_factor: &TableFactor) -> Vec<SqlParserExpr> {
         match tbl_factor {
             TableFactor::Table { with_hints, .. } => with_hints.clone(),
             TableFactor::Derived { .. }
@@ -45,6 +45,28 @@ impl DaskParserUtils {
             | TableFactor::UNNEST { .. } => {
                 vec![]
             }
+        }
+    }
+
+    /// Given a SqlParserExpr instance retrieve the String value from it
+    pub fn str_from_expr(expression: SqlParserExpr) -> String {
+        match expression {
+            SqlParserExpr::Identifier(ident) => ident.value,
+            SqlParserExpr::Value(value) => match value {
+                Value::SingleQuotedString(e) => e.replace('\'', ""),
+                Value::DoubleQuotedString(e) => e.replace('\"', ""),
+                Value::Boolean(e) => {
+                    if e {
+                        "True".to_string()
+                    } else {
+                        "False".to_string()
+                    }
+                }
+                Value::Number(e, ..) => e,
+                _ => unimplemented!("Unimplmented Value type: {:?}", value),
+            },
+            SqlParserExpr::Nested(nested_expr) => Self::str_from_expr(*nested_expr),
+            _ => unimplemented!("Unimplmented SqlParserExpr type: {:?}", expression),
         }
     }
 }

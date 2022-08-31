@@ -270,16 +270,19 @@ impl<'a> DaskParser<'a> {
                         self.parse_describe()
                     }
                     _ => {
-                        if w.value.to_lowercase().as_str() == "export" {
-                            // move one token forwrd
-                            self.parser.next_token();
-                            // use custom parsing
-                            self.parse_export_model()
-                        } else {
-                            // use the native parser
-                            Ok(DaskStatement::Statement(Box::from(
-                                self.parser.parse_statement()?,
-                            )))
+                        match w.value.to_lowercase().as_str() {
+                            "export" => {
+                                // move one token forwrd
+                                self.parser.next_token();
+                                // use custom parsing
+                                self.parse_export_model()
+                            }
+                            _ => {
+                                // use the native parser
+                                Ok(DaskStatement::Statement(Box::from(
+                                    self.parser.parse_statement()?,
+                                )))
+                            }
                         }
                     }
                 }
