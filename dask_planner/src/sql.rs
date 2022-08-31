@@ -250,7 +250,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDF signature not found for input types {:?}",
+                                "UDAF signature not found for input types {:?}",
                                 input_types
                             ))),
                         }
