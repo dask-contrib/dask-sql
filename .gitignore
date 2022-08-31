@@ -66,3 +66,4 @@ tests/unit/data
 
 # Ignore development specific local testing files
 dev_tests
+dev-tests

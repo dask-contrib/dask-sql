@@ -69,7 +69,6 @@ def test_function(c):
     c.sql("SELECT FAGG(b) AS test FROM root.df")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_create_schema(c):
     c.sql("CREATE SCHEMA new_schema")
     assert "new_schema" in c.schema
@@ -81,7 +80,6 @@ def test_create_schema(c):
     c.sql("CREATE SCHEMA IF NOT EXISTS new_schema")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_drop_schema(c):
     with pytest.raises(RuntimeError):
         c.sql("DROP SCHEMA new_schema")

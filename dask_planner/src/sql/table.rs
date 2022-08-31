@@ -174,19 +174,19 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
             }
 
             let table_ref: TableReference = table_scan.table_name.as_str().into();
-            let schema = match table_ref {
-                TableReference::Bare { table: _ } => "",
-                TableReference::Partial { schema, table: _ } => schema,
+            let (schema, tbl) = match table_ref {
+                TableReference::Bare { table } => ("", table),
+                TableReference::Partial { schema, table } => (schema, table),
                 TableReference::Full {
                     catalog: _,
                     schema,
-                    table: _,
-                } => schema,
+                    table,
+                } => (schema, table),
             };
 
             Some(DaskTable {
                 schema: String::from(schema),
-                name: String::from(&table_scan.table_name),
+                name: String::from(tbl),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
             })

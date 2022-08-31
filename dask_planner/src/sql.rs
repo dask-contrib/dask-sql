@@ -33,6 +33,7 @@ use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
+use crate::sql::logical::create_view::CreateViewPlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::predict_model::PredictModelPlanNode;
 use crate::sql::logical::show_columns::ShowColumnsPlanNode;
@@ -41,6 +42,10 @@ use crate::sql::logical::show_tables::ShowTablesPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
+
+use self::logical::create_catalog_schema::CreateCatalogSchemaPlanNode;
+use self::logical::drop_schema::DropSchemaPlanNode;
+use self::logical::use_schema::UseSchemaPlanNode;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -328,6 +333,16 @@ impl DaskSQLContext {
                     )))?,
                 }),
             })),
+            DaskStatement::CreateCatalogSchema(create_schema) => {
+                Ok(LogicalPlan::Extension(Extension {
+                    node: Arc::new(CreateCatalogSchemaPlanNode {
+                        schema: Arc::new(DFSchema::empty()),
+                        schema_name: create_schema.schema_name,
+                        if_not_exists: create_schema.if_not_exists,
+                        or_replace: create_schema.or_replace,
+                    }),
+                }))
+            }
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),
@@ -336,6 +351,15 @@ impl DaskSQLContext {
                     if_not_exists: create_table.if_not_exists,
                     or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
+                }),
+            })),
+            DaskStatement::CreateView(create_view) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateViewPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    view_schema: create_view.view_schema,
+                    view_name: create_view.name,
+                    if_not_exists: create_view.if_not_exists,
+                    or_replace: create_view.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
@@ -362,6 +386,19 @@ impl DaskSQLContext {
                     schema: Arc::new(DFSchema::empty()),
                     table_name: show_columns.table_name,
                     schema_name: show_columns.schema_name,
+                }),
+            })),
+            DaskStatement::DropSchema(drop_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: drop_schema.schema_name,
+                    if_exists: drop_schema.if_exists,
+                }),
+            })),
+            DaskStatement::UseSchema(use_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(UseSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: use_schema.schema_name,
                 }),
             })),
             DaskStatement::AnalyzeTable(analyze_table) => Ok(LogicalPlan::Extension(Extension {
