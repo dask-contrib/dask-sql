@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
 import dask.array as da
@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
-from dask_sql.java import SqlTypeName
+from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
-
+SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
 
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
@@ -77,7 +77,9 @@ _SQL_TO_PYTHON_FRAMES = {
     "VARCHAR": pd.StringDtype(),
     "CHAR": pd.StringDtype(),
     "STRING": pd.StringDtype(),  # Although not in the standard, makes compatibility easier
-    "DATE": np.dtype("<M8[ns]"),
+    "DATE": np.dtype(
+        "<M8[ns]"
+    ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
     "TIMESTAMP": np.dtype("<M8[ns]"),
     "NULL": type(None),
 }
@@ -85,6 +87,11 @@ _SQL_TO_PYTHON_FRAMES = {
 
 def python_to_sql_type(python_type):
     """Mapping between python and SQL types."""
+
+    if python_type in (int, float):
+        python_type = np.dtype(python_type)
+    elif python_type is str:
+        python_type = np.dtype("object")
 
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
@@ -160,12 +167,11 @@ def sql_to_python_value(sql_type: str, literal_value: Any) -> Any:
         tz = literal_value.getTimeZone().getID()
         assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
 
-        dt = datetime.fromtimestamp(
-            int(literal_value.getTimeInMillis()) / 1000, timezone.utc
-        )
+        dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
 
-        return dt
-
+        if sql_type == "DATE":
+            return dt.astype("<M8[D]")
+        return dt.astype("<M8[ns]")
     elif sql_type.startswith("DECIMAL("):
         # We use np.float64 always, even though we might
         # be able to use a smaller type
@@ -196,6 +202,7 @@ def sql_to_python_type(sql_type: str) -> type:
         return pd.StringDtype()
     elif sql_type.startswith("INTERVAL"):
         return np.dtype("<m8[ns]")
+
     elif sql_type.startswith("TIMESTAMP(") or sql_type.startswith("TIME("):
         return np.dtype("<M8[ns]")
     elif sql_type.startswith("TIMESTAMP_WITH_LOCAL_TIME_ZONE("):
@@ -286,15 +293,17 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
         logger.debug("...not converting.")
         return None
 
-    current_float = pd.api.types.is_float_dtype(current_type)
-    expected_integer = pd.api.types.is_integer_dtype(expected_type)
-    if current_float and expected_integer:
-        logger.debug("...truncating...")
-        # Currently "trunc" can not be applied to NA (the pandas missing value type),
-        # because NA is a different type. It works with np.NaN though.
-        # For our use case, that does not matter, as the conversion to integer later
-        # will convert both NA and np.NaN to NA.
-        col = da.trunc(col.fillna(value=np.NaN))
+    if pd.api.types.is_integer_dtype(expected_type):
+        if pd.api.types.is_float_dtype(current_type):
+            logger.debug("...truncating...")
+            # Currently "trunc" can not be applied to NA (the pandas missing value type),
+            # because NA is a different type. It works with np.NaN though.
+            # For our use case, that does not matter, as the conversion to integer later
+            # will convert both NA and np.NaN to NA.
+            col = da.trunc(col.fillna(value=np.NaN))
+        elif pd.api.types.is_timedelta64_dtype(current_type):
+            logger.debug(f"Explicitly casting from {current_type} to np.int64")
+            return col.astype(np.int64)
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)

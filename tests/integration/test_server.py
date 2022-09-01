@@ -1,18 +1,29 @@
+import os
 from time import sleep
 
 import pytest
-from fastapi.testclient import TestClient
 
+from dask_sql import Context
 from dask_sql.server.app import _init_app, app
+
+# needed for the testclient
+pytest.importorskip("requests")
 
 
 @pytest.fixture(scope="module")
 def app_client():
-    _init_app(app)
+    c = Context()
+    c.sql("SELECT 1 + 1").compute()
+    _init_app(app, c)
+
+    # late import for the importskip
+    from fastapi.testclient import TestClient
 
     yield TestClient(app)
 
-    app.client.close()
+    # don't disconnect the client if using an independent cluster
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
+        app.client.close()
 
 
 def test_routes(app_client):

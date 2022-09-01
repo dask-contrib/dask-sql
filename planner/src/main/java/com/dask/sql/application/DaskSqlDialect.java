@@ -9,6 +9,10 @@ import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.dialect.PostgresqlSqlDialect;
 import org.apache.calcite.sql.type.SqlTypeName;
 
+/**
+ * DaskSqlDialect is the specific SQL dialect we use in dask-sql. It is mainly a
+ * postgreSQL dialect with a bit tuning.
+ */
 public class DaskSqlDialect {
     public static final RelDataTypeSystem DASKSQL_TYPE_SYSTEM = new RelDataTypeSystemImpl() {
         @Override
@@ -28,6 +32,6 @@ public class DaskSqlDialect {
     // This is basically PostgreSQL, but we would like to keep the casing
     // of unquoted table identifiers, as this is what pandas/dask
     // would also do.
-    // See https://github.com/nils-braun/dask-sql/issues/84
+    // See https://github.com/dask-contrib/dask-sql/issues/84
     public static final SqlDialect DEFAULT = new PostgresqlSqlDialect(DEFAULT_CONTEXT);
 }

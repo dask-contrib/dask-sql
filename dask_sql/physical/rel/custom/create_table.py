@@ -1,8 +1,13 @@
 import logging
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +41,9 @@ class CreateTablePlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        table_name = str(sql.getTableName())
+        schema_name, table_name = context.fqn(sql.getTableName())
 
-        if table_name in context.tables:
+        if table_name in context.schema[schema_name].tables:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():
@@ -62,6 +67,13 @@ class CreateTablePlugin(BaseRelPlugin):
         except KeyError:
             raise AttributeError("Parameters must include a 'location' parameter.")
 
+        gpu = kwargs.pop("gpu", False)
         context.create_table(
-            table_name, location, format=format, persist=persist, **kwargs
+            table_name,
+            location,
+            format=format,
+            persist=persist,
+            schema_name=schema_name,
+            gpu=gpu,
+            **kwargs,
         )

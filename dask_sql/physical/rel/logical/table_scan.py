@@ -1,12 +1,16 @@
-from typing import Dict
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
-class LogicalTableScanPlugin(BaseRelPlugin):
+
+class DaskTableScanPlugin(BaseRelPlugin):
     """
-    A LogicalTableScal is the main ingredient: it will get the data
+    A DaskTableScal is the main ingredient: it will get the data
     from the database. It is always used, when the SQL looks like
 
         SELECT .... FROM table ....
@@ -16,7 +20,7 @@ class LogicalTableScanPlugin(BaseRelPlugin):
     Calcite will always refer to columns via index.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalTableScan"
+    class_name = "com.dask.sql.nodes.DaskTableScan"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
@@ -29,15 +33,13 @@ class LogicalTableScanPlugin(BaseRelPlugin):
 
         # The table names are all names split by "."
         # We assume to always have the form something.something
-        # And the first something is fixed to "schema" by the context
-        # For us, it makes no difference anyways.
         table_names = [str(n) for n in table.getQualifiedName()]
-        assert table_names[0] == context.schema_name
         assert len(table_names) == 2
+        schema_name = table_names[0]
         table_name = table_names[1]
         table_name = table_name.lower()
 
-        dc = context.tables[table_name]
+        dc = context.schema[schema_name].tables[table_name]
         df = dc.df
         cc = dc.column_container
 

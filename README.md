@@ -1,10 +1,10 @@
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nils-braun/dask-sql/Test?logo=github)](https://github.com/nils-braun/dask-sql/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/dask-contrib/dask-sql/Test?logo=github)](https://github.com/dask-contrib/dask-sql/actions)
 [![Read the Docs](https://img.shields.io/readthedocs/dask-sql)](https://dask-sql.readthedocs.io/en/latest/)
-[![Codecov](https://img.shields.io/codecov/c/github/nils-braun/dask-sql?logo=codecov)](https://codecov.io/gh/nils-braun/dask-sql)
-[![GitHub](https://img.shields.io/github/license/nils-braun/dask-sql)](https://github.com/nils-braun/dask-sql/blob/main/LICENSE.txt)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab)
+[![Codecov](https://img.shields.io/codecov/c/github/dask-contrib/dask-sql?logo=codecov)](https://codecov.io/gh/dask-contrib/dask-sql)
+[![GitHub](https://img.shields.io/github/license/dask-contrib/dask-sql)](https://github.com/dask-contrib/dask-sql/blob/main/LICENSE.txt)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dask-contrib/dask-sql-binder/main?urlpath=lab)
 
 <div align="center">
     <img src="./.github/heart.png" alt="SQL + Python">
@@ -22,6 +22,7 @@ if you need it.
 * **Your data - your queries**: Use Python user-defined functions (UDFs) in SQL without any performance drawback and extend your SQL queries with the large number of Python libraries, e.g. machine learning, different complicated input formats, complex statistics.
 * **Easy to install and maintain**: `dask-sql` is just a pip/conda install away (or a docker run if you prefer). No need for complicated cluster setups - `dask-sql` will run out of the box on your machine and can be easily connected to your computing cluster.
 * **Use SQL from wherever you like**: `dask-sql` integrates with your jupyter notebook, your normal Python module or can be used as a standalone SQL server from any BI tool. It even integrates natively with [Apache Hue](https://gethue.com/).
+* **GPU Support**: `dask-sql` has _experimental_ support for running SQL queries on CUDA-enabled GPUs by utilizing [RAPIDS](https://rapids.ai) libraries like [`cuDF`](https://github.com/rapidsai/cudf), enabling accelerated compute for SQL.
 
 Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
@@ -65,14 +66,11 @@ print(result)
 
 ## Quickstart
 
-Have a look into the [documentation](https://dask-sql.readthedocs.io/en/latest/) or start the example notebook on [binder](https://mybinder.org/v2/gh/nils-braun/dask-sql-binder/main?urlpath=lab).
+Have a look into the [documentation](https://dask-sql.readthedocs.io/en/latest/) or start the example notebook on [binder](https://mybinder.org/v2/gh/dask-contrib/dask-sql-binder/main?urlpath=lab).
 
 
 > `dask-sql` is currently under development and does so far not understand all SQL commands (but a large fraction).
 We are actively looking for feedback, improvements and contributors!
-
-If you would like to utilize GPUs for your SQL queries, have a look into the [blazingSQL](https://github.com/BlazingDB/blazingsql) project.
-
 
 ## Installation
 
@@ -109,23 +107,23 @@ After installing Java, you can install the package with
 
 If you want to have the newest (unreleased) `dask-sql` version or if you plan to do development on `dask-sql`, you can also install the package from sources.
 
-    git clone https://github.com/nils-braun/dask-sql.git
+    git clone https://github.com/dask-contrib/dask-sql.git
 
 Create a new conda environment and install the development environment:
 
-    conda create -n dask-sql --file conda.txt -c conda-forge
+    conda env create -f continuous_integration/environment-3.9-jdk11-dev.yaml
 
 It is not recommended to use `pip` instead of `conda` for the environment setup.
 If you however need to, make sure to have Java (jdk >= 8) and maven installed and correctly setup before continuing.
-Have a look into `conda.txt` for the rest of the development environment.
+Have a look into `environment-3.9-jdk11-dev.yaml` for the rest of the development environment.
 
 After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To compile the Java classes (at the beginning or after changes), run
+To recompile the Java classes after changes have been made to the source contained in `planner/`, run
 
-    python setup.py java
+    python setup.py build_ext
 
 This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
 
@@ -136,6 +134,19 @@ This repository uses [pre-commit](https://pre-commit.com/) hooks. To install the
 You can run the tests (after installation) with
 
     pytest tests
+
+GPU-specific tests require additional dependencies specified in `continuous_integration/gpuci/environment.yaml`.
+These can be added to the development environment by running
+
+```
+conda env update -n dask-sql -f continuous_integration/gpuci/environment.yaml
+```
+
+And GPU-specific tests can be run with
+
+```
+pytest tests -m gpu --rungpu
+```
 
 ## SQL Server
 

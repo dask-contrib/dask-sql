@@ -4,9 +4,13 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+
+from tests.utils import assert_eq
 
 
+@pytest.mark.xfail(
+    reason="Bumping to Calcite 1.29.0 to address CVE-2021-44228 caused a stack overflow in this test"
+)
 def test_case(c, df):
     result_df = c.sql(
         """
@@ -14,20 +18,30 @@ def test_case(c, df):
         (CASE WHEN a = 3 THEN 1 END) AS "S1",
         (CASE WHEN a > 0 THEN a ELSE 1 END) AS "S2",
         (CASE WHEN a = 4 THEN 3 ELSE a + 1 END) AS "S3",
-        (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4"
+        (CASE WHEN a = 3 THEN 1 WHEN a > 0 THEN 2 ELSE a END) AS "S4",
+        CASE
+            WHEN (a >= 1 AND a < 2) OR (a > 2) THEN CAST('in-between' AS VARCHAR) ELSE CAST('out-of-range' AS VARCHAR)
+        END AS "S5",
+        CASE
+            WHEN (a < 2) OR (3 < a AND a < 4) THEN 42 ELSE 47
+        END AS "S6",
+        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7"
     FROM df
     """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame(index=df.index)
     expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else pd.NA)
     expected_df["S2"] = df.a.apply(lambda a: a if a > 0 else 1)
     expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1)
-    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a).astype(
-        "float64"
+    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a)
+    expected_df["S5"] = df.a.apply(
+        lambda a: "in-between" if ((1 <= a < 2) or (a > 2)) else "out-of-range"
     )
-    assert_frame_equal(result_df, expected_df)
+    expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
+    expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
+
+    # Do not check dtypes, as pandas versions are inconsistent here
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_literals(c):
@@ -41,7 +55,6 @@ def test_literals(c):
                     INTERVAL '1' DAY AS "IN"
         """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -54,7 +67,7 @@ def test_literals(c):
             "IN": [pd.to_timedelta("1d")],
         }
     )
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_literal_null(c):
@@ -63,64 +76,50 @@ def test_literal_null(c):
     SELECT NULL AS "N", 1 + NULL AS "I"
     """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
     expected_df["I"] = expected_df["I"].astype("Int32")
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
-def test_random(c, df):
-    result_df = c.sql(
-        """
-    SELECT RAND(0) AS "0", RAND_INTEGER(1, 10) AS "1"
-    """
-    )
+def test_random(c):
+    query = 'SELECT RAND(0) AS "0", RAND_INTEGER(0, 10) AS "1"'
+
+    result_df = c.sql(query)
+
+    # assert that repeated queries give the same result
+    assert_eq(result_df, c.sql(query))
+
+    # assert output
     result_df = result_df.compute()
 
-    # As the seed is fixed, this should always give the same results
-    expected_df = pd.DataFrame({"0": [0.26183678695392976], "1": [8]})
-    expected_df["1"] = expected_df["1"].astype("Int32")
-    assert_frame_equal(result_df, expected_df)
+    assert result_df["0"].dtype == "float64"
+    assert result_df["1"].dtype == "Int32"
 
-    result_df = c.sql(
-        """
-    SELECT RAND(42) AS "R" FROM df WHERE RAND(0) < b
-    """
-    )
-    result_df = result_df.compute()
-
-    assert len(result_df) == 659
-    assert list(result_df["R"].iloc[:5]) == [
-        0.5276488824980542,
-        0.17861463145673728,
-        0.33764733440490524,
-        0.6590485298464198,
-        0.08554137165307785,
-    ]
-
-    # If we do not fix the seed, we can just test if it works at all
-    result_df = c.sql(
-        """
-    SELECT RAND() AS "0", RAND_INTEGER(10) AS "1"
-    """
-    )
-    result_df = result_df.compute()
+    assert 0 <= result_df["0"][0] < 1
+    assert 0 <= result_df["1"][0] < 10
 
 
-def test_not(c, string_table):
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "string_table",
+        pytest.param("gpu_string_table", marks=pytest.mark.gpu),
+    ],
+)
+def test_not(c, input_table, request):
+    string_table = request.getfixturevalue(input_table)
     df = c.sql(
-        """
+        f"""
     SELECT
         *
-    FROM string_table
+    FROM {input_table}
     WHERE NOT a LIKE '%normal%'
     """
     )
-    df = df.compute()
 
     expected_df = string_table[~string_table.a.str.contains("normal")]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_operators(c, df):
@@ -141,7 +140,6 @@ def test_operators(c, df):
     FROM df
     """
     )
-    result_df = result_df.compute()
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["m"] = df["a"] * df["b"]
@@ -155,74 +153,92 @@ def test_operators(c, df):
     expected_df["l"] = df["a"] < df["b"]
     expected_df["le"] = df["a"] <= df["b"]
     expected_df["n"] = df["a"] != df["b"]
-    assert_frame_equal(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
-def test_like(c, string_table):
+@pytest.mark.parametrize(
+    "input_table,gpu",
+    [
+        ("string_table", False),
+        pytest.param(
+            "gpu_string_table",
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cudf/issues/9434"
+                ),
+            ),
+        ),
+    ],
+)
+def test_like(c, input_table, gpu, request):
+    string_table = request.getfixturevalue(input_table)
+
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table.iloc[[0]])
+    assert_eq(df, string_table.iloc[[0]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
-    ).compute()
+    )
 
     assert len(df) == 0
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
     """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table.iloc[[1]])
+    assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
     """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
-        """
-        SELECT * FROM string_table
+        f"""
+        SELECT * FROM {input_table}
         WHERE a LIKE '%_' ESCAPE 'r'
     """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table)
+    assert_eq(df, string_table)
 
     string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
-    c.register_dask_table(dd.from_pandas(string_table2, npartitions=1), "string_table2")
+    c.create_table("string_table2", string_table2, gpu=gpu)
     df = c.sql(
         """
         SELECT * FROM string_table2
         WHERE b LIKE 'b'
     """
-    ).compute()
+    )
 
-    assert_frame_equal(df, string_table2.iloc[[1]])
+    assert_eq(df, string_table2.iloc[[1]])
 
 
 def test_null(c):
@@ -233,13 +249,13 @@ def test_null(c):
             c IS NULL AS n
         FROM user_table_nan
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, False, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, True, False]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
     df = c.sql(
         """
@@ -248,13 +264,13 @@ def test_null(c):
             a IS NULL AS n
         FROM string_table
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=[0, 1, 2])
     expected_df["nn"] = [True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
     expected_df["n"] = [False, False, False]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_boolean_operations(c):
@@ -274,7 +290,7 @@ def test_boolean_operations(c):
             b IS UNKNOWN AS u,
             b IS NOT UNKNOWN AS nu
         FROM df"""
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(
         {
@@ -290,7 +306,7 @@ def test_boolean_operations(c):
     expected_df["nt"] = expected_df["nt"].astype("boolean")
     expected_df["nf"] = expected_df["nf"].astype("boolean")
     expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_math_operations(c, df):
@@ -323,7 +339,7 @@ def test_math_operations(c, df):
             , TRUNCATE(b) AS "truncate"
         FROM df
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=df.index)
     expected_df["abs"] = df.b.abs()
@@ -350,7 +366,7 @@ def test_math_operations(c, df):
     expected_df["sin"] = np.sin(df.b)
     expected_df["tan"] = np.tan(df.b)
     expected_df["truncate"] = np.trunc(df.b)
-    assert_frame_equal(result_df, expected_df)
+    assert_eq(result_df, expected_df)
 
 
 def test_integer_div(c, df_simple):
@@ -362,7 +378,7 @@ def test_integer_div(c, df_simple):
             1.0 / a AS c
         FROM df_simple
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(index=df_simple.index)
     expected_df["a"] = [1, 0, 0]
@@ -370,7 +386,7 @@ def test_integer_div(c, df_simple):
     expected_df["b"] = [0, 1, 1]
     expected_df["b"] = expected_df["b"].astype("Int64")
     expected_df["c"] = [1.0, 0.5, 0.333333]
-    assert_frame_equal(df, expected_df)
+    assert_eq(df, expected_df)
 
 
 def test_subqueries(c, user_table_1, user_table_2):
@@ -387,70 +403,81 @@ def test_subqueries(c, user_table_1, user_table_2):
                     user_table_1.b = user_table_2.c
             )
     """
-    ).compute()
-
-    assert_frame_equal(
-        df.reset_index(drop=True),
-        user_table_2[user_table_2.c.isin(user_table_1.b)].reset_index(drop=True),
     )
 
+    assert_eq(df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False)
 
-def test_string_functions(c):
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_functions(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
     df = c.sql(
-        """
+        f"""
         SELECT
             a || 'hello' || a AS a,
-            CHAR_LENGTH(a) AS b,
-            UPPER(a) AS c,
-            LOWER(a) AS d,
-            POSITION('a' IN a FROM 4) AS e,
-            POSITION('ZL' IN a) AS f,
-            TRIM('a' FROM a) AS g,
-            TRIM(BOTH 'a' FROM a) AS h,
-            TRIM(LEADING 'a' FROM a) AS i,
-            TRIM(TRAILING 'a' FROM a) AS j,
-            OVERLAY(a PLACING 'XXX' FROM -1) AS k,
-            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS l,
-            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS m,
-            SUBSTRING(a FROM -1) AS n,
-            SUBSTRING(a FROM 10) AS o,
-            SUBSTRING(a FROM 2) AS p,
-            SUBSTRING(a FROM 2 FOR 2) AS q,
-            INITCAP(a) AS r,
-            INITCAP(UPPER(a)) AS s,
-            INITCAP(LOWER(a)) AS t
+            CONCAT(a, 'hello', a) as b,
+            CHAR_LENGTH(a) AS c,
+            UPPER(a) AS d,
+            LOWER(a) AS e,
+            POSITION('a' IN a FROM 4) AS f,
+            POSITION('ZL' IN a) AS g,
+            TRIM('a' FROM a) AS h,
+            TRIM(BOTH 'a' FROM a) AS i,
+            TRIM(LEADING 'a' FROM a) AS j,
+            TRIM(TRAILING 'a' FROM a) AS k,
+            OVERLAY(a PLACING 'XXX' FROM -1) AS l,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS m,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS n,
+            SUBSTRING(a FROM -1) AS o,
+            SUBSTRING(a FROM 10) AS p,
+            SUBSTRING(a FROM 2) AS q,
+            SUBSTRING(a FROM 2 FOR 2) AS r,
+            SUBSTR(a, 3, 6) AS s,
+            INITCAP(a) AS t,
+            INITCAP(UPPER(a)) AS u,
+            INITCAP(LOWER(a)) AS v
         FROM
-            string_table
+            {input_table}
         """
-    ).compute()
+    )
+
+    if gpu:
+        df = df.astype({"c": "int64", "f": "int64", "g": "int64"})
 
     expected_df = pd.DataFrame(
         {
             "a": ["a normal stringhelloa normal string"],
-            "b": [15],
-            "c": ["A NORMAL STRING"],
-            "d": ["a normal string"],
-            "e": [7],
-            "f": [0],
-            "g": [" normal string"],
+            "b": ["a normal stringhelloa normal string"],
+            "c": [15],
+            "d": ["A NORMAL STRING"],
+            "e": ["a normal string"],
+            "f": [7],
+            "g": [0],
             "h": [" normal string"],
             "i": [" normal string"],
-            "j": ["a normal string"],
-            "k": ["XXXormal string"],
-            "l": ["aXXXmal string"],
-            "m": ["aXXXnormal string"],
-            "n": ["a normal string"],
-            "o": ["string"],
-            "p": [" normal string"],
-            "q": [" n"],
-            "r": ["A Normal String"],
-            "s": ["A Normal String"],
+            "j": [" normal string"],
+            "k": ["a normal string"],
+            "l": ["XXXormal string"],
+            "m": ["aXXXmal string"],
+            "n": ["aXXXnormal string"],
+            "o": ["a normal string"],
+            "p": ["string"],
+            "q": [" normal string"],
+            "r": [" n"],
+            "s": ["normal"],
             "t": ["A Normal String"],
+            "u": ["A Normal String"],
+            "v": ["A Normal String"],
         }
     )
 
-    assert_frame_equal(
-        df.head(1), expected_df,
+    assert_eq(
+        df.head(1),
+        expected_df,
     )
 
 
@@ -488,7 +515,8 @@ def test_date_functions(c):
             TIMESTAMPADD(HOUR, 1, d) as "plus_1_hour",
             TIMESTAMPADD(MINUTE, 1, d) as "plus_1_min",
             TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
-            TIMESTAMPADD(MICROSECOND, 1000, d) as "plus_1000_millisec",
+            TIMESTAMPADD(MICROSECOND, 999*1000, d) as "plus_999_millisec",
+            TIMESTAMPADD(MICROSECOND, 999, d) as "plus_999_microsec",
             TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
 
             CEIL(d TO DAY) as ceil_to_day,
@@ -505,7 +533,7 @@ def test_date_functions(c):
 
         FROM df
     """
-    ).compute()
+    )
 
     expected_df = pd.DataFrame(
         {
@@ -532,7 +560,8 @@ def test_date_functions(c):
             "plus_1_hour": [datetime(2021, 10, 3, 16, 53, 42, 47)],
             "plus_1_min": [datetime(2021, 10, 3, 15, 54, 42, 47)],
             "plus_1_sec": [datetime(2021, 10, 3, 15, 53, 43, 47)],
-            "plus_1000_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1047)],
+            "plus_999_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000 * 999 + 47)],
+            "plus_999_microsec": [datetime(2021, 10, 3, 15, 53, 42, 1046)],
             "plus_1_qt": [datetime(2022, 1, 3, 15, 53, 42, 47)],
             "ceil_to_day": [datetime(2021, 10, 4)],
             "ceil_to_hour": [datetime(2021, 10, 3, 16)],
@@ -547,7 +576,7 @@ def test_date_functions(c):
         }
     )
 
-    assert_frame_equal(df, expected_df, check_dtype=False)
+    assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
     with pytest.raises(NotImplementedError):
@@ -557,4 +586,93 @@ def test_date_functions(c):
                 FLOOR(d TO YEAR) as floor_to_year
             FROM df
             """
-        ).compute()
+        )
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_timestampdiff(c, gpu):
+    # single value test
+    ts_literal1 = "2002-03-07 09:10:05.123"
+    ts_literal2 = "2001-06-05 10:11:06.234"
+    query = (
+        f"SELECT timestampdiff(NANOSECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res0,"
+        f"timestampdiff(MICROSECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res1,"
+        f"timestampdiff(SECOND, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res2,"
+        f"timestampdiff(MINUTE, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res3,"
+        f"timestampdiff(HOUR, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res4,"
+        f"timestampdiff(DAY, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res5,"
+        f"timestampdiff(WEEK, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res6,"
+        f"timestampdiff(MONTH, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res7,"
+        f"timestampdiff(QUARTER, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res8,"
+        f"timestampdiff(YEAR, CAST('{ts_literal1}' AS TIMESTAMP),CAST('{ts_literal2}' AS TIMESTAMP)) as res9"
+    )
+    df = c.sql(query)
+    expected_df = pd.DataFrame(
+        {
+            "res0": [-23756339_000_000_000],
+            "res1": [-23756339_000_000],
+            "res2": [-23756339],
+            "res3": [-395938],
+            "res4": [-6598],
+            "res5": [-274],
+            "res6": [-39],
+            "res7": [-9],
+            "res8": [-3],
+            "res9": [0],
+        }
+    )
+    assert_eq(df, expected_df)
+    # dataframe test
+
+    test = pd.DataFrame(
+        {
+            "a": [
+                "2002-06-05 02:01:05.200",
+                "2002-09-01 00:00:00",
+                "1970-12-03 00:00:00",
+            ],
+            "b": [
+                "2002-06-07 01:00:02.100",
+                "2003-06-05 00:00:00",
+                "2038-06-05 00:00:00",
+            ],
+        }
+    )
+
+    c.create_table("test", test, gpu=gpu)
+    query = (
+        "SELECT timestampdiff(NANOSECOND, CAST(a AS TIMESTAMP), CAST(b AS TIMESTAMP)) as nanoseconds,"
+        "timestampdiff(MICROSECOND, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as microseconds,"
+        "timestampdiff(SECOND, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as seconds,"
+        "timestampdiff(MINUTE, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as minutes,"
+        "timestampdiff(HOUR, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as hours,"
+        "timestampdiff(DAY, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as days,"
+        "timestampdiff(WEEK, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as weeks,"
+        "timestampdiff(MONTH, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as months,"
+        "timestampdiff(QUARTER, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as quarters,"
+        "timestampdiff(YEAR, CAST(a AS TIMESTAMP),CAST(b AS TIMESTAMP)) as years"
+        " FROM test"
+    )
+
+    ddf = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "nanoseconds": [
+                169136_000_000_000,
+                23932_800_000_000_000,
+                2_130_278_400_000_000_000,
+            ],
+            "microseconds": [169136_000_000, 23932_800_000_000, 2_130_278_400_000_000],
+            "seconds": [169136, 23932_800, 2_130_278_400],
+            "minutes": [2818, 398880, 35504640],
+            "hours": [46, 6648, 591744],
+            "days": [1, 277, 24656],
+            "weeks": [0, 39, 3522],
+            "months": [0, 9, 810],
+            "quarters": [0, 3, 270],
+            "years": [0, 0, 67],
+        }
+    )
+
+    assert_eq(ddf, expected_df, check_dtype=False)

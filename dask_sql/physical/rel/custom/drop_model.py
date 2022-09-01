@@ -1,7 +1,12 @@
 import logging
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +24,9 @@ class DropModelPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        model_name = str(sql.getModelName())
+        schema_name, model_name = context.fqn(sql.getModelName())
 
-        if model_name not in context.models:
+        if model_name not in context.schema[schema_name].models:
             if not sql.getIfExists():
                 raise RuntimeError(
                     f"A model with the name {model_name} is not present."
@@ -29,4 +34,4 @@ class DropModelPlugin(BaseRelPlugin):
             else:
                 return
 
-        del context.models[model_name]
+        del context.schema[schema_name].models[model_name]

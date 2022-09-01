@@ -1,11 +1,9 @@
 import importlib
 import logging
 import re
-import sys
 from collections import defaultdict
-from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -184,6 +182,8 @@ class LoggableDataFrame:
         df = self.df
         if isinstance(df, pd.Series) or isinstance(df, dd.Series):
             return f"Series: {(df.name, df.dtype)}"
+        if isinstance(df, pd.DataFrame) or isinstance(df, dd.DataFrame):
+            return f"DataFrame: {[(col, dtype) for col, dtype in zip(df.columns, df.dtypes)]}"
 
         elif isinstance(df, DataContainer):
             cols = df.column_container.columns
@@ -193,29 +193,6 @@ class LoggableDataFrame:
             return f"DataFrame: {[(col, dtype) for col, dtype in zip(cols, dtypes)]}"
 
         return f"Literal: {df}"
-
-
-def get_table_from_compound_identifier(
-    context: "dask_sql.Context", components: List[str]
-) -> DataContainer:
-    """
-    Helper function to return the correct table
-    from the stored tables in the context
-    with the given name (and maybe also schema name)
-    """
-    # some queries might also include the database
-    # as we do not have such a concept, we just get rid of it
-    components = components[-2:]
-    tableName = components[-1]
-
-    if len(components) == 2:
-        if components[0] != context.schema_name:
-            raise AttributeError(f"Schema {components[0]} is not defined.")
-
-    try:
-        return context.tables[tableName]
-    except KeyError:
-        raise AttributeError(f"Table {tableName} is not defined.")
 
 
 def convert_sql_kwargs(
@@ -235,10 +212,11 @@ def convert_sql_kwargs(
                 "ARRAY": list,
                 "MAP": lambda x: dict(zip(x[::2], x[1::2])),
                 "MULTISET": set,
+                "ROW": tuple,
             }
 
             operator = operator_mapping[str(value.getOperator())]
-            operands = [convert_literal(o) for o in value.getOperands()]
+            operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
         elif isinstance(value, com.dask.sql.parser.SqlKwargs):

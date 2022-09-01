@@ -1,8 +1,14 @@
-from typing import Dict, List, Tuple, Union
+from collections import namedtuple
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
+import pandas as pd
 
 ColumnType = Union[str, int]
+
+FunctionDescription = namedtuple(
+    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
+)
 
 
 class ColumnContainer:
@@ -165,11 +171,81 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        df = self.df.assign(
-            **{
-                col_from: self.df[col_to]
-                for col_from, col_to in self.column_container.mapping()
-                if col_from in self.column_container.columns
-            }
-        )
-        return df[self.column_container.columns]
+        df = self.df[
+            [
+                self.column_container._frontend_backend_mapping[out_col]
+                for out_col in self.column_container.columns
+            ]
+        ]
+        df.columns = self.column_container.columns
+
+        return df
+
+
+class UDF:
+    def __init__(self, func, row_udf: bool, params, return_type=None):
+        """
+        Helper class that handles different types of UDFs and manages
+        how they should be mapped to dask operations. Two versions of
+        UDFs are supported - when `row_udf=False`, the UDF is treated
+        as expecting series-like objects as arguments and will simply
+        run those through the function. When `row_udf=True` a row udf
+        is expected and should be written to expect a dictlike object
+        containing scalars
+        """
+        self.row_udf = row_udf
+        self.func = func
+
+        self.names = [param[0] for param in params]
+
+        self.meta = (None, return_type)
+
+    def __call__(self, *args, **kwargs):
+        if self.row_udf:
+            column_args = []
+            scalar_args = []
+            for operand in args:
+                if isinstance(operand, dd.Series):
+                    column_args.append(operand)
+                else:
+                    scalar_args.append(operand)
+
+            df = column_args[0].to_frame(self.names[0])
+            for name, col in zip(self.names[1:], column_args[1:]):
+                df[name] = col
+            result = df.apply(
+                self.func, axis=1, args=tuple(scalar_args), meta=self.meta
+            ).astype(self.meta[1])
+        else:
+            result = self.func(*args, **kwargs)
+        return result
+
+    def __eq__(self, other):
+        if isinstance(other, UDF):
+            return self.func == other.func and self.row_udf == other.row_udf
+        return NotImplemented
+
+    def __hash__(self):
+        return (self.func, self.row_udf).__hash__()
+
+
+class Statistics:
+    """
+    Statistics are used during the cost-based optimization.
+    Currently, only the row count is supported, more
+    properties might follow. It needs to be provided by the user.
+    """
+
+    def __init__(self, row_count: int) -> None:
+        self.row_count = row_count
+
+
+class SchemaContainer:
+    def __init__(self, name: str):
+        self.__name__ = name
+        self.tables: Dict[str, DataContainer] = {}
+        self.statistics: Dict[str, Statistics] = {}
+        self.experiments: Dict[str, pd.DataFrame] = {}
+        self.models: Dict[str, Tuple[Any, List[str]]] = {}
+        self.functions: Dict[str, UDF] = {}
+        self.function_lists: List[FunctionDescription] = []

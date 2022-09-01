@@ -55,7 +55,7 @@ try:  # pragma: no cover
     from pyarrow.hdfs import _maybe_set_hadoop_classpath
 
     _maybe_set_hadoop_classpath()
-except:  # pragma: no cover
+except Exception:  # pragma: no cover
     pass
 
 # Define how to run the java virtual machine.
@@ -70,13 +70,28 @@ jvmpath = jpype.getDefaultJVMPath()
 jvmpath = jvmpath.replace("\\bin\\bin\\server\\jvm.dll", "\\bin\\server\\jvm.dll")
 
 logger.debug(f"Starting JVM from path {jvmpath}...")
-jpype.startJVM(
+jvmArgs = [
     "-ea",
     "--illegal-access=deny",
+]
+
+if "DASK_SQL_JVM_DEBUG_ENABLED" in os.environ:  # pragma: no cover
+    logger.debug(
+        "Remote JVM debugging enabled. Application will wait for remote debugger to attach"
+    )
+    # Must be the first argument in the JVM args
+    jvmArgs.insert(
+        0, "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8000"
+    )
+
+logger.debug(f"Starting JVM from path {jvmpath}...")
+jpype.startJVM(
+    *jvmArgs,
     ignoreUnrecognized=True,
     convertStrings=False,
     jvmpath=jvmpath,
 )
+
 logger.debug("...having started JVM")
 
 
@@ -84,15 +99,6 @@ logger.debug("...having started JVM")
 com = jpype.JPackage("com")
 org = jpype.JPackage("org")
 java = jpype.JPackage("java")
-
-DaskTable = com.dask.sql.schema.DaskTable
-DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
-DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
-DaskSchema = com.dask.sql.schema.DaskSchema
-RelationalAlgebraGenerator = com.dask.sql.application.RelationalAlgebraGenerator
-SqlTypeName = org.apache.calcite.sql.type.SqlTypeName
-ValidationException = org.apache.calcite.tools.ValidationException
-SqlParseException = org.apache.calcite.sql.parser.SqlParseException
 
 
 def get_java_class(instance):

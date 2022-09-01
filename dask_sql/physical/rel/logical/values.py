@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import dask.dataframe as dd
 import pandas as pd
 
@@ -5,10 +7,14 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
-class LogicalValuesPlugin(BaseRelPlugin):
+
+class DaskValuesPlugin(BaseRelPlugin):
     """
-    A LogicalValue is a table just consisting of
+    A DaskValue is a table just consisting of
     raw values (nothing database-dependent).
     For example
 
@@ -20,7 +26,7 @@ class LogicalValuesPlugin(BaseRelPlugin):
     data samples.
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalValues"
+    class_name = "com.dask.sql.nodes.DaskValues"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

@@ -1,10 +1,14 @@
 import logging
-from typing import List
+from typing import TYPE_CHECKING, List
 
 import dask.dataframe as dd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,8 @@ class BaseRelPlugin:
         and will just "blindly" rename the columns.
         """
         field_names = [str(x) for x in row_type.getFieldNames()]
+
+        logger.debug(f"Renaming {cc.columns} to {field_names}")
 
         cc = cc.rename(columns=dict(zip(cc.columns, field_names)))
 

@@ -2,38 +2,36 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections import namedtuple
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import pandas as pd
+from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
+try:
+    import dask_cuda  # noqa: F401
+except ImportError:  # pragma: no cover
+    pass
+
 from dask_sql import input_utils
-from dask_sql.datacontainer import DataContainer
+from dask_sql.datacontainer import (
+    UDF,
+    DataContainer,
+    FunctionDescription,
+    SchemaContainer,
+    Statistics,
+)
 from dask_sql.input_utils import InputType, InputUtil
 from dask_sql.integrations.ipython import ipython_integration
-from dask_sql.java import (
-    DaskAggregateFunction,
-    DaskScalarFunction,
-    DaskSchema,
-    DaskTable,
-    RelationalAlgebraGenerator,
-    SqlParseException,
-    ValidationException,
-    get_java_class,
-)
+from dask_sql.java import com, get_java_class, java, org
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
 from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
-
-FunctionDescription = namedtuple(
-    "FunctionDescription", ["name", "parameters", "return_type", "aggregation"]
-)
 
 
 class Context:
@@ -67,52 +65,58 @@ class Context:
 
     """
 
+    DEFAULT_SCHEMA_NAME = "root"
+
     def __init__(self):
         """
         Create a new context.
         """
-        # Storage for the registered tables
-        self.tables = {}
-        # Storage for the registered functions
-        self.functions: Dict[str, Callable] = {}
-        self.function_list: List[FunctionDescription] = []
-        # Storage for the registered aggregations
-        self.aggregations = {}
-        # Storage for the trained models
-        self.models = {}
-        # Name of the root schema (not changable so far)
-        self.schema_name = "schema"
+        # Name of the root schema
+        self.schema_name = self.DEFAULT_SCHEMA_NAME
+        # All schema information
+        self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
         # Register any default plugins, if nothing was registered before.
-        RelConverter.add_plugin_class(logical.LogicalAggregatePlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalFilterPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalJoinPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalProjectPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalSortPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalTableScanPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalUnionPlugin, replace=False)
-        RelConverter.add_plugin_class(logical.LogicalValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskFilterPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskJoinPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskLimitPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskProjectPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskSortPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskTableScanPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskUnionPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskValuesPlugin, replace=False)
+        RelConverter.add_plugin_class(logical.DaskWindowPlugin, replace=False)
         RelConverter.add_plugin_class(logical.SamplePlugin, replace=False)
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
-        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexOverPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
-        InputUtil.add_plugin_class(input_utils.PandasInputPlugin, replace=False)
+        InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.HiveInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.IntakeCatalogInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.SqlalchemyHiveInputPlugin, replace=False)
@@ -124,7 +128,10 @@ class Context:
         table_name: str,
         input_table: InputType,
         format: str = None,
-        persist: bool = True,
+        persist: bool = False,
+        schema_name: str = None,
+        statistics: Statistics = None,
+        gpu: bool = False,
         **kwargs,
     ):
         """
@@ -143,8 +150,9 @@ class Context:
         Typical file formats are csv or parquet.
         Any additional parameters will get passed on to the read method.
         Please note that some file formats require additional libraries.
-        By default, the data will be loaded directly into the memory
-        of the nodes. If you do not want that, set persist to False.
+        By default, the data will be lazily loaded. If you would like to
+        load the data directly into memory you can do so by setting
+        persist=True.
 
         See :ref:`data_input` for more information.
 
@@ -184,7 +192,12 @@ class Context:
                 Specify the file format directly here if it can not be deduced from the extension.
                 If set to "memory", load the data from a published dataset in the dask cluster.
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
-                Set to false to turn off loading the file data directly into memory.
+                Set to true to turn on loading the file data directly into memory.
+            schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
+                statistics are provided, we will just assume 100 rows.
+            gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
+                Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
 
         """
@@ -192,16 +205,21 @@ class Context:
             warnings.warn("file_format is renamed to format", DeprecationWarning)
             format = kwargs.pop("file_format")
 
+        schema_name = schema_name or self.schema_name
+
         dc = InputUtil.to_dc(
             input_table,
             table_name=table_name,
             format=format,
             persist=persist,
+            gpu=gpu,
             **kwargs,
         )
-        self.tables[table_name.lower()] = dc
+        self.schema[schema_name].tables[table_name.lower()] = dc
+        if statistics:
+            self.schema[schema_name].statistics[table_name.lower()] = statistics
 
-    def register_dask_table(self, df: dd.DataFrame, name: str):
+    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
         Outdated version of :func:`create_table()`.
         """
@@ -209,9 +227,9 @@ class Context:
             "register_dask_table is deprecated, use the more general create_table instead.",
             DeprecationWarning,
         )
-        return self.create_table(name, df)
+        return self.create_table(name, df, *args, **kwargs)
 
-    def drop_table(self, table_name: str):
+    def drop_table(self, table_name: str, schema_name: str = None):
         """
         Remove a table with the given name from the registered tables.
         This will also delete the dataframe.
@@ -220,7 +238,25 @@ class Context:
             table_name: (:obj:`str`): Which table to remove.
 
         """
-        del self.tables[table_name]
+        schema_name = schema_name or self.schema_name
+        del self.schema[schema_name].tables[table_name]
+
+    def drop_schema(self, schema_name: str):
+        """
+        Remove a schema with the given name from the registered schemas.
+        This will also delete all tables, functions etc.
+
+        Args:
+            schema_name: (:obj:`str`): Which schema to remove.
+
+        """
+        if schema_name == self.DEFAULT_SCHEMA_NAME:
+            raise RuntimeError(f"Default Schema `{schema_name}` cannot be deleted")
+
+        del self.schema[schema_name]
+
+        if self.schema_name == schema_name:
+            self.schema_name = self.DEFAULT_SCHEMA_NAME
 
     def register_function(
         self,
@@ -229,6 +265,8 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
+        row_udf: bool = False,
     ):
         """
         Register a custom function with the given name.
@@ -242,8 +280,11 @@ class Context:
             SELECT f(x)
             FROM df
 
-        Please note that you can always only have one function with the same name;
-        no matter if it is an aggregation or scalar function.
+        Please keep in mind that you can only have one function with the same name,
+        regardless of whether it is an aggregation or a scalar function. By default,
+        attempting to register two functions with the same name will raise an error;
+        setting `replace=True` will give precedence to the most recently registered
+        function.
 
         For the registration, you need to supply both the
         list of parameter and parameter types as well as the
@@ -266,13 +307,32 @@ class Context:
                 sql = "SELECT f(x) FROM df"
                 df_result = c.sql(sql)
 
+        Example of overwriting two functions with the same name:
+            This example registers a different function "f", which
+            calculates the floor division of an integer and applies
+            it to the column ``x``. It also shows how to overwrite
+            the previous function with the replace parameter.
+
+            .. code-block:: python
+
+                def f(x):
+                    return x // 2
+
+                c.register_function(f, "f", [("x", np.int64)], np.int64, replace=True)
+
+                sql = "SELECT f(x) FROM df"
+                df_result = c.sql(sql)
+
         Args:
             f (:obj:`Callable`): The function to register
             name (:obj:`str`): Under which name should the new function be addressable in SQL
             parameters (:obj:`List[Tuple[str, type]]`): A list ot tuples of parameter name and parameter type.
-                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible.
+                Use `numpy dtypes <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_ if possible. This
+                function is sensitive to the order of specified parameters when `row_udf=True`, and it is assumed
+                that column arguments are specified in order, followed by scalar arguments.
             return_type (:obj:`type`): The return type of the function
-            replace (:obj:`bool`): Do not raise an error if the function is already present
+            replace (:obj:`bool`): If `True`, do not raise an error if a function with the same name is already
+            present; instead, replace the original function. Default is `False`.
 
         See also:
             :func:`register_aggregation`
@@ -285,6 +345,8 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
+            row_udf=row_udf,
         )
 
     def register_aggregation(
@@ -294,6 +356,7 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name: str = None,
     ):
         """
         Register a custom aggregation with the given name.
@@ -350,6 +413,7 @@ class Context:
             parameters=parameters,
             return_type=return_type,
             replace=replace,
+            schema_name=schema_name,
         )
 
     def sql(
@@ -357,6 +421,8 @@ class Context:
         sql: str,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        gpu: bool = False,
+        config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -382,41 +448,49 @@ class Context:
                 Defaults to returning the dask dataframe.
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
+            config_options (:obj:`Dict[str,Any]`): Specific configuration options to pass during
+                query execution
 
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
 
         """
-        if dataframes is not None:
-            for df_name, df in dataframes.items():
-                self.create_table(df_name, df)
+        with dask_config.set(config_options):
+            if dataframes is not None:
+                for df_name, df in dataframes.items():
+                    self.create_table(df_name, df, gpu=gpu)
 
-        rel, select_names, _ = self._get_ral(sql)
+            rel, select_names, _ = self._get_ral(sql)
 
-        dc = RelConverter.convert(rel, context=self)
+            dc = RelConverter.convert(rel, context=self)
 
-        if dc is None:
-            return
+            if dc is None:
+                return
 
-        if select_names:
-            # Rename any columns named EXPR$* to a more human readable name
-            cc = dc.column_container
-            cc = cc.rename(
-                {
-                    df_col: df_col if not df_col.startswith("EXPR$") else select_name
-                    for df_col, select_name in zip(cc.columns, select_names)
-                }
-            )
-            dc = DataContainer(dc.df, cc)
+            if select_names:
+                # Rename any columns named EXPR$* to a more human readable name
+                cc = dc.column_container
+                cc = cc.rename(
+                    {
+                        df_col: select_name
+                        for df_col, select_name in zip(cc.columns, select_names)
+                    }
+                )
+                dc = DataContainer(dc.df, cc)
 
-        df = dc.assign()
-        if not return_futures:
-            df = df.compute()
+            df = dc.assign()
+            if not return_futures:
+                df = df.compute()
 
         return df
 
     def explain(
-        self, sql: str, dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None
+        self,
+        sql: str,
+        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        gpu: bool = False,
     ) -> str:
         """
         Return the stringified relational algebra that this query will produce
@@ -431,6 +505,8 @@ class Context:
             sql (:obj:`str`): The query string to use
             dataframes (:obj:`Dict[str, dask.dataframe.DataFrame]`): additional Dask or pandas dataframes
                 to register before executing this query
+            gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
+                requires cuDF / dask-cuDF if enabled. Defaults to False.
 
         Returns:
             :obj:`str`: a description of the created relational algebra.
@@ -438,7 +514,7 @@ class Context:
         """
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df)
+                self.create_table(df_name, df, gpu=gpu)
 
         _, _, rel_string = self._get_ral(sql)
         return rel_string
@@ -450,7 +526,55 @@ class Context:
 
         result.visualize(filename)
 
-    def register_model(self, model_name: str, model: Any, training_columns: List[str]):
+    def create_schema(self, schema_name: str):
+        """
+        Create a new schema in the database.
+
+        Args:
+            schema_name (:obj:`str`): The name of the schema to create
+        """
+        self.schema[schema_name] = SchemaContainer(schema_name)
+
+    def alter_schema(self, old_schema_name, new_schema_name):
+        """
+        Alter schema
+
+        Args:
+             old_schema_name:
+             new_schema_name:
+        """
+        self.schema[new_schema_name] = self.schema.pop(old_schema_name)
+
+    def alter_table(self, old_table_name, new_table_name):
+        """
+        Alter Table
+
+        Args:
+            old_table_name:
+            new_table_name:
+        """
+        self.schema[self.schema_name].tables[new_table_name] = self.schema[
+            self.schema_name
+        ].tables.pop(old_table_name)
+
+    def register_experiment(
+        self,
+        experiment_name: str,
+        experiment_results: pd.DataFrame,
+        schema_name: str = None,
+    ):
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].experiments[
+            experiment_name.lower()
+        ] = experiment_results
+
+    def register_model(
+        self,
+        model_name: str,
+        model: Any,
+        training_columns: List[str],
+        schema_name: str = None,
+    ):
         """
         Add a model to the model registry.
         A model can be anything which has a `.predict` function that transforms
@@ -466,7 +590,8 @@ class Context:
             training_columns: (list of str): The names of the columns which were
                 used during the training.
         """
-        self.models[model_name] = (model, training_columns)
+        schema_name = schema_name or self.schema_name
+        self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
     def ipython_magic(self, auto_include=False):  # pragma: no cover
         """
@@ -545,94 +670,155 @@ class Context:
 
     def stop_server(self):  # pragma: no cover
         """
-        Stop a SQL server started by ``run_server`.
+        Stop a SQL server started by ``run_server``.
         """
-        if not self.sql_server is None:
+        if self.sql_server is not None:
             loop = asyncio.get_event_loop()
             assert loop
             loop.create_task(self.sql_server.shutdown())
 
         self.sql_server = None
 
-    def _prepare_schema(self):
+    def fqn(
+        self, identifier: "org.apache.calcite.sql.SqlIdentifier"
+    ) -> Tuple[str, str]:
         """
-        Create a schema filled with the dataframes
-        and functions we have currently in our list
+        Return the fully qualified name of an object, maybe including the schema name.
+
+        Args:
+            identifier (:obj:`str`): The Java identifier of the table or view
+
+        Returns:
+            :obj:`tuple` of :obj:`str`: The fully qualified name of the object
         """
-        schema = DaskSchema(self.schema_name)
-
-        if not self.tables:
-            logger.warning("No tables are registered.")
-
-        for name, dc in self.tables.items():
-            table = DaskTable(name)
-            df = dc.df
-            logger.debug(
-                f"Adding table '{name}' to schema with columns: {list(df.columns)}"
-            )
-            for column in df.columns:
-                data_type = df[column].dtype
-                sql_data_type = python_to_sql_type(data_type)
-
-                table.addColumn(column, sql_data_type)
-
-            schema.addTable(table)
-
-        if not self.functions:
-            logger.debug("No custom functions defined.")
-
-        for function_description in self.function_list:
-            name = function_description.name
-            sql_return_type = python_to_sql_type(function_description.return_type)
-            if function_description.aggregation:
-                logger.debug(f"Adding function '{name}' to schema as aggregation.")
-                dask_function = DaskAggregateFunction(name, sql_return_type)
-            else:
-                logger.debug(f"Adding function '{name}' to schema as scalar function.")
-                dask_function = DaskScalarFunction(name, sql_return_type)
-
-            dask_function = self._add_parameters_from_description(
-                function_description, dask_function
+        components = [str(n) for n in identifier.names]
+        if len(components) == 2:
+            schema = components[0]
+            name = components[1]
+        elif len(components) == 1:
+            schema = self.schema_name
+            name = components[0]
+        else:
+            raise AttributeError(
+                f"Do not understand the identifier {identifier} (too many components)"
             )
 
-            schema.addFunction(dask_function)
+        return schema, name
 
-        return schema
+    def _prepare_schemas(self):
+        """
+        Create a list of schemas filled with the dataframes
+        and functions we have currently in our schema list
+        """
+        schema_list = []
+
+        DaskTable = com.dask.sql.schema.DaskTable
+        DaskAggregateFunction = com.dask.sql.schema.DaskAggregateFunction
+        DaskScalarFunction = com.dask.sql.schema.DaskScalarFunction
+        DaskSchema = com.dask.sql.schema.DaskSchema
+
+        for schema_name, schema in self.schema.items():
+            java_schema = DaskSchema(schema_name)
+
+            if not schema.tables:
+                logger.warning("No tables are registered.")
+
+            for name, dc in schema.tables.items():
+                row_count = (
+                    schema.statistics[name].row_count
+                    if name in schema.statistics
+                    else None
+                )
+                if row_count is not None:
+                    row_count = float(row_count)
+                table = DaskTable(name, row_count)
+                df = dc.df
+                logger.debug(
+                    f"Adding table '{name}' to schema with columns: {list(df.columns)}"
+                )
+                for column in df.columns:
+                    data_type = df[column].dtype
+                    sql_data_type = python_to_sql_type(data_type)
+
+                    table.addColumn(column, sql_data_type)
+
+                java_schema.addTable(table)
+
+            if not schema.functions:
+                logger.debug("No custom functions defined.")
+            for function_description in schema.function_lists:
+                name = function_description.name
+                sql_return_type = function_description.return_type
+                if function_description.aggregation:
+                    logger.debug(f"Adding function '{name}' to schema as aggregation.")
+                    dask_function = DaskAggregateFunction(name, sql_return_type)
+                else:
+                    logger.debug(
+                        f"Adding function '{name}' to schema as scalar function."
+                    )
+                    dask_function = DaskScalarFunction(name, sql_return_type)
+
+                dask_function = self._add_parameters_from_description(
+                    function_description, dask_function
+                )
+
+                java_schema.addFunction(dask_function)
+
+            schema_list.append(java_schema)
+
+        return schema_list
 
     @staticmethod
     def _add_parameters_from_description(function_description, dask_function):
         for parameter in function_description.parameters:
-            param_name, param_type = parameter
-            sql_param_type = python_to_sql_type(param_type)
-
-            dask_function.addParameter(param_name, sql_param_type, False)
+            dask_function.addParameter(*parameter, False)
 
         return dask_function
 
     def _get_ral(self, sql):
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
         # get the schema of what we currently have registered
-        schema = self._prepare_schema()
+        schemas = self._prepare_schemas()
 
-        # Now create a relational algebra from that
-        generator = RelationalAlgebraGenerator(schema)
+        RelationalAlgebraGeneratorBuilder = (
+            com.dask.sql.application.RelationalAlgebraGeneratorBuilder
+        )
+
+        # True if the SQL query should be case sensitive and False otherwise
+        case_sensitive = dask_config.get("sql.identifier.case_sensitive", default=True)
+
+        generator_builder = RelationalAlgebraGeneratorBuilder(
+            self.schema_name, case_sensitive, java.util.ArrayList()
+        )
+        for schema in schemas:
+            generator_builder = generator_builder.addSchema(schema)
+        generator = generator_builder.build()
         default_dialect = generator.getDialect()
 
         logger.debug(f"Using dialect: {get_java_class(default_dialect)}")
+
+        ValidationException = org.apache.calcite.tools.ValidationException
+        SqlParseException = org.apache.calcite.sql.parser.SqlParseException
+        CalciteContextException = org.apache.calcite.runtime.CalciteContextException
 
         try:
             sqlNode = generator.getSqlNode(sql)
             sqlNodeClass = get_java_class(sqlNode)
 
-            if sqlNodeClass.startswith("com.dask.sql.parser."):
-                rel = sqlNode
-                rel_string = ""
-            else:
-                validatedSqlNode = generator.getValidatedNode(sqlNode)
-                nonOptimizedRelNode = generator.getRelationalAlgebra(validatedSqlNode)
+            select_names = None
+            rel = sqlNode
+            rel_string = ""
+
+            if not sqlNodeClass.startswith("com.dask.sql.parser."):
+                nonOptimizedRelNode = generator.getRelationalAlgebra(sqlNode)
+                # Optimization might remove some alias projects. Make sure to keep them here.
+                select_names = [
+                    str(name)
+                    for name in nonOptimizedRelNode.getRowType().getFieldNames()
+                ]
                 rel = generator.getOptimizedRelationalAlgebra(nonOptimizedRelNode)
                 rel_string = str(generator.getRelationalAlgebraString(rel))
-        except (ValidationException, SqlParseException) as e:
+        except (ValidationException, SqlParseException, CalciteContextException) as e:
             logger.debug(f"Original exception raised by Java:\n {e}")
             # We do not want to re-raise an exception here
             # as this would print the full java stack trace
@@ -654,27 +840,28 @@ class Context:
         if sqlNodeClass == "org.apache.calcite.sql.SqlSelect":
             select_names = [
                 self._to_sql_string(s, default_dialect=default_dialect)
-                for s in sqlNode.getSelectList()
+                if current_name.startswith("EXPR$")
+                else current_name
+                for s, current_name in zip(sqlNode.getSelectList(), select_names)
             ]
         else:
             logger.debug(
                 "Not extracting output column names as the SQL is not a SELECT call"
             )
-            select_names = None
 
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
         return rel, select_names, rel_string
 
     def _to_sql_string(self, s: "org.apache.calcite.sql.SqlNode", default_dialect=None):
         if default_dialect is None:
-            schema = self._prepare_schema()
-
-            generator = RelationalAlgebraGenerator(schema)
-            default_dialect = generator.getDialect()
+            default_dialect = (
+                com.dask.sql.application.RelationalAlgebraGenerator.getDialect()
+            )
 
         try:
             return str(s.toSqlString(default_dialect))
-        except:  # pragma: no cover. Have not seen any instance so far, but better be safe than sorry.
+        # Have not seen any instance so far, but better be safe than sorry
+        except Exception:  # pragma: no cover
             return str(s)
 
     def _get_tables_from_stack(self):
@@ -688,7 +875,7 @@ class Context:
             for var_name, variable in frame_info.frame.f_locals.items():
                 if var_name.startswith("_"):
                     continue
-                if not isinstance(variable, (pd.DataFrame, dd.DataFrame)):
+                if not dd.utils.is_dataframe_like(variable):
                     continue
 
                 # only set them if not defined in an inner context
@@ -704,25 +891,46 @@ class Context:
         parameters: List[Tuple[str, type]],
         return_type: type,
         replace: bool = False,
+        schema_name=None,
+        row_udf: bool = False,
     ):
         """Helper function to do the function or aggregation registration"""
+
+        schema_name = schema_name or self.schema_name
+        schema = self.schema[schema_name]
+
+        # validate and cache UDF metadata
+        sql_parameters = [
+            (name, python_to_sql_type(param_type)) for name, param_type in parameters
+        ]
+        sql_return_type = python_to_sql_type(return_type)
+
+        if not aggregation:
+            f = UDF(f, row_udf, parameters, return_type)
         lower_name = name.lower()
-        if lower_name in self.functions:
+        if lower_name in schema.functions:
             if replace:
-                self.function_list = list(
-                    filter(lambda f: f.name.lower() != lower_name, self.function_list)
+                schema.function_lists = list(
+                    filter(
+                        lambda f: f.name.lower() != lower_name,
+                        schema.function_lists,
+                    )
                 )
-                del self.functions[lower_name]
+                del schema.functions[lower_name]
 
-            elif self.functions[lower_name] != f:
+            elif schema.functions[lower_name] != f:
                 raise ValueError(
-                    "Registering different functions with the same name is not allowed"
+                    "Registering multiple functions with the same name is only permitted if replace=True"
                 )
 
-        self.function_list.append(
-            FunctionDescription(name.upper(), parameters, return_type, aggregation)
+        schema.function_lists.append(
+            FunctionDescription(
+                name.upper(), sql_parameters, sql_return_type, aggregation
+            )
         )
-        self.function_list.append(
-            FunctionDescription(name.lower(), parameters, return_type, aggregation)
+        schema.function_lists.append(
+            FunctionDescription(
+                name.lower(), sql_parameters, sql_return_type, aggregation
+            )
         )
-        self.functions[lower_name] = f
+        schema.functions[lower_name] = f

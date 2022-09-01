@@ -14,7 +14,7 @@ data: {
     # Default taken from the calcite jar (see pom.xml)
     default: tdd("../default_config.fmpp")
     parser: {
-      # Defines how the new grammer will be named (after compilation)
+      # Defines how the new grammar will be named (after compilation)
       package: "com.dask.sql.parser",
       class: "DaskSqlParserImpl",
 
@@ -32,10 +32,17 @@ data: {
         "com.dask.sql.parser.SqlDropTable",
         "com.dask.sql.parser.SqlKwargs",
         "com.dask.sql.parser.SqlModelIdentifier",
-        "com.dask.sql.parser.SqlPredictModel"
+        "com.dask.sql.parser.SqlDistributeBy",
+        "com.dask.sql.parser.SqlPredictModel",
         "com.dask.sql.parser.SqlShowColumns",
         "com.dask.sql.parser.SqlShowSchemas",
-        "com.dask.sql.parser.SqlShowTables"
+        "com.dask.sql.parser.SqlShowTables",
+        "com.dask.sql.parser.SqlShowModels",
+        "com.dask.sql.parser.SqlExportModel",
+        "com.dask.sql.parser.SqlCreateExperiment",
+        "com.dask.sql.parser.SqlAlterSchema",
+        "com.dask.sql.parser.SqlAlterTable",
+        "com.dask.sql.parser.SqlUseSchema"
       ]
 
       # List of keywords.
@@ -47,8 +54,14 @@ data: {
         "MODEL"
         "PREDICT"
         "SCHEMAS"
+        "USE"
         "STATISTICS"
         "TABLES"
+        "MODELS"
+        "EXPORT"
+        "EXPERIMENT"
+        "RENAME"
+        "DISTRIBUTE"
       ]
 
       # The keywords can only be used in a specific context,
@@ -63,35 +76,52 @@ data: {
         "SCHEMAS"
         "STATISTICS"
         "TABLES"
+        "RENAME"
+        "EXPERIMENT"
+
       ]
 
       # List of methods for parsing custom SQL statements
       statementParserMethods: [
-         "SqlAnalyzeTable()"
-         "SqlDescribeTable()"
-         "SqlShowColumns()"
-         "SqlShowSchemas()"
-         "SqlShowTables()"
-         "SqlPredictModel()"
+         "SqlAnalyzeTable()",
+         "SqlShowColumns()",
+         "SqlShowSchemas()",
+         "SqlShowTables()",
+         "SqlShowModels()",
+         "SqlDescribeTableOrModel()",
+         "SqlExportModel()",
+         "SqlUseSchema()",
+         "SqlAlterSchema()",
+         "SqlAlterTable()",
+         # has to go to the bottom, otherwise
+         # its catch-all ExpressionOrQuery will
+         # be the default parsing branch
+         "ExpressionOrPredict()",
       ]
 
+
       createStatementParserMethods: [
-         "SqlCreateModel"
-         "SqlCreateTable"
-         "SqlCreateView"
+         "SqlCreateModel",
+         "SqlCreateTable",
+         "SqlCreateView",
+         "SqlCreateExperiment",
+         "SqlCreateSchema",
       ]
 
       dropStatementParserMethods: [
-         "SqlDropModel"
-         "SqlDropTable"
+         "SqlDropModel",
+         "SqlDropTable",
+         "SqlDropSchema",
       ]
 
       # location of the implementation
       implementationFiles: [
-        "create.ftl"
-        "model.ftl"
-        "show.ftl"
-        "utils.ftl"
+        "create.ftl",
+        "model.ftl",
+        "show.ftl",
+        "utils.ftl",
+        "distribute.ftl",
+        "root.ftl",
       ]
     }
 }

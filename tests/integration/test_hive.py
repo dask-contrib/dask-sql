@@ -1,17 +1,19 @@
 import shutil
+import sys
 import tempfile
 import time
 
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 from dask_sql.context import Context
+from tests.utils import assert_eq
 
-# skip the test if the docker or sqlalchemy package is not installed
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="hive testing not supported on Windows"
+)
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
-
 pytest.importorskip("pyhive")
 
 
@@ -150,6 +152,11 @@ def hive_cursor():
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_parted])
 
         yield cursor
+    except docker.errors.ImageNotFound:
+        pytest.skip(
+            "Hive testing requires 'bde2020/hive:2.3.2-postgresql-metastore' and "
+            "'bde2020/hive-metastore-postgresql:2.3.0' docker images"
+        )
     finally:
         # Now clean up: remove the containers and the network and the folders
         for container in [hive_server, hive_metastore, hive_postgres]:
@@ -158,7 +165,7 @@ def hive_cursor():
 
             try:
                 container.kill()
-            except:
+            except Exception:
                 pass
 
             container.remove()
@@ -174,18 +181,18 @@ def test_select(hive_cursor):
     c = Context()
     c.create_table("df", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df").compute().reset_index(drop=True)
-    df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
+    result_df = c.sql("SELECT * FROM df")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
 
-    assert_frame_equal(df, result_df)
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_select_partitions(hive_cursor):
     c = Context()
     c.create_table("df_part", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df_part").compute().reset_index(drop=True)
-    df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
-    df["j"] = df["j"].astype("int64")
+    result_df = c.sql("SELECT * FROM df_part")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
+    expected_df["j"] = expected_df["j"].astype("int64")
 
-    assert_frame_equal(df, result_df)
+    assert_eq(result_df, expected_df, check_index=False)

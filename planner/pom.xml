@@ -14,10 +14,12 @@
 		<project.reporting.outputEncoding>${sourceEncoding}</project.reporting.outputEncoding>
 
 		<java.version>1.8</java.version>
+		<log4j.version>2.17.0</log4j.version>
 		<org.slf4j-version>1.7.29</org.slf4j-version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
-		<org.apache.calcite-version>1.26.0</org.apache.calcite-version>
+		<org.apache.calcite-version>1.29.0</org.apache.calcite-version>
+		<org.apache.calcite.avatica-version>1.20.0</org.apache.calcite.avatica-version>
 	</properties>
 
 	<dependencies>
@@ -27,6 +29,53 @@
 			<version>${org.apache.calcite-version}</version>
 			<type>jar</type>
 		</dependency>
+
+		<!-- BEGIN - Calcite Dependencies -->
+		<dependency>
+			<groupId>org.apache.calcite</groupId>
+			<artifactId>calcite-linq4j</artifactId>
+			<version>${org.apache.calcite-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.esri.geometry</groupId>
+			<artifactId>esri-geometry-api</artifactId>
+			<version>2.2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.errorprone</groupId>
+			<artifactId>error_prone_annotations</artifactId>
+			<version>2.5.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>29.0-jre</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.calcite.avatica</groupId>
+			<artifactId>avatica-core</artifactId>
+			<version>1.20.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.13</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apiguardian</groupId>
+			<artifactId>apiguardian-api</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.checkerframework</groupId>
+			<artifactId>checker-qual</artifactId>
+			<version>3.10.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -34,14 +83,85 @@
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
+			<artifactId>slf4j-simple</artifactId>
 			<version>${org.slf4j-version}</version>
 		</dependency>
+
 		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.10.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.13.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-yaml</artifactId>
+			<version>2.13.2</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.uzaygezen</groupId>
+			<artifactId>uzaygezen-core</artifactId>
+			<version>0.2</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>log4j</artifactId>
+					<groupId>log4j</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.jayway.jsonpath</groupId>
+			<artifactId>json-path</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.yahoo.datasketches</groupId>
+			<artifactId>sketches-core</artifactId>
+			<version>0.9.0</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.13</version>
+		</dependency>
+		<dependency>
+			<groupId>net.hydromatic</groupId>
+			<artifactId>aggdesigner-algorithm</artifactId>
+			<version>6.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.8</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.11.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.janino</groupId>
+			<artifactId>commons-compiler</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.janino</groupId>
+			<artifactId>janino</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<!-- END - Calcite Dependencies -->
+
 		<dependency>
 			<groupId>net.java.dev.javacc</groupId>
 			<artifactId>javacc</artifactId>
@@ -97,6 +217,7 @@
 				<version>2.1</version>
 				<executions>
 					<execution>
+						<?m2e execute onConfiguration?>
 						<!-- Extract parser grammar template from Apache Calcite and put
 					  	it under ${project.build.directory} where all freemarker templates are. -->
 						<id>unpack-parser-template</id>
@@ -164,6 +285,7 @@
 				</dependencies>
 				<executions>
 					<execution>
+						<?m2e execute onConfiguration?>
 						<id>generate-fmpp-sources</id>
 						<phase>generate-sources</phase>
 						<goals>
@@ -171,7 +293,7 @@
 						</goals>
 						<configuration>
 							<cfgFile>${project.build.directory}/codegen/config.fmpp</cfgFile>
-							<outputDirectory>target/generated-sources</outputDirectory>
+							<outputDirectory>${project.build.directory}/generated-sources/annotations</outputDirectory>
 							<templateDirectory>${project.build.directory}/codegen/templates</templateDirectory>
 						</configuration>
 					</execution>
@@ -183,19 +305,39 @@
 				<version>2.4</version>
 				<executions>
 					<execution>
+						<?m2e execute onConfiguration?>
 						<phase>generate-sources</phase>
 						<id>javacc</id>
 						<goals>
 							<goal>javacc</goal>
 						</goals>
 						<configuration>
-							<sourceDirectory>${project.build.directory}/generated-sources/</sourceDirectory>
+							<sourceDirectory>${project.build.directory}/generated-sources/annotations</sourceDirectory>
 							<includes>
 								<include>**/Parser.jj</include>
 							</includes>
 							<lookAhead>2</lookAhead>
 							<isStatic>false</isStatic>
-							<outputDirectory>${project.build.directory}/generated-sources/</outputDirectory>
+							<outputDirectory>${project.build.directory}/generated-sources/annotations</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>add-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/generated-sources/annotations</source>
+							</sources>
 						</configuration>
 					</execution>
 				</executions>

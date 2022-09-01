@@ -13,7 +13,7 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
 {
     <TABLE>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     (
         <WITH>
         kwargs = ParenthesizedKeyValueExpressions()
@@ -30,6 +30,21 @@ SqlCreate SqlCreateTable(final Span s, boolean replace) :
     )
 }
 
+SqlCreate SqlCreateSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifNotExists;
+    final SqlKwargs kwargs;
+}
+{
+    <SCHEMA>
+    ifNotExists = IfNotExists()
+    schemaName = SimpleIdentifier()
+    {
+     return new SqlCreateSchema(s.end(this), replace, ifNotExists, schemaName);
+    }
+}
+
 /*
  * Production for
  *   CREATE VIEW name AS
@@ -43,7 +58,7 @@ SqlCreate SqlCreateView(final Span s, boolean replace) :
 {
     <VIEW>
     ifNotExists = IfNotExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     <AS>
     select = OptionallyParenthesizedQuery()
     {
@@ -69,8 +84,69 @@ SqlDrop SqlDropTable(final Span s, boolean replace) :
         <VIEW>
     )
     ifExists = IfExists()
-    tableName = SimpleIdentifier()
+    tableName = CompoundTableIdentifier()
     {
         return new SqlDropTable(s.end(this), ifExists, tableName);
+    }
+}
+
+SqlDrop SqlDropSchema(final Span s, boolean replace) :
+{
+    final SqlIdentifier schemaName;
+    final boolean ifExists;
+}
+{
+    <SCHEMA>
+    ifExists = IfExists()
+    schemaName = SimpleIdentifier()
+    {
+        return new SqlDropSchema(s.end(this), ifExists, schemaName);
+    }
+}
+
+/*
+ * Production for
+ * ALTER SCHEMA old RENAME TO new
+*/
+SqlNode SqlAlterSchema() :
+{
+    final Span s;
+    final SqlIdentifier oldSchemaName;
+    final SqlIdentifier newSchemaName;
+}
+{
+    <ALTER>
+    { s = span(); }
+    <SCHEMA>
+    oldSchemaName = SimpleIdentifier()
+    <RENAME> <TO>
+    newSchemaName = SimpleIdentifier()
+    {
+         return new SqlAlterSchema(s.end(this), oldSchemaName, newSchemaName);
+    }
+}
+
+/*
+ * Production for
+ * ALTER TABLE  old RENAME TO new
+*/
+SqlNode SqlAlterTable() :
+{
+    final Span s;
+    final SqlIdentifier oldTableName;
+    final SqlIdentifier newTableName;
+    final boolean ifExists;
+
+}
+{
+    <ALTER>
+    { s = span(); }
+    <TABLE>
+    ifExists = IfExists()
+    oldTableName = SimpleIdentifier()
+    <RENAME> <TO>
+    newTableName = SimpleIdentifier()
+    {
+         return new SqlAlterTable(s.end(this), ifExists,oldTableName, newTableName);
     }
 }

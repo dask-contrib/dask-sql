@@ -1,8 +1,14 @@
+from typing import TYPE_CHECKING
+
 import dask.dataframe as dd
 import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 
 class ShowTablesPlugin(BaseRelPlugin):
@@ -23,11 +29,16 @@ class ShowTablesPlugin(BaseRelPlugin):
     def convert(
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
-        schema = str(sql.getSchema()).split(".")[-1]
-        if schema != context.schema_name:
+        schema = sql.getSchema()
+        if schema is not None:
+            schema = str(schema).split(".")[-1]
+        else:
+            schema = context.DEFAULT_SCHEMA_NAME
+
+        if schema not in context.schema:
             raise AttributeError(f"Schema {schema} is not defined.")
 
-        df = pd.DataFrame({"Table": list(context.tables.keys())})
+        df = pd.DataFrame({"Table": list(context.schema[schema].tables.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

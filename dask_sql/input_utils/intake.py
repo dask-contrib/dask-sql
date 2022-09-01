@@ -18,7 +18,17 @@ class IntakeCatalogInputPlugin(BaseInputPlugin):
             isinstance(input_item, intake.catalog.Catalog) or format == "intake"
         )
 
-    def to_dc(self, input_item: Any, table_name: str, format: str = None, **kwargs):
+    def to_dc(
+        self,
+        input_item: Any,
+        table_name: str,
+        format: str = None,
+        gpu: bool = False,
+        **kwargs,
+    ):
+        if gpu:  # pragma: no cover
+            raise NotImplementedError("Intake does not support gpu")
+
         table_name = kwargs.pop("intake_table_name", table_name)
         catalog_kwargs = kwargs.pop("catalog_kwargs", {})
 

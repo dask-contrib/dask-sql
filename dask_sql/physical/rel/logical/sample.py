@@ -1,9 +1,14 @@
 import logging
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +32,7 @@ class SamplePlugin(BaseRelPlugin):
     the expected.
     """
 
-    class_name = "org.apache.calcite.rel.core.Sample"
+    class_name = "com.dask.sql.nodes.DaskSample"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

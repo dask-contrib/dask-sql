@@ -1,76 +1,71 @@
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+
+from dask_sql import Context
+from tests.utils import assert_eq
 
 
 def test_schemas(c):
-    df = c.sql("SHOW SCHEMAS")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS")
     expected_df = pd.DataFrame({"Schema": [c.schema_name, "information_schema"]})
 
-    assert_frame_equal(df, expected_df)
+    assert_eq(result_df, expected_df)
 
-    df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
-    df = df.compute()
-
+    result_df = c.sql("SHOW SCHEMAS LIKE 'information_schema'")
     expected_df = pd.DataFrame({"Schema": ["information_schema"]})
 
-    assert_frame_equal(df.reset_index(drop=True), expected_df.reset_index(drop=True))
+    assert_eq(result_df, expected_df, check_index=False)
 
 
-def test_tables(c):
-    df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
-    df = df.compute()
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_tables(gpu):
+    c = Context()
+    c.create_table("table", pd.DataFrame(), gpu=gpu)
 
-    expected_df = pd.DataFrame(
-        {
-            "Table": [
-                "df",
-                "df_simple",
-                "user_table_1",
-                "user_table_2",
-                "long_table",
-                "user_table_inf",
-                "user_table_nan",
-                "string_table",
-                "datetime_table",
-            ]
-        }
-    )
+    result_df = c.sql(f'SHOW TABLES FROM "{c.schema_name}"')
+    expected_df = pd.DataFrame({"Table": ["table"]})
 
-    assert_frame_equal(
-        df.sort_values("Table").reset_index(drop=True),
-        expected_df.sort_values("Table").reset_index(drop=True),
-    )
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 def test_columns(c):
-    df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
-    df = df.compute()
-
+    result_df = c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."user_table_1"')
     expected_df = pd.DataFrame(
         {
-            "Column": ["user_id", "b",],
+            "Column": [
+                "user_id",
+                "b",
+            ],
             "Type": ["bigint", "bigint"],
             "Extra": [""] * 2,
             "Comment": [""] * 2,
         }
     )
 
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    assert_eq(result_df, expected_df)
 
-    df = c.sql('SHOW COLUMNS FROM "user_table_1"')
-    df = df.compute()
-    assert_frame_equal(df.sort_values("Column"), expected_df.sort_values("Column"))
+    result_df = c.sql('SHOW COLUMNS FROM "user_table_1"')
+
+    assert_eq(result_df, expected_df)
 
 
 def test_wrong_input(c):
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW COLUMNS FROM "wrong"."table"."column"')
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW TABLES FROM "wrong"')
+
+
+def test_show_tables_no_schema(c):
+    c = Context()
+
+    df = pd.DataFrame({"id": [0, 1]})
+    c.create_table("test", df)
+
+    actual_df = c.sql("show tables").compute()
+    expected_df = pd.DataFrame({"Table": ["test"]})
+    assert_eq(actual_df, expected_df)

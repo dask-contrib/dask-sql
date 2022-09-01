@@ -1,24 +1,26 @@
 import logging
-from uuid import uuid4
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.rex.core.input_ref import RexInputRefPlugin
 from dask_sql.utils import new_temporary_column
+
+if TYPE_CHECKING:
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 
 
-class LogicalProjectPlugin(BaseRelPlugin):
+class DaskProjectPlugin(BaseRelPlugin):
     """
-    A LogicalProject is used to
+    A DaskProject is used to
     (a) apply expressions to the columns and
     (b) only select a subset of the columns
     """
 
-    class_name = "org.apache.calcite.rel.logical.LogicalProject"
+    class_name = "com.dask.sql.nodes.DaskProject"
 
     def convert(
         self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"

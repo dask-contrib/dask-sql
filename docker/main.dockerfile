@@ -4,31 +4,29 @@ FROM daskdev/dask:latest
 LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
 # Install dependencies for dask-sql
-COPY conda.txt /opt/dask_sql/
+COPY docker/conda.txt /opt/dask_sql/
 RUN conda config --add channels conda-forge \
     && /opt/conda/bin/conda install --freeze-installed \
     "jpype1>=1.0.2" \
     "openjdk>=11" \
     "maven>=3.6.0" \
     "tzlocal>=2.1" \
-    "fastapi>=0.61.1" \
+    "fastapi>=0.69.0" \
     "uvicorn>=0.11.3" \
-    "pyarrow>=0.15.1" \
+    "pyarrow>=6.0.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
-    "dask-ml>=1.7.0" \
-    "scikit-learn>=0.24.2" \
+    "dask-ml>=2022.1.22" \
+    "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
 
-# Build the java libraries
+# install dask-sql
 COPY setup.py /opt/dask_sql/
+COPY setup.cfg /opt/dask_sql/
+COPY versioneer.py /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
 COPY planner /opt/dask_sql/planner
-RUN cd /opt/dask_sql/ \
-    && python setup.py java
-
-# Install the python library
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
     && pip install -e .

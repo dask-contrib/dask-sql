@@ -1,8 +1,9 @@
+import datetime
 import logging
 import operator
 import re
 from functools import reduce
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
 import dask.dataframe as dd
@@ -14,9 +15,11 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_sql.datacontainer import DataContainer
+from dask_sql.java import get_java_class
 from dask_sql.mappings import cast_column_to_type, sql_to_python_type
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
+from dask_sql.physical.rex.core.literal import SargPythonImplementation
 from dask_sql.utils import (
     LoggableDataFrame,
     convert_to_datetime,
@@ -24,6 +27,10 @@ from dask_sql.utils import (
     is_frame,
     make_pickable_without_dask_sql,
 )
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -143,6 +150,31 @@ class SQLDivisionOperator(Operation):
         return result
 
 
+class IntDivisionOperator(Operation):
+    """
+    Truncated integer division (so -1 / 2 = 0).
+    This is only used for internal calculations,
+    which are created by Calcite.
+    """
+
+    def __init__(self):
+        super().__init__(self.div)
+
+    def div(self, lhs, rhs):
+        result = lhs / rhs
+
+        # Specialized code for literals like "1000µs"
+        # For some reasons, Calcite decides to represent
+        # 1000µs as 1000µs * 1000 / 1000
+        # We do not need to truncate in this case
+        # So far, I did not spot any other occurrence
+        # of this function.
+        if isinstance(result, (datetime.timedelta, np.timedelta64)):
+            return result
+        else:
+            return da.trunc(result).astype(np.int64)
+
+
 class CaseOperation(Operation):
     """The case operator (basically an if then else)"""
 
@@ -188,18 +220,21 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):
-            return operand
-
         output_type = str(rex.getType())
-        output_type = sql_to_python_type(output_type.upper())
+        python_type = sql_to_python_type(output_type.upper())
 
-        return_column = cast_column_to_type(operand, output_type)
+        return_column = cast_column_to_type(operand, python_type)
 
         if return_column is None:
-            return operand
-        else:
-            return return_column
+            return_column = operand
+
+        # TODO: ideally we don't want to directly access the datetimes,
+        # but Pandas can't truncate timezone datetimes and cuDF can't
+        # truncate datetimes
+        if output_type == "DATE":
+            return return_column.dt.floor("D").astype(python_type)
+
+        return return_column
 
 
 class IsFalseOperation(Operation):
@@ -208,7 +243,10 @@ class IsFalseOperation(Operation):
     def __init__(self):
         super().__init__(self.false_)
 
-    def false_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def false_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is false (where `df` can also be just a scalar).
         Returns false on nan.
@@ -225,7 +263,10 @@ class IsTrueOperation(Operation):
     def __init__(self):
         super().__init__(self.true_)
 
-    def true_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def true_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is true (where `df` can also be just a scalar).
         Returns false on nan.
@@ -242,7 +283,10 @@ class NotOperation(Operation):
     def __init__(self):
         super().__init__(self.not_)
 
-    def not_(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def not_(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns not `df` (where `df` can also be just a scalar).
         """
@@ -258,7 +302,10 @@ class IsNullOperation(Operation):
     def __init__(self):
         super().__init__(self.null)
 
-    def null(self, df: SeriesOrScalar,) -> SeriesOrScalar:
+    def null(
+        self,
+        df: SeriesOrScalar,
+    ) -> SeriesOrScalar:
         """
         Returns true where `df` is null (where `df` can also be just a scalar).
         """
@@ -290,7 +337,10 @@ class RegexOperation(Operation):
         super().__init__(self.regex)
 
     def regex(
-        self, test: SeriesOrScalar, regex: str, escape: str = None,
+        self,
+        test: SeriesOrScalar,
+        regex: str,
+        escape: str = None,
     ) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex
@@ -475,7 +525,6 @@ class ExtractOperation(Operation):
         super().__init__(self.extract)
 
     def extract(self, what, df: SeriesOrScalar):
-        input_df = df
         df = convert_to_datetime(df)
 
         if what == "CENTURY":
@@ -521,7 +570,7 @@ class CeilFloorOperation(PredicateBasedOperation):
         assert round_method in {
             "ceil",
             "floor",
-        }, f"Round method can only be either ceil or floor"
+        }, "Round method can only be either ceil or floor"
 
         super().__init__(
             is_datetime,  # if the series is dt type
@@ -638,6 +687,68 @@ class RandIntegerOperation(BaseRandomOperation):
         return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
+class SearchOperation(Operation):
+    """
+    Search is a special operation in SQL, which allows to write "range-like"
+    conditions, such like
+
+        (1 < a AND a < 2) OR (4 < a AND a < 6)
+
+    in a more convenient setting.
+    """
+
+    def __init__(self):
+        super().__init__(self.search)
+
+    def search(self, series: dd.Series, sarg: SargPythonImplementation):
+        conditions = [r.filter_on(series) for r in sarg.ranges]
+
+        assert len(conditions) > 0
+
+        if len(conditions) > 1:
+            or_operation = ReduceOperation(operation=operator.or_)
+            return or_operation(*conditions)
+        else:
+            return conditions[0]
+
+
+class DatetimeSubOperation(Operation):
+    """
+    Datetime subtraction is a special case of the `minus` operation in calcite
+    which also specifies a sql interval return type for the operation.
+    """
+
+    needs_rex = True
+
+    def __init__(self):
+        super().__init__(self.datetime_sub)
+
+    def datetime_sub(self, *operands, rex=None):
+        output_type = str(rex.getType())
+        assert output_type.startswith("INTERVAL")
+        interval_unit = output_type.split()[1].lower()
+
+        subtraction_op = ReduceOperation(
+            operation=operator.sub, unary_operation=lambda x: -x
+        )
+        intermediate_res = subtraction_op(*operands)
+
+        # Special case output_type for datetime operations
+        if interval_unit in {"year", "quarter", "month"}:
+            # if interval_unit is INTERVAL YEAR, Calcite will covert to months
+            if not is_frame(intermediate_res):
+                # Numpy doesn't allow divsion by month time unit
+                result = intermediate_res.astype("timedelta64[M]")
+                # numpy -ve timedelta's are off by one vs sql when casted to month
+                result = result + 1 if result < 0 else result
+            else:
+                result = intermediate_res / np.timedelta64(1, "M")
+        else:
+            result = intermediate_res.astype("timedelta64[ms]")
+
+        return result
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -672,8 +783,10 @@ class RexCallPlugin(BaseRexPlugin):
         "*": ReduceOperation(operation=operator.mul),
         "is distinct from": NotOperation().of(IsNotDistinctOperation()),
         "is not distinct from": IsNotDistinctOperation(),
+        "/int": IntDivisionOperator(),
         # special operations
         "cast": CastOperation(),
+        "reinterpret": CastOperation(),
         "case": CaseOperation(),
         "like": LikeOperation(),
         "similar to": SimilarOperation(),
@@ -688,6 +801,7 @@ class RexCallPlugin(BaseRexPlugin):
         "is not unknown": NotOperation().of(IsNullOperation()),
         "rand": RandOperation(),
         "rand_integer": RandIntegerOperation(),
+        "search": SearchOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
@@ -713,6 +827,7 @@ class RexCallPlugin(BaseRexPlugin):
         "truncate": Operation(da.trunc),
         # string operations
         "||": ReduceOperation(operation=operator.add),
+        "concat": ReduceOperation(operation=operator.add),
         "char_length": TensorScalarOperation(lambda x: x.str.len(), lambda x: len(x)),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
@@ -732,6 +847,7 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "datetime_subtraction": DatetimeSubOperation(),
     }
 
     def convert(
@@ -746,14 +862,16 @@ class RexCallPlugin(BaseRexPlugin):
         ]
 
         # Now use the operator name in the mapping
-        operator_name = str(rex.getOperator().getName())
+        schema_name, operator_name = context.fqn(rex.getOperator().getNameAsId())
+        if special_op := check_special_operator(rex.getOperator()):
+            operator_name = special_op
         operator_name = operator_name.lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
         except KeyError:
             try:
-                operation = context.functions[operator_name]
+                operation = context.schema[schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
                 raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
@@ -769,5 +887,17 @@ class RexCallPlugin(BaseRexPlugin):
             kwargs["rex"] = rex
 
         return operation(*operands, **kwargs)
-
         # TODO: We have information on the typing here - we should use it
+
+
+def check_special_operator(operator: "org.apache.calcite.sql.fun"):
+    """
+    Check for special operator classes that have an overloaded name with other
+    operator type/kinds.
+
+    eg: sqlDatetimeSubtractionOperator has the sqltype and kind of the `-` or `minus` operation.
+    """
+    special_op_to_name = {
+        "org.apache.calcite.sql.fun.SqlDatetimeSubtractionOperator": "datetime_subtraction"
+    }
+    return special_op_to_name.get(get_java_class(operator), None)

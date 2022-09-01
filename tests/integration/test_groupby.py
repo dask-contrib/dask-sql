@@ -1,10 +1,29 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+import pytest
+from dask.datasets import timeseries
+
+from tests.utils import assert_eq
+
+
+@pytest.fixture()
+def timeseries_df(c):
+    pdf = timeseries(freq="1d").compute().reset_index(drop=True)
+
+    # input nans in pandas dataframe
+    col1_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.2))
+    col2_index = np.random.randint(0, 30, size=int(pdf.shape[0] * 0.3))
+    pdf.loc[col1_index, "x"] = np.nan
+    pdf.loc[col2_index, "y"] = np.nan
+
+    c.create_table("timeseries", pdf, persist=True)
+
+    return None
 
 
 def test_group_by(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id, SUM(b) AS "S"
@@ -12,10 +31,9 @@ def test_group_by(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"user_id": [1, 2, 3], "S": [3, 4, 3]})
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
 def test_group_by_all(c, df):
@@ -26,12 +44,11 @@ def test_group_by_all(c, df):
     FROM user_table_1
     """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame({"S": [10], "X": [8]})
     expected_df["S"] = expected_df["S"].astype("int64")
     expected_df["X"] = expected_df["X"].astype("int32")
-    assert_frame_equal(result_df, expected_df)
+
+    assert_eq(result_df, expected_df)
 
     result_df = c.sql(
         """
@@ -46,8 +63,6 @@ def test_group_by_all(c, df):
         FROM df
         """
     )
-    result_df = result_df.compute()
-
     expected_df = pd.DataFrame(
         {
             "sum_a": [df.a.sum()],
@@ -59,11 +74,12 @@ def test_group_by_all(c, df):
             "mix_3": [(df.a + df.b).mean()],
         }
     )
-    assert_frame_equal(result_df, expected_df)
+
+    assert_eq(result_df, expected_df)
 
 
 def test_group_by_filtered(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         SUM(b) FILTER (WHERE user_id = 2) AS "S1",
@@ -71,14 +87,11 @@ def test_group_by_filtered(c):
     FROM user_table_1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"S1": [4], "S2": [10]}, dtype="int64")
-    assert_frame_equal(df, expected_df)
 
+    assert_eq(return_df, expected_df)
 
-def test_group_by_filtered2(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -88,48 +101,48 @@ def test_group_by_filtered2(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame(
-        {"user_id": [1, 2, 3], "S1": [np.NaN, 4.0, np.NaN], "S2": [3, 4, 3],},
+        {
+            "user_id": [1, 2, 3],
+            "S1": [np.NaN, 4.0, np.NaN],
+            "S2": [3, 4, 3],
+        },
     )
-    assert_frame_equal(df, expected_df)
 
-    df = c.sql(
+    assert_eq(return_df, expected_df, check_index=False)
+
+    return_df = c.sql(
         """
     SELECT
         SUM(b) FILTER (WHERE user_id = 2) AS "S1"
     FROM user_table_1
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"S1": [4]})
-    assert_frame_equal(df, expected_df)
+    assert_eq(return_df, expected_df)
 
 
 def test_group_by_case(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
-        user_id + 1, SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
+        user_id + 1 AS "A", SUM(CASE WHEN b = 3 THEN 1 END) AS "S"
     FROM user_table_1
     GROUP BY user_id + 1
     """
     )
-    df = df.compute()
+    expected_df = pd.DataFrame({"A": [2, 3, 4], "S": [1, 1, 1]})
 
-    user_id_column = '"user_table_1"."user_id" + 1'
-
-    expected_df = pd.DataFrame({user_id_column: [2, 3, 4], "S": [1, 1, 1]})
-    expected_df[user_id_column] = expected_df[user_id_column].astype("int64")
-    assert_frame_equal(
-        df.sort_values(user_id_column).reset_index(drop=True), expected_df
+    # Do not check dtypes, as pandas versions are inconsistent here
+    assert_eq(
+        return_df.sort_values("A").reset_index(drop=True),
+        expected_df,
+        check_dtype=False,
     )
 
 
 def test_group_by_nan(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         c
@@ -137,18 +150,12 @@ def test_group_by_nan(c):
     GROUP BY c
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
-    # The dtype in pandas 1.0.5 and pandas 1.1.0 are different, so
-    # we can not check here
-    assert_frame_equal(
-        df.sort_values("c").reset_index(drop=True),
-        expected_df.sort_values("c").reset_index(drop=True),
-        check_dtype=False,
-    )
 
-    df = c.sql(
+    # we return nullable int dtype instead of float
+    assert_eq(return_df, expected_df, check_dtype=False)
+
+    return_df = c.sql(
         """
     SELECT
         c
@@ -156,18 +163,17 @@ def test_group_by_nan(c):
     GROUP BY c
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"c": [3, 1, float("inf")]})
     expected_df["c"] = expected_df["c"].astype("float64")
-    assert_frame_equal(
-        df.sort_values("c").reset_index(drop=True),
+
+    assert_eq(
+        return_df.sort_values("c").reset_index(drop=True),
         expected_df.sort_values("c").reset_index(drop=True),
     )
 
 
 def test_aggregations(c):
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -181,8 +187,6 @@ def test_aggregations(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 3],
@@ -195,9 +199,10 @@ def test_aggregations(c):
         }
     )
     expected_df["a"] = expected_df["a"].astype("float64")
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
 
-    df = c.sql(
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
         """
     SELECT
         user_id,
@@ -211,7 +216,6 @@ def test_aggregations(c):
     GROUP BY user_id
     """
     )
-    df = df.compute()
 
     expected_df = pd.DataFrame(
         {
@@ -224,9 +228,9 @@ def test_aggregations(c):
             "a": [1.5, 3, 4],
         }
     )
-    assert_frame_equal(df.sort_values("user_id").reset_index(drop=True), expected_df)
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
-    df = c.sql(
+    return_df = c.sql(
         """
     SELECT
         MAX(a) AS "max",
@@ -234,7 +238,228 @@ def test_aggregations(c):
     FROM string_table
     """
     )
-    df = df.compute()
-
     expected_df = pd.DataFrame({"max": ["a normal string"], "min": ["%_%"]})
-    assert_frame_equal(df.reset_index(drop=True), expected_df)
+
+    assert_eq(return_df.reset_index(drop=True), expected_df)
+
+
+def test_stats_aggregation(c, timeseries_df):
+    # test regr_count
+    regr_count = c.sql(
+        """
+    SELECT
+        name,
+        COUNT(x) FILTER (WHERE y IS NOT NULL) AS expected,
+        REGR_COUNT(y, x) AS calculated
+    FROM timeseries
+    GROUP BY name
+    """
+    ).fillna(0)
+
+    assert_eq(
+        regr_count["expected"],
+        regr_count["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test regr_syy
+    regr_syy = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(y)) AS expected,
+        REGR_SYY(y, x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
+    """
+    ).fillna(0)
+
+    assert_eq(
+        regr_syy["expected"],
+        regr_syy["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test regr_sxx
+    regr_sxx = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(x)) AS expected,
+        REGR_SXX(y,x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
+    """
+    ).fillna(0)
+
+    assert_eq(
+        regr_sxx["expected"],
+        regr_sxx["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test covar_pop
+    covar_pop = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / REGR_COUNT(y, x) AS expected,
+        COVAR_POP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
+    """
+    ).fillna(0)
+
+    assert_eq(
+        covar_pop["expected"],
+        covar_pop["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+    # test covar_samp
+    covar_samp = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / (REGR_COUNT(y, x) - 1) as expected,
+        COVAR_SAMP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
+    """
+    ).fillna(0)
+
+    assert_eq(
+        covar_samp["expected"],
+        covar_samp["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
+
+
+@pytest.mark.parametrize(
+    "input_table",
+    [
+        "user_table_1",
+        pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),
+    ],
+)
+@pytest.mark.parametrize("split_out", [None, 2, 4])
+def test_groupby_split_out(c, input_table, split_out, request):
+    user_table = request.getfixturevalue(input_table)
+
+    return_df = c.sql(
+        f"""
+        SELECT
+        user_id, SUM(b) AS "S"
+        FROM {input_table}
+        GROUP BY user_id
+        """,
+        config_options={"sql.groupby.split_out": split_out},
+    )
+    expected_df = (
+        user_table.groupby(by="user_id")
+        .agg({"b": "sum"})
+        .reset_index(drop=False)
+        .rename(columns={"b": "S"})
+        .sort_values("user_id")
+    )
+
+    assert return_df.npartitions == split_out if split_out else 1
+    assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_groupby_split_every(c, gpu):
+    input_ddf = dd.from_pandas(
+        pd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
+        npartitions=16,
+    )  # Need an input with multiple partitions to demonstrate split_every
+
+    c.create_table("split_every_input", input_ddf, gpu=gpu)
+
+    query_string = """
+    SELECT
+        user_id, SUM(b) AS "S"
+    FROM split_every_input
+    GROUP BY user_id
+    """
+    split_every_2_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 2},
+    )
+    split_every_3_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 3},
+    )
+    split_every_4_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 4},
+    )
+
+    expected_df = (
+        input_ddf.groupby(by="user_id")
+        .agg({"b": "sum"})
+        .reset_index(drop=False)
+        .rename(columns={"b": "S"})
+        .sort_values("user_id")
+    )
+    assert (
+        len(split_every_2_df.dask.keys())
+        >= len(split_every_3_df.dask.keys())
+        >= len(split_every_4_df.dask.keys())
+    )
+
+    assert_eq(split_every_2_df, expected_df, check_index=False)
+    assert_eq(split_every_3_df, expected_df, check_index=False)
+    assert_eq(split_every_4_df, expected_df, check_index=False)
+
+    query_string = """
+    SELECT DISTINCT(user_id) FROM split_every_input
+    """
+    split_every_2_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 2},
+    )
+    split_every_3_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 3},
+    )
+    split_every_4_df = c.sql(
+        query_string,
+        config_options={"sql.aggregate.split_every": 4},
+    )
+
+    expected_df = input_ddf[["user_id"]].drop_duplicates()
+
+    assert (
+        len(split_every_2_df.dask.keys())
+        >= len(split_every_3_df.dask.keys())
+        >= len(split_every_4_df.dask.keys())
+    )
+    assert_eq(split_every_2_df, expected_df, check_index=False)
+    assert_eq(split_every_3_df, expected_df, check_index=False)
+    assert_eq(split_every_4_df, expected_df, check_index=False)
+
+    c.drop_table("split_every_input")

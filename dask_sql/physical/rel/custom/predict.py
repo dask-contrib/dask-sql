@@ -1,10 +1,13 @@
-import copy
 import logging
 import uuid
+from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
+
+if TYPE_CHECKING:
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +52,7 @@ class PredictModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         sql_select = sql.getSelect()
-        model_name = str(sql.getModelName().getIdentifier())
+        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
         model_type = sql.getModelName().getIdentifierType()
         select_list = sql.getSelectList()
 
@@ -61,7 +64,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
         if model_type == IdentifierType.REFERENCE:
             try:
-                model, training_columns = context.models[model_name]
+                model, training_columns = context.schema[schema_name].models[model_name]
             except KeyError:
                 raise KeyError(f"No model registered with name {model_name}")
         else:
@@ -79,13 +82,12 @@ class PredictModelPlugin(BaseRelPlugin):
         while True:
             # Make sure to choose a non-used name
             temporary_table = str(uuid.uuid4())
-            if temporary_table not in context.tables:
+            if temporary_table not in context.schema[schema_name].tables:
                 break
             else:  # pragma: no cover
                 continue
 
-        tmp_context = copy.deepcopy(context)
-        tmp_context.create_table(temporary_table, predicted_df)
+        context.create_table(temporary_table, predicted_df)
 
         sql_ns = org.apache.calcite.sql
         pos = sql.getParserPosition()
@@ -108,8 +110,9 @@ class PredictModelPlugin(BaseRelPlugin):
             None,  # hints
         )
 
-        sql_outer_query = tmp_context._to_sql_string(outer_select)
-        df = tmp_context.sql(sql_outer_query)
+        sql_outer_query = context._to_sql_string(outer_select)
+        df = context.sql(sql_outer_query)
+        context.drop_table(temporary_table)
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(df, cc)

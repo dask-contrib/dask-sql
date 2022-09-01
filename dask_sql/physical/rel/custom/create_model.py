@@ -1,9 +1,15 @@
 import logging
+from typing import TYPE_CHECKING
+
+from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import convert_sql_kwargs, import_class
+
+if TYPE_CHECKING:
+    import dask_sql
+    from dask_sql.java import org
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +111,10 @@ class CreateModelPlugin(BaseRelPlugin):
         self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
     ) -> DataContainer:
         select = sql.getSelect()
-        model_name = str(sql.getModelName())
+        schema_name, model_name = context.fqn(sql.getModelName())
         kwargs = convert_sql_kwargs(sql.getKwargs())
 
-        if model_name in context.models:
+        if model_name in context.schema[schema_name].models:
             if sql.getIfNotExists():
                 return
             elif not sql.getReplace():
@@ -130,24 +136,6 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", False)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
-        try:
-            ModelClass = import_class(model_class)
-        except ImportError:
-            raise ValueError(
-                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
-            )
-
-        model = ModelClass(**kwargs)
-        if wrap_fit:
-            from dask_ml.wrappers import Incremental
-
-            model = Incremental(estimator=model)
-
-        if wrap_predict:
-            from dask_ml.wrappers import ParallelPostFit
-
-            model = ParallelPostFit(estimator=model)
-
         select_query = context._to_sql_string(select)
         training_df = context.sql(select_query)
 
@@ -161,5 +149,43 @@ class CreateModelPlugin(BaseRelPlugin):
             X = training_df
             y = None
 
-        model.fit(X, y, **fit_kwargs)
-        context.register_model(model_name, model, X.columns)
+        try:
+            ModelClass = import_class(model_class)
+        except ImportError:
+            raise ValueError(
+                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
+            )
+
+        model = ModelClass(**kwargs)
+        if wrap_fit:
+            try:
+                from dask_ml.wrappers import Incremental
+            except ImportError:  # pragma: no cover
+                raise ValueError("Wrapping requires dask-ml to be installed.")
+
+            model = Incremental(estimator=model)
+
+        if wrap_predict:
+            try:
+                from dask_ml.wrappers import ParallelPostFit
+            except ImportError:  # pragma: no cover
+                raise ValueError("Wrapping requires dask-ml to be installed.")
+
+            # When `wrap_predict` is set to True we train on single partition frames
+            # because this is only useful for non dask distributed models
+            # Training via delayed fit ensures that we dont have to transfer
+            # data back to the client for training
+
+            X_d = X.repartition(npartitions=1).to_delayed()
+            if y is not None:
+                y_d = y.repartition(npartitions=1).to_delayed()
+            else:
+                y_d = None
+
+            delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
+            model = delayed_model[0].compute()
+            model = ParallelPostFit(estimator=model)
+
+        else:
+            model.fit(X, y, **fit_kwargs)
+        context.register_model(model_name, model, X.columns, schema_name=schema_name)
