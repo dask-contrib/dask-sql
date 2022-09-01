@@ -161,7 +161,11 @@ class ColumnContainer:
             # Make sure to get the backend column name here by using [1] instead of [0]. [0] is frontend
             backend_column = list(self._frontend_backend_mapping.items())[0][1]
         else:
-            backend_column = self._frontend_backend_mapping[column]
+            try:
+                backend_column = self._frontend_backend_mapping[column]
+            except KeyError:
+                backend_column = column[column.find("(")+1:column.find(")")]
+
         return backend_column
 
     def make_unique(self, prefix="col"):

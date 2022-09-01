@@ -390,9 +390,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     )
             if isinstance(aggregation_function, AggregationSpecification):
                 backend_name = cc.get_backend_by_frontend_name(input_col)
-                aggregation_function = aggregation_function.get_supported_aggregation(
-                    df[backend_name]
-                )
+                try:
+                    aggregation_function = aggregation_function.get_supported_aggregation(
+                        df[backend_name]
+                    )
+                except KeyError:
+                    if "int" in input_col.lower():
+                        df[backend_name] = int(backend_name)
+                    elif "float" in input_col.lower():
+                        df[backend_name] = float(backend_name)
+                    else:
+                        df[backend_name] = backend_name
+                    aggregation_function = aggregation_function.get_supported_aggregation(
+                        df[backend_name]
+                    )
 
             # Finally, extract the output column name
             output_col = expr.toString()
