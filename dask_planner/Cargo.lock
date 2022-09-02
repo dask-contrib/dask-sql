@@ -20,6 +20,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
 dependencies = [
  "cfg-if",
+ "const-random",
  "getrandom 0.2.7",
  "once_cell",
  "version_check",
@@ -57,11 +58,11 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "arrow"
-version = "20.0.0"
+version = "21.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c72a69495f06c8abb65b76a87be192a26fa724380d1f292d4e558a32afed9989"
+checksum = "1fbd23619f19fc6f214b9667eb2e2782f4a7edc407899e3511e634e55662d906"
 dependencies = [
- "ahash 0.7.6",
+ "ahash 0.8.0",
  "bitflags",
  "chrono",
  "comfy-table",
@@ -191,6 +192,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-random"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f590d95d011aa80b063ffe3253422ed5aa462af4e9867d43ce8337562bac77c4"
+dependencies = [
+ "const-random-macro",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "const-random-macro"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "615f6e27d000a2bffbc7f2f6a8669179378fa27ee4d0a509e985dfc0a7defb40"
+dependencies = [
+ "getrandom 0.2.7",
+ "lazy_static",
+ "proc-macro-hack",
+ "tiny-keccak",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -270,7 +293,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "arrow",
  "ordered-float",
@@ -281,7 +304,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -292,7 +315,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "arrow",
  "async-trait",
@@ -307,7 +330,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -331,7 +354,7 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -342,7 +365,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=7dedcb1963a3ff0c3ca276c43bff62373b608a4e#7dedcb1963a3ff0c3ca276c43bff62373b608a4e"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -787,6 +810,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
+name = "proc-macro-hack"
+version = "0.5.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1104,6 +1133,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tiny-keccak"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
+dependencies = [
+ "crunchy",
 ]
 
 [[package]]

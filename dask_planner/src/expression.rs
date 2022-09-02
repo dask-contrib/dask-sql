@@ -70,33 +70,38 @@ impl PyExpr {
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
-            Expr::Alias(..) => RexType::Reference,
-            Expr::Column(..) => RexType::Reference,
-            Expr::ScalarVariable(..) => RexType::Literal,
-            Expr::Literal(..) => RexType::Literal,
-            Expr::BinaryExpr { .. } => RexType::Call,
-            Expr::Not(..) => RexType::Call,
-            Expr::IsNotNull(..) => RexType::Call,
-            Expr::Negative(..) => RexType::Call,
-            Expr::GetIndexedField { .. } => RexType::Reference,
-            Expr::IsNull(..) => RexType::Call,
-            Expr::Between { .. } => RexType::Call,
-            Expr::Case { .. } => RexType::Call,
-            Expr::Cast { .. } => RexType::Call,
-            Expr::TryCast { .. } => RexType::Call,
-            Expr::Sort { .. } => RexType::Call,
-            Expr::ScalarFunction { .. } => RexType::Call,
-            Expr::AggregateFunction { .. } => RexType::Call,
-            Expr::WindowFunction { .. } => RexType::Call,
-            Expr::AggregateUDF { .. } => RexType::Call,
-            Expr::InList { .. } => RexType::Call,
-            Expr::Wildcard => RexType::Call,
-            Expr::ScalarUDF { .. } => RexType::Call,
-            Expr::Exists { .. } => RexType::Call,
-            Expr::InSubquery { .. } => RexType::Call,
+            Expr::Alias(..)
+            | Expr::Column(..)
+            | Expr::QualifiedWildcard { .. }
+            | Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. }
+            | Expr::Not(..)
+            | Expr::IsNotNull(..)
+            | Expr::Negative(..)
+            | Expr::IsNull(..)
+            | Expr::Between { .. }
+            | Expr::Case { .. }
+            | Expr::Cast { .. }
+            | Expr::TryCast { .. }
+            | Expr::Sort { .. }
+            | Expr::ScalarFunction { .. }
+            | Expr::AggregateFunction { .. }
+            | Expr::WindowFunction { .. }
+            | Expr::AggregateUDF { .. }
+            | Expr::InList { .. }
+            | Expr::Wildcard
+            | Expr::ScalarUDF { .. }
+            | Expr::Exists { .. }
+            | Expr::InSubquery { .. }
+            | Expr::GroupingSet(..)
+            | Expr::IsTrue(..)
+            | Expr::IsFalse(..)
+            | Expr::IsUnknown(_)
+            | Expr::IsNotTrue(..)
+            | Expr::IsNotFalse(..)
+            | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
-            Expr::QualifiedWildcard { .. } => RexType::Reference,
-            Expr::GroupingSet(..) => RexType::Call,
         }
     }
 }
@@ -144,7 +149,7 @@ impl PyExpr {
                 for plan in input_plans.iter().skip(1) {
                     schema.merge(plan.schema().as_ref());
                 }
-                get_expr_name(&self.expr, &schema)
+                get_expr_name(&self.expr)
                     .and_then(|fq_name| {
                         schema.index_of_column(&Column::from_qualified_name(&fq_name))
                     })
@@ -186,6 +191,12 @@ impl PyExpr {
             | Expr::Negative(..)
             | Expr::GetIndexedField { .. }
             | Expr::IsNull(..)
+            | Expr::IsTrue(_)
+            | Expr::IsFalse(_)
+            | Expr::IsUnknown(_)
+            | Expr::IsNotTrue(_)
+            | Expr::IsNotFalse(_)
+            | Expr::IsNotUnknown(_)
             | Expr::Case { .. }
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
@@ -230,6 +241,12 @@ impl PyExpr {
             | Expr::Not(expr)
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr)
+            | Expr::IsTrue(expr)
+            | Expr::IsFalse(expr)
+            | Expr::IsUnknown(expr)
+            | Expr::IsNotTrue(expr)
+            | Expr::IsNotFalse(expr)
+            | Expr::IsNotUnknown(expr)
             | Expr::Negative(expr)
             | Expr::GetIndexedField { expr, .. }
             | Expr::Cast { expr, .. }
@@ -301,7 +318,10 @@ impl PyExpr {
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
-            | Expr::Exists { .. } => unimplemented!("Unimplmented Expr type"),
+            | Expr::Exists { .. } => Err(py_runtime_err(format!(
+                "Unimplemented Expr type: {}",
+                self.expr
+            ))),
         }
     }
 
@@ -320,6 +340,12 @@ impl PyExpr {
             Expr::Case { .. } => "case".to_string(),
             Expr::IsNull(..) => "is null".to_string(),
             Expr::IsNotNull(..) => "is not null".to_string(),
+            Expr::IsTrue(_) => "is true".to_string(),
+            Expr::IsFalse(_) => "is false".to_string(),
+            Expr::IsUnknown(_) => "is unknown".to_string(),
+            Expr::IsNotTrue(_) => "is not true".to_string(),
+            Expr::IsNotFalse(_) => "is not false".to_string(),
+            Expr::IsNotUnknown(_) => "is not unknown".to_string(),
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
@@ -650,10 +676,10 @@ impl PyExpr {
     }
 }
 
-fn get_expr_name(expr: &Expr, schema: &DFSchema) -> Result<String> {
+fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
-        Expr::Alias(expr, _) => get_expr_name(expr, schema),
-        _ => expr.name(schema),
+        Expr::Alias(expr, _) => get_expr_name(expr),
+        _ => expr.name(),
     }
 }
 
