@@ -10,6 +10,7 @@ from dask import config as dask_config
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.call import IsNullOperation
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
@@ -186,7 +187,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             logger.debug("Performing full-table aggregation")
 
         # Do all aggregates
-        df_result, output_column_order = self._do_aggregations(
+        df_result, output_column_order, cc = self._do_aggregations(
             rel,
             dc,
             group_columns,
@@ -244,7 +245,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
         output_column_order = group_columns.copy()
 
         # Collect all aggregations we need to do
-        collected_aggregations, output_column_order, df = self._collect_aggregations(
+        (
+            collected_aggregations,
+            output_column_order,
+            df,
+            cc,
+        ) = self._collect_aggregations(
             rel, df, cc, context, additional_column_name, output_column_order
         )
 
@@ -303,7 +309,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     **{col: agg_result[col] for col in agg_result.columns}
                 )
 
-        return df_result, output_column_order
+        return df_result, output_column_order, cc
 
     def _collect_aggregations(
         self,
@@ -323,9 +329,35 @@ class DaskAggregatePlugin(BaseRelPlugin):
         Returns the aggregations as mapping filter_column -> List of Aggregations
         where the aggregations are in the form (input_col, output_col, aggregation function (or string))
         """
+        dc = DataContainer(df, cc)
+        agg = rel.aggregate()
+
+        input_rel = rel.get_inputs()[0]
+
         collected_aggregations = defaultdict(list)
 
-        for expr in rel.aggregate().getNamedAggCalls():
+        new_columns = {}
+        new_mappings = {}
+
+        # convert and assign any input columns that don't currently exist
+        for expr in agg.getNamedAggCalls():
+            for expr in agg.getArgs(expr):
+                key = expr.column_name(input_rel)
+                if key in cc._frontend_backend_mapping:
+                    continue
+                random_name = new_temporary_column(df)
+                new_columns[random_name] = RexConverter.convert(
+                    input_rel, expr, dc, context=context
+                )
+                new_mappings[key] = random_name
+
+        if new_columns:
+            df = df.assign(**new_columns)
+
+        for key, backend_column_name in new_mappings.items():
+            cc = cc.add(key, backend_column_name)
+
+        for expr in agg.getNamedAggCalls():
             # Determine the aggregation function to use
             assert expr.getExprType() in {
                 "AggregateFunction",
@@ -333,10 +365,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
             }, "Do not know how to handle this case!"
 
             schema_name = context.schema_name
-            aggregation_name = rel.aggregate().getAggregationFuncName(expr).lower()
+            aggregation_name = agg.getAggregationFuncName(expr).lower()
 
             # Gather information about the input column
-            inputs = rel.aggregate().getArgs(expr)
+            inputs = agg.getArgs(expr)
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
@@ -361,7 +393,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     )
                 input_col = two_columns_proxy
             elif len(inputs) == 1:
-                input_col = inputs[0].column_name(rel)
+                input_col = inputs[0].column_name(input_rel)
 
                 # DataFusion return column named "UInt8(1)" for COUNT(*)
                 if input_col not in df.columns and input_col == "UInt8(1)":
@@ -403,7 +435,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             collected_aggregations[key].append(value)
             output_column_order.append(output_col)
 
-        return collected_aggregations, output_column_order, df
+        return collected_aggregations, output_column_order, df, cc
 
     def _perform_aggregation(
         self,
