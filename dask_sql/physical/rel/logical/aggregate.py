@@ -200,19 +200,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # Fix the column names and the order of them, as this was messed with during the aggregations
         df_agg.columns = df_agg.columns.get_level_values(-1)
 
-        if len(output_column_order) == 1 and output_column_order[0] == "UInt8(1)":
-            backend_output_column_order = [df_agg.columns[0]]
-        else:
+        def try_get_backend_by_frontend_name(oc):
+            try:
+                return cc.get_backend_by_frontend_name(oc)
+            except KeyError:
+                return oc
 
-            def try_get_backend_by_frontend_name(oc):
-                try:
-                    return cc.get_backend_by_frontend_name(oc)
-                except KeyError:
-                    return oc
-
-            backend_output_column_order = [
-                try_get_backend_by_frontend_name(oc) for oc in output_column_order
-            ]
+        backend_output_column_order = [
+            try_get_backend_by_frontend_name(oc) for oc in output_column_order
+        ]
 
         cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
@@ -264,6 +260,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             return (
                 df[backend_names].drop_duplicates(**groupby_agg_options),
                 output_column_order,
+                cc,
             )
 
         # SQL needs to have a column with the grouped values as the first
@@ -394,11 +391,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 input_col = two_columns_proxy
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(input_rel)
-
-                # DataFusion return column named "UInt8(1)" for COUNT(*)
-                if input_col not in df.columns and input_col == "UInt8(1)":
-                    # COUNT(*) so use any field, just pick first column
-                    input_col = df.columns[0]
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
@@ -458,8 +450,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
             input_col = dc.column_container.get_backend_by_frontend_name(input_col)
 
             # There can be cases where certain Expression values can be present here that
-            # need to remain here until the projection phase. If we get a keyerror here
-            # we assume one of those cases. Ex: UInt8(1), used to signify outputting all columns
+            # need to remain here until the projection phase. If we get a KeyError here
+            # we assume one of those cases.
             try:
                 output_col = dc.column_container.get_backend_by_frontend_name(
                     output_col
