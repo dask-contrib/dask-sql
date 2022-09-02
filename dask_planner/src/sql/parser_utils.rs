@@ -63,10 +63,10 @@ impl DaskParserUtils {
                     }
                 }
                 Value::Number(e, ..) => e,
-                _ => unimplemented!("Unimplmented Value type: {:?}", value),
+                _ => unimplemented!("Unimplemented Value type: {:?}", value),
             },
             SqlParserExpr::Nested(nested_expr) => Self::str_from_expr(*nested_expr),
-            _ => unimplemented!("Unimplmented SqlParserExpr type: {:?}", expression),
+            _ => unimplemented!("Unimplemented SqlParserExpr type: {:?}", expression),
         }
     }
 }
