@@ -323,7 +323,6 @@ def test_intersect(c):
     limit 100
     """
     )
-    breakpoint()
     assert actual_df["COUNT(UInt8(1))"].compute()[0] == 3
 
     # Join df_simple against itself, and then that result against df_wide. Nothing should match so therefore result should be 0
