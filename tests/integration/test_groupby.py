@@ -70,7 +70,6 @@ def test_group_by_multi(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_all(c, df):
     result_df = c.sql(
         """
@@ -80,8 +79,6 @@ def test_group_by_all(c, df):
     """
     )
     expected_df = pd.DataFrame({"S": [10], "X": [8]})
-    expected_df["S"] = expected_df["S"].astype("int64")
-    expected_df["X"] = expected_df["X"].astype("int32")
 
     assert_eq(result_df, expected_df)
 
@@ -211,9 +208,6 @@ def test_group_by_nan(c):
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/465"
-)
 def test_aggregations(c):
     return_df = c.sql(
         """
