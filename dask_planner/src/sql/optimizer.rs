@@ -1,14 +1,15 @@
+use crate::sql::rules::type_coercion::TypeCoercion;
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::decorrelate_scalar_subquery::DecorrelateScalarSubquery;
+use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
 use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
+use datafusion_optimizer::scalar_subquery_to_join::ScalarSubqueryToJoin;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate,
-    decorrelate_where_exists::DecorrelateWhereExists, eliminate_limit::EliminateLimit,
+    common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
     limit_push_down::LimitPushDown, optimizer::OptimizerRule,
-    projection_push_down::ProjectionPushDown, single_distinct_to_groupby::SingleDistinctToGroupBy,
-    subquery_filter_to_join::SubqueryFilterToJoin, OptimizerConfig,
+    projection_push_down::ProjectionPushDown, subquery_filter_to_join::SubqueryFilterToJoin,
+    OptimizerConfig,
 };
 
 mod eliminate_agg_distinct;
@@ -28,16 +29,17 @@ impl DaskSqlOptimizer {
             Box::new(CommonSubexprEliminate::new()),
             Box::new(DecorrelateWhereExists::new()),
             Box::new(DecorrelateWhereIn::new()),
-            Box::new(DecorrelateScalarSubquery::new()),
+            Box::new(ScalarSubqueryToJoin::new()),
             Box::new(EliminateLimit::new()),
             Box::new(FilterNullJoinKeys::default()),
             Box::new(FilterPushDown::new()),
+            Box::new(TypeCoercion::new()),
             Box::new(LimitPushDown::new()),
             Box::new(ProjectionPushDown::new()),
             // Box::new(SingleDistinctToGroupBy::new()),
             Box::new(SubqueryFilterToJoin::new()),
             // Dask-SQL specific optimizations
-            // Box::new(EliminateAggDistinct::new()),
+            Box::new(EliminateAggDistinct::new()),
         ];
         Self {
             optimizations: rules,

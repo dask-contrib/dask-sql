@@ -4,6 +4,7 @@ pub mod function;
 pub mod logical;
 pub mod optimizer;
 pub mod parser_utils;
+pub mod rules;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -15,8 +16,9 @@ use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
-    AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation,
-    ScalarUDF, Signature, TableSource, Volatility,
+    AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
+    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource,
+    TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
@@ -29,15 +31,25 @@ use std::sync::Arc;
 
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
+use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
+use crate::sql::logical::create_view::CreateViewPlanNode;
+use crate::sql::logical::describe_model::DescribeModelPlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
+use crate::sql::logical::export_model::ExportModelPlanNode;
+use crate::sql::logical::predict_model::PredictModelPlanNode;
+use crate::sql::logical::show_columns::ShowColumnsPlanNode;
+use crate::sql::logical::show_models::ShowModelsPlanNode;
 use crate::sql::logical::show_schema::ShowSchemasPlanNode;
+use crate::sql::logical::show_tables::ShowTablesPlanNode;
 
 use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
 
-use self::logical::show_tables::ShowTablesPlanNode;
+use self::logical::create_catalog_schema::CreateCatalogSchemaPlanNode;
+use self::logical::drop_schema::DropSchemaPlanNode;
+use self::logical::use_schema::UseSchemaPlanNode;
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -150,11 +162,32 @@ impl ContextProvider for DaskSQLContext {
 
         // Loop through all of the user defined functions
         for schema in self.schemas.values() {
-            for (fun_name, function) in &schema.functions {
+            for (fun_name, func_mutex) in &schema.functions {
                 if fun_name.eq(name) {
-                    let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
-                    let d_type: DataType = function.return_type.clone().into();
-                    let rtf: ReturnTypeFunction = Arc::new(move |_| Ok(Arc::new(d_type.clone())));
+                    let function = func_mutex.lock().unwrap();
+                    if function.aggregation.eq(&true) {
+                        return None;
+                    }
+                    let sig = {
+                        Signature::one_of(
+                            function
+                                .return_types
+                                .keys()
+                                .map(|v| TypeSignature::Exact(v.to_vec()))
+                                .collect(),
+                            Volatility::Immutable,
+                        )
+                    };
+                    let function = function.clone();
+                    let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
+                        match function.return_types.get(&input_types.to_vec()) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone())),
+                            None => Err(DataFusionError::Plan(format!(
+                                "UDF signature not found for input types {:?}",
+                                input_types
+                            ))),
+                        }
+                    });
                     return Some(Arc::new(ScalarUDF::new(
                         fun_name.as_str(),
                         &sig,
@@ -168,7 +201,66 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_aggregate_meta(&self, _name: &str) -> Option<Arc<AggregateUDF>> {
+    fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
+        let acc: AccumulatorFunctionImplementation =
+            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
+
+        let st: StateTypeFunction =
+            Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
+
+        match name {
+            "every" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "bit_and" | "bit_or" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "single_value" => {
+                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            _ => (),
+        }
+
+        // Loop through all of the user defined functions
+        for schema in self.schemas.values() {
+            for (fun_name, func_mutex) in &schema.functions {
+                if fun_name.eq(name) {
+                    let function = func_mutex.lock().unwrap();
+                    if function.aggregation.eq(&false) {
+                        return None;
+                    }
+                    let sig = {
+                        Signature::one_of(
+                            function
+                                .return_types
+                                .keys()
+                                .map(|v| TypeSignature::Exact(v.to_vec()))
+                                .collect(),
+                            Volatility::Immutable,
+                        )
+                    };
+                    let function = function.clone();
+                    let rtf: ReturnTypeFunction = Arc::new(move |input_types| {
+                        match function.return_types.get(&input_types.to_vec()) {
+                            Some(return_type) => Ok(Arc::new(return_type.clone())),
+                            None => Err(DataFusionError::Plan(format!(
+                                "UDAF signature not found for input types {:?}",
+                                input_types
+                            ))),
+                        }
+                    });
+                    return Some(Arc::new(AggregateUDF::new(fun_name, &sig, &rtf, &acc, &st)));
+                }
+            }
+        }
+
         None
     }
 
@@ -196,24 +288,6 @@ impl DaskSQLContext {
     ) -> PyResult<bool> {
         self.schemas.insert(schema_name, schema);
         Ok(true)
-    }
-
-    /// Register a function with the current DaskSQLContext under the specified schema
-    pub fn register_function(
-        &mut self,
-        schema_name: String,
-        function: function::DaskFunction,
-    ) -> PyResult<bool> {
-        match self.schemas.get_mut(&schema_name) {
-            Some(schema) => {
-                schema.add_function(function);
-                Ok(true)
-            }
-            None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
-            ))),
-        }
     }
 
     /// Register a DaskTable instance under the specified schema in the current DaskSQLContext
@@ -310,20 +384,66 @@ impl DaskSQLContext {
                     input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
                         create_model.select,
                     )))?,
+                    if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
+                    with_options: create_model.with_options,
                 }),
             })),
+            DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(PredictModelPlanNode {
+                    model_schema: predict_model.schema_name,
+                    model_name: predict_model.name,
+                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
+                        predict_model.select,
+                    )))?,
+                }),
+            })),
+            DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DescribeModelPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    model_name: describe_model.name,
+                }),
+            })),
+            DaskStatement::CreateCatalogSchema(create_schema) => {
+                Ok(LogicalPlan::Extension(Extension {
+                    node: Arc::new(CreateCatalogSchemaPlanNode {
+                        schema: Arc::new(DFSchema::empty()),
+                        schema_name: create_schema.schema_name,
+                        if_not_exists: create_schema.if_not_exists,
+                        or_replace: create_schema.or_replace,
+                    }),
+                }))
+            }
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),
                     table_schema: create_table.table_schema,
                     table_name: create_table.name,
+                    if_not_exists: create_table.if_not_exists,
+                    or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
+                }),
+            })),
+            DaskStatement::ExportModel(export_model) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ExportModelPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    model_name: export_model.name,
+                    with_options: export_model.with_options,
+                }),
+            })),
+            DaskStatement::CreateView(create_view) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(CreateViewPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    view_schema: create_view.view_schema,
+                    view_name: create_view.name,
+                    if_not_exists: create_view.if_not_exists,
+                    or_replace: create_view.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
                     model_name: drop_model.name,
+                    if_exists: drop_model.if_exists,
                     schema: Arc::new(DFSchema::empty()),
                 }),
             })),
@@ -337,6 +457,39 @@ impl DaskSQLContext {
                 node: Arc::new(ShowTablesPlanNode {
                     schema: Arc::new(DFSchema::empty()),
                     schema_name: show_tables.schema_name,
+                }),
+            })),
+            DaskStatement::ShowColumns(show_columns) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowColumnsPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_name: show_columns.table_name,
+                    schema_name: show_columns.schema_name,
+                }),
+            })),
+            DaskStatement::ShowModels(_show_models) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(ShowModelsPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                }),
+            })),
+            DaskStatement::DropSchema(drop_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(DropSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: drop_schema.schema_name,
+                    if_exists: drop_schema.if_exists,
+                }),
+            })),
+            DaskStatement::UseSchema(use_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(UseSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    schema_name: use_schema.schema_name,
+                }),
+            })),
+            DaskStatement::AnalyzeTable(analyze_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AnalyzeTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    table_name: analyze_table.table_name,
+                    schema_name: analyze_table.schema_name,
+                    columns: analyze_table.columns,
                 }),
             })),
         }

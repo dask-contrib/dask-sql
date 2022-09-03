@@ -322,9 +322,6 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="isTrue/False not supported by datafusion, isUnknown not supported by sqlparser"
-)
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
     df["b"] = df["b"].apply(
@@ -478,7 +475,7 @@ def test_string_functions(c, gpu):
             LOWER(a) AS e,
             -- POSITION('a' IN a FROM 4) AS f,
             -- POSITION('ZL' IN a) AS g,
-            -- TRIM('a' FROM a) AS h,
+            TRIM('a' FROM a) AS h,
             TRIM(BOTH 'a' FROM a) AS i,
             TRIM(LEADING 'a' FROM a) AS j,
             TRIM(TRAILING 'a' FROM a) AS k,
@@ -510,7 +507,7 @@ def test_string_functions(c, gpu):
             "e": ["a normal string"],
             # "f": [7], # position from syntax not supported
             # "g": [0],
-            # "h": [" normal string"], # https://github.com/sqlparser-rs/sqlparser-rs/issues/568
+            "h": [" normal string"],
             "i": [" normal string"],
             "j": [" normal string"],
             "k": ["a normal string"],

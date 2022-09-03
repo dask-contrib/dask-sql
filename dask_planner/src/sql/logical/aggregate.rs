@@ -47,6 +47,7 @@ impl PyAggregate {
     pub fn agg_func_name(&self, expr: PyExpr) -> PyResult<String> {
         match expr.expr {
             Expr::AggregateFunction { fun, .. } => Ok(fun.to_string()),
+            Expr::AggregateUDF { fun, .. } => Ok(fun.name.clone()),
             _ => Err(py_type_err(
                 "Encountered a non Aggregate type in agg_func_name",
             )),
@@ -56,7 +57,8 @@ impl PyAggregate {
     #[pyo3(name = "getArgs")]
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr {
-            Expr::AggregateFunction { fun: _, args, .. } => match &self.aggregate {
+            Expr::AggregateFunction { fun: _, args, .. }
+            | Expr::AggregateUDF { fun: _, args, .. } => match &self.aggregate {
                 Some(e) => py_expr_list(&e.input, &args),
                 None => Ok(vec![]),
             },

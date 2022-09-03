@@ -5,7 +5,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +18,14 @@ class DropSchemaPlugin(BaseRelPlugin):
         DROP SCHEMA <schema-name>
     """
 
-    class_name = "com.dask.sql.parser.SqlDropSchema"
+    class_name = "DropSchema"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ):
-        schema_name = str(sql.getSchemaName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
+        drop_schema = rel.drop_schema()
+        schema_name = str(drop_schema.getSchemaName())
 
         if schema_name not in context.schema:
-            if not sql.getIfExists():
+            if not drop_schema.getIfExists():
                 raise RuntimeError(
                     f"A SCHEMA with the name {schema_name} is not present."
                 )

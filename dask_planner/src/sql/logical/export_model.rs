@@ -11,45 +11,43 @@ use fmt::Debug;
 use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
-use datafusion_common::DFSchemaRef;
+use datafusion_common::{DFSchema, DFSchemaRef};
 
 #[derive(Clone)]
-pub struct CreateModelPlanNode {
+pub struct ExportModelPlanNode {
+    pub schema: DFSchemaRef,
     pub model_name: String,
-    pub input: LogicalPlan,
-    pub if_not_exists: bool,
-    pub or_replace: bool,
     pub with_options: Vec<SqlParserExpr>,
 }
 
-impl Debug for CreateModelPlanNode {
+impl Debug for ExportModelPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
     }
 }
 
-impl UserDefinedLogicalNode for CreateModelPlanNode {
+impl UserDefinedLogicalNode for ExportModelPlanNode {
     fn as_any(&self) -> &dyn Any {
         self
     }
 
     fn inputs(&self) -> Vec<&LogicalPlan> {
-        vec![&self.input]
+        vec![]
     }
 
     fn schema(&self) -> &DFSchemaRef {
-        self.input.schema()
+        &self.schema
     }
 
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // CREATE MODEL
+        // EXPORT MODEL
         vec![]
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CreateModel: model_name={}", self.model_name)
+        write!(f, "ExportModel: model_name={}", self.model_name)
     }
 
     fn from_template(
@@ -57,51 +55,31 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
         _exprs: &[Expr],
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
-        assert_eq!(inputs.len(), 1, "input size inconsistent");
-        Arc::new(CreateModelPlanNode {
+        assert_eq!(inputs.len(), 0, "input size inconsistent");
+        Arc::new(ExportModelPlanNode {
+            schema: Arc::new(DFSchema::empty()),
             model_name: self.model_name.clone(),
-            input: inputs[0].clone(),
-            if_not_exists: self.if_not_exists,
-            or_replace: self.or_replace,
             with_options: self.with_options.clone(),
         })
     }
 }
 
-#[pyclass(name = "CreateModel", module = "dask_planner", subclass)]
-pub struct PyCreateModel {
-    pub(crate) create_model: CreateModelPlanNode,
+#[pyclass(name = "ExportModel", module = "dask_planner", subclass)]
+pub struct PyExportModel {
+    pub(crate) export_model: ExportModelPlanNode,
 }
 
 #[pymethods]
-impl PyCreateModel {
-    /// Creating a model requires that a subquery be passed to the CREATE MODEL
-    /// statement to be used to gather the dataset which should be used for the
-    /// model. This function returns that portion of the statement.
-    #[pyo3(name = "getSelectQuery")]
-    fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
-        Ok(self.create_model.input.clone().into())
-    }
-
+impl PyExportModel {
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
-        Ok(self.create_model.model_name.clone())
-    }
-
-    #[pyo3(name = "getIfNotExists")]
-    fn get_if_not_exists(&self) -> PyResult<bool> {
-        Ok(self.create_model.if_not_exists)
-    }
-
-    #[pyo3(name = "getOrReplace")]
-    pub fn get_or_replace(&self) -> PyResult<bool> {
-        Ok(self.create_model.or_replace)
+        Ok(self.export_model.model_name.clone())
     }
 
     #[pyo3(name = "getSQLWithOptions")]
     fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
         let mut options: HashMap<String, String> = HashMap::new();
-        for elem in &self.create_model.with_options {
+        for elem in &self.export_model.with_options {
             match elem {
                 SqlParserExpr::BinaryOp { left, op: _, right } => {
                     options.insert(
@@ -119,7 +97,7 @@ impl PyCreateModel {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyCreateModel {
+impl TryFrom<logical::LogicalPlan> for PyExportModel {
     type Error = PyErr;
 
     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
@@ -128,10 +106,10 @@ impl TryFrom<logical::LogicalPlan> for PyCreateModel {
                 if let Some(ext) = extension
                     .node
                     .as_any()
-                    .downcast_ref::<CreateModelPlanNode>()
+                    .downcast_ref::<ExportModelPlanNode>()
                 {
-                    Ok(PyCreateModel {
-                        create_model: ext.clone(),
+                    Ok(PyExportModel {
+                        export_model: ext.clone(),
                     })
                 } else {
                     Err(py_type_err("unexpected plan"))

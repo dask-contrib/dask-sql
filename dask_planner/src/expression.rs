@@ -70,33 +70,38 @@ impl PyExpr {
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
-            Expr::Alias(..) => RexType::Reference,
-            Expr::Column(..) => RexType::Reference,
-            Expr::ScalarVariable(..) => RexType::Literal,
-            Expr::Literal(..) => RexType::Literal,
-            Expr::BinaryExpr { .. } => RexType::Call,
-            Expr::Not(..) => RexType::Call,
-            Expr::IsNotNull(..) => RexType::Call,
-            Expr::Negative(..) => RexType::Call,
-            Expr::GetIndexedField { .. } => RexType::Reference,
-            Expr::IsNull(..) => RexType::Call,
-            Expr::Between { .. } => RexType::Call,
-            Expr::Case { .. } => RexType::Call,
-            Expr::Cast { .. } => RexType::Call,
-            Expr::TryCast { .. } => RexType::Call,
-            Expr::Sort { .. } => RexType::Call,
-            Expr::ScalarFunction { .. } => RexType::Call,
-            Expr::AggregateFunction { .. } => RexType::Call,
-            Expr::WindowFunction { .. } => RexType::Call,
-            Expr::AggregateUDF { .. } => RexType::Call,
-            Expr::InList { .. } => RexType::Call,
-            Expr::Wildcard => RexType::Call,
-            Expr::ScalarUDF { .. } => RexType::Call,
-            Expr::Exists { .. } => RexType::Call,
-            Expr::InSubquery { .. } => RexType::Call,
+            Expr::Alias(..)
+            | Expr::Column(..)
+            | Expr::QualifiedWildcard { .. }
+            | Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
+            Expr::BinaryExpr { .. }
+            | Expr::Not(..)
+            | Expr::IsNotNull(..)
+            | Expr::Negative(..)
+            | Expr::IsNull(..)
+            | Expr::Between { .. }
+            | Expr::Case { .. }
+            | Expr::Cast { .. }
+            | Expr::TryCast { .. }
+            | Expr::Sort { .. }
+            | Expr::ScalarFunction { .. }
+            | Expr::AggregateFunction { .. }
+            | Expr::WindowFunction { .. }
+            | Expr::AggregateUDF { .. }
+            | Expr::InList { .. }
+            | Expr::Wildcard
+            | Expr::ScalarUDF { .. }
+            | Expr::Exists { .. }
+            | Expr::InSubquery { .. }
+            | Expr::GroupingSet(..)
+            | Expr::IsTrue(..)
+            | Expr::IsFalse(..)
+            | Expr::IsUnknown(_)
+            | Expr::IsNotTrue(..)
+            | Expr::IsNotFalse(..)
+            | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
-            Expr::QualifiedWildcard { .. } => RexType::Reference,
-            Expr::GroupingSet(..) => RexType::Call,
         }
     }
 }
@@ -139,68 +144,18 @@ impl PyExpr {
     pub fn index(&self) -> PyResult<usize> {
         let input: &Option<Vec<Arc<LogicalPlan>>> = &self.input_plan;
         match input {
-            Some(input_plans) => {
-                if input_plans.len() == 1 {
-                    let name: Result<String> = self.expr.name(input_plans[0].schema());
-                    match name {
-                        Ok(fq_name) => {
-                            let mut idx: usize = 0;
-                            for schema in input_plans[0].all_schemas() {
-                                match schema.index_of_column(&Column::from_qualified_name(&fq_name))
-                                {
-                                    Ok(e) => {
-                                        idx = e;
-                                        break;
-                                    }
-                                    Err(_e) => (),
-                                }
-                            }
-                            Ok(idx)
-                        }
-                        Err(e) => Err(py_runtime_err(e)),
-                    }
-                } else if input_plans.len() >= 2 {
-                    let mut base_schema: DFSchema = (**input_plans[0].schema()).clone();
-                    for plan in input_plans.iter().skip(1) {
-                        base_schema.merge(plan.schema().as_ref());
-                    }
-                    let name: Result<String> = self.expr.name(&base_schema);
-                    match name {
-                        Ok(fq_name) => {
-                            let idx: Result<usize> =
-                                base_schema.index_of_column(&Column::from_qualified_name(&fq_name));
-                            match idx {
-                                Ok(index) => Ok(index),
-                                Err(_) => {
-                                    // This logic is encountered when an non-qualified column name is
-                                    // provided AND there exists more than one entry with that
-                                    // unqualified. This logic will attempt to narrow down to the
-                                    // qualified column name.
-                                    let qualified_fields: Vec<&DFField> =
-                                        base_schema.fields_with_unqualified_name(&fq_name);
-                                    for qf in &qualified_fields {
-                                        if qf.name().eq(&fq_name) {
-                                            let qualifier: String = qf.qualifier().unwrap().clone();
-                                            let qual: Option<&str> = Some(&qualifier);
-                                            let index: usize = base_schema
-                                                .index_of_column_by_name(qual, qf.name())
-                                                .unwrap();
-                                            return Ok(index);
-                                        }
-                                    }
-                                    Err(py_runtime_err(format!("Unable to find match for column with name: '{}' in DFSchema", &fq_name)))
-                                }
-                            }
-                        }
-                        Err(e) => Err(py_runtime_err(e)),
-                    }
-                } else {
-                    Err(py_runtime_err(
-                        "Not really sure what we should do right here???",
-                    ))
+            Some(input_plans) if !input_plans.is_empty() => {
+                let mut schema: DFSchema = (**input_plans[0].schema()).clone();
+                for plan in input_plans.iter().skip(1) {
+                    schema.merge(plan.schema().as_ref());
                 }
+                get_expr_name(&self.expr)
+                    .and_then(|fq_name| {
+                        schema.index_of_column(&Column::from_qualified_name(&fq_name))
+                    })
+                    .map_err(py_runtime_err)
             }
-            None => Err(py_runtime_err(
+            _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
             )),
         }
@@ -225,6 +180,7 @@ impl PyExpr {
             | Expr::InList { .. }
             | Expr::InSubquery { .. }
             | Expr::ScalarUDF { .. }
+            | Expr::AggregateUDF { .. }
             | Expr::Exists { .. }
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
@@ -235,10 +191,15 @@ impl PyExpr {
             | Expr::Negative(..)
             | Expr::GetIndexedField { .. }
             | Expr::IsNull(..)
+            | Expr::IsTrue(_)
+            | Expr::IsFalse(_)
+            | Expr::IsUnknown(_)
+            | Expr::IsNotTrue(_)
+            | Expr::IsNotFalse(_)
+            | Expr::IsNotUnknown(_)
             | Expr::Case { .. }
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
-            | Expr::AggregateUDF { .. }
             | Expr::Wildcard => {
                 return Err(py_type_err(format!(
                     "Encountered unsupported expression type: {}",
@@ -280,6 +241,12 @@ impl PyExpr {
             | Expr::Not(expr)
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr)
+            | Expr::IsTrue(expr)
+            | Expr::IsFalse(expr)
+            | Expr::IsUnknown(expr)
+            | Expr::IsNotTrue(expr)
+            | Expr::IsNotFalse(expr)
+            | Expr::IsNotUnknown(expr)
             | Expr::Negative(expr)
             | Expr::GetIndexedField { expr, .. }
             | Expr::Cast { expr, .. }
@@ -351,7 +318,10 @@ impl PyExpr {
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
-            | Expr::Exists { .. } => unimplemented!("Unimplmented Expr type"),
+            | Expr::Exists { .. } => Err(py_runtime_err(format!(
+                "Unimplemented Expr type: {}",
+                self.expr
+            ))),
         }
     }
 
@@ -370,6 +340,12 @@ impl PyExpr {
             Expr::Case { .. } => "case".to_string(),
             Expr::IsNull(..) => "is null".to_string(),
             Expr::IsNotNull(..) => "is not null".to_string(),
+            Expr::IsTrue(_) => "is true".to_string(),
+            Expr::IsFalse(_) => "is false".to_string(),
+            Expr::IsUnknown(_) => "is unknown".to_string(),
+            Expr::IsNotTrue(_) => "is not true".to_string(),
+            Expr::IsNotFalse(_) => "is not false".to_string(),
+            Expr::IsNotUnknown(_) => "is not unknown".to_string(),
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
@@ -625,7 +601,7 @@ impl PyExpr {
     pub fn bool_value(&mut self) -> PyResult<bool> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(iv) => Ok(iv.unwrap()),
+                ScalarValue::Boolean(Some(iv)) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -697,6 +673,13 @@ impl PyExpr {
                 &self.expr
             ))),
         }
+    }
+}
+
+fn get_expr_name(expr: &Expr) -> Result<String> {
+    match expr {
+        Expr::Alias(expr, _) => get_expr_name(expr),
+        _ => expr.name(),
     }
 }
 

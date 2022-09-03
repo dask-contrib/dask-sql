@@ -28,7 +28,7 @@ class ShowTablesPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         schema = rel.show_tables().getSchemaName()
-        if schema is not None:
+        if schema:
             schema = str(schema).split(".")[-1]
         else:
             schema = context.DEFAULT_SCHEMA_NAME

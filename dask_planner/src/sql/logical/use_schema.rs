@@ -11,19 +11,18 @@ use std::{any::Any, fmt, sync::Arc};
 use datafusion_common::{DFSchema, DFSchemaRef};
 
 #[derive(Clone)]
-pub struct DropModelPlanNode {
-    pub model_name: String,
-    pub if_exists: bool,
+pub struct UseSchemaPlanNode {
     pub schema: DFSchemaRef,
+    pub schema_name: String,
 }
 
-impl Debug for DropModelPlanNode {
+impl Debug for UseSchemaPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
     }
 }
 
-impl UserDefinedLogicalNode for DropModelPlanNode {
+impl UserDefinedLogicalNode for UseSchemaPlanNode {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -39,55 +38,48 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // DROP MODEL
+        // USE SCHEMA
         vec![]
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DropModel: model_name={}", self.model_name)
+        write!(f, "UseSchema: schema_name={}", self.schema_name)
     }
 
     fn from_template(
         &self,
         _exprs: &[Expr],
-        inputs: &[LogicalPlan],
+        _inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
-        assert_eq!(inputs.len(), 0, "input size inconsistent");
-        Arc::new(DropModelPlanNode {
-            model_name: self.model_name.clone(),
-            if_exists: self.if_exists,
+        Arc::new(UseSchemaPlanNode {
             schema: Arc::new(DFSchema::empty()),
+            schema_name: self.schema_name.clone(),
         })
     }
 }
 
-#[pyclass(name = "DropModel", module = "dask_planner", subclass)]
-pub struct PyDropModel {
-    pub(crate) drop_model: DropModelPlanNode,
+#[pyclass(name = "UseSchema", module = "dask_planner", subclass)]
+pub struct PyUseSchema {
+    pub(crate) use_schema: UseSchemaPlanNode,
 }
 
 #[pymethods]
-impl PyDropModel {
-    #[pyo3(name = "getModelName")]
-    fn get_model_name(&self) -> PyResult<String> {
-        Ok(self.drop_model.model_name.clone())
-    }
-
-    #[pyo3(name = "getIfExists")]
-    pub fn get_if_exists(&self) -> PyResult<bool> {
-        Ok(self.drop_model.if_exists)
+impl PyUseSchema {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<String> {
+        Ok(self.use_schema.schema_name.clone())
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyDropModel {
+impl TryFrom<logical::LogicalPlan> for PyUseSchema {
     type Error = PyErr;
 
     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
             logical::LogicalPlan::Extension(extension) => {
-                if let Some(ext) = extension.node.as_any().downcast_ref::<DropModelPlanNode>() {
-                    Ok(PyDropModel {
-                        drop_model: ext.clone(),
+                if let Some(ext) = extension.node.as_any().downcast_ref::<UseSchemaPlanNode>() {
+                    Ok(PyUseSchema {
+                        use_schema: ext.clone(),
                     })
                 } else {
                     Err(py_type_err("unexpected plan"))

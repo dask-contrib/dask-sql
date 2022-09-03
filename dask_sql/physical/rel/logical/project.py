@@ -40,7 +40,6 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         # Collect all (new) columns this Projection will limit to
         for key, expr in named_projects:
-
             key = str(key)
             column_names.append(key)
 
