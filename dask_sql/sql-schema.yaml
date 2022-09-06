@@ -27,6 +27,19 @@ properties:
             description: |
               Whether sql identifiers are considered case sensitive while parsing.
 
+      limit:
+        type: object
+        properties:
+
+          check-first-partition:
+            type: boolean
+            description: |
+              Whether or not to check the first partition length when computing a LIMIT without an OFFSET
+              on a table with a relatively simple Dask graph (i.e. only IO and/or partition-wise layers);
+              checking partition length triggers a Dask graph computation which can be slow for complex
+              queries, but can signicantly reduce memory usage when querying a small subset of a large
+              table. Default is ``true``.
+
       predicate_pushdown:
         type: boolean
         description: |
