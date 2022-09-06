@@ -7,7 +7,7 @@ from dask_sql.utils import convert_sql_kwargs
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,14 @@ class ExportModelPlugin(BaseRelPlugin):
                 since later is sklearn compatible
     """
 
-    class_name = "com.dask.sql.parser.SqlExportModel"
+    class_name = "ExportModel"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ):
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
+        export_model = rel.export_model()
 
-        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
-        kwargs = convert_sql_kwargs(sql.getKwargs())
+        schema_name, model_name = context.schema_name, export_model.getModelName()
+        kwargs = convert_sql_kwargs(export_model.getSQLWithOptions())
+
         format = kwargs.pop("format", "pickle").lower().strip()
         location = kwargs.pop("location", "tmp.pkl").strip()
         try:

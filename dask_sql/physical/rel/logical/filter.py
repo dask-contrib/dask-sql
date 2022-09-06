@@ -12,7 +12,7 @@ from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +46,24 @@ class DaskFilterPlugin(BaseRelPlugin):
     We just evaluate the filter (which is of type RexNode) and apply it
     """
 
-    class_name = "com.dask.sql.nodes.DaskFilter"
+    class_name = "Filter"
 
     def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
+        self,
+        rel: "LogicalPlan",
+        context: "dask_sql.Context",
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
 
+        filter = rel.filter()
+
         # Every logic is handled in the RexConverter
         # we just need to apply it here
-        condition = rel.getCondition()
-        df_condition = RexConverter.convert(condition, dc, context=context)
+        condition = filter.getCondition()
+        df_condition = RexConverter.convert(rel, condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
-        # No column type has changed, so no need to convert again
         return DataContainer(df, cc)
