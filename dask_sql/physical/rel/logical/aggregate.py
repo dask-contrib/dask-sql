@@ -157,6 +157,48 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "single_value": AggregationSpecification("first"),
         # is null was checked earlier, now only need to compute the sum the non null values
         "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
+        "regr_syy": AggregationSpecification(
+            dd.Aggregation(
+                "regr_syy",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    sum_of_squares - (sum * (sum / count))
+                ),
+            )
+        ),
+        "regr_sxx": AggregationSpecification(
+            dd.Aggregation(
+                "regr_sxx",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    sum_of_squares - (sum * (sum / count))
+                ),
+            )
+        ),
+        "variancepop": AggregationSpecification(
+            dd.Aggregation(
+                "variancepop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                ),
+            )
+        ),
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -367,8 +409,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # Gather information about the input column
             inputs = agg.getArgs(expr)
 
-            # TODO: This if statement is likely no longer needed but left here for the time being just in case
-            if aggregation_name == "regr_count":
+            # if aggregation_name in ["regr_count", "regr_syy", "regr_sxx"]:
+            if len(inputs) == 2:
                 is_null = IsNullOperation()
                 two_columns_proxy = new_temporary_column(df)
                 if len(inputs) == 1:

@@ -378,17 +378,17 @@ def test_stats_aggregation(c, timeseries_df):
     # )
 
     # test regr_syy
-    # regr_syy = c.sql(
-    #     """
-    # SELECT
-    #     name,
-    #     (REGR_COUNT(y, x) * VAR_POP(y)) AS expected,
-    #     REGR_SYY(y, x) AS calculated
-    # FROM timeseries
-    # WHERE x IS NOT NULL AND y IS NOT NULL
-    # GROUP BY name
-    # """
-    # ).fillna(0)
+    regr_syy = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(y)) AS expected,
+        REGR_SYY(y, x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
+    """
+    ).fillna(0)
 
     # assert_eq(
     #     regr_syy["expected"],
@@ -398,17 +398,17 @@ def test_stats_aggregation(c, timeseries_df):
     # )
 
     # test regr_sxx
-    # regr_sxx = c.sql(
-    #     """
-    # SELECT
-    #     name,
-    #     (REGR_COUNT(y, x) * VAR_POP(x)) AS expected,
-    #     REGR_SXX(y,x) AS calculated
-    # FROM timeseries
-    # WHERE x IS NOT NULL AND y IS NOT NULL
-    # GROUP BY name
-    # """
-    # ).fillna(0)
+    regr_sxx = c.sql(
+        """
+    SELECT
+        name,
+        (REGR_COUNT(y, x) * VAR_POP(x)) AS expected,
+        REGR_SXX(y,x) AS calculated
+    FROM timeseries
+    WHERE x IS NOT NULL AND y IS NOT NULL
+    GROUP BY name
+    """
+    ).fillna(0)
 
     # assert_eq(
     #     regr_sxx["expected"],
