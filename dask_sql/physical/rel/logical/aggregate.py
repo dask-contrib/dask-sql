@@ -378,8 +378,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
 
                 else:
-                    col1 = cc.get_backend_by_frontend_index(inputs[0])
-                    col2 = cc.get_backend_by_frontend_index(inputs[1])
+                    col1 = cc.get_backend_by_frontend_name(
+                        inputs[0].column_name(input_rel)
+                    )
+                    col2 = cc.get_backend_by_frontend_name(
+                        inputs[1].column_name(input_rel)
+                    )
                     # both cols should be not null
                     df = df.assign(
                         **{
