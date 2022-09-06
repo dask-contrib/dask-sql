@@ -1,6 +1,9 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
+from dask import config as dask_config
+from dask.blockwise import Blockwise
+from dask.layers import DataFrameIOLayer
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -50,6 +53,20 @@ class DaskLimitPlugin(BaseRelPlugin):
         """
         # if no offset is specified we can use `head` to compute the window
         if not offset:
+            # if `check-first-partition` enabled, check if we have a relatively simple Dask graph and if so,
+            # check if the first partition contains our desired window
+            if (
+                dask_config.get("sql.limit.check-first-partition")
+                and all(
+                    [
+                        isinstance(layer, (DataFrameIOLayer, Blockwise))
+                        for layer in df.dask.layers.values()
+                    ]
+                )
+                and limit <= len(df.partitions[0])
+            ):
+                return df.head(limit, compute=False)
+
             return df.head(limit, npartitions=-1, compute=False)
 
         # compute the size of each partition
