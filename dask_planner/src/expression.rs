@@ -80,6 +80,9 @@ impl PyExpr {
             | Expr::IsNotNull(..)
             | Expr::Negative(..)
             | Expr::IsNull(..)
+            | Expr::Like { .. }
+            | Expr::ILike { .. }
+            | Expr::SimilarTo { .. }
             | Expr::Between { .. }
             | Expr::Case { .. }
             | Expr::Cast { .. }
@@ -196,6 +199,9 @@ impl PyExpr {
             | Expr::IsUnknown(_)
             | Expr::IsNotTrue(_)
             | Expr::IsNotFalse(_)
+            | Expr::Like { .. }
+            | Expr::ILike { .. }
+            | Expr::SimilarTo { .. }
             | Expr::IsNotUnknown(_)
             | Expr::Case { .. }
             | Expr::TryCast { .. }
@@ -301,6 +307,18 @@ impl PyExpr {
             Expr::BinaryExpr { left, right, .. } => Ok(vec![
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
+            ]),
+            Expr::Like { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
+            ]),
+            Expr::ILike { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
+            ]),
+            Expr::SimilarTo { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
             Expr::Between {
                 expr,
