@@ -24,7 +24,7 @@ pub struct CreateModel {
     /// model name
     pub name: String,
     /// input Query
-    pub select: SQLStatement,
+    pub select: DaskStatement,
     /// IF NOT EXISTS
     pub if_not_exists: bool,
     /// To replace the model or not
@@ -41,7 +41,7 @@ pub struct PredictModel {
     /// model name
     pub name: String,
     /// input Query
-    pub select: SQLStatement,
+    pub select: DaskStatement,
 }
 
 /// Dask-SQL extension DDL for `CREATE SCHEMA`
@@ -648,7 +648,7 @@ impl<'a> DaskParser<'a> {
             DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
-        let sql_statement = self.parser.parse_statement()?;
+        let sql_statement = self.parse_statement()?;
         self.parser.expect_token(&Token::RParen)?;
 
         let predict = PredictModel {
@@ -680,7 +680,7 @@ impl<'a> DaskParser<'a> {
 
         let create = CreateModel {
             name: model_name.to_string(),
-            select: self.parser.parse_statement()?,
+            select: self.parse_statement()?,
             if_not_exists,
             or_replace,
             with_options,
