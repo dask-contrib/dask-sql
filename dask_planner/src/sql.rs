@@ -4,7 +4,6 @@ pub mod function;
 pub mod logical;
 pub mod optimizer;
 pub mod parser_utils;
-pub mod rules;
 pub mod schema;
 pub mod statement;
 pub mod table;
