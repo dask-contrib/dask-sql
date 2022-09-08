@@ -199,6 +199,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 ),
             )
         ),
+        "covariancepop": AggregationSpecification("covariancepop", AggregationOnPandas("covariancepop")),
+        "covariance": AggregationSpecification("covariance", AggregationOnPandas("covariance")),
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -409,14 +411,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # Gather information about the input column
             inputs = agg.getArgs(expr)
 
-            # if aggregation_name in ["regr_count", "regr_syy", "regr_sxx"]:
-            if len(inputs) == 2:
+            if aggregation_name == "regr_count":
                 is_null = IsNullOperation()
                 two_columns_proxy = new_temporary_column(df)
                 if len(inputs) == 1:
                     # calcite some times gives one input/col to regr_count and
                     # another col has filter column
-                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    col1 = cc.get_backend_by_frontend_name(
+                        inputs[0].column_name(input_rel)
+                    )
                     df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
 
                 else:
@@ -435,6 +438,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
                         }
                     )
                 input_col = two_columns_proxy
+            elif aggregation_name == "regr_syy":
+                input_col = inputs[0].column_name(input_rel)
+            elif aggregation_name == "regr_sxx":
+                input_col = inputs[1].column_name(input_rel)
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(input_rel)
             elif len(inputs) == 0:

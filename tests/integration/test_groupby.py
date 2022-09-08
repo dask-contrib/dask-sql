@@ -390,12 +390,12 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    # assert_eq(
-    #     regr_syy["expected"],
-    #     regr_syy["calculated"],
-    #     check_dtype=False,
-    #     check_names=False,
-    # )
+    assert_eq(
+        regr_syy["expected"],
+        regr_syy["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
 
     # test regr_sxx
     regr_sxx = c.sql(
@@ -410,12 +410,12 @@ def test_stats_aggregation(c, timeseries_df):
     """
     ).fillna(0)
 
-    # assert_eq(
-    #     regr_sxx["expected"],
-    #     regr_sxx["calculated"],
-    #     check_dtype=False,
-    #     check_names=False,
-    # )
+    assert_eq(
+        regr_sxx["expected"],
+        regr_sxx["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
 
     # test covar_pop
     # covar_pop = c.sql(
