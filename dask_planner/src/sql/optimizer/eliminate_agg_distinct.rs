@@ -36,9 +36,10 @@ use datafusion_expr::{
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 use std::collections::hash_map::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 
-/// Optimizer rule for rewriting subquery filters to joins
+/// Optimizer rule eliminating/moving Aggregate Expr(s) with a `DISTINCT` inner Expr.
 #[derive(Default)]
 pub struct EliminateAggDistinct {}
 
@@ -56,6 +57,8 @@ impl OptimizerRule for EliminateAggDistinct {
         optimizer_config: &mut OptimizerConfig,
     ) -> Result<LogicalPlan> {
         println!("Incoming LogicalPlan: {:?}", plan);
+
+        //TODO should optimize inputs first
 
         match plan {
             LogicalPlan::Aggregate(Aggregate {
@@ -90,30 +93,35 @@ impl OptimizerRule for EliminateAggDistinct {
                                     distinct: false,
                                 });
                                 // Update the DFSchema to rename the field with the DISTINCT in it
-                                let mut new_fields: Vec<DFField> = Vec::new();
+                                let mut new_fields: Vec<DFField> = vec![];
+                                let mut field_names: HashSet<String> = HashSet::new();
                                 for field in schema.fields() {
                                     if field.name().contains("DISTINCT") {
-                                        let result = field.name().replace("DISTINCT ", "");
-                                        match field.qualifier() {
-                                            Some(e) => {
-                                                new_fields.push(DFField::new(
-                                                    Some(e),
-                                                    result.as_str(),
-                                                    field.data_type().clone(),
-                                                    field.is_nullable(),
-                                                ));
-                                            }
-                                            None => {
-                                                new_fields.push(DFField::new(
-                                                    None,
-                                                    result.as_str(),
-                                                    field.data_type().clone(),
-                                                    field.is_nullable(),
-                                                ));
+                                        let new_field_name = field.name().replace("DISTINCT ", "");
+                                        if field_names.insert(new_field_name.clone()) {
+                                            match field.qualifier() {
+                                                Some(e) => {
+                                                    new_fields.push(DFField::new(
+                                                        Some(e),
+                                                        new_field_name.as_str(),
+                                                        field.data_type().clone(),
+                                                        field.is_nullable(),
+                                                    ));
+                                                }
+                                                None => {
+                                                    new_fields.push(DFField::new(
+                                                        None,
+                                                        new_field_name.as_str(),
+                                                        field.data_type().clone(),
+                                                        field.is_nullable(),
+                                                    ));
+                                                }
                                             }
                                         }
                                     } else {
-                                        new_fields.push(field.clone());
+                                        if field_names.insert(field.name().clone()) {
+                                            new_fields.push(field.clone());
+                                        }
                                     }
                                 }
 
@@ -179,7 +187,6 @@ mod tests {
     use datafusion_expr::{
         col, count, count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
-        sum,
     };
     use std::sync::Arc;
 
@@ -204,22 +211,61 @@ mod tests {
         LogicalPlanBuilder::scan(name.unwrap_or("test"), table_source, projection)
     }
 
-    fn test_table_scan() -> LogicalPlan {
+    fn test_table_scan(table_name: &str) -> LogicalPlan {
         let schema = Schema::new(vec![
             Field::new("a", DataType::UInt32, false),
             Field::new("b", DataType::UInt32, false),
             Field::new("c", DataType::UInt32, false),
             Field::new("d", DataType::UInt32, false),
         ]);
-        table_scan(Some("test"), &schema, None)
+        table_scan(Some(table_name), &schema, None)
             .expect("creating scan")
             .build()
             .expect("building plan")
     }
 
     #[test]
+    fn test_agg_count_no_group_by_simple_case() -> Result<()> {
+        let empty_group_expr: Vec<Expr> = vec![];
+        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
+            .aggregate(
+                empty_group_expr,
+                vec![count_distinct(col("a")).alias("cd_a")],
+            )?
+            .build()?;
+
+        let expected = "TBD";
+        assert_optimized_plan_eq(&plan, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_agg_count_no_group_by() -> Result<()> {
+        let empty_group_expr: Vec<Expr> = vec![];
+        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
+            .aggregate(
+                empty_group_expr,
+                vec![
+                    count(col("a")).alias("c_a"),
+                    count_distinct(col("a")).alias("cd_a"),
+                    count(col("b")).alias("c_b"),
+                    count_distinct(col("b")).alias("cd_b"),
+                    count(col("c")).alias("c_c"),
+                    count_distinct(col("c")).alias("cd_c"),
+                    count(col("d")).alias("c_d"),
+                    count_distinct(col("a")).alias("cd_d"),
+                ],
+            )?
+            .build()?;
+
+        let expected = "TBD";
+        assert_optimized_plan_eq(&plan, expected);
+        Ok(())
+    }
+
+    #[test]
     fn count_distinct_simple() -> Result<()> {
-        let plan = LogicalPlanBuilder::from(test_table_scan())
+        let plan = LogicalPlanBuilder::from(test_table_scan("test"))
             .aggregate(vec![col("test.b")], vec![count_distinct(col("test.b"))])?
             .project(vec![col("test.b")])?
             .build()?;
@@ -241,9 +287,7 @@ mod tests {
     ///
     #[test]
     fn count_distinct_multi() -> Result<()> {
-        let grp_exprs: Vec<Expr> = vec![];
-
-        let plan = LogicalPlanBuilder::from(test_table_scan())
+        let plan = LogicalPlanBuilder::from(test_table_scan("test"))
             .aggregate(
                 vec![col("test.b")],
                 vec![count(col("test.b")), count_distinct(col("test.b"))],
