@@ -675,12 +675,17 @@ impl<'a> DaskParser<'a> {
         let table_factor = self.parser.parse_table_factor()?;
         let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
-        // Parse the "AS" before the SQLStatement
+        // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        let select = self.parse_statement()?;
+
+        self.parser.expect_token(&Token::RParen)?;
 
         let create = CreateModel {
             name: model_name.to_string(),
-            select: self.parse_statement()?,
+            select,
             if_not_exists,
             or_replace,
             with_options,
