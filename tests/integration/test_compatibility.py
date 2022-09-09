@@ -383,9 +383,6 @@ def test_agg_sum_avg():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_min_max_no_group_by():
     a = make_rand_df(
         100,
@@ -422,9 +419,6 @@ def test_agg_min_max_no_group_by():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_min_max():
     a = make_rand_df(
         100,
