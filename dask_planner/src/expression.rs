@@ -367,6 +367,9 @@ impl PyExpr {
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
+            Expr::Like { .. } => "like".to_string(),
+            Expr::ILike { .. } => "ilike".to_string(),
+            Expr::SimilarTo { .. } => "similar to".to_string(),
             _ => {
                 return Err(py_type_err(format!(
                     "Catch all triggered in get_operator_name: {:?}",
