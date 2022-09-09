@@ -58,9 +58,9 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "arrow"
-version = "21.0.0"
+version = "22.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbd23619f19fc6f214b9667eb2e2782f4a7edc407899e3511e634e55662d906"
+checksum = "c5936b4185aa57cb9790d8742aab22859045ce5cc6a3023796240cd101c19335"
 dependencies = [
  "ahash 0.8.0",
  "bitflags",
@@ -70,7 +70,6 @@ dependencies = [
  "flatbuffers",
  "half",
  "hashbrown",
- "hex",
  "indexmap",
  "lazy_static",
  "lexical-core",
@@ -79,7 +78,6 @@ dependencies = [
  "regex",
  "regex-syntax",
  "serde",
- "serde_derive",
  "serde_json",
 ]
 
@@ -293,7 +291,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "arrow",
  "ordered-float",
@@ -304,7 +302,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -315,7 +313,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "arrow",
  "async-trait",
@@ -330,7 +328,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -354,7 +352,7 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -365,7 +363,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=7c04964fee0210411f02bf3938aefe7773710e42#7c04964fee0210411f02bf3938aefe7773710e42"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -462,12 +460,6 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "hex"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "iana-time-zone"
@@ -1018,6 +1010,9 @@ name = "serde"
 version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_derive"
