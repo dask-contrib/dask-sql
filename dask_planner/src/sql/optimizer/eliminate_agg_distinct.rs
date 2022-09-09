@@ -193,7 +193,7 @@ impl OptimizerRule for EliminateAggDistinct {
                     }
                     _ => {
                         // this case not implemented yet
-                        Ok(plan);
+                        Ok(plan)
                     }
                 }
             }
@@ -281,7 +281,9 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "TBD";
+        let expected = "Aggregate: groupBy=[[]], aggr=[[SUM(#a.a) AS c_a, COUNT(#a.a) AS cd_a]]\
+        \n  Aggregate: groupBy=[[#a.a]], aggr=[[]]\
+        \n    TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
     }
