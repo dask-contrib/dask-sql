@@ -72,7 +72,7 @@ impl DaskParserUtils {
                 op,
                 Self::str_from_expr(*right)
             ),
-            // SqlParserExpr::Array(e) => ,
+            SqlParserExpr::Array(e) => e.to_string(),
             _ => unimplemented!("Unimplemented SqlParserExpr type: {:?}", expression),
         }
     }
