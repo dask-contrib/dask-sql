@@ -7,28 +7,67 @@
 //! A query like
 //! ```text
 //! SELECT
-//!     COUNT(DISTINCT b) AS cntd_b
+//!     COUNT(DISTINCT a)
 //! FROM test
 //! ```
 //!
 //! Would typically produce a LogicalPlan like ...
 //! ```text
-//! Projection: #COUNT(DISTINCT test.a)
-//!   Projection: #COUNT(alias1) AS COUNT(DISTINCT test.a)
+//! Projection: #COUNT(DISTINCT a)
+//!   Projection: #COUNT(alias1) AS COUNT(DISTINCT a)
 //!     Aggregate: groupBy=[[]], aggr=[[COUNT(#alias1)]]
-//!       Aggregate: groupBy=[[#test.a AS alias1]], aggr=[[]]
+//!       Aggregate: groupBy=[[#a AS alias1]], aggr=[[]]
 //!         TableScan: test projection=[a]
 //! ```
 //!
-//! It handles standalone parts of logical conjunction expressions, i.e.
+//! If the query has both a COUNT and a COUNT DISTINCT on the same expression then we need to
+//! first perform an aggregate with a group by and the COUNT(*) for each grouping key, then
+//! we need to COUNT the number of rows to produce the COUNT DISTINCT result and SUM the values
+//! of the COUNT(*) values to get the COUNT value.
+//!
+//! For example:
+//!
 //! ```text
-//!   WHERE t1.f IN (SELECT f FROM t2) AND t2.f = 'x'
+//! SELECT
+//!     COUNT(a), COUNT(DISTINCT a)
+//! FROM test
 //! ```
-//! will be rewritten, but
+//!
+//! Would typically produce a LogicalPlan like ...
 //! ```text
-//!   WHERE t1.f IN (SELECT f FROM t2) OR t2.f = 'x'
-//! ```
-//! won't
+//! Projection: #COUNT(DISTINCT a)
+//!   Projection: #SUM(alias2) AS COUNT(a), #COUNT(alias1) AS COUNT(DISTINCT a)
+//!     Aggregate: groupBy=[[]], aggr=[[SUM(alias2), COUNT(#alias1)]]
+//!       Aggregate: groupBy=[[#a AS alias1]], aggr=[[COUNT(*) AS alias2]]
+//!         TableScan: test projection=[a]
+//!
+//! If the query contains DISTICT aggregates for multiple columns then we need to perform
+//! separate aggregate queries per column and then join the results.
+//!
+//! DaskProject(c_a=[$0], cd_a=[$5], c_b=[$1], cd_b=[$6], c_c=[$2], cd_c=[$7], c_d=[$3], cd_d=[$8], c_e=[$4], cd_e=[$5]): rowcount = 1.0, cumulative cost = {965.75 rows, 915.0 cpu, 0.0 io}, id = 477
+//!   DaskJoin(condition=[true], joinType=[inner]): rowcount = 1.0, cumulative cost = {964.75 rows, 905.0 cpu, 0.0 io}, id = 476
+//!     DaskJoin(condition=[true], joinType=[inner]): rowcount = 1.0, cumulative cost = {752.625 rows, 704.0 cpu, 0.0 io}, id = 472
+//!       DaskJoin(condition=[true], joinType=[inner]): rowcount = 1.0, cumulative cost = {540.5 rows, 503.0 cpu, 0.0 io}, id = 468
+//!         DaskJoin(condition=[true], joinType=[inner]): rowcount = 1.0, cumulative cost = {328.375 rows, 302.0 cpu, 0.0 io}, id = 464
+//!           DaskAggregate(group=[{}], c_a=[COUNT($0)], c_b=[COUNT($1)], c_c=[COUNT($2)], c_d=[COUNT($3)], c_e=[COUNT($4)]): rowcount = 10.0, cumulative cost = {116.25 rows, 101.0 cpu, 0.0 io}, id = 460
+//!             DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
+//!           DaskAggregate(group=[{}], cd_e=[COUNT($0)]): rowcount = 1.0, cumulative cost = {211.125 rows, 201.0 cpu, 0.0 io}, id = 463
+//!             DaskAggregate(group=[{0}]): rowcount = 10.0, cumulative cost = {210.0 rows, 201.0 cpu, 0.0 io}, id = 462
+//!               DaskProject(a=[$0]): rowcount = 100.0, cumulative cost = {200.0 rows, 201.0 cpu, 0.0 io}, id = 461
+//!                 DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
+//!         DaskAggregate(group=[{}], cd_b=[COUNT($0)]): rowcount = 1.0, cumulative cost = {211.125 rows, 201.0 cpu, 0.0 io}, id = 467
+//!           DaskAggregate(group=[{0}]): rowcount = 10.0, cumulative cost = {210.0 rows, 201.0 cpu, 0.0 io}, id = 466
+//!             DaskProject(b=[$1]): rowcount = 100.0, cumulative cost = {200.0 rows, 201.0 cpu, 0.0 io}, id = 465
+//!               DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
+//!       DaskAggregate(group=[{}], cd_c=[COUNT($0)]): rowcount = 1.0, cumulative cost = {211.125 rows, 201.0 cpu, 0.0 io}, id = 471
+//!         DaskAggregate(group=[{0}]): rowcount = 10.0, cumulative cost = {210.0 rows, 201.0 cpu, 0.0 io}, id = 470
+//!           DaskProject(c=[$2]): rowcount = 100.0, cumulative cost = {200.0 rows, 201.0 cpu, 0.0 io}, id = 469
+//!             DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
+//!     DaskAggregate(group=[{}], cd_d=[COUNT($0)]): rowcount = 1.0, cumulative cost = {211.125 rows, 201.0 cpu, 0.0 io}, id = 475
+//!       DaskAggregate(group=[{0}]): rowcount = 10.0, cumulative cost = {210.0 rows, 201.0 cpu, 0.0 io}, id = 474
+//!         DaskProject(d=[$3]): rowcount = 100.0, cumulative cost = {200.0 rows, 201.0 cpu, 0.0 io}, id = 473
+//!           DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
+
 use datafusion_common::{DFField, DFSchema, Result};
 use datafusion_expr::{
     logical_plan::{Aggregate, LogicalPlan},
@@ -225,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_agg_count_no_group_by_simple_case() -> Result<()> {
+    fn test_single_distinct_no_group_by() -> Result<()> {
         let empty_group_expr: Vec<Expr> = vec![];
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
             .aggregate(
@@ -240,7 +279,22 @@ mod tests {
     }
 
     #[test]
-    fn test_agg_count_no_group_by() -> Result<()> {
+    fn test_count_and_distinct_no_group_by() -> Result<()> {
+        let empty_group_expr: Vec<Expr> = vec![];
+        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
+            .aggregate(
+                empty_group_expr,
+                vec![count(col("a")).alias("c_a"), count_distinct(col("a")).alias("cd_a")],
+            )?
+            .build()?;
+
+        let expected = "TBD";
+        assert_optimized_plan_eq(&plan, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_multiple_distinct() -> Result<()> {
         let empty_group_expr: Vec<Expr> = vec![];
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
             .aggregate(
@@ -264,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn count_distinct_simple() -> Result<()> {
+    fn count_distinct_with_group_by() -> Result<()> {
         let plan = LogicalPlanBuilder::from(test_table_scan("test"))
             .aggregate(vec![col("test.b")], vec![count_distinct(col("test.b"))])?
             .project(vec![col("test.b")])?
