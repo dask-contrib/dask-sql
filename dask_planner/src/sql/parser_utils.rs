@@ -66,6 +66,13 @@ impl DaskParserUtils {
                 _ => unimplemented!("Unimplemented Value type: {:?}", value),
             },
             SqlParserExpr::Nested(nested_expr) => Self::str_from_expr(*nested_expr),
+            SqlParserExpr::BinaryOp { left, op, right } => format!(
+                "{} {} {}",
+                Self::str_from_expr(*left),
+                op,
+                Self::str_from_expr(*right)
+            ),
+            // SqlParserExpr::Array(e) => ,
             _ => unimplemented!("Unimplemented SqlParserExpr type: {:?}", expression),
         }
     }

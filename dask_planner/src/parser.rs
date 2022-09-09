@@ -33,6 +33,21 @@ pub struct CreateModel {
     pub with_options: Vec<Expr>,
 }
 
+/// Dask-SQL extension DDL for `CREATE EXPERIMENT`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateExperiment {
+    /// experiment name
+    pub name: String,
+    /// input Query
+    pub select: SQLStatement,
+    /// IF NOT EXISTS
+    pub if_not_exists: bool,
+    /// To replace the model or not
+    pub or_replace: bool,
+    /// with options
+    pub with_options: Vec<Expr>,
+}
+
 /// Dask-SQL extension DDL for `PREDICT`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictModel {
@@ -167,6 +182,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE EXPERIMENT`
+    CreateExperiment(Box<CreateExperiment>),
     /// Extension: `CREATE SCHEMA`
     CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
@@ -383,6 +400,19 @@ impl<'a> DaskParser<'a> {
 
                         // use custom parsing
                         self.parse_create_model(if_not_exists, or_replace)
+                    }
+                    "experiment" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
+                        // use custom parsing
+                        self.parse_create_experiment(if_not_exists, or_replace)
                     }
                     "schema" => {
                         // move one token forward
@@ -686,6 +716,35 @@ impl<'a> DaskParser<'a> {
             with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    /// Parse Dask-SQL CREATE EXPERIMENT statement
+    fn parse_create_experiment(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let experiment_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
+
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+
+        // Parse the "AS" before the SQLStatement
+        self.parser.expect_keyword(Keyword::AS)?;
+
+        let create = CreateExperiment {
+            name: experiment_name.to_string(),
+            select: self.parser.parse_statement()?,
+            if_not_exists,
+            or_replace,
+            with_options,
+        };
+        Ok(DaskStatement::CreateExperiment(Box::new(create)))
     }
 
     /// Parse Dask-SQL CREATE {IF NOT EXISTS | OR REPLACE} SCHEMA ... statement

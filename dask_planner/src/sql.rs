@@ -32,6 +32,7 @@ use std::sync::Arc;
 use crate::dialect::DaskDialect;
 use crate::parser::{DaskParser, DaskStatement};
 use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
+use crate::sql::logical::create_experiment::CreateExperimentPlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
 use crate::sql::logical::create_view::CreateViewPlanNode;
@@ -389,6 +390,19 @@ impl DaskSQLContext {
                     with_options: create_model.with_options,
                 }),
             })),
+            DaskStatement::CreateExperiment(create_experiment) => {
+                Ok(LogicalPlan::Extension(Extension {
+                    node: Arc::new(CreateExperimentPlanNode {
+                        experiment_name: create_experiment.name,
+                        input: self._logical_relational_algebra(DaskStatement::Statement(
+                            Box::new(create_experiment.select),
+                        ))?,
+                        if_not_exists: create_experiment.if_not_exists,
+                        or_replace: create_experiment.or_replace,
+                        with_options: create_experiment.with_options,
+                    }),
+                }))
+            }
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(PredictModelPlanNode {
                     model_schema: predict_model.schema_name,
