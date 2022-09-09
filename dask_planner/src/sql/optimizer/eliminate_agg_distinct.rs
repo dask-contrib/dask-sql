@@ -41,8 +41,9 @@
 //!       Aggregate: groupBy=[[#a AS alias1]], aggr=[[COUNT(*) AS alias2]]
 //!         TableScan: test projection=[a]
 //!
-//! If the query contains DISTICT aggregates for multiple columns then we need to perform
-//! separate aggregate queries per column and then join the results.
+//! If the query contains DISTINCT aggregates for multiple columns then we need to perform
+//! separate aggregate queries per column and then join the results. The final Dask plan
+//! should like like this:
 //!
 //! DaskProject(c_a=[$0], cd_a=[$5], c_b=[$1], cd_b=[$6], c_c=[$2], cd_c=[$7], c_d=[$3], cd_d=[$8], c_e=[$4], cd_e=[$5]): rowcount = 1.0, cumulative cost = {965.75 rows, 915.0 cpu, 0.0 io}, id = 477
 //!   DaskJoin(condition=[true], joinType=[inner]): rowcount = 1.0, cumulative cost = {964.75 rows, 905.0 cpu, 0.0 io}, id = 476
