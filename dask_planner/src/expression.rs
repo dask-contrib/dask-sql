@@ -367,9 +367,27 @@ impl PyExpr {
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
-            Expr::Like { .. } => "like".to_string(),
-            Expr::ILike { .. } => "ilike".to_string(),
-            Expr::SimilarTo { .. } => "similar to".to_string(),
+            Expr::Like { negated, .. } => {
+                if *negated {
+                    "not like".to_string()
+                } else {
+                    "like".to_string()
+                }
+            }
+            Expr::ILike { negated, .. } => {
+                if *negated {
+                    "not ilike".to_string()
+                } else {
+                    "ilike".to_string()
+                }
+            }
+            Expr::SimilarTo { negated, .. } => {
+                if *negated {
+                    "not similar to".to_string()
+                } else {
+                    "similar to".to_string()
+                }
+            }
             _ => {
                 return Err(py_type_err(format!(
                     "Catch all triggered in get_operator_name: {:?}",
@@ -691,6 +709,20 @@ impl PyExpr {
             Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns the escape char for like/ilike/similar to expr variants
+    #[pyo3(name = "getEscapeChar")]
+    pub fn get_escape_char(&self) -> PyResult<Option<char>> {
+        match &self.expr {
+            Expr::Like { escape_char, .. }
+            | Expr::ILike { escape_char, .. }
+            | Expr::SimilarTo { escape_char, .. } => Ok(*escape_char),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} not one of Like/ILike/SimilarTo",
                 &self.expr
             ))),
         }
