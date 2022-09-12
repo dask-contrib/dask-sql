@@ -233,7 +233,7 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
-            "regr_syy" | "regr_sxx" | "covar_pop" | "covar_samp" => {
+            "regr_syy" | "regr_sxx" => {
                 let sig = Signature::variadic(
                     vec![DataType::Float64, DataType::Float64],
                     Volatility::Immutable,

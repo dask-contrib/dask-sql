@@ -199,8 +199,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 ),
             )
         ),
-        "covariancepop": AggregationSpecification("covariancepop", AggregationOnPandas("covariancepop")),
-        "covariance": AggregationSpecification("covariance", AggregationOnPandas("covariance")),
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
