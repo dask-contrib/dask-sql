@@ -4,6 +4,7 @@
 
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
+use datafusion_sql::sqlparser::ast::{Ident, Value};
 use datafusion_sql::sqlparser::{
     ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
@@ -11,6 +12,7 @@ use datafusion_sql::sqlparser::{
     tokenizer::{Token, Tokenizer},
 };
 use std::collections::VecDeque;
+use std::fmt::{Display, Formatter};
 
 macro_rules! parser_err {
     ($MSG:expr) => {
@@ -30,7 +32,71 @@ pub struct CreateModel {
     /// To replace the model or not
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<KeyValuePair>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyValuePair {
+    pub key: Ident,
+    pub value: OptionValue,
+}
+
+impl KeyValuePair {
+    pub fn new(key: Ident, value: OptionValue) -> Self {
+        Self { key, value }
+    }
+}
+
+impl Display for KeyValuePair {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} = {}", self.key, self.value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OptionValue {
+    Expr(Expr),
+    Map(Vec<Expr>),
+    Multiset(Vec<Expr>),
+    Nested(Vec<KeyValuePair>),
+}
+
+impl Display for OptionValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Multiset(expr) => write!(
+                f,
+                "MULTISET [ {} ]",
+                expr.iter()
+                    .map(|e| format!("{}", e))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Map(expr) => write!(
+                f,
+                "MAP [ {} ]",
+                expr.iter()
+                    .map(|e| format!("{}", e))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Nested(key_value_pairs) => write!(
+                f,
+                "({})",
+                key_value_pairs
+                    .iter()
+                    .map(|e| format!("{}", e))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Expr(expr) => match expr {
+                Expr::Value(Value::SingleQuotedString(s)) => write!(f, "'{}'", s),
+                Expr::Value(value) => write!(f, "'{}'", value),
+                Expr::Array(array) => write!(f, "{}", array),
+                other => write!(f, "{:?}", other),
+            },
+        }
+    }
 }
 
 /// Dask-SQL extension DDL for `CREATE EXPERIMENT`
@@ -697,13 +763,11 @@ impl<'a> DaskParser<'a> {
     ) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
+        self.parser.expect_token(&Token::LParen)?;
 
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
 
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::RParen)?;
 
         // Parse the "AS" before the SQLStatement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -716,6 +780,55 @@ impl<'a> DaskParser<'a> {
             with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    // copied from sqlparser crate and adapted to work with DaskParser
+    fn parse_comma_separated<T, F>(&mut self, mut f: F) -> Result<Vec<T>, ParserError>
+    where
+        F: FnMut(&mut DaskParser<'a>) -> Result<T, ParserError>,
+    {
+        let mut values = vec![];
+        loop {
+            values.push(f(self)?);
+            if !self.parser.consume_token(&Token::Comma) {
+                break;
+            }
+        }
+        Ok(values)
+    }
+
+    fn parse_key_value_pair(&mut self) -> Result<KeyValuePair, ParserError> {
+        let key = self.parser.parse_identifier()?;
+        self.parser.expect_token(&Token::Eq)?;
+        match self.parser.next_token() {
+            Token::LParen => {
+                let key_value_pairs =
+                    self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+                self.parser.expect_token(&Token::RParen)?;
+                Ok(KeyValuePair::new(key, OptionValue::Nested(key_value_pairs)))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "map" => {
+                // TODO this does not support map or multiset expressions within the map
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok(KeyValuePair::new(key, OptionValue::Map(values)))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "multiset" => {
+                // TODO this does not support map or multiset expressions within the multiset
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok(KeyValuePair::new(key, OptionValue::Multiset(values)))
+            }
+            _ => {
+                self.parser.prev_token();
+                Ok(KeyValuePair::new(
+                    key,
+                    OptionValue::Expr(self.parser.parse_expr()?),
+                ))
+            }
+        }
     }
 
     /// Parse Dask-SQL CREATE EXPERIMENT statement
@@ -989,5 +1102,70 @@ impl<'a> DaskParser<'a> {
             },
             columns,
         })))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parser::{DaskParser, DaskStatement};
+
+    #[test]
+    fn create_model() {
+        let sql = r#"CREATE MODEL my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target',
+            fit_kwargs = (
+                first_arg = 3,
+                second_arg = ARRAY [ 1, 2 ],
+                third_arg = MAP [ 'a', 1 ],
+                forth_arg = MULTISET [ 1, 1, 2, 3 ]
+            )
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )"#;
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+
+        match &statements[0] {
+            DaskStatement::CreateModel(create_model) => {
+                // test Debug
+                let expected = "[\
+                    KeyValuePair { key: Ident { value: \"model_class\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"mock.MagicMock\"))) }, \
+                    KeyValuePair { key: Ident { value: \"target_column\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"target\"))) }, \
+                    KeyValuePair { key: Ident { value: \"fit_kwargs\", quote_style: None }, value: Nested([\
+                        KeyValuePair { key: Ident { value: \"first_arg\", quote_style: None }, value: Expr(Value(Number(\"3\", false))) }, \
+                        KeyValuePair { key: Ident { value: \"second_arg\", quote_style: None }, value: Expr(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })) }, \
+                        KeyValuePair { key: Ident { value: \"third_arg\", quote_style: None }, value: Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))]) }, \
+                        KeyValuePair { key: Ident { value: \"forth_arg\", quote_style: None }, value: Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))]) }\
+                    ]) }\
+                ]";
+                assert_eq!(expected, &format!("{:?}", create_model.with_options));
+
+                // test Display
+                let expected = "model_class = 'mock.MagicMock', \
+                target_column = 'target', \
+                fit_kwargs = (\
+                    first_arg = '3', \
+                    second_arg = ARRAY[1, 2], \
+                    third_arg = MAP [ 'a', 1 ], \
+                    forth_arg = MULTISET [ 1, 1, 2, 3 ]\
+                )";
+                assert_eq!(
+                    expected,
+                    format!(
+                        "{}",
+                        create_model
+                            .with_options
+                            .iter()
+                            .map(|pair| format!("{}", pair))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                )
+            }
+            _ => panic!(),
+        }
     }
 }

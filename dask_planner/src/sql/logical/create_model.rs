@@ -1,16 +1,15 @@
 use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
-use crate::sql::parser_utils::DaskParserUtils;
 use pyo3::prelude::*;
 
 use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
-use datafusion_sql::sqlparser::ast::Expr as SqlParserExpr;
 
 use fmt::Debug;
 use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
+use crate::parser::KeyValuePair;
 use datafusion_common::DFSchemaRef;
 
 #[derive(Clone)]
@@ -19,7 +18,7 @@ pub struct CreateModelPlanNode {
     pub input: LogicalPlan,
     pub if_not_exists: bool,
     pub or_replace: bool,
-    pub with_options: Vec<SqlParserExpr>,
+    pub with_options: Vec<KeyValuePair>,
 }
 
 impl Debug for CreateModelPlanNode {
@@ -102,18 +101,7 @@ impl PyCreateModel {
     fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
         let mut options: HashMap<String, String> = HashMap::new();
         for elem in &self.create_model.with_options {
-            match elem {
-                SqlParserExpr::BinaryOp { left, op: _, right } => {
-                    options.insert(
-                        DaskParserUtils::str_from_expr(*left.clone()),
-                        DaskParserUtils::str_from_expr(*right.clone()),
-                    );
-                }
-                _ => {
-                    return Err(py_type_err(
-                        "Encountered non SqlParserExpr::BinaryOp expression, with arguments can only be of Key/Value pair types"));
-                }
-            }
+            options.insert(format!("{}", elem.key), format!("{}", elem.value));
         }
         Ok(options)
     }

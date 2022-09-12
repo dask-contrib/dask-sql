@@ -281,7 +281,6 @@ def test_wrong_training_or_prediction(c, training_df):
         )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_correct_argument_passing(c, training_df):
     c.sql(
         """
