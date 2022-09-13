@@ -70,6 +70,7 @@
 //!           DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
 
 use datafusion_common::{DFSchema, DataFusionError, Result};
+use datafusion_expr::logical_plan::Projection;
 use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
     col,
@@ -130,14 +131,7 @@ impl OptimizerRule for EliminateAggDistinct {
                 let plans: Vec<LogicalPlan> = unique_expressions
                     .iter()
                     .map(|expr| {
-                        create_plan(
-                            &plan,
-                            &input,
-                            aggr_expr,
-                            expr,
-                            &distinct_columns,
-                            &not_distinct_columns,
-                        )
+                        create_plan(&plan, input, expr, &distinct_columns, &not_distinct_columns)
                     })
                     .collect::<Result<Vec<_>>>()?;
                 match plans.len() {
@@ -162,16 +156,10 @@ impl OptimizerRule for EliminateAggDistinct {
 fn create_plan(
     plan: &LogicalPlan,
     input: &Arc<LogicalPlan>,
-    aggr_expr: &Vec<Expr>,
     expr: &Expr,
     distinct_columns: &HashSet<Expr>,
     not_distinct_columns: &HashSet<Expr>,
 ) -> Result<LogicalPlan> {
-    println!(
-        "create_plan({}, {:?}, {:?})",
-        expr, distinct_columns, not_distinct_columns
-    );
-
     let _distinct_columns = unique_set_without_aliases(distinct_columns);
     let _not_distinct_columns = unique_set_without_aliases(not_distinct_columns);
     let has_distinct = _distinct_columns.contains(expr);
@@ -179,24 +167,23 @@ fn create_plan(
     assert!(has_distinct || has_non_distinct);
 
     if has_distinct && has_non_distinct {
-        unimplemented!()
+        Err(DataFusionError::Plan(
+            "Mixed COUNT and COUNT(DISTINCT) aggregates are not supported yet".to_string(),
+        ))
     } else if has_distinct {
         // simple case of a single DISTINCT aggregation
         //
-        // Projection: #COUNT(DISTINCT a)
-        //   Projection: #COUNT(alias1) AS COUNT(DISTINCT a)
-        //     Aggregate: groupBy=[[]], aggr=[[COUNT(#alias1)]]
-        //       Aggregate: groupBy=[[#a AS alias1]], aggr=[[]]
-        //         TableScan: test projection=[a]
-
-        // alias handling
+        // Projection: #COUNT(#a) AS COUNT(DISTINCT a)
+        //   Aggregate: groupBy=[[]], aggr=[[COUNT(#a)]]
+        //     Aggregate: groupBy=[[#a]], aggr=[[]]
+        //       TableScan: test projection=[a]
 
         // The first aggregate groups by the distinct expression. This is the equivalent
         // of `SELECT DISTINCT expr`.
         let first_aggregate = {
             let group_expr = vec![expr.clone()];
             let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&group_expr, &input)?,
+                exprlist_to_fields(&group_expr, input)?,
                 HashMap::new(),
             )?;
             LogicalPlan::Aggregate(Aggregate::try_new(
@@ -217,10 +204,9 @@ fn create_plan(
             };
             let aggr_expr = vec![count];
             let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&aggr_expr, &input)?,
+                exprlist_to_fields(&aggr_expr, input)?,
                 HashMap::new(),
             )?;
-            // TODO assert that the output schema is compatible with the original plans output schema
             LogicalPlan::Aggregate(Aggregate::try_new(
                 Arc::new(first_aggregate),
                 vec![],
@@ -229,9 +215,28 @@ fn create_plan(
             )?)
         };
 
-        // TODO wrap in projection?
+        // wrap in a projection to alias the COUNT() back to a COUNT(DISTINCT) or the
+        // user-supplied alias
+        let distinct_expr: Vec<Expr> = Vec::from_iter(distinct_columns)
+            .into_iter()
+            .cloned()
+            .collect();
+        assert_eq!(distinct_expr.len(), 1);
 
-        Ok(second_aggregate)
+        let projection = {
+            let count_distinct_col = col(&second_aggregate.schema().field(0).qualified_name());
+            let count_distinct_col = match &distinct_expr[0] {
+                Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
+                expr => count_distinct_col.alias(&format!("COUNT(DISTINCT({}))))", expr)),
+            };
+            LogicalPlan::Projection(Projection::try_new(
+                vec![count_distinct_col],
+                Arc::new(second_aggregate),
+                None,
+            )?)
+        };
+
+        Ok(projection)
     } else {
         // this is just a COUNT()
         Ok(plan.clone())
@@ -245,13 +250,14 @@ fn gather_expressions(
     not_distinct_columns: &mut HashSet<Expr>,
 ) {
     match aggr_expr {
-        Expr::Alias(x, alias) => match x.as_ref() {
-            Expr::AggregateFunction {
+        Expr::Alias(x, alias) => {
+            if let Expr::AggregateFunction {
                 fun: AggregateFunction::Count,
                 args,
                 distinct,
                 ..
-            } => {
+            } = x.as_ref()
+            {
                 if *distinct {
                     for arg in args {
                         distinct_columns.insert(arg.clone().alias(alias));
@@ -262,8 +268,7 @@ fn gather_expressions(
                     }
                 }
             }
-            _ => {}
-        },
+        }
         Expr::AggregateFunction {
             fun: AggregateFunction::Count,
             args,
@@ -306,7 +311,7 @@ mod tests {
     use super::*;
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
-        col, count, count_distinct,
+        col, count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
     };
     use std::sync::Arc;
@@ -353,9 +358,10 @@ mod tests {
             .aggregate(empty_group_expr, vec![count_distinct(col("a"))])?
             .build()?;
 
-        let expected = "Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
-        \n  Aggregate: groupBy=[[#a.a]], aggr=[[]]\
-        \n    TableScan: a";
+        let expected = "Projection: #COUNT(a.a) AS COUNT(DISTINCT(#a.a))))\
+        \n  Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
+        \n    Aggregate: groupBy=[[#a.a]], aggr=[[]]\
+        \n      TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
     }
@@ -370,55 +376,10 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a) AS cd_a]]\
-        \n  Aggregate: groupBy=[[#a.a]], aggr=[[]]\
-        \n    TableScan: a";
-        assert_optimized_plan_eq(&plan, expected);
-        Ok(())
-    }
-
-    #[test]
-    fn test_count_and_distinct_no_group_by() -> Result<()> {
-        let empty_group_expr: Vec<Expr> = vec![];
-        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
-            .aggregate(
-                empty_group_expr,
-                vec![
-                    count(col("a")).alias("c_a"),
-                    count_distinct(col("a")).alias("cd_a"),
-                ],
-            )?
-            .build()?;
-
-        let expected =
-            "Aggregate: groupBy=[[]], aggr=[[SUM(COUNT(#a.a)) AS c_a, COUNT(#a.a) AS cd_a]]\
-        \n  Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a)]]\
-        \n    TableScan: a";
-        assert_optimized_plan_eq(&plan, expected);
-        Ok(())
-    }
-
-    #[ignore]
-    #[test]
-    fn test_multiple_distinct() -> Result<()> {
-        let empty_group_expr: Vec<Expr> = vec![];
-        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
-            .aggregate(
-                empty_group_expr,
-                vec![
-                    count(col("a")).alias("c_a"),
-                    count_distinct(col("a")).alias("cd_a"),
-                    count(col("b")).alias("c_b"),
-                    count_distinct(col("b")).alias("cd_b"),
-                    count(col("c")).alias("c_c"),
-                    count_distinct(col("c")).alias("cd_c"),
-                    count(col("d")).alias("c_d"),
-                    count_distinct(col("a")).alias("cd_d"),
-                ],
-            )?
-            .build()?;
-
-        let expected = "TBD";
+        let expected = "Projection: #COUNT(a.a) AS cd_a\
+        \n  Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
+        \n    Aggregate: groupBy=[[#a.a]], aggr=[[]]\
+        \n      TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
     }
