@@ -13,11 +13,10 @@
 //!
 //! Would typically produce a LogicalPlan like ...
 //! ```text
-//! Projection: #COUNT(DISTINCT a)
-//!   Projection: #COUNT(alias1) AS COUNT(DISTINCT a)
-//!     Aggregate: groupBy=[[]], aggr=[[COUNT(#alias1)]]
-//!       Aggregate: groupBy=[[#a AS alias1]], aggr=[[]]
-//!         TableScan: test projection=[a]
+//! Projection: #COUNT(a.a) AS COUNT(DISTINCT(#a.a))))\
+//!   Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
+//!     Aggregate: groupBy=[[#a.a]], aggr=[[]]\
+//!       TableScan: test";
 //! ```
 //!
 //! If the query has both a COUNT and a COUNT DISTINCT on the same expression then we need to
