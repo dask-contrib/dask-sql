@@ -75,7 +75,7 @@ class Operation:
 
     def of(self, op: "Operation") -> "Operation":
         """Functional composition"""
-        new_op = Operation(lambda *x: self(op(*x)))
+        new_op = Operation(lambda *x, **kwargs: self(op(*x, **kwargs)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
 
@@ -368,20 +368,17 @@ class IsNotDistinctOperation(Operation):
 class RegexOperation(Operation):
     """An abstract regex operation, which transforms the SQL regex into something python can understand"""
 
+    needs_rex = True
+
     def __init__(self):
         super().__init__(self.regex)
 
-    def regex(
-        self,
-        test: SeriesOrScalar,
-        regex: str,
-        escape: str = None,
-    ) -> SeriesOrScalar:
+    def regex(self, test: SeriesOrScalar, regex: str, rex=None) -> SeriesOrScalar:
         """
         Returns true, if the string test matches the given regex
         (maybe escaped by escape)
         """
-
+        escape = rex.getEscapeChar() if rex else None
         if not escape:
             escape = "\\"
 

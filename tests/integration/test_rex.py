@@ -202,9 +202,6 @@ def test_operators(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="Depends on https://github.com/apache/arrow-datafusion/issues/3016"
-)
 @pytest.mark.parametrize(
     "input_table,gpu",
     [
@@ -242,14 +239,16 @@ def test_like(c, input_table, gpu, request):
 
     assert len(df) == 0
 
-    df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
-        WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
-    """
-    )
+    # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
+    # https://github.com/dask-contrib/dask-sql/issues/754
+    # df = c.sql(
+    #     f"""
+    #     SELECT * FROM {input_table}
+    #     WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
+    # """
+    # )
 
-    assert_eq(df, string_table.iloc[[1]])
+    # assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
         f"""
