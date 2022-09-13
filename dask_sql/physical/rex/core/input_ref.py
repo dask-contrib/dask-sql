@@ -7,7 +7,7 @@ from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import Expression, LogicalPlan
 
 
 class RexInputRefPlugin(BaseRexPlugin):
@@ -17,11 +17,12 @@ class RexInputRefPlugin(BaseRexPlugin):
     calculate a function in a column of a table.
     """
 
-    class_name = "org.apache.calcite.rex.RexInputRef"
+    class_name = "InputRef"
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> dd.Series:

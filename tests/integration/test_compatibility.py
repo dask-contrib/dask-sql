@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
@@ -207,6 +208,10 @@ def test_in_between():
     eq_sqlite("SELECT * FROM a WHERE a BETWEEN 2 AND 4+1", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT IN (2,4,6) AND a IS NOT NULL", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT BETWEEN 2 AND 4+1 AND a IS NOT NULL", a=df)
+    eq_sqlite(
+        "SELECT * FROM a WHERE SUBSTR(b,1,2) IN ('ss','s') AND a NOT BETWEEN 3 AND 5 and a IS NOT NULL",
+        a=df,
+    )
 
 
 def test_join_inner():
@@ -271,6 +276,7 @@ def test_join_multi():
     )
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -294,6 +300,9 @@ def test_agg_count_no_group_by():
     )
 
 
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/532"
+)
 def test_agg_count():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -316,6 +325,9 @@ def test_agg_count():
     )
 
 
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
+)
 def test_agg_sum_avg_no_group_by():
     eq_sqlite(
         """
@@ -346,6 +358,9 @@ def test_agg_sum_avg_no_group_by():
     )
 
 
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
+)
 def test_agg_sum_avg():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -917,6 +932,7 @@ def test_with():
     )
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_integration_1():
     a = make_rand_df(100, a=int, b=str, c=float, d=int, e=bool, f=str, g=str, h=float)
     eq_sqlite(

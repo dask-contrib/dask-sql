@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - datafusion-sql-planner
   pull_request:
 
 # When this workflow is queued, automatically cancel any previous running
@@ -49,12 +50,12 @@ jobs:
       - name: Upload conda package
         if: |
           github.event_name == 'push'
-          && github.ref == 'refs/heads/main'
           && github.repository == 'dask-contrib/dask-sql'
         env:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
+          LABEL: ${{ github.ref == 'refs/heads/datafusion-sql-planner' && 'dev_datafusion' || 'dev' }}
         run: |
           # install anaconda for upload
           mamba install anaconda-client
 
-          anaconda upload --label dev noarch/*.tar.bz2
+          anaconda upload --label $LABEL noarch/*.tar.bz2

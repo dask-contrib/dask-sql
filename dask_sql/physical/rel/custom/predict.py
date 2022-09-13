@@ -3,11 +3,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import com, java, org
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -46,33 +46,19 @@ class PredictModelPlugin(BaseRelPlugin):
     but can also be used without writing a single line of code.
     """
 
-    class_name = "com.dask.sql.parser.SqlPredictModel"
+    class_name = "PredictModel"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        sql_select = sql.getSelect()
-        schema_name, model_name = context.fqn(sql.getModelName().getIdentifier())
-        model_type = sql.getModelName().getIdentifierType()
-        select_list = sql.getSelectList()
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        predict_model = rel.predict_model()
 
-        logger.debug(
-            f"Predicting from {model_name} and query {sql_select} to {list(select_list)}"
-        )
+        sql_select = predict_model.getSelect()
 
-        IdentifierType = com.dask.sql.parser.SqlModelIdentifier.IdentifierType
+        # The table(s) we need to return
+        dask_table = rel.getTable()
+        schema_name, model_name = [n.lower() for n in context.fqn(dask_table)]
 
-        if model_type == IdentifierType.REFERENCE:
-            try:
-                model, training_columns = context.schema[schema_name].models[model_name]
-            except KeyError:
-                raise KeyError(f"No model registered with name {model_name}")
-        else:
-            raise NotImplementedError(f"Do not understand model type {model_type}")
-
-        sql_select_query = context._to_sql_string(sql_select)
-        df = context.sql(sql_select_query)
-
+        model, training_columns = context.schema[schema_name].models[model_name]
+        df = context.sql(sql_select)
         prediction = model.predict(df[training_columns])
         predicted_df = df.assign(target=prediction)
 
@@ -89,32 +75,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
         context.create_table(temporary_table, predicted_df)
 
-        sql_ns = org.apache.calcite.sql
-        pos = sql.getParserPosition()
-        from_column_list = java.util.ArrayList()
-        from_column_list.add(temporary_table)
-        from_clause = sql_ns.SqlIdentifier(from_column_list, pos)  # TODO: correct pos
-
-        outer_select = sql_ns.SqlSelect(
-            sql.getParserPosition(),
-            None,  # keywordList,
-            select_list,  # selectList,
-            from_clause,  # from,
-            None,  # where,
-            None,  # groupBy,
-            None,  # having,
-            None,  # windowDecls,
-            None,  # orderBy,
-            None,  # offset,
-            None,  # fetch,
-            None,  # hints
-        )
-
-        sql_outer_query = context._to_sql_string(outer_select)
-        df = context.sql(sql_outer_query)
-        context.drop_table(temporary_table)
-
-        cc = ColumnContainer(df.columns)
-        dc = DataContainer(df, cc)
+        cc = ColumnContainer(predicted_df.columns)
+        dc = DataContainer(predicted_df, cc)
 
         return dc
