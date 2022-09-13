@@ -108,11 +108,6 @@ impl OptimizerRule for EliminateAggDistinct {
                 ref aggr_expr,
                 ..
             }) => {
-                if !group_expr.is_empty() {
-                    // this case not implemented yet
-                    return Ok(plan.clone());
-                }
-
                 // first pass collects the expressions being aggregated
                 let mut distinct_columns: HashSet<Expr> = HashSet::new();
                 let mut not_distinct_columns: HashSet<Expr> = HashSet::new();
@@ -120,9 +115,17 @@ impl OptimizerRule for EliminateAggDistinct {
                     gather_expressions(expr, &mut distinct_columns, &mut not_distinct_columns);
                 }
 
+                if !distinct_columns.is_empty() && !group_expr.is_empty() {
+                    return Err(DataFusionError::NotImplemented(
+                        "No support yet for COUNT(DISTINCT) with GROUP BY".to_string(),
+                    ));
+                }
+
                 // combine the two sets to get all unique expressions
                 let mut unique_expressions = distinct_columns.clone();
                 unique_expressions.extend(not_distinct_columns.clone());
+
+                let unique_expressions = unique_set_without_aliases(&unique_expressions);
 
                 let plans: Vec<LogicalPlan> = unique_expressions
                     .iter()
@@ -169,8 +172,10 @@ fn create_plan(
         expr, distinct_columns, not_distinct_columns
     );
 
-    let has_distinct = distinct_columns.contains(expr);
-    let has_non_distinct = not_distinct_columns.contains(expr);
+    let _distinct_columns = unique_set_without_aliases(distinct_columns);
+    let _not_distinct_columns = unique_set_without_aliases(not_distinct_columns);
+    let has_distinct = _distinct_columns.contains(expr);
+    let has_non_distinct = _not_distinct_columns.contains(expr);
     assert!(has_distinct || has_non_distinct);
 
     if has_distinct && has_non_distinct {
@@ -233,16 +238,32 @@ fn create_plan(
     }
 }
 
-/// Gather all inputs to COUNT() and COUNT(DISTINCT) aggregate expressions
+/// Gather all inputs to COUNT() and COUNT(DISTINCT) aggregate expressions and keep any aliases
 fn gather_expressions(
     aggr_expr: &Expr,
     distinct_columns: &mut HashSet<Expr>,
     not_distinct_columns: &mut HashSet<Expr>,
 ) {
     match aggr_expr {
-        Expr::Alias(expr, _) => {
-            gather_expressions(expr.as_ref(), distinct_columns, not_distinct_columns)
-        }
+        Expr::Alias(x, alias) => match x.as_ref() {
+            Expr::AggregateFunction {
+                fun: AggregateFunction::Count,
+                args,
+                distinct,
+                ..
+            } => {
+                if *distinct {
+                    for arg in args {
+                        distinct_columns.insert(arg.clone().alias(alias));
+                    }
+                } else {
+                    for arg in args {
+                        not_distinct_columns.insert(arg.clone().alias(alias));
+                    }
+                }
+            }
+            _ => {}
+        },
         Expr::AggregateFunction {
             fun: AggregateFunction::Count,
             args,
@@ -250,50 +271,34 @@ fn gather_expressions(
             ..
         } => {
             if *distinct {
-                gather_unique_expressions(args.as_slice(), distinct_columns);
+                for arg in args {
+                    distinct_columns.insert(arg.clone());
+                }
             } else {
-                gather_unique_expressions(args.as_slice(), not_distinct_columns);
+                for arg in args {
+                    not_distinct_columns.insert(arg.clone());
+                }
             }
         }
         _ => {}
     }
 }
 
-fn gather_unique_expressions(args: &[Expr], expr_set: &mut HashSet<Expr>) {
-    for arg in args {
-        expr_set.insert(arg.clone());
-    }
+fn strip_aliases(expr: &[&Expr]) -> Vec<Expr> {
+    expr.iter()
+        .cloned()
+        .map(|e| match e {
+            Expr::Alias(x, _) => x.as_ref().clone(),
+            other => other.clone(),
+        })
+        .collect()
 }
 
-fn rewrite_aggr_remove_distinct(
-    expr: &Expr,
-    distinct_columns: &HashSet<Expr>,
-    not_distinct_columns: &HashSet<Expr>,
-) -> (Expr, bool) {
-    match expr {
-        Expr::Alias(expr, alias) => {
-            let (expr, b) =
-                rewrite_aggr_remove_distinct(expr.as_ref(), distinct_columns, not_distinct_columns);
-            (expr.alias(alias), b)
-        }
-        Expr::AggregateFunction {
-            fun: AggregateFunction::Count,
-            args,
-            distinct,
-        } => {
-            if *distinct {
-                let rewrite = Expr::AggregateFunction {
-                    fun: AggregateFunction::Count,
-                    args: args.clone(),
-                    distinct: false, // remove DISTINCT
-                };
-                (rewrite, true)
-            } else {
-                (expr.clone(), false)
-            }
-        }
-        _ => (expr.clone(), false),
-    }
+fn unique_set_without_aliases(unique_expressions: &HashSet<Expr>) -> HashSet<Expr> {
+    let v = Vec::from_iter(unique_expressions);
+    let unique_expressions = strip_aliases(v.as_slice());
+    let unique_expressions: HashSet<Expr> = HashSet::from_iter(unique_expressions.iter().cloned());
+    unique_expressions
 }
 
 #[cfg(test)]
@@ -414,47 +419,6 @@ mod tests {
             .build()?;
 
         let expected = "TBD";
-        assert_optimized_plan_eq(&plan, expected);
-        Ok(())
-    }
-
-    #[test]
-    fn count_distinct_with_group_by() -> Result<()> {
-        let plan = LogicalPlanBuilder::from(test_table_scan("test"))
-            .aggregate(vec![col("test.b")], vec![count_distinct(col("test.b"))])?
-            .project(vec![col("test.b")])?
-            .build()?;
-
-        let expected = "Projection: #test.b\
-        \n  Aggregate: groupBy=[[]], aggr=[[COUNT(#test.b)]]\
-        \n    Aggregate: groupBy=[[#test.b]], aggr=[[]]\
-        \n      TableScan: test [a, b, c, d]";
-
-        assert_optimized_plan_eq(&plan, expected);
-        Ok(())
-    }
-
-    ///
-    ///SELECT
-    /// COUNT(b) AS cnt_b,
-    /// COUNT(DISTINCT b) AS cntd_b
-    ///FROM test
-    ///
-    #[test]
-    fn count_distinct_multi() -> Result<()> {
-        let plan = LogicalPlanBuilder::from(test_table_scan("test"))
-            .aggregate(
-                vec![col("test.b")],
-                vec![count(col("test.b")), count_distinct(col("test.b"))],
-            )?
-            .project(vec![col("test.b")])?
-            .build()?;
-
-        let expected = "Projection: #test.b [b]\
-        \n  Aggregate: groupBy=[[]], aggr=[[SUM(COUNT(test.b))], [COUNT(test.b)]]\
-        \n    Aggregate: groupBy=[[#test.b]], aggr=[[COUNT(test.b)]]\
-        \n      TableScan: test [a, b, c, d]";
-
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
     }
