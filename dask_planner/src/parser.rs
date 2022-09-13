@@ -648,6 +648,11 @@ impl<'a> DaskParser<'a> {
             DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
+        // Arbitrarily limit our input to only SELECT statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_keyword(Keyword::SELECT)?;
+        self.parser.prev_token();
+
         let sql_statement = self.parse_statement()?;
         self.parser.expect_token(&Token::RParen)?;
 
@@ -678,6 +683,11 @@ impl<'a> DaskParser<'a> {
         // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
         self.parser.expect_token(&Token::LParen)?;
+
+        // Arbitrarily limit our input to only SELECT statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_keyword(Keyword::SELECT)?;
+        self.parser.prev_token();
 
         let select = self.parse_statement()?;
 
