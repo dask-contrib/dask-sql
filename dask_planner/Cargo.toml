@@ -13,10 +13,10 @@ tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync"
 rand = "0.7"
 pyo3 = { version = "0.16.5", features = ["extension-module", "abi3", "abi3-py38"] }
 arrow = { version = "22.0.0", features = ["prettyprint"] }
-datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "8b59b207aaadd6f2c19c28d1f1431a0cb8d110ae" }
-datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "8b59b207aaadd6f2c19c28d1f1431a0cb8d110ae" }
-datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "8b59b207aaadd6f2c19c28d1f1431a0cb8d110ae" }
-datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "8b59b207aaadd6f2c19c28d1f1431a0cb8d110ae" }
+datafusion-sql = { git="https://github.com/apache/arrow-datafusion/", rev = "12.0.0-rc1" }
+datafusion-expr = { git="https://github.com/apache/arrow-datafusion/", rev = "12.0.0-rc1" }
+datafusion-common = { git="https://github.com/apache/arrow-datafusion/", rev = "12.0.0-rc1" }
+datafusion-optimizer = { git="https://github.com/apache/arrow-datafusion/", rev = "12.0.0-rc1" }
 uuid = { version = "0.8", features = ["v4"] }
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"

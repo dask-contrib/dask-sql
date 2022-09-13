@@ -421,19 +421,21 @@ impl PyExpr {
                 | Operator::RegexMatch
                 | Operator::RegexIMatch
                 | Operator::RegexNotMatch
-                | Operator::RegexNotIMatch
-                | Operator::BitwiseAnd
-                | Operator::BitwiseOr => "BOOLEAN",
+                | Operator::RegexNotIMatch => "BOOLEAN",
                 Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
                     "BIGINT"
                 }
                 Operator::Divide => "FLOAT",
                 Operator::StringConcat => "VARCHAR",
-                Operator::BitwiseShiftLeft | Operator::BitwiseShiftRight => {
+                Operator::BitwiseShiftLeft
+                | Operator::BitwiseShiftRight
+                | Operator::BitwiseXor
+                | Operator::BitwiseAnd
+                | Operator::BitwiseOr => {
                     // the type here should be the same as the type of the left expression
                     // but we can only compute that if we have the schema available
                     return Err(py_type_err(
-                        "Bitwise shift operators unsupported in get_type".to_string(),
+                        "Bitwise operators unsupported in get_type".to_string(),
                     ));
                 }
             },
