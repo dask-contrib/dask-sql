@@ -170,6 +170,8 @@ def test_clustering_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_create_model_with_prediction(c, training_df):
     c.sql(
         """
