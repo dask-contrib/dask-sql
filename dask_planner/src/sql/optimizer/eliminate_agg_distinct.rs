@@ -200,7 +200,7 @@ fn create_plan(
                 fun: AggregateFunction::Count,
                 args: vec![col(&first_aggregate.schema().field(0).qualified_name())],
                 distinct: false,
-                filter: None
+                filter: None,
             };
             let aggr_expr = vec![count];
             let schema = DFSchema::new_with_metadata(

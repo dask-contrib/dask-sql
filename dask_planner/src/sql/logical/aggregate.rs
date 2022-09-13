@@ -75,7 +75,7 @@ impl PyAggregate {
                 fun: _,
                 args: _,
                 distinct,
-                filter: _
+                filter: _,
             } => distinct,
             _ => panic!("Encountered a non Aggregate type in agg_func_name"),
         })
