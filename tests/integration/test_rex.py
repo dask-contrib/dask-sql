@@ -8,9 +8,6 @@ import pytest
 from tests.utils import assert_eq
 
 
-@pytest.mark.xfail(
-    reason="Bumping to Calcite 1.29.0 to address CVE-2021-44228 caused a stack overflow in this test"
-)
 def test_case(c, df):
     result_df = c.sql(
         """
