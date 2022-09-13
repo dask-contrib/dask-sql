@@ -648,9 +648,14 @@ impl<'a> DaskParser<'a> {
             DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
-        // Arbitrarily limit our input to only SELECT statements
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
         // TODO: find a more sophisticated way to allow any statement that would return a table
-        self.parser.expect_keyword(Keyword::SELECT)?;
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
         self.parser.prev_token();
 
         let sql_statement = self.parse_statement()?;
@@ -684,9 +689,14 @@ impl<'a> DaskParser<'a> {
         self.parser.expect_keyword(Keyword::AS)?;
         self.parser.expect_token(&Token::LParen)?;
 
-        // Arbitrarily limit our input to only SELECT statements
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
         // TODO: find a more sophisticated way to allow any statement that would return a table
-        self.parser.expect_keyword(Keyword::SELECT)?;
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
         self.parser.prev_token();
 
         let select = self.parse_statement()?;
