@@ -152,7 +152,6 @@ impl OptimizerRule for EliminateAggDistinct {
                             builder = builder.cross_join(plan)?;
                         }
                         builder.build()
-
                     }
                 }
             }

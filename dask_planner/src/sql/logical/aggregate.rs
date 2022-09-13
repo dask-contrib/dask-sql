@@ -104,7 +104,6 @@ impl PyAggregate {
             )),
         }
     }
-
 }
 
 impl TryFrom<LogicalPlan> for PyAggregate {
