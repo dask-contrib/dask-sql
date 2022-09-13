@@ -69,9 +69,10 @@
 //!         DaskProject(d=[$3]): rowcount = 100.0, cumulative cost = {200.0 rows, 201.0 cpu, 0.0 io}, id = 473
 //!           DaskTableScan(table=[[root, a]]): rowcount = 100.0, cumulative cost = {100.0 rows, 101.0 cpu, 0.0 io}, id = 363
 
-use datafusion_common::{Column, DFSchema, Result};
+use datafusion_common::{DFSchema, DataFusionError, Result};
 use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
+    col,
     logical_plan::{Aggregate, LogicalPlan},
     AggregateFunction, Expr,
 };
@@ -100,16 +101,16 @@ impl OptimizerRule for EliminateAggDistinct {
         // optimize inputs first
         let plan = utils::optimize_children(self, plan, optimizer_config)?;
 
-        match &plan {
+        match plan {
             LogicalPlan::Aggregate(Aggregate {
-                input,
-                group_expr,
-                aggr_expr,
+                ref input,
+                ref group_expr,
+                ref aggr_expr,
                 ..
             }) => {
                 if !group_expr.is_empty() {
                     // this case not implemented yet
-                    return Ok(plan);
+                    return Ok(plan.clone());
                 }
 
                 // first pass collects the expressions being aggregated
@@ -119,142 +120,30 @@ impl OptimizerRule for EliminateAggDistinct {
                     gather_expressions(expr, &mut distinct_columns, &mut not_distinct_columns);
                 }
 
-                // remove DISTINCT
-                let rewritten_expr: Vec<(Expr, bool)> = aggr_expr
+                // combine the two sets to get all unique expressions
+                let mut unique_expressions = distinct_columns.clone();
+                unique_expressions.extend(not_distinct_columns.clone());
+
+                let plans: Vec<LogicalPlan> = unique_expressions
                     .iter()
                     .map(|expr| {
-                        rewrite_aggr_remove_distinct(expr, &distinct_columns, &not_distinct_columns)
+                        create_plan(
+                            &plan,
+                            &input,
+                            aggr_expr,
+                            expr,
+                            &distinct_columns,
+                            &not_distinct_columns,
+                        )
                     })
-                    .collect();
-
-                let distinct_columns: Vec<Expr> = distinct_columns.iter().cloned().collect();
-                let not_distinct_columns: Vec<Expr> =
-                    not_distinct_columns.iter().cloned().collect();
-
-                println!("found distinct columns: {:?}", distinct_columns);
-                println!("found non-distinct columns: {:?}", not_distinct_columns);
-
-                match distinct_columns.len() {
-                    0 => Ok(plan.clone()),
-                    1 => {
-                        // TODO refactor to avoid duplicate code
-
-                        match not_distinct_columns.len() {
-                            0 => {
-                                // simple case of a single DISTINCT aggregation
-                                let optimized_aggr_expr =
-                                    rewritten_expr.iter().map(|x| x.0.clone()).collect();
-
-                                let group_expr = distinct_columns.clone();
-                                let schema = DFSchema::new_with_metadata(
-                                    exprlist_to_fields(&group_expr, &input)?,
-                                    HashMap::new(),
-                                )?;
-                                let distinct_input = LogicalPlan::Aggregate(Aggregate {
-                                    input: input.clone(),
-                                    group_expr: group_expr,
-                                    aggr_expr: vec![],
-                                    schema: Arc::new(schema),
-                                });
-
-                                // Re-create the original Aggregate node without the DISTINCT element
-                                let schema = DFSchema::new_with_metadata(
-                                    exprlist_to_fields(&optimized_aggr_expr, &input)?,
-                                    HashMap::new(),
-                                )?;
-                                // TODO assert that the output schema is compatible with the original plans output schema
-                                Ok(LogicalPlan::Aggregate(Aggregate {
-                                    input: Arc::new(distinct_input),
-                                    group_expr: vec![],
-                                    aggr_expr: optimized_aggr_expr,
-                                    schema: Arc::new(schema),
-                                }))
-                            }
-                            1 => {
-                                // both a COUNT and a COUNT DISTINCT
-                                if distinct_columns != not_distinct_columns {
-                                    // not on the same expression so unsupported
-                                    return Ok(plan);
-                                }
-
-                                let group_expr = distinct_columns.clone();
-                                let count_expr = Expr::AggregateFunction {
-                                    fun: AggregateFunction::Count,
-                                    args: vec![distinct_columns[0].clone()],
-                                    distinct: false,
-                                };
-                                let aggr_expr = vec![count_expr];
-
-                                let mut x = group_expr.clone();
-                                x.extend_from_slice(&aggr_expr);
-
-                                let schema = DFSchema::new_with_metadata(
-                                    exprlist_to_fields(&x, &input)?,
-                                    HashMap::new(),
-                                )?;
-
-                                assert_eq!(
-                                    schema.fields().len(),
-                                    group_expr.len() + aggr_expr.len()
-                                );
-
-                                let distinct_input = LogicalPlan::Aggregate(Aggregate::try_new(
-                                    input.clone(),
-                                    group_expr,
-                                    aggr_expr,
-                                    Arc::new(schema),
-                                )?);
-
-                                println!(
-                                    "distinct_input = {}",
-                                    distinct_input.display_indent_schema()
-                                );
-
-                                let optimized_aggr_expr = rewritten_expr
-                                    .iter()
-                                    .map(|x| {
-                                        if x.1 {
-                                            // COUNT DISTINCT: get the COUNT of the unique grouping keys
-                                            Expr::AggregateFunction {
-                                                fun: AggregateFunction::Count,
-                                                args: vec![distinct_columns[0].clone()],
-                                                distinct: false,
-                                            }
-                                        } else {
-                                            // COUNT: get the SUM of the COUNT DISTINCT values
-                                            Expr::AggregateFunction {
-                                                fun: AggregateFunction::Sum,
-                                                args: vec![Expr::Column(Column::from_name(
-                                                    distinct_input.schema().field(1).name(),
-                                                ))], // hacky
-                                                distinct: false,
-                                            }
-                                        }
-                                    })
-                                    .collect();
-
-                                // Re-create the original Aggregate node without the DISTINCT element
-                                let schema = DFSchema::new_with_metadata(
-                                    exprlist_to_fields(&optimized_aggr_expr, &input)?,
-                                    HashMap::new(),
-                                )?;
-                                // TODO assert that the output schema is compatible with the original plans output schema
-                                Ok(LogicalPlan::Aggregate(Aggregate::try_new(
-                                    Arc::new(distinct_input),
-                                    vec![],
-                                    optimized_aggr_expr,
-                                    Arc::new(schema),
-                                )?))
-                            }
-                            _ => {
-                                // this case not implemented yet
-                                Ok(plan)
-                            }
-                        }
-                    }
+                    .collect::<Result<Vec<_>>>()?;
+                match plans.len() {
+                    1 => Ok(plans[0].clone()),
                     _ => {
-                        // this case not implemented yet
-                        Ok(plan)
+                        // TODO join all the plans
+                        Err(DataFusionError::Plan(
+                            "Multiple DISTINCT aggregates are not supported yet".to_string(),
+                        ))
                     }
                 }
             }
@@ -267,12 +156,90 @@ impl OptimizerRule for EliminateAggDistinct {
     }
 }
 
-fn gather_expressions(
+fn create_plan(
+    plan: &LogicalPlan,
+    input: &Arc<LogicalPlan>,
+    aggr_expr: &Vec<Expr>,
     expr: &Expr,
+    distinct_columns: &HashSet<Expr>,
+    not_distinct_columns: &HashSet<Expr>,
+) -> Result<LogicalPlan> {
+    println!(
+        "create_plan({}, {:?}, {:?})",
+        expr, distinct_columns, not_distinct_columns
+    );
+
+    let has_distinct = distinct_columns.contains(expr);
+    let has_non_distinct = not_distinct_columns.contains(expr);
+    assert!(has_distinct || has_non_distinct);
+
+    if has_distinct && has_non_distinct {
+        unimplemented!()
+    } else if has_distinct {
+        // simple case of a single DISTINCT aggregation
+        //
+        // Projection: #COUNT(DISTINCT a)
+        //   Projection: #COUNT(alias1) AS COUNT(DISTINCT a)
+        //     Aggregate: groupBy=[[]], aggr=[[COUNT(#alias1)]]
+        //       Aggregate: groupBy=[[#a AS alias1]], aggr=[[]]
+        //         TableScan: test projection=[a]
+
+        // alias handling
+
+        // The first aggregate groups by the distinct expression. This is the equivalent
+        // of `SELECT DISTINCT expr`.
+        let first_aggregate = {
+            let group_expr = vec![expr.clone()];
+            let schema = DFSchema::new_with_metadata(
+                exprlist_to_fields(&group_expr, &input)?,
+                HashMap::new(),
+            )?;
+            LogicalPlan::Aggregate(Aggregate::try_new(
+                input.clone(),
+                group_expr,
+                vec![],
+                Arc::new(schema),
+            )?)
+        };
+
+        // The second aggregate counts the number of values returned by the first aggregate
+        let second_aggregate = {
+            // Re-create the original Aggregate node without the DISTINCT element
+            let count = Expr::AggregateFunction {
+                fun: AggregateFunction::Count,
+                args: vec![col(&first_aggregate.schema().field(0).qualified_name())],
+                distinct: false,
+            };
+            let aggr_expr = vec![count];
+            let schema = DFSchema::new_with_metadata(
+                exprlist_to_fields(&aggr_expr, &input)?,
+                HashMap::new(),
+            )?;
+            // TODO assert that the output schema is compatible with the original plans output schema
+            LogicalPlan::Aggregate(Aggregate::try_new(
+                Arc::new(first_aggregate),
+                vec![],
+                aggr_expr,
+                Arc::new(schema),
+            )?)
+        };
+
+        // TODO wrap in projection?
+
+        Ok(second_aggregate)
+    } else {
+        // this is just a COUNT()
+        Ok(plan.clone())
+    }
+}
+
+/// Gather all inputs to COUNT() and COUNT(DISTINCT) aggregate expressions
+fn gather_expressions(
+    aggr_expr: &Expr,
     distinct_columns: &mut HashSet<Expr>,
     not_distinct_columns: &mut HashSet<Expr>,
 ) {
-    match expr {
+    match aggr_expr {
         Expr::Alias(expr, _) => {
             gather_expressions(expr.as_ref(), distinct_columns, not_distinct_columns)
         }
@@ -378,6 +345,20 @@ mod tests {
     fn test_single_distinct_no_group_by() -> Result<()> {
         let empty_group_expr: Vec<Expr> = vec![];
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
+            .aggregate(empty_group_expr, vec![count_distinct(col("a"))])?
+            .build()?;
+
+        let expected = "Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
+        \n  Aggregate: groupBy=[[#a.a]], aggr=[[]]\
+        \n    TableScan: a";
+        assert_optimized_plan_eq(&plan, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_single_distinct_no_group_by_with_alias() -> Result<()> {
+        let empty_group_expr: Vec<Expr> = vec![];
+        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
             .aggregate(
                 empty_group_expr,
                 vec![count_distinct(col("a")).alias("cd_a")],
@@ -391,7 +372,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore]
     #[test]
     fn test_count_and_distinct_no_group_by() -> Result<()> {
         let empty_group_expr: Vec<Expr> = vec![];
@@ -438,7 +418,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore]
     #[test]
     fn count_distinct_with_group_by() -> Result<()> {
         let plan = LogicalPlanBuilder::from(test_table_scan("test"))
@@ -461,7 +440,6 @@ mod tests {
     /// COUNT(DISTINCT b) AS cntd_b
     ///FROM test
     ///
-    #[ignore]
     #[test]
     fn count_distinct_multi() -> Result<()> {
         let plan = LogicalPlanBuilder::from(test_table_scan("test"))
