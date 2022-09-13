@@ -157,6 +157,7 @@ def test_order_by_no_limit():
         a=a,
     )
 
+
 @pytest.mark.skip(reason="WIP DataFusion")
 def test_complex_order():
     a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
