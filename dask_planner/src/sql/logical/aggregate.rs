@@ -70,15 +70,17 @@ impl PyAggregate {
 
     #[pyo3(name = "isAggExprDistinct")]
     pub fn distinct_agg_expr(&self, expr: PyExpr) -> PyResult<bool> {
-        Ok(match expr.expr {
+        match expr.expr {
             Expr::AggregateFunction {
                 fun: _,
                 args: _,
                 distinct,
                 filter: _,
-            } => distinct,
-            _ => panic!("Encountered a non Aggregate type in agg_func_name"),
-        })
+            } => Ok(distinct),
+            _ => Err(py_type_err(
+                "Encountered a non Aggregate type in agg_func_name",
+            )),
+        }
     }
 
     #[pyo3(name = "isDistinctNode")]
