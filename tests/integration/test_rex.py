@@ -239,6 +239,8 @@ def test_like(c, input_table, gpu, request):
 
     assert len(df) == 0
 
+    # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
+    # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
     #     f"""
     #     SELECT * FROM {input_table}
