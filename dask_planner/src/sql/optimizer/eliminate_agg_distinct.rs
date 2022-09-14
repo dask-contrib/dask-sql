@@ -333,7 +333,7 @@ fn create_plan(
             // Re-create the original Aggregate node without the DISTINCT element
             let count = Expr::AggregateFunction {
                 fun: AggregateFunction::Count,
-                args: vec![col(&first_aggregate.schema().field(0).qualified_name())],
+                args: vec![col(&first_aggregate.schema().field(group_expr.len()).qualified_name())],
                 distinct: false,
                 filter: None,
             };
