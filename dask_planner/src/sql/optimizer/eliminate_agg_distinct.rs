@@ -114,13 +114,12 @@ impl OptimizerRule for EliminateAggDistinct {
                 // combine the two sets to get all unique expressions
                 let mut unique_expressions = distinct_columns.clone();
                 unique_expressions.extend(not_distinct_columns.clone());
+                let mut unique_expressions: Vec<Expr> =
+                    Vec::from_iter(unique_set_without_aliases(&unique_expressions));
+                unique_expressions.sort_by(|l, r| format!("{}", l).cmp(&format!("{}", r)));
 
-                let unique_expressions = unique_set_without_aliases(&unique_expressions);
-
-                let mut x: Vec<Expr> = Vec::from_iter(unique_expressions);
-                x.sort_by(|l, r| format!("{}", l).cmp(&format!("{}", r)));
-
-                let plans: Vec<LogicalPlan> = x
+                // create one plan per unique expression being aggregated
+                let plans: Vec<LogicalPlan> = unique_expressions
                     .iter()
                     .map(|expr| {
                         create_plan(
@@ -180,26 +179,10 @@ fn create_plan(
     let has_non_distinct = _not_distinct_columns.contains(expr);
     assert!(has_distinct || has_non_distinct);
 
-    let distinct_columns: Vec<Expr> = distinct_columns
-        .iter()
-        .filter(|e| match e {
-            Expr::Alias(x, _) => x.as_ref() == expr,
-            other => *other == expr,
-        })
-        .cloned()
-        .collect();
-
-    let not_distinct_columns: Vec<Expr> = not_distinct_columns
-        .iter()
-        .filter(|e| match e {
-            Expr::Alias(x, _) => x.as_ref() == expr,
-            other => *other == expr,
-        })
-        .cloned()
-        .collect();
-
-    let distinct_expr: Vec<Expr> = to_sorted_vec(distinct_columns);
-    let not_distinct_expr: Vec<Expr> = to_sorted_vec(not_distinct_columns);
+    let distinct_expr: Vec<Expr> =
+        to_sorted_vec(strip_aliases(&Vec::from_iter(distinct_columns.iter())));
+    let not_distinct_expr: Vec<Expr> =
+        to_sorted_vec(strip_aliases(&Vec::from_iter(not_distinct_columns.iter())));
 
     if has_distinct && has_non_distinct && distinct_expr.len() == 1 && not_distinct_expr.len() == 1
     {
