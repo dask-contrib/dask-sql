@@ -63,7 +63,6 @@
 //!      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use datafusion_common::Column;
 use datafusion_common::{DFSchema, Result, ScalarValue};
 use datafusion_expr::logical_plan::Projection;
 use datafusion_expr::utils::exprlist_to_fields;
@@ -132,7 +131,6 @@ impl OptimizerRule for EliminateAggDistinct {
                             &distinct_columns,
                             &not_distinct_columns,
                             optimizer_config,
-                            false, //x.len() < 2
                         )
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -175,7 +173,6 @@ fn create_plan(
     distinct_columns: &HashSet<Expr>,
     not_distinct_columns: &HashSet<Expr>,
     optimizer_config: &mut OptimizerConfig,
-    strip_qualifier_from_alias: bool,
 ) -> Result<LogicalPlan> {
     let _distinct_columns = unique_set_without_aliases(distinct_columns);
     let _not_distinct_columns = unique_set_without_aliases(not_distinct_columns);
@@ -275,12 +272,7 @@ fn create_plan(
         // a COUNT(DISTINCT), also taking aliases into account
         let projection = {
             let count_col = col(&second_aggregate.schema().field(0).qualified_name());
-            let sanitized_expr = if strip_qualifier_from_alias {
-                strip_qualifier(expr)
-            } else {
-                expr.clone()
-            };
-            let alias_str = format!("COUNT({})", sanitized_expr);
+            let alias_str = format!("COUNT({})", expr);
             let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
             let count_col = match &not_distinct_expr[0] {
                 Expr::Alias(_, alias) => count_col.alias(alias.as_str()),
@@ -291,12 +283,7 @@ fn create_plan(
             let count_distinct_col = match &distinct_expr[0] {
                 Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
                 expr => {
-                    let sanitized_expr = if strip_qualifier_from_alias {
-                        strip_qualifier(expr)
-                    } else {
-                        expr.clone()
-                    };
-                    let alias_str = format!("COUNT(DISTINCT {})", sanitized_expr);
+                    let alias_str = format!("COUNT(DISTINCT {})", expr);
                     let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
                     count_distinct_col.alias(&alias_str)
                 }
@@ -377,12 +364,7 @@ fn create_plan(
             let count_distinct_col = match &distinct_expr[0] {
                 Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
                 expr => {
-                    let sanitized_expr = if strip_qualifier_from_alias {
-                        strip_qualifier(expr)
-                    } else {
-                        expr.clone()
-                    };
-                    let alias_str = format!("COUNT(DISTINCT {})", sanitized_expr);
+                    let alias_str = format!("COUNT(DISTINCT {})", expr);
                     let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
                     count_distinct_col.alias(&alias_str)
                 }
@@ -401,32 +383,6 @@ fn create_plan(
         Ok(projection)
     } else {
         Ok(plan.clone())
-    }
-}
-
-fn strip_qualifiers(expr: &[Expr]) -> Vec<Expr> {
-    expr.iter().map(strip_qualifier).collect()
-}
-
-fn strip_qualifier(expr: &Expr) -> Expr {
-    match expr {
-        Expr::Column(col) => Expr::Column(Column::from_name(&col.name)),
-        Expr::Alias(expr, alias) => Expr::Alias(Box::new(strip_qualifier(expr)), alias.clone()),
-        Expr::AggregateFunction {
-            fun,
-            args,
-            distinct,
-            filter,
-        } => Expr::AggregateFunction {
-            fun: fun.clone(),
-            args: strip_qualifiers(args),
-            distinct: *distinct,
-            filter: filter.clone(),
-        },
-        _ => {
-            trace!("cannot strip from {}", expr);
-            expr.clone()
-        }
     }
 }
 
