@@ -276,7 +276,6 @@ def test_join_multi():
     )
 
 
-
 @pytest.mark.skip(
     reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
 )
@@ -329,7 +328,6 @@ def test_agg_count_no_group_by():
         SELECT
             COUNT(a) AS cd_a
         FROM a
-        
         """,
         a=a,
     )
