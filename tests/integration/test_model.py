@@ -1,6 +1,5 @@
 import os
 import pickle
-import sys
 
 import joblib
 import pandas as pd
@@ -576,10 +575,6 @@ def test_mlflow_export(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.xfail(
-    sys.platform == "win32",
-    reason="Windows is not officially supported for dask/xgboost",
-)
 @skip_if_external_scheduler
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
