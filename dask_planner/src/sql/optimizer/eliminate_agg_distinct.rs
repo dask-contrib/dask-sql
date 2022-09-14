@@ -481,6 +481,20 @@ mod tests {
     }
 
     #[test]
+    fn test_single_distinct_group_by_with_alias() -> Result<()> {
+        let plan = LogicalPlanBuilder::from(test_table_scan("a"))
+            .aggregate(vec![col("a")], vec![count_distinct(col("b")).alias("cd_b")])?
+            .build()?;
+
+        let expected = "Projection: #a.a, #COUNT(a.a) AS cd_b\
+        \n  Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a)]]\
+        \n    Aggregate: groupBy=[[#a.a, #a.b]], aggr=[[]]\
+        \n      TableScan: a";
+        assert_optimized_plan_eq(&plan, expected);
+        Ok(())
+    }
+
+    #[test]
     fn test_single_distinct_no_group_by() -> Result<()> {
         let empty_group_expr: Vec<Expr> = vec![];
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
