@@ -13,7 +13,7 @@
 //!
 //! Would typically produce a LogicalPlan like ...
 //! ```text
-//! Projection: #COUNT(a.a) AS COUNT(DISTINCT(#a.a))))\
+//! Projection: #COUNT(a.a) AS COUNT(DISTINCT #a.a)))\
 //!   Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
 //!     Aggregate: groupBy=[[#a.a]], aggr=[[]]\
 //!       TableScan: test";
@@ -46,7 +46,7 @@
 //! CrossJoin:\
 //!  CrossJoin:\
 //!    CrossJoin:\
-//!      Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT(#a.a))\
+//!      Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT #a.a)\
 //!        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
 //!          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
 //!            TableScan: a\
@@ -267,7 +267,7 @@ fn create_plan(
             let count_distinct_col = col(&second_aggregate.schema().field(1).qualified_name());
             let count_distinct_col = match &distinct_expr[0] {
                 Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
-                expr => count_distinct_col.alias(&format!("COUNT(DISTINCT({}))", expr)),
+                expr => count_distinct_col.alias(&format!("COUNT(DISTINCT {})", expr)),
             };
 
             let mut projected_cols = group_expr.clone();
@@ -341,7 +341,8 @@ fn create_plan(
             let count_distinct_col = match &distinct_expr[0] {
                 Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
                 expr => {
-                    let alias_str = format!("COUNT(DISTINCT({}))", expr);
+                    let alias_str = format!("COUNT(DISTINCT {})", expr);
+                    let alias_str = alias_str.replace("#", ""); // TODO remove this ugly hack
                     count_distinct_col.alias(&alias_str)
                 }
             };
@@ -480,7 +481,7 @@ mod tests {
             .aggregate(vec![col("a")], vec![count_distinct(col("b"))])?
             .build()?;
 
-        let expected = "Projection: #a.a, #COUNT(a.a) AS COUNT(DISTINCT(#a.b))\
+        let expected = "Projection: #a.a, #COUNT(a.a) AS COUNT(DISTINCT a.b)\
         \n  Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a)]]\
         \n    Aggregate: groupBy=[[#a.a, #a.b]], aggr=[[]]\
         \n      TableScan: a";
@@ -509,7 +510,7 @@ mod tests {
             .aggregate(empty_group_expr, vec![count_distinct(col("a"))])?
             .build()?;
 
-        let expected = "Projection: #COUNT(a.a) AS COUNT(DISTINCT(#a.a))\
+        let expected = "Projection: #COUNT(a.a) AS COUNT(DISTINCT a.a)\
         \n  Aggregate: groupBy=[[]], aggr=[[COUNT(#a.a)]]\
         \n    Aggregate: groupBy=[[#a.a]], aggr=[[]]\
         \n      TableScan: a";
@@ -544,7 +545,7 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "Projection: #a.b, #a.b AS COUNT(#a.a), #SUM(__dask_sql_count__1) AS COUNT(DISTINCT(#a.a))\
+        let expected = "Projection: #a.b, #a.b AS COUNT(#a.a), #SUM(__dask_sql_count__1) AS COUNT(DISTINCT #a.a)\
         \n  Aggregate: groupBy=[[#a.b]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
         \n    Aggregate: groupBy=[[#a.b, #a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
         \n      TableScan: a";
@@ -562,7 +563,7 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT(#a.a))\
+        let expected = "Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT #a.a)\
         \n  Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
         \n    Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
         \n      TableScan: a";
@@ -613,19 +614,19 @@ mod tests {
         let expected = "CrossJoin:\
         \n  CrossJoin:\
         \n    CrossJoin:\
-        \n      Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT(#a.a))\
+        \n      Projection: #SUM(__dask_sql_count__1) AS COUNT(#a.a), #COUNT(a.a) AS COUNT(DISTINCT #a.a)\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
         \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
         \n            TableScan: a\
-        \n      Projection: #SUM(__dask_sql_count__2) AS COUNT(#a.b), #COUNT(a.b) AS COUNT(DISTINCT(#a.b))\
+        \n      Projection: #SUM(__dask_sql_count__2) AS COUNT(#a.b), #COUNT(a.b) AS COUNT(DISTINCT #a.b)\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__2), COUNT(#a.b)]]\
         \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__2]]\
         \n            TableScan: a\
-        \n    Projection: #SUM(__dask_sql_count__3) AS COUNT(#a.c), #COUNT(a.c) AS COUNT(DISTINCT(#a.c))\
+        \n    Projection: #SUM(__dask_sql_count__3) AS COUNT(#a.c), #COUNT(a.c) AS COUNT(DISTINCT #a.c)\
         \n      Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__3), COUNT(#a.c)]]\
         \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__3]]\
         \n          TableScan: a\
-        \n  Projection: #SUM(__dask_sql_count__4) AS COUNT(#a.d), #COUNT(a.d) AS COUNT(DISTINCT(#a.d))\
+        \n  Projection: #SUM(__dask_sql_count__4) AS COUNT(#a.d), #COUNT(a.d) AS COUNT(DISTINCT #a.d)\
         \n    Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__4), COUNT(#a.d)]]\
         \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
         \n        TableScan: a";
