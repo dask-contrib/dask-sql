@@ -59,9 +59,6 @@ class ColumnContainer:
         if not fields:
             return self  # pragma: no cover
 
-        print("fields:", fields)
-        print("self._frontend_backend_mapping", self._frontend_backend_mapping)
-
         assert all(f in self._frontend_backend_mapping for f in fields)
         cc = self._copy()
         cc._frontend_columns = [str(x) for x in fields]

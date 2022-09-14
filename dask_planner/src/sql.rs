@@ -272,6 +272,7 @@ impl ContextProvider for DaskSQLContext {
 impl DaskSQLContext {
     #[new]
     pub fn new(default_catalog_name: String, default_schema_name: String) -> Self {
+        env_logger::init();
         Self {
             default_catalog_name,
             default_schema_name,

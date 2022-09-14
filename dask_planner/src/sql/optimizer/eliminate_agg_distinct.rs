@@ -73,6 +73,7 @@ use datafusion_expr::{
     AggregateFunction, Expr, LogicalPlanBuilder,
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
+use log::trace;
 use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -135,6 +136,10 @@ impl OptimizerRule for EliminateAggDistinct {
                         )
                     })
                     .collect::<Result<Vec<_>>>()?;
+
+                for plan in &plans {
+                    trace!("FINAL PLAN:\n{}", plan.display_indent());
+                }
 
                 match plans.len() {
                     0 => {
@@ -227,7 +232,7 @@ fn create_plan(
             )?)
         };
 
-        println!("first agg:\n{}", first_aggregate.display_indent_schema());
+        trace!("first agg:\n{}", first_aggregate.display_indent_schema());
 
         // The second aggregate both sums and counts the number of values returned by the
         // first aggregate
@@ -248,7 +253,7 @@ fn create_plan(
             };
             let aggr_expr = vec![sum, count];
 
-            println!("aggr_expr = {:?}", aggr_expr);
+            trace!("aggr_expr = {:?}", aggr_expr);
 
             let mut schema_expr = group_expr.clone();
             schema_expr.extend_from_slice(&aggr_expr);
@@ -264,7 +269,7 @@ fn create_plan(
             )?)
         };
 
-        println!("second agg:\n{}", second_aggregate.display_indent_schema());
+        trace!("second agg:\n{}", second_aggregate.display_indent_schema());
 
         // wrap in a projection to alias the SUM() back to a COUNT(), and the COUNT() back to
         // a COUNT(DISTINCT), also taking aliases into account
@@ -334,7 +339,7 @@ fn create_plan(
             )?)
         };
 
-        println!("first agg:\n{}", first_aggregate.display_indent_schema());
+        trace!("first agg:\n{}", first_aggregate.display_indent_schema());
 
         // The second aggregate counts the number of values returned by the first aggregate
         let second_aggregate = {
@@ -359,7 +364,7 @@ fn create_plan(
             )?)
         };
 
-        println!("second agg:\n{}", second_aggregate.display_indent_schema());
+        trace!("second agg:\n{}", second_aggregate.display_indent_schema());
 
         // wrap in a projection to alias the COUNT() back to a COUNT(DISTINCT) or the
         // user-supplied alias
@@ -384,7 +389,7 @@ fn create_plan(
             };
             projected_cols.push(count_distinct_col);
 
-            println!("projected_cols = {:?}", projected_cols);
+            trace!("projected_cols = {:?}", projected_cols);
 
             LogicalPlan::Projection(Projection::try_new(
                 projected_cols,
@@ -419,7 +424,7 @@ fn strip_qualifier(expr: &Expr) -> Expr {
             filter: filter.clone(),
         },
         _ => {
-            println!("cannot strip from {}", expr);
+            trace!("cannot strip from {}", expr);
             expr.clone()
         }
     }
