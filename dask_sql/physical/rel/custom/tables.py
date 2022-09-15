@@ -8,7 +8,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner import LogicalPlan
 
 
 class ShowTablesPlugin(BaseRelPlugin):
@@ -24,13 +24,11 @@ class ShowTablesPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = "com.dask.sql.parser.SqlShowTables"
+    class_name = "ShowTables"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema = sql.getSchema()
-        if schema is not None:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        schema = rel.show_tables().getSchemaName()
+        if schema:
             schema = str(schema).split(".")[-1]
         else:
             schema = context.DEFAULT_SCHEMA_NAME

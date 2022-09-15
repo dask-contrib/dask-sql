@@ -53,6 +53,11 @@ def df():
 
 
 @pytest.fixture()
+def department_table():
+    return pd.DataFrame({"department_name": ["English", "Math", "Science"]})
+
+
+@pytest.fixture()
 def user_table_1():
     return pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
 
@@ -159,6 +164,7 @@ def c(
     df_simple,
     df_wide,
     df,
+    department_table,
     user_table_1,
     user_table_2,
     long_table,
@@ -177,6 +183,7 @@ def c(
         "df_simple": df_simple,
         "df_wide": df_wide,
         "df": df,
+        "department_table": department_table,
         "user_table_1": user_table_1,
         "user_table_2": user_table_2,
         "long_table": long_table,

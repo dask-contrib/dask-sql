@@ -10,58 +10,24 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  build:
-    # This build step should be similar to the deploy build, to make sure we actually test
-    # the future deployable
-    name: Build the jar on ubuntu
-    runs-on: ubuntu-latest
-    if: github.repository == 'dask-contrib/dask-sql'
-    steps:
-      - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.8"
-          channel-priority: strict
-          activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.8-jdk11-dev.yaml
-      - name: Install dependencies and build the jar
-        run: |
-          python setup.py build_ext
-      - name: Upload the jar
-        uses: actions/upload-artifact@v1
-        with:
-          name: jar
-          path: dask_sql/jar/DaskSQL.jar
-
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, java: ${{ matrix.java }}, python: ${{ matrix.python }})"
-    needs: build
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
     runs-on: ${{ matrix.os }}
+    if: github.repository == 'dask-contrib/dask-sql'
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-jdk${{ matrix.java }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
-        java: [8, 11]
         os: [ubuntu-latest, windows-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags.
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk${{ matrix.java }}-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -72,21 +38,21 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
         with:
-          name: jar
-          path: dask_sql/jar/
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install hive testing dependencies for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
-      - name: Set proper JAVA_HOME for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "JAVA_HOME=${{ env.CONDA }}\envs\dask-sql\Library" >> $GITHUB_ENV
       - name: Install upstream dev Dask / dask-ml
         run: |
           mamba update dask
@@ -101,11 +67,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -115,12 +76,16 @@ jobs:
           channel-priority: strict
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-jdk11-dev.yaml
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
+          environment-file: continuous_integration/environment-3.9-dev.yaml
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
         with:
-          name: jar
-          path: dask_sql/jar/
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install cluster dependencies
         run: |
           mamba install python-blosc lz4 -c conda-forge
@@ -151,11 +116,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-v1-jdk11-${{ hashFiles('**/pom.xml') }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -163,11 +123,15 @@ jobs:
           mamba-version: "*"
           channels: dask/label/dev,conda-forge,nodefaults
           channel-priority: strict
-      - name: Download the pre-build jar
-        uses: actions/download-artifact@v1
+      - name: Setup Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        id: rust-toolchain
         with:
-          name: jar
-          path: dask_sql/jar/
+          toolchain: stable
+          override: true
+      - name: Build the Rust DataFusion bindings
+        run: |
+          python setup.py build install
       - name: Install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |

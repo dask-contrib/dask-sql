@@ -83,6 +83,28 @@ class ColumnContainer:
 
         return cc
 
+    def rename_handle_duplicates(
+        self, from_columns: List[str], to_columns: List[str]
+    ) -> ColumnContainer:
+        """
+        Same as `rename` but additionally handles presence of
+        duplicates in `from_columns`
+        """
+        cc = self._copy()
+        cc._frontend_backend_mapping.update(
+            {
+                str(column_to): self._frontend_backend_mapping[str(column_from)]
+                for column_from, column_to in zip(from_columns, to_columns)
+            }
+        )
+
+        columns = dict(zip(from_columns, to_columns))
+        cc._frontend_columns = [
+            str(columns.get(col, col)) for col in self._frontend_columns
+        ]
+
+        return cc
+
     def mapping(self) -> List[Tuple[str, ColumnType]]:
         """
         The mapping from frontend columns to backend columns.
@@ -130,8 +152,8 @@ class ColumnContainer:
         Get back the dask column, which is referenced by the
         frontend (SQL) column with the given name.
         """
-        backend_column = self._frontend_backend_mapping[column]
-        return backend_column
+
+        return self._frontend_backend_mapping[column]
 
     def make_unique(self, prefix="col"):
         """

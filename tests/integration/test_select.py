@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+from dask.dataframe.optimize import optimize_dataframe_getitem
+from dask.utils_test import hlg_layer
 
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
@@ -56,7 +58,7 @@ def test_select_expr(c, df):
         {
             "a": df["a"] + 1,
             "bla": df["b"],
-            '"df"."a" - 1': df["a"] - 1,
+            "df.a - Int64(1)": df["a"] - 1,
         }
     )
     assert_eq(result_df, expected_df)
@@ -73,7 +75,6 @@ def test_select_of_select(c, df):
         ) AS "inner"
         """
     )
-
     expected_df = pd.DataFrame({"e": 2 * (df["a"] - 1), "f": 2 * df["b"] - 1})
     assert_eq(result_df, expected_df)
 
@@ -81,10 +82,10 @@ def test_select_of_select(c, df):
 def test_select_of_select_with_casing(c, df):
     result_df = c.sql(
         """
-        SELECT AAA, aaa, aAa
+        SELECT "AAA", "aaa", "aAa"
         FROM
         (
-            SELECT a - 1 AS aAa, 2*b AS aaa, a + b AS AAA
+            SELECT a - 1 AS "aAa", 2*b AS "aaa", a + b AS "AAA"
             FROM df
         ) AS "inner"
         """
@@ -200,7 +201,7 @@ def test_multi_case_when(c):
     actual_df = c.sql(
         """
     SELECT
-        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS C
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 ELSE 0 END AS "C"
     FROM df
     """
     )
@@ -208,3 +209,55 @@ def test_multi_case_when(c):
 
     # dtype varies between int32/int64 depending on pandas version
     assert_eq(actual_df, expected_df, check_dtype=False)
+
+
+def test_case_when_no_else(c):
+    df = pd.DataFrame({"a": [1, 6, 7, 8, 9]})
+    c.create_table("df", df)
+
+    actual_df = c.sql(
+        """
+    SELECT
+        CASE WHEN a BETWEEN 6 AND 8 THEN 1 END AS "C"
+    FROM df
+    """
+    )
+    expected_df = pd.DataFrame({"C": [None, 1, 1, 1, None]})
+
+    # dtype varies between float64/object depending on pandas version
+    assert_eq(actual_df, expected_df, check_dtype=False)
+
+
+def test_singular_column_selection(c):
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    c.create_table("df", df)
+
+    wildcard_result = c.sql("SELECT * from df")
+    single_col_result = c.sql("SELECT b from df")
+
+    assert_eq(wildcard_result["b"], single_col_result["b"])
+
+
+@pytest.mark.parametrize(
+    "input_cols",
+    [
+        ["a"],
+        ["a", "b"],
+        ["a", "d"],
+        ["d", "a"],
+        ["a", "b", "d"],
+    ],
+)
+def test_multiple_column_projection(c, parquet_ddf, input_cols):
+    projection_list = ", ".join(input_cols)
+    result_df = c.sql(f"SELECT {projection_list} from parquet_ddf")
+
+    # There are 5 columns in the table, ensure only specified ones are read
+    assert_eq(len(result_df.columns), len(input_cols))
+    assert_eq(parquet_ddf[input_cols], result_df)
+    assert sorted(
+        hlg_layer(
+            optimize_dataframe_getitem(result_df.dask, result_df.__dask_keys__()),
+            "read-parquet",
+        ).columns
+    ) == sorted(input_cols)

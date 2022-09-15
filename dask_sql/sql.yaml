@@ -1,5 +1,5 @@
 sql:
-  groupby:
+  aggregate:
     split_out: 1
     split_every: null
 
@@ -10,3 +10,5 @@ sql:
     check-first-partition: True
 
   predicate_pushdown: True
+
+  optimize: True

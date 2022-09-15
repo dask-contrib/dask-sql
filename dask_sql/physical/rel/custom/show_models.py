@@ -8,7 +8,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class ShowModelsPlugin(BaseRelPlugin):
@@ -21,11 +21,9 @@ class ShowModelsPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = "com.dask.sql.parser.SqlShowModels"
+    class_name = "ShowModels"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
 
         df = pd.DataFrame(
             {"Models": list(context.schema[context.schema_name].models.keys())}

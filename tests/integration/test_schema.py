@@ -6,6 +6,7 @@ from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_table_schema(c, df):
     original_df = c.sql("SELECT * FROM df")
 
@@ -35,6 +36,7 @@ def test_table_schema(c, df):
         c.sql("SELECT * FROM foo.bar")
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_function(c):
     c.sql("CREATE SCHEMA other")
     c.sql("USE SCHEMA root")

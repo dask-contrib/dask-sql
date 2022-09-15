@@ -16,8 +16,17 @@ repos:
         args:
           - "--profile"
           - "black"
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
+      - id: cargo-check
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
+      - id: clippy
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--', '-D', 'warnings']
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.2.0
+    rev: v4.2.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
