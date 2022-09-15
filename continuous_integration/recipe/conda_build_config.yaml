@@ -1,6 +1,6 @@
 rust_compiler_version:
     - 1.62.1
 python:
-    - 3.7
     - 3.8
     - 3.9
+    - 3.10
