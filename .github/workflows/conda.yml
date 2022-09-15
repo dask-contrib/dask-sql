@@ -5,6 +5,12 @@ on:
       - main
       - datafusion-sql-planner
   pull_request:
+    paths:
+      - setup.py
+      - continuous_integration/recipe/**
+      - .github/workflows/conda.yml
+  schedule:
+    - cron: '0 0 * * 0'
 
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
