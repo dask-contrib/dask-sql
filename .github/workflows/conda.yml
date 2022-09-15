@@ -7,6 +7,10 @@ on:
   pull_request:
     paths:
       - setup.py
+      - dask_planner/Cargo.toml
+      - dask_planner/Cargo.lock
+      - dask_planner/pyproject.toml
+      - dask_planner/rust-toolchain.toml
       - continuous_integration/recipe/**
       - .github/workflows/conda.yml
   schedule:
