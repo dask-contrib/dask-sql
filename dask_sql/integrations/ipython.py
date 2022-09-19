@@ -1,3 +1,4 @@
+import time
 from typing import TYPE_CHECKING, Dict, List
 
 from dask_sql.mappings import _SQL_TO_PYTHON_FRAMES
@@ -51,7 +52,9 @@ KEYWORDS = [
 
 
 def ipython_integration(
-    context: "dask_sql.Context", auto_include: bool, disable_highlighting: bool,
+    context: "dask_sql.Context",
+    auto_include: bool,
+    disable_highlighting: bool,
 ) -> None:  # pragma: no cover
     """Integrate the context with jupyter notebooks. Have a look into :ref:`Context.ipython_magic`."""
     _register_ipython_magic(context, auto_include=auto_include)
@@ -73,7 +76,24 @@ def _register_ipython_magic(
         if auto_include:
             dataframes = c._get_tables_from_stack()
 
-        return c.sql(cell, return_futures=False, dataframes=dataframes)
+        t0 = time.time()
+        res = c.sql(cell, return_futures=False, dataframes=dataframes)
+        if (
+            "CREATE OR REPLACE TABLE" in cell
+            or "CREATE OR REPLACE VIEW" in cell
+        ):
+            table = cell.split("CREATE OR REPLACE")[1]
+            table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
+            res = c.sql(f"SELECT * FROM {table}").tail()
+        elif (
+            "CREATE TABLE" in cell
+            or "CREATE VIEW" in cell
+        ):
+            table = cell.split("CREATE")[1]
+            table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
+            res = c.sql(f"SELECT * FROM {table}").tail()
+        print(f"Execution time: {time.time() - t0:.2f}s")
+        return res
 
     # Register a new magic function
     magic_func = register_line_cell_magic(sql)
@@ -82,6 +102,7 @@ def _register_ipython_magic(
 
 def _register_syntax_highlighting():  # pragma: no cover
     import json
+
     from IPython.core import display
 
     # JS snippet to use the created mime type highlighthing

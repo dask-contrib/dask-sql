@@ -607,7 +607,9 @@ class Context:
         schema_name = schema_name or self.schema_name
         self.schema[schema_name].models[model_name.lower()] = (model, training_columns)
 
-    def ipython_magic(self, auto_include=False, disable_highlighting=True):  # pragma: no cover
+    def ipython_magic(
+        self, auto_include=False, disable_highlighting=True
+    ):  # pragma: no cover
         """
         Register a new ipython/jupyter magic function "sql"
         which sends its input as string to the :func:`sql` function.
@@ -654,7 +656,9 @@ class Context:
                 functionality. If you are working in a classic jupyter notebook,
                 you may set disable_highlighting=False if desired.
         """
-        ipython_integration(self, auto_include=auto_include, disable_highlighting=disable_highlighting)
+        ipython_integration(
+            self, auto_include=auto_include, disable_highlighting=disable_highlighting
+        )
 
     def run_server(
         self,
