@@ -1,4 +1,3 @@
-import json
 from typing import TYPE_CHECKING, Dict, List
 
 from dask_sql.mappings import _SQL_TO_PYTHON_FRAMES
@@ -52,11 +51,12 @@ KEYWORDS = [
 
 
 def ipython_integration(
-    context: "dask_sql.Context", auto_include: bool
+    context: "dask_sql.Context", auto_include: bool, disable_highlighting: bool,
 ) -> None:  # pragma: no cover
     """Integrate the context with jupyter notebooks. Have a look into :ref:`Context.ipython_magic`."""
     _register_ipython_magic(context, auto_include=auto_include)
-    _register_syntax_highlighting()
+    if not disable_highlighting:
+        _register_syntax_highlighting()
 
 
 def _register_ipython_magic(
@@ -81,7 +81,19 @@ def _register_ipython_magic(
 
 
 def _register_syntax_highlighting():  # pragma: no cover
+    import json
     from IPython.core import display
+
+    # JS snippet to use the created mime type highlighthing
+    _JS_ENABLE_DASK_SQL = r"""
+    require(['notebook/js/codecell'], function(codecell) {
+        codecell.CodeCell.options_default.highlight_modes['magic_text/x-dasksql'] = {'reg':[/%%sql/]} ;
+        Jupyter.notebook.events.on('kernel_ready.Kernel', function(){
+        Jupyter.notebook.get_cells().map(function(cell){
+            if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
+        });
+    });
+    """
 
     types = map(str, _SQL_TO_PYTHON_FRAMES.keys())
     functions = list(RexCallPlugin.OPERATION_MAPPING.keys())
@@ -99,7 +111,25 @@ def _register_syntax_highlighting():  # pragma: no cover
         "support": _create_set(["ODBCdotTable", "doubleQuote", "zerolessFloat"]),
     }
 
-    display.display_javascript(raw=True)
+    # Code original from fugue-sql, adjusted for dask-sql and using some more customizations
+    js = (
+        r"""
+    require(["codemirror/lib/codemirror"]);
+
+    // We define a new mime type for syntax highlighting
+    CodeMirror.defineMIME("text/x-dasksql", """
+        + json.dumps(mime_type)
+        + r"""
+    );
+    CodeMirror.modeInfo.push({
+        name: "Dask SQL",
+        mime: "text/x-dasksql",
+        mode: "sql"
+    });
+    """
+    )
+
+    display.display_javascript(js + _JS_ENABLE_DASK_SQL, raw=True)
 
 
 def _create_set(keys: List[str]) -> Dict[str, bool]:  # pragma: no cover
