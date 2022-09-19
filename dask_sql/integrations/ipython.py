@@ -65,31 +65,34 @@ def ipython_integration(
 def _register_ipython_magic(
     c: "dask_sql.Context", auto_include: bool
 ) -> None:  # pragma: no cover
-    from IPython.core.magic import register_line_cell_magic
+    from IPython.core.magic import needs_local_scope, register_line_cell_magic
 
-    def sql(line, cell=None):
+    @needs_local_scope
+    def sql(line, cell, local_ns):
         if cell is None:
             # the magic function was called inline
             cell = line
+
+        sql_statement = cell.format(**local_ns)
 
         dataframes = {}
         if auto_include:
             dataframes = c._get_tables_from_stack()
 
         t0 = time.time()
-        res = c.sql(cell, return_futures=False, dataframes=dataframes)
+        res = c.sql(sql_statement, return_futures=False, dataframes=dataframes)
         if (
-            "CREATE OR REPLACE TABLE" in cell
-            or "CREATE OR REPLACE VIEW" in cell
+            "CREATE OR REPLACE TABLE" in sql_statement
+            or "CREATE OR REPLACE VIEW" in sql_statement
         ):
-            table = cell.split("CREATE OR REPLACE")[1]
+            table = sql_statement.split("CREATE OR REPLACE")[1]
             table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
             res = c.sql(f"SELECT * FROM {table}").tail()
         elif (
-            "CREATE TABLE" in cell
-            or "CREATE VIEW" in cell
+            "CREATE TABLE" in sql_statement
+            or "CREATE VIEW" in sql_statement
         ):
-            table = cell.split("CREATE")[1]
+            table = sql_statement.split("CREATE")[1]
             table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
             res = c.sql(f"SELECT * FROM {table}").tail()
         print(f"Execution time: {time.time() - t0:.2f}s")
