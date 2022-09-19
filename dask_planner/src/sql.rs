@@ -72,8 +72,8 @@ use self::logical::use_schema::UseSchemaPlanNode;
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLContext {
-    default_catalog_name: String,
-    default_schema_name: String,
+    current_catalog: String,
+    current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
 }
 
@@ -83,8 +83,8 @@ impl ContextProvider for DaskSQLContext {
         name: TableReference,
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
-            name.resolve(&self.default_catalog_name, &self.default_schema_name);
-        if reference.catalog != self.default_catalog_name {
+            name.resolve(&self.current_catalog, &self.current_schema);
+        if reference.catalog != self.current_catalog {
             // there is a single catalog in Dask SQL
             return Err(DataFusionError::Plan(format!(
                 "Cannot resolve catalog '{}'",
@@ -278,11 +278,24 @@ impl ContextProvider for DaskSQLContext {
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new(default_catalog_name: &str, default_schema_name: String) -> Self {
+    pub fn new(default_catalog_name: &str, default_schema_name: &str) -> Self {
         Self {
-            default_catalog_name: default_catalog_name.to_owned(),
-            default_schema_name,
+            current_catalog: default_catalog_name.to_owned(),
+            current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
+        }
+    }
+
+    /// Change the current schema
+    pub fn use_schema(&mut self, schema_name: &str) -> PyResult<()> {
+        if self.schemas.contains_key(schema_name) {
+            self.current_schema = schema_name.to_owned();
+            Ok(())
+        } else {
+            Err(py_runtime_err(format!(
+                "Schema: {} not found in DaskSQLContext",
+                schema_name
+            )))
         }
     }
 
