@@ -23,20 +23,23 @@ Install the package from the ``conda-forge`` channel:
 
     conda install dask-sql -c conda-forge
 
-Experimental GPU support
-^^^^^^^^^^^^^^^^^^^^^^^^
+GPU support
+^^^^^^^^^^^
 
 - GPU support is currently tied to the `RAPIDS <https://rapids.ai/>`_  libraries.
-- It is in development and generally requires the latest `cuDF/Dask-cuDF <https://docs.rapids.ai/api/cudf/legacy/10min.html>`_ nightlies.
-- It is experimental, so users should expect some bugs or undefined behavior.
+- It generally requires the latest `cuDF/Dask-cuDF <https://docs.rapids.ai/api/cudf/nightly/user_guide/10min.html>`_ nightlies.
 
-Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages:
+Create a new conda environment or use an existing one to install RAPIDS with the chosen methods and packages.
+More details can be found on the `RAPIDS Getting Started <https://rapids.ai/start.html>`_ page, but as an example:
 
 .. code-block:: bash
 
     conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge \
-        cudf=22.02 dask-cudf=22.02 ucx-py ucx-proc=*=gpu python=3.8 cudatoolkit=11.2
+        cudf=22.10 dask-cudf=22.10 ucx-py ucx-proc=*=gpu python=3.9 cudatoolkit=11.5
     conda activate rapids-env
+
+Note that using UCX is mainly necessary if you have an Infiniband or NVLink enabled system.
+Refer to the `UCX-Py docs <https://ucx-py.readthedocs.io/en/latest/>`_ for more information.
 
 Install the stable package from the ``conda-forge`` channel:
 
@@ -81,7 +84,7 @@ After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To compile the Java classes (at the beginning or after changes), run
+To compile the Rust code (after changes), run
 
 .. code-block:: bash
 
