@@ -17,21 +17,24 @@ def test_table_schema(c, df):
     c.sql('USE SCHEMA "foo"')
     assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
+    # TODO: https://github.com/dask-contrib/dask-sql/issues/771
+    # For now, we create table bar another (equivalent) way
     # c.sql("CREATE TABLE bar AS TABLE root.df")
-    # assert_eq(original_df, c.sql("SELECT * FROM bar"))
+    c.sql("CREATE TABLE bar AS (SELECT * FROM root.df)")
+    assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
     # with pytest.raises(KeyError):
     #     c.sql("CREATE TABLE other.bar AS TABLE df")
 
-    # c.sql('USE SCHEMA "root"')
-    # assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
+    c.sql('USE SCHEMA "root"')
+    assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
 
-    # with pytest.raises(ParsingException):
-    #     c.sql("SELECT * FROM bar")
+    with pytest.raises(ParsingException):
+        c.sql("SELECT * FROM bar")
 
     c.sql("DROP SCHEMA foo")
 
-    with pytest.raises(ParsingException):
+    with pytest.raises(KeyError):
         c.sql("SELECT * FROM foo.bar")
 
 
