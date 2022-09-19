@@ -7,17 +7,6 @@ from dask_sql.physical.rex.core import RexCallPlugin
 if TYPE_CHECKING:
     import dask_sql
 
-# JS snippet to use the created mime type highlighthing
-_JS_ENABLE_DASK_SQL = r"""
-require(['notebook/js/codecell'], function(codecell) {
-    codecell.CodeCell.options_default.highlight_modes['magic_text/x-dasksql'] = {'reg':[/%%sql/]} ;
-    Jupyter.notebook.events.on('kernel_ready.Kernel', function(){
-    Jupyter.notebook.get_cells().map(function(cell){
-        if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
-    });
-});
-"""
-
 # That is definitely not pretty, but there seems to be no better way...
 KEYWORDS = [
     "and",
@@ -110,25 +99,7 @@ def _register_syntax_highlighting():  # pragma: no cover
         "support": _create_set(["ODBCdotTable", "doubleQuote", "zerolessFloat"]),
     }
 
-    # Code original from fugue-sql, adjusted for dask-sql and using some more customizations
-    js = (
-        r"""
-    require(["codemirror/lib/codemirror"]);
-
-    // We define a new mime type for syntax highlighting
-    CodeMirror.defineMIME("text/x-dasksql", """
-        + json.dumps(mime_type)
-        + r"""
-    );
-    CodeMirror.modeInfo.push({
-        name: "Dask SQL",
-        mime: "text/x-dasksql",
-        mode: "sql"
-    });
-    """
-    )
-
-    display.display_javascript(js + _JS_ENABLE_DASK_SQL, raw=True)
+    display.display_javascript(raw=True)
 
 
 def _create_set(keys: List[str]) -> Dict[str, bool]:  # pragma: no cover
