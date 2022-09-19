@@ -34,14 +34,14 @@ impl RelDataType {
     /// * `field_name` - A String containing the name of the field to find
     /// * `case_sensitive` - True if column name matching should be case sensitive and false otherwise
     #[pyo3(name = "getField")]
-    pub fn field(&self, field_name: String, case_sensitive: bool) -> PyResult<RelDataTypeField> {
+    pub fn field(&self, field_name: &str, case_sensitive: bool) -> PyResult<RelDataTypeField> {
         let field_map: HashMap<String, RelDataTypeField> = self.field_map();
         if case_sensitive && !field_map.is_empty() {
-            Ok(field_map.get(&field_name).unwrap().clone())
+            Ok(field_map.get(field_name).unwrap().clone())
         } else {
             for field in &self.field_list {
-                if (case_sensitive && field.name().eq(&field_name))
-                    || (!case_sensitive && field.name().eq_ignore_ascii_case(&field_name))
+                if (case_sensitive && field.name().eq(field_name))
+                    || (!case_sensitive && field.name().eq_ignore_ascii_case(field_name))
                 {
                     return Ok(field.clone());
                 }

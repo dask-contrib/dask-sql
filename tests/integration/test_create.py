@@ -159,10 +159,7 @@ def test_create_from_query(c, df):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(reason="to_pandas() changes int precision"),
-            ),
+            marks=pytest.mark.gpu,
         ),
     ],
 )

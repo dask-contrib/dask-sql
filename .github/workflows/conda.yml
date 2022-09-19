@@ -5,6 +5,16 @@ on:
       - main
       - datafusion-sql-planner
   pull_request:
+    paths:
+      - setup.py
+      - dask_planner/Cargo.toml
+      - dask_planner/Cargo.lock
+      - dask_planner/pyproject.toml
+      - dask_planner/rust-toolchain.toml
+      - continuous_integration/recipe/**
+      - .github/workflows/conda.yml
+  schedule:
+    - cron: '0 0 * * 0'
 
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
@@ -58,4 +68,4 @@ jobs:
           # install anaconda for upload
           mamba install anaconda-client
 
-          anaconda upload --label $LABEL noarch/*.tar.bz2
+          anaconda upload --label $LABEL linux-64/*.tar.bz2
