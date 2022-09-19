@@ -39,10 +39,10 @@ impl RelDataTypeField {
 #[pymethods]
 impl RelDataTypeField {
     #[new]
-    pub fn new(name: String, type_map: DaskTypeMap, index: usize) -> Self {
+    pub fn new(name: &str, type_map: DaskTypeMap, index: usize) -> Self {
         Self {
             qualifier: None,
-            name,
+            name: name.to_owned(),
             data_type: type_map,
             index,
         }

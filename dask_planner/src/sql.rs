@@ -271,9 +271,9 @@ impl ContextProvider for DaskSQLContext {
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new(default_catalog_name: String, default_schema_name: String) -> Self {
+    pub fn new(default_catalog_name: &str, default_schema_name: String) -> Self {
         Self {
-            default_catalog_name,
+            default_catalog_name: default_catalog_name.to_owned(),
             default_schema_name,
             schemas: HashMap::new(),
         }
@@ -308,9 +308,9 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: String) -> PyResult<Vec<statement::PyStatement>> {
+    pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
         let dd: DaskDialect = DaskDialect {};
-        match DaskParser::parse_sql_with_dialect(sql.as_str(), &dd) {
+        match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
@@ -380,9 +380,7 @@ impl DaskSQLContext {
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
                     model_name: create_model.name,
-                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
-                        create_model.select,
-                    )))?,
+                    input: self._logical_relational_algebra(create_model.select)?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
                     with_options: create_model.with_options,
@@ -392,9 +390,7 @@ impl DaskSQLContext {
                 node: Arc::new(PredictModelPlanNode {
                     model_schema: predict_model.schema_name,
                     model_name: predict_model.name,
-                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
-                        predict_model.select,
-                    )))?,
+                    input: self._logical_relational_algebra(predict_model.select)?,
                 }),
             })),
             DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {

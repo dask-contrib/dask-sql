@@ -102,10 +102,10 @@ pub struct DaskTable {
 #[pymethods]
 impl DaskTable {
     #[new]
-    pub fn new(schema: String, name: String, row_count: f64) -> Self {
+    pub fn new(schema: &str, name: &str, row_count: f64) -> Self {
         Self {
-            schema,
-            name,
+            schema: schema.to_owned(),
+            name: name.to_owned(),
             statistics: DaskStatistics::new(row_count),
             columns: Vec::new(),
         }
@@ -113,8 +113,8 @@ impl DaskTable {
 
     // TODO: Really wish we could accept a SqlTypeName instance here instead of a String for `column_type` ....
     #[pyo3(name = "add_column")]
-    pub fn add_column(&mut self, column_name: String, type_map: DaskTypeMap) {
-        self.columns.push((column_name, type_map));
+    pub fn add_column(&mut self, column_name: &str, type_map: DaskTypeMap) {
+        self.columns.push((column_name.to_owned(), type_map));
     }
 
     #[pyo3(name = "getSchema")]
@@ -147,7 +147,7 @@ impl DaskTable {
     pub fn row_type(&self) -> RelDataType {
         let mut fields: Vec<RelDataTypeField> = Vec::new();
         for (name, data_type) in &self.columns {
-            fields.push(RelDataTypeField::new(name.clone(), data_type.clone(), 255));
+            fields.push(RelDataTypeField::new(name.as_str(), data_type.clone(), 255));
         }
         RelDataType::new(false, fields)
     }

@@ -1,6 +1,5 @@
 import os
 import pickle
-import sys
 
 import joblib
 import pandas as pd
@@ -168,6 +167,41 @@ def test_clustering_and_prediction(c, training_df):
     )
 
     check_trained_model(c)
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+def test_create_model_with_prediction(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model1 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    c.sql(
+        """
+        CREATE MODEL my_model2 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT * FROM PREDICT (
+                MODEL my_model1,
+                SELECT x, y FROM timeseries LIMIT 100
+            )
+        )
+    """
+    )
+
+    check_trained_model(c, "my_model2")
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
@@ -576,10 +610,6 @@ def test_mlflow_export(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.xfail(
-    sys.platform == "win32",
-    reason="Windows is not officially supported for dask/xgboost",
-)
 @skip_if_external_scheduler
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed

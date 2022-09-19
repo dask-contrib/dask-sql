@@ -34,6 +34,7 @@ impl PyAggregate {
         }
     }
 
+    /// Returns the inner Aggregate Expr(s)
     #[pyo3(name = "getNamedAggCalls")]
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
         match &self.aggregate {
@@ -67,8 +68,23 @@ impl PyAggregate {
         }
     }
 
-    #[pyo3(name = "isDistinct")]
-    pub fn distinct(&self) -> PyResult<bool> {
+    #[pyo3(name = "isAggExprDistinct")]
+    pub fn distinct_agg_expr(&self, expr: PyExpr) -> PyResult<bool> {
+        match expr.expr {
+            Expr::AggregateFunction {
+                fun: _,
+                args: _,
+                distinct,
+                filter: _,
+            } => Ok(distinct),
+            _ => Err(py_type_err(
+                "Encountered a non Aggregate type in agg_func_name",
+            )),
+        }
+    }
+
+    #[pyo3(name = "isDistinctNode")]
+    pub fn distinct_node(&self) -> PyResult<bool> {
         Ok(self.distinct.is_some())
     }
 }
