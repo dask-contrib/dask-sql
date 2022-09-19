@@ -24,7 +24,9 @@ def test_table_schema(c, df):
     assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
     with pytest.raises(KeyError):
-        c.sql("CREATE TABLE other.bar AS TABLE df")
+        # TODO: https://github.com/dask-contrib/dask-sql/issues/771
+        # c.sql("CREATE TABLE other.bar AS TABLE df")
+        c.sql("CREATE TABLE other.bar AS (SELECT * FROM df)")
 
     c.sql('USE SCHEMA "root"')
     assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
