@@ -291,7 +291,8 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7721fd550f6a28ad7235b62462aa51e9a43b08f8346d5cbe4d61f1e83f5df511"
 dependencies = [
  "arrow",
  "ordered-float",
@@ -302,7 +303,8 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d81255d043dc594c0ded6240e8a9be6ce8d7c22777a5093357cdb97af3d29ce"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -313,7 +315,8 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71b39f8c75163691fff72b4a71816ad5a912e7c6963ee55f29ed1910b5a6993f"
 dependencies = [
  "arrow",
  "async-trait",
@@ -328,7 +331,8 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109c4138220a109feafb63bf05418b86b17a42ece4bf047c38e4fd417572a9f7"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -352,7 +356,8 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87a178fc0fd7693d9c9f608f7b605823eb982c6731ede0cccd99e2319cacabbc"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -363,7 +368,8 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=12.0.0-rc1#97b3a4b37f54aaa52f8705db3e57b15ee98c24a7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "148cb56e7635faff3b16019393c49b988188c3fdadd1ca90eadb322a80aa1128"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
