@@ -23,8 +23,8 @@ def test_table_schema(c, df):
     c.sql("CREATE TABLE bar AS (SELECT * FROM root.df)")
     assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
-    # with pytest.raises(KeyError):
-    #     c.sql("CREATE TABLE other.bar AS TABLE df")
+    with pytest.raises(KeyError):
+        c.sql("CREATE TABLE other.bar AS TABLE df")
 
     c.sql('USE SCHEMA "root"')
     assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
