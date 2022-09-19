@@ -170,6 +170,41 @@ def test_clustering_and_prediction(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+def test_create_model_with_prediction(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model1 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    c.sql(
+        """
+        CREATE MODEL my_model2 WITH (
+            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT * FROM PREDICT (
+                MODEL my_model1,
+                SELECT x, y FROM timeseries LIMIT 100
+            )
+        )
+    """
+    )
+
+    check_trained_model(c, "my_model2")
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @pytest.mark.skip(
     reason="WIP DataFusion - fails to parse ARRAY in KV pairs in WITH clause, WITH clause was previsouly ignored"
 )

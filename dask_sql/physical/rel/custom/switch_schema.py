@@ -25,5 +25,7 @@ class SwitchSchemaPlugin(BaseRelPlugin):
         schema_name = str(use_schema.getSchemaName())
         if schema_name in context.schema:
             context.schema_name = schema_name
+            # set the schema on the underlying DaskSQLContext as well
+            context.context.use_schema(schema_name)
         else:
             raise RuntimeError(f"Schema {schema_name} not available")
