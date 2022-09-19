@@ -84,7 +84,7 @@ impl ContextProvider for DaskSQLContext {
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
-        match self.schemas.get(&self.default_schema_name) {
+        match self.schemas.get(reference.schema) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
