@@ -24,7 +24,7 @@ Install the package from the ``conda-forge`` channel:
     conda install dask-sql -c conda-forge
 
 GPU support
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
 
 - GPU support is currently tied to the `RAPIDS <https://rapids.ai/>`_  libraries.
 - It generally requires the latest `cuDF/Dask-cuDF <https://docs.rapids.ai/api/cudf/nightly/user_guide/10min.html>`_ nightlies.
