@@ -86,7 +86,10 @@ impl ContextProvider for DaskSQLContext {
             name.resolve(&self.default_catalog_name, &self.default_schema_name);
         if reference.catalog != self.default_catalog_name {
             // there is a single catalog in Dask SQL
-            return Err(DataFusionError::Plan(format!("Cannot resolve catalog '{}'", reference.catalog)));
+            return Err(DataFusionError::Plan(format!(
+                "Cannot resolve catalog '{}'",
+                reference.catalog
+            )));
         }
         match self.schemas.get(reference.schema) {
             Some(schema) => {
