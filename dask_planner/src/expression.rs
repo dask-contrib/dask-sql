@@ -638,6 +638,28 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getDate32Value")]
+    pub fn date_32_value(&mut self) -> PyResult<i32> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Date32(Some(iv)) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getDate64Value")]
+    pub fn date_64_value(&mut self) -> PyResult<i64> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Date64(Some(iv)) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
     #[pyo3(name = "getBoolValue")]
     pub fn bool_value(&mut self) -> PyResult<bool> {
         match &self.expr {

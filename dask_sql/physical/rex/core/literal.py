@@ -142,10 +142,10 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value = rex.getStringValue()
         elif literal_type == "Date32":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDateValue()
+            literal_value = rex.getDate32Value()
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDateValue()
+            literal_value = rex.getDate64Value()
         elif literal_type == "Null":
             literal_type = SqlTypeName.NULL
             literal_value = None
