@@ -336,6 +336,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # convert and assign any input/filter columns that don't currently exist
         new_columns = {}
         for expr in agg.getNamedAggCalls():
+            assert expr.getExprType() in {
+                "AggregateFunction",
+                "AggregateUDF",
+            }, "Do not know how to handle this case!"
             for input_expr in agg.getArgs(expr):
                 input_col = input_expr.column_name(input_rel)
                 if input_col not in cc._frontend_backend_mapping:
