@@ -7,7 +7,8 @@ services:
         command: dask-scheduler
         environment:
             USE_MAMBA: "true"
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pandas>=1.5.0"
+            # TODO: remove pandas constraint once Dask images are updated
+            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pandas>=1.1.2"
         ports:
             - "8786:8786"
     dask-worker:
@@ -16,6 +17,7 @@ services:
         command: dask-worker dask-scheduler:8786
         environment:
             USE_MAMBA: "true"
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pyarrow>=6.0.1 libstdcxx-ng>=12.1.0 pandas>=1.5.0"
+            # TODO: remove pandas constraint once Dask images are updated
+            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pyarrow>=6.0.1 libstdcxx-ng>=12.1.0 pandas>=1.1.2"
         volumes:
             - /tmp:/tmp
