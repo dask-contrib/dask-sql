@@ -660,6 +660,39 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getTime64Value")]
+    pub fn time_64_value(&mut self) -> PyResult<Option<i64>> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Time64(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getTimestampValue")]
+    pub fn timestamp_value(&mut self) -> PyResult<(Option<i64>, Option<String>)> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::TimestampNanosecond(iv, tz)
+                | ScalarValue::TimestampMicrosecond(iv, tz)
+                | ScalarValue::TimestampMillisecond(iv, tz)
+                | ScalarValue::TimestampSecond(iv, tz) => {
+                    if let Some(iv) = iv {
+                        println!("{}", iv);
+                    }
+                    if let Some(tz) = tz {
+                        println!("{}", tz);
+                    }
+                    Ok((*iv, tz.clone()))
+                }
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
     #[pyo3(name = "getBoolValue")]
     pub fn bool_value(&mut self) -> PyResult<Option<bool>> {
         match &self.expr {
