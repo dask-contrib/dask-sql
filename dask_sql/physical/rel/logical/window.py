@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
+from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -121,7 +122,7 @@ class Indexer(BaseIndexer):
     def __init__(self, start: int, end: int):
         super().__init__(self, start=start, end=end)
 
-    def get_window_bounds(
+    def _get_window_bounds(
         self,
         num_values: int = 0,
         min_periods: Optional[int] = None,
@@ -149,6 +150,29 @@ class Indexer(BaseIndexer):
                     "This case should have been handled before! Please report this bug"
                 )
         return start, end
+
+    if INDEXER_WINDOW_STEP_IMPLEMENTED:
+
+        def get_window_bounds(
+            self,
+            num_values: int = 0,
+            min_periods: Optional[int] = None,
+            center: Optional[bool] = None,
+            closed: Optional[str] = None,
+            step: Optional[int] = None,
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            return self._get_window_bounds(num_values, min_periods, center, closed)
+
+    else:
+
+        def get_window_bounds(
+            self,
+            num_values: int = 0,
+            min_periods: Optional[int] = None,
+            center: Optional[bool] = None,
+            closed: Optional[str] = None,
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            return self._get_window_bounds(num_values, min_periods, center, closed)
 
 
 def map_on_each_group(
