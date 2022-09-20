@@ -88,7 +88,7 @@ def _register_ipython_magic(
             table = sql_statement.split("CREATE OR REPLACE")[1]
             table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
             res = c.sql(f"SELECT * FROM {table}").tail()
-        elif ("CREATE TABLE" in sql_statement or "CREATE VIEW" in sql_statement):
+        elif "CREATE TABLE" in sql_statement or "CREATE VIEW" in sql_statement:
             table = sql_statement.split("CREATE")[1]
             table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
             res = c.sql(f"SELECT * FROM {table}").tail()
