@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    paths:
+      - "docker/**"
 
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
@@ -17,8 +20,12 @@ jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-    if: github.repository == 'dask-contrib/dask-sql'
+    env:
+      DOCKER_PUSH: ${{ github.event_name == 'push' && github.repository == 'dask-contrib/dask-sql' }}
     steps:
+      - name: Test env value
+        run: |
+          echo ${{ fromJSON(env.DOCKER_PUSH) }}
       - name: Check out the repo
         uses: actions/checkout@v2
       - name: Set up QEMU
@@ -26,6 +33,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
+        if: ${{ fromJSON(env.DOCKER_PUSH) }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -41,22 +49,34 @@ jobs:
           context: .
           file: ./docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
-          push: true
+          push: ${{ fromJSON(env.DOCKER_PUSH) }}
+          load: ${{ !fromJSON(env.DOCKER_PUSH) }}
+      - name: Check images
+        run: |
+          df -h
+          docker image ls
+          docker image inspect ${{ steps.docker_meta_main.outputs.tags }}
+
       - name: Docker meta for cloud image
         id: docker_meta_cloud
         uses: crazy-max/ghaction-docker-meta@v1
         with:
           images: nbraun/dask-sql-cloud
+      - name: Check images_2
+        run: |
+          df -h
+          docker image ls
+          docker image inspect ${{ steps.docker_meta_main.outputs.tags }}
       - name: Build and push cloud image
         uses: docker/build-push-action@v2
         with:
           context: .
           file: ./docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
           labels: ${{ steps.docker_meta_cloud.outputs.labels }}
-          push: true
+          push: ${{ fromJSON(env.DOCKER_PUSH) }}
