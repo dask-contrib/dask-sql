@@ -336,24 +336,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         new_columns = {}
         new_mappings = {}
 
-        # convert and assign any input columns that don't currently exist
-        for expr in agg.getNamedAggCalls():
-            for expr in agg.getArgs(expr):
-                key = expr.column_name(input_rel)
-                if key in cc._frontend_backend_mapping:
-                    continue
-                random_name = new_temporary_column(df)
-                new_columns[random_name] = RexConverter.convert(
-                    input_rel, expr, dc, context=context
-                )
-                new_mappings[key] = random_name
-
-        if new_columns:
-            df = df.assign(**new_columns)
-
-        for key, backend_column_name in new_mappings.items():
-            cc = cc.add(key, backend_column_name)
-
         for expr in agg.getNamedAggCalls():
             # Determine the aggregation function to use
             assert expr.getExprType() in {
@@ -364,8 +346,19 @@ class DaskAggregatePlugin(BaseRelPlugin):
             schema_name = context.schema_name
             aggregation_name = agg.getAggregationFuncName(expr).lower()
 
-            # Gather information about the input column
+            # Gather information about input columns
             inputs = agg.getArgs(expr)
+
+            # Compute any input columns that don't yet exist
+            for input_expr in inputs:
+                input_col = input_expr.column_name(input_rel)
+                if input_col in cc._frontend_backend_mapping:
+                    continue
+                random_name = new_temporary_column(df)
+                new_columns[random_name] = RexConverter.convert(
+                    input_rel, expr, dc, context=context
+                )
+                new_mappings[input_col] = random_name
 
             # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
@@ -396,10 +389,21 @@ class DaskAggregatePlugin(BaseRelPlugin):
             else:
                 raise NotImplementedError("Can not cope with more than one input")
 
-            # TODO: DataFusion does not yet have the concept of "filters" in aggregations
-            filter_column = None
-            # if expr.hasFilter():
-            #     filter_column = cc.get_backend_by_frontend_index(expr.filterArg)
+            # Compute filter column if it doesn't yet exist
+            filter_expr = expr.getFilterExpr()
+            if filter_expr is not None:
+                filter_col = filter_expr.column_name(input_rel)
+                if filter_col not in cc._frontend_backend_mapping:
+                    random_name = new_temporary_column(df)
+                    new_columns[random_name] = RexConverter.convert(
+                        input_rel, filter_expr, dc, context=context
+                    )
+                    new_mappings[filter_col] = random_name
+                    filter_col = random_name
+                else:
+                    filter_col = cc.get_backend_by_frontend_name(filter_col)
+            else:
+                filter_col = None
 
             try:
                 aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
@@ -422,10 +426,16 @@ class DaskAggregatePlugin(BaseRelPlugin):
             output_col = expr.toString()
 
             # Store the aggregation
-            key = filter_column
-            value = (input_col, output_col, aggregation_function)
-            collected_aggregations[key].append(value)
+            collected_aggregations[filter_col].append(
+                (input_col, output_col, aggregation_function)
+            )
             output_column_order.append(output_col)
+
+        # Add any required columns to table and column container
+        if new_columns:
+            df = df.assign(**new_columns)
+        for key, backend_column_name in new_mappings.items():
+            cc = cc.add(key, backend_column_name)
 
         return collected_aggregations, output_column_order, df, cc
 
