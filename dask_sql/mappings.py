@@ -174,14 +174,14 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
             # NULL time
             return pd.NaT  # pragma: no cover
 
-        tz = literal_value.getTimeZone().getID()
-        assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
+        # tz = literal_value.getTimeZone().getID()
+        # assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
 
-        dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
+        # dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
 
         if sql_type == SqlTypeName.DATE:
-            return dt.astype("<M8[D]")
-        return dt.astype("<M8[ns]")
+            return literal_value.astype("<M8[D]")
+        return literal_value.astype("<M8[ns]")
     elif sql_type == SqlTypeName.DECIMAL:
         # We use np.float64 always, even though we might
         # be able to use a smaller type
