@@ -94,12 +94,11 @@ fn _agg_func_name(expr: &Expr) -> PyResult<String> {
 fn _distinct_agg_expr(expr: &Expr) -> PyResult<bool> {
     match expr {
         Expr::Alias(expr, _) => _distinct_agg_expr(expr.as_ref()),
-        Expr::AggregateFunction {
-            fun: _,
-            args: _,
-            distinct,
-            filter: _,
-        } => Ok(*distinct),
+        Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+        Expr::AggregateUDF { .. } => {
+            // DataFusion does not support DISTINCT in UDAFs
+            Ok(false)
+        }
         _ => Err(py_type_err(
             "Encountered a non Aggregate type in distinct_agg_expr",
         )),
