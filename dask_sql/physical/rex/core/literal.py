@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
+import numpy as np
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
@@ -142,10 +143,10 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value = rex.getStringValue()
         elif literal_type == "Date32":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDate32Value()
+            literal_value = np.datetime64(rex.getDate32Value(), 'D')
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDate64Value()
+            literal_value = np.datetime64(rex.getDate64Value(), 'ms')
         elif literal_type == "Null":
             literal_type = SqlTypeName.NULL
             literal_value = None
