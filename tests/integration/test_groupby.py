@@ -363,19 +363,19 @@ def test_stats_aggregation(c, timeseries_df):
         """
     SELECT
         name,
-        -- COUNT(x) FILTER (WHERE y IS NOT NULL) AS expected,
+        COUNT(x) FILTER (WHERE y IS NOT NULL) AS expected,
         REGR_COUNT(y, x) AS calculated
     FROM timeseries
     GROUP BY name
     """
     ).fillna(0)
 
-    # assert_eq(
-    #     regr_count["expected"],
-    #     regr_count["calculated"],
-    #     check_dtype=False,
-    #     check_names=False,
-    # )
+    assert_eq(
+        regr_count["expected"],
+        regr_count["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
 
     # test regr_syy
     regr_syy = c.sql(
@@ -417,6 +417,7 @@ def test_stats_aggregation(c, timeseries_df):
         check_names=False,
     )
 
+    # TODO: https://github.com/dask-contrib/dask-sql/issues/753
     # test covar_pop
     # covar_pop = c.sql(
     #     """
