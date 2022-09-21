@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 from typing import TYPE_CHECKING
 
 from dask import delayed
@@ -183,7 +184,13 @@ class CreateModelPlugin(BaseRelPlugin):
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
-            model = ParallelPostFit(estimator=model)
+            output_meta = np.array([])
+            model = ParallelPostFit(
+                estimator=model,
+                predict_meta=output_meta,
+                predict_proba_meta=output_meta,
+                transform_meta=output_meta,
+            )
 
         else:
             model.fit(X, y, **fit_kwargs)

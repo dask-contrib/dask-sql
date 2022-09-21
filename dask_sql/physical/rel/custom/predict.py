@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import uuid
 from typing import TYPE_CHECKING
 
@@ -59,7 +60,13 @@ class PredictModelPlugin(BaseRelPlugin):
 
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)
-        prediction = model.predict(df[training_columns])
+        part = df[training_columns]
+        output_meta = model.predict_meta
+        if part.shape[0].compute() == 0 and output_meta is not None:
+            empty_output = self.handle_empty_partitions(output_meta)
+            if empty_output is not None:
+                return empty_output
+        prediction = model.predict(part)
         predicted_df = df.assign(target=prediction)
 
         # Create a temporary context, which includes the
@@ -79,3 +86,32 @@ class PredictModelPlugin(BaseRelPlugin):
         dc = DataContainer(predicted_df, cc)
 
         return dc
+
+    def handle_empty_partitions(self, output_meta):            
+        if hasattr(output_meta, "__array_function__"):
+            if len(output_meta.shape) == 1:
+                shape = 0
+            else:
+                shape = list(output_meta.shape)
+                shape[0] = 0
+            ar = np.zeros(
+                shape=shape,
+                dtype=output_meta.dtype,
+                like=output_meta,
+            )
+            return ar
+        elif "scipy.sparse" in type(output_meta).__module__:
+            # sparse matrices don't support
+            # `like` due to non implimented __array_function__
+            # Refer https://github.com/scipy/scipy/issues/10362
+            # Note below works for both cupy and scipy sparse matrices
+            if len(output_meta.shape) == 1:
+                shape = 0
+            else:
+                shape = list(output_meta.shape)
+                shape[0] = 0
+
+            ar = type(output_meta)(shape, dtype=output_meta.dtype)
+            return ar
+        elif hasattr(output_meta, "iloc"):
+            return output_meta.iloc[:0, :]
