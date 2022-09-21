@@ -10,10 +10,8 @@ from pandas.api.indexers import BaseIndexer
 
 from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
 from dask_sql.datacontainer import ColumnContainer, DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
-from dask_sql.physical.rex.core.literal import RexLiteralPlugin
 from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.sort import sort_partition_func
 from dask_sql.utils import (
@@ -24,6 +22,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +66,11 @@ class MinOperation(OverOperation):
         return partitioned_group[value_col].min()
 
 
+class AvgOperation(OverOperation):
+    def call(self, partitioned_group, value_col):
+        return partitioned_group[value_col].mean()
+
+
 class BoundDescription(
     namedtuple(
         "BoundDescription",
@@ -74,42 +78,24 @@ class BoundDescription(
     )
 ):
     """
-    Small helper class to wrap a org.apache.calcite.rex.RexWindowBounds
-    Java object, as we can not ship it to to the dask workers
+    Small helper class to wrap a PyWindowFrame
+    object. We can directly ship PyWindowFrame to workers in the future
     """
 
     pass
 
 
 def to_bound_description(
-    java_window: "org.apache.calcite.rex.RexWindowBounds.RexBoundedWindowBound",
-    constants: List[org.apache.calcite.rex.RexLiteral],
-    constant_count_offset: int,
+    windowFrame,
 ) -> BoundDescription:
-    """Convert the java object "java_window" to a python representation,
+    """Convert the PyWindowFrame object to a BoundDescription representation,
     replacing any literals or references to constants"""
-    offset = java_window.getOffset()
-    if offset:
-        if isinstance(offset, org.apache.calcite.rex.RexInputRef):
-            # For calcite, the constant pool are normal "columns",
-            # starting at (number of real columns + 1).
-            # Here, we do the de-referencing.
-            index = offset.getIndex() - constant_count_offset
-            offset = constants[index]
-        else:  # pragma: no cover
-            # prevent python to optimize it away and make coverage not respect the
-            # pragma
-            dummy = 0  # noqa: F841
-        offset = int(RexLiteralPlugin().convert(offset, None, None))
-    else:
-        offset = None
-
     return BoundDescription(
-        is_unbounded=bool(java_window.isUnbounded()),
-        is_preceding=bool(java_window.isPreceding()),
-        is_following=bool(java_window.isFollowing()),
-        is_current_row=bool(java_window.isCurrentRow()),
-        offset=offset,
+        is_unbounded=bool(windowFrame.isUnbounded()),
+        is_preceding=bool(windowFrame.isPreceding()),
+        is_following=bool(windowFrame.isFollowing()),
+        is_current_row=bool(windowFrame.isCurrentRow()),
+        offset=windowFrame.getOffset(),
     )
 
 
@@ -195,13 +181,13 @@ def map_on_each_group(
     if lower_bound.is_unbounded and (
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
-        windowed_group = partitioned_group.expanding(min_periods=0)
+        windowed_group = partitioned_group.expanding(min_periods=1)
     elif lower_bound.is_preceding and (
         upper_bound.is_current_row or upper_bound.offset == 0
     ):
         windowed_group = partitioned_group.rolling(
             window=lower_bound.offset + 1,
-            min_periods=0,
+            min_periods=1,
         )
     else:
         lower_offset = lower_bound.offset if not lower_bound.is_current_row else 0
@@ -212,7 +198,7 @@ def map_on_each_group(
             upper_offset *= -1
 
         indexer = Indexer(lower_offset, upper_offset)
-        windowed_group = partitioned_group.rolling(window=indexer, min_periods=0)
+        windowed_group = partitioned_group.rolling(window=indexer, min_periods=1)
 
     # Calculate the results
     new_columns = {}
@@ -242,47 +228,38 @@ class DaskWindowPlugin(BaseRelPlugin):
     Typical examples include ROW_NUMBER and lagging.
     """
 
-    class_name = "com.dask.sql.nodes.DaskWindow"
+    class_name = "Window"
 
     OPERATION_MAPPING = {
         "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
         "$sum0": SumOperation(),
         "sum": SumOperation(),
-        # Is replaced by a sum and count by calcite: "avg": ExplodedOperation(AvgOperation()),
         "count": CountOperation(),
         "max": MaxOperation(),
         "min": MinOperation(),
         "single_value": FirstValueOperation(),
         "first_value": FirstValueOperation(),
         "last_value": LastValueOperation(),
+        "avg": AvgOperation(),
     }
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
-
-        # During optimization, some constants might end up in an internal
-        # constant pool. We need to dereference them here, as they
-        # are treated as "normal" columns.
-        # Unfortunately they are only referenced by their index,
-        # (which come after the real columns), so we need
-        # to always substract the number of real columns.
-        constants = list(rel.getConstants())
-        constant_count_offset = len(dc.column_container.columns)
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
-
-        for window in rel.getGroups():
+        input_column_count = len(dc.column_container.columns)
+        for window in rel.window().getGroups():
             dc = self._apply_window(
-                window, constants, constant_count_offset, dc, field_names, context
+                rel, window, input_column_count, dc, field_names, context
             )
 
         # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
-
+        cc = cc.limit_to(
+            cc.columns[input_column_count:] + cc.columns[0:input_column_count]
+        )
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
@@ -291,9 +268,9 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _apply_window(
         self,
-        window: org.apache.calcite.rel.core.Window.Group,
-        constants: List[org.apache.calcite.rex.RexLiteral],
-        constant_count_offset: int,
+        rel,
+        window,
+        input_column_count: int,
         dc: DataContainer,
         field_names: List[str],
         context: "dask_sql.Context",
@@ -305,20 +282,20 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Now extract the groupby and order information
         sort_columns, sort_ascending, sort_null_first = self._extract_ordering(
-            window, cc
+            rel, window, cc
         )
         logger.debug(
             f"Before applying the function, sorting according to {sort_columns}."
         )
 
-        df, group_columns = self._extract_groupby(df, window, dc, context)
+        df, group_columns = self._extract_groupby(df, rel, window, dc, context)
         logger.debug(
             f"Before applying the function, partitioning according to {group_columns}."
         )
         # TODO: optimize by re-using already present columns
         temporary_columns += group_columns
 
-        operations, df = self._extract_operations(window, df, dc, context)
+        operations, df = self._extract_operations(rel, window, df, dc, context)
         for _, _, cols in operations:
             temporary_columns += cols
 
@@ -326,18 +303,49 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         logger.debug(f"Will create {newly_created_columns} new columns")
 
+        # Default window bounds when not specified as unbound preceding and current row (if no order by)
+        # unbounded preceding and unbounded following if there's an order by
+        if not rel.window().getWindowFrame(window):
+            lower_bound = BoundDescription(
+                is_unbounded=True,
+                is_preceding=True,
+                is_following=False,
+                is_current_row=False,
+                offset=None,
+            )
+            upper_bound = (
+                BoundDescription(
+                    is_unbounded=False,
+                    is_preceding=False,
+                    is_following=False,
+                    is_current_row=True,
+                    offset=None,
+                )
+                if sort_columns
+                else BoundDescription(
+                    is_unbounded=True,
+                    is_preceding=False,
+                    is_following=True,
+                    is_current_row=False,
+                    offset=None,
+                )
+            )
+        else:
+            lower_bound = to_bound_description(
+                rel.window().getWindowFrame(window).getLowerBound(),
+            )
+            upper_bound = to_bound_description(
+                rel.window().getWindowFrame(window).getUpperBound(),
+            )
+
         # Apply the windowing operation
         filled_map = partial(
             map_on_each_group,
             sort_columns=sort_columns,
             sort_ascending=sort_ascending,
             sort_null_first=sort_null_first,
-            lower_bound=to_bound_description(
-                window.lowerBound, constants, constant_count_offset
-            ),
-            upper_bound=to_bound_description(
-                window.upperBound, constants, constant_count_offset
-            ),
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
             operations=operations,
         )
 
@@ -358,9 +366,8 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         for c in newly_created_columns:
             # the fields are in the correct order by definition
-            field_name = field_names[len(cc.columns)]
+            field_name = field_names[len(cc.columns) - input_column_count]
             cc = cc.add(field_name, c)
-
         dc = DataContainer(df, cc)
         logger.debug(
             f"Removed unneeded columns and registered new ones: {LoggableDataFrame(dc)}."
@@ -370,15 +377,16 @@ class DaskWindowPlugin(BaseRelPlugin):
     def _extract_groupby(
         self,
         df: dd.DataFrame,
-        window: org.apache.calcite.rel.core.Window.Group,
+        rel,
+        window,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
-        partition_keys = list(window.keys)
+        partition_keys = list(rel.window().getPartitionExprs(window))
         if partition_keys:
             group_columns = [
-                df[dc.column_container.get_backend_by_frontend_index(o)]
+                df[dc.column_container.get_backend_by_frontend_name(o.column_name(rel))]
                 for o in partition_keys
             ]
             group_columns = get_groupby_with_nulls_cols(df, group_columns)
@@ -394,58 +402,57 @@ class DaskWindowPlugin(BaseRelPlugin):
         return df, group_columns
 
     def _extract_ordering(
-        self, window: org.apache.calcite.rel.core.Window.Group, cc: ColumnContainer
+        self, rel, window, cc: ColumnContainer
     ) -> Tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
-        order_keys = list(window.orderKeys.getFieldCollations())
-        sort_columns_indices = [int(i.getFieldIndex()) for i in order_keys]
+        logger.debug(
+            "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
+        )
+        # TODO: This was commented out for flake8 CI passing and needs to be handled
+        sort_expressions = rel.window().getSortExprs(window)
         sort_columns = [
-            cc.get_backend_by_frontend_index(i) for i in sort_columns_indices
+            cc.get_backend_by_frontend_name(expr.column_name(rel))
+            for expr in sort_expressions
         ]
-
-        ASCENDING = org.apache.calcite.rel.RelFieldCollation.Direction.ASCENDING
-        FIRST = org.apache.calcite.rel.RelFieldCollation.NullDirection.FIRST
-        sort_ascending = [x.getDirection() == ASCENDING for x in order_keys]
-        sort_null_first = [x.nullDirection == FIRST for x in order_keys]
-
+        sort_ascending = [expr.isSortAscending() for expr in sort_expressions]
+        sort_null_first = [expr.isSortNullsFirst() for expr in sort_expressions]
         return sort_columns, sort_ascending, sort_null_first
 
     def _extract_operations(
         self,
-        window: org.apache.calcite.rel.core.Window.Group,
+        rel,
+        window,
         df: dd.DataFrame,
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> List[Tuple[Callable, str, List[str]]]:
         # Finally apply the actual function on each group separately
         operations = []
-        for agg_call in window.aggCalls:
-            operator = agg_call.getOperator()
-            operator_name = str(operator.getName())
-            operator_name = operator_name.lower()
 
+        # TODO: datafusion returns only window func expression per window
+        # This can be optimized in the physical plan to collect all aggs for a given window
+        operator_name = rel.window().getWindowFuncName(window).lower()
+
+        try:
+            operation = self.OPERATION_MAPPING[operator_name]
+        except KeyError:  # pragma: no cover
             try:
-                operation = self.OPERATION_MAPPING[operator_name]
+                operation = context.schema[context.schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
-                try:
-                    operation = context.schema[context.schema_name].functions[
-                        operator_name
-                    ]
-                except KeyError:  # pragma: no cover
-                    raise NotImplementedError(f"{operator_name} not (yet) implemented")
+                raise NotImplementedError(f"{operator_name} not (yet) implemented")
 
-            logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
+        logger.debug(f"Executing {operator_name} on {str(LoggableDataFrame(df))}")
 
-            # TODO: can be optimized by re-using already present columns
-            temporary_operand_columns = {
-                new_temporary_column(df): RexConverter.convert(o, dc, context=context)
-                for o in agg_call.getOperands()
-            }
-            df = df.assign(**temporary_operand_columns)
-            temporary_operand_columns = list(temporary_operand_columns.keys())
+        # TODO: can be optimized by re-using already present columns
+        temporary_operand_columns = {
+            new_temporary_column(df): RexConverter.convert(rel, o, dc, context=context)
+            for o in rel.window().getArgs(window)
+        }
+        df = df.assign(**temporary_operand_columns)
+        temporary_operand_columns = list(temporary_operand_columns.keys())
 
-            operations.append(
-                (operation, new_temporary_column(df), temporary_operand_columns)
-            )
+        operations.append(
+            (operation, new_temporary_column(df), temporary_operand_columns)
+        )
 
         return operations, df

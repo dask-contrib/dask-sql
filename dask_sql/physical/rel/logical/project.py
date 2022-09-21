@@ -1,14 +1,15 @@
 import logging
 from typing import TYPE_CHECKING
 
+from dask_planner.rust import RexType
 from dask_sql.datacontainer import DataContainer
-from dask_sql.java import org
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +21,9 @@ class DaskProjectPlugin(BaseRelPlugin):
     (b) only select a subset of the columns
     """
 
-    class_name = "com.dask.sql.nodes.DaskProject"
+    class_name = "Projection"
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Get the input of the previous step
         (dc,) = self.assert_inputs(rel, 1, context)
 
@@ -32,18 +31,21 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = dc.column_container
 
         # Collect all (new) columns
-        named_projects = rel.getNamedProjects()
+        proj = rel.projection()
+        named_projects = proj.getNamedProjects()
 
         column_names = []
         new_columns = {}
         new_mappings = {}
-        for expr, key in named_projects:
+
+        # Collect all (new) columns this Projection will limit to
+        for key, expr in named_projects:
             key = str(key)
             column_names.append(key)
 
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
-            if isinstance(expr, org.apache.calcite.rex.RexInputRef):
+            if expr.getRexType() == RexType.Reference:
                 index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
@@ -53,7 +55,7 @@ class DaskProjectPlugin(BaseRelPlugin):
             else:
                 random_name = new_temporary_column(df)
                 new_columns[random_name] = RexConverter.convert(
-                    expr, dc, context=context
+                    rel, expr, dc, context=context
                 )
                 logger.debug(f"Adding a new column {key} out of {expr}")
                 new_mappings[key] = random_name
@@ -72,4 +74,5 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+
         return dc

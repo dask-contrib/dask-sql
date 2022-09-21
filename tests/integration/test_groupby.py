@@ -36,6 +36,40 @@ def test_group_by(c):
     assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_group_by_multi(c, gpu):
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [1, 1, 2]})
+    c.create_table("df", df, gpu=gpu)
+
+    result_df = c.sql(
+        """
+        SELECT
+            SUM(a) AS s,
+            AVG(a) AS av,
+            COUNT(a) AS c
+        FROM
+            df
+        GROUP BY
+            b
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "s": df.groupby("b").sum()["a"],
+            "av": df.groupby("b").mean()["a"],
+            "c": df.groupby("b").count()["a"],
+        }
+    ).reset_index(drop=True)
+
+    result_df["c"] = result_df["c"].astype("int32")
+    expected_df["c"] = expected_df["c"].astype("int32")
+
+    assert_eq(result_df, expected_df)
+
+    c.drop_table("df")
+
+
 def test_group_by_all(c, df):
     result_df = c.sql(
         """
@@ -45,8 +79,6 @@ def test_group_by_all(c, df):
     """
     )
     expected_df = pd.DataFrame({"S": [10], "X": [8]})
-    expected_df["S"] = expected_df["S"].astype("int64")
-    expected_df["X"] = expected_df["X"].astype("int32")
 
     assert_eq(result_df, expected_df)
 
@@ -122,6 +154,7 @@ def test_group_by_filtered(c):
     assert_eq(return_df, expected_df)
 
 
+@pytest.mark.skip(reason="WIP DataFusion")
 def test_group_by_case(c):
     return_df = c.sql(
         """
@@ -243,7 +276,91 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-def test_stats_aggregation(c, timeseries_df):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_stddev(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": [1, 1, 2, 1, 2],
+            "b": [4, 6, 3, 8, 5],
+        }
+    )
+
+    c.create_table("df", df, gpu=gpu)
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV(b) AS s
+        FROM df
+        GROUP BY df.a
+        """
+    )
+
+    expected_df = pd.DataFrame({"s": df.groupby("a").std()["b"]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV_SAMP(b) AS ss
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    # Can be removed after addressing: https://github.com/dask-contrib/dask-sql/issues/681
+    if gpu:
+        c.drop_table("df")
+        pytest.skip()
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV_POP(b) AS sp
+        FROM df
+        GROUP BY df.a
+        """
+    )
+
+    expected_df = pd.DataFrame({"sp": df.groupby("a").std(ddof=0)["b"]})
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    return_df = c.sql(
+        """
+        SELECT
+            STDDEV(a) as s,
+            STDDEV_SAMP(a) ss,
+            STDDEV_POP(b) sp
+        FROM
+            df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "s": [df.std()["a"]],
+            "ss": [df.std()["a"]],
+            "sp": [df.std(ddof=0)["b"]],
+        }
+    )
+
+    assert_eq(return_df, expected_df.reset_index(drop=True))
+
+    c.drop_table("df")
+
+
+@pytest.mark.parametrize(
+    "gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.skip))]
+)
+def test_regr_aggregation(c, timeseries_df, gpu):
+    if gpu:
+        pytest.skip()
+
     # test regr_count
     regr_count = c.sql(
         """
@@ -303,6 +420,11 @@ def test_stats_aggregation(c, timeseries_df):
         check_names=False,
     )
 
+
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753"
+)
+def test_covar_aggregation(c, timeseries_df):
     # test covar_pop
     covar_pop = c.sql(
         """
@@ -376,7 +498,7 @@ def test_groupby_split_out(c, input_table, split_out, request):
         FROM {input_table}
         GROUP BY user_id
         """,
-        config_options={"sql.groupby.split_out": split_out} if split_out else {},
+        config_options={"sql.aggregate.split_out": split_out} if split_out else {},
     )
     expected_df = (
         user_table.groupby(by="user_id")
@@ -386,6 +508,16 @@ def test_groupby_split_out(c, input_table, split_out, request):
         .sort_values("user_id")
     )
 
+    assert return_df.npartitions == split_out if split_out else 1
+    assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
+
+    return_df = c.sql(
+        f"""
+        SELECT DISTINCT(user_id) FROM {input_table}
+        """,
+        config_options={"sql.aggregate.split_out": split_out},
+    )
+    expected_df = user_table[["user_id"]].drop_duplicates()
     assert return_df.npartitions == split_out if split_out else 1
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 

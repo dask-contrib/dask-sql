@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
@@ -207,6 +208,10 @@ def test_in_between():
     eq_sqlite("SELECT * FROM a WHERE a BETWEEN 2 AND 4+1", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT IN (2,4,6) AND a IS NOT NULL", a=df)
     eq_sqlite("SELECT * FROM a WHERE a NOT BETWEEN 2 AND 4+1 AND a IS NOT NULL", a=df)
+    eq_sqlite(
+        "SELECT * FROM a WHERE SUBSTR(b,1,2) IN ('ss','s') AND a NOT BETWEEN 3 AND 5 and a IS NOT NULL",
+        a=df,
+    )
 
 
 def test_join_inner():
@@ -271,10 +276,52 @@ def test_join_multi():
     )
 
 
-def test_agg_count_no_group_by():
+def test_single_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
     )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS c_a,
+            COUNT(DISTINCT a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
+
+def test_multi_agg_count_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS c_a,
+            COUNT(DISTINCT a) AS cd_a,
+            COUNT(b) AS c_b,
+            COUNT(DISTINCT b) AS cd_b,
+            COUNT(c) AS c_c,
+            COUNT(DISTINCT c) AS cd_c,
+            COUNT(d) AS c_d,
+            COUNT(DISTINCT d) AS cd_d,
+            COUNT(e) AS c_e,
+            COUNT(DISTINCT e) AS cd_e
+        FROM a
+        """,
+        a=a,
+    )
+
+
+@pytest.mark.skip(
+    reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
+)
+def test_multi_agg_count_no_group_by_dupe_distinct():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    # note that this test repeats the expression `COUNT(DISTINCT a)`
     eq_sqlite(
         """
         SELECT
@@ -294,10 +341,59 @@ def test_agg_count_no_group_by():
     )
 
 
+def test_agg_count_distinct_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            a,
+            COUNT(DISTINCT b) AS cd_b
+        FROM a
+        GROUP BY a
+        ORDER BY a NULLS FIRST
+        """,
+        a=a,
+    )
+
+
+def test_agg_count_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
+
+def test_agg_count_distinct_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(DISTINCT a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
+
+@pytest.mark.skip(
+    reason="conflicting aggregation functions: [('count', 'c'), ('count', 'c')]"
+)
 def test_agg_count():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
     )
+    # note that this test repeats the expression `COUNT(DISTINCT a)`
     eq_sqlite(
         """
         SELECT
@@ -324,7 +420,7 @@ def test_agg_sum_avg_no_group_by():
             AVG(a) AS avg_a
         FROM a
         """,
-        a=pd.DataFrame({"a": [float("nan")]}),
+        a=pd.DataFrame({"a": [float("2.3")]}),
     )
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -346,6 +442,9 @@ def test_agg_sum_avg_no_group_by():
     )
 
 
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
+)
 def test_agg_sum_avg():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)

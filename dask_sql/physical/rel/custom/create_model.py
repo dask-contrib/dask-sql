@@ -9,7 +9,7 @@ from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -105,19 +105,19 @@ class CreateModelPlugin(BaseRelPlugin):
           those models, which have a `fit_partial` method.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateModel"
+    class_name = "CreateModel"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        select = sql.getSelect()
-        schema_name, model_name = context.fqn(sql.getModelName())
-        kwargs = convert_sql_kwargs(sql.getKwargs())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        create_model = rel.create_model()
+        select = create_model.getSelectQuery()
+
+        schema_name, model_name = context.schema_name, create_model.getModelName()
+        kwargs = convert_sql_kwargs(create_model.getSQLWithOptions())
 
         if model_name in context.schema[schema_name].models:
-            if sql.getIfNotExists():
+            if create_model.getIfNotExists():
                 return
-            elif not sql.getReplace():
+            elif not create_model.getOrReplace():
                 raise RuntimeError(
                     f"A model with the name {model_name} is already present."
                 )
@@ -136,8 +136,7 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", False)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
-        select_query = context._to_sql_string(select)
-        training_df = context.sql(select_query)
+        training_df = context.sql(select)
 
         if target_column:
             non_target_columns = [

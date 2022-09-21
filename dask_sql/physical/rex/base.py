@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING, Any, Union
 
 import dask.dataframe as dd
@@ -6,7 +7,9 @@ import dask_sql
 from dask_sql.datacontainer import DataContainer
 
 if TYPE_CHECKING:
-    from dask_sql.java import org
+    from dask_planner.rust import Expression, LogicalPlan
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRexPlugin:
@@ -22,7 +25,8 @@ class BaseRexPlugin:
 
     def convert(
         self,
-        rex: "org.apache.calcite.rex.RexNode",
+        rel: "LogicalPlan",
+        rex: "Expression",
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:

@@ -13,25 +13,25 @@ source:
 
 build:
   number: {{ GIT_DESCRIBE_NUMBER }}
-  noarch: python
+  skip: true   # [py2k]
   entry_points:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
-  string: py_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ python | replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
   build:
-    - maven >=3.6.0
+    - {{ compiler('rust') }}
+    - setuptools-rust >=1.4.1
   host:
     - pip
-    - python >=3.8
+    - python
+    - setuptools-rust >=1.4.1
   run:
     - python
     - dask >=2022.3.0
-    - pandas >=1.1.2
-    - jpype1 >=1.0.2
-    - openjdk >=8
+    - pandas >=1.4.0
     - fastapi >=0.69.0
     - uvicorn >=0.11.3
     - tzlocal >=2.1

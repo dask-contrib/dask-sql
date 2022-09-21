@@ -1,4 +1,4 @@
-import json
+import time
 from typing import TYPE_CHECKING, Dict, List
 
 from dask_sql.mappings import _SQL_TO_PYTHON_FRAMES
@@ -6,17 +6,6 @@ from dask_sql.physical.rex.core import RexCallPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-
-# JS snippet to use the created mime type highlighthing
-_JS_ENABLE_DASK_SQL = r"""
-require(['notebook/js/codecell'], function(codecell) {
-    codecell.CodeCell.options_default.highlight_modes['magic_text/x-dasksql'] = {'reg':[/%%sql/]} ;
-    Jupyter.notebook.events.on('kernel_ready.Kernel', function(){
-    Jupyter.notebook.get_cells().map(function(cell){
-        if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
-    });
-});
-"""
 
 # That is definitely not pretty, but there seems to be no better way...
 KEYWORDS = [
@@ -63,28 +52,48 @@ KEYWORDS = [
 
 
 def ipython_integration(
-    context: "dask_sql.Context", auto_include: bool
+    context: "dask_sql.Context",
+    auto_include: bool,
+    disable_highlighting: bool,
 ) -> None:  # pragma: no cover
     """Integrate the context with jupyter notebooks. Have a look into :ref:`Context.ipython_magic`."""
     _register_ipython_magic(context, auto_include=auto_include)
-    _register_syntax_highlighting()
+    if not disable_highlighting:
+        _register_syntax_highlighting()
 
 
 def _register_ipython_magic(
     c: "dask_sql.Context", auto_include: bool
 ) -> None:  # pragma: no cover
-    from IPython.core.magic import register_line_cell_magic
+    from IPython.core.magic import needs_local_scope, register_line_cell_magic
 
-    def sql(line, cell=None):
+    @needs_local_scope
+    def sql(line, cell, local_ns):
         if cell is None:
             # the magic function was called inline
             cell = line
+
+        sql_statement = cell.format(**local_ns)
 
         dataframes = {}
         if auto_include:
             dataframes = c._get_tables_from_stack()
 
-        return c.sql(cell, return_futures=False, dataframes=dataframes)
+        t0 = time.time()
+        res = c.sql(sql_statement, return_futures=False, dataframes=dataframes)
+        if (
+            "CREATE OR REPLACE TABLE" in sql_statement
+            or "CREATE OR REPLACE VIEW" in sql_statement
+        ):
+            table = sql_statement.split("CREATE OR REPLACE")[1]
+            table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
+            res = c.sql(f"SELECT * FROM {table}").tail()
+        elif "CREATE TABLE" in sql_statement or "CREATE VIEW" in sql_statement:
+            table = sql_statement.split("CREATE")[1]
+            table = table.replace("TABLE", "").replace("VIEW", "").split()[0].strip()
+            res = c.sql(f"SELECT * FROM {table}").tail()
+        print(f"Execution time: {time.time() - t0:.2f}s")
+        return res
 
     # Register a new magic function
     magic_func = register_line_cell_magic(sql)
@@ -92,7 +101,20 @@ def _register_ipython_magic(
 
 
 def _register_syntax_highlighting():  # pragma: no cover
+    import json
+
     from IPython.core import display
+
+    # JS snippet to use the created mime type highlighthing
+    _JS_ENABLE_DASK_SQL = r"""
+    require(['notebook/js/codecell'], function(codecell) {
+        codecell.CodeCell.options_default.highlight_modes['magic_text/x-dasksql'] = {'reg':[/%%sql/]} ;
+        Jupyter.notebook.events.on('kernel_ready.Kernel', function(){
+        Jupyter.notebook.get_cells().map(function(cell){
+            if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
+        });
+    });
+    """
 
     types = map(str, _SQL_TO_PYTHON_FRAMES.keys())
     functions = list(RexCallPlugin.OPERATION_MAPPING.keys())

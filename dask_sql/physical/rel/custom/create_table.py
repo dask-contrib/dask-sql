@@ -7,7 +7,7 @@ from dask_sql.utils import convert_sql_kwargs
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -36,22 +36,23 @@ class CreateTablePlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateTable"
+    class_name = "CreateTable"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        schema_name, table_name = context.fqn(sql.getTableName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        create_table = rel.create_table()
+
+        dask_table = rel.getTable()
+        schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
 
         if table_name in context.schema[schema_name].tables:
-            if sql.getIfNotExists():
+            if create_table.getIfNotExists():
                 return
-            elif not sql.getReplace():
+            elif not create_table.getOrReplace():
                 raise RuntimeError(
                     f"A table with the name {table_name} is already present."
                 )
 
-        kwargs = convert_sql_kwargs(sql.getKwargs())
+        kwargs = convert_sql_kwargs(create_table.getSQLWithOptions())
 
         logger.debug(
             f"Creating new table with name {table_name} and parameters {kwargs}"

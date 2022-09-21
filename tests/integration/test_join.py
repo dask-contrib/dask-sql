@@ -104,6 +104,22 @@ def test_join_right(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+def test_join_cross(c, user_table_1, department_table):
+    return_df = c.sql(
+        """
+    SELECT user_id, b, department_name
+    FROM user_table_1, department_table
+    """
+    )
+
+    user_table_1["key"] = 1
+    department_table["key"] = 1
+
+    expected_df = dd.merge(user_table_1, department_table, on="key").drop("key", 1)
+
+    assert_eq(return_df, expected_df, check_index=False)
+
+
 def test_join_complex(c):
     return_df = c.sql(
         """
@@ -129,10 +145,10 @@ def test_join_complex(c):
     )
     expected_df = pd.DataFrame(
         {
-            "a": [1, 1, 2],
-            "b": [1.1, 1.1, 2.2],
-            "a0": [2, 3, 3],
-            "b0": [2.2, 3.3, 3.3],
+            "lhs.a": [1, 1, 2],
+            "lhs.b": [1.1, 1.1, 2.2],
+            "rhs.a": [2, 3, 3],
+            "rhs.b": [2.2, 3.3, 3.3],
         }
     )
 
@@ -147,7 +163,7 @@ def test_join_complex(c):
     """
     )
     expected_df = pd.DataFrame(
-        {"user_id": [2, 2], "b": [1, 3], "user_id0": [2, 2], "c": [3, 3]}
+        {"lhs.user_id": [2, 2], "b": [1, 3], "rhs.user_id": [2, 2], "c": [3, 3]}
     )
 
     assert_eq(return_df, expected_df, check_index=False)
@@ -164,9 +180,9 @@ def test_join_literal(c):
     )
     expected_df = pd.DataFrame(
         {
-            "user_id": [2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+            "lhs.user_id": [2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
             "b": [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-            "user_id0": [1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4],
+            "rhs.user_id": [1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4, 1, 1, 2, 4],
             "c": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
         }
     )
@@ -181,7 +197,7 @@ def test_join_literal(c):
     ON False
     """
     )
-    expected_df = pd.DataFrame({"user_id": [], "b": [], "user_id0": [], "c": []})
+    expected_df = pd.DataFrame({"lhs.user_id": [], "b": [], "rhs.user_id": [], "c": []})
 
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
@@ -276,6 +292,11 @@ def test_conditional_join_with_limit(c):
     expected_df = df.merge(df, on="common", suffixes=("", "0")).drop(columns="common")
     expected_df = expected_df[expected_df["a"] >= 2][:4]
 
+    # Columns are renamed to use their fully qualified names which is more accurate
+    expected_df = expected_df.rename(
+        columns={"a": "df1.a", "b": "df1.b", "a0": "df2.a", "b0": "df2.b"}
+    )
+
     actual_df = c.sql(
         """
     SELECT * FROM
@@ -286,4 +307,72 @@ def test_conditional_join_with_limit(c):
     """
     )
 
-    dd.assert_eq(actual_df, expected_df, check_index=False)
+    assert_eq(actual_df, expected_df, check_index=False)
+
+
+def test_intersect(c):
+
+    # Join df_simple against itself
+    actual_df = c.sql(
+        """
+    select count(*) from (
+    select * from df_simple
+    intersect
+    select * from df_simple
+    ) hot_item
+    limit 100
+    """
+    )
+    assert actual_df["COUNT(UInt8(1))"].compute()[0] == 3
+
+    # Join df_simple against itself, and then that result against df_wide. Nothing should match so therefore result should be 0
+    actual_df = c.sql(
+        """
+    select count(*) from (
+    select * from df_simple
+    intersect
+    select * from df_simple
+    intersect
+    select * from df_wide
+    ) hot_item
+    limit 100
+    """
+    )
+    assert len(actual_df["COUNT(UInt8(1))"]) == 0
+
+    actual_df = c.sql(
+        """
+    select * from df_simple intersect select * from df_simple
+    """
+    )
+    assert actual_df.shape[0].compute() == 3
+
+
+def test_intersect_multi_col(c):
+    df1 = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+    df2 = pd.DataFrame({"a": [1, 1, 1], "b": [4, 5, 6], "c": [7, 7, 7]})
+
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
+
+    return_df = c.sql("select * from df1 intersect select * from df2")
+    expected_df = pd.DataFrame(
+        {
+            "df1.a": [1],
+            "df1.b": [4],
+            "df1.c": [7],
+            "df2.a": [1],
+            "df2.b": [4],
+            "df2.c": [7],
+        }
+    )
+    assert_eq(return_df, expected_df, check_index=False)
+
+
+def test_join_alias_w_projection(c, parquet_ddf):
+    result_df = c.sql(
+        "SELECT t2.c as c_y from parquet_ddf t1, parquet_ddf t2 WHERE t1.a=t2.a and t1.c='A'"
+    )
+    expected_df = parquet_ddf.merge(parquet_ddf, on=["a"], how="inner")
+    expected_df = expected_df[expected_df["c_x"] == "A"][["c_y"]]
+    assert_eq(result_df, expected_df, check_index=False)
