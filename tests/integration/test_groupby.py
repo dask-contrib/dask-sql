@@ -355,7 +355,10 @@ def test_stddev(c, gpu):
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_regr_aggregation(c, timeseries_df):
+def test_regr_aggregation(c, timeseries_df, gpu):
+    if gpu:
+        pytest.skip()
+
     # test regr_count
     regr_count = c.sql(
         """
