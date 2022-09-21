@@ -55,7 +55,10 @@ impl DaskSqlOptimizer {
         let mut resulting_plan: LogicalPlan = plan;
         for optimization in &self.optimizations {
             match optimization.optimize(&resulting_plan, &mut OptimizerConfig::new()) {
-                Ok(optimized_plan) => resulting_plan = optimized_plan,
+                Ok(optimized_plan) => {
+                    println!("== AFTER {} ==\n{}", optimization.name(), optimized_plan.display_indent());
+                    resulting_plan = optimized_plan
+                },
                 Err(e) => {
                     println!(
                         "Skipping optimizer rule {} due to unexpected error: {}",

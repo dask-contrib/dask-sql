@@ -94,6 +94,9 @@ impl OptimizerRule for EliminateAggDistinct {
         plan: &LogicalPlan,
         optimizer_config: &mut OptimizerConfig,
     ) -> Result<LogicalPlan> {
+
+        println!("===INCOMING===\n{}", plan.display_indent());
+
         // optimize inputs first
         let plan = utils::optimize_children(self, plan, optimizer_config)?;
 
@@ -136,7 +139,7 @@ impl OptimizerRule for EliminateAggDistinct {
                     .collect::<Result<Vec<_>>>()?;
 
                 for plan in &plans {
-                    trace!("FINAL PLAN:\n{}", plan.display_indent());
+                    println!("{}", plan.display_indent());
                 }
 
                 match plans.len() {
@@ -151,7 +154,11 @@ impl OptimizerRule for EliminateAggDistinct {
                         for plan in plans.iter().skip(1) {
                             builder = builder.cross_join(plan)?;
                         }
-                        builder.build()
+                        let join_plan = builder.build()?;
+
+                        println!("{}", join_plan.display_indent_schema());
+
+                        Ok(join_plan)
                     }
                 }
             }
@@ -467,14 +474,25 @@ mod tests {
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
     };
     use std::sync::Arc;
+    use crate::sql::optimizer::DaskSqlOptimizer;
 
+    /// Optimize with just the eliminate_agg_distinct rule
     fn assert_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
         let rule = EliminateAggDistinct::new();
         let optimized_plan = rule
             .optimize(plan, &mut OptimizerConfig::new())
             .expect("failed to optimize plan");
         let formatted_plan = format!("{}", optimized_plan.display_indent());
+        assert_eq!(expected, formatted_plan);
+    }
 
+    /// Optimize with all of the optimizer rules, including eliminate_agg_distinct
+    fn assert_fully_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
+        let optimizer = DaskSqlOptimizer::new();
+        let optimized_plan = optimizer
+            .run_optimizations(plan.clone())
+            .expect("failed to optimize plan");
+        let formatted_plan = format!("{}", optimized_plan.display_indent());
         assert_eq!(expected, formatted_plan);
     }
 
@@ -701,6 +719,28 @@ mod tests {
         \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
         \n        TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
+
+        let expected = "CrossJoin:\
+        \n  CrossJoin:\
+        \n    CrossJoin:\
+        \n      Projection: #SUM(__dask_sql_count__1) AS c_a, #COUNT(a.a) AS cd_a\
+        \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
+        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n            TableScan: a projection=[a, b, c, d]\
+        \n      Projection: #SUM(__dask_sql_count__2) AS c_b, #COUNT(a.b) AS cd_b\
+        \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__2), COUNT(#a.b)]]\
+        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__2]]\
+        \n            TableScan: a projection=[a, b, c, d]\
+        \n    Projection: #SUM(__dask_sql_count__3) AS c_c, #COUNT(a.c) AS cd_c\
+        \n      Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__3), COUNT(#a.c)]]\
+        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__3]]\
+        \n          TableScan: a projection=[a, b, c, d]\
+        \n  Projection: #SUM(__dask_sql_count__4) AS c_d, #COUNT(a.d) AS cd_d\
+        \n    Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__4), COUNT(#a.d)]]\
+        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
+        \n        TableScan: a projection=[a, b, c, d]";
+        assert_fully_optimized_plan_eq(&plan, expected);
+
         Ok(())
     }
 }

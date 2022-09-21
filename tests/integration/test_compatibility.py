@@ -276,13 +276,37 @@ def test_join_multi():
     )
 
 
-@pytest.mark.skip(
-    reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
-)
 def test_multi_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
     )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS c_a,
+            COUNT(DISTINCT a) AS cd_a,
+            COUNT(b) AS c_b,
+            COUNT(DISTINCT b) AS cd_b,
+            COUNT(c) AS c_c,
+            COUNT(DISTINCT c) AS cd_c,
+            COUNT(d) AS c_d,
+            COUNT(DISTINCT d) AS cd_d,
+            COUNT(e) AS c_e,
+            COUNT(DISTINCT e) AS cd_e
+        FROM a
+        """,
+        a=a,
+    )
+
+
+@pytest.mark.skip(
+    reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
+)
+def test_multi_agg_count_no_group_by_dupe_distinct():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    # note that this test repeats the expression `COUNT(DISTINCT a)`
     eq_sqlite(
         """
         SELECT
