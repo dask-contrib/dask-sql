@@ -357,6 +357,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         for expr in agg.getNamedAggCalls():
             # Determine the aggregation function to use
             assert expr.getExprType() in {
+                "Alias",
                 "AggregateFunction",
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
