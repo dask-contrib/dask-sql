@@ -354,7 +354,8 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-def test_stats_aggregation(c, timeseries_df):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_regr_aggregation(c, timeseries_df):
     # test regr_count
     regr_count = c.sql(
         """
@@ -414,60 +415,61 @@ def test_stats_aggregation(c, timeseries_df):
         check_names=False,
     )
 
-    # TODO: https://github.com/dask-contrib/dask-sql/issues/753
+@pytest.mark.skip(reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753")
+def test_covar_aggregation(c, timeseries_df):
     # test covar_pop
-    # covar_pop = c.sql(
-    #     """
-    # WITH temp_agg AS (
-    #     SELECT
-    #         name,
-    #         AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
-    #         AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
-    #     FROM timeseries
-    #     GROUP BY name
-    # ) SELECT
-    #     ts.name,
-    #     SUM((y - avg_y) * (x - avg_x)) / REGR_COUNT(y, x) AS expected,
-    #     COVAR_POP(y,x) AS calculated
-    # FROM timeseries AS ts
-    # JOIN temp_agg AS ta ON ts.name = ta.name
-    # GROUP BY ts.name
-    # """
-    # ).fillna(0)
+    covar_pop = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / REGR_COUNT(y, x) AS expected,
+        COVAR_POP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
+    """
+    ).fillna(0)
 
-    # assert_eq(
-    #     covar_pop["expected"],
-    #     covar_pop["calculated"],
-    #     check_dtype=False,
-    #     check_names=False,
-    # )
+    assert_eq(
+        covar_pop["expected"],
+        covar_pop["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
 
     # test covar_samp
-    # covar_samp = c.sql(
-    #     """
-    # WITH temp_agg AS (
-    #     SELECT
-    #         name,
-    #         AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
-    #         AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
-    #     FROM timeseries
-    #     GROUP BY name
-    # ) SELECT
-    #     ts.name,
-    #     SUM((y - avg_y) * (x - avg_x)) / (REGR_COUNT(y, x) - 1) as expected,
-    #     COVAR_SAMP(y,x) AS calculated
-    # FROM timeseries AS ts
-    # JOIN temp_agg AS ta ON ts.name = ta.name
-    # GROUP BY ts.name
-    # """
-    # ).fillna(0)
+    covar_samp = c.sql(
+        """
+    WITH temp_agg AS (
+        SELECT
+            name,
+            AVG(y) FILTER (WHERE x IS NOT NULL) as avg_y,
+            AVG(x) FILTER (WHERE x IS NOT NULL) as avg_x
+        FROM timeseries
+        GROUP BY name
+    ) SELECT
+        ts.name,
+        SUM((y - avg_y) * (x - avg_x)) / (REGR_COUNT(y, x) - 1) as expected,
+        COVAR_SAMP(y,x) AS calculated
+    FROM timeseries AS ts
+    JOIN temp_agg AS ta ON ts.name = ta.name
+    GROUP BY ts.name
+    """
+    ).fillna(0)
 
-    # assert_eq(
-    #     covar_samp["expected"],
-    #     covar_samp["calculated"],
-    #     check_dtype=False,
-    #     check_names=False,
-    # )
+    assert_eq(
+        covar_samp["expected"],
+        covar_samp["calculated"],
+        check_dtype=False,
+        check_names=False,
+    )
 
 
 @pytest.mark.parametrize(
