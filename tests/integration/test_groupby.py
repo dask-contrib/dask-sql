@@ -415,7 +415,10 @@ def test_regr_aggregation(c, timeseries_df):
         check_names=False,
     )
 
-@pytest.mark.skip(reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753")
+
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753"
+)
 def test_covar_aggregation(c, timeseries_df):
     # test covar_pop
     covar_pop = c.sql(
