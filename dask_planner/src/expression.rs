@@ -526,6 +526,23 @@ impl PyExpr {
         }))
     }
 
+    #[pyo3(name = "getFilterExpr")]
+    pub fn get_filter_expr(&self) -> PyResult<Option<PyExpr>> {
+        match &self.expr {
+            Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
+                match filter {
+                    Some(filter) => {
+                        Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
+                    }
+                    None => Ok(None),
+                }
+            }
+            _ => Err(py_type_err(
+                "getFilterExpr() - Non-aggregate expression encountered",
+            )),
+        }
+    }
+
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
     /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
     #[pyo3(name = "getFloat32Value")]

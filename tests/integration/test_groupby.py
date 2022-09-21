@@ -110,9 +110,6 @@ def test_group_by_all(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
-)
 def test_group_by_filtered(c):
     return_df = c.sql(
         """
