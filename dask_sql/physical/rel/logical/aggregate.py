@@ -337,6 +337,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         new_columns = {}
         for expr in agg.getNamedAggCalls():
             assert expr.getExprType() in {
+                "Alias",
                 "AggregateFunction",
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
