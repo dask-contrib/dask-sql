@@ -354,10 +354,13 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
+@pytest.mark.parametrize(
+    "gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.skip))]
 )
-def test_stats_aggregation(c, timeseries_df):
+def test_regr_aggregation(c, timeseries_df, gpu):
+    if gpu:
+        pytest.skip()
+
     # test regr_count
     regr_count = c.sql(
         """
@@ -417,6 +420,11 @@ def test_stats_aggregation(c, timeseries_df):
         check_names=False,
     )
 
+
+@pytest.mark.skip(
+    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753"
+)
+def test_covar_aggregation(c, timeseries_df):
     # test covar_pop
     covar_pop = c.sql(
         """

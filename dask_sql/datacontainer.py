@@ -153,7 +153,10 @@ class ColumnContainer:
         frontend (SQL) column with the given name.
         """
 
-        return self._frontend_backend_mapping[column]
+        try:
+            return self._frontend_backend_mapping[column]
+        except KeyError:
+            return column
 
     def make_unique(self, prefix="col"):
         """

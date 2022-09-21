@@ -157,6 +157,48 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "single_value": AggregationSpecification("first"),
         # is null was checked earlier, now only need to compute the sum the non null values
         "regr_count": AggregationSpecification("sum", AggregationOnPandas("sum")),
+        "regr_syy": AggregationSpecification(
+            dd.Aggregation(
+                "regr_syy",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    sum_of_squares - (sum * (sum / count))
+                ),
+            )
+        ),
+        "regr_sxx": AggregationSpecification(
+            dd.Aggregation(
+                "regr_sxx",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    sum_of_squares - (sum * (sum / count))
+                ),
+            )
+        ),
+        "variancepop": AggregationSpecification(
+            dd.Aggregation(
+                "variancepop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                ),
+            )
+        ),
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -368,19 +410,24 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # Gather information about input columns
             inputs = agg.getArgs(expr)
 
-            # TODO: This if statement is likely no longer needed but left here for the time being just in case
             if aggregation_name == "regr_count":
                 is_null = IsNullOperation()
                 two_columns_proxy = new_temporary_column(df)
                 if len(inputs) == 1:
                     # calcite some times gives one input/col to regr_count and
                     # another col has filter column
-                    col1 = cc.get_backend_by_frontend_index(inputs[0])
+                    col1 = cc.get_backend_by_frontend_name(
+                        inputs[0].column_name(input_rel)
+                    )
                     df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
 
                 else:
-                    col1 = cc.get_backend_by_frontend_index(inputs[0])
-                    col2 = cc.get_backend_by_frontend_index(inputs[1])
+                    col1 = cc.get_backend_by_frontend_name(
+                        inputs[0].column_name(input_rel)
+                    )
+                    col2 = cc.get_backend_by_frontend_name(
+                        inputs[1].column_name(input_rel)
+                    )
                     # both cols should be not null
                     df = df.assign(
                         **{
@@ -390,6 +437,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
                         }
                     )
                 input_col = two_columns_proxy
+            elif aggregation_name == "regr_syy":
+                input_col = inputs[0].column_name(input_rel)
+            elif aggregation_name == "regr_sxx":
+                input_col = inputs[1].column_name(input_rel)
             elif len(inputs) == 1:
                 input_col = inputs[0].column_name(input_rel)
             elif len(inputs) == 0:
