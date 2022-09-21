@@ -34,16 +34,12 @@ jobs:
           rust-version: stable
       - name: Check workspace in debug mode
         run: |
+          cd dask_planner
           cargo check
       - name: Check workspace in release mode
         run: |
+          cd dask_planner
           cargo check --release
-      - name: Check workspace without default features
-        run: |
-          cargo check --no-default-features -p datafusion
-      - name: Check workspace with all features
-        run: |
-          cargo check
 
   # test the crate
   linux-test:
@@ -72,4 +68,5 @@ jobs:
           rust-version: stable
       - name: Run tests
         run: |
+          cd dask_planner
           cargo test
