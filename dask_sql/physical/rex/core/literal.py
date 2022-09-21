@@ -114,6 +114,10 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Float64":
             literal_type = SqlTypeName.DOUBLE
             literal_value = rex.getFloat64Value()
+        elif literal_type == "Decimal128":
+            literal_type = SqlTypeName.DECIMAL
+            value, _, scale = rex.getDecimal128Value()
+            literal_value = value / (10**scale)
         elif literal_type == "UInt8":
             literal_type = SqlTypeName.TINYINT
             literal_value = rex.getUInt8Value()

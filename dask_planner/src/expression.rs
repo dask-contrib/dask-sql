@@ -550,6 +550,19 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getDecimal128Value")]
+    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Decimal128(value, precision, scale) => {
+                    Ok((*value, *precision, *scale))
+                }
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
     #[pyo3(name = "getInt8Value")]
     pub fn int_8_value(&mut self) -> PyResult<Option<i8>> {
         match &self.expr {
