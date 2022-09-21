@@ -11,6 +11,7 @@ use datafusion_optimizer::{
     projection_push_down::ProjectionPushDown, subquery_filter_to_join::SubqueryFilterToJoin,
     OptimizerConfig,
 };
+use log::trace;
 
 mod eliminate_agg_distinct;
 use eliminate_agg_distinct::EliminateAggDistinct;
@@ -55,7 +56,14 @@ impl DaskSqlOptimizer {
         let mut resulting_plan: LogicalPlan = plan;
         for optimization in &self.optimizations {
             match optimization.optimize(&resulting_plan, &mut OptimizerConfig::new()) {
-                Ok(optimized_plan) => resulting_plan = optimized_plan,
+                Ok(optimized_plan) => {
+                    trace!(
+                        "== AFTER APPLYING RULE {} ==\n{}",
+                        optimization.name(),
+                        optimized_plan.display_indent()
+                    );
+                    resulting_plan = optimized_plan
+                }
                 Err(e) => {
                     println!(
                         "Skipping optimizer rule {} due to unexpected error: {}",
