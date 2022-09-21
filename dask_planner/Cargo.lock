@@ -58,11 +58,12 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "arrow"
-version = "21.0.0"
+version = "23.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbd23619f19fc6f214b9667eb2e2782f4a7edc407899e3511e634e55662d906"
+checksum = "fedc767fbaa36ea50f086215f54f1a007d22046fc4754b0448c657bcbe9f8413"
 dependencies = [
  "ahash 0.8.0",
+ "arrow-buffer",
  "bitflags",
  "chrono",
  "comfy-table",
@@ -70,7 +71,6 @@ dependencies = [
  "flatbuffers",
  "half",
  "hashbrown",
- "hex",
  "indexmap",
  "lazy_static",
  "lexical-core",
@@ -79,8 +79,17 @@ dependencies = [
  "regex",
  "regex-syntax",
  "serde",
- "serde_derive",
  "serde_json",
+]
+
+[[package]]
+name = "arrow-buffer"
+version = "23.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d290050c6e12a81a24ad08525cef2203c4156a6350f75508d49885d677e88ea9"
+dependencies = [
+ "half",
+ "num",
 ]
 
 [[package]]
@@ -92,6 +101,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -282,6 +302,8 @@ dependencies = [
  "datafusion-expr",
  "datafusion-optimizer",
  "datafusion-sql",
+ "env_logger",
+ "log",
  "mimalloc",
  "parking_lot",
  "pyo3",
@@ -292,19 +314,18 @@ dependencies = [
 
 [[package]]
 name = "datafusion-common"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "arrow",
  "ordered-float",
- "serde_json",
  "sqlparser",
 ]
 
 [[package]]
 name = "datafusion-expr"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -314,8 +335,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-optimizer"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "arrow",
  "async-trait",
@@ -329,8 +350,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-physical-expr"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -353,8 +374,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-row"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -364,8 +385,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-sql"
-version = "11.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=dadd2dc637eefee923f057b0cff1bd25b8500f47#dadd2dc637eefee923f057b0cff1bd25b8500f47"
+version = "12.0.0"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -385,6 +406,19 @@ dependencies = [
  "block-buffer",
  "crypto-common",
  "subtle",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c90bf5f19754d10198ccb95b70664fc925bd1fc090a0fd9a6ebc54acc8cd6272"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -437,6 +471,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
 dependencies = [
  "crunchy",
+ "num-traits",
 ]
 
 [[package]]
@@ -464,10 +499,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "hex"
-version = "0.4.3"
+name = "humantime"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "iana-time-zone"
@@ -596,6 +631,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
 
 [[package]]
+name = "libm"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "292a948cd991e376cf75541fe5b97a1081d713c618b4f1b9500f8844e49eb565"
+
+[[package]]
 name = "libmimalloc-sys"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -637,6 +678,15 @@ name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+
+[[package]]
+name = "memoffset"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "mimalloc"
@@ -741,6 +791,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -826,13 +877,14 @@ dependencies = [
 
 [[package]]
 name = "pyo3"
-version = "0.16.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0220c44442c9b239dd4357aa856ac468a4f5e1f0df19ddb89b2522952eb4c6ca"
+checksum = "12f72538a0230791398a0986a6518ebd88abc3fded89007b506ed072acc831e1"
 dependencies = [
  "cfg-if",
  "indoc",
  "libc",
+ "memoffset",
  "parking_lot",
  "pyo3-build-config",
  "pyo3-ffi",
@@ -842,9 +894,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.16.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c819d397859445928609d0ec5afc2da5204e0d0f73d6bf9e153b04e83c9cdc2"
+checksum = "fc4cf18c20f4f09995f3554e6bcf9b09bd5e4d6b67c562fdfaafa644526ba479"
 dependencies = [
  "once_cell",
  "target-lexicon",
@@ -852,9 +904,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-ffi"
-version = "0.16.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca882703ab55f54702d7bfe1189b41b0af10272389f04cae38fe4cd56c65f75f"
+checksum = "a41877f28d8ebd600b6aa21a17b40c3b0fc4dfe73a27b6e81ab3d895e401b0e9"
 dependencies = [
  "libc",
  "pyo3-build-config",
@@ -862,9 +914,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros"
-version = "0.16.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "568749402955ad7be7bad9a09b8593851cd36e549ac90bfd44079cea500f3f21"
+checksum = "2e81c8d4bcc2f216dc1b665412df35e46d12ee8d3d046b381aad05f1fcf30547"
 dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
@@ -874,9 +926,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros-backend"
-version = "0.16.6"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "611f64e82d98f447787e82b8e7b0ebc681e1eb78fc1252668b2c605ffb4e1eb8"
+checksum = "85752a767ee19399a78272cc2ab625cd7d373b2e112b4b13db28de71fa892784"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1018,6 +1070,9 @@ name = "serde"
 version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_derive"
@@ -1060,9 +1115,9 @@ checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "sqlparser"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6483de5881514f11fe570f53fcee3cd9194e91eb43659cb356df69f99ef0f83e"
+checksum = "0beb13adabbdda01b63d595f38c8bfd19a361e697fd94ce0098a634077bc5b25"
 dependencies = [
  "log",
 ]
@@ -1114,6 +1169,15 @@ name = "target-lexicon"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c02424087780c9b71cc96799eaeddff35af2bc513278cda5c99fc1f5d026d3c1"
+
+[[package]]
+name = "termcolor"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
+dependencies = [
+ "winapi-util",
+]
 
 [[package]]
 name = "thiserror"
@@ -1295,6 +1359,15 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
+dependencies = [
+ "winapi",
+]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"

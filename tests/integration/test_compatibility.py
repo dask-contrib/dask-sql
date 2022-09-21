@@ -276,8 +276,10 @@ def test_join_multi():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
-def test_agg_count_no_group_by():
+@pytest.mark.skip(
+    reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
+)
+def test_multi_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
     )
@@ -300,8 +302,53 @@ def test_agg_count_no_group_by():
     )
 
 
+def test_agg_count_distinct_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            a,
+            COUNT(DISTINCT b) AS cd_b
+        FROM a
+        GROUP BY a
+        ORDER BY a NULLS FIRST
+        """,
+        a=a,
+    )
+
+
+def test_agg_count_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
+
+def test_agg_count_distinct_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(DISTINCT a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
+
 @pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/532"
+    reason="conflicting aggregation functions: [('count', 'c'), ('count', 'c')]"
 )
 def test_agg_count():
     a = make_rand_df(
@@ -325,9 +372,6 @@ def test_agg_count():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_sum_avg_no_group_by():
     eq_sqlite(
         """
@@ -336,7 +380,7 @@ def test_agg_sum_avg_no_group_by():
             AVG(a) AS avg_a
         FROM a
         """,
-        a=pd.DataFrame({"a": [float("nan")]}),
+        a=pd.DataFrame({"a": [float("2.3")]}),
     )
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -383,9 +427,6 @@ def test_agg_sum_avg():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_min_max_no_group_by():
     a = make_rand_df(
         100,
@@ -422,9 +463,6 @@ def test_agg_min_max_no_group_by():
     )
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_min_max():
     a = make_rand_df(
         100,
@@ -938,7 +976,6 @@ def test_with():
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_integration_1():
     a = make_rand_df(100, a=int, b=str, c=float, d=int, e=bool, f=str, g=str, h=float)
     eq_sqlite(

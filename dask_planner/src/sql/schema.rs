@@ -20,9 +20,9 @@ pub struct DaskSchema {
 #[pymethods]
 impl DaskSchema {
     #[new]
-    pub fn new(schema_name: String) -> Self {
+    pub fn new(schema_name: &str) -> Self {
         Self {
-            name: schema_name,
+            name: schema_name.to_owned(),
             tables: HashMap::new(),
             functions: HashMap::new(),
         }

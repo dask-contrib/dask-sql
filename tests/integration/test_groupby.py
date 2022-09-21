@@ -110,9 +110,6 @@ def test_group_by_all(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/463"
-)
 def test_group_by_filtered(c):
     return_df = c.sql(
         """
@@ -491,7 +488,7 @@ def test_groupby_split_out(c, input_table, split_out, request):
         FROM {input_table}
         GROUP BY user_id
         """,
-        config_options={"sql.aggregate.split_out": split_out},
+        config_options={"sql.aggregate.split_out": split_out} if split_out else {},
     )
     expected_df = (
         user_table.groupby(by="user_id")
