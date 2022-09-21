@@ -63,7 +63,7 @@
 //!      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use datafusion_common::{DFSchema, Result, ScalarValue};
+use datafusion_common::{Column, DFSchema, Result, ScalarValue};
 use datafusion_expr::logical_plan::Projection;
 use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
@@ -221,7 +221,12 @@ fn create_plan(
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
             let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
-            let aggr_expr = vec![count(Expr::Literal(ScalarValue::UInt64(Some(1)))).alias(&alias)];
+            // let count_expr = Expr::Literal(ScalarValue::UInt64(Some(1)));
+            let expr_name = expr.name()?;
+            println!("expr_name = {}", expr_name);
+            println!("input schema = {:?}", input.schema().field_names());
+            let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
+            let aggr_expr = vec![count(count_expr).alias(&alias)];
             let mut schema_expr = group_expr.clone();
             schema_expr.extend_from_slice(&aggr_expr);
             let schema = DFSchema::new_with_metadata(

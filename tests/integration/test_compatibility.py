@@ -276,6 +276,20 @@ def test_join_multi():
     )
 
 
+def test_single_agg_count_no_group_by():
+    a = make_rand_df(
+        100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
+    )
+    eq_sqlite(
+        """
+        SELECT
+            COUNT(a) AS c_a,
+            COUNT(DISTINCT a) AS cd_a
+        FROM a
+        """,
+        a=a,
+    )
+
 def test_multi_agg_count_no_group_by():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
@@ -378,6 +392,7 @@ def test_agg_count():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
     )
+    # note that this test repeats the expression `COUNT(DISTINCT a)`
     eq_sqlite(
         """
         SELECT
