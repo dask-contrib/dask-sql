@@ -354,7 +354,7 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.skip))])
 def test_regr_aggregation(c, timeseries_df, gpu):
     if gpu:
         pytest.skip()
