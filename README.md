@@ -181,8 +181,8 @@ You can also run the CLI `dask-sql` for testing out SQL commands quickly:
 
 At the core, `dask-sql` does two things:
 
-- translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
-- convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
+- translate the SQL query using [DataFusion](https://arrow.apache.org/datafusion) into a relational algebra, which is represented as a logical query plan - similar to many other SQL engines (Hive, Flink, ...)
+- convert this description of the query into dask API calls (and execute them) - returning a dask dataframe.
 
 For the first step, Arrow DataFusion needs to know about the columns and types of the dask dataframes, therefore some Rust code to store this information for dask dataframes are defined in `dask_planner`.
 After the translation to a relational algebra is done (using `DaskSQLContext.logical_relational_algebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.
