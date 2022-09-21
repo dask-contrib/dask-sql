@@ -18,9 +18,7 @@ impl PyLimit {
     #[pyo3(name = "getSkip")]
     pub fn skip(&self) -> PyResult<PyExpr> {
         Ok(PyExpr::from(
-            Expr::Literal(ScalarValue::UInt64(Some(
-                self.limit.skip.unwrap_or(0) as u64
-            ))),
+            Expr::Literal(ScalarValue::UInt64(Some(self.limit.skip as u64))),
             Some(vec![self.limit.input.clone()]),
         ))
     }

@@ -80,6 +80,9 @@ impl PyExpr {
             | Expr::IsNotNull(..)
             | Expr::Negative(..)
             | Expr::IsNull(..)
+            | Expr::Like { .. }
+            | Expr::ILike { .. }
+            | Expr::SimilarTo { .. }
             | Expr::Between { .. }
             | Expr::Case { .. }
             | Expr::Cast { .. }
@@ -196,6 +199,9 @@ impl PyExpr {
             | Expr::IsUnknown(_)
             | Expr::IsNotTrue(_)
             | Expr::IsNotFalse(_)
+            | Expr::Like { .. }
+            | Expr::ILike { .. }
+            | Expr::SimilarTo { .. }
             | Expr::IsNotUnknown(_)
             | Expr::Case { .. }
             | Expr::TryCast { .. }
@@ -302,6 +308,18 @@ impl PyExpr {
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
+            Expr::Like { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
+            ]),
+            Expr::ILike { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
+            ]),
+            Expr::SimilarTo { expr, pattern, .. } => Ok(vec![
+                PyExpr::from(*expr.clone(), self.input_plan.clone()),
+                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
+            ]),
             Expr::Between {
                 expr,
                 negated: _,
@@ -349,6 +367,27 @@ impl PyExpr {
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
+            Expr::Like { negated, .. } => {
+                if *negated {
+                    "not like".to_string()
+                } else {
+                    "like".to_string()
+                }
+            }
+            Expr::ILike { negated, .. } => {
+                if *negated {
+                    "not ilike".to_string()
+                } else {
+                    "ilike".to_string()
+                }
+            }
+            Expr::SimilarTo { negated, .. } => {
+                if *negated {
+                    "not similar to".to_string()
+                } else {
+                    "similar to".to_string()
+                }
+            }
             _ => {
                 return Err(py_type_err(format!(
                     "Catch all triggered in get_operator_name: {:?}",
@@ -382,19 +421,21 @@ impl PyExpr {
                 | Operator::RegexMatch
                 | Operator::RegexIMatch
                 | Operator::RegexNotMatch
-                | Operator::RegexNotIMatch
-                | Operator::BitwiseAnd
-                | Operator::BitwiseOr => "BOOLEAN",
+                | Operator::RegexNotIMatch => "BOOLEAN",
                 Operator::Plus | Operator::Minus | Operator::Multiply | Operator::Modulo => {
                     "BIGINT"
                 }
                 Operator::Divide => "FLOAT",
                 Operator::StringConcat => "VARCHAR",
-                Operator::BitwiseShiftLeft | Operator::BitwiseShiftRight => {
+                Operator::BitwiseShiftLeft
+                | Operator::BitwiseShiftRight
+                | Operator::BitwiseXor
+                | Operator::BitwiseAnd
+                | Operator::BitwiseOr => {
                     // the type here should be the same as the type of the left expression
                     // but we can only compute that if we have the schema available
                     return Err(py_type_err(
-                        "Bitwise shift operators unsupported in get_type".to_string(),
+                        "Bitwise operators unsupported in get_type".to_string(),
                     ));
                 }
             },
@@ -488,10 +529,10 @@ impl PyExpr {
     /// TODO: I can't express how much I dislike explicity listing all of these methods out
     /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
     #[pyo3(name = "getFloat32Value")]
-    pub fn float_32_value(&mut self) -> PyResult<f32> {
+    pub fn float_32_value(&mut self) -> PyResult<Option<f32>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float32(iv) => Ok(iv.unwrap()),
+                ScalarValue::Float32(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -499,10 +540,23 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getFloat64Value")]
-    pub fn float_64_value(&mut self) -> PyResult<f64> {
+    pub fn float_64_value(&mut self) -> PyResult<Option<f64>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float64(iv) => Ok(iv.unwrap()),
+                ScalarValue::Float64(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getDecimal128Value")]
+    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Decimal128(value, precision, scale) => {
+                    Ok((*value, *precision, *scale))
+                }
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -510,10 +564,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt8Value")]
-    pub fn int_8_value(&mut self) -> PyResult<i8> {
+    pub fn int_8_value(&mut self) -> PyResult<Option<i8>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int8(iv) => Ok(iv.unwrap()),
+                ScalarValue::Int8(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -521,10 +575,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt16Value")]
-    pub fn int_16_value(&mut self) -> PyResult<i16> {
+    pub fn int_16_value(&mut self) -> PyResult<Option<i16>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int16(iv) => Ok(iv.unwrap()),
+                ScalarValue::Int16(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -532,10 +586,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt32Value")]
-    pub fn int_32_value(&mut self) -> PyResult<i32> {
+    pub fn int_32_value(&mut self) -> PyResult<Option<i32>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int32(iv) => Ok(iv.unwrap()),
+                ScalarValue::Int32(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -543,10 +597,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt64Value")]
-    pub fn int_64_value(&mut self) -> PyResult<i64> {
+    pub fn int_64_value(&mut self) -> PyResult<Option<i64>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int64(iv) => Ok(iv.unwrap()),
+                ScalarValue::Int64(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -554,10 +608,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt8Value")]
-    pub fn uint_8_value(&mut self) -> PyResult<u8> {
+    pub fn uint_8_value(&mut self) -> PyResult<Option<u8>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt8(iv) => Ok(iv.unwrap()),
+                ScalarValue::UInt8(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -565,10 +619,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt16Value")]
-    pub fn uint_16_value(&mut self) -> PyResult<u16> {
+    pub fn uint_16_value(&mut self) -> PyResult<Option<u16>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt16(iv) => Ok(iv.unwrap()),
+                ScalarValue::UInt16(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -576,10 +630,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt32Value")]
-    pub fn uint_32_value(&mut self) -> PyResult<u32> {
+    pub fn uint_32_value(&mut self) -> PyResult<Option<u32>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt32(iv) => Ok(iv.unwrap()),
+                ScalarValue::UInt32(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -587,10 +641,57 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt64Value")]
-    pub fn uint_64_value(&mut self) -> PyResult<u64> {
+    pub fn uint_64_value(&mut self) -> PyResult<Option<u64>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt64(iv) => Ok(iv.unwrap()),
+                ScalarValue::UInt64(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getDate32Value")]
+    pub fn date_32_value(&mut self) -> PyResult<Option<i32>> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Date32(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getDate64Value")]
+    pub fn date_64_value(&mut self) -> PyResult<Option<i64>> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Date64(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getTime64Value")]
+    pub fn time_64_value(&mut self) -> PyResult<Option<i64>> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::Time64(iv) => Ok(*iv),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            },
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        }
+    }
+
+    #[pyo3(name = "getTimestampValue")]
+    pub fn timestamp_value(&mut self) -> PyResult<(Option<i64>, Option<String>)> {
+        match &self.expr {
+            Expr::Literal(scalar_value) => match scalar_value {
+                ScalarValue::TimestampNanosecond(iv, tz)
+                | ScalarValue::TimestampMicrosecond(iv, tz)
+                | ScalarValue::TimestampMillisecond(iv, tz)
+                | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -598,10 +699,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getBoolValue")]
-    pub fn bool_value(&mut self) -> PyResult<bool> {
+    pub fn bool_value(&mut self) -> PyResult<Option<bool>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(Some(iv)) => Ok(*iv),
+                ScalarValue::Boolean(iv) => Ok(*iv),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -609,10 +710,10 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getStringValue")]
-    pub fn string_value(&mut self) -> PyResult<String> {
+    pub fn string_value(&mut self) -> PyResult<Option<String>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Utf8(iv) => Ok(iv.clone().unwrap()),
+                ScalarValue::Utf8(iv) => Ok(iv.clone()),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
@@ -620,20 +721,19 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getIntervalDayTimeValue")]
-    pub fn interval_day_time_value(&mut self) -> (i32, i32) {
+    pub fn interval_day_time_value(&mut self) -> PyResult<Option<(i32, i32)>> {
         match &self.expr {
             Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::IntervalDayTime(iv) => {
-                    let interval = iv.unwrap() as u64;
+                ScalarValue::IntervalDayTime(Some(iv)) => {
+                    let interval = *iv as u64;
                     let days = (interval >> 32) as i32;
                     let ms = interval as i32;
-                    (days, ms)
+                    Ok(Some((days, ms)))
                 }
-                _ => {
-                    panic!("getValue<T>() - Unexpected value")
-                }
+                ScalarValue::IntervalDayTime(None) => Ok(None),
+                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
-            _ => panic!("getValue<T>() - Non literal value encountered"),
+            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
         }
     }
 
@@ -670,6 +770,20 @@ impl PyExpr {
             Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
+                &self.expr
+            ))),
+        }
+    }
+
+    /// Returns the escape char for like/ilike/similar to expr variants
+    #[pyo3(name = "getEscapeChar")]
+    pub fn get_escape_char(&self) -> PyResult<Option<char>> {
+        match &self.expr {
+            Expr::Like { escape_char, .. }
+            | Expr::ILike { escape_char, .. }
+            | Expr::SimilarTo { escape_char, .. } => Ok(*escape_char),
+            _ => Err(py_type_err(format!(
+                "Provided Expr {:?} not one of Like/ILike/SimilarTo",
                 &self.expr
             ))),
         }

@@ -493,7 +493,7 @@ def test_groupby_split_out(c, input_table, split_out, request):
         FROM {input_table}
         GROUP BY user_id
         """,
-        config_options={"sql.aggregate.split_out": split_out},
+        config_options={"sql.aggregate.split_out": split_out} if split_out else {},
     )
     expected_df = (
         user_table.groupby(by="user_id")

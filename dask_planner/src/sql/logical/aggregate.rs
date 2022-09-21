@@ -34,6 +34,7 @@ impl PyAggregate {
         }
     }
 
+    /// Returns the inner Aggregate Expr(s)
     #[pyo3(name = "getNamedAggCalls")]
     pub fn agg_expressions(&self) -> PyResult<Vec<PyExpr>> {
         match &self.aggregate {
@@ -44,32 +45,63 @@ impl PyAggregate {
 
     #[pyo3(name = "getAggregationFuncName")]
     pub fn agg_func_name(&self, expr: PyExpr) -> PyResult<String> {
-        match expr.expr {
-            Expr::AggregateFunction { fun, .. } => Ok(fun.to_string()),
-            Expr::AggregateUDF { fun, .. } => Ok(fun.name.clone()),
-            _ => Err(py_type_err(
-                "Encountered a non Aggregate type in agg_func_name",
-            )),
-        }
+        _agg_func_name(&expr.expr)
     }
 
     #[pyo3(name = "getArgs")]
     pub fn aggregation_arguments(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        match expr.expr {
+        self._aggregation_arguments(&expr.expr)
+    }
+
+    #[pyo3(name = "isAggExprDistinct")]
+    pub fn distinct_agg_expr(&self, expr: PyExpr) -> PyResult<bool> {
+        _distinct_agg_expr(&expr.expr)
+    }
+
+    #[pyo3(name = "isDistinctNode")]
+    pub fn distinct_node(&self) -> PyResult<bool> {
+        Ok(self.distinct.is_some())
+    }
+}
+
+impl PyAggregate {
+    fn _aggregation_arguments(&self, expr: &Expr) -> PyResult<Vec<PyExpr>> {
+        match expr {
+            Expr::Alias(expr, _) => self._aggregation_arguments(expr.as_ref()),
             Expr::AggregateFunction { fun: _, args, .. }
             | Expr::AggregateUDF { fun: _, args, .. } => match &self.aggregate {
-                Some(e) => py_expr_list(&e.input, &args),
+                Some(e) => py_expr_list(&e.input, args),
                 None => Ok(vec![]),
             },
             _ => Err(py_type_err(
-                "Encountered a non Aggregate type in agg_func_name",
+                "Encountered a non Aggregate type in aggregation_arguments",
             )),
         }
     }
+}
 
-    #[pyo3(name = "isDistinct")]
-    pub fn distinct(&self) -> PyResult<bool> {
-        Ok(self.distinct.is_some())
+fn _agg_func_name(expr: &Expr) -> PyResult<String> {
+    match expr {
+        Expr::Alias(expr, _) => _agg_func_name(expr.as_ref()),
+        Expr::AggregateFunction { fun, .. } => Ok(fun.to_string()),
+        Expr::AggregateUDF { fun, .. } => Ok(fun.name.clone()),
+        _ => Err(py_type_err(
+            "Encountered a non Aggregate type in agg_func_name",
+        )),
+    }
+}
+
+fn _distinct_agg_expr(expr: &Expr) -> PyResult<bool> {
+    match expr {
+        Expr::Alias(expr, _) => _distinct_agg_expr(expr.as_ref()),
+        Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+        Expr::AggregateUDF { .. } => {
+            // DataFusion does not support DISTINCT in UDAFs
+            Ok(false)
+        }
+        _ => Err(py_type_err(
+            "Encountered a non Aggregate type in distinct_agg_expr",
+        )),
     }
 }
 

@@ -4,7 +4,6 @@ pub mod function;
 pub mod logical;
 pub mod optimizer;
 pub mod parser_utils;
-pub mod rules;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -74,8 +73,8 @@ use self::logical::use_schema::UseSchemaPlanNode;
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLContext {
-    default_catalog_name: String,
-    default_schema_name: String,
+    current_catalog: String,
+    current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
 }
 
@@ -85,8 +84,15 @@ impl ContextProvider for DaskSQLContext {
         name: TableReference,
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
         let reference: ResolvedTableReference =
-            name.resolve(&self.default_catalog_name, &self.default_schema_name);
-        match self.schemas.get(&self.default_schema_name) {
+            name.resolve(&self.current_catalog, &self.current_schema);
+        if reference.catalog != self.current_catalog {
+            // there is a single catalog in Dask SQL
+            return Err(DataFusionError::Plan(format!(
+                "Cannot resolve catalog '{}'",
+                reference.catalog
+            )));
+        }
+        match self.schemas.get(reference.schema) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
@@ -204,7 +210,7 @@ impl ContextProvider for DaskSQLContext {
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
         let acc: AccumulatorFunctionImplementation =
-            Arc::new(|| Err(DataFusionError::NotImplemented("".to_string())));
+            Arc::new(|_return_type| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
@@ -273,11 +279,24 @@ impl ContextProvider for DaskSQLContext {
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new(default_catalog_name: String, default_schema_name: String) -> Self {
+    pub fn new(default_catalog_name: &str, default_schema_name: &str) -> Self {
         Self {
-            default_catalog_name,
-            default_schema_name,
+            current_catalog: default_catalog_name.to_owned(),
+            current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
+        }
+    }
+
+    /// Change the current schema
+    pub fn use_schema(&mut self, schema_name: &str) -> PyResult<()> {
+        if self.schemas.contains_key(schema_name) {
+            self.current_schema = schema_name.to_owned();
+            Ok(())
+        } else {
+            Err(py_runtime_err(format!(
+                "Schema: {} not found in DaskSQLContext",
+                schema_name
+            )))
         }
     }
 
@@ -310,9 +329,9 @@ impl DaskSQLContext {
     }
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
-    pub fn parse_sql(&self, sql: String) -> PyResult<Vec<statement::PyStatement>> {
+    pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
         let dd: DaskDialect = DaskDialect {};
-        match DaskParser::parse_sql_with_dialect(sql.as_str(), &dd) {
+        match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
                 let mut statements: Vec<statement::PyStatement> = Vec::new();
                 for statement in k {
@@ -382,9 +401,7 @@ impl DaskSQLContext {
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
                     model_name: create_model.name,
-                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
-                        create_model.select,
-                    )))?,
+                    input: self._logical_relational_algebra(create_model.select)?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
                     with_options: create_model.with_options,
@@ -394,9 +411,7 @@ impl DaskSQLContext {
                 Ok(LogicalPlan::Extension(Extension {
                     node: Arc::new(CreateExperimentPlanNode {
                         experiment_name: create_experiment.name,
-                        input: self._logical_relational_algebra(DaskStatement::Statement(
-                            Box::new(create_experiment.select),
-                        ))?,
+                        input: self._logical_relational_algebra(create_experiment.select)?,
                         if_not_exists: create_experiment.if_not_exists,
                         or_replace: create_experiment.or_replace,
                         with_options: create_experiment.with_options,
@@ -407,9 +422,7 @@ impl DaskSQLContext {
                 node: Arc::new(PredictModelPlanNode {
                     model_schema: predict_model.schema_name,
                     model_name: predict_model.name,
-                    input: self._logical_relational_algebra(DaskStatement::Statement(Box::new(
-                        predict_model.select,
-                    )))?,
+                    input: self._logical_relational_algebra(predict_model.select)?,
                 }),
             })),
             DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {

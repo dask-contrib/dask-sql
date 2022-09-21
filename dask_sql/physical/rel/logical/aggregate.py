@@ -173,7 +173,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_exprs = agg.getGroupSets()
         group_columns = (
             agg.getDistinctColumns()
-            if agg.isDistinct()
+            if agg.isDistinctNode()
             else [group_expr.column_name(rel) for group_expr in group_exprs]
         )
 
@@ -357,6 +357,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         for expr in agg.getNamedAggCalls():
             # Determine the aggregation function to use
             assert expr.getExprType() in {
+                "Alias",
                 "AggregateFunction",
                 "AggregateUDF",
             }, "Do not know how to handle this case!"

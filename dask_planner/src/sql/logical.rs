@@ -288,6 +288,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
             LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
             LogicalPlan::DropTable(_drop_table) => "DropTable",
+            LogicalPlan::DropView(_drop_view) => "DropView",
             LogicalPlan::Values(_values) => "Values",
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",

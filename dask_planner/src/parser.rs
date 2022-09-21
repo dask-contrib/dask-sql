@@ -26,7 +26,7 @@ pub struct CreateModel {
     /// model name
     pub name: String,
     /// input Query
-    pub select: SQLStatement,
+    pub select: DaskStatement,
     /// IF NOT EXISTS
     pub if_not_exists: bool,
     /// To replace the model or not
@@ -105,7 +105,7 @@ pub struct CreateExperiment {
     /// experiment name
     pub name: String,
     /// input Query
-    pub select: SQLStatement,
+    pub select: DaskStatement,
     /// IF NOT EXISTS
     pub if_not_exists: bool,
     /// To replace the model or not
@@ -122,7 +122,7 @@ pub struct PredictModel {
     /// model name
     pub name: String,
     /// input Query
-    pub select: SQLStatement,
+    pub select: DaskStatement,
 }
 
 /// Dask-SQL extension DDL for `CREATE SCHEMA`
@@ -744,13 +744,24 @@ impl<'a> DaskParser<'a> {
             DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
-        let sql_statement = self.parser.parse_statement()?;
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
+        self.parser.prev_token();
+
+        let select = self.parse_statement()?;
+
         self.parser.expect_token(&Token::RParen)?;
 
         let predict = PredictModel {
             schema_name: mdl_schema,
             name: mdl_name,
-            select: sql_statement,
+            select,
         };
         Ok(DaskStatement::PredictModel(Box::new(predict)))
     }
@@ -769,12 +780,27 @@ impl<'a> DaskParser<'a> {
 
         self.parser.expect_token(&Token::RParen)?;
 
-        // Parse the "AS" before the SQLStatement
+        // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
+        self.parser.prev_token();
+
+        let select = self.parse_statement()?;
+
+        self.parser.expect_token(&Token::RParen)?;
 
         let create = CreateModel {
             name: model_name.to_string(),
-            select: self.parser.parse_statement()?,
+            select,
             if_not_exists,
             or_replace,
             with_options,
@@ -847,12 +873,27 @@ impl<'a> DaskParser<'a> {
         let table_factor = self.parser.parse_table_factor()?;
         let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
 
-        // Parse the "AS" before the SQLStatement
+        // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
+        self.parser.prev_token();
+
+        let select = self.parse_statement()?;
+
+        self.parser.expect_token(&Token::RParen)?;
 
         let create = CreateExperiment {
             name: experiment_name.to_string(),
-            select: self.parser.parse_statement()?,
+            select,
             if_not_exists,
             or_replace,
             with_options,
