@@ -33,4 +33,8 @@ impl Dialect for DaskDialect {
     fn is_proper_identifier_inside_quotes(&self, mut _chars: Peekable<Chars<'_>>) -> bool {
         true
     }
+    /// Determine if FILTER (WHERE ...) filters are allowed during aggregations
+    fn supports_filter_during_aggregation(&self) -> bool {
+        true
+    }
 }
