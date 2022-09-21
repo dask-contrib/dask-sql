@@ -1,7 +1,7 @@
 import logging
-import numpy as np
 from typing import TYPE_CHECKING
 
+import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer

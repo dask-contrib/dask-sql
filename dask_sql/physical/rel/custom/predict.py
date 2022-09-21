@@ -1,7 +1,8 @@
 import logging
-import numpy as np
 import uuid
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -61,7 +62,10 @@ class PredictModelPlugin(BaseRelPlugin):
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)
         part = df[training_columns]
-        output_meta = model.predict_meta
+        try:
+            output_meta = model.predict_meta
+        except AttributeError:
+            output_meta = None
         if part.shape[0].compute() == 0 and output_meta is not None:
             empty_output = self.handle_empty_partitions(output_meta)
             if empty_output is not None:
@@ -87,7 +91,7 @@ class PredictModelPlugin(BaseRelPlugin):
 
         return dc
 
-    def handle_empty_partitions(self, output_meta):            
+    def handle_empty_partitions(self, output_meta):
         if hasattr(output_meta, "__array_function__"):
             if len(output_meta.shape) == 1:
                 shape = 0
