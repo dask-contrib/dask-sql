@@ -114,7 +114,7 @@ def test_filter_cast_timestamp(c, input_table, request):
     return_df = c.sql(
         f"""
         SELECT * FROM {input_table} WHERE
-            CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00'
+            CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00+00'
         """
     )
 

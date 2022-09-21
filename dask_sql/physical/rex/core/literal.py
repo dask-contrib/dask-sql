@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
+import numpy as np
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
@@ -113,6 +114,10 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Float64":
             literal_type = SqlTypeName.DOUBLE
             literal_value = rex.getFloat64Value()
+        elif literal_type == "Decimal128":
+            literal_type = SqlTypeName.DECIMAL
+            value, _, scale = rex.getDecimal128Value()
+            literal_value = value / (10**scale)
         elif literal_type == "UInt8":
             literal_type = SqlTypeName.TINYINT
             literal_value = rex.getUInt8Value()
@@ -142,16 +147,38 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value = rex.getStringValue()
         elif literal_type == "Date32":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDateValue()
+            literal_value = np.datetime64(rex.getDate32Value(), "D")
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
-            literal_value = rex.getDateValue()
+            literal_value = np.datetime64(rex.getDate64Value(), "ms")
+        elif literal_type == "Time64":
+            literal_value = np.datetime64(rex.getTime64Value(), "ns")
+            literal_type = SqlTypeName.TIME
         elif literal_type == "Null":
             literal_type = SqlTypeName.NULL
             literal_value = None
         elif literal_type == "IntervalDayTime":
             literal_type = SqlTypeName.INTERVAL_DAY
             literal_value = rex.getIntervalDayTimeValue()
+        elif literal_type in {
+            "TimestampSecond",
+            "TimestampMillisecond",
+            "TimestampMicrosecond",
+            "TimestampNanosecond",
+        }:
+            unit_mapping = {
+                "Second": "s",
+                "Millisecond": "ms",
+                "Microsecond": "us",
+                "Nanosecond": "ns",
+            }
+            literal_value, timezone = rex.getTimestampValue()
+            if timezone and timezone != "UTC":
+                raise ValueError("Non UTC timezones not supported")
+            literal_type = SqlTypeName.TIMESTAMP
+            literal_value = np.datetime64(
+                literal_value, unit_mapping.get(literal_type.partition("Timestamp")[2])
+            )
         else:
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
