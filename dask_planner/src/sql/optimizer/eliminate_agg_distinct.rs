@@ -63,7 +63,7 @@
 //!      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use datafusion_common::{Column, DFSchema, Result, ScalarValue};
+use datafusion_common::{Column, DFSchema, Result};
 use datafusion_expr::logical_plan::Projection;
 use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
@@ -94,9 +94,6 @@ impl OptimizerRule for EliminateAggDistinct {
         plan: &LogicalPlan,
         optimizer_config: &mut OptimizerConfig,
     ) -> Result<LogicalPlan> {
-
-        println!("===INCOMING===\n{}", plan.display_indent());
-
         // optimize inputs first
         let plan = utils::optimize_children(self, plan, optimizer_config)?;
 
@@ -139,7 +136,7 @@ impl OptimizerRule for EliminateAggDistinct {
                     .collect::<Result<Vec<_>>>()?;
 
                 for plan in &plans {
-                    println!("{}", plan.display_indent());
+                    trace!("{}", plan.display_indent());
                 }
 
                 match plans.len() {
@@ -155,9 +152,7 @@ impl OptimizerRule for EliminateAggDistinct {
                             builder = builder.cross_join(plan)?;
                         }
                         let join_plan = builder.build()?;
-
-                        println!("{}", join_plan.display_indent_schema());
-
+                        trace!("{}", join_plan.display_indent_schema());
                         Ok(join_plan)
                     }
                 }
@@ -221,10 +216,7 @@ fn create_plan(
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
             let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
-            // let count_expr = Expr::Literal(ScalarValue::UInt64(Some(1)));
             let expr_name = expr.name()?;
-            println!("expr_name = {}", expr_name);
-            println!("input schema = {:?}", input.schema().field_names());
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
             let aggr_expr = vec![count(count_expr).alias(&alias)];
             let mut schema_expr = group_expr.clone();
@@ -473,13 +465,13 @@ fn unique_set_without_aliases(unique_expressions: &HashSet<Expr>) -> HashSet<Exp
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sql::optimizer::DaskSqlOptimizer;
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
         col, count, count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
     };
     use std::sync::Arc;
-    use crate::sql::optimizer::DaskSqlOptimizer;
 
     /// Optimize with just the eliminate_agg_distinct rule
     fn assert_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
@@ -598,7 +590,7 @@ mod tests {
 
         let expected = "Projection: #a.b, #a.b AS COUNT(a.a), #SUM(__dask_sql_count__1) AS COUNT(DISTINCT a.a)\
         \n  Aggregate: groupBy=[[#a.b]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n    Aggregate: groupBy=[[#a.b, #a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n    Aggregate: groupBy=[[#a.b, #a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n      TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
@@ -616,7 +608,7 @@ mod tests {
 
         let expected = "Projection: #SUM(__dask_sql_count__1) AS COUNT(a.a), #COUNT(a.a) AS COUNT(DISTINCT a.a)\
         \n  Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n    Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n    Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n      TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
@@ -637,7 +629,7 @@ mod tests {
 
         let expected = "Projection: #SUM(__dask_sql_count__1) AS c_a, #COUNT(a.a) AS cd_a\
         \n  Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n    Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n    Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n      TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
@@ -667,19 +659,19 @@ mod tests {
         \n    CrossJoin:\
         \n      Projection: #SUM(__dask_sql_count__1) AS COUNT(a.a), #COUNT(a.a) AS COUNT(DISTINCT a.a)\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n            TableScan: a\
         \n      Projection: #SUM(__dask_sql_count__2) AS COUNT(a.b), #COUNT(a.b) AS COUNT(DISTINCT a.b)\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__2), COUNT(#a.b)]]\
-        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__2]]\
+        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(#a.b) AS __dask_sql_count__2]]\
         \n            TableScan: a\
         \n    Projection: #SUM(__dask_sql_count__3) AS COUNT(a.c), #COUNT(a.c) AS COUNT(DISTINCT a.c)\
         \n      Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__3), COUNT(#a.c)]]\
-        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__3]]\
+        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(#a.c) AS __dask_sql_count__3]]\
         \n          TableScan: a\
         \n  Projection: #SUM(__dask_sql_count__4) AS COUNT(a.d), #COUNT(a.d) AS COUNT(DISTINCT a.d)\
         \n    Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__4), COUNT(#a.d)]]\
-        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
+        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(#a.d) AS __dask_sql_count__4]]\
         \n        TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
         Ok(())
@@ -709,19 +701,19 @@ mod tests {
         \n    CrossJoin:\
         \n      Projection: #SUM(__dask_sql_count__1) AS c_a, #COUNT(a.a) AS cd_a\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n            TableScan: a\
         \n      Projection: #SUM(__dask_sql_count__2) AS c_b, #COUNT(a.b) AS cd_b\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__2), COUNT(#a.b)]]\
-        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__2]]\
+        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(#a.b) AS __dask_sql_count__2]]\
         \n            TableScan: a\
         \n    Projection: #SUM(__dask_sql_count__3) AS c_c, #COUNT(a.c) AS cd_c\
         \n      Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__3), COUNT(#a.c)]]\
-        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__3]]\
+        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(#a.c) AS __dask_sql_count__3]]\
         \n          TableScan: a\
         \n  Projection: #SUM(__dask_sql_count__4) AS c_d, #COUNT(a.d) AS cd_d\
         \n    Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__4), COUNT(#a.d)]]\
-        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
+        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(#a.d) AS __dask_sql_count__4]]\
         \n        TableScan: a";
         assert_optimized_plan_eq(&plan, expected);
 
@@ -730,19 +722,19 @@ mod tests {
         \n    CrossJoin:\
         \n      Projection: #SUM(__dask_sql_count__1) AS c_a, #COUNT(a.a) AS cd_a\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__1), COUNT(#a.a)]]\
-        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__1]]\
+        \n          Aggregate: groupBy=[[#a.a]], aggr=[[COUNT(#a.a) AS __dask_sql_count__1]]\
         \n            TableScan: a projection=[a, b, c, d]\
         \n      Projection: #SUM(__dask_sql_count__2) AS c_b, #COUNT(a.b) AS cd_b\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__2), COUNT(#a.b)]]\
-        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__2]]\
+        \n          Aggregate: groupBy=[[#a.b]], aggr=[[COUNT(#a.b) AS __dask_sql_count__2]]\
         \n            TableScan: a projection=[a, b, c, d]\
         \n    Projection: #SUM(__dask_sql_count__3) AS c_c, #COUNT(a.c) AS cd_c\
         \n      Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__3), COUNT(#a.c)]]\
-        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__3]]\
+        \n        Aggregate: groupBy=[[#a.c]], aggr=[[COUNT(#a.c) AS __dask_sql_count__3]]\
         \n          TableScan: a projection=[a, b, c, d]\
         \n  Projection: #SUM(__dask_sql_count__4) AS c_d, #COUNT(a.d) AS cd_d\
         \n    Aggregate: groupBy=[[]], aggr=[[SUM(#__dask_sql_count__4), COUNT(#a.d)]]\
-        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
+        \n      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(#a.d) AS __dask_sql_count__4]]\
         \n        TableScan: a projection=[a, b, c, d]";
         assert_fully_optimized_plan_eq(&plan, expected);
 

@@ -542,7 +542,7 @@ impl PyExpr {
                 _ => Err(py_type_err(
                     "getFilterExpr() - Non-aggregate expression encountered",
                 )),
-            }
+            },
             Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
                 match filter {
                     Some(filter) => {
