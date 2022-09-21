@@ -503,7 +503,6 @@ mod tests {
             .expect("building plan")
     }
 
-    #[ignore]
     #[test]
     fn test_single_distinct_group_by() -> Result<()> {
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
@@ -518,7 +517,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore]
     #[test]
     fn test_single_distinct_group_by_with_alias() -> Result<()> {
         let plan = LogicalPlanBuilder::from(test_table_scan("a"))
