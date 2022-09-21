@@ -39,6 +39,10 @@ class CreateTableAsPlugin(BaseRelPlugin):
         create_memory_table = rel.create_memory_table()
 
         schema_name, table_name = context.schema_name, create_memory_table.getName()
+        if "." in table_name:
+            raise KeyError(
+                f"Cannot create table from {table_name} due to schema error."
+            )
 
         if table_name in context.schema[schema_name].tables:
             if create_memory_table.getIfNotExists():
