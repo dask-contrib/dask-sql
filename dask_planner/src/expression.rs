@@ -678,15 +678,7 @@ impl PyExpr {
                 ScalarValue::TimestampNanosecond(iv, tz)
                 | ScalarValue::TimestampMicrosecond(iv, tz)
                 | ScalarValue::TimestampMillisecond(iv, tz)
-                | ScalarValue::TimestampSecond(iv, tz) => {
-                    if let Some(iv) = iv {
-                        println!("{}", iv);
-                    }
-                    if let Some(tz) = tz {
-                        println!("{}", tz);
-                    }
-                    Ok((*iv, tz.clone()))
-                }
+                | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
                 _ => Err(py_type_err("getValue<T>() - Unexpected value")),
             },
             _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),

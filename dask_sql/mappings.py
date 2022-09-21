@@ -173,12 +173,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         if str(literal_value) == "None":
             # NULL time
             return pd.NaT  # pragma: no cover
-
-        # tz = literal_value.getTimeZone().getID()
-        # assert str(tz) == "UTC", "The code can currently only handle UTC timezones"
-
-        # dt = np.datetime64(literal_value.getTimeInMillis(), "ms")
-
         if sql_type == SqlTypeName.DATE:
             return literal_value.astype("<M8[D]")
         return literal_value.astype("<M8[ns]")

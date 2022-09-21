@@ -171,10 +171,10 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value, timezone = rex.getTimestampValue()
             if timezone and timezone != "UTC":
                 raise ValueError("Non UTC timezones not supported")
+            literal_type = SqlTypeName.TIMESTAMP
             literal_value = np.datetime64(
                 literal_value, unit_mapping.get(literal_type.partition("Timestamp")[2])
             )
-            literal_type = SqlTypeName.TIMESTAMP
         else:
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
