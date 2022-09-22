@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
-    ast::{Expr, SelectItem, Statement as SQLStatement, Value},
+    ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
@@ -114,9 +114,21 @@ impl PySqlArg {
             },
             None => match &self.expr {
                 Some(Expr::Array(_)) => Ok(SqlTypeName::ARRAY),
+                Some(Expr::Identifier(Ident { .. })) => Ok(SqlTypeName::VARCHAR),
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::SingleQuotedString(_) => Ok(SqlTypeName::VARCHAR),
+                    Value::Boolean(_) => Ok(SqlTypeName::BOOLEAN),
                     Value::Number(_, false) => Ok(SqlTypeName::BIGINT),
+                    Value::SingleQuotedString(_) => Ok(SqlTypeName::VARCHAR),
+                    unexpected => Err(py_type_err(format!(
+                        "Expected string, got {:?}",
+                        unexpected
+                    ))),
+                },
+                Some(Expr::UnaryOp {
+                    op: UnaryOperator::Minus,
+                    expr,
+                }) => match &**expr {
+                    Expr::Value(Value::Number(_, false)) => Ok(SqlTypeName::BIGINT),
                     unexpected => Err(py_type_err(format!(
                         "Expected string, got {:?}",
                         unexpected
@@ -134,12 +146,24 @@ impl PySqlArg {
     }
 
     #[pyo3(name = "getSqlValue")]
-    pub fn get_value(&self) -> PyResult<String> {
+    pub fn get_sql_value(&self) -> PyResult<String> {
         match &self.custom {
             None => match &self.expr {
+                Some(Expr::Identifier(Ident { value, .. })) => Ok(value.to_string()),
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::SingleQuotedString(string) => Ok(string.clone()),
+                    Value::Boolean(value) => Ok(value.to_string()),
+                    Value::SingleQuotedString(string) => Ok(string.to_string()),
                     Value::Number(value, false) => Ok(value.to_string()),
+                    unexpected => Err(py_type_err(format!(
+                        "Expected string, got {:?}",
+                        unexpected
+                    ))),
+                },
+                Some(Expr::UnaryOp {
+                    op: UnaryOperator::Minus,
+                    expr,
+                }) => match &**expr {
+                    Expr::Value(Value::Number(value, false)) => Ok(format!("-{}", value)),
                     unexpected => Err(py_type_err(format!(
                         "Expected string, got {:?}",
                         unexpected
@@ -185,7 +209,7 @@ pub struct CreateExperiment {
     /// To replace the model or not
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `PREDICT`
@@ -222,7 +246,7 @@ pub struct CreateTable {
     /// or replace
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `CREATE VIEW`
@@ -253,7 +277,7 @@ pub struct ExportModel {
     /// model name
     pub name: String,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `DESCRIBE MODEL`
@@ -847,11 +871,11 @@ impl<'a> DaskParser<'a> {
         or_replace: bool,
     ) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
         self.parser.expect_keyword(Keyword::WITH)?;
         self.parser.expect_token(&Token::LParen)?;
-
         let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
-
         self.parser.expect_token(&Token::RParen)?;
 
         // Parse the nested query statement
@@ -947,14 +971,12 @@ impl<'a> DaskParser<'a> {
         or_replace: bool,
     ) -> Result<DaskStatement, ParserError> {
         let experiment_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
         self.parser.expect_keyword(Keyword::WITH)?;
-
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
-
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::LParen)?;
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+        self.parser.expect_token(&Token::RParen)?;
 
         // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -1044,13 +1066,20 @@ impl<'a> DaskParser<'a> {
                         }
                     }
                     "with" => {
-                        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+                        // `table_name` has been parsed at this point but is needed, reset consumption
                         self.parser.prev_token();
 
-                        let table_factor = self.parser.parse_table_factor()?;
+                        // Parse schema and table name
+                        let obj_name = self.parser.parse_object_name()?;
                         let (tbl_schema, tbl_name) =
-                            DaskParserUtils::elements_from_tablefactor(&table_factor)?;
-                        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+                            DaskParserUtils::elements_from_objectname(&obj_name)?;
+
+                        // Parse WITH options
+                        self.parser.expect_keyword(Keyword::WITH)?;
+                        self.parser.expect_token(&Token::LParen)?;
+                        let with_options =
+                            self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+                        self.parser.expect_token(&Token::RParen)?;
 
                         let create = CreateTable {
                             table_schema: tbl_schema,
@@ -1093,14 +1122,12 @@ impl<'a> DaskParser<'a> {
         }
 
         let model_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
         self.parser.expect_keyword(Keyword::WITH)?;
-
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
-
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::LParen)?;
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+        self.parser.expect_token(&Token::RParen)?;
 
         let export = ExportModel {
             name: model_name.to_string(),

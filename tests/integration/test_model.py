@@ -318,10 +318,13 @@ def test_correct_argument_passing(c, training_df):
             model_class = 'mock.MagicMock',
             target_column = 'target',
             fit_kwargs = (
-                first_arg = 3,
-                second_arg = ARRAY [ 1, 2 ],
-                third_arg = MAP [ 'a', 1 ],
-                fourth_arg = MULTISET [ 1, 1, 2, 3 ]
+                single_quoted_string = 'hello',
+                double_quoted_string = "hi",
+                integer = -300,
+                float = 23.45,
+                array = ARRAY [ 1, 2 ],
+                dict = MAP [ 'a', 1 ],
+                set = MULTISET [ 1, 1, 2, 3 ]
             )
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -339,7 +342,13 @@ def test_correct_argument_passing(c, training_df):
     fit_function.assert_called_once()
     call_kwargs = fit_function.call_args.kwargs
     assert call_kwargs == dict(
-        first_arg=3, second_arg=[1, 2], third_arg={"a": 1}, fourth_arg=set([1, 2, 3])
+        single_quoted_string="hello",
+        double_quoted_string="hi",
+        integer=-300,
+        float=23.45,
+        array=[1, 2],
+        dict={"a": 1},
+        set=set([1, 2, 3]),
     )
 
 
@@ -762,7 +771,14 @@ def test_ml_experiment(c, client, training_df):
             """
             CREATE EXPERIMENT my_exp64 WITH (
                 automl_class = 'that.is.not.a.python.class',
-                automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True,max_eval_time_mins=1),
+                automl_kwargs = (
+                    population_size = 2,
+                    generations = 2,
+                    cv = 2,
+                    n_jobs = -1,
+                    use_dask = True,
+                    max_eval_time_mins = 1
+                ),
                 target_column = 'target'
             ) AS (
                 SELECT x, y, x*y > 0 AS target

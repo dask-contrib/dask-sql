@@ -110,7 +110,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         if experiment_name in context.schema[schema_name].experiments:
             if create_experiment.getIfNotExists():
                 return
-            elif not create_experiment.getReplace():
+            elif not create_experiment.getOrReplace():
                 raise RuntimeError(
                     f"A experiment with the name {experiment_name} is already present."
                 )
