@@ -4,7 +4,7 @@ channels:
 - nodefaults
 dependencies:
 - dask-ml>=2022.1.22
-- dask>=2022.3.0,<=2022.9.1
+- dask>=2022.3.0
 - fastapi>=0.69.0
 - fugue>=0.7.0
 - intake>=0.6.0
