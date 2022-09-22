@@ -151,7 +151,11 @@ impl PySqlArg {
             None => match &self.expr {
                 Some(Expr::Identifier(Ident { value, .. })) => Ok(value.to_string()),
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::Boolean(value) => Ok(value.to_string()),
+                    Value::Boolean(value) => Ok(if *value {
+                        "1".to_string()
+                    } else {
+                        "".to_string()
+                    }),
                     Value::SingleQuotedString(string) => Ok(string.to_string()),
                     Value::Number(value, false) => Ok(value.to_string()),
                     unexpected => Err(py_type_err(format!(

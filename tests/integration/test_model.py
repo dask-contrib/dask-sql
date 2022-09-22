@@ -322,6 +322,7 @@ def test_correct_argument_passing(c, training_df):
                 double_quoted_string = "hi",
                 integer = -300,
                 float = 23.45,
+                boolean = False,
                 array = ARRAY [ 1, 2 ],
                 dict = MAP [ 'a', 1 ],
                 set = MULTISET [ 1, 1, 2, 3 ]
@@ -346,6 +347,7 @@ def test_correct_argument_passing(c, training_df):
         double_quoted_string="hi",
         integer=-300,
         float=23.45,
+        boolean=False,
         array=[1, 2],
         dict={"a": 1},
         set=set([1, 2, 3]),
