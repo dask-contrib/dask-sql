@@ -136,11 +136,21 @@ def convert_sql_kwargs(
     Convert the Rust Vec of key/value pairs into a Dict containing the keys and values
     """
 
-    def convert_literal(value: str):
-        if value.lower() == "true":
-            return True
-        elif value.lower() == "false":
-            return False
+    def convert_literal(value):
+        if value.isCollection():
+            operator_mapping = {
+                "ARRAY": list,
+                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "MULTISET": set,
+                "ROW": tuple,
+            }
+
+            operator = operator_mapping[str(value.getOperator())]
+            operands = [convert_literal(o) for o in value.getOperandList()]
+
+            return operator(operands)
+        elif value.isKwargs():
+            return convert_sql_kwargs(value.getMap())
         else:
             return value
 

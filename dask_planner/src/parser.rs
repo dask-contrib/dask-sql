@@ -2,8 +2,12 @@
 //!
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
+use crate::sql::exceptions::py_type_err;
+use pyo3::prelude::*;
+
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
+use datafusion_sql::sqlparser::ast::Ident;
 use datafusion_sql::sqlparser::{
     ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
@@ -18,10 +22,133 @@ macro_rules! parser_err {
     };
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CustomExpr {
+    Map(Vec<Expr>),
+    Multiset(Vec<Expr>),
+    Nested(Vec<PySqlKwarg>),
+}
+
+#[pyclass(name = "SqlArg", module = "datafusion")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PySqlArg {
+    expr: Option<Expr>,
+    custom: Option<CustomExpr>,
+}
+
+impl PySqlArg {
+    pub fn new(expr: Option<Expr>, custom: Option<CustomExpr>) -> Self {
+        Self { expr, custom }
+    }
+}
+
+#[pymethods]
+impl PySqlArg {
+    #[pyo3(name = "isCollection")]
+    pub fn is_collection(&self) -> PyResult<bool> {
+        match &self.custom {
+            Some(CustomExpr::Nested(_)) => Ok(false),
+            Some(_) => Ok(true),
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(_) => Ok(true),
+                    _ => Ok(false),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+
+    #[pyo3(name = "isKwargs")]
+    pub fn is_kwargs(&self) -> PyResult<bool> {
+        match &self.custom {
+            Some(CustomExpr::Nested(_)) => Ok(true),
+            Some(_) => Ok(false),
+            None => Ok(false),
+        }
+    }
+
+    #[pyo3(name = "getOperator")]
+    pub fn get_operator(&self) -> PyResult<String> {
+        match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(_) => Ok("MAP".to_string()),
+                CustomExpr::Multiset(_) => Ok("MULTISET".to_string()),
+                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+            },
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(_) => Ok("ARRAY".to_string()),
+                    other => Err(py_type_err(format!("Expected Array, got {:?}", other))),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+
+    #[pyo3(name = "getOperandList")]
+    pub fn get_operand_list(&self) -> PyResult<Vec<PySqlArg>> {
+        match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(exprs) | CustomExpr::Multiset(exprs) => Ok(exprs
+                    .iter()
+                    .map(|e| PySqlArg::new(Some(e.clone()), None))
+                    .collect()),
+                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+            },
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(array) => Ok(array
+                        .elem
+                        .iter()
+                        .map(|e| PySqlArg::new(Some(e.clone()), None))
+                        .collect()),
+                    _ => Ok(vec![]),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+}
+
+#[pyclass(name = "SqlKwarg", module = "datafusion")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PySqlKwarg {
+    pub key: Ident,
+    pub value: PySqlArg,
+}
+
+impl PySqlKwarg {
+    pub fn new(key: Ident, value: PySqlArg) -> Self {
+        Self { key, value }
+    }
+}
+
 /// Dask-SQL extension DDL for `CREATE MODEL`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateModel {
     /// model name
+    pub name: String,
+    /// input Query
+    pub select: DaskStatement,
+    /// IF NOT EXISTS
+    pub if_not_exists: bool,
+    /// To replace the model or not
+    pub or_replace: bool,
+    /// with options
+    pub with_options: Vec<PySqlKwarg>,
+}
+
+/// Dask-SQL extension DDL for `CREATE EXPERIMENT`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateExperiment {
+    /// experiment name
     pub name: String,
     /// input Query
     pub select: DaskStatement,
@@ -167,6 +294,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE EXPERIMENT`
+    CreateExperiment(Box<CreateExperiment>),
     /// Extension: `CREATE SCHEMA`
     CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
@@ -383,6 +512,19 @@ impl<'a> DaskParser<'a> {
 
                         // use custom parsing
                         self.parse_create_model(if_not_exists, or_replace)
+                    }
+                    "experiment" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
+                        // use custom parsing
+                        self.parse_create_experiment(if_not_exists, or_replace)
                     }
                     "schema" => {
                         // move one token forward
@@ -658,13 +800,14 @@ impl<'a> DaskParser<'a> {
         ])?;
         self.parser.prev_token();
 
-        let sql_statement = self.parse_statement()?;
+        let select = self.parse_statement()?;
+
         self.parser.expect_token(&Token::RParen)?;
 
         let predict = PredictModel {
             schema_name: mdl_schema,
             name: mdl_name,
-            select: sql_statement,
+            select,
         };
         Ok(DaskStatement::PredictModel(Box::new(predict)))
     }
@@ -677,13 +820,11 @@ impl<'a> DaskParser<'a> {
     ) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
         self.parser.expect_keyword(Keyword::WITH)?;
+        self.parser.expect_token(&Token::LParen)?;
 
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
 
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::RParen)?;
 
         // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -711,6 +852,108 @@ impl<'a> DaskParser<'a> {
             with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    // copied from sqlparser crate and adapted to work with DaskParser
+    fn parse_comma_separated<T, F>(&mut self, mut f: F) -> Result<Vec<T>, ParserError>
+    where
+        F: FnMut(&mut DaskParser<'a>) -> Result<T, ParserError>,
+    {
+        let mut values = vec![];
+        loop {
+            values.push(f(self)?);
+            if !self.parser.consume_token(&Token::Comma) {
+                break;
+            }
+        }
+        Ok(values)
+    }
+
+    fn parse_key_value_pair(&mut self) -> Result<PySqlKwarg, ParserError> {
+        let key = self.parser.parse_identifier()?;
+        self.parser.expect_token(&Token::Eq)?;
+        match self.parser.next_token() {
+            Token::LParen => {
+                let key_value_pairs =
+                    self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+                self.parser.expect_token(&Token::RParen)?;
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Nested(key_value_pairs))),
+                ))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "map" => {
+                // TODO this does not support map or multiset expressions within the map
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Map(values))),
+                ))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "multiset" => {
+                // TODO this does not support map or multiset expressions within the multiset
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Multiset(values))),
+                ))
+            }
+            _ => {
+                self.parser.prev_token();
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(Some(self.parser.parse_expr()?), None),
+                ))
+            }
+        }
+    }
+
+    /// Parse Dask-SQL CREATE EXPERIMENT statement
+    fn parse_create_experiment(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let experiment_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::WITH)?;
+
+        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+        self.parser.prev_token();
+        self.parser.prev_token();
+
+        let table_factor = self.parser.parse_table_factor()?;
+        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+
+        // Parse the nested query statement
+        self.parser.expect_keyword(Keyword::AS)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
+        self.parser.prev_token();
+
+        let select = self.parse_statement()?;
+
+        self.parser.expect_token(&Token::RParen)?;
+
+        let create = CreateExperiment {
+            name: experiment_name.to_string(),
+            select,
+            if_not_exists,
+            or_replace,
+            with_options,
+        };
+        Ok(DaskStatement::CreateExperiment(Box::new(create)))
     }
 
     /// Parse Dask-SQL CREATE {IF NOT EXISTS | OR REPLACE} SCHEMA ... statement
@@ -955,5 +1198,70 @@ impl<'a> DaskParser<'a> {
             },
             columns,
         })))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parser::{DaskParser, DaskStatement};
+
+    #[test]
+    fn create_model() {
+        let sql = r#"CREATE MODEL my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target',
+            fit_kwargs = (
+                first_arg = 3,
+                second_arg = ARRAY [ 1, 2 ],
+                third_arg = MAP [ 'a', 1 ],
+                forth_arg = MULTISET [ 1, 1, 2, 3 ]
+            )
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )"#;
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+
+        match &statements[0] {
+            DaskStatement::CreateModel(create_model) => {
+                // test Debug
+                let expected = "[\
+                    PySqlKwarg { key: Ident { value: \"model_class\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"mock.MagicMock\"))) }, \
+                    PySqlKwarg { key: Ident { value: \"target_column\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"target\"))) }, \
+                    PySqlKwarg { key: Ident { value: \"fit_kwargs\", quote_style: None }, value: Nested([\
+                        PySqlKwarg { key: Ident { value: \"first_arg\", quote_style: None }, value: Expr(Value(Number(\"3\", false))) }, \
+                        PySqlKwarg { key: Ident { value: \"second_arg\", quote_style: None }, value: Expr(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })) }, \
+                        PySqlKwarg { key: Ident { value: \"third_arg\", quote_style: None }, value: Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))]) }, \
+                        PySqlKwarg { key: Ident { value: \"forth_arg\", quote_style: None }, value: Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))]) }\
+                    ]) }\
+                ]";
+                assert_eq!(expected, &format!("{:?}", create_model.with_options));
+
+                // test Display
+                let expected = "model_class = 'mock.MagicMock', \
+                target_column = 'target', \
+                fit_kwargs = (\
+                    first_arg = '3', \
+                    second_arg = ARRAY[1, 2], \
+                    third_arg = MAP [ 'a', 1 ], \
+                    forth_arg = MULTISET [ 1, 1, 2, 3 ]\
+                )";
+                assert_eq!(
+                    expected,
+                    format!(
+                        "{}",
+                        create_model
+                            .with_options
+                            .iter()
+                            .map(|pair| format!("{}", pair))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                )
+            }
+            _ => panic!(),
+        }
     }
 }

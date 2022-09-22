@@ -1,33 +1,34 @@
 use crate::sql::exceptions::py_type_err;
 use crate::sql::logical;
+use crate::sql::parser_utils::DaskParserUtils;
 use pyo3::prelude::*;
 
 use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
+use datafusion_sql::sqlparser::ast::Expr as SqlParserExpr;
 
 use fmt::Debug;
 use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
-use crate::parser::{PySqlArg, PySqlKwarg};
 use datafusion_common::DFSchemaRef;
 
 #[derive(Clone)]
-pub struct CreateModelPlanNode {
-    pub model_name: String,
+pub struct CreateExperimentPlanNode {
+    pub experiment_name: String,
     pub input: LogicalPlan,
     pub if_not_exists: bool,
     pub or_replace: bool,
-    pub with_options: Vec<PySqlKwarg>,
+    pub with_options: Vec<SqlParserExpr>,
 }
 
-impl Debug for CreateModelPlanNode {
+impl Debug for CreateExperimentPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
     }
 }
 
-impl UserDefinedLogicalNode for CreateModelPlanNode {
+impl UserDefinedLogicalNode for CreateExperimentPlanNode {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -43,12 +44,16 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // CREATE MODEL
+        // CREATE EXPERIMENT
         vec![]
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CreateModel: model_name={}", self.model_name)
+        write!(
+            f,
+            "CreateExperiment: experiment_name={}",
+            self.experiment_name
+        )
     }
 
     fn from_template(
@@ -57,8 +62,8 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
-        Arc::new(CreateModelPlanNode {
-            model_name: self.model_name.clone(),
+        Arc::new(CreateExperimentPlanNode {
+            experiment_name: self.experiment_name.clone(),
             input: inputs[0].clone(),
             if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
@@ -67,47 +72,58 @@ impl UserDefinedLogicalNode for CreateModelPlanNode {
     }
 }
 
-#[pyclass(name = "CreateModel", module = "dask_planner", subclass)]
-pub struct PyCreateModel {
-    pub(crate) create_model: CreateModelPlanNode,
+#[pyclass(name = "CreateExperiment", module = "dask_planner", subclass)]
+pub struct PyCreateExperiment {
+    pub(crate) create_experiment: CreateExperimentPlanNode,
 }
 
 #[pymethods]
-impl PyCreateModel {
-    /// Creating a model requires that a subquery be passed to the CREATE MODEL
+impl PyCreateExperiment {
+    /// Creating an experiment requires that a subquery be passed to the CREATE EXPERIMENT
     /// statement to be used to gather the dataset which should be used for the
-    /// model. This function returns that portion of the statement.
+    /// experiment. This function returns that portion of the statement.
     #[pyo3(name = "getSelectQuery")]
     fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
-        Ok(self.create_model.input.clone().into())
+        Ok(self.create_experiment.input.clone().into())
     }
 
-    #[pyo3(name = "getModelName")]
-    fn get_model_name(&self) -> PyResult<String> {
-        Ok(self.create_model.model_name.clone())
+    #[pyo3(name = "getExperimentName")]
+    fn get_experiment_name(&self) -> PyResult<String> {
+        Ok(self.create_experiment.experiment_name.clone())
     }
 
     #[pyo3(name = "getIfNotExists")]
     fn get_if_not_exists(&self) -> PyResult<bool> {
-        Ok(self.create_model.if_not_exists)
+        Ok(self.create_experiment.if_not_exists)
     }
 
     #[pyo3(name = "getOrReplace")]
     pub fn get_or_replace(&self) -> PyResult<bool> {
-        Ok(self.create_model.or_replace)
+        Ok(self.create_experiment.or_replace)
     }
 
     #[pyo3(name = "getSQLWithOptions")]
-    fn sql_with_options(&self) -> PyResult<HashMap<String, PySqlArg>> {
-        let mut options: HashMap<String, PySqlArg> = HashMap::new();
-        for elem in &self.create_model.with_options {
-            options.insert(elem.key.value.clone(), elem.value.clone());
+    fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
+        let mut options: HashMap<String, String> = HashMap::new();
+        for elem in &self.create_experiment.with_options {
+            match elem {
+                SqlParserExpr::BinaryOp { left, op: _, right } => {
+                    options.insert(
+                        DaskParserUtils::str_from_expr(*left.clone()),
+                        DaskParserUtils::str_from_expr(*right.clone()),
+                    );
+                }
+                _ => {
+                    return Err(py_type_err(
+                        "Encountered non SqlParserExpr::BinaryOp expression, with arguments can only be of Key/Value pair types"));
+                }
+            }
         }
         Ok(options)
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyCreateModel {
+impl TryFrom<logical::LogicalPlan> for PyCreateExperiment {
     type Error = PyErr;
 
     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
@@ -116,10 +132,10 @@ impl TryFrom<logical::LogicalPlan> for PyCreateModel {
                 if let Some(ext) = extension
                     .node
                     .as_any()
-                    .downcast_ref::<CreateModelPlanNode>()
+                    .downcast_ref::<CreateExperimentPlanNode>()
                 {
-                    Ok(PyCreateModel {
-                        create_model: ext.clone(),
+                    Ok(PyCreateExperiment {
+                        create_experiment: ext.clone(),
                     })
                 } else {
                     Err(py_type_err("unexpected plan"))
