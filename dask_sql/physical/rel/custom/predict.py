@@ -3,6 +3,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import numpy as np
+
 try:
     from dask_ml.wrappers import ParallelPostFit
 except ImportError:  # pragma: no cover
@@ -71,7 +72,9 @@ class PredictModelPlugin(BaseRelPlugin):
             output_meta = model.predict_meta
             if output_meta is None:
                 output_meta = model.estimator.predict(part._meta_nonempty)
-            prediction  = part.map_partitions(self._predict, output_meta, model.estimator, meta=output_meta)
+            prediction  = part.map_partitions(
+                self._predict, output_meta, model.estimator, meta=output_meta
+            )
         else:
             prediction = model.predict(part)
 
@@ -96,11 +99,11 @@ class PredictModelPlugin(BaseRelPlugin):
         return dc
 
     def _predict(self, part, predict_meta, estimator):
-            if part.shape[0] == 0 and predict_meta is not None:
-                empty_output = self.handle_empty_partitions(predict_meta)
-                if empty_output is not None:
-                    return empty_output
-            return estimator.predict(part)
+        if part.shape[0] == 0 and predict_meta is not None:
+            empty_output = self.handle_empty_partitions(predict_meta)
+            if empty_output is not None:
+                return empty_output
+        return estimator.predict(part)
 
     def handle_empty_partitions(self, output_meta):
         if hasattr(output_meta, "__array_function__"):

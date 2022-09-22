@@ -927,64 +927,74 @@ def test_experiment_automl_regressor(c, client, training_df):
 
 
 def test_predict_with_nullable_types(c):
-    df = pd.DataFrame({
-        "rough_day_of_year": [0, 1, 2, 3],
-        "prev_day_inches_rained": [0, 1, 2, 3],
-        "next_day_inches_rained": [0, 1, 2, 3],
-        "rained": [False, False, False, True]
-    })
+    df = pd.DataFrame(
+        {
+            "rough_day_of_year": [0, 1, 2, 3],
+            "prev_day_inches_rained": [0, 1, 2, 3],
+            "rained": [False, False, False, True],
+        }
+    )
     c.create_table("train_set", df)
 
     model_class = "'sklearn.linear_model.LogisticRegression'"
 
-    c.sql(f"""
-    CREATE OR REPLACE MODEL model WITH (
-        model_class = {model_class},
-        wrap_predict = True,
-        wrap_fit = False,
-        target_column = 'rained'
-    ) AS (
-        SELECT *
-        FROM train_set
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL model WITH (
+            model_class = {model_class},
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'rained'
+        ) AS (
+            SELECT *
+            FROM train_set
+        )
+        """
     )
-    """)
 
-    expected = c.sql("""
-    SELECT * FROM PREDICT(
-    MODEL model,
-    SELECT * FROM train_set
+    expected = c.sql(
+        """
+        SELECT * FROM PREDICT(
+            MODEL model,
+            SELECT * FROM train_set
+        )
+        """
     )
-    """)
 
-    df = pd.DataFrame({
-        "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype='Int32'),
-        "prev_day_inches_rained": pd.Series([0, 1, 2, 3], dtype='float32'),
-        "rained": pd.Series([False, False, False, True])
-    })
+    df = pd.DataFrame(
+        {
+            "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype='Int32'),
+            "prev_day_inches_rained": pd.Series([0, 1, 2, 3], dtype='float32'),
+            "rained": pd.Series([False, False, False, True]),
+        }
+    )
     c.create_table("train_set", df)
 
-    c.sql(f"""
-    CREATE OR REPLACE MODEL model WITH (
-        model_class = {model_class},
-        wrap_predict = True,
-        wrap_fit = False,
-        target_column = 'rained'
-    ) AS (
-        SELECT *
-        FROM train_set
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL model WITH (
+            model_class = {model_class},
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'rained'
+        ) AS (
+            SELECT *
+            FROM train_set
+        )
+        """
     )
-    """)
 
-    result = c.sql("""
-    SELECT * FROM PREDICT(
-    MODEL model,
-    SELECT * FROM train_set
+    result = c.sql(
+        """
+        SELECT * FROM PREDICT(
+            MODEL model,
+            SELECT * FROM train_set
+        )
+        """
     )
-    """)
 
     assert_eq(
         expected,
         result,
         check_dtype=False,
-        check_names=False,
     )
