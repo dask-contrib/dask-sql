@@ -2,9 +2,12 @@
 //!
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
+use crate::sql::exceptions::py_type_err;
+use pyo3::prelude::*;
+
 use crate::dialect::DaskDialect;
 use crate::sql::parser_utils::DaskParserUtils;
-use datafusion_sql::sqlparser::ast::{Ident, Value};
+use datafusion_sql::sqlparser::ast::Ident;
 use datafusion_sql::sqlparser::{
     ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
@@ -12,12 +15,119 @@ use datafusion_sql::sqlparser::{
     tokenizer::{Token, Tokenizer},
 };
 use std::collections::VecDeque;
-use std::fmt::{Display, Formatter};
 
 macro_rules! parser_err {
     ($MSG:expr) => {
         Err(ParserError::ParserError($MSG.to_string()))
     };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CustomExpr {
+    Map(Vec<Expr>),
+    Multiset(Vec<Expr>),
+    Nested(Vec<PySqlKwarg>),
+}
+
+#[pyclass(name = "SqlArg", module = "datafusion")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PySqlArg {
+    expr: Option<Expr>,
+    custom: Option<CustomExpr>,
+}
+
+impl PySqlArg {
+    pub fn new(expr: Option<Expr>, custom: Option<CustomExpr>) -> Self {
+        Self { expr, custom }
+    }
+}
+
+#[pymethods]
+impl PySqlArg {
+    #[pyo3(name = "isCollection")]
+    pub fn is_collection(&self) -> PyResult<bool> {
+        match &self.custom {
+            Some(CustomExpr::Nested(_)) => Ok(false),
+            Some(_) => Ok(true),
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(_) => Ok(true),
+                    _ => Ok(false),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+
+    #[pyo3(name = "isKwargs")]
+    pub fn is_kwargs(&self) -> PyResult<bool> {
+        match &self.custom {
+            Some(CustomExpr::Nested(_)) => Ok(true),
+            Some(_) => Ok(false),
+            None => Ok(false),
+        }
+    }
+
+    #[pyo3(name = "getOperator")]
+    pub fn get_operator(&self) -> PyResult<String> {
+        match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(_) => Ok("MAP".to_string()),
+                CustomExpr::Multiset(_) => Ok("MULTISET".to_string()),
+                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+            },
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(_) => Ok("ARRAY".to_string()),
+                    other => Err(py_type_err(format!("Expected Array, got {:?}", other))),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+
+    #[pyo3(name = "getOperandList")]
+    pub fn get_operand_list(&self) -> PyResult<Vec<PySqlArg>> {
+        match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(exprs) | CustomExpr::Multiset(exprs) => Ok(exprs
+                    .iter()
+                    .map(|e| PySqlArg::new(Some(e.clone()), None))
+                    .collect()),
+                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+            },
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(array) => Ok(array
+                        .elem
+                        .iter()
+                        .map(|e| PySqlArg::new(Some(e.clone()), None))
+                        .collect()),
+                    _ => Ok(vec![]),
+                },
+                None => Err(py_type_err(
+                    "PySqlArg must contain either a standard or custom AST expression",
+                )),
+            },
+        }
+    }
+}
+
+#[pyclass(name = "SqlKwarg", module = "datafusion")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PySqlKwarg {
+    pub key: Ident,
+    pub value: PySqlArg,
+}
+
+impl PySqlKwarg {
+    pub fn new(key: Ident, value: PySqlArg) -> Self {
+        Self { key, value }
+    }
 }
 
 /// Dask-SQL extension DDL for `CREATE MODEL`
@@ -32,71 +142,7 @@ pub struct CreateModel {
     /// To replace the model or not
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<KeyValuePair>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct KeyValuePair {
-    pub key: Ident,
-    pub value: OptionValue,
-}
-
-impl KeyValuePair {
-    pub fn new(key: Ident, value: OptionValue) -> Self {
-        Self { key, value }
-    }
-}
-
-impl Display for KeyValuePair {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} = {}", self.key, self.value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OptionValue {
-    Expr(Expr),
-    Map(Vec<Expr>),
-    Multiset(Vec<Expr>),
-    Nested(Vec<KeyValuePair>),
-}
-
-impl Display for OptionValue {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Multiset(expr) => write!(
-                f,
-                "MULTISET [ {} ]",
-                expr.iter()
-                    .map(|e| format!("{}", e))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Self::Map(expr) => write!(
-                f,
-                "MAP [ {} ]",
-                expr.iter()
-                    .map(|e| format!("{}", e))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Self::Nested(key_value_pairs) => write!(
-                f,
-                "({})",
-                key_value_pairs
-                    .iter()
-                    .map(|e| format!("{}", e))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Self::Expr(expr) => match expr {
-                Expr::Value(Value::SingleQuotedString(s)) => write!(f, "'{}'", s),
-                Expr::Value(value) => write!(f, "'{}'", value),
-                Expr::Array(array) => write!(f, "{}", array),
-                other => write!(f, "{:?}", other),
-            },
-        }
-    }
+    pub with_options: Vec<PySqlKwarg>,
 }
 
 /// Dask-SQL extension DDL for `CREATE EXPERIMENT`
@@ -823,7 +869,7 @@ impl<'a> DaskParser<'a> {
         Ok(values)
     }
 
-    fn parse_key_value_pair(&mut self) -> Result<KeyValuePair, ParserError> {
+    fn parse_key_value_pair(&mut self) -> Result<PySqlKwarg, ParserError> {
         let key = self.parser.parse_identifier()?;
         self.parser.expect_token(&Token::Eq)?;
         match self.parser.next_token() {
@@ -831,27 +877,36 @@ impl<'a> DaskParser<'a> {
                 let key_value_pairs =
                     self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
                 self.parser.expect_token(&Token::RParen)?;
-                Ok(KeyValuePair::new(key, OptionValue::Nested(key_value_pairs)))
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Nested(key_value_pairs))),
+                ))
             }
             Token::Word(w) if w.value.to_lowercase().as_str() == "map" => {
                 // TODO this does not support map or multiset expressions within the map
                 self.parser.expect_token(&Token::LBracket)?;
                 let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
                 self.parser.expect_token(&Token::RBracket)?;
-                Ok(KeyValuePair::new(key, OptionValue::Map(values)))
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Map(values))),
+                ))
             }
             Token::Word(w) if w.value.to_lowercase().as_str() == "multiset" => {
                 // TODO this does not support map or multiset expressions within the multiset
                 self.parser.expect_token(&Token::LBracket)?;
                 let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
                 self.parser.expect_token(&Token::RBracket)?;
-                Ok(KeyValuePair::new(key, OptionValue::Multiset(values)))
+                Ok(PySqlKwarg::new(
+                    key,
+                    PySqlArg::new(None, Some(CustomExpr::Multiset(values))),
+                ))
             }
             _ => {
                 self.parser.prev_token();
-                Ok(KeyValuePair::new(
+                Ok(PySqlKwarg::new(
                     key,
-                    OptionValue::Expr(self.parser.parse_expr()?),
+                    PySqlArg::new(Some(self.parser.parse_expr()?), None),
                 ))
             }
         }
@@ -1173,13 +1228,13 @@ mod test {
             DaskStatement::CreateModel(create_model) => {
                 // test Debug
                 let expected = "[\
-                    KeyValuePair { key: Ident { value: \"model_class\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"mock.MagicMock\"))) }, \
-                    KeyValuePair { key: Ident { value: \"target_column\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"target\"))) }, \
-                    KeyValuePair { key: Ident { value: \"fit_kwargs\", quote_style: None }, value: Nested([\
-                        KeyValuePair { key: Ident { value: \"first_arg\", quote_style: None }, value: Expr(Value(Number(\"3\", false))) }, \
-                        KeyValuePair { key: Ident { value: \"second_arg\", quote_style: None }, value: Expr(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })) }, \
-                        KeyValuePair { key: Ident { value: \"third_arg\", quote_style: None }, value: Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))]) }, \
-                        KeyValuePair { key: Ident { value: \"forth_arg\", quote_style: None }, value: Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))]) }\
+                    PySqlKwarg { key: Ident { value: \"model_class\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"mock.MagicMock\"))) }, \
+                    PySqlKwarg { key: Ident { value: \"target_column\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"target\"))) }, \
+                    PySqlKwarg { key: Ident { value: \"fit_kwargs\", quote_style: None }, value: Nested([\
+                        PySqlKwarg { key: Ident { value: \"first_arg\", quote_style: None }, value: Expr(Value(Number(\"3\", false))) }, \
+                        PySqlKwarg { key: Ident { value: \"second_arg\", quote_style: None }, value: Expr(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })) }, \
+                        PySqlKwarg { key: Ident { value: \"third_arg\", quote_style: None }, value: Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))]) }, \
+                        PySqlKwarg { key: Ident { value: \"forth_arg\", quote_style: None }, value: Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))]) }\
                     ]) }\
                 ]";
                 assert_eq!(expected, &format!("{:?}", create_model.with_options));
