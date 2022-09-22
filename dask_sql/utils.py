@@ -11,7 +11,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
+from dask_sql.mappings import sql_to_python_value
 
 logger = logging.getLogger(__name__)
 
@@ -139,24 +141,31 @@ def convert_sql_kwargs(
     def convert_literal(value):
         if value.isCollection():
             operator_mapping = {
-                "ARRAY": list,
-                "MAP": lambda x: dict(zip(x[::2], x[1::2])),
-                "MULTISET": set,
-                "ROW": tuple,
+                "SqlTypeName.ARRAY": list,
+                "SqlTypeName.MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "SqlTypeName.MULTISET": set,
+                "SqlTypeName.ROW": tuple,
             }
 
-            operator = operator_mapping[str(value.getOperator())]
+            operator = operator_mapping[str(value.getSqlType())]
             operands = [convert_literal(o) for o in value.getOperandList()]
 
             return operator(operands)
         elif value.isKwargs():
-            return convert_sql_kwargs(value.getMap())
+            return convert_sql_kwargs(value.getKwargs())
         else:
-            return value
+            literal_type = value.getSqlType()
+            literal_value = value.getSqlValue()
 
-    return {
-        str(key): convert_literal(str(value)) for key, value in dict(sql_kwargs).items()
-    }
+            if literal_type == SqlTypeName.VARCHAR:
+                return value.getSqlValue()
+            elif literal_type == SqlTypeName.BIGINT and "." in literal_value:
+                literal_type = SqlTypeName.DOUBLE
+
+            python_value = sql_to_python_value(literal_type, literal_value)
+            return python_value
+
+    return {key: convert_literal(value) for key, value in dict(sql_kwargs).items()}
 
 
 def import_class(name: str) -> type:

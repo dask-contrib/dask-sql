@@ -6,10 +6,9 @@ use datafusion_expr::logical_plan::UserDefinedLogicalNode;
 use datafusion_expr::{Expr, LogicalPlan};
 
 use fmt::Debug;
-use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
-use crate::parser::{PySqlArg, PySqlKwarg};
+use crate::parser::PySqlArg;
 use datafusion_common::DFSchemaRef;
 
 #[derive(Clone)]
@@ -18,7 +17,7 @@ pub struct CreateModelPlanNode {
     pub input: LogicalPlan,
     pub if_not_exists: bool,
     pub or_replace: bool,
-    pub with_options: Vec<PySqlKwarg>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 impl Debug for CreateModelPlanNode {
@@ -98,12 +97,8 @@ impl PyCreateModel {
     }
 
     #[pyo3(name = "getSQLWithOptions")]
-    fn sql_with_options(&self) -> PyResult<HashMap<String, PySqlArg>> {
-        let mut options: HashMap<String, PySqlArg> = HashMap::new();
-        for elem in &self.create_model.with_options {
-            options.insert(elem.key.value.clone(), elem.value.clone());
-        }
-        Ok(options)
+    fn sql_with_options(&self) -> PyResult<Vec<(String, PySqlArg)>> {
+        Ok(self.create_model.with_options.clone())
     }
 }
 
