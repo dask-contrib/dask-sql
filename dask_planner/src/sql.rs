@@ -232,6 +232,27 @@ impl ContextProvider for DaskSQLContext {
                     Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
+            "regr_count" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Float64, DataType::Float64],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "regr_syy" | "regr_sxx" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Float64, DataType::Float64],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
+            "var_pop" => {
+                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
+            }
             _ => (),
         }
 
