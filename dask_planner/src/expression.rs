@@ -1,8 +1,9 @@
+use crate::error::{DaskPlannerError, Result};
 use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
-use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
+use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
@@ -152,10 +153,9 @@ impl PyExpr {
                 for plan in input_plans.iter().skip(1) {
                     schema.merge(plan.schema().as_ref());
                 }
-                get_expr_name(&self.expr)
-                    .and_then(|fq_name| {
-                        schema.index_of_column(&Column::from_qualified_name(&fq_name))
-                    })
+                let name = get_expr_name(&self.expr).map_err(py_runtime_err)?;
+                schema
+                    .index_of_column(&Column::from_qualified_name(&name))
                     .map_err(py_runtime_err)
             }
             _ => Err(py_runtime_err(
@@ -557,214 +557,171 @@ impl PyExpr {
         }
     }
 
-    /// TODO: I can't express how much I dislike explicity listing all of these methods out
-    /// but PyO3 makes it necessary since its annotations cannot be used in trait impl blocks
     #[pyo3(name = "getFloat32Value")]
     pub fn float_32_value(&mut self) -> PyResult<Option<f32>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float32(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Float32(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getFloat64Value")]
     pub fn float_64_value(&mut self) -> PyResult<Option<f64>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Float64(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Float64(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getDecimal128Value")]
     pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Decimal128(value, precision, scale) => {
-                    Ok((*value, *precision, *scale))
-                }
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        match self.get_scalar_value()? {
+            ScalarValue::Decimal128(value, precision, scale) => Ok((*value, *precision, *scale)),
+            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
         }
     }
 
     #[pyo3(name = "getInt8Value")]
     pub fn int_8_value(&mut self) -> PyResult<Option<i8>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int8(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Int8(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getInt16Value")]
     pub fn int_16_value(&mut self) -> PyResult<Option<i16>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int16(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Int16(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getInt32Value")]
     pub fn int_32_value(&mut self) -> PyResult<Option<i32>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int32(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Int32(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getInt64Value")]
     pub fn int_64_value(&mut self) -> PyResult<Option<i64>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Int64(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Int64(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getUInt8Value")]
     pub fn uint_8_value(&mut self) -> PyResult<Option<u8>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt8(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::UInt8(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getUInt16Value")]
     pub fn uint_16_value(&mut self) -> PyResult<Option<u16>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt16(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::UInt16(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getUInt32Value")]
     pub fn uint_32_value(&mut self) -> PyResult<Option<u32>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt32(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::UInt32(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getUInt64Value")]
     pub fn uint_64_value(&mut self) -> PyResult<Option<u64>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::UInt64(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::UInt64(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getDate32Value")]
     pub fn date_32_value(&mut self) -> PyResult<Option<i32>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Date32(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Date32(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getDate64Value")]
     pub fn date_64_value(&mut self) -> PyResult<Option<i64>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Date64(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Date64(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getTime64Value")]
     pub fn time_64_value(&mut self) -> PyResult<Option<i64>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Time64(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Time64(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getTimestampValue")]
     pub fn timestamp_value(&mut self) -> PyResult<(Option<i64>, Option<String>)> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::TimestampNanosecond(iv, tz)
-                | ScalarValue::TimestampMicrosecond(iv, tz)
-                | ScalarValue::TimestampMillisecond(iv, tz)
-                | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        match self.get_scalar_value()? {
+            ScalarValue::TimestampNanosecond(iv, tz)
+            | ScalarValue::TimestampMicrosecond(iv, tz)
+            | ScalarValue::TimestampMillisecond(iv, tz)
+            | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
+            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
         }
     }
 
     #[pyo3(name = "getBoolValue")]
     pub fn bool_value(&mut self) -> PyResult<Option<bool>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Boolean(iv) => Ok(*iv),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Boolean(value) = self.get_scalar_value()? {
+            Ok(*value)
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getStringValue")]
     pub fn string_value(&mut self) -> PyResult<Option<String>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::Utf8(iv) => Ok(iv.clone()),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        if let ScalarValue::Utf8(value) = self.get_scalar_value()? {
+            Ok(value.clone())
+        } else {
+            Err(py_type_err("getValue<T>() - Unexpected value"))
         }
     }
 
     #[pyo3(name = "getIntervalDayTimeValue")]
     pub fn interval_day_time_value(&mut self) -> PyResult<Option<(i32, i32)>> {
-        match &self.expr {
-            Expr::Literal(scalar_value) => match scalar_value {
-                ScalarValue::IntervalDayTime(Some(iv)) => {
-                    let interval = *iv as u64;
-                    let days = (interval >> 32) as i32;
-                    let ms = interval as i32;
-                    Ok(Some((days, ms)))
-                }
-                ScalarValue::IntervalDayTime(None) => Ok(None),
-                _ => Err(py_type_err("getValue<T>() - Unexpected value")),
-            },
-            _ => Err(py_type_err("getValue<T>() - Non literal value encountered")),
+        match self.get_scalar_value()? {
+            ScalarValue::IntervalDayTime(Some(iv)) => {
+                let interval = *iv as u64;
+                let days = (interval >> 32) as i32;
+                let ms = interval as i32;
+                Ok(Some((days, ms)))
+            }
+            ScalarValue::IntervalDayTime(None) => Ok(None),
+            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
         }
     }
 
@@ -821,10 +778,23 @@ impl PyExpr {
     }
 }
 
+impl PyExpr {
+    /// Get the scalar value represented by this literal expression, returning an error
+    /// if this is not a literal expression
+    fn get_scalar_value(&self) -> Result<&ScalarValue> {
+        match &self.expr {
+            Expr::Literal(v) => Ok(v),
+            _ => Err(DaskPlannerError::Internal(
+                "get_scalar_value() called on non-literal expression".to_string(),
+            )),
+        }
+    }
+}
+
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::Alias(expr, _) => get_expr_name(expr),
-        _ => expr.name(),
+        _ => expr.name().map_err(|e| e.into()),
     }
 }
 
@@ -837,7 +807,8 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
             expr_to_field(expr, input_plan)
         }
         _ => {
-            let fields = exprlist_to_fields(&[expr.clone()], input_plan)?;
+            let fields =
+                exprlist_to_fields(&[expr.clone()], input_plan).map_err(DaskPlannerError::from)?;
             Ok(fields[0].clone())
         }
     }
