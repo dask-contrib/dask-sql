@@ -46,143 +46,162 @@ impl PySqlArg {
 impl PySqlArg {
     #[pyo3(name = "isCollection")]
     pub fn is_collection(&self) -> PyResult<bool> {
-        match &self.custom {
-            Some(CustomExpr::Nested(_)) => Ok(false),
-            Some(_) => Ok(true),
+        Ok(match &self.custom {
+            Some(CustomExpr::Nested(_)) => false,
+            Some(_) => true,
             None => match &self.expr {
-                Some(expr) => match expr {
-                    Expr::Array(_) => Ok(true),
-                    _ => Ok(false),
-                },
-                None => Err(py_type_err(
-                    "PySqlArg must contain either a standard or custom AST expression",
-                )),
+                Some(expr) => matches!(expr, Expr::Array(_)),
+                None => {
+                    return Err(py_type_err(
+                        "PySqlArg must contain either a standard or custom AST expression",
+                    ))
+                }
             },
-        }
+        })
     }
 
     #[pyo3(name = "isKwargs")]
     pub fn is_kwargs(&self) -> PyResult<bool> {
-        match &self.custom {
-            Some(CustomExpr::Nested(_)) => Ok(true),
-            Some(_) => Ok(false),
-            None => Ok(false),
-        }
+        Ok(matches!(&self.custom, Some(CustomExpr::Nested(_))))
     }
 
     #[pyo3(name = "getOperandList")]
     pub fn get_operand_list(&self) -> PyResult<Vec<PySqlArg>> {
-        match &self.custom {
+        Ok(match &self.custom {
             Some(custom_expr) => match custom_expr {
-                CustomExpr::Map(exprs) | CustomExpr::Multiset(exprs) => Ok(exprs
+                CustomExpr::Map(exprs) | CustomExpr::Multiset(exprs) => exprs
                     .iter()
                     .map(|e| PySqlArg::new(Some(e.clone()), None))
-                    .collect()),
-                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+                    .collect(),
+                CustomExpr::Nested(_) => {
+                    return Err(py_type_err("Expected Map or Multiset, got Nested"))
+                }
             },
             None => match &self.expr {
                 Some(expr) => match expr {
-                    Expr::Array(array) => Ok(array
+                    Expr::Array(array) => array
                         .elem
                         .iter()
                         .map(|e| PySqlArg::new(Some(e.clone()), None))
-                        .collect()),
-                    _ => Ok(vec![]),
+                        .collect(),
+                    _ => vec![],
                 },
-                None => Err(py_type_err(
-                    "PySqlArg must contain either a standard or custom AST expression",
-                )),
+                None => {
+                    return Err(py_type_err(
+                        "PySqlArg must contain either a standard or custom AST expression",
+                    ))
+                }
             },
-        }
+        })
     }
 
     #[pyo3(name = "getKwargs")]
     pub fn get_kwargs(&self) -> PyResult<Vec<(String, PySqlArg)>> {
-        match &self.custom {
-            Some(CustomExpr::Nested(kwargs)) => Ok(kwargs.clone()),
-            _ => Ok(vec![]),
-        }
+        Ok(match &self.custom {
+            Some(CustomExpr::Nested(kwargs)) => kwargs.clone(),
+            _ => vec![],
+        })
     }
 
     #[pyo3(name = "getSqlType")]
     pub fn get_sql_type(&self) -> PyResult<SqlTypeName> {
-        match &self.custom {
+        Ok(match &self.custom {
             Some(custom_expr) => match custom_expr {
-                CustomExpr::Map(_) => Ok(SqlTypeName::MAP),
-                CustomExpr::Multiset(_) => Ok(SqlTypeName::MULTISET),
-                CustomExpr::Nested(_) => Err(py_type_err("Expected Map or Multiset, got Nested")),
+                CustomExpr::Map(_) => SqlTypeName::MAP,
+                CustomExpr::Multiset(_) => SqlTypeName::MULTISET,
+                CustomExpr::Nested(_) => {
+                    return Err(py_type_err("Expected Map or Multiset, got Nested"))
+                }
             },
             None => match &self.expr {
-                Some(Expr::Array(_)) => Ok(SqlTypeName::ARRAY),
-                Some(Expr::Identifier(Ident { .. })) => Ok(SqlTypeName::VARCHAR),
+                Some(Expr::Array(_)) => SqlTypeName::ARRAY,
+                Some(Expr::Identifier(Ident { .. })) => SqlTypeName::VARCHAR,
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::Boolean(_) => Ok(SqlTypeName::BOOLEAN),
-                    Value::Number(_, false) => Ok(SqlTypeName::BIGINT),
-                    Value::SingleQuotedString(_) => Ok(SqlTypeName::VARCHAR),
-                    unexpected => Err(py_type_err(format!(
-                        "Expected string, got {:?}",
-                        unexpected
-                    ))),
+                    Value::Boolean(_) => SqlTypeName::BOOLEAN,
+                    Value::Number(_, false) => SqlTypeName::BIGINT,
+                    Value::SingleQuotedString(_) => SqlTypeName::VARCHAR,
+                    unexpected => {
+                        return Err(py_type_err(format!(
+                            "Expected string, got {:?}",
+                            unexpected
+                        )))
+                    }
                 },
                 Some(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
-                    Expr::Value(Value::Number(_, false)) => Ok(SqlTypeName::BIGINT),
-                    unexpected => Err(py_type_err(format!(
-                        "Expected string, got {:?}",
-                        unexpected
-                    ))),
+                    Expr::Value(Value::Number(_, false)) => SqlTypeName::BIGINT,
+                    unexpected => {
+                        return Err(py_type_err(format!(
+                            "Expected string, got {:?}",
+                            unexpected
+                        )))
+                    }
                 },
-                Some(unexpected) => Err(py_type_err(format!(
-                    "Expected array or scalar, got {:?}",
-                    unexpected
-                ))),
-                None => Err(py_type_err(
-                    "PySqlArg must contain either a standard or custom AST expression",
-                )),
+                Some(unexpected) => {
+                    return Err(py_type_err(format!(
+                        "Expected array or scalar, got {:?}",
+                        unexpected
+                    )))
+                }
+                None => {
+                    return Err(py_type_err(
+                        "PySqlArg must contain either a standard or custom AST expression",
+                    ))
+                }
             },
-        }
+        })
     }
 
     #[pyo3(name = "getSqlValue")]
     pub fn get_sql_value(&self) -> PyResult<String> {
-        match &self.custom {
+        Ok(match &self.custom {
             None => match &self.expr {
-                Some(Expr::Identifier(Ident { value, .. })) => Ok(value.to_string()),
+                Some(Expr::Identifier(Ident { value, .. })) => value.to_string(),
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::Boolean(value) => Ok(if *value {
-                        "1".to_string()
-                    } else {
-                        "".to_string()
-                    }),
-                    Value::SingleQuotedString(string) => Ok(string.to_string()),
-                    Value::Number(value, false) => Ok(value.to_string()),
-                    unexpected => Err(py_type_err(format!(
-                        "Expected string, got {:?}",
-                        unexpected
-                    ))),
+                    Value::Boolean(value) => {
+                        if *value {
+                            "1".to_string()
+                        } else {
+                            "".to_string()
+                        }
+                    }
+                    Value::SingleQuotedString(string) => string.to_string(),
+                    Value::Number(value, false) => value.to_string(),
+                    unexpected => {
+                        return Err(py_type_err(format!(
+                            "Expected string, got {:?}",
+                            unexpected
+                        )))
+                    }
                 },
                 Some(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
-                    Expr::Value(Value::Number(value, false)) => Ok(format!("-{}", value)),
-                    unexpected => Err(py_type_err(format!(
-                        "Expected string, got {:?}",
-                        unexpected
-                    ))),
+                    Expr::Value(Value::Number(value, false)) => format!("-{}", value),
+                    unexpected => {
+                        return Err(py_type_err(format!(
+                            "Expected string, got {:?}",
+                            unexpected
+                        )))
+                    }
                 },
-                unexpected => Err(py_type_err(format!(
+                unexpected => {
+                    return Err(py_type_err(format!(
+                        "Expected scalar value, got {:?}",
+                        unexpected
+                    )))
+                }
+            },
+            unexpected => {
+                return Err(py_type_err(format!(
                     "Expected scalar value, got {:?}",
                     unexpected
-                ))),
-            },
-            unexpected => Err(py_type_err(format!(
-                "Expected scalar value, got {:?}",
-                unexpected
-            ))),
-        }
+                )))
+            }
+        })
     }
 }
 
