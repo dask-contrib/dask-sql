@@ -25,7 +25,9 @@ RUN conda config --add channels conda-forge \
     "dask-ml>=2022.1.22" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
-    && conda clean -ay
+    && conda clean -ay \
+    && apt-get update \
+    && apt-get install build-essential -y
 
 # install dask-sql
 COPY setup.py /opt/dask_sql/
