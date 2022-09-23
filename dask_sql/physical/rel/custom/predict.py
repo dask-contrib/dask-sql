@@ -3,11 +3,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 try:
     from dask_ml.wrappers import ParallelPostFit
+    dask_ml_flag = True
 except ImportError:  # pragma: no cover
-    raise ValueError("Wrapping requires dask-ml to be installed.")
+    dask_ml_flag = False
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -68,13 +68,19 @@ class PredictModelPlugin(BaseRelPlugin):
         df = context.sql(sql_select)
         part = df[training_columns]
 
-        if isinstance(model, ParallelPostFit):
-            output_meta = model.predict_meta
-            if output_meta is None:
-                output_meta = model.estimator.predict(part._meta_nonempty)
-            prediction  = part.map_partitions(
-                self._predict, output_meta, model.estimator, meta=output_meta
-            )
+        if dask_ml_flag:
+            if isinstance(model, ParallelPostFit):
+                output_meta = model.predict_meta
+                if output_meta is None:
+                    output_meta = model.estimator.predict(part._meta_nonempty)
+                prediction = part.map_partitions(
+                    self._predict,
+                    output_meta,
+                    model.estimator,
+                    meta=output_meta
+                )
+            else:
+                prediction = model.predict(part)
         else:
             prediction = model.predict(part)
 

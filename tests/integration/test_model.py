@@ -926,7 +926,8 @@ def test_experiment_automl_regressor(c, client, training_df):
     check_trained_model(c, "my_automl_exp2")
 
 
-def test_predict_with_nullable_types(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_predict_with_nullable_types(c, gpu):
     df = pd.DataFrame(
         {
             "rough_day_of_year": [0, 1, 2, 3],
@@ -934,9 +935,12 @@ def test_predict_with_nullable_types(c):
             "rained": [False, False, False, True],
         }
     )
-    c.create_table("train_set", df)
+    c.create_table("train_set", df, gpu=gpu)
 
-    model_class = "'sklearn.linear_model.LogisticRegression'"
+    if gpu:
+        model_class = "'cuml.linear_model.LogisticRegression'"
+    else:
+        model_class = "'sklearn.linear_model.LogisticRegression'"
 
     c.sql(
         f"""
@@ -963,12 +967,12 @@ def test_predict_with_nullable_types(c):
 
     df = pd.DataFrame(
         {
-            "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype='Int32'),
-            "prev_day_inches_rained": pd.Series([0, 1, 2, 3], dtype='float32'),
+            "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype="Int32"),
+            "prev_day_inches_rained": pd.Series([0, 1, 2, 3], dtype="float32"),
             "rained": pd.Series([False, False, False, True]),
         }
     )
-    c.create_table("train_set", df)
+    c.create_table("train_set", df, gpu=gpu)
 
     c.sql(
         f"""
