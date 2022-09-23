@@ -1270,10 +1270,14 @@ mod test {
             model_class = 'mock.MagicMock',
             target_column = 'target',
             fit_kwargs = (
-                first_arg = 3,
-                second_arg = ARRAY [ 1, 2 ],
-                third_arg = MAP [ 'a', 1 ],
-                forth_arg = MULTISET [ 1, 1, 2, 3 ]
+                single_quoted_string = 'hello',
+                double_quoted_string = "hi",
+                integer = -300,
+                float = 23.45,
+                boolean = False,
+                array = ARRAY [ 1, 2 ],
+                dict = MAP [ 'a', 1 ],
+                set = MULTISET [ 1, 1, 2, 3 ]
             )
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -1285,40 +1289,21 @@ mod test {
 
         match &statements[0] {
             DaskStatement::CreateModel(create_model) => {
-                // test Debug
                 let expected = "[\
-                    PySqlKwarg { key: Ident { value: \"model_class\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"mock.MagicMock\"))) }, \
-                    PySqlKwarg { key: Ident { value: \"target_column\", quote_style: None }, value: Expr(Value(SingleQuotedString(\"target\"))) }, \
-                    PySqlKwarg { key: Ident { value: \"fit_kwargs\", quote_style: None }, value: Nested([\
-                        PySqlKwarg { key: Ident { value: \"first_arg\", quote_style: None }, value: Expr(Value(Number(\"3\", false))) }, \
-                        PySqlKwarg { key: Ident { value: \"second_arg\", quote_style: None }, value: Expr(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })) }, \
-                        PySqlKwarg { key: Ident { value: \"third_arg\", quote_style: None }, value: Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))]) }, \
-                        PySqlKwarg { key: Ident { value: \"forth_arg\", quote_style: None }, value: Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))]) }\
-                    ]) }\
+                    (\"model_class\", PySqlArg { expr: Some(Value(SingleQuotedString(\"mock.MagicMock\"))), custom: None }), \
+                    (\"target_column\", PySqlArg { expr: Some(Value(SingleQuotedString(\"target\"))), custom: None }), \
+                    (\"fit_kwargs\", PySqlArg { expr: None, custom: Some(Nested([\
+                        (\"single_quoted_string\", PySqlArg { expr: Some(Value(SingleQuotedString(\"hello\"))), custom: None }), \
+                        (\"double_quoted_string\", PySqlArg { expr: Some(Identifier(Ident { value: \"hi\", quote_style: Some('\"') })), custom: None }), \
+                        (\"integer\", PySqlArg { expr: Some(UnaryOp { op: Minus, expr: Value(Number(\"300\", false)) }), custom: None }), \
+                        (\"float\", PySqlArg { expr: Some(Value(Number(\"23.45\", false))), custom: None }), \
+                        (\"boolean\", PySqlArg { expr: Some(Value(Boolean(false))), custom: None }), \
+                        (\"array\", PySqlArg { expr: Some(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })), custom: None }), \
+                        (\"dict\", PySqlArg { expr: None, custom: Some(Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))])) }), \
+                        (\"set\", PySqlArg { expr: None, custom: Some(Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))])) })\
+                    ])) })\
                 ]";
                 assert_eq!(expected, &format!("{:?}", create_model.with_options));
-
-                // test Display
-                let expected = "model_class = 'mock.MagicMock', \
-                target_column = 'target', \
-                fit_kwargs = (\
-                    first_arg = '3', \
-                    second_arg = ARRAY[1, 2], \
-                    third_arg = MAP [ 'a', 1 ], \
-                    forth_arg = MULTISET [ 1, 1, 2, 3 ]\
-                )";
-                assert_eq!(
-                    expected,
-                    format!(
-                        "{}",
-                        create_model
-                            .with_options
-                            .iter()
-                            .map(|pair| format!("{}", pair))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                )
             }
             _ => panic!(),
         }
