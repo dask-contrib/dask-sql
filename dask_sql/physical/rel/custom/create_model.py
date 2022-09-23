@@ -184,7 +184,10 @@ class CreateModelPlugin(BaseRelPlugin):
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
-            output_meta = np.array([])
+            if "sklearn" in model_class:
+                output_meta = np.array([])
+            else:
+                output_meta = None
             model = ParallelPostFit(
                 estimator=model,
                 predict_meta=output_meta,

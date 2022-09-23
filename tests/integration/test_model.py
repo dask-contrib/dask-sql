@@ -926,6 +926,8 @@ def test_experiment_automl_regressor(c, client, training_df):
     check_trained_model(c, "my_automl_exp2")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_predict_with_nullable_types(c, gpu):
     df = pd.DataFrame(

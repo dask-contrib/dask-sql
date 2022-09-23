@@ -3,8 +3,10 @@ import uuid
 from typing import TYPE_CHECKING
 
 import numpy as np
+
 try:
     from dask_ml.wrappers import ParallelPostFit
+
     dask_ml_flag = True
 except ImportError:  # pragma: no cover
     dask_ml_flag = False
@@ -74,10 +76,7 @@ class PredictModelPlugin(BaseRelPlugin):
                 if output_meta is None:
                     output_meta = model.estimator.predict(part._meta_nonempty)
                 prediction = part.map_partitions(
-                    self._predict,
-                    output_meta,
-                    model.estimator,
-                    meta=output_meta
+                    self._predict, output_meta, model.estimator, meta=output_meta
                 )
             else:
                 prediction = model.predict(part)
