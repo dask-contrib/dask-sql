@@ -562,7 +562,7 @@ impl PyExpr {
         if let ScalarValue::Float32(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -571,7 +571,7 @@ impl PyExpr {
         if let ScalarValue::Float64(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -579,7 +579,7 @@ impl PyExpr {
     pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
         match self.get_scalar_value()? {
             ScalarValue::Decimal128(value, precision, scale) => Ok((*value, *precision, *scale)),
-            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            _ => Err(unexpected_literal_value()),
         }
     }
 
@@ -588,7 +588,7 @@ impl PyExpr {
         if let ScalarValue::Int8(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -597,7 +597,7 @@ impl PyExpr {
         if let ScalarValue::Int16(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -606,7 +606,7 @@ impl PyExpr {
         if let ScalarValue::Int32(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -615,7 +615,7 @@ impl PyExpr {
         if let ScalarValue::Int64(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -624,7 +624,7 @@ impl PyExpr {
         if let ScalarValue::UInt8(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -633,7 +633,7 @@ impl PyExpr {
         if let ScalarValue::UInt16(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -642,7 +642,7 @@ impl PyExpr {
         if let ScalarValue::UInt32(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -651,7 +651,7 @@ impl PyExpr {
         if let ScalarValue::UInt64(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -660,7 +660,7 @@ impl PyExpr {
         if let ScalarValue::Date32(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -669,7 +669,7 @@ impl PyExpr {
         if let ScalarValue::Date64(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -678,7 +678,7 @@ impl PyExpr {
         if let ScalarValue::Time64(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -689,7 +689,7 @@ impl PyExpr {
             | ScalarValue::TimestampMicrosecond(iv, tz)
             | ScalarValue::TimestampMillisecond(iv, tz)
             | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
-            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            _ => Err(unexpected_literal_value()),
         }
     }
 
@@ -698,7 +698,7 @@ impl PyExpr {
         if let ScalarValue::Boolean(value) = self.get_scalar_value()? {
             Ok(*value)
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -707,7 +707,7 @@ impl PyExpr {
         if let ScalarValue::Utf8(value) = self.get_scalar_value()? {
             Ok(value.clone())
         } else {
-            Err(py_type_err("getValue<T>() - Unexpected value"))
+            Err(unexpected_literal_value())
         }
     }
 
@@ -721,7 +721,7 @@ impl PyExpr {
                 Ok(Some((days, ms)))
             }
             ScalarValue::IntervalDayTime(None) => Ok(None),
-            _ => Err(py_type_err("getValue<T>() - Unexpected value")),
+            _ => Err(unexpected_literal_value()),
         }
     }
 
@@ -789,6 +789,10 @@ impl PyExpr {
             )),
         }
     }
+}
+
+fn unexpected_literal_value() -> PyErr {
+    DaskPlannerError::Internal("getValue<T>() - Unexpected value".to_string()).into()
 }
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
