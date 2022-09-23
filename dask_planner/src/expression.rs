@@ -813,3 +813,42 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::error::Result;
+    use crate::expression::PyExpr;
+    use datafusion_common::{Column, ScalarValue};
+    use datafusion_expr::Expr;
+
+    #[test]
+    fn get_value_u32() -> Result<()> {
+        test_get_value(ScalarValue::UInt32(None))?;
+        test_get_value(ScalarValue::UInt32(Some(123)))
+    }
+
+    #[test]
+    fn get_value_utf8() -> Result<()> {
+        test_get_value(ScalarValue::Utf8(None))?;
+        test_get_value(ScalarValue::Utf8(Some("hello".to_string())))
+    }
+
+    #[test]
+    fn get_value_non_literal() -> Result<()> {
+        let expr = PyExpr::from(Expr::Column(Column::from_qualified_name("a.b")), None);
+        let error = expr
+            .get_scalar_value()
+            .expect_err("cannot get scalar value from column");
+        assert_eq!(
+            "Internal(\"get_scalar_value() called on non-literal expression\")",
+            &format!("{:?}", error)
+        );
+        Ok(())
+    }
+
+    fn test_get_value(value: ScalarValue) -> Result<()> {
+        let expr = PyExpr::from(Expr::Literal(value.clone()), None);
+        assert_eq!(&value, expr.get_scalar_value()?);
+        Ok(())
+    }
+}
