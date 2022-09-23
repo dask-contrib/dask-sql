@@ -85,7 +85,7 @@ impl PyAnalyzeTable {
             .schema_name
             .as_ref()
             .cloned()
-            .unwrap_or_else(|| "".to_string()))
+            .unwrap_or_default())
     }
 
     #[pyo3(name = "getColumns")]
