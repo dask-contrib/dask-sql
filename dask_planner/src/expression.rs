@@ -558,7 +558,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getFloat32Value")]
-    pub fn float_32_value(&mut self) -> PyResult<Option<f32>> {
+    pub fn float_32_value(&self) -> PyResult<Option<f32>> {
         match self.get_scalar_value()? {
             ScalarValue::Float32(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -566,7 +566,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getFloat64Value")]
-    pub fn float_64_value(&mut self) -> PyResult<Option<f64>> {
+    pub fn float_64_value(&self) -> PyResult<Option<f64>> {
         match self.get_scalar_value()? {
             ScalarValue::Float64(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -582,7 +582,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt8Value")]
-    pub fn int_8_value(&mut self) -> PyResult<Option<i8>> {
+    pub fn int_8_value(&self) -> PyResult<Option<i8>> {
         match self.get_scalar_value()? {
             ScalarValue::Int8(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -590,7 +590,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt16Value")]
-    pub fn int_16_value(&mut self) -> PyResult<Option<i16>> {
+    pub fn int_16_value(&self) -> PyResult<Option<i16>> {
         match self.get_scalar_value()? {
             ScalarValue::Int16(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -598,7 +598,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt32Value")]
-    pub fn int_32_value(&mut self) -> PyResult<Option<i32>> {
+    pub fn int_32_value(&self) -> PyResult<Option<i32>> {
         match self.get_scalar_value()? {
             ScalarValue::Int32(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -606,7 +606,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getInt64Value")]
-    pub fn int_64_value(&mut self) -> PyResult<Option<i64>> {
+    pub fn int_64_value(&self) -> PyResult<Option<i64>> {
         match self.get_scalar_value()? {
             ScalarValue::Int64(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -614,7 +614,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt8Value")]
-    pub fn uint_8_value(&mut self) -> PyResult<Option<u8>> {
+    pub fn uint_8_value(&self) -> PyResult<Option<u8>> {
         match self.get_scalar_value()? {
             ScalarValue::UInt8(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -622,7 +622,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt16Value")]
-    pub fn uint_16_value(&mut self) -> PyResult<Option<u16>> {
+    pub fn uint_16_value(&self) -> PyResult<Option<u16>> {
         match self.get_scalar_value()? {
             ScalarValue::UInt16(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -630,7 +630,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt32Value")]
-    pub fn uint_32_value(&mut self) -> PyResult<Option<u32>> {
+    pub fn uint_32_value(&self) -> PyResult<Option<u32>> {
         match self.get_scalar_value()? {
             ScalarValue::UInt32(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -638,7 +638,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getUInt64Value")]
-    pub fn uint_64_value(&mut self) -> PyResult<Option<u64>> {
+    pub fn uint_64_value(&self) -> PyResult<Option<u64>> {
         match self.get_scalar_value()? {
             ScalarValue::UInt64(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -646,7 +646,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getDate32Value")]
-    pub fn date_32_value(&mut self) -> PyResult<Option<i32>> {
+    pub fn date_32_value(&self) -> PyResult<Option<i32>> {
         match self.get_scalar_value()? {
             ScalarValue::Date32(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -654,7 +654,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getDate64Value")]
-    pub fn date_64_value(&mut self) -> PyResult<Option<i64>> {
+    pub fn date_64_value(&self) -> PyResult<Option<i64>> {
         match self.get_scalar_value()? {
             ScalarValue::Date64(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -662,7 +662,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getTime64Value")]
-    pub fn time_64_value(&mut self) -> PyResult<Option<i64>> {
+    pub fn time_64_value(&self) -> PyResult<Option<i64>> {
         match self.get_scalar_value()? {
             ScalarValue::Time64(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -681,7 +681,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getBoolValue")]
-    pub fn bool_value(&mut self) -> PyResult<Option<bool>> {
+    pub fn bool_value(&self) -> PyResult<Option<bool>> {
         match self.get_scalar_value()? {
             ScalarValue::Boolean(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
@@ -689,7 +689,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getStringValue")]
-    pub fn string_value(&mut self) -> PyResult<Option<String>> {
+    pub fn string_value(&self) -> PyResult<Option<String>> {
         match self.get_scalar_value()? {
             ScalarValue::Utf8(value) => Ok(value.clone()),
             other => Err(unexpected_literal_value(other)),
@@ -697,7 +697,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getIntervalDayTimeValue")]
-    pub fn interval_day_time_value(&mut self) -> PyResult<Option<(i32, i32)>> {
+    pub fn interval_day_time_value(&self) -> PyResult<Option<(i32, i32)>> {
         match self.get_scalar_value()? {
             ScalarValue::IntervalDayTime(Some(iv)) => {
                 let interval = *iv as u64;
