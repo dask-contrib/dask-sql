@@ -5,7 +5,7 @@ RUN conda config --add channels conda-forge \
     && /opt/conda/bin/mamba install --freeze-installed -y \
     s3fs \
     dask-cloudprovider \
-    awscli \
+    && pip install awscli \
     && conda clean -ay
 
 ENTRYPOINT ["tini", "-g", "--", "/usr/bin/prepare.sh"]
