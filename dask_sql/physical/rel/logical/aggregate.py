@@ -533,14 +533,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
             for group_name in group_columns
         ]
 
-        # if split_out > 1, we cannot do a sorted groupby
-        sort = False if groupby_agg_options.get("split_out", 1) > 1 else True
-
         # perform groupby operation; if we are using custom aggregations, we must handle
         # null values manually (this is slow)
         if fast_groupby:
             grouped_df = tmp_df.groupby(
-                by=(group_columns or [additional_column_name]), dropna=False, sort=sort
+                by=(group_columns or [additional_column_name]), dropna=False
             )
         else:
             group_columns = [
@@ -550,7 +547,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
             group_columns_and_nulls = get_groupby_with_nulls_cols(
                 tmp_df, group_columns, additional_column_name
             )
-            grouped_df = tmp_df.groupby(by=group_columns_and_nulls, sort=sort)
+            grouped_df = tmp_df.groupby(by=group_columns_and_nulls)
 
         # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
