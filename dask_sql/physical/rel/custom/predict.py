@@ -75,9 +75,15 @@ class PredictModelPlugin(BaseRelPlugin):
                 output_meta = model.predict_meta
                 if output_meta is None:
                     output_meta = model.estimator.predict(part._meta_nonempty)
-                prediction = part.map_partitions(
-                    self._predict, output_meta, model.estimator, meta=output_meta
-                )
+                try:
+                    prediction = part.map_partitions(
+                        self._predict,
+                        output_meta,
+                        model.estimator,
+                        meta=output_meta,
+                    )
+                except ValueError:
+                    prediction = model.predict(part)
             else:
                 prediction = model.predict(part)
         else:

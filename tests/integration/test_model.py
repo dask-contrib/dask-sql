@@ -937,7 +937,7 @@ def test_predict_with_nullable_types(c, gpu):
             "rained": [False, False, False, True],
         }
     )
-    c.create_table("train_set", df, gpu=gpu)
+    c.create_table("train_set", df)
 
     if gpu:
         model_class = "'cuml.linear_model.LogisticRegression'"
@@ -974,7 +974,7 @@ def test_predict_with_nullable_types(c, gpu):
             "rained": pd.Series([False, False, False, True]),
         }
     )
-    c.create_table("train_set", df, gpu=gpu)
+    c.create_table("train_set", df)
 
     c.sql(
         f"""
