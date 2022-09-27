@@ -1,9 +1,13 @@
-use crate::sql::logical;
-use crate::{expression::PyExpr, sql::exceptions::py_type_err};
-use datafusion_expr::logical_plan::{Partitioning, Repartition};
+use datafusion_expr::{
+    logical_plan::{Partitioning, Repartition},
+    Expr, LogicalPlan,
+};
 use pyo3::prelude::*;
 
-use datafusion_expr::{Expr, LogicalPlan};
+use crate::{
+    expression::PyExpr,
+    sql::{exceptions::py_type_err, logical},
+};
 
 #[pyclass(name = "RepartitionBy", module = "dask_planner", subclass)]
 pub struct PyRepartitionBy {

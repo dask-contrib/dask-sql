@@ -1,11 +1,9 @@
-use crate::sql::types::DaskTypeMap;
-use crate::sql::types::SqlTypeName;
-
-use datafusion_common::{DFField, DFSchema, Result};
-
 use std::fmt;
 
+use datafusion_common::{DFField, DFSchema, Result};
 use pyo3::prelude::*;
+
+use crate::sql::types::{DaskTypeMap, SqlTypeName};
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
 #[pyclass(name = "RelDataTypeField", module = "dask_planner", subclass)]

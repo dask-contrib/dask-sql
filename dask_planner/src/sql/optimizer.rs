@@ -1,15 +1,12 @@
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
-use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
-use datafusion_optimizer::scalar_subquery_to_join::ScalarSubqueryToJoin;
-use datafusion_optimizer::type_coercion::TypeCoercion;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
-    filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
-    limit_push_down::LimitPushDown, optimizer::OptimizerRule,
-    projection_push_down::ProjectionPushDown, subquery_filter_to_join::SubqueryFilterToJoin,
-    OptimizerConfig,
+    common_subexpr_eliminate::CommonSubexprEliminate,
+    decorrelate_where_exists::DecorrelateWhereExists, decorrelate_where_in::DecorrelateWhereIn,
+    eliminate_limit::EliminateLimit, filter_null_join_keys::FilterNullJoinKeys,
+    filter_push_down::FilterPushDown, limit_push_down::LimitPushDown, optimizer::OptimizerRule,
+    projection_push_down::ProjectionPushDown, scalar_subquery_to_join::ScalarSubqueryToJoin,
+    subquery_filter_to_join::SubqueryFilterToJoin, type_coercion::TypeCoercion, OptimizerConfig,
 };
 use log::trace;
 
