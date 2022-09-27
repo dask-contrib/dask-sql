@@ -67,12 +67,7 @@ pub struct PyShowSchema {
 impl PyShowSchema {
     #[pyo3(name = "getLike")]
     fn get_like(&self) -> PyResult<String> {
-        Ok(self
-            .show_schema
-            .like
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| "".to_string()))
+        Ok(self.show_schema.like.as_ref().cloned().unwrap_or_default())
     }
 }
 

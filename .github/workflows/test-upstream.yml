@@ -63,7 +63,6 @@ jobs:
 
   cluster-dev:
     name: "Test upstream dev in a dask cluster"
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -112,7 +111,6 @@ jobs:
 
   import-dev:
     name: "Test importing with bare requirements and upstream dev"
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
