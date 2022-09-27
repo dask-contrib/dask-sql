@@ -119,29 +119,21 @@ jobs:
         with:
           python-version: "3.8"
           mamba-version: "*"
-          channels: dask/label/dev,conda-forge,nodefaults
+          channels: conda-forge,nodefaults
           channel-priority: strict
-      - name: Setup Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        id: rust-toolchain
-        with:
-          toolchain: stable
-          override: true
-      - name: Build the Rust DataFusion bindings
-        run: |
-          python setup.py build install
-      - name: Install upstream dev Dask / dask-ml
-        if: needs.detect-ci-trigger.outputs.triggered == 'true'
-        run: |
-          mamba update dask
-          python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Install dependencies and nothing else
         run: |
-          pip install -e .
+          mamba install setuptools-rust
+          pip install -e . -vv
 
           which python
           pip list
           mamba list
+      - name: Install upstream dev Dask / dask-ml
+        run: |
+          python -m pip install --no-deps git+https://github.com/dask/dask
+          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"
