@@ -47,8 +47,7 @@ impl PySqlArg {
     #[pyo3(name = "isCollection")]
     pub fn is_collection(&self) -> PyResult<bool> {
         Ok(match &self.custom {
-            Some(CustomExpr::Nested(_)) => false,
-            Some(_) => true,
+            Some(custom_expr) => !matches!(custom_expr, CustomExpr::Nested(_)),
             None => match &self.expr {
                 Some(expr) => matches!(expr, Expr::Array(_)),
                 None => {
