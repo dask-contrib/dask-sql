@@ -530,9 +530,6 @@ def test_string_functions(c, gpu):
     )
 
 
-@pytest.mark.skip(
-    reason="TIMESTAMP add, ceil, floor for dt ops not supported by parser"
-)
 def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
@@ -548,40 +545,40 @@ def test_date_functions(c):
             EXTRACT(DOW FROM d) AS "dow",
             EXTRACT(DOY FROM d) AS "doy",
             EXTRACT(HOUR FROM d) AS "hour",
-            EXTRACT(MICROSECONDS FROM d) AS "microsecond",
-            EXTRACT(MILLENNIUM FROM d) AS "millennium",
-            EXTRACT(MILLISECONDS FROM d) AS "millisecond",
+            -- EXTRACT(MICROSECONDS FROM d) AS "microsecond",
+            -- EXTRACT(MILLENNIUM FROM d) AS "millennium",
+            -- EXTRACT(MILLISECONDS FROM d) AS "millisecond",
             EXTRACT(MINUTE FROM d) AS "minute",
             EXTRACT(MONTH FROM d) AS "month",
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
 
-            LAST_DAY(d) as "last_day",
+            -- LAST_DAY(d) as "last_day",
 
-            TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
-            TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",
-            TIMESTAMPADD(WEEK, 1, d) as "plus_1_week",
-            TIMESTAMPADD(DAY, 1, d) as "plus_1_day",
-            TIMESTAMPADD(HOUR, 1, d) as "plus_1_hour",
-            TIMESTAMPADD(MINUTE, 1, d) as "plus_1_min",
-            TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
-            TIMESTAMPADD(MICROSECOND, 999*1000, d) as "plus_999_millisec",
-            TIMESTAMPADD(MICROSECOND, 999, d) as "plus_999_microsec",
-            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
+            -- TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
+            -- TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",
+            -- TIMESTAMPADD(WEEK, 1, d) as "plus_1_week",
+            -- TIMESTAMPADD(DAY, 1, d) as "plus_1_day",
+            -- TIMESTAMPADD(HOUR, 1, d) as "plus_1_hour",
+            -- TIMESTAMPADD(MINUTE, 1, d) as "plus_1_min",
+            -- TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
+            -- TIMESTAMPADD(MICROSECOND, 999*1000, d) as "plus_999_millisec",
+            -- TIMESTAMPADD(MICROSECOND, 999, d) as "plus_999_microsec",
+            -- TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
 
-            CEIL(d TO DAY) as ceil_to_day,
-            CEIL(d TO HOUR) as ceil_to_hour,
-            CEIL(d TO MINUTE) as ceil_to_minute,
-            CEIL(d TO SECOND) as ceil_to_seconds,
-            CEIL(d TO MILLISECOND) as ceil_to_millisec,
+            -- CEIL(d TO DAY) as ceil_to_day,
+            -- CEIL(d TO HOUR) as ceil_to_hour,
+            -- CEIL(d TO MINUTE) as ceil_to_minute,
+            -- CEIL(d TO SECOND) as ceil_to_seconds,
+            -- CEIL(d TO MILLISECOND) as ceil_to_millisec,
 
-            FLOOR(d TO DAY) as floor_to_day,
-            FLOOR(d TO HOUR) as floor_to_hour,
-            FLOOR(d TO MINUTE) as floor_to_minute,
-            FLOOR(d TO SECOND) as floor_to_seconds,
-            FLOOR(d TO MILLISECOND) as floor_to_millisec
+            -- FLOOR(d TO DAY) as floor_to_day,
+            -- FLOOR(d TO HOUR) as floor_to_hour,
+            -- FLOOR(d TO MINUTE) as floor_to_minute,
+            -- FLOOR(d TO SECOND) as floor_to_seconds,
+            -- FLOOR(d TO MILLISECOND) as floor_to_millisec
 
         FROM df
     """
@@ -631,7 +628,8 @@ def test_date_functions(c):
     assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
-    with pytest.raises(NotImplementedError):
+    # with pytest.raises(NotImplementedError):
+    with pytest.raises(ParsingException):
         df = c.sql(
             """
             SELECT
