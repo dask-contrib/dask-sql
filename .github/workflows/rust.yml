@@ -9,6 +9,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  # cargo fmt
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    container:
+      image: amd64/rust
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt
+      - name: Run
+        run: |
+          cd dask_planner
+          cargo +nightly fmt --all -- --check
+
   # Check crate compiles
   linux-build-lib:
     name: cargo check
