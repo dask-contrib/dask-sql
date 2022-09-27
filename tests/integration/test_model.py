@@ -932,8 +932,8 @@ def test_experiment_automl_regressor(c, client, training_df):
 def test_predict_with_nullable_types(c, gpu):
     df = pd.DataFrame(
         {
-            "rough_day_of_year": [0, 1, 2, 3],
-            "prev_day_inches_rained": [0, 1, 2, 3],
+            "rough_day_of_year": [0.0, 1.0, 2.0, 3.0],
+            "prev_day_inches_rained": [0.0, 1.0, 2.0, 3.0],
             "rained": [False, False, False, True],
         }
     )
@@ -969,8 +969,8 @@ def test_predict_with_nullable_types(c, gpu):
 
     df = pd.DataFrame(
         {
-            "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype="Int32"),
-            "prev_day_inches_rained": pd.Series([0, 1, 2, 3], dtype="float32"),
+            "rough_day_of_year": pd.Series([0.0, 1.0, 2.0, 3.0], dtype="Float32"),
+            "prev_day_inches_rained": pd.Series([0.0, 1.0, 2.0, 3.0], dtype="Float32"),
             "rained": pd.Series([False, False, False, True]),
         }
     )
