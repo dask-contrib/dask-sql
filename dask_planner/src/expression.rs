@@ -1,17 +1,15 @@
-use std::{convert::From, sync::Arc};
-
+use crate::sql::{
+    exceptions::{py_runtime_err, py_type_err},
+    logical,
+    types::RexType,
+};
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
 use datafusion_expr::{
     lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan, Operator,
 };
 use pyo3::prelude::*;
-
-use crate::sql::{
-    exceptions::{py_runtime_err, py_type_err},
-    logical,
-    types::RexType,
-};
+use std::{convert::From, sync::Arc};
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
@@ -394,7 +392,7 @@ impl PyExpr {
             }
             _ => {
                 return Err(py_type_err(format!(
-                    "Catch all triggered in get_operator_name: {:?}",
+                    "Catch all triggersdafasded in get_operator_name: {:?}",
                     &self.expr
                 )))
             }

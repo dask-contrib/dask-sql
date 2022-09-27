@@ -19,8 +19,10 @@ repos:
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
-      - id: fmt
-        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
+# disabled because the hook does not support running `cargo +nightly fmt`
+# see https://github.com/dask-contrib/dask-sql/issues/810
+#      - id: fmt
+#        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: cargo-check
         args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: clippy
