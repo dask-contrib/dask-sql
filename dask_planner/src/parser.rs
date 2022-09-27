@@ -40,6 +40,18 @@ impl PySqlArg {
     pub fn new(expr: Option<Expr>, custom: Option<CustomExpr>) -> Self {
         Self { expr, custom }
     }
+
+    fn expected<T>(&self, expected: &str) -> PyResult<T> {
+        Err(match &self.custom {
+            Some(custom_expr) => {
+                py_type_err(format!("Expected {}, found: {:?}", expected, custom_expr))
+            }
+            None => match &self.expr {
+                Some(expr) => py_type_err(format!("Expected {}, found: {:?}", expected, expr)),
+                None => py_type_err("PySqlArg must be either a standard or custom AST expression"),
+            },
+        })
+    }
 }
 
 #[pymethods]
@@ -50,11 +62,7 @@ impl PySqlArg {
             Some(custom_expr) => !matches!(custom_expr, CustomExpr::Nested(_)),
             None => match &self.expr {
                 Some(expr) => matches!(expr, Expr::Array(_)),
-                None => {
-                    return Err(py_type_err(
-                        "PySqlArg must contain either a standard or custom AST expression",
-                    ))
-                }
+                None => return self.expected(""),
             },
         })
     }
@@ -72,9 +80,7 @@ impl PySqlArg {
                     .iter()
                     .map(|e| PySqlArg::new(Some(e.clone()), None))
                     .collect(),
-                CustomExpr::Nested(_) => {
-                    return Err(py_type_err("Expected Map or Multiset, got Nested"))
-                }
+                _ => vec![],
             },
             None => match &self.expr {
                 Some(expr) => match expr {
@@ -85,11 +91,7 @@ impl PySqlArg {
                         .collect(),
                     _ => vec![],
                 },
-                None => {
-                    return Err(py_type_err(
-                        "PySqlArg must contain either a standard or custom AST expression",
-                    ))
-                }
+                None => return self.expected(""),
             },
         })
     }
@@ -108,9 +110,7 @@ impl PySqlArg {
             Some(custom_expr) => match custom_expr {
                 CustomExpr::Map(_) => SqlTypeName::MAP,
                 CustomExpr::Multiset(_) => SqlTypeName::MULTISET,
-                CustomExpr::Nested(_) => {
-                    return Err(py_type_err("Expected Map or Multiset, got Nested"))
-                }
+                _ => return self.expected("Map or multiset"),
             },
             None => match &self.expr {
                 Some(Expr::Array(_)) => SqlTypeName::ARRAY,
@@ -119,36 +119,17 @@ impl PySqlArg {
                     Value::Boolean(_) => SqlTypeName::BOOLEAN,
                     Value::Number(_, false) => SqlTypeName::BIGINT,
                     Value::SingleQuotedString(_) => SqlTypeName::VARCHAR,
-                    unexpected => {
-                        return Err(py_type_err(format!(
-                            "Expected string, got {:?}",
-                            unexpected
-                        )))
-                    }
+                    _ => return self.expected("Boolean, integer, float, or single-quoted string"),
                 },
                 Some(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
                     Expr::Value(Value::Number(_, false)) => SqlTypeName::BIGINT,
-                    unexpected => {
-                        return Err(py_type_err(format!(
-                            "Expected string, got {:?}",
-                            unexpected
-                        )))
-                    }
+                    _ => return self.expected("Integer or float"),
                 },
-                Some(unexpected) => {
-                    return Err(py_type_err(format!(
-                        "Expected array or scalar, got {:?}",
-                        unexpected
-                    )))
-                }
-                None => {
-                    return Err(py_type_err(
-                        "PySqlArg must contain either a standard or custom AST expression",
-                    ))
-                }
+                Some(_) => return self.expected("Array, identifier, or scalar"),
+                None => return self.expected(""),
             },
         })
     }
@@ -161,41 +142,20 @@ impl PySqlArg {
                 Some(Expr::Value(scalar)) => match scalar {
                     Value::Boolean(true) => "1".to_string(),
                     Value::Boolean(false) => "".to_string(),
-
                     Value::SingleQuotedString(string) => string.to_string(),
                     Value::Number(value, false) => value.to_string(),
-                    unexpected => {
-                        return Err(py_type_err(format!(
-                            "Expected string, got {:?}",
-                            unexpected
-                        )))
-                    }
+                    _ => return self.expected("Boolean, integer, float, or single-quoted string"),
                 },
                 Some(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
                     Expr::Value(Value::Number(value, false)) => format!("-{}", value),
-                    unexpected => {
-                        return Err(py_type_err(format!(
-                            "Expected string, got {:?}",
-                            unexpected
-                        )))
-                    }
+                    _ => return self.expected("Integer or float"),
                 },
-                unexpected => {
-                    return Err(py_type_err(format!(
-                        "Expected scalar value, got {:?}",
-                        unexpected
-                    )))
-                }
+                _ => return self.expected("Array, identifier, or scalar"),
             },
-            unexpected => {
-                return Err(py_type_err(format!(
-                    "Expected scalar value, got {:?}",
-                    unexpected
-                )))
-            }
+            _ => return self.expected("Standard sqlparser AST expression"),
         })
     }
 }
