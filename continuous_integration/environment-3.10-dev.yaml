@@ -25,7 +25,6 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.10
-- rust=1.62.1
 - scikit-learn>=1.0.0
 - setuptools-rust>=1.4.1
 - sphinx
