@@ -38,12 +38,6 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Setup Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        id: rust-toolchain
-        with:
-          toolchain: stable
-          override: true
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -76,12 +70,6 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Setup Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        id: rust-toolchain
-        with:
-          toolchain: stable
-          override: true
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
