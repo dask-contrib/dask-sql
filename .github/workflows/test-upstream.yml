@@ -48,9 +48,7 @@ jobs:
       - name: Update upstream cargo dependencies
         run: |
           cd dask_planner
-          mv test-upstream.toml Cargo.toml
-          cat Cargo.toml
-          cargo update
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -92,9 +90,7 @@ jobs:
       - name: Update upstream cargo dependencies
         run: |
           cd dask_planner
-          mv test-upstream.toml Cargo.toml
-          cat Cargo.toml
-          cargo update
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
