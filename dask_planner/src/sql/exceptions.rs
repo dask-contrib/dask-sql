@@ -1,5 +1,6 @@
-use pyo3::{create_exception, PyErr};
 use std::fmt::Debug;
+
+use pyo3::{create_exception, PyErr};
 
 // Identifies expections that occur while attempting to generate a `LogicalPlan` from a SQL string
 create_exception!(rust, ParsingException, pyo3::exceptions::PyException);

@@ -1,5 +1,7 @@
-use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, TableFactor, Value};
-use datafusion_sql::sqlparser::parser::ParserError;
+use datafusion_sql::sqlparser::{
+    ast::{Expr as SqlParserExpr, TableFactor, Value},
+    parser::ParserError,
+};
 
 pub struct DaskParserUtils;
 

@@ -1,6 +1,7 @@
-use crate::sql::table;
-use crate::sql::types::rel_data_type::RelDataType;
-use crate::sql::types::rel_data_type_field::RelDataTypeField;
+use crate::sql::{
+    table,
+    types::{rel_data_type::RelDataType, rel_data_type_field::RelDataTypeField},
+};
 
 pub mod aggregate;
 pub mod analyze_table;
@@ -33,25 +34,26 @@ pub mod window;
 
 use datafusion_common::{DFSchemaRef, DataFusionError, Result};
 use datafusion_expr::LogicalPlan;
-
-use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
-use self::analyze_table::AnalyzeTablePlanNode;
-use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
-use self::create_model::CreateModelPlanNode;
-use self::create_table::CreateTablePlanNode;
-use self::create_view::CreateViewPlanNode;
-use self::describe_model::DescribeModelPlanNode;
-use self::drop_model::DropModelPlanNode;
-use self::drop_schema::DropSchemaPlanNode;
-use self::export_model::ExportModelPlanNode;
-use self::predict_model::PredictModelPlanNode;
-use self::show_columns::ShowColumnsPlanNode;
-use self::show_models::ShowModelsPlanNode;
-use self::show_schema::ShowSchemasPlanNode;
-use self::show_tables::ShowTablesPlanNode;
-use self::use_schema::UseSchemaPlanNode;
+use self::{
+    analyze_table::AnalyzeTablePlanNode,
+    create_catalog_schema::CreateCatalogSchemaPlanNode,
+    create_model::CreateModelPlanNode,
+    create_table::CreateTablePlanNode,
+    create_view::CreateViewPlanNode,
+    describe_model::DescribeModelPlanNode,
+    drop_model::DropModelPlanNode,
+    drop_schema::DropSchemaPlanNode,
+    export_model::ExportModelPlanNode,
+    predict_model::PredictModelPlanNode,
+    show_columns::ShowColumnsPlanNode,
+    show_models::ShowModelsPlanNode,
+    show_schema::ShowSchemasPlanNode,
+    show_tables::ShowTablesPlanNode,
+    use_schema::UseSchemaPlanNode,
+};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
