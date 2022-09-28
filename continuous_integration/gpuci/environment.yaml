@@ -28,7 +28,7 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.9
-- rust=1.62.1
+- rust=1.62.1  # TODO: install rust externally with rustup?
 - scikit-learn>=1.0.0
 - setuptools-rust>=1.4.1
 - sphinx

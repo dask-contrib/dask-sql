@@ -8,7 +8,7 @@ COPY docker/conda.txt /opt/dask_sql/
 RUN conda config --add channels conda-forge \
     && /opt/conda/bin/mamba install --freeze-installed -y \
     # build requirements
-    "rust=1.62.1" \
+    "rust=1.62.1" \  # TODO: install rust externally with rustup?
     "setuptools-rust>=1.4.1" \
     # core dependencies
     "dask>=2022.3.0" \
