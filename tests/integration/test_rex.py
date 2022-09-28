@@ -545,9 +545,9 @@ def test_date_functions(c):
             EXTRACT(DOW FROM d) AS "dow",
             EXTRACT(DOY FROM d) AS "doy",
             EXTRACT(HOUR FROM d) AS "hour",
-            -- EXTRACT(MICROSECONDS FROM d) AS "microsecond",
+            EXTRACT(MICROSECONDS FROM d) AS "microsecond",
             -- EXTRACT(MILLENNIUM FROM d) AS "millennium",
-            -- EXTRACT(MILLISECONDS FROM d) AS "millisecond",
+            EXTRACT(MILLISECONDS FROM d) AS "millisecond",
             EXTRACT(MINUTE FROM d) AS "minute",
             EXTRACT(MONTH FROM d) AS "month",
             EXTRACT(QUARTER FROM d) AS "quarter",
@@ -555,7 +555,7 @@ def test_date_functions(c):
             EXTRACT(WEEK FROM d) AS "week",
             EXTRACT(YEAR FROM d) AS "year",
 
-            -- LAST_DAY(d) as "last_day",
+            LAST_DAY(d) as "last_day"
 
             -- TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
             -- TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",

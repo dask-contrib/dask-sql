@@ -574,11 +574,11 @@ class ExtractOperation(Operation):
             return df.dayofyear
         elif what == "HOUR":
             return df.hour
-        elif what == "MICROSECOND":
+        elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
         elif what == "MILLENNIUM":
             return da.trunc(df.year / 1000)
-        elif what == "MILLISECOND":
+        elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
         elif what == "MINUTE":
             return df.minute
@@ -589,7 +589,7 @@ class ExtractOperation(Operation):
         elif what == "SECOND":
             return df.second
         elif what == "WEEK":
-            return df.week
+            return df.isocalendar().week
         elif what == "YEAR":
             return df.year
         else:
@@ -616,9 +616,9 @@ class TimeStampAddOperation(Operation):
             return df + timedelta(days=interval)
         elif unit in {"HOUR", "SQL_TSI_HOUR"}:
             return df + timedelta(hours=interval)
-        elif unit == "MICROSECOND":
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
             return df + timedelta(microseconds=interval)
-        elif unit == "MILLISECOND":
+        elif unit in {"MILLISECOND", "MILLISECONDS"}:
             return df + timedelta(miliseconds=interval)
         elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
             return df + timedelta(minutes=interval)
@@ -808,11 +808,11 @@ class DatePartOperation(Operation):
             return df.dayofyear
         elif what == "HOUR":
             return df.hour
-        elif what == "MICROSECOND":
+        elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
         elif what == "MILLENNIUM":
             return da.trunc(df.year / 1000)
-        elif what == "MILLISECOND":
+        elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
         elif what == "MINUTE":
             return df.minute
@@ -823,7 +823,7 @@ class DatePartOperation(Operation):
         elif what == "SECOND":
             return df.second
         elif what == "WEEK":
-            return df.week
+            return df.isocalendar().week
         elif what == "YEAR":
             return df.year
         else:
