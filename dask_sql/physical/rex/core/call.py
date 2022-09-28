@@ -576,7 +576,7 @@ class ExtractOperation(Operation):
             return df.hour
         elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
-        elif what == {"MILLENIUM", "MILLENNIUM"}:
+        elif what in {"MILLENIUM", "MILLENNIUM"}:
             return da.trunc(df.year / 1000)
         elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)

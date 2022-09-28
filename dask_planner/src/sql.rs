@@ -11,7 +11,7 @@ pub mod types;
 
 use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
@@ -138,8 +138,8 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "last_day" => {
-                let sig = Signature::variadic(vec![DataType::Date64], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                let sig = Signature::variadic(vec![DataType::Timestamp(TimeUnit::Nanosecond, None)], Volatility::Immutable);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampadd" => {
