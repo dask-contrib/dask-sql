@@ -47,7 +47,8 @@ jobs:
           override: true
       - name: Update upstream cargo dependencies
         run: |
-          mv dask_planner/test-upstream.toml dask_planner/Cargo.toml
+          cd dask_planner
+          mv test-upstream.toml Cargo.toml
           cat Cargo.toml
           cargo update
       - name: Build the Rust DataFusion bindings
@@ -90,7 +91,8 @@ jobs:
           override: true
       - name: Update upstream cargo dependencies
         run: |
-          mv dask_planner/test-upstream.toml dask_planner/Cargo.toml
+          cd dask_planner
+          mv test-upstream.toml Cargo.toml
           cat Cargo.toml
           cargo update
       - name: Build the Rust DataFusion bindings
