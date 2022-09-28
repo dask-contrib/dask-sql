@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
+  pull_request: # for testing
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -44,6 +45,11 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - name: Update upstream cargo dependencies
+        run: |
+          mv dask_planner/test-upstream.toml dask_planner/Cargo.toml
+          cat Cargo.toml
+          cargo update
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -82,6 +88,11 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - name: Update upstream cargo dependencies
+        run: |
+          mv dask_planner/test-upstream.toml dask_planner/Cargo.toml
+          cat Cargo.toml
+          cargo update
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
