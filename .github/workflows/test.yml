@@ -164,6 +164,9 @@ jobs:
           channel-priority: strict
       - name: Install dependencies and nothing else
         run: |
+          which cargo
+          cargo --version
+
           mamba install setuptools-rust
           pip install -e . -vv
 
