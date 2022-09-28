@@ -1,0 +1,28 @@
+[package]
+name = "dask_planner"
+repository = "https://github.com/dask-contrib/dask-sql"
+version = "0.1.0"
+description = "Bindings for DataFusion used by Dask-SQL"
+readme = "README.md"
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.62"
+
+[dependencies]
+arrow = { version = "23.0.0", features = ["prettyprint"] }
+async-trait = "0.1.41"
+datafusion-common = { git = "https://github.com/apache/arrow-datafusion/"}
+datafusion-expr = { git = "https://github.com/apache/arrow-datafusion/"}
+datafusion-optimizer = { git = "https://github.com/apache/arrow-datafusion/"}
+datafusion-sql = { git = "https://github.com/apache/arrow-datafusion/"}
+env_logger = "0.9"
+log = "^0.4"
+mimalloc = { version = "*", default-features = false }
+parking_lot = "0.12"
+pyo3 = { version = "0.17.1", features = ["extension-module", "abi3", "abi3-py38"] }
+rand = "0.7"
+tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
+uuid = { version = "0.8", features = ["v4"] }
+
+[lib]
+crate-type = ["cdylib"]
