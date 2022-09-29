@@ -555,6 +555,21 @@ class OverlayOperation(Operation):
         return s
 
 
+class CoalesceOperation(Operation):
+    def __init__(self):
+        super().__init__(self.coalesce)
+
+    def coalesce(self, *operands):
+        for operand in operands:
+            if isinstance(operand, dd.Series):
+                breakpoint()
+                raise NotImplementedError(
+                    "Coalesce with functions is not (yet) implemented."
+                )
+            elif not pd.isna(operand):
+                return operand
+
+
 class ExtractOperation(Operation):
     def __init__(self):
         super().__init__(self.extract)
@@ -961,6 +976,7 @@ class RexCallPlugin(BaseRexPlugin):
         "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        "coalesce": CoalesceOperation(),
         # date/time operations
         "extract": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
