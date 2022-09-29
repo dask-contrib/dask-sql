@@ -5,6 +5,7 @@ pub mod rel_data_type_field;
 
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use crate::error::DaskPlannerError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
@@ -269,58 +270,75 @@ impl SqlTypeName {
 impl SqlTypeName {
     #[pyo3(name = "fromString")]
     #[staticmethod]
-    pub fn from_string(input_type: &str) -> Self {
-        match input_type {
-            "ANY" => SqlTypeName::ANY,
-            "ARRAY" => SqlTypeName::ARRAY,
-            "NULL" => SqlTypeName::NULL,
-            "BOOLEAN" => SqlTypeName::BOOLEAN,
-            "COLUMN_LIST" => SqlTypeName::COLUMN_LIST,
-            "DISTINCT" => SqlTypeName::DISTINCT,
-            "CURSOR" => SqlTypeName::CURSOR,
-            "TINYINT" => SqlTypeName::TINYINT,
-            "SMALLINT" => SqlTypeName::SMALLINT,
-            "INT" => SqlTypeName::INTEGER,
-            "INTEGER" => SqlTypeName::INTEGER,
-            "BIGINT" => SqlTypeName::BIGINT,
-            "REAL" => SqlTypeName::REAL,
-            "FLOAT" => SqlTypeName::FLOAT,
-            "GEOMETRY" => SqlTypeName::GEOMETRY,
-            "DOUBLE" => SqlTypeName::DOUBLE,
-            "TIME" => SqlTypeName::TIME,
-            "TIME_WITH_LOCAL_TIME_ZONE" => SqlTypeName::TIME_WITH_LOCAL_TIME_ZONE,
-            "TIMESTAMP" => SqlTypeName::TIMESTAMP,
-            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE,
-            "DATE" => SqlTypeName::DATE,
-            "INTERVAL" => SqlTypeName::INTERVAL,
-            "INTERVAL_DAY" => SqlTypeName::INTERVAL_DAY,
-            "INTERVAL_DAY_HOUR" => SqlTypeName::INTERVAL_DAY_HOUR,
-            "INTERVAL_DAY_MINUTE" => SqlTypeName::INTERVAL_DAY_MINUTE,
-            "INTERVAL_DAY_SECOND" => SqlTypeName::INTERVAL_DAY_SECOND,
-            "INTERVAL_HOUR" => SqlTypeName::INTERVAL_HOUR,
-            "INTERVAL_HOUR_MINUTE" => SqlTypeName::INTERVAL_HOUR_MINUTE,
-            "INTERVAL_HOUR_SECOND" => SqlTypeName::INTERVAL_HOUR_SECOND,
-            "INTERVAL_MINUTE" => SqlTypeName::INTERVAL_MINUTE,
-            "INTERVAL_MINUTE_SECOND" => SqlTypeName::INTERVAL_MINUTE_SECOND,
-            "INTERVAL_MONTH" => SqlTypeName::INTERVAL_MONTH,
-            "INTERVAL_SECOND" => SqlTypeName::INTERVAL_SECOND,
-            "INTERVAL_YEAR" => SqlTypeName::INTERVAL_YEAR,
-            "INTERVAL_YEAR_MONTH" => SqlTypeName::INTERVAL_YEAR_MONTH,
-            "MAP" => SqlTypeName::MAP,
-            "MULTISET" => SqlTypeName::MULTISET,
-            "OTHER" => SqlTypeName::OTHER,
-            "ROW" => SqlTypeName::ROW,
-            "SARG" => SqlTypeName::SARG,
-            "BINARY" => SqlTypeName::BINARY,
-            "VARBINARY" => SqlTypeName::VARBINARY,
-            "CHAR" => SqlTypeName::CHAR,
-            "VARCHAR" => SqlTypeName::VARCHAR,
-            "STRUCTURED" => SqlTypeName::STRUCTURED,
-            "SYMBOL" => SqlTypeName::SYMBOL,
-            "DECIMAL" => SqlTypeName::DECIMAL,
-            "DYNAMIC_STAT" => SqlTypeName::DYNAMIC_STAR,
-            "UNKNOWN" => SqlTypeName::UNKNOWN,
-            _ => unimplemented!("SqlTypeName::from_string() for str type: {}", input_type),
+    pub fn from_string(input_type: &str) -> PyResult<Self> {
+        match input_type.to_uppercase().as_ref() {
+            "ANY" => Ok(SqlTypeName::ANY),
+            "ARRAY" => Ok(SqlTypeName::ARRAY),
+            "NULL" => Ok(SqlTypeName::NULL),
+            "BOOLEAN" => Ok(SqlTypeName::BOOLEAN),
+            "COLUMN_LIST" => Ok(SqlTypeName::COLUMN_LIST),
+            "DISTINCT" => Ok(SqlTypeName::DISTINCT),
+            "CURSOR" => Ok(SqlTypeName::CURSOR),
+            "TINYINT" => Ok(SqlTypeName::TINYINT),
+            "SMALLINT" => Ok(SqlTypeName::SMALLINT),
+            "INT" => Ok(SqlTypeName::INTEGER),
+            "INTEGER" => Ok(SqlTypeName::INTEGER),
+            "BIGINT" => Ok(SqlTypeName::BIGINT),
+            "REAL" => Ok(SqlTypeName::REAL),
+            "FLOAT" => Ok(SqlTypeName::FLOAT),
+            "GEOMETRY" => Ok(SqlTypeName::GEOMETRY),
+            "DOUBLE" => Ok(SqlTypeName::DOUBLE),
+            "TIME" => Ok(SqlTypeName::TIME),
+            "TIME_WITH_LOCAL_TIME_ZONE" => Ok(SqlTypeName::TIME_WITH_LOCAL_TIME_ZONE),
+            "TIMESTAMP" => Ok(SqlTypeName::TIMESTAMP),
+            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => Ok(SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE),
+            "DATE" => Ok(SqlTypeName::DATE),
+            "INTERVAL" => Ok(SqlTypeName::INTERVAL),
+            "INTERVAL_DAY" => Ok(SqlTypeName::INTERVAL_DAY),
+            "INTERVAL_DAY_HOUR" => Ok(SqlTypeName::INTERVAL_DAY_HOUR),
+            "INTERVAL_DAY_MINUTE" => Ok(SqlTypeName::INTERVAL_DAY_MINUTE),
+            "INTERVAL_DAY_SECOND" => Ok(SqlTypeName::INTERVAL_DAY_SECOND),
+            "INTERVAL_HOUR" => Ok(SqlTypeName::INTERVAL_HOUR),
+            "INTERVAL_HOUR_MINUTE" => Ok(SqlTypeName::INTERVAL_HOUR_MINUTE),
+            "INTERVAL_HOUR_SECOND" => Ok(SqlTypeName::INTERVAL_HOUR_SECOND),
+            "INTERVAL_MINUTE" => Ok(SqlTypeName::INTERVAL_MINUTE),
+            "INTERVAL_MINUTE_SECOND" => Ok(SqlTypeName::INTERVAL_MINUTE_SECOND),
+            "INTERVAL_MONTH" => Ok(SqlTypeName::INTERVAL_MONTH),
+            "INTERVAL_SECOND" => Ok(SqlTypeName::INTERVAL_SECOND),
+            "INTERVAL_YEAR" => Ok(SqlTypeName::INTERVAL_YEAR),
+            "INTERVAL_YEAR_MONTH" => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
+            "MAP" => Ok(SqlTypeName::MAP),
+            "MULTISET" => Ok(SqlTypeName::MULTISET),
+            "OTHER" => Ok(SqlTypeName::OTHER),
+            "ROW" => Ok(SqlTypeName::ROW),
+            "SARG" => Ok(SqlTypeName::SARG),
+            "BINARY" => Ok(SqlTypeName::BINARY),
+            "VARBINARY" => Ok(SqlTypeName::VARBINARY),
+            "CHAR" => Ok(SqlTypeName::CHAR),
+            "VARCHAR" | "STRING" => Ok(SqlTypeName::VARCHAR),
+            "STRUCTURED" => Ok(SqlTypeName::STRUCTURED),
+            "SYMBOL" => Ok(SqlTypeName::SYMBOL),
+            "DECIMAL" => Ok(SqlTypeName::DECIMAL),
+            "DYNAMIC_STAT" => Ok(SqlTypeName::DYNAMIC_STAR),
+            "UNKNOWN" => Ok(SqlTypeName::UNKNOWN),
+            _ => Err(DaskPlannerError::Internal(format!("Cannot determine SQL type name for '{}'", input_type)).into()),
         }
     }
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::sql::types::SqlTypeName;
+
+    #[test]
+    fn valid_type_name() {
+        assert_eq!("", &format!("{:?}", SqlTypeName::from_string("string").unwrap()));
+    }
+
+    #[test]
+    fn invalid_type_name() {
+        assert_eq!("", SqlTypeName::from_string("42").expect_err("invalid type name").to_string());
+    }
+
 }
