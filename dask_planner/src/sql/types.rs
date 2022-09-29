@@ -3,9 +3,9 @@ use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
+use crate::error::DaskPlannerError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use crate::error::DaskPlannerError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
@@ -321,11 +321,14 @@ impl SqlTypeName {
             "DECIMAL" => Ok(SqlTypeName::DECIMAL),
             "DYNAMIC_STAT" => Ok(SqlTypeName::DYNAMIC_STAR),
             "UNKNOWN" => Ok(SqlTypeName::UNKNOWN),
-            _ => Err(DaskPlannerError::Internal(format!("Cannot determine SQL type name for '{}'", input_type)).into()),
+            _ => Err(DaskPlannerError::Internal(format!(
+                "Cannot determine SQL type name for '{}'",
+                input_type
+            ))
+            .into()),
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -333,12 +336,19 @@ mod test {
 
     #[test]
     fn valid_type_name() {
-        assert_eq!("", &format!("{:?}", SqlTypeName::from_string("string").unwrap()));
+        assert_eq!(
+            "VARCHAR",
+            &format!("{:?}", SqlTypeName::from_string("string").unwrap())
+        );
     }
 
     #[test]
     fn invalid_type_name() {
-        assert_eq!("", SqlTypeName::from_string("42").expect_err("invalid type name").to_string());
+        assert_eq!(
+            "Cannot determine SQL type name for '42'",
+            SqlTypeName::from_string("42")
+                .expect_err("invalid type name")
+                .to_string()
+        );
     }
-
 }
