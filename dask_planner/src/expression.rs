@@ -3,7 +3,6 @@ use crate::sql::exceptions::{py_runtime_err, py_type_err};
 use crate::sql::logical;
 use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
-use chrono::{NaiveDateTime, TimeZone, Utc};
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::Operator;
 use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
@@ -676,28 +675,7 @@ impl PyExpr {
             ScalarValue::TimestampNanosecond(iv, tz)
             | ScalarValue::TimestampMicrosecond(iv, tz)
             | ScalarValue::TimestampMillisecond(iv, tz)
-            | ScalarValue::TimestampSecond(iv, tz) => {
-                match tz {
-                    Some(zone) => Err(DaskPlannerError::Internal(format!(
-                        "No support for timestamps with timezone {}",
-                        zone
-                    ))
-                    .into()),
-                    None => match iv {
-                        Some(timestamp_nanos) => {
-                            // convert from local timezone to UTC
-                            //TODO this is not working yet
-                            let naive_timestamp =
-                                NaiveDateTime::from_timestamp(*timestamp_nanos / 1000000000, 0);
-                            println!("local = {}", naive_timestamp.timestamp_nanos());
-                            let utc_timestamp = Utc.from_local_datetime(&naive_timestamp).unwrap();
-                            println!("utc = {}", utc_timestamp.timestamp_nanos());
-                            Ok((Some(utc_timestamp.timestamp_nanos()), None))
-                        }
-                        _ => Ok((None, None)),
-                    },
-                }
-            }
+            | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
             other => Err(unexpected_literal_value(other)),
         }
     }
