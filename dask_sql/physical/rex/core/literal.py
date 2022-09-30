@@ -1,9 +1,9 @@
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 import numpy as np
-from datetime import datetime
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
