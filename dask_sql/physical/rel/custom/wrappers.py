@@ -1,8 +1,11 @@
 # Copyright 2017, Dask developers
 # Dask-ML project - https://github.com/dask/dask-ml
 """Meta-estimators for parallelizing estimators using the scikit-learn API."""
+import contextlib
+import datetime
 import logging
 import warnings
+from timeit import default_timer as tic
 
 import dask.array as da
 import dask.dataframe as dd
@@ -10,8 +13,6 @@ import dask.delayed
 import numpy as np
 import sklearn.base
 import sklearn.metrics
-
-from dask_ml.utils import _timer
 
 logger = logging.getLogger(__name__)
 
@@ -429,12 +430,7 @@ def _get_output_dask_ar_meta_for_estimator(model_fn, estimator, input_dask_ar):
             f"Metadata for {func_name} is not provided, so Dask is "
             f"running the {func_name} "
             "function on a small dataset to guess output metadata. "
-            "As a result, It is possible that Dask will guess incorrectly.\n"
-            "To silence this warning, provide explicit "
-            f"`{func_name}_meta` to the dask_ml.wrapper."
-            "\nExample: \n"
-            "wrap_clf = dask_ml.wrappers.Incremental(GradientBoostingClassifier(), "
-            f"{func_name}_meta = np.array([1],dtype=np.int8))"
+            "As a result, It is possible that Dask will guess incorrectly."
         )
         warnings.warn(msg)
         ar = np.zeros(shape=(1, input_dask_ar.shape[1]), dtype=input_dask_ar.dtype)
@@ -446,3 +442,26 @@ def copy_learned_attributes(from_estimator, to_estimator):
 
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
+
+
+@contextlib.contextmanager
+def _timer(name, _logger=None, level="info"):
+    """
+    Output execution time of a function to the given logger level
+    Parameters
+    ----------
+    name : str
+        How to name the timer (will be in the logs)
+    logger : logging.logger
+        The optional logger where to write
+    level : str
+        On which level to log the performance measurement
+    """
+    start = tic()
+    _logger = _logger or logger
+    _logger.info("Starting %s", name)
+    yield
+    stop = tic()
+    delta = datetime.timedelta(seconds=stop - start)
+    _logger_level = getattr(_logger, level)
+    _logger_level("Finished %s in %s", name, delta)  # nicer formatting for time.
