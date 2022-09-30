@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 import numpy as np
+from datetime import datetime
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
@@ -176,7 +177,9 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value, timezone = rex.getTimestampValue()
             if timezone and timezone != "UTC":
                 raise ValueError("Non UTC timezones not supported")
-            literal_type = SqlTypeName.TIMESTAMP # TODO should this be TIMESTAMP_WITH_LOCAL_TIME_ZONE ?
+            elif timezone is None:
+                literal_value = datetime.fromtimestamp(literal_value // 10**9)
+            literal_type = SqlTypeName.TIMESTAMP
             literal_value = np.datetime64(literal_value, numpy_unit)
         else:
             raise RuntimeError(
