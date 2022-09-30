@@ -166,12 +166,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import tuner {experiment_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             model = ModelClass()
 
@@ -197,12 +192,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import automl model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             automl = AutoMLClass(**automl_kwargs)
             # should be avoided if  data doesn't fit in memory
