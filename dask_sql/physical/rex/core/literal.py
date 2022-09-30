@@ -176,7 +176,7 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_value, timezone = rex.getTimestampValue()
             if timezone and timezone != "UTC":
                 raise ValueError("Non UTC timezones not supported")
-            literal_type = SqlTypeName.TIMESTAMP
+            literal_type = SqlTypeName.TIMESTAMP # TODO should this be TIMESTAMP_WITH_LOCAL_TIME_ZONE ?
             literal_value = np.datetime64(literal_value, numpy_unit)
         else:
             raise RuntimeError(
