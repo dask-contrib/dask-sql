@@ -167,18 +167,17 @@ class RexLiteralPlugin(BaseRexPlugin):
             "TimestampNanosecond",
         }:
             unit_mapping = {
-                "Second": "s",
-                "Millisecond": "ms",
-                "Microsecond": "us",
-                "Nanosecond": "ns",
+                "TimestampSecond": "s",
+                "TimestampMillisecond": "ms",
+                "TimestampMicrosecond": "us",
+                "TimestampNanosecond": "ns",
             }
+            numpy_unit = unit_mapping.get(literal_type)
             literal_value, timezone = rex.getTimestampValue()
             if timezone and timezone != "UTC":
                 raise ValueError("Non UTC timezones not supported")
             literal_type = SqlTypeName.TIMESTAMP
-            literal_value = np.datetime64(
-                literal_value, unit_mapping.get(literal_type.partition("Timestamp")[2])
-            )
+            literal_value = np.datetime64(literal_value, numpy_unit)
         else:
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
