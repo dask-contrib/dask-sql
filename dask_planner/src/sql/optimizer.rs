@@ -2,7 +2,13 @@ use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
 use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
+use datafusion_optimizer::eliminate_filter::EliminateFilter;
+use datafusion_optimizer::pre_cast_lit_in_comparison::PreCastLitInComparisonExpressions;
+use datafusion_optimizer::reduce_cross_join::ReduceCrossJoin;
+use datafusion_optimizer::reduce_outer_join::ReduceOuterJoin;
+use datafusion_optimizer::rewrite_disjunctive_predicate::RewriteDisjunctivePredicate;
 use datafusion_optimizer::scalar_subquery_to_join::ScalarSubqueryToJoin;
+use datafusion_optimizer::simplify_expressions::SimplifyExpressions;
 use datafusion_optimizer::type_coercion::TypeCoercion;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
@@ -27,18 +33,24 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
-            Box::new(CommonSubexprEliminate::new()),
+            Box::new(PreCastLitInComparisonExpressions::new()),
+            Box::new(TypeCoercion::new()),
+            Box::new(SimplifyExpressions::new()),
             Box::new(DecorrelateWhereExists::new()),
             Box::new(DecorrelateWhereIn::new()),
             Box::new(ScalarSubqueryToJoin::new()),
-            Box::new(EliminateLimit::new()),
-            Box::new(FilterNullJoinKeys::default()),
-            Box::new(FilterPushDown::new()),
-            Box::new(TypeCoercion::new()),
-            Box::new(LimitPushDown::new()),
-            Box::new(ProjectionPushDown::new()),
-            // Box::new(SingleDistinctToGroupBy::new()),
             Box::new(SubqueryFilterToJoin::new()),
+            Box::new(EliminateFilter::new()),
+            Box::new(ReduceCrossJoin::new()),
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(EliminateLimit::new()),
+            Box::new(ProjectionPushDown::new()),
+            Box::new(RewriteDisjunctivePredicate::new()),
+            Box::new(FilterNullJoinKeys::default()),
+            Box::new(ReduceOuterJoin::new()),
+            Box::new(FilterPushDown::new()),
+            Box::new(LimitPushDown::new()),
+            // Box::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
             Box::new(EliminateAggDistinct::new()),
         ];

@@ -315,7 +315,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
  "arrow",
  "ordered-float",
@@ -325,7 +325,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -336,7 +336,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
  "arrow",
  "async-trait",
@@ -351,7 +351,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -375,7 +375,7 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -386,15 +386,12 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "12.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=1261741af2a5e142fa0c7916e759859cc18ea59a#1261741af2a5e142fa0c7916e759859cc18ea59a"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=f862eeff1285ad84489163f79936915a08b84d83#f862eeff1285ad84489163f79936915a08b84d83"
 dependencies = [
- "ahash 0.8.0",
  "arrow",
  "datafusion-common",
  "datafusion-expr",
- "hashbrown",
  "sqlparser",
- "tokio",
 ]
 
 [[package]]
