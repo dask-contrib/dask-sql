@@ -165,10 +165,7 @@ class CreateModelPlugin(BaseRelPlugin):
             model = Incremental(estimator=model)
 
         if wrap_predict:
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError("Wrapping requires dask-ml to be installed.")
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             # When `wrap_predict` is set to True we train on single partition frames
             # because this is only useful for non dask distributed models
