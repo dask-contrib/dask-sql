@@ -2,6 +2,7 @@ use datafusion_common::DataFusionError;
 use datafusion_sql::sqlparser::parser::ParserError;
 use datafusion_sql::sqlparser::tokenizer::TokenizerError;
 use pyo3::PyErr;
+use std::fmt::{Display, Formatter};
 
 pub type Result<T> = std::result::Result<T, DaskPlannerError>;
 
@@ -11,6 +12,17 @@ pub enum DaskPlannerError {
     ParserError(ParserError),
     TokenizerError(TokenizerError),
     Internal(String),
+}
+
+impl Display for DaskPlannerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DataFusionError(e) => write!(f, "DataFusion Error: {}", e),
+            Self::ParserError(e) => write!(f, "SQL Parser Error: {}", e),
+            Self::TokenizerError(e) => write!(f, "SQL Tokenizer Error: {}", e),
+            Self::Internal(e) => write!(f, "Internal Error: {}", e),
+        }
+    }
 }
 
 impl From<TokenizerError> for DaskPlannerError {

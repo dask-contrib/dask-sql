@@ -277,7 +277,13 @@ impl SqlTypeName {
 impl SqlTypeName {
     #[pyo3(name = "fromString")]
     #[staticmethod]
-    pub fn from_string(input_type: &str) -> PyResult<Self> {
+    pub fn py_from_string(input_type: &str) -> PyResult<Self> {
+        SqlTypeName::from_string(input_type).map_err(|e| e.into())
+    }
+}
+
+impl SqlTypeName {
+    pub fn from_string(input_type: &str) -> Result<Self, DaskPlannerError> {
         match input_type.to_uppercase().as_ref() {
             "ANY" => Ok(SqlTypeName::ANY),
             "ARRAY" => Ok(SqlTypeName::ARRAY),
@@ -343,8 +349,7 @@ impl SqlTypeName {
                     _ => Err(DaskPlannerError::Internal(format!(
                         "Cannot determine Dask SQL type for '{}'",
                         input_type
-                    ))
-                    .into()),
+                    ))),
                 }
             }
         }
@@ -356,35 +361,34 @@ mod test {
     use crate::sql::types::SqlTypeName;
 
     #[test]
-    fn valid_type_name() {
-        assert_eq!(
-            "VARCHAR",
-            &format!("{:?}", SqlTypeName::from_string("string").unwrap())
-        );
-    }
-
-    #[test]
     fn invalid_type_name() {
         assert_eq!(
-            "Cannot determine SQL type name for '42'",
-            SqlTypeName::from_string("42")
+            "Internal Error: Cannot determine Dask SQL type for 'bob'",
+            SqlTypeName::from_string("bob")
                 .expect_err("invalid type name")
                 .to_string()
         );
     }
 
     #[test]
-    fn varchar() {
-        assert_eq!(
-            "VARCHAR",
-            &format!("{:?}", SqlTypeName::from_string("VARCHAR(10)").unwrap())
-        );
+    fn string() {
+        assert_expected("VARCHAR", "string");
     }
+
     #[test]
-    fn decimal() {
+    fn varchar_n() {
+        assert_expected("VARCHAR", "VARCHAR(10)");
+    }
+
+    #[test]
+    fn decimal_p_s() {
+        assert_expected("DECIMAL", "DECIMAL(10, 2)");
+    }
+
+    fn assert_expected(expected: &str, input: &str) {
         assert_eq!(
-            "DECIMAL",
-            &format!("{:?}", SqlTypeName::from_string("DECIMAL(10, 2)").unwrap())
+            expected,
+            &format!("{:?}", SqlTypeName::from_string(input).unwrap())
         );
     }
 }
