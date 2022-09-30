@@ -247,6 +247,8 @@ impl SqlTypeName {
             },
             DataType::Date32 => SqlTypeName::DATE,
             DataType::Date64 => SqlTypeName::DATE,
+            DataType::Time32(_) => SqlTypeName::TIME,
+            DataType::Time64(_) => SqlTypeName::TIME,
             DataType::Interval(unit) => match unit {
                 IntervalUnit::DayTime => SqlTypeName::INTERVAL_DAY,
                 IntervalUnit::YearMonth => SqlTypeName::INTERVAL_YEAR_MONTH,
