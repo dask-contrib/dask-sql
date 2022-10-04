@@ -168,7 +168,7 @@ class HiveInputPlugin(BaseInputPlugin):
                 )
                 # multiple partition column values returned comma separated string
                 if "," in partition_values:
-                    partition_values = partition_values.split(",")
+                    partition_values = [x.strip() for x in partition_values.split(",")]
 
                 logger.debug(
                     f"Applying additional partition information as columns: {partition_information}"
