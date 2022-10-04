@@ -139,10 +139,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
             literal_value = literal_value.rstrip("'")
             literal_value = literal_value.encode(encoding=encoding)
             return literal_value.decode(encoding=encoding)
-        # If we have a datetime without a date,
-        # then we should offset relative to the Unix epoch
-        elif ":" in literal_value and len(literal_value.split(" ")) == 1:
-            return "1970-01-01 " + literal_value
 
         return literal_value
 
