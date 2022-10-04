@@ -247,6 +247,10 @@ class HiveInputPlugin(BaseInputPlugin):
                     storage_information[key] = value
                     last_field = storage_information[key]
                 elif mode == "table":
+                    # Hive partition values come in a bracketed list
+                    # quoted partition values work regardless of partition column type
+                    if key == "Partition Value":
+                        value = "\"" + value.strip("[]") + "\""
                     table_information[key] = value
                     last_field = table_information[key]
                 elif mode == "partition":
