@@ -152,8 +152,12 @@ def hive_cursor():
             CREATE TABLE df_strparts (i STRING) PARTITIONED BY (j STRING, k STRING) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'
             """
         )
-        cursor.execute("INSERT INTO df_part PARTITION (j='a',k='z') (i) VALUES (1)")
-        cursor.execute("INSERT INTO df_part PARTITION (j='b',k='y') (i) VALUES (2)")
+        cursor.execute(
+            "INSERT INTO df_strparts PARTITION (j='a', k='z') (i) VALUES (1)"
+        )
+        cursor.execute(
+            "INSERT INTO df_strparts PARTITION (j='b', k='y') (i) VALUES (2)"
+        )
 
         # The data files are created as root user by default. Change that:
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])
@@ -208,7 +212,7 @@ def test_select_partitions(hive_cursor):
 
 def test_select_str_partitions(hive_cursor):
     c = Context()
-    c.create_table("df_part", hive_cursor)
+    c.create_table("df_strparts", hive_cursor)
 
     result_df = c.sql("SELECT * FROM df_strparts")
     expected_df = pd.DataFrame({"i": [1, 2], "j": ["a", "b"], "k": ["z", "y"]})
