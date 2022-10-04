@@ -43,7 +43,7 @@ class CreateModelPlugin(BaseRelPlugin):
       unsupervised algorithms). This means, you typically
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.ParallelPostFit`.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
       Have a look into the
       [dask-ml docu](https://ml.dask.org/meta-estimators.html#parallel-prediction-and-transformation)
       to learn more about it. Defaults to false. Typically you set
