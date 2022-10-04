@@ -1,8 +1,12 @@
-use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
+use crate::dialect::DaskDialect;
+use crate::error::DaskPlannerError;
+use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use datafusion_sql::sqlparser::ast::DataType as SQLType;
+use datafusion_sql::sqlparser::parser::Parser;
+use datafusion_sql::sqlparser::tokenizer::Tokenizer;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
@@ -45,7 +49,7 @@ impl DaskTypeMap {
 impl DaskTypeMap {
     #[new]
     #[args(sql_type, py_kwargs = "**")]
-    fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> Self {
+    fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
         let d_type: DataType = match sql_type {
             SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
                 let (unit, tz) = match py_kwargs {
@@ -109,13 +113,13 @@ impl DaskTypeMap {
                 };
                 DataType::Timestamp(unit, tz)
             }
-            _ => sql_type.to_arrow(),
+            _ => sql_type.to_arrow()?,
         };
 
-        DaskTypeMap {
+        Ok(DaskTypeMap {
             sql_type,
             data_type: d_type.into(),
-        }
+        })
     }
 
     #[pyo3(name = "getSqlType")]
@@ -209,62 +213,66 @@ pub enum SqlTypeName {
 }
 
 impl SqlTypeName {
-    pub fn to_arrow(&self) -> DataType {
+    pub fn to_arrow(&self) -> Result<DataType, DaskPlannerError> {
         match self {
-            SqlTypeName::NULL => DataType::Null,
-            SqlTypeName::BOOLEAN => DataType::Boolean,
-            SqlTypeName::TINYINT => DataType::Int8,
-            SqlTypeName::SMALLINT => DataType::Int16,
-            SqlTypeName::INTEGER => DataType::Int32,
-            SqlTypeName::BIGINT => DataType::Int64,
-            SqlTypeName::REAL => DataType::Float16,
-            SqlTypeName::FLOAT => DataType::Float32,
-            SqlTypeName::DOUBLE => DataType::Float64,
-            SqlTypeName::DATE => DataType::Date64,
-            SqlTypeName::VARCHAR => DataType::Utf8,
-            _ => {
-                todo!("Type: {:?}", self);
-            }
+            SqlTypeName::NULL => Ok(DataType::Null),
+            SqlTypeName::BOOLEAN => Ok(DataType::Boolean),
+            SqlTypeName::TINYINT => Ok(DataType::Int8),
+            SqlTypeName::SMALLINT => Ok(DataType::Int16),
+            SqlTypeName::INTEGER => Ok(DataType::Int32),
+            SqlTypeName::BIGINT => Ok(DataType::Int64),
+            SqlTypeName::REAL => Ok(DataType::Float16),
+            SqlTypeName::FLOAT => Ok(DataType::Float32),
+            SqlTypeName::DOUBLE => Ok(DataType::Float64),
+            SqlTypeName::DATE => Ok(DataType::Date64),
+            SqlTypeName::VARCHAR => Ok(DataType::Utf8),
+            _ => Err(DaskPlannerError::Internal(format!(
+                "Cannot determine Arrow type for Dask SQL type '{:?}'",
+                self
+            ))),
         }
     }
 
-    pub fn from_arrow(data_type: &DataType) -> Self {
-        match data_type {
-            DataType::Null => SqlTypeName::NULL,
-            DataType::Boolean => SqlTypeName::BOOLEAN,
-            DataType::Int8 => SqlTypeName::TINYINT,
-            DataType::Int16 => SqlTypeName::SMALLINT,
-            DataType::Int32 => SqlTypeName::INTEGER,
-            DataType::Int64 => SqlTypeName::BIGINT,
-            DataType::UInt8 => SqlTypeName::TINYINT,
-            DataType::UInt16 => SqlTypeName::SMALLINT,
-            DataType::UInt32 => SqlTypeName::INTEGER,
-            DataType::UInt64 => SqlTypeName::BIGINT,
-            DataType::Float16 => SqlTypeName::REAL,
-            DataType::Float32 => SqlTypeName::FLOAT,
-            DataType::Float64 => SqlTypeName::DOUBLE,
-            DataType::Time32(_unit) => SqlTypeName::TIME32,
-            DataType::Time64(_unit) => SqlTypeName::TIME64,
+    pub fn from_arrow(arrow_type: &DataType) -> Result<Self, DaskPlannerError> {
+        match arrow_type {
+            DataType::Null => Ok(SqlTypeName::NULL),
+            DataType::Boolean => Ok(SqlTypeName::BOOLEAN),
+            DataType::Int8 => Ok(SqlTypeName::TINYINT),
+            DataType::Int16 => Ok(SqlTypeName::SMALLINT),
+            DataType::Int32 => Ok(SqlTypeName::INTEGER),
+            DataType::Int64 => Ok(SqlTypeName::BIGINT),
+            DataType::UInt8 => Ok(SqlTypeName::TINYINT),
+            DataType::UInt16 => Ok(SqlTypeName::SMALLINT),
+            DataType::UInt32 => Ok(SqlTypeName::INTEGER),
+            DataType::UInt64 => Ok(SqlTypeName::BIGINT),
+            DataType::Float16 => Ok(SqlTypeName::REAL),
+            DataType::Float32 => Ok(SqlTypeName::FLOAT),
+            DataType::Float64 => Ok(SqlTypeName::DOUBLE),
+            DataType::Time32(_unit) => Ok(SqlTypeName::TIME32),
+            DataType::Time64(_unit) => Ok(SqlTypeName::TIME64),
             DataType::Timestamp(_unit, tz) => match tz {
-                Some(..) => SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE,
-                None => SqlTypeName::TIMESTAMP,
+                Some(_) => Ok(SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE),
+                None => Ok(SqlTypeName::TIMESTAMP),
             },
-            DataType::Date32 => SqlTypeName::DATE,
-            DataType::Date64 => SqlTypeName::DATE,
+            DataType::Date32 => Ok(SqlTypeName::DATE),
+            DataType::Date64 => Ok(SqlTypeName::DATE),
             DataType::Interval(unit) => match unit {
-                IntervalUnit::DayTime => SqlTypeName::INTERVAL_DAY,
-                IntervalUnit::YearMonth => SqlTypeName::INTERVAL_YEAR_MONTH,
-                IntervalUnit::MonthDayNano => SqlTypeName::INTERVAL_MONTH,
+                IntervalUnit::DayTime => Ok(SqlTypeName::INTERVAL_DAY),
+                IntervalUnit::YearMonth => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
+                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH),
             },
-            DataType::Binary => SqlTypeName::BINARY,
-            DataType::FixedSizeBinary(_size) => SqlTypeName::VARBINARY,
-            DataType::Utf8 => SqlTypeName::CHAR,
-            DataType::LargeUtf8 => SqlTypeName::VARCHAR,
-            DataType::Struct(_fields) => SqlTypeName::STRUCTURED,
-            DataType::Decimal128(_precision, _scale) => SqlTypeName::DECIMAL,
-            DataType::Decimal256(_precision, _scale) => SqlTypeName::DECIMAL,
-            DataType::Map(_field, _bool) => SqlTypeName::MAP,
-            _ => todo!(),
+            DataType::Binary => Ok(SqlTypeName::BINARY),
+            DataType::FixedSizeBinary(_size) => Ok(SqlTypeName::VARBINARY),
+            DataType::Utf8 => Ok(SqlTypeName::CHAR),
+            DataType::LargeUtf8 => Ok(SqlTypeName::VARCHAR),
+            DataType::Struct(_fields) => Ok(SqlTypeName::STRUCTURED),
+            DataType::Decimal128(_precision, _scale) => Ok(SqlTypeName::DECIMAL),
+            DataType::Decimal256(_precision, _scale) => Ok(SqlTypeName::DECIMAL),
+            DataType::Map(_field, _bool) => Ok(SqlTypeName::MAP),
+            _ => Err(DaskPlannerError::Internal(format!(
+                "Cannot determine Dask SQL type for Arrow type '{:?}'",
+                arrow_type
+            ))),
         }
     }
 }
@@ -273,60 +281,120 @@ impl SqlTypeName {
 impl SqlTypeName {
     #[pyo3(name = "fromString")]
     #[staticmethod]
-    pub fn from_string(input_type: &str) -> Self {
-        match input_type {
-            "ANY" => SqlTypeName::ANY,
-            "ARRAY" => SqlTypeName::ARRAY,
-            "NULL" => SqlTypeName::NULL,
-            "BOOLEAN" => SqlTypeName::BOOLEAN,
-            "COLUMN_LIST" => SqlTypeName::COLUMN_LIST,
-            "DISTINCT" => SqlTypeName::DISTINCT,
-            "CURSOR" => SqlTypeName::CURSOR,
-            "TINYINT" => SqlTypeName::TINYINT,
-            "SMALLINT" => SqlTypeName::SMALLINT,
-            "INT" => SqlTypeName::INTEGER,
-            "INTEGER" => SqlTypeName::INTEGER,
-            "BIGINT" => SqlTypeName::BIGINT,
-            "REAL" => SqlTypeName::REAL,
-            "FLOAT" => SqlTypeName::FLOAT,
-            "GEOMETRY" => SqlTypeName::GEOMETRY,
-            "DOUBLE" => SqlTypeName::DOUBLE,
-            "TIME" => SqlTypeName::TIME,
-            "TIME_WITH_LOCAL_TIME_ZONE" => SqlTypeName::TIME_WITH_LOCAL_TIME_ZONE,
-            "TIME32" => SqlTypeName::TIME32,
-            "TIME64" => SqlTypeName::TIME64,
-            "TIMESTAMP" => SqlTypeName::TIMESTAMP,
-            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE,
-            "DATE" => SqlTypeName::DATE,
-            "INTERVAL" => SqlTypeName::INTERVAL,
-            "INTERVAL_DAY" => SqlTypeName::INTERVAL_DAY,
-            "INTERVAL_DAY_HOUR" => SqlTypeName::INTERVAL_DAY_HOUR,
-            "INTERVAL_DAY_MINUTE" => SqlTypeName::INTERVAL_DAY_MINUTE,
-            "INTERVAL_DAY_SECOND" => SqlTypeName::INTERVAL_DAY_SECOND,
-            "INTERVAL_HOUR" => SqlTypeName::INTERVAL_HOUR,
-            "INTERVAL_HOUR_MINUTE" => SqlTypeName::INTERVAL_HOUR_MINUTE,
-            "INTERVAL_HOUR_SECOND" => SqlTypeName::INTERVAL_HOUR_SECOND,
-            "INTERVAL_MINUTE" => SqlTypeName::INTERVAL_MINUTE,
-            "INTERVAL_MINUTE_SECOND" => SqlTypeName::INTERVAL_MINUTE_SECOND,
-            "INTERVAL_MONTH" => SqlTypeName::INTERVAL_MONTH,
-            "INTERVAL_SECOND" => SqlTypeName::INTERVAL_SECOND,
-            "INTERVAL_YEAR" => SqlTypeName::INTERVAL_YEAR,
-            "INTERVAL_YEAR_MONTH" => SqlTypeName::INTERVAL_YEAR_MONTH,
-            "MAP" => SqlTypeName::MAP,
-            "MULTISET" => SqlTypeName::MULTISET,
-            "OTHER" => SqlTypeName::OTHER,
-            "ROW" => SqlTypeName::ROW,
-            "SARG" => SqlTypeName::SARG,
-            "BINARY" => SqlTypeName::BINARY,
-            "VARBINARY" => SqlTypeName::VARBINARY,
-            "CHAR" => SqlTypeName::CHAR,
-            "VARCHAR" => SqlTypeName::VARCHAR,
-            "STRUCTURED" => SqlTypeName::STRUCTURED,
-            "SYMBOL" => SqlTypeName::SYMBOL,
-            "DECIMAL" => SqlTypeName::DECIMAL,
-            "DYNAMIC_STAT" => SqlTypeName::DYNAMIC_STAR,
-            "UNKNOWN" => SqlTypeName::UNKNOWN,
-            _ => unimplemented!("SqlTypeName::from_string() for str type: {}", input_type),
+    pub fn py_from_string(input_type: &str) -> PyResult<Self> {
+        SqlTypeName::from_string(input_type).map_err(|e| e.into())
+    }
+}
+
+impl SqlTypeName {
+    pub fn from_string(input_type: &str) -> Result<Self, DaskPlannerError> {
+        match input_type.to_uppercase().as_ref() {
+            "ANY" => Ok(SqlTypeName::ANY),
+            "ARRAY" => Ok(SqlTypeName::ARRAY),
+            "NULL" => Ok(SqlTypeName::NULL),
+            "BOOLEAN" => Ok(SqlTypeName::BOOLEAN),
+            "COLUMN_LIST" => Ok(SqlTypeName::COLUMN_LIST),
+            "DISTINCT" => Ok(SqlTypeName::DISTINCT),
+            "CURSOR" => Ok(SqlTypeName::CURSOR),
+            "TINYINT" => Ok(SqlTypeName::TINYINT),
+            "SMALLINT" => Ok(SqlTypeName::SMALLINT),
+            "INT" => Ok(SqlTypeName::INTEGER),
+            "INTEGER" => Ok(SqlTypeName::INTEGER),
+            "BIGINT" => Ok(SqlTypeName::BIGINT),
+            "REAL" => Ok(SqlTypeName::REAL),
+            "FLOAT" => Ok(SqlTypeName::FLOAT),
+            "GEOMETRY" => Ok(SqlTypeName::GEOMETRY),
+            "DOUBLE" => Ok(SqlTypeName::DOUBLE),
+            "TIME" => Ok(SqlTypeName::TIME),
+            "TIME32" => Ok(SqlTypeName::TIME32),
+            "TIME64" => Ok(SqlTypeName::TIME64),
+            "TIME_WITH_LOCAL_TIME_ZONE" => Ok(SqlTypeName::TIME_WITH_LOCAL_TIME_ZONE),
+            "TIMESTAMP" => Ok(SqlTypeName::TIMESTAMP),
+            "TIMESTAMP_WITH_LOCAL_TIME_ZONE" => Ok(SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE),
+            "DATE" => Ok(SqlTypeName::DATE),
+            "INTERVAL" => Ok(SqlTypeName::INTERVAL),
+            "INTERVAL_DAY" => Ok(SqlTypeName::INTERVAL_DAY),
+            "INTERVAL_DAY_HOUR" => Ok(SqlTypeName::INTERVAL_DAY_HOUR),
+            "INTERVAL_DAY_MINUTE" => Ok(SqlTypeName::INTERVAL_DAY_MINUTE),
+            "INTERVAL_DAY_SECOND" => Ok(SqlTypeName::INTERVAL_DAY_SECOND),
+            "INTERVAL_HOUR" => Ok(SqlTypeName::INTERVAL_HOUR),
+            "INTERVAL_HOUR_MINUTE" => Ok(SqlTypeName::INTERVAL_HOUR_MINUTE),
+            "INTERVAL_HOUR_SECOND" => Ok(SqlTypeName::INTERVAL_HOUR_SECOND),
+            "INTERVAL_MINUTE" => Ok(SqlTypeName::INTERVAL_MINUTE),
+            "INTERVAL_MINUTE_SECOND" => Ok(SqlTypeName::INTERVAL_MINUTE_SECOND),
+            "INTERVAL_MONTH" => Ok(SqlTypeName::INTERVAL_MONTH),
+            "INTERVAL_SECOND" => Ok(SqlTypeName::INTERVAL_SECOND),
+            "INTERVAL_YEAR" => Ok(SqlTypeName::INTERVAL_YEAR),
+            "INTERVAL_YEAR_MONTH" => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
+            "MAP" => Ok(SqlTypeName::MAP),
+            "MULTISET" => Ok(SqlTypeName::MULTISET),
+            "OTHER" => Ok(SqlTypeName::OTHER),
+            "ROW" => Ok(SqlTypeName::ROW),
+            "SARG" => Ok(SqlTypeName::SARG),
+            "BINARY" => Ok(SqlTypeName::BINARY),
+            "VARBINARY" => Ok(SqlTypeName::VARBINARY),
+            "CHAR" => Ok(SqlTypeName::CHAR),
+            "VARCHAR" | "STRING" => Ok(SqlTypeName::VARCHAR),
+            "STRUCTURED" => Ok(SqlTypeName::STRUCTURED),
+            "SYMBOL" => Ok(SqlTypeName::SYMBOL),
+            "DECIMAL" => Ok(SqlTypeName::DECIMAL),
+            "DYNAMIC_STAT" => Ok(SqlTypeName::DYNAMIC_STAR),
+            "UNKNOWN" => Ok(SqlTypeName::UNKNOWN),
+            _ => {
+                // complex data type name so use the sqlparser
+                let dialect = DaskDialect {};
+                let mut tokenizer = Tokenizer::new(&dialect, input_type);
+                let tokens = tokenizer.tokenize().map_err(DaskPlannerError::from)?;
+                let mut parser = Parser::new(tokens, &dialect);
+                match parser.parse_data_type().map_err(DaskPlannerError::from)? {
+                    SQLType::Decimal(_, _) => Ok(SqlTypeName::DECIMAL),
+                    SQLType::Binary(_) => Ok(SqlTypeName::BINARY),
+                    SQLType::Varbinary(_) => Ok(SqlTypeName::VARBINARY),
+                    SQLType::Varchar(_) | SQLType::Nvarchar(_) => Ok(SqlTypeName::VARCHAR),
+                    SQLType::Char(_) => Ok(SqlTypeName::CHAR),
+                    _ => Err(DaskPlannerError::Internal(format!(
+                        "Cannot determine Dask SQL type for '{}'",
+                        input_type
+                    ))),
+                }
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sql::types::SqlTypeName;
+
+    #[test]
+    fn invalid_type_name() {
+        assert_eq!(
+            "Internal Error: Cannot determine Dask SQL type for 'bob'",
+            SqlTypeName::from_string("bob")
+                .expect_err("invalid type name")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn string() {
+        assert_expected("VARCHAR", "string");
+    }
+
+    #[test]
+    fn varchar_n() {
+        assert_expected("VARCHAR", "VARCHAR(10)");
+    }
+
+    #[test]
+    fn decimal_p_s() {
+        assert_expected("DECIMAL", "DECIMAL(10, 2)");
+    }
+
+    fn assert_expected(expected: &str, input: &str) {
+        assert_eq!(
+            expected,
+            &format!("{:?}", SqlTypeName::from_string(input).unwrap())
+        );
     }
 }

@@ -31,9 +31,10 @@ pub mod table_scan;
 pub mod use_schema;
 pub mod window;
 
-use datafusion_common::{DFSchemaRef, DataFusionError, Result};
+use datafusion_common::{DFSchemaRef, DataFusionError};
 use datafusion_expr::LogicalPlan;
 
+use crate::error::Result;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
@@ -231,7 +232,7 @@ impl PyLogicalPlan {
     /// otherwise None is returned
     #[pyo3(name = "getTable")]
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
-        match table::table_from_logical_plan(&self.current_node()) {
+        match table::table_from_logical_plan(&self.current_node())? {
             Some(table) => Ok(table),
             None => Err(py_type_err(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
