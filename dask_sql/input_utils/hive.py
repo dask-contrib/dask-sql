@@ -166,6 +166,9 @@ class HiveInputPlugin(BaseInputPlugin):
                 partition_values = ast.literal_eval(
                     partition_table_information["Partition Value"]
                 )
+                # multiple partition column values returned comma separated string
+                if "," in partition_values:
+                    partition_values = partition_values.split(",")
 
                 logger.debug(
                     f"Applying additional partition information as columns: {partition_information}"
