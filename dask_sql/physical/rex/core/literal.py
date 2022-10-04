@@ -152,9 +152,6 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "Date64":
             literal_type = SqlTypeName.DATE
             literal_value = np.datetime64(rex.getDate64Value(), "ms")
-        elif literal_type == "Time32":
-            literal_value = np.datetime64(rex.getTime32Value(), "ms")
-            literal_type = SqlTypeName.TIME
         elif literal_type == "Time64":
             literal_value = np.datetime64(rex.getTime64Value(), "ns")
             literal_type = SqlTypeName.TIME

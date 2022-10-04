@@ -81,8 +81,6 @@ _SQL_TO_PYTHON_FRAMES = {
         "<M8[ns]"
     ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
     "SqlTypeName.TIME": np.dtype("<M8[ns]"),
-    "SqlTypeName.TIME32": np.dtype("<M8[ns]"),
-    "SqlTypeName.TIME64": np.dtype("<M8[ns]"),
     "SqlTypeName.TIMESTAMP": np.dtype("<M8[ns]"),
     "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
         unit="ns", tz="UTC"
@@ -170,8 +168,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     elif (
         sql_type == SqlTypeName.TIMESTAMP
         or sql_type == SqlTypeName.TIME
-        or sql_type == SqlTypeName.TIME32
-        or sql_type == SqlTypeName.TIME64
         or sql_type == SqlTypeName.DATE
     ):
         if str(literal_value) == "None":
