@@ -211,9 +211,7 @@ def test_select_str_partitions(hive_cursor):
     c.create_table("df_part", hive_cursor)
 
     result_df = c.sql("SELECT * FROM df_strparts")
-    expected_df = pd.DataFrame({"i": [1, 2], "j": ["a", "b"], "k": ["z", "y"]}).astype(
-        "int32"
-    )
+    expected_df = pd.DataFrame({"i": [1, 2], "j": ["a", "b"], "k": ["z", "y"]})
     expected_df["i"] = expected_df["i"].astype("int64")
     expected_df["j"] = expected_df["j"].astype("object")
     expected_df["k"] = expected_df["k"].astype("object")
