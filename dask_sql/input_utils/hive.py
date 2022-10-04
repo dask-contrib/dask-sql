@@ -200,8 +200,8 @@ class HiveInputPlugin(BaseInputPlugin):
         """
         cursor.execute(f"USE {schema}")
         if partition:
-            partition = partition.replace("=", "=\"")
-            partition = partition.replace("/", "\",") + "\""
+            partition = partition.replace("=", '="')
+            partition = partition.replace("/", '",') + '"'
             result = self._fetch_all_results(
                 cursor, f"DESCRIBE FORMATTED {table_name} PARTITION ({partition})"
             )
