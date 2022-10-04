@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
@@ -168,20 +167,18 @@ class RexLiteralPlugin(BaseRexPlugin):
             "TimestampNanosecond",
         }:
             unit_mapping = {
-                "TimestampSecond": "s",
-                "TimestampMillisecond": "ms",
-                "TimestampMicrosecond": "us",
-                "TimestampNanosecond": "ns",
+                "Second": "s",
+                "Millisecond": "ms",
+                "Microsecond": "us",
+                "Nanosecond": "ns",
             }
-            numpy_unit = unit_mapping.get(literal_type)
             literal_value, timezone = rex.getTimestampValue()
             if timezone and timezone != "UTC":
                 raise ValueError("Non UTC timezones not supported")
-            elif timezone is None:
-                literal_value = datetime.fromtimestamp(literal_value // 10**9)
-                literal_value = str(literal_value)
             literal_type = SqlTypeName.TIMESTAMP
-            literal_value = np.datetime64(literal_value, numpy_unit)
+            literal_value = np.datetime64(
+                literal_value, unit_mapping.get(literal_type.partition("Timestamp")[2])
+            )
         else:
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
