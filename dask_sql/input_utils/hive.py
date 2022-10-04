@@ -200,10 +200,10 @@ class HiveInputPlugin(BaseInputPlugin):
         """
         cursor.execute(f"USE {schema}")
         if partition:
-            col_name = partition.split("=")[0]
-            val = "\"" + partition.split("=")[1] + "\""
+            partition = partition.replace("=", "=\"")
+            partition = partition.replace("/", "\",") + "\""
             result = self._fetch_all_results(
-                cursor, f"DESCRIBE FORMATTED {table_name} PARTITION ({col_name}={val})"
+                cursor, f"DESCRIBE FORMATTED {table_name} PARTITION ({partition})"
             )
         else:
             result = self._fetch_all_results(cursor, f"DESCRIBE FORMATTED {table_name}")
@@ -250,7 +250,7 @@ class HiveInputPlugin(BaseInputPlugin):
                     # Hive partition values come in a bracketed list
                     # quoted partition values work regardless of partition column type
                     if key == "Partition Value":
-                        value = "\"" + value.strip("[]") + "\""
+                        value = '"' + value.strip("[]") + '"'
                     table_information[key] = value
                     last_field = table_information[key]
                 elif mode == "partition":
