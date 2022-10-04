@@ -76,7 +76,11 @@ def hive_cursor():
             hostname="hive-server",
             name="hive-server",
             network="dask-sql-hive",
-            volumes=[f"{tmpdir}:{tmpdir}", f"{tmpdir_parted}:{tmpdir_parted}"],
+            volumes=[
+                f"{tmpdir}:{tmpdir}",
+                f"{tmpdir_parted}:{tmpdir_parted}",
+                f"{tmpdir_multiparted}:{tmpdir_multiparted}",
+            ],
             environment={
                 "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
                 **DEFAULT_CONFIG,
@@ -160,6 +164,7 @@ def hive_cursor():
         # The data files are created as root user by default. Change that:
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_parted])
+        hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_multiparted])
 
         yield cursor
     except docker.errors.ImageNotFound:
@@ -208,7 +213,7 @@ def test_select_partitions(hive_cursor):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-def test_select_str_partitions(hive_cursor):
+def test_select_multipartitions(hive_cursor):
     c = Context()
     c.create_table("df_parts", hive_cursor)
 
