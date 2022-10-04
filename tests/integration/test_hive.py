@@ -66,6 +66,7 @@ def hive_cursor():
 
     tmpdir = tempfile.mkdtemp()
     tmpdir_parted = tempfile.mkdtemp()
+    tmpdir_multiparted = tempfile.mkdtemp()
 
     try:
         network = client.networks.create("dask-sql-hive", driver="bridge")
@@ -149,15 +150,12 @@ def hive_cursor():
 
         cursor.execute(
             f"""
-            CREATE TABLE df_strparts (i STRING) PARTITIONED BY (j STRING, k STRING) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'
+            CREATE TABLE df_parts (i INTEGER) PARTITIONED BY (j INTEGER, k STRING)
+            ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_multiparted}'
             """
         )
-        cursor.execute(
-            "INSERT INTO df_strparts PARTITION (j='a', k='z') (i) VALUES (1)"
-        )
-        cursor.execute(
-            "INSERT INTO df_strparts PARTITION (j='b', k='y') (i) VALUES (2)"
-        )
+        cursor.execute("INSERT INTO df_parts PARTITION (j=1, k='a') (i) VALUES (1)")
+        cursor.execute("INSERT INTO df_parts PARTITION (j=2, k='b') (i) VALUES (2)")
 
         # The data files are created as root user by default. Change that:
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])
@@ -212,12 +210,12 @@ def test_select_partitions(hive_cursor):
 
 def test_select_str_partitions(hive_cursor):
     c = Context()
-    c.create_table("df_strparts", hive_cursor)
+    c.create_table("df_parts", hive_cursor)
 
-    result_df = c.sql("SELECT * FROM df_strparts")
-    expected_df = pd.DataFrame({"i": [1, 2], "j": ["a", "b"], "k": ["z", "y"]})
+    result_df = c.sql("SELECT * FROM df_parts")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [1, 2], "k": ["a", "b"]})
     expected_df["i"] = expected_df["i"].astype("int32")
-    expected_df["j"] = expected_df["j"].astype("object")
+    expected_df["j"] = expected_df["j"].astype("int64")
     expected_df["k"] = expected_df["k"].astype("object")
 
     assert_eq(result_df, expected_df, check_index=False)
