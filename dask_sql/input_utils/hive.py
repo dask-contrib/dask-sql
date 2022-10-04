@@ -200,6 +200,7 @@ class HiveInputPlugin(BaseInputPlugin):
         """
         cursor.execute(f"USE {schema}")
         if partition:
+            # Hive wants quoted, comma separated list of partition keys
             partition = partition.replace("=", '="')
             partition = partition.replace("/", '",') + '"'
             result = self._fetch_all_results(
