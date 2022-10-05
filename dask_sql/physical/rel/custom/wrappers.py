@@ -175,12 +175,19 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 _transform, estimator=self._postfit_estimator, meta=output_meta
             )
         elif isinstance(X, dd._Frame):
-            return _get_output_df_for_estimator(
-                model_fn=_transform,
-                X=X,
-                output_meta=output_meta,
-                estimator=self._postfit_estimator,
-            )
+            if output_meta is None:
+                # dask-dataframe relies on dd.core.no_default
+                # for infering meta
+                output_meta = _transform(X._meta_nonempty, self._postfit_estimator)
+            try:
+                return X.map_partitions(
+                    _transform,
+                    self._postfit_estimator,
+                    output_meta,
+                    meta=output_meta,
+                )
+            except ValueError:
+                return _transform(X, estimator=self._postfit_estimator)
         else:
             return _transform(X, estimator=self._postfit_estimator)
 
@@ -262,12 +269,19 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             return result
 
         elif isinstance(X, dd._Frame):
-            return _get_output_df_for_estimator(
-                model_fn=_predict,
-                X=X,
-                output_meta=output_meta,
-                estimator=self._postfit_estimator,
-            )
+            if output_meta is None:
+                # dask-dataframe relies on dd.core.no_default
+                # for infering meta
+                output_meta = _predict(X._meta_nonempty, self._postfit_estimator)
+            try:
+                return X.map_partitions(
+                    _predict,
+                    self._postfit_estimator,
+                    output_meta,
+                    meta=output_meta,
+                )
+            except ValueError:
+                return _predict(X, estimator=self._postfit_estimator)
         else:
             return _predict(X, estimator=self._postfit_estimator)
 
@@ -308,12 +322,19 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 chunks=(X.chunks[0], len(self._postfit_estimator.classes_)),
             )
         elif isinstance(X, dd._Frame):
-            return _get_output_df_for_estimator(
-                model_fn=_predict_proba,
-                X=X,
-                output_meta=output_meta,
-                estimator=self._postfit_estimator,
-            )
+            if output_meta is None:
+                # dask-dataframe relies on dd.core.no_default
+                # for infering meta
+                output_meta = _predict_proba(X._meta_nonempty, self._postfit_estimator)
+            try:
+                return X.map_partitions(
+                    _predict_proba,
+                    self._postfit_estimator,
+                    output_meta,
+                    meta=output_meta,
+                )
+            except ValueError:
+                return _predict_proba(X, estimator=self._postfit_estimator)
         else:
             return _predict_proba(X, estimator=self._postfit_estimator)
 
@@ -480,14 +501,6 @@ def _get_output_dask_ar_meta_for_estimator(model_fn, estimator, input_dask_ar):
         warnings.warn(msg)
         ar = np.zeros(shape=(1, input_dask_ar.shape[1]), dtype=input_dask_ar.dtype)
     return model_fn(ar, estimator)
-
-
-def _get_output_df_for_estimator(model_fn, X, output_meta, estimator):
-    if output_meta is None:
-        # dask-dataframe relies on dd.core.no_default
-        # for infering meta
-        output_meta = model_fn(X._meta_nonempty, estimator)
-    return X.map_partitions(model_fn, estimator, output_meta, meta=output_meta)
 
 
 def copy_learned_attributes(from_estimator, to_estimator):
