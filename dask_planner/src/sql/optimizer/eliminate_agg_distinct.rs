@@ -588,7 +588,8 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "Projection: a.b, a.b AS COUNT(a.a), SUM(__dask_sql_count__1) AS COUNT(DISTINCT a.a)\
+        let expected =
+            "Projection: a.b, a.b AS COUNT(a.a), SUM(__dask_sql_count__1) AS COUNT(DISTINCT a.a)\
         \n  Aggregate: groupBy=[[a.b]], aggr=[[SUM(__dask_sql_count__1), COUNT(a.a)]]\
         \n    Aggregate: groupBy=[[a.b, a.a]], aggr=[[COUNT(a.a) AS __dask_sql_count__1]]\
         \n      TableScan: a";
@@ -606,7 +607,8 @@ mod tests {
             )?
             .build()?;
 
-        let expected = "Projection: SUM(__dask_sql_count__1) AS COUNT(a.a), COUNT(a.a) AS COUNT(DISTINCT a.a)\
+        let expected =
+            "Projection: SUM(__dask_sql_count__1) AS COUNT(a.a), COUNT(a.a) AS COUNT(DISTINCT a.a)\
         \n  Aggregate: groupBy=[[]], aggr=[[SUM(__dask_sql_count__1), COUNT(a.a)]]\
         \n    Aggregate: groupBy=[[a.a]], aggr=[[COUNT(a.a) AS __dask_sql_count__1]]\
         \n      TableScan: a";

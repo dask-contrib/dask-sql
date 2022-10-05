@@ -3,13 +3,13 @@ use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
 use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
 use datafusion_optimizer::eliminate_filter::EliminateFilter;
-use datafusion_optimizer::unwrap_cast_in_comparison::UnwrapCastInComparison;
 use datafusion_optimizer::reduce_cross_join::ReduceCrossJoin;
 use datafusion_optimizer::reduce_outer_join::ReduceOuterJoin;
 use datafusion_optimizer::rewrite_disjunctive_predicate::RewriteDisjunctivePredicate;
 use datafusion_optimizer::scalar_subquery_to_join::ScalarSubqueryToJoin;
 use datafusion_optimizer::simplify_expressions::SimplifyExpressions;
 use datafusion_optimizer::type_coercion::TypeCoercion;
+use datafusion_optimizer::unwrap_cast_in_comparison::UnwrapCastInComparison;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
