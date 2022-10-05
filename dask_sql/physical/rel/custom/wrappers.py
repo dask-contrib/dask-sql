@@ -187,7 +187,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return _transform(X, estimator=self._postfit_estimator)
+                return self._postfit_estimator.transform(X)
         else:
             return _transform(X, estimator=self._postfit_estimator)
 
@@ -281,7 +281,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return _predict(X, estimator=self._postfit_estimator)
+                return self._postfit_estimator.predict(X)
         else:
             return _predict(X, estimator=self._postfit_estimator)
 
@@ -334,7 +334,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return _predict_proba(X, estimator=self._postfit_estimator)
+                return self._postfit_estimator.predict_proba(X)
         else:
             return _predict_proba(X, estimator=self._postfit_estimator)
 
@@ -373,30 +373,6 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             )
             raise AttributeError(msg)
         return getattr(estimator, method)
-
-
-def _first_block(dask_object):
-    """Extract the first block / partition from a dask object"""
-    if isinstance(dask_object, da.Array):
-        if dask_object.ndim > 1 and dask_object.numblocks[-1] != 1:
-            raise NotImplementedError(
-                "IID estimators require that the array "
-                "blocked only along the first axis. "
-                "Rechunk your array before fitting."
-            )
-        shape = (dask_object.chunks[0][0],)
-        if dask_object.ndim > 1:
-            shape = shape + (dask_object.chunks[1][0],)
-
-        return da.from_delayed(
-            dask_object.to_delayed().flatten()[0], shape, dask_object.dtype
-        )
-
-    if isinstance(dask_object, dd._Frame):
-        return dask_object.get_partition(0)
-
-    else:
-        return dask_object
 
 
 def _predict(part, estimator, output_meta=None):
