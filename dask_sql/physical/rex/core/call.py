@@ -596,6 +596,16 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class ToTimestampOperation(Operation):
+    def __init__(self):
+        super().__init__(self.to_timestamp)
+
+    def to_timestamp(self, df, format="%Y-%m-%d %H:%M:%S"):
+        df = df.astype("datetime64[s]")
+        df = df.dt.strftime(format)
+        return df
+
+
 class YearOperation(Operation):
     def __init__(self):
         super().__init__(self.extract_year)
@@ -972,6 +982,7 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),

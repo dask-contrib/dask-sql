@@ -639,3 +639,26 @@ def test_date_functions(c):
             FROM df
             """
         )
+
+
+def test_totimestamp(c):
+    df = pd.DataFrame({
+        "a": [1203073300, 1406073600, 2806073600],
+    })
+    c.create_table("df", df)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+
+    expected_df = pd.DataFrame({
+        "date": [
+            datetime(2008, 2, 15, 11, 1, 40),
+            datetime(2014, 7, 23),
+            datetime(2058, 12, 2, 16, 53, 20),
+        ],
+    })
+
+    assert_eq(df, expected_df, check_dtype=False)
