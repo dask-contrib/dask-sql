@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
@@ -180,7 +181,16 @@ class CreateModelPlugin(BaseRelPlugin):
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
-            model = ParallelPostFit(estimator=model)
+            if "sklearn" in model_class:
+                output_meta = np.array([])
+                model = ParallelPostFit(
+                    estimator=model,
+                    predict_meta=output_meta,
+                    predict_proba=output_meta,
+                    transform_meta=output_meta,
+                )
+            else:
+                model = ParallelPostFit(estimator=model)
 
         else:
             model.fit(X, y, **fit_kwargs)
