@@ -179,6 +179,7 @@ class RexLiteralPlugin(BaseRexPlugin):
                 raise ValueError("Non UTC timezones not supported")
             elif timezone is None:
                 literal_value = datetime.fromtimestamp(literal_value // 10**9)
+                literal_value = str(literal_value)
             literal_type = SqlTypeName.TIMESTAMP
             literal_value = np.datetime64(literal_value, numpy_unit)
         else:
