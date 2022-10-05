@@ -188,9 +188,9 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 if output_meta is None:
                     # dask-dataframe relies on dd.core.no_default
                     # for infering meta
-                    meta = dd.core.no_default
+                    output_meta = dd.core.no_default
                 return X.map_partitions(
-                    _transform, estimator=self._postfit_estimator, meta=meta
+                    _transform, estimator=self._postfit_estimator, meta=output_meta
                 )
         else:
             return _transform(X, estimator=self._postfit_estimator)
@@ -286,9 +286,9 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 )
             except ValueError:
                 if output_meta is None:
-                    meta = dd.core.no_default
+                    output_meta = dd.core.no_default
                 return X.map_partitions(
-                    _predict, estimator=self._postfit_estimator, meta=meta
+                    _predict, estimator=self._postfit_estimator, meta=output_meta
                 )
         else:
             return _predict(X, estimator=self._postfit_estimator)
@@ -343,9 +343,9 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 )
             except ValueError:
                 if output_meta is None:
-                    meta = dd.core.no_default
+                    output_meta = dd.core.no_default
                 return X.map_partitions(
-                    _predict_proba, estimator=self._postfit_estimator, meta=meta
+                    _predict_proba, estimator=self._postfit_estimator, meta=output_meta
                 )
         else:
             return _predict_proba(X, estimator=self._postfit_estimator)
