@@ -3,7 +3,7 @@ use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
 use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
 use datafusion_optimizer::eliminate_filter::EliminateFilter;
-use datafusion_optimizer::pre_cast_lit_in_comparison::PreCastLitInComparisonExpressions;
+use datafusion_optimizer::unwrap_cast_in_comparison::UnwrapCastInComparison;
 use datafusion_optimizer::reduce_cross_join::ReduceCrossJoin;
 use datafusion_optimizer::reduce_outer_join::ReduceOuterJoin;
 use datafusion_optimizer::rewrite_disjunctive_predicate::RewriteDisjunctivePredicate;
@@ -33,9 +33,9 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
-            Box::new(PreCastLitInComparisonExpressions::new()),
             Box::new(TypeCoercion::new()),
             Box::new(SimplifyExpressions::new()),
+            Box::new(UnwrapCastInComparison::new()),
             Box::new(DecorrelateWhereExists::new()),
             Box::new(DecorrelateWhereIn::new()),
             Box::new(ScalarSubqueryToJoin::new()),
