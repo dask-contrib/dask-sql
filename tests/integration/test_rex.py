@@ -642,9 +642,11 @@ def test_date_functions(c):
 
 
 def test_totimestamp(c):
-    df = pd.DataFrame({
-        "a": [1203073300, 1406073600, 2806073600],
-    })
+    df = pd.DataFrame(
+        {
+            "a": [1203073300, 1406073600, 2806073600],
+        }
+    )
     c.create_table("df", df)
 
     df = c.sql(
@@ -653,12 +655,14 @@ def test_totimestamp(c):
     """
     )
 
-    expected_df = pd.DataFrame({
-        "date": [
-            datetime(2008, 2, 15, 11, 1, 40),
-            datetime(2014, 7, 23),
-            datetime(2058, 12, 2, 16, 53, 20),
-        ],
-    })
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
+            ],
+        }
+    )
 
     assert_eq(df, expected_df, check_dtype=False)
