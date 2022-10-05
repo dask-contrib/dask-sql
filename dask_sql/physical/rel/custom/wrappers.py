@@ -176,8 +176,6 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             )
         elif isinstance(X, dd._Frame):
             if output_meta is None:
-                # dask-dataframe relies on dd.core.no_default
-                # for infering meta
                 output_meta = _transform(X._meta_nonempty, self._postfit_estimator)
             try:
                 return X.map_partitions(
@@ -187,7 +185,13 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return self._postfit_estimator.transform(X)
+                if output_meta is None:
+                    # dask-dataframe relies on dd.core.no_default
+                    # for infering meta
+                    meta = dd.core.no_default
+                return X.map_partitions(
+                    _transform, estimator=self._postfit_estimator, meta=meta
+                )
         else:
             return _transform(X, estimator=self._postfit_estimator)
 
@@ -281,7 +285,11 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return self._postfit_estimator.predict(X)
+                if output_meta is None:
+                    meta = dd.core.no_default
+                return X.map_partitions(
+                    _predict, estimator=self._postfit_estimator, meta=meta
+                )
         else:
             return _predict(X, estimator=self._postfit_estimator)
 
@@ -334,7 +342,11 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     meta=output_meta,
                 )
             except ValueError:
-                return self._postfit_estimator.predict_proba(X)
+                if output_meta is None:
+                    meta = dd.core.no_default
+                return X.map_partitions(
+                    _predict_proba, estimator=self._postfit_estimator, meta=meta
+                )
         else:
             return _predict_proba(X, estimator=self._postfit_estimator)
 
