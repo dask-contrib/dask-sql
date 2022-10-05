@@ -93,6 +93,7 @@ def test_literals(c):
     )
     assert_eq(df, expected_df)
 
+
 def test_date_interval_math(c):
     df = c.sql(
         """SELECT
@@ -108,6 +109,7 @@ def test_date_interval_math(c):
         }
     )
     assert_eq(df, expected_df)
+
 
 def test_literal_null(c):
     df = c.sql(
