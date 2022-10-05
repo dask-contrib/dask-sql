@@ -186,7 +186,7 @@ class CreateModelPlugin(BaseRelPlugin):
                 model = ParallelPostFit(
                     estimator=model,
                     predict_meta=output_meta,
-                    predict_proba=output_meta,
+                    predict_proba_meta=output_meta,
                     transform_meta=output_meta,
                 )
             else:
