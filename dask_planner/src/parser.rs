@@ -817,7 +817,7 @@ impl<'a> DaskParser<'a> {
         }
 
         let (mdl_schema, mdl_name) =
-            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
+            DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
         // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
@@ -1048,9 +1048,9 @@ impl<'a> DaskParser<'a> {
                         self.parser.prev_token();
 
                         // Parse schema and table name
-                        let obj_name = self.parser.parse_object_name()?;
-                        let (tbl_schema, tbl_name) =
-                            DaskParserUtils::elements_from_objectname(&obj_name)?;
+                        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(
+                            &self.parser.parse_object_name()?,
+                        )?;
 
                         // Parse WITH options
                         self.parser.expect_keyword(Keyword::WITH)?;
@@ -1173,8 +1173,8 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL SHOW COLUMNS FROM <table>
     fn parse_show_columns(&mut self) -> Result<DaskStatement, ParserError> {
         self.parser.expect_keyword(Keyword::FROM)?;
-        let table_factor = self.parser.parse_table_factor()?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let (tbl_schema, tbl_name) =
+            DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         Ok(DaskStatement::ShowColumns(Box::new(ShowColumns {
             table_name: tbl_name,
             schema_name: match tbl_schema.as_str() {
@@ -1186,13 +1186,10 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL ANALYZE TABLE <table>
     fn parse_analyze_table(&mut self) -> Result<DaskStatement, ParserError> {
-        let table_factor = self.parser.parse_table_factor()?;
-        // parse_table_factor parses the following keyword as an alias, so we need to go back a token
-        // TODO: open an issue in sqlparser around this when possible
-        self.parser.prev_token();
+        let obj_name = self.parser.parse_object_name()?;
         self.parser
             .expect_keywords(&[Keyword::COMPUTE, Keyword::STATISTICS, Keyword::FOR])?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(&obj_name)?;
         let columns = match self
             .parser
             .parse_keywords(&[Keyword::ALL, Keyword::COLUMNS])
