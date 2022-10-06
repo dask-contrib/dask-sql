@@ -7,4 +7,6 @@ updates:
     ignore:
       # arrow and datafusion are bumped manually
       - dependency-name: "arrow"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "datafusion-*"
+        update-types: ["version-update:semver-major"]
