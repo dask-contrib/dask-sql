@@ -41,6 +41,10 @@ impl DaskSqlOptimizer {
             Box::new(DecorrelateWhereIn::new()),
             Box::new(ScalarSubqueryToJoin::new()),
             Box::new(SubqueryFilterToJoin::new()),
+            // simplify expressions does not simplify expressions in subqueries, so we
+            // run it again after running the optimizations that potentially converted
+            // subqueries to joins
+            Box::new(SimplifyExpressions::new()),
             Box::new(EliminateFilter::new()),
             Box::new(ReduceCrossJoin::new()),
             Box::new(CommonSubexprEliminate::new()),
