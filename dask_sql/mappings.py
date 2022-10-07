@@ -1,5 +1,4 @@
 import logging
-from datetime import timedelta
 from typing import Any
 
 import dask.array as da
@@ -141,7 +140,9 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         return literal_value
 
     elif sql_type == SqlTypeName.INTERVAL_DAY:
-        return timedelta(days=literal_value[0], milliseconds=literal_value[1])
+        return np.timedelta64(literal_value[0], "D") + np.timedelta64(
+            literal_value[1], "ms"
+        )
     elif sql_type == SqlTypeName.INTERVAL:
         # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
         try:
@@ -160,7 +161,7 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
-        return timedelta(milliseconds=float(str(literal_value)))
+        return np.timedelta64(float(str(literal_value)), "ms")
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)
@@ -170,7 +171,9 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         or sql_type == SqlTypeName.TIME
         or sql_type == SqlTypeName.DATE
     ):
-        if str(literal_value) == "None":
+        if isinstance(literal_value, str):
+            literal_value = np.datetime64(literal_value)
+        elif str(literal_value) == "None":
             # NULL time
             return pd.NaT  # pragma: no cover
         if sql_type == SqlTypeName.DATE:
