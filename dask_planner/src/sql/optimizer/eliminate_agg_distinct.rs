@@ -298,11 +298,7 @@ fn create_plan(
         let first_aggregate = {
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
-            LogicalPlan::Aggregate(Aggregate::try_new(
-                input.clone(),
-                group_expr,
-                vec![],
-            )?)
+            LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, vec![])?)
         };
 
         trace!("first agg:\n{}", first_aggregate.display_indent_schema());
