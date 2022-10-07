@@ -225,7 +225,7 @@ fn create_plan(
                 exprlist_to_fields(&schema_expr, input)?,
                 HashMap::new(),
             )?;
-            LogicalPlan::Aggregate(Aggregate::try_new(
+            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
                 input.clone(),
                 group_expr,
                 aggr_expr,
@@ -262,7 +262,7 @@ fn create_plan(
                 exprlist_to_fields(&schema_expr, &first_aggregate)?,
                 HashMap::new(),
             )?;
-            LogicalPlan::Aggregate(Aggregate::try_new(
+            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
                 Arc::new(first_aggregate),
                 group_expr.clone(),
                 aggr_expr,
@@ -322,7 +322,7 @@ fn create_plan(
                 exprlist_to_fields(&group_expr, input)?,
                 HashMap::new(),
             )?;
-            LogicalPlan::Aggregate(Aggregate::try_new(
+            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
                 input.clone(),
                 group_expr,
                 vec![],
@@ -350,7 +350,7 @@ fn create_plan(
                 exprlist_to_fields(&second_aggr_schema, &first_aggregate)?,
                 HashMap::new(),
             )?;
-            LogicalPlan::Aggregate(Aggregate::try_new(
+            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
                 Arc::new(first_aggregate),
                 group_expr.clone(),
                 vec![count],
