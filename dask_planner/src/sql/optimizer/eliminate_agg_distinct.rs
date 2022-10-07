@@ -63,9 +63,8 @@
 //!      Aggregate: groupBy=[[a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use datafusion_common::{Column, DFSchema, Result};
+use datafusion_common::{Column, Result};
 use datafusion_expr::logical_plan::Projection;
-use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
     col, count,
     logical_plan::{Aggregate, LogicalPlan},
@@ -73,7 +72,6 @@ use datafusion_expr::{
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 use log::trace;
-use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -219,18 +217,7 @@ fn create_plan(
             let expr_name = expr.name()?;
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
             let aggr_expr = vec![count(count_expr).alias(&alias)];
-            let mut schema_expr = group_expr.clone();
-            schema_expr.extend_from_slice(&aggr_expr);
-            let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&schema_expr, input)?,
-                HashMap::new(),
-            )?;
-            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
-                input.clone(),
-                group_expr,
-                aggr_expr,
-                Arc::new(schema),
-            )?)
+            LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, aggr_expr)?)
         };
 
         trace!("first agg:\n{}", first_aggregate.display_indent_schema());
@@ -256,17 +243,10 @@ fn create_plan(
 
             trace!("aggr_expr = {:?}", aggr_expr);
 
-            let mut schema_expr = group_expr.clone();
-            schema_expr.extend_from_slice(&aggr_expr);
-            let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&schema_expr, &first_aggregate)?,
-                HashMap::new(),
-            )?;
-            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
+            LogicalPlan::Aggregate(Aggregate::try_new(
                 Arc::new(first_aggregate),
                 group_expr.clone(),
                 aggr_expr,
-                Arc::new(schema),
             )?)
         };
 
@@ -318,15 +298,10 @@ fn create_plan(
         let first_aggregate = {
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
-            let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&group_expr, input)?,
-                HashMap::new(),
-            )?;
-            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
+            LogicalPlan::Aggregate(Aggregate::try_new(
                 input.clone(),
                 group_expr,
                 vec![],
-                Arc::new(schema),
             )?)
         };
 
@@ -344,17 +319,10 @@ fn create_plan(
                 distinct: false,
                 filter: None,
             };
-            let mut second_aggr_schema = group_expr.clone();
-            second_aggr_schema.push(count.clone());
-            let schema = DFSchema::new_with_metadata(
-                exprlist_to_fields(&second_aggr_schema, &first_aggregate)?,
-                HashMap::new(),
-            )?;
-            LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
+            LogicalPlan::Aggregate(Aggregate::try_new(
                 Arc::new(first_aggregate),
                 group_expr.clone(),
                 vec![count],
-                Arc::new(schema),
             )?)
         };
 
