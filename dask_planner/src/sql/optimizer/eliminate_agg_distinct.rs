@@ -453,7 +453,7 @@ mod tests {
 
     /// Optimize with all of the optimizer rules, including eliminate_agg_distinct
     fn assert_fully_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
-        let optimizer = DaskSqlOptimizer::new();
+        let optimizer = DaskSqlOptimizer::new(false);
         let optimized_plan = optimizer
             .run_optimizations(plan.clone())
             .expect("failed to optimize plan");
