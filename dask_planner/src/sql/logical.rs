@@ -5,6 +5,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 pub mod aggregate;
 pub mod analyze_table;
 pub mod create_catalog_schema;
+pub mod create_experiment;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
@@ -40,6 +41,7 @@ use pyo3::prelude::*;
 
 use self::analyze_table::AnalyzeTablePlanNode;
 use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
+use self::create_experiment::CreateExperimentPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::create_view::CreateViewPlanNode;
@@ -147,6 +149,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::CreateModel as PyCreateModel
     pub fn create_model(&self) -> PyResult<create_model::PyCreateModel> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::CreateExperiment as PyCreateExperiment
+    pub fn create_experiment(&self) -> PyResult<create_experiment::PyCreateExperiment> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -296,6 +303,8 @@ impl PyLogicalPlan {
                 let node = extension.node.as_any();
                 if node.downcast_ref::<CreateModelPlanNode>().is_some() {
                     "CreateModel"
+                } else if node.downcast_ref::<CreateExperimentPlanNode>().is_some() {
+                    "CreateExperiment"
                 } else if node.downcast_ref::<CreateCatalogSchemaPlanNode>().is_some() {
                     "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
