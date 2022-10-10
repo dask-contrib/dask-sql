@@ -3,9 +3,10 @@ How does it work?
 
 At the core, ``dask-sql`` does two things:
 
-- translate the SQL query using `Apache Arrow DataFusion <https://arrow.apache.org/datafusion/>`_ into a relational algebra,
-  which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
-- convert this description of the query from Rust objects into dask API calls (and execute them) - returning a dask dataframe.
+- Translates the SQL query using `Apache Arrow DataFusion <https://arrow.apache.org/datafusion/>`_ into a relational algebra,
+  represented by a `LogicalPlan enum <https://docs.rs/datafusion-expr/latest/datafusion_expr/enum.LogicalPlan.html>`_ - similar
+  to many other SQL engines (Hive, Flink, ...)
+- Converts this description of the query from the Rust enum into Dask API calls (and executes them) - returning a Dask dataframe.
 
 The following example explains this in quite some technical details.
 For most of the users, this level of technical understanding is not needed.
@@ -18,25 +19,32 @@ No matter of via the Python API (:ref:`api`), the command line client (:ref:`cmd
 2. SQL is parsed
 ----------------
 
-This function will first give the SQL string to DataFusion via the ``PyO3`` library.
-Inside this class, Apache Arrow DataFusion is used to first parse the SQL string and then turn it into a relational algebra.
+This function will first give the SQL string to the dask_planner Rust crate via the ``PyO3`` library.
+Inside this crate, Apache Arrow DataFusion is used to first parse the SQL string and then turn it into a relational algebra.
 For this, DataFusion uses the SQL language description specified in the `sqlparser-rs library <https://github.com/sqlparser-rs/sqlparser-rs/>`_
 We also include `SQL extensions specific to Dask-SQL <https://github.com/dask-contrib/dask-sql/blob/main/dask_planner/src/parser.rs/>`_. They specify custom language features, such as the ``CREATE MODEL`` statement.
 
 3. SQL is (maybe) optimized
 ---------------------------
 
-Once the SQL string is parsed into an instance of a :class:`SqlNode` (or a subclass of it), DataFusion can convert it into a relational algebra and optimize it. As this is only implemented for DataFusion supported syntax (and not for the custom syntax such as :class:`SqlCreateModel`) this conversion and optimization is not triggered for all SQL statements (have a look into :func:`Context._get_ral`).
+Once the SQL string is parsed into a :class:`Statement` enum, DataFusion can convert it into a relational algebra represented by a `LogicalPlan enum <https://docs.rs/datafusion-expr/latest/datafusion_expr/enum.LogicalPlan.html>`_
+and optimize it. As this is only implemented for DataFusion supported syntax (and not for the custom syntax such
+as :class:`SqlCreateModel`) this conversion and optimization is not triggered for all SQL statements (have a look
+into :func:`Context._get_ral`).
 
-After optimization, the resulting objects will be a class of any of the :class:`Logical*` classes in DataFusion (such as :class:`LogicalJoin`). Each of those can contain other instances as "inputs" creating a tree of different steps in the SQL statement (see below for an example).
+The logical plan is a tree structure and most enum variants (such as :class:`Projection` or :class:`Join`) can contain
+other instances as "inputs" creating a tree of different steps in the SQL statement (see below for an example).
 
-So after all, the result is either an optimized tree of steps in the relational algebra (represented by instances of the :class:`Logical*` classes) or an instance of a :class:`SqlNode` (sub)class.
+The result is an optimized :class:`LogicalPlan`.
 
 4. Translation to Dask API calls
 --------------------------------
 
-Depending on which type the resulting class has, they are converted into calls to Python functions using different Python "converters". For each class, there exist a converter class in the ``dask_sql.physical.rel`` folder, which are registered at the :class:`dask_sql.physical.rel.convert.RelConverter` class.
-Their job is to use the information stored in the class instances and turn it into calls to Python functions (see the example below for more information).
+Each step in the :class:`LogicalPlan` is converted into calls to Python functions using different Python "converters".
+For each enum variant (such as :class:`Projection` and :class:`Join`), there exist a converter class in
+the ``dask_sql.physical.rel`` folder, which are registered at the :class:`dask_sql.physical.rel.convert.RelConverter` class.
+
+Their job is to use the information stored in the logical plan enum variants and turn it into calls to Python functions (see the example below for more information).
 
 As many SQL statements contain calculations using literals and/or columns, these are split into their own functionality (``dask_sql.physical.rex``) following a similar plugin-based converter system.
 Have a look into the specific classes to understand how the conversion of a specific SQL language feature is implemented.
