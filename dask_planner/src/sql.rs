@@ -390,7 +390,7 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new()
+                    optimizer::DaskSqlOptimizer::new(true)
                         .run_optimizations(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
