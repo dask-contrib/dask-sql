@@ -22,7 +22,7 @@ parking_lot = "0.12"
 pyo3 = { version = "0.17.2", features = ["extension-module", "abi3", "abi3-py38"] }
 rand = "0.8"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
-uuid = { version = "1.1", features = ["v4"] }
+uuid = { version = "1.2", features = ["v4"] }
 
 [lib]
 crate-type = ["cdylib"]
