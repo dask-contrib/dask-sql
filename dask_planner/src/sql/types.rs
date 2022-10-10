@@ -246,6 +246,7 @@ impl SqlTypeName {
             DataType::Float16 => Ok(SqlTypeName::REAL),
             DataType::Float32 => Ok(SqlTypeName::FLOAT),
             DataType::Float64 => Ok(SqlTypeName::DOUBLE),
+            DataType::Time32(_) | DataType::Time64(_) => Ok(SqlTypeName::TIME),
             DataType::Timestamp(_unit, tz) => match tz {
                 Some(_) => Ok(SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE),
                 None => Ok(SqlTypeName::TIMESTAMP),
