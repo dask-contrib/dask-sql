@@ -22,7 +22,7 @@ if you need it.
 * **Your data - your queries**: Use Python user-defined functions (UDFs) in SQL without any performance drawback and extend your SQL queries with the large number of Python libraries, e.g. machine learning, different complicated input formats, complex statistics.
 * **Easy to install and maintain**: `dask-sql` is just a pip/conda install away (or a docker run if you prefer). No need for complicated cluster setups - `dask-sql` will run out of the box on your machine and can be easily connected to your computing cluster.
 * **Use SQL from wherever you like**: `dask-sql` integrates with your jupyter notebook, your normal Python module or can be used as a standalone SQL server from any BI tool. It even integrates natively with [Apache Hue](https://gethue.com/).
-* **GPU Support**: `dask-sql` has _experimental_ support for running SQL queries on CUDA-enabled GPUs by utilizing [RAPIDS](https://rapids.ai) libraries like [`cuDF`](https://github.com/rapidsai/cudf), enabling accelerated compute for SQL.
+* **GPU Support**: `dask-sql` supports running SQL queries on CUDA-enabled GPUs by utilizing [RAPIDS](https://rapids.ai) libraries like [`cuDF`](https://github.com/rapidsai/cudf), enabling accelerated compute for SQL.
 
 Read more in the [documentation](https://dask-sql.readthedocs.io/en/latest/).
 
@@ -181,8 +181,8 @@ You can also run the CLI `dask-sql` for testing out SQL commands quickly:
 
 At the core, `dask-sql` does two things:
 
-- translate the SQL query using [Apache Calcite](https://calcite.apache.org/) into a relational algebra, which is specified as a tree of java objects - similar to many other SQL engines (Hive, Flink, ...)
-- convert this description of the query from java objects into dask API calls (and execute them) - returning a dask dataframe.
+- translate the SQL query using [DataFusion](https://arrow.apache.org/datafusion) into a relational algebra, which is represented as a logical query plan - similar to many other SQL engines (Hive, Flink, ...)
+- convert this description of the query into dask API calls (and execute them) - returning a dask dataframe.
 
 For the first step, Arrow DataFusion needs to know about the columns and types of the dask dataframes, therefore some Rust code to store this information for dask dataframes are defined in `dask_planner`.
 After the translation to a relational algebra is done (using `DaskSQLContext.logical_relational_algebra`), the python methods defined in `dask_sql.physical` turn this into a physical dask execution plan by converting each piece of the relational algebra one-by-one.

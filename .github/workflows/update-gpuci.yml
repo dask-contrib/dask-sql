@@ -75,6 +75,7 @@ jobs:
         # make sure ucx-py nightlies are available and that cuDF/cuML nightly versions match up
         if: |
           env.UCX_PY_VER != env.NEW_UCX_PY_VER &&
+          env.RAPIDS_VER != env.NEW_CUDF_VER &&
           env.NEW_CUDF_VER == env.NEW_CUML_VER
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
