@@ -10,7 +10,7 @@ def test_sql_query_explain(c, gpu):
 
     sql_string = c.sql("EXPLAIN SELECT * FROM df")
 
-    assert sql_string.startswith("Projection: #df.a\n")
+    assert sql_string.startswith("Projection: df.a\n")
 
     # TODO: Need to add statistics to Rust optimizer before this can be uncommented.
     # c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
@@ -26,5 +26,5 @@ def test_sql_query_explain(c, gpu):
         dataframes={"other_df": df},
         gpu=gpu,
     )
-    assert sql_string.startswith("Projection: #MIN(other_df.a) AS a_min\n")
-    assert "Aggregate: groupBy=[[#other_df.a]], aggr=[[MIN(#other_df.a)]]" in sql_string
+    assert sql_string.startswith("Projection: MIN(other_df.a) AS a_min\n")
+    assert "Aggregate: groupBy=[[other_df.a]], aggr=[[MIN(other_df.a)]]" in sql_string
