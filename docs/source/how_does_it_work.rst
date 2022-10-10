@@ -76,9 +76,9 @@ First, the SQL is parsed by DataFusion and (as it is not a custom statement) tra
 
 .. code-block:: none
 
-    LogicalProject(EXPR$0=[+($3, $4)])
-        LogicalFilter(condition=[>($3, 0)])
-            LogicalTableScan(table=[[schema, timeseries]])
+    Projection: #timeseries.x + #timeseries.y
+      Filter: #timeseries.x > Float64(0)
+        TableScan: timeseries projection=[x, y]
 
 The tree output above means, that the outer instance (:class:`Projection`) needs as input the output of the previous instance (:class:`Filter`) etc.
 
