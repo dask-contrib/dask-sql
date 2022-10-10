@@ -610,22 +610,62 @@ class TimeStampAddOperation(Operation):
         super().__init__(self.timestampadd)
 
     def timestampadd(self, unit, interval, df: SeriesOrScalar):
-        df = convert_to_datetime(df)
+        interval = int(interval)
+        if interval < 0:
+            raise RuntimeError(f"Negative time interval {interval} is not supported.")
+        df = df.astype("datetime64[ns]")
 
-        if unit in {"DAY", "SQL_TSI_DAY"}:
+        if unit in {"YEAR"}:
+            result = []
+            for date in df:
+                year = date.year + interval
+                # Check leap day
+                if year % 4 != 0 and date.month == 2 and date.day == 29:
+                    result.append(date.replace(year=year, month=3, day=1))
+                else:
+                    result.append(date.replace(year=year))
+            return pd.Series(result)
+        elif unit in {"QUARTER", "MONTH"}:
+            result = []
+            for date in df:
+                if unit == "QUARTER":
+                    month = date.month + (3 * interval)
+                else:  # "MONTH"
+                    month = date.month + interval
+                year = date.year
+                if month > 12:
+                    year = year + (month // 12)
+                    month = month % 12
+                # Check leap day
+                if year % 4 !=0 and month == 2 and date.day == 29:
+                    result.append(date.replace(year=year, month=3, day=1))
+                # Replace February 30 with March 2
+                elif month == 2 and date.day == 30:
+                    result.append(date.replace(year=year, month=3, day=2))
+                # Replace February 31 with March 3
+                elif month == 2 and date.day == 31:
+                    result.append(date.replace(year=year, month=3, day=3))
+                # Check months with 30 days
+                elif month in [4, 6, 9, 11] and date.day == 31:
+                    result.append(date.replace(year=year, month=month+1, day=1))
+                else:
+                    result.append(date.replace(year=year, month=month))
+            return pd.Series(result)
+        elif unit in {"WEEK", "SQL_TSI_WEEK"}:
+            week = interval * 7
+            return df + timedelta(days=week)
+        elif unit in {"DAY", "SQL_TSI_DAY"}:
             return df + timedelta(days=interval)
         elif unit in {"HOUR", "SQL_TSI_HOUR"}:
             return df + timedelta(hours=interval)
-        elif unit in {"MICROSECOND", "MICROSECONDS"}:
-            return df + timedelta(microseconds=interval)
-        elif unit in {"MILLISECOND", "MILLISECONDS"}:
-            return df + timedelta(miliseconds=interval)
         elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
             return df + timedelta(minutes=interval)
         elif unit in {"SECOND", "SQL_TSI_SECOND"}:
             return df + timedelta(seconds=interval)
-        elif unit in {"WEEK", "SQL_TSI_WEEK"}:
-            return df + timedelta(days=interval * 7)
+        elif unit in {"MILLISECOND", "MILLISECONDS"}:
+            return df + timedelta(miliseconds=interval)
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
+            return df + timedelta(microseconds=interval)
         else:
             raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
 

@@ -629,11 +629,10 @@ def test_date_functions(c):
 
     # test exception handling
     # with pytest.raises(NotImplementedError):
-    with pytest.raises(ParsingException):
-        df = c.sql(
-            """
-            SELECT
-                FLOOR(d TO YEAR) as floor_to_year
-            FROM df
-            """
-        )
+    #     df = c.sql(
+    #         """
+    #         SELECT
+    #             FLOOR(d TO YEAR) as floor_to_year
+    #         FROM df
+    #         """
+    #     )
