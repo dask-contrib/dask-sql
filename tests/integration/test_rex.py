@@ -94,6 +94,23 @@ def test_literals(c):
     assert_eq(df, expected_df)
 
 
+def test_date_interval_math(c):
+    df = c.sql(
+        """SELECT
+                DATE '1998-08-18' - INTERVAL '4 days' AS "before",
+                DATE '1998-08-18' + INTERVAL '4 days' AS "after"
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "before": [pd.to_datetime("1998-08-14 00:00")],
+            "after": [pd.to_datetime("1998-08-22 00:00")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+
 def test_literal_null(c):
     df = c.sql(
         """
