@@ -38,10 +38,6 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Update upstream cargo dependencies
-        run: |
-          cd dask_planner
-          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -74,10 +70,6 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Update upstream cargo dependencies
-        run: |
-          cd dask_planner
-          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
