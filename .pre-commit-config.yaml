@@ -19,8 +19,6 @@ repos:
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
-      - id: fmt
-        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: cargo-check
         args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: clippy
@@ -33,3 +31,12 @@ repos:
       - id: check-yaml
         exclude: ^continuous_integration/recipe/
       - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format files with cargo fmt.
+        entry: cargo +nightly fmt
+        language: system
+        types: [rust]
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
