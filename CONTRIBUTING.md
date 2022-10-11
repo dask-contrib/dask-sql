@@ -2,22 +2,23 @@
 
 ## Environment Setup
 
-Conda is used both by CI and the development team. Therefore Conda is the fully supported and preferred method for using and developing Dask-SQL.
+The environment used for development and CI consists of:
 
-Installing Conda is outside the scope of this document. However a nice guide for installing on Linux can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html)
+- a system installation of [`rustup`](https://rustup.rs/)
+- a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) environment containing all required Python packages
 
-Setting up your Conda environment for development is straightforward. First, clone the repository locally
+Once `rustup` is installed, ensure that the latest stable toolchain is available by running
+
 ```
-DASK_SQL_HOME=${pwd}/dask-sql
-git clone https://github.com/dask-contrib/dask-sql.git
-cd $DASK_SQL_HOME
-```
-Then, run:
-```
-conda env create -f {DASK_SQL_HOME}/continuous_integration/environment-3.10-dev.yaml
+rustup update
 ```
 
-The Conda process will take awhile to complete, once finished you will have a resulting environment named `dask-sql` which can be activated and used by running `conda activate dask-sql`
+To initialize and activate the conda environment for a given Python version:
+
+```
+conda env create -f dask-sql/continuous_integration/environment-{$PYTHON_VER}-dev.yaml
+conda activate dask-sql
+```
 
 ## Rust Developers Guide
 
