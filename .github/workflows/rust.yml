@@ -44,7 +44,7 @@ jobs:
           path: /home/runner/.cargo
           key: cargo-cache
       - name: Optionally update upstream dependencies
-        if: github.event_name == 'schedule' || needs.detect-ci-trigger.outputs.triggered == 'true'
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           cd dask_planner
           bash update-dependencies.sh
@@ -72,7 +72,7 @@ jobs:
           path: /home/runner/.cargo
           key: cargo-cache
       - name: Optionally update upstream dependencies
-        if: github.event_name == 'schedule' || needs.detect-ci-trigger.outputs.triggered == 'true'
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           cd dask_planner
           bash update-dependencies.sh
