@@ -4,13 +4,15 @@
 
 The environment used for development and CI consists of:
 
-- a system installation of [`rustup`](https://rustup.rs/) with the latest stable and nightly toolchains
+- a system installation of [`rustup`](https://rustup.rs/) with:
+    - the latest stable toolchain
+    - the latest nightly `rustfmt`
 - a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) environment containing all required Python packages
 
-Once `rustup` is installed, ensure that the latest stable and nightly toolchains are available by running
+Once `rustup` is installed, ensure that the latest stable toolchain and nightly `rustfmt` are available by running
 
 ```
-rustup toolchain install nightly
+rustup component add rustfmt --toolchain nightly
 rustup update
 ```
 
