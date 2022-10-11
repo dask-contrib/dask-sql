@@ -155,6 +155,13 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,nodefaults
           channel-priority: strict
+      - name: Optionally update upstream datafusion dependency
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        env:
+          UPDATE_ALL_CARGO_DEPS: false
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           mamba install setuptools-rust
