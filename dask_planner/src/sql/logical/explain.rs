@@ -1,7 +1,6 @@
+use crate::sql::exceptions::py_type_err;
 use datafusion_expr::{logical_plan::Explain, LogicalPlan};
 use pyo3::prelude::*;
-
-use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "Explain", module = "dask_planner", subclass)]
 #[derive(Clone)]

@@ -1,5 +1,5 @@
-use core::{iter::Peekable, str::Chars};
-
+use core::iter::Peekable;
+use core::str::Chars;
 use datafusion_sql::sqlparser::dialect::Dialect;
 
 #[derive(Debug)]

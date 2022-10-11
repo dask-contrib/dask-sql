@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
-use arrow::datatypes::DataType;
+use super::types::PyDataType;
 use pyo3::prelude::*;
 
-use super::types::PyDataType;
+use arrow::datatypes::DataType;
+use std::collections::HashMap;
 
 #[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]

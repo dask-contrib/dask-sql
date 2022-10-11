@@ -1,14 +1,14 @@
+use crate::expression::PyExpr;
+use crate::sql::column;
+
 use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
     Expr,
 };
-use pyo3::prelude::*;
 
-use crate::{
-    expression::PyExpr,
-    sql::{column, exceptions::py_type_err},
-};
+use crate::sql::exceptions::py_type_err;
+use pyo3::prelude::*;
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
 #[derive(Clone)]

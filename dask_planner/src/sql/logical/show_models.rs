@@ -1,8 +1,10 @@
+use datafusion_expr::logical_plan::UserDefinedLogicalNode;
+use datafusion_expr::{Expr, LogicalPlan};
+
+use fmt::Debug;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
-use fmt::Debug;
 
 #[derive(Clone)]
 pub struct ShowModelsPlanNode {

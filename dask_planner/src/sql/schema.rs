@@ -1,10 +1,12 @@
-use std::collections::HashMap;
+use super::types::PyDataType;
+use crate::sql::function::DaskFunction;
+use crate::sql::table;
 
 use ::std::sync::{Arc, Mutex};
+
 use pyo3::prelude::*;
 
-use super::types::PyDataType;
-use crate::sql::{function::DaskFunction, table};
+use std::collections::HashMap;
 
 #[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]

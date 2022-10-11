@@ -1,8 +1,9 @@
+use crate::sql::exceptions::py_runtime_err;
+use crate::sql::types::rel_data_type_field::RelDataTypeField;
+
 use std::collections::HashMap;
 
 use pyo3::prelude::*;
-
-use crate::sql::{exceptions::py_runtime_err, types::rel_data_type_field::RelDataTypeField};
 
 const PRECISION_NOT_SPECIFIED: i32 = i32::MIN;
 const SCALE_NOT_SPECIFIED: i32 = -1;

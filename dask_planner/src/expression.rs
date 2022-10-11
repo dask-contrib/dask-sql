@@ -1,22 +1,13 @@
-use std::{convert::From, sync::Arc};
-
+use crate::sql::exceptions::{py_runtime_err, py_type_err};
+use crate::sql::logical;
+use crate::sql::types::RexType;
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, Result, ScalarValue};
-use datafusion_expr::{
-    lit,
-    utils::exprlist_to_fields,
-    BuiltinScalarFunction,
-    Expr,
-    LogicalPlan,
-    Operator,
-};
+use datafusion_expr::Operator;
+use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
 use pyo3::prelude::*;
-
-use crate::sql::{
-    exceptions::{py_runtime_err, py_type_err},
-    logical,
-    types::RexType,
-};
+use std::convert::From;
+use std::sync::Arc;
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]

@@ -1,10 +1,7 @@
+use crate::expression::{py_expr_list, PyExpr};
+use crate::sql::exceptions::py_type_err;
 use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
 use pyo3::prelude::*;
-
-use crate::{
-    expression::{py_expr_list, PyExpr},
-    sql::exceptions::py_type_err,
-};
 
 #[pyclass(name = "Window", module = "dask_planner", subclass)]
 #[derive(Clone)]

@@ -1,10 +1,8 @@
+use crate::expression::{py_expr_list, PyExpr};
+
+use crate::sql::exceptions::py_type_err;
 use datafusion_expr::{logical_plan::Sort, LogicalPlan};
 use pyo3::prelude::*;
-
-use crate::{
-    expression::{py_expr_list, PyExpr},
-    sql::exceptions::py_type_err,
-};
 
 #[pyclass(name = "Sort", module = "dask_planner", subclass)]
 #[derive(Clone)]

@@ -63,23 +63,19 @@
 //!      Aggregate: groupBy=[[#a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use std::{
-    collections::{hash_map::HashMap, HashSet},
-    sync::Arc,
-};
-
 use datafusion_common::{Column, DFSchema, Result};
+use datafusion_expr::logical_plan::Projection;
+use datafusion_expr::utils::exprlist_to_fields;
 use datafusion_expr::{
-    col,
-    count,
-    logical_plan::{Aggregate, LogicalPlan, Projection},
-    utils::exprlist_to_fields,
-    AggregateFunction,
-    Expr,
-    LogicalPlanBuilder,
+    col, count,
+    logical_plan::{Aggregate, LogicalPlan},
+    AggregateFunction, Expr, LogicalPlanBuilder,
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 use log::trace;
+use std::collections::hash_map::HashMap;
+use std::collections::HashSet;
+use std::sync::Arc;
 
 /// Optimizer rule eliminating/moving Aggregate Expr(s) with a `DISTINCT` inner Expr.
 #[derive(Default)]
@@ -468,18 +464,14 @@ fn unique_set_without_aliases(unique_expressions: &HashSet<Expr>) -> HashSet<Exp
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use arrow::datatypes::{DataType, Field, Schema};
-    use datafusion_expr::{
-        col,
-        count,
-        count_distinct,
-        logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
-    };
-
     use super::*;
     use crate::sql::optimizer::DaskSqlOptimizer;
+    use arrow::datatypes::{DataType, Field, Schema};
+    use datafusion_expr::{
+        col, count, count_distinct,
+        logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
+    };
+    use std::sync::Arc;
 
     /// Optimize with just the eliminate_agg_distinct rule
     fn assert_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {

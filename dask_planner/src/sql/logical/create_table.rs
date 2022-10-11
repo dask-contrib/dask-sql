@@ -1,12 +1,16 @@
-use std::{any::Any, collections::HashMap, fmt, sync::Arc};
-
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
-use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
-use fmt::Debug;
+use crate::sql::exceptions::py_type_err;
+use crate::sql::logical;
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical};
+use datafusion_expr::logical_plan::UserDefinedLogicalNode;
+use datafusion_expr::{Expr, LogicalPlan};
+use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
+
+use fmt::Debug;
+use std::collections::HashMap;
+use std::{any::Any, fmt, sync::Arc};
+
+use datafusion_common::{DFSchema, DFSchemaRef};
 
 #[derive(Clone)]
 pub struct CreateTablePlanNode {

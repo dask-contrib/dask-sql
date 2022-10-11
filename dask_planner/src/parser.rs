@@ -2,16 +2,15 @@
 //!
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
-use std::collections::VecDeque;
-
+use crate::dialect::DaskDialect;
+use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
     ast::{Expr, SelectItem, Statement as SQLStatement},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-
-use crate::{dialect::DaskDialect, sql::parser_utils::DaskParserUtils};
+use std::collections::VecDeque;
 
 macro_rules! parser_err {
     ($MSG:expr) => {
