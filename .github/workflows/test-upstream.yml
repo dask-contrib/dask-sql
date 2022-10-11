@@ -3,7 +3,6 @@ on:
   schedule:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
-  pull_request: # for testing
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
