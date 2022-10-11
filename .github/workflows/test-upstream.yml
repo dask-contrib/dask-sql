@@ -2,6 +2,7 @@ name: Nightly upstream testing
 on:
   schedule:
     - cron: "0 0 * * *" # Daily “At 00:00” UTC
+    - cron: "0 3 * * *" # Daily "At 03:00" UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
 
 # Required shell entrypoint to have properly activated conda environments
@@ -38,6 +39,11 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+      - name: Optionally update upstream cargo dependencies
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -70,6 +76,11 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
+      - name: Optionally update upstream cargo dependencies
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -109,6 +120,13 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,nodefaults
           channel-priority: strict
+      - name: Optionally update upstream cargo dependencies
+        if: github.event.schedule == '0 3 * * *'
+        env:
+          UPDATE_ALL_CARGO_DEPS: false
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           mamba install setuptools-rust
