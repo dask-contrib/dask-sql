@@ -1,7 +1,8 @@
 use crate::sql::types::DaskTypeMap;
 use crate::sql::types::SqlTypeName;
 
-use datafusion_common::{DFField, DFSchema, Result};
+use crate::error::Result;
+use datafusion_common::{DFField, DFSchema};
 
 use std::fmt;
 
@@ -28,7 +29,7 @@ impl RelDataTypeField {
             qualifier: qualifier.map(|qualifier| qualifier.to_string()),
             name: field.name().clone(),
             data_type: DaskTypeMap {
-                sql_type: SqlTypeName::from_arrow(field.data_type()),
+                sql_type: SqlTypeName::from_arrow(field.data_type())?,
                 data_type: field.data_type().clone().into(),
             },
             index: schema.index_of_column_by_name(qualifier, field.name())?,

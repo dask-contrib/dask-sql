@@ -5,6 +5,7 @@ use crate::sql::types::rel_data_type_field::RelDataTypeField;
 pub mod aggregate;
 pub mod analyze_table;
 pub mod create_catalog_schema;
+pub mod create_experiment;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
@@ -31,14 +32,16 @@ pub mod table_scan;
 pub mod use_schema;
 pub mod window;
 
-use datafusion_common::{DFSchemaRef, DataFusionError, Result};
+use datafusion_common::{DFSchemaRef, DataFusionError};
 use datafusion_expr::LogicalPlan;
 
+use crate::error::Result;
 use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
 
 use self::analyze_table::AnalyzeTablePlanNode;
 use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
+use self::create_experiment::CreateExperimentPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
 use self::create_view::CreateViewPlanNode;
@@ -149,6 +152,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::CreateExperiment as PyCreateExperiment
+    pub fn create_experiment(&self) -> PyResult<create_experiment::PyCreateExperiment> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::DropTable as DropTable
     pub fn drop_table(&self) -> PyResult<drop_table::PyDropTable> {
         to_py_plan(self.current_node.as_ref())
@@ -231,7 +239,7 @@ impl PyLogicalPlan {
     /// otherwise None is returned
     #[pyo3(name = "getTable")]
     pub fn table(&mut self) -> PyResult<table::DaskTable> {
-        match table::table_from_logical_plan(&self.current_node()) {
+        match table::table_from_logical_plan(&self.current_node())? {
             Some(table) => Ok(table),
             None => Err(py_type_err(
                 "Unable to compute DaskTable from DataFusion LogicalPlan",
@@ -295,6 +303,8 @@ impl PyLogicalPlan {
                 let node = extension.node.as_any();
                 if node.downcast_ref::<CreateModelPlanNode>().is_some() {
                     "CreateModel"
+                } else if node.downcast_ref::<CreateExperimentPlanNode>().is_some() {
+                    "CreateExperiment"
                 } else if node.downcast_ref::<CreateCatalogSchemaPlanNode>().is_some() {
                     "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {

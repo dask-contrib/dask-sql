@@ -166,6 +166,9 @@ class HiveInputPlugin(BaseInputPlugin):
                 partition_values = ast.literal_eval(
                     partition_table_information["Partition Value"]
                 )
+                # multiple partition column values returned comma separated string
+                if "," in partition_values:
+                    partition_values = [x.strip() for x in partition_values.split(",")]
 
                 logger.debug(
                     f"Applying additional partition information as columns: {partition_information}"
@@ -200,6 +203,9 @@ class HiveInputPlugin(BaseInputPlugin):
         """
         cursor.execute(f"USE {schema}")
         if partition:
+            # Hive wants quoted, comma separated list of partition keys
+            partition = partition.replace("=", '="')
+            partition = partition.replace("/", '",') + '"'
             result = self._fetch_all_results(
                 cursor, f"DESCRIBE FORMATTED {table_name} PARTITION ({partition})"
             )
@@ -245,6 +251,10 @@ class HiveInputPlugin(BaseInputPlugin):
                     storage_information[key] = value
                     last_field = storage_information[key]
                 elif mode == "table":
+                    # Hive partition values come in a bracketed list
+                    # quoted partition values work regardless of partition column type
+                    if key == "Partition Value":
+                        value = '"' + value.strip("[]") + '"'
                     table_information[key] = value
                     last_field = table_information[key]
                 elif mode == "partition":
