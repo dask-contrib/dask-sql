@@ -9,7 +9,6 @@ pub mod create_experiment;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
-pub mod create_view;
 pub mod describe_model;
 pub mod drop_model;
 pub mod drop_schema;
@@ -44,7 +43,6 @@ use self::create_catalog_schema::CreateCatalogSchemaPlanNode;
 use self::create_experiment::CreateExperimentPlanNode;
 use self::create_model::CreateModelPlanNode;
 use self::create_table::CreateTablePlanNode;
-use self::create_view::CreateViewPlanNode;
 use self::describe_model::DescribeModelPlanNode;
 use self::drop_model::DropModelPlanNode;
 use self::drop_schema::DropSchemaPlanNode;
@@ -206,6 +204,11 @@ impl PyLogicalPlan {
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
     }
+
+    pub fn show_models(&self) -> PyResult<show_models::PyShowModels> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn analyze_table(&self) -> PyResult<analyze_table::PyAnalyzeTable> {
         to_py_plan(self.current_node.as_ref())
@@ -309,8 +312,6 @@ impl PyLogicalPlan {
                     "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
                     "CreateTable"
-                } else if node.downcast_ref::<CreateViewPlanNode>().is_some() {
-                    "CreateView"
                 } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
@@ -318,7 +319,7 @@ impl PyLogicalPlan {
                 } else if node.downcast_ref::<ExportModelPlanNode>().is_some() {
                     "ExportModel"
                 } else if node.downcast_ref::<DescribeModelPlanNode>().is_some() {
-                    "ShowModelParams"
+                    "DescribeModel"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
                 } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {

@@ -22,7 +22,7 @@ class DropSchemaPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
         drop_schema = rel.drop_schema()
-        schema_name = str(drop_schema.getSchemaName())
+        schema_name = drop_schema.getSchemaName()
 
         if schema_name not in context.schema:
             if not drop_schema.getIfExists():

@@ -102,7 +102,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         select = create_experiment.getSelectQuery()
 
         schema_name, experiment_name = (
-            context.schema_name,
+            create_experiment.getSchemaName(),
             create_experiment.getExperimentName(),
         )
         kwargs = convert_sql_kwargs(create_experiment.getSQLWithOptions())

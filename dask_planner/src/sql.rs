@@ -34,7 +34,6 @@ use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
 use crate::sql::logical::create_experiment::CreateExperimentPlanNode;
 use crate::sql::logical::create_model::CreateModelPlanNode;
 use crate::sql::logical::create_table::CreateTablePlanNode;
-use crate::sql::logical::create_view::CreateViewPlanNode;
 use crate::sql::logical::describe_model::DescribeModelPlanNode;
 use crate::sql::logical::drop_model::DropModelPlanNode;
 use crate::sql::logical::export_model::ExportModelPlanNode;
@@ -421,7 +420,8 @@ impl DaskSQLContext {
             }
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
-                    model_name: create_model.name,
+                    schema_name: create_model.schema_name,
+                    model_name: create_model.model_name,
                     input: self._logical_relational_algebra(create_model.select)?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
@@ -431,7 +431,8 @@ impl DaskSQLContext {
             DaskStatement::CreateExperiment(create_experiment) => {
                 Ok(LogicalPlan::Extension(Extension {
                     node: Arc::new(CreateExperimentPlanNode {
-                        experiment_name: create_experiment.name,
+                        schema_name: create_experiment.schema_name,
+                        experiment_name: create_experiment.experiment_name,
                         input: self._logical_relational_algebra(create_experiment.select)?,
                         if_not_exists: create_experiment.if_not_exists,
                         or_replace: create_experiment.or_replace,
@@ -441,15 +442,16 @@ impl DaskSQLContext {
             }
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(PredictModelPlanNode {
-                    model_schema: predict_model.schema_name,
-                    model_name: predict_model.name,
+                    schema_name: predict_model.schema_name,
+                    model_name: predict_model.model_name,
                     input: self._logical_relational_algebra(predict_model.select)?,
                 }),
             })),
             DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DescribeModelPlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    model_name: describe_model.name,
+                    schema_name: describe_model.schema_name,
+                    model_name: describe_model.model_name,
                 }),
             })),
             DaskStatement::CreateCatalogSchema(create_schema) => {
@@ -465,8 +467,8 @@ impl DaskSQLContext {
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    table_schema: create_table.table_schema,
-                    table_name: create_table.name,
+                    schema_name: create_table.schema_name,
+                    table_name: create_table.table_name,
                     if_not_exists: create_table.if_not_exists,
                     or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
@@ -475,22 +477,14 @@ impl DaskSQLContext {
             DaskStatement::ExportModel(export_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ExportModelPlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    model_name: export_model.name,
+                    model_name: export_model.model_name,
                     with_options: export_model.with_options,
-                }),
-            })),
-            DaskStatement::CreateView(create_view) => Ok(LogicalPlan::Extension(Extension {
-                node: Arc::new(CreateViewPlanNode {
-                    schema: Arc::new(DFSchema::empty()),
-                    view_schema: create_view.view_schema,
-                    view_name: create_view.name,
-                    if_not_exists: create_view.if_not_exists,
-                    or_replace: create_view.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
-                    model_name: drop_model.name,
+                    schema_name: drop_model.schema_name,
+                    model_name: drop_model.model_name,
                     if_exists: drop_model.if_exists,
                     schema: Arc::new(DFSchema::empty()),
                 }),
@@ -514,9 +508,10 @@ impl DaskSQLContext {
                     schema_name: show_columns.schema_name,
                 }),
             })),
-            DaskStatement::ShowModels(_show_models) => Ok(LogicalPlan::Extension(Extension {
+            DaskStatement::ShowModels(show_models) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowModelsPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    schema_name: show_models.schema_name,
                 }),
             })),
             DaskStatement::DropSchema(drop_schema) => Ok(LogicalPlan::Extension(Extension {

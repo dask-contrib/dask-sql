@@ -13,6 +13,7 @@ use datafusion_common::{DFSchema, DFSchemaRef};
 #[derive(Clone)]
 pub struct DescribeModelPlanNode {
     pub schema: DFSchemaRef,
+    pub schema_name: String,
     pub model_name: String,
 }
 
@@ -54,6 +55,7 @@ impl UserDefinedLogicalNode for DescribeModelPlanNode {
         assert_eq!(inputs.len(), 0, "input size inconsistent");
         Arc::new(DescribeModelPlanNode {
             schema: Arc::new(DFSchema::empty()),
+            schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
         })
     }
@@ -66,6 +68,11 @@ pub struct PyDescribeModel {
 
 #[pymethods]
 impl PyDescribeModel {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<String> {
+        Ok(self.describe_model.schema_name.clone())
+    }
+
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.describe_model.model_name.clone())

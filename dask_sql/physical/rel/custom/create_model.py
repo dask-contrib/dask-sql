@@ -111,7 +111,10 @@ class CreateModelPlugin(BaseRelPlugin):
         create_model = rel.create_model()
         select = create_model.getSelectQuery()
 
-        schema_name, model_name = context.schema_name, create_model.getModelName()
+        schema_name, model_name = (
+            create_model.getSchemaName(),
+            create_model.getModelName(),
+        )
         kwargs = convert_sql_kwargs(create_model.getSQLWithOptions())
 
         if model_name in context.schema[schema_name].models:

@@ -15,7 +15,7 @@ use datafusion_common::{DFSchema, DFSchemaRef};
 #[derive(Clone)]
 pub struct CreateTablePlanNode {
     pub schema: DFSchemaRef,
-    pub table_schema: String, // "something" in `something.table_name`
+    pub schema_name: String, // "something" in `something.table_name`
     pub table_name: String,
     pub if_not_exists: bool,
     pub or_replace: bool,
@@ -59,7 +59,7 @@ impl UserDefinedLogicalNode for CreateTablePlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(CreateTablePlanNode {
             schema: Arc::new(DFSchema::empty()),
-            table_schema: self.table_schema.clone(),
+            schema_name: self.schema_name.clone(),
             table_name: self.table_name.clone(),
             if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
@@ -75,6 +75,11 @@ pub struct PyCreateTable {
 
 #[pymethods]
 impl PyCreateTable {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<String> {
+        Ok(self.create_table.schema_name.clone())
+    }
+
     #[pyo3(name = "getTableName")]
     fn get_table_name(&self) -> PyResult<String> {
         Ok(self.create_table.table_name.clone())

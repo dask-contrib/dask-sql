@@ -14,7 +14,7 @@ use super::PyLogicalPlan;
 
 #[derive(Clone)]
 pub struct PredictModelPlanNode {
-    pub model_schema: String, // "something" in `something.model_name`
+    pub schema_name: String, // "something" in `something.model_name`
     pub model_name: String,
     pub input: LogicalPlan,
 }
@@ -55,7 +55,7 @@ impl UserDefinedLogicalNode for PredictModelPlanNode {
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(PredictModelPlanNode {
-            model_schema: self.model_schema.clone(),
+            schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
             input: inputs[0].clone(),
         })
@@ -69,6 +69,11 @@ pub struct PyPredictModel {
 
 #[pymethods]
 impl PyPredictModel {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<String> {
+        Ok(self.predict_model.schema_name.clone())
+    }
+
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.predict_model.model_name.clone())

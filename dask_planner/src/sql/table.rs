@@ -229,14 +229,14 @@ pub(crate) fn table_from_logical_plan(
             let node = ex.node.as_any();
             if let Some(e) = node.downcast_ref::<CreateTablePlanNode>() {
                 Ok(Some(DaskTable {
-                    schema: e.table_schema.clone(),
+                    schema: e.schema_name.clone(),
                     name: e.table_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
                 }))
             } else if let Some(e) = node.downcast_ref::<PredictModelPlanNode>() {
                 Ok(Some(DaskTable {
-                    schema: e.model_schema.clone(),
+                    schema: e.schema_name.clone(),
                     name: e.model_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],

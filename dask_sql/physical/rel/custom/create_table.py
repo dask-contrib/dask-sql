@@ -41,8 +41,10 @@ class CreateTablePlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         create_table = rel.create_table()
 
-        dask_table = rel.getTable()
-        schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
+        schema_name, table_name = (
+            create_table.getSchemaName(),
+            create_table.getTableName(),
+        )
 
         if table_name in context.schema[schema_name].tables:
             if create_table.getIfNotExists():

@@ -13,6 +13,7 @@ use datafusion_common::DFSchemaRef;
 
 #[derive(Clone)]
 pub struct CreateExperimentPlanNode {
+    pub schema_name: String,
     pub experiment_name: String,
     pub input: LogicalPlan,
     pub if_not_exists: bool,
@@ -61,6 +62,7 @@ impl UserDefinedLogicalNode for CreateExperimentPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
         Arc::new(CreateExperimentPlanNode {
+            schema_name: self.schema_name.clone(),
             experiment_name: self.experiment_name.clone(),
             input: inputs[0].clone(),
             if_not_exists: self.if_not_exists,
@@ -83,6 +85,11 @@ impl PyCreateExperiment {
     #[pyo3(name = "getSelectQuery")]
     fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
         Ok(self.create_experiment.input.clone().into())
+    }
+
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<String> {
+        Ok(self.create_experiment.schema_name.clone())
     }
 
     #[pyo3(name = "getExperimentName")]

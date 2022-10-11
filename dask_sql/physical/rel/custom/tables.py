@@ -31,7 +31,7 @@ class ShowTablesPlugin(BaseRelPlugin):
         if schema:
             schema = str(schema).split(".")[-1]
         else:
-            schema = context.DEFAULT_SCHEMA_NAME
+            schema = context.schema_name
 
         if schema not in context.schema:
             raise AttributeError(f"Schema {schema} is not defined.")
