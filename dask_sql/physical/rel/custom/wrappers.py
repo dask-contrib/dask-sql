@@ -1,11 +1,8 @@
 # Copyright 2017, Dask developers
 # Dask-ML project - https://github.com/dask/dask-ml
 """Meta-estimators for parallelizing estimators using the scikit-learn API."""
-import contextlib
-import datetime
 import logging
 import warnings
-from timeit import default_timer as tic
 
 import dask.array as da
 import dask.dataframe as dd
@@ -126,8 +123,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
         self : object
         """
         logger.info("Starting fit")
-        with _timer("fit", _logger=logger):
-            result = self.estimator.fit(X, y, **kwargs)
+        result = self.estimator.fit(X, y, **kwargs)
 
         # Copy over learned attributes
         copy_learned_attributes(result, self)
@@ -136,8 +132,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
 
     def partial_fit(self, X, y=None, **kwargs):
         logger.info("Starting partial_fit")
-        with _timer("fit", _logger=logger):
-            result = self.estimator.partial_fit(X, y, **kwargs)
+        result = self.estimator.partial_fit(X, y, **kwargs)
 
         # Copy over learned attributes
         copy_learned_attributes(result, self)
@@ -496,26 +491,3 @@ def copy_learned_attributes(from_estimator, to_estimator):
 
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
-
-
-@contextlib.contextmanager
-def _timer(name, _logger=None, level="info"):
-    """
-    Output execution time of a function to the given logger level
-    Parameters
-    ----------
-    name : str
-        How to name the timer (will be in the logs)
-    logger : logging.logger
-        The optional logger where to write
-    level : str
-        On which level to log the performance measurement
-    """
-    start = tic()
-    _logger = _logger or logger
-    _logger.info("Starting %s", name)
-    yield
-    stop = tic()
-    delta = datetime.timedelta(seconds=stop - start)
-    _logger_level = getattr(_logger, level)
-    _logger_level("Finished %s in %s", name, delta)  # nicer formatting for time.
