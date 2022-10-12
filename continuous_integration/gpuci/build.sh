@@ -33,6 +33,9 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
+gpuci_logger "Can we access bins in opt?"
+which conda
+
 gpuci_logger "Try installing rustup in a shared location"
 export RUSTUP_HOME=/opt/rustup
 export CARGO_HOME=/opt/cargo
