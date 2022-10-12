@@ -53,16 +53,16 @@ jobs:
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
-          CIBW_ARCHS_LINUX: 'aarch64'
+          CIBW_ARCHS_LINUX: 'x86_64'
           CIBW_ARCHS_WINDOWS: 'AMD64'
           CIBW_ARCHS_MACOS: 'x86_64 arm64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust && cd dask_planner && cargo build --release'
+          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
-            rustup show && cd dask_planner && cargo build --release
+            rustup show
         with:
           package-dir: .
           output-dir: dist
