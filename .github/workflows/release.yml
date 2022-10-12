@@ -26,17 +26,17 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python: ["8", "9", "10"] # 3.x
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: 3.${{ matrix.python }}
-          channel-priority: strict
-          channels: conda-forge,nodefaults
-          activate-environment: dask-sql
-          environment-file: ${{ env.CONDA_FILE }}
+      # - uses: actions/checkout@v2
+      # - name: Set up Python
+      #   uses: conda-incubator/setup-miniconda@v2
+      #   with:
+      #     miniforge-variant: Mambaforge
+      #     use-mamba: true
+      #     python-version: 3.${{ matrix.python }}
+      #     channel-priority: strict
+      #     channels: conda-forge,nodefaults
+      #     activate-environment: dask-sql
+      #     environment-file: ${{ env.CONDA_FILE }}
       - name: Install dependencies
         run: |
           pip install setuptools setuptools_rust wheel twine
@@ -48,9 +48,10 @@ jobs:
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
-          CIBW_ARCHS_LINUNX: 'x86_64'
+          CIBW_ARCHS_LINUX: 'x86_64'
           CIBW_ARCHS_WINDOWS: 'auto64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
+          CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
