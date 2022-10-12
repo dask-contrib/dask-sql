@@ -33,6 +33,9 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
+gpuci_logger "What user am I?"
+whoami
+
 gpuci_logger "Check for rust compiler"
 which rustup
 which cargo
