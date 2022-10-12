@@ -26,7 +26,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python: ["8", "9", "10"] # 3.x
     steps:
-      # - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
       # - name: Set up Python
       #   uses: conda-incubator/setup-miniconda@v2
       #   with:
