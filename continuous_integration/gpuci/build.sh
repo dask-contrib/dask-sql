@@ -33,13 +33,9 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
-gpuci_logger "What user am I?"
-whoami
-
-gpuci_logger "Check for rust compiler"
-which rustup
-which cargo
-which rustc
+gpuci_logger "Install rustup"
+curl -0 https://sh.rustup.rs -o rustup-init.sh
+sh rustup-init.sh -y --default-toolchain=stable --profile=minimal
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
