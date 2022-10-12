@@ -48,19 +48,20 @@ jobs:
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
-          CIBW_ARCHS: 'x86_64'
+          CIBW_ARCHS_LINUNX: 'x86_64'
+          CIBW_ARCHS_WINDOWS: 'auto64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
             rustup show
         with:
           package-dir: .
-          output-dir: dir
+          output-dir: dist
           config-file: "dask_planner/pyproject.toml"
       - name: list dist files
-        run: ls dist/
+        run: ls -lh dist/
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:
