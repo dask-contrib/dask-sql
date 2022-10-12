@@ -34,7 +34,6 @@ gpuci_logger "Check GPU usage"
 nvidia-smi
 
 gpuci_logger "Check for rust compiler"
-ls -al /root
 which rustup
 which cargo
 which rustc
