@@ -36,6 +36,7 @@ nvidia-smi
 gpuci_logger "Install rustup"
 curl -0 https://sh.rustup.rs -o rustup-init.sh
 sh rustup-init.sh -y --default-toolchain=stable --profile=minimal
+export PATH="${HOME}/.cargo/bin:${PATH}"
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
