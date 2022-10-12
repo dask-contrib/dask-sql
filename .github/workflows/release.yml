@@ -4,6 +4,10 @@ on:
     types: [created]
   pull_request: # for testing
 
+# for testing
+concurrency:
+  group: test-${{ github.head_ref }}
+  cancel-in-progress: true
 
  # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -12,7 +16,7 @@ defaults:
 
 jobs:
   build:
-    name: build py3.${{ matrix.python }} on ${{ matrix.os }}
+    name: build py${{ matrix.python }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
@@ -42,7 +46,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.2
         env:
-          CIBW_BUILD: 'cp3${{ matrix.python }}-*'
+          CIBW_BUILD: 'cp${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
           CIBW_ARCHS: 'x86_64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
