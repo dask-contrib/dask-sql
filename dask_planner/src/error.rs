@@ -1,8 +1,8 @@
-use datafusion_common::DataFusionError;
-use datafusion_sql::sqlparser::parser::ParserError;
-use datafusion_sql::sqlparser::tokenizer::TokenizerError;
-use pyo3::PyErr;
 use std::fmt::{Display, Formatter};
+
+use datafusion_common::DataFusionError;
+use datafusion_sql::sqlparser::{parser::ParserError, tokenizer::TokenizerError};
+use pyo3::PyErr;
 
 pub type Result<T> = std::result::Result<T, DaskPlannerError>;
 
