@@ -46,6 +46,8 @@ def as_timelike(op):
         return np.datetime64(op)
     elif pd.api.types.is_datetime64_dtype(op):
         return op
+    elif isinstance(op, np.timedelta64):
+        return op
     else:
         raise ValueError(f"Don't know how to make {type(op)} timelike")
 
