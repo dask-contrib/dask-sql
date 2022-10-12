@@ -33,9 +33,8 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
-gpuci_logger "Can we access /opt/cargo/bin/?"
-ls /opt/cargo/bin/
-/opt/cargo/bin/cargo
+gpuci_logger "Are rustup / cargo on PATH?"
+echo $PATH
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
