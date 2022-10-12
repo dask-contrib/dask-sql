@@ -42,7 +42,6 @@ jobs:
           pip install setuptools setuptools_rust wheel twine
           which python
           pip list
-          conda list
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.2
         env:
