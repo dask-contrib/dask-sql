@@ -1,6 +1,11 @@
 use core::iter::Peekable;
 use core::str::Chars;
+use datafusion_sql::sqlparser::ast::{
+    Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value,
+};
 use datafusion_sql::sqlparser::dialect::Dialect;
+use datafusion_sql::sqlparser::parser::{Parser, ParserError};
+use datafusion_sql::sqlparser::tokenizer::Token;
 
 #[derive(Debug)]
 pub struct DaskDialect {}
@@ -36,5 +41,47 @@ impl Dialect for DaskDialect {
     /// Determine if FILTER (WHERE ...) filters are allowed during aggregations
     fn supports_filter_during_aggregation(&self) -> bool {
         true
+    }
+
+    /// override expression parsing
+    fn parse_prefix(&self, parser: &mut Parser) -> Option<Result<Expr, ParserError>> {
+        fn parse_expr(parser: &mut Parser) -> Result<Option<Expr>, ParserError> {
+            match parser.peek_token() {
+                Token::Word(w) if w.value.to_lowercase() == "timestampadd" => {
+                    // TIMESTAMPADD(YEAR, 2, d)
+                    parser.next_token(); // skip timestampadd
+                    parser.expect_token(&Token::LParen)?;
+                    let time_unit = parser.next_token();
+                    parser.expect_token(&Token::Comma)?;
+                    let n = parser.parse_expr()?;
+                    parser.expect_token(&Token::Comma)?;
+                    let expr = parser.parse_expr()?;
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_unit.to_string()),
+                        ))),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(n)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("TIMESTAMPADD")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
+                _ => Ok(None),
+            }
+        }
+        match parse_expr(parser) {
+            Ok(Some(expr)) => Some(Ok(expr)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        }
     }
 }
