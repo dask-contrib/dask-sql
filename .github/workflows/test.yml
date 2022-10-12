@@ -58,8 +58,8 @@ jobs:
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
-      - name: Install hive testing dependencies for Linux
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install hive testing dependencies
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           mamba install -c conda-forge sasl>=0.3.1
           docker pull bde2020/hive:2.3.2-postgresql-metastore
