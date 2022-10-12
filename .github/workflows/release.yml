@@ -6,7 +6,7 @@ on:
 
 # for testing
 concurrency:
-  group: test-${{ github.head_ref }}
+  group: release-${{ github.head_ref }}
   cancel-in-progress: true
 
  # Required shell entrypoint to have properly activated conda environments
