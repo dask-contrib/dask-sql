@@ -44,7 +44,7 @@ jobs:
           pip list
       - name: Set up QEMU
         if: contains(matrix.os, 'ubuntu')
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v1
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.2
         env:
