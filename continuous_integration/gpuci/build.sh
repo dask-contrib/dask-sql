@@ -33,15 +33,10 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
-gpuci_logger "Can we access bins in opt?"
-which conda
+gpuci_logger "Can we access /opt/cargo?"
+ls /opt/
+ls /opt/cargo/
 
-gpuci_logger "Try installing rustup in a shared location"
-export RUSTUP_HOME=/opt/rustup
-export CARGO_HOME=/opt/cargo
-curl -0 https://sh.rustup.rs -o rustup-init.sh
-sh rustup-init.sh -y --default-toolchain=stable --profile=minimal
-export PATH="/opt/cargo/bin:${PATH}"
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
