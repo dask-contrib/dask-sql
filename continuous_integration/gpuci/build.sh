@@ -34,9 +34,8 @@ gpuci_logger "Check GPU usage"
 nvidia-smi
 
 gpuci_logger "Can we access /opt/cargo?"
-ls /opt/
-ls /opt/cargo/
-
+which cargo
+which rustup
 
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
