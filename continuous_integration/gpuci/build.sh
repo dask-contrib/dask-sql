@@ -33,6 +33,12 @@ env
 gpuci_logger "Check GPU usage"
 nvidia-smi
 
+gpuci_logger "Check for rust compiler"
+ls -al /root
+which rustup
+which cargo
+which rustc
+
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
