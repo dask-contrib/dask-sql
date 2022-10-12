@@ -16,15 +16,15 @@ defaults:
 
 jobs:
   build:
-    name: build py${{ matrix.python }} on ${{ matrix.os }}
+    name: build py3.${{ matrix.python }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-3.${{ matrix.python }}-dev.yaml
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ["3.8", "3.9", "3.10"]
+        python: ["8", "9", "10"] # 3.x
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -32,7 +32,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: ${{ matrix.python }}
+          python-version: 3.${{ matrix.python }}
           channel-priority: strict
           channels: conda-forge,nodefaults
           activate-environment: dask-sql
@@ -46,7 +46,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.2
         env:
-          CIBW_BUILD: 'cp${{ matrix.python }}-*'
+          CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
           CIBW_ARCHS: 'x86_64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
