@@ -12,7 +12,7 @@ The environment used for development and CI consists of:
 Once `rustup` is installed, ensure that the latest stable toolchain and nightly `rustfmt` are available by running
 
 ```
-rustup component add rustfmt --toolchain nightly
+rustup toolchain install nightly -c rustfmt --profile minimal
 rustup update
 ```
 
