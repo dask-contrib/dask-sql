@@ -10,7 +10,7 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="hive testing not supported on Windows"
+    sys.platform in ("win32", "darwin"), reason="hive testing not supported on Windows/macOS"
 )
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -58,6 +58,8 @@ def hive_cursor():
     hive setup described by bde2020.
     """
     client = docker.from_env()
+
+    breakpoint()
 
     network = None
     hive_server = None

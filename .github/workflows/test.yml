@@ -59,14 +59,11 @@ jobs:
         run: |
           python setup.py build install
       - name: Install hive testing dependencies
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
-        env:
-          # `docker` isn't available on macos-latest, use colima instead
-          DOCKER_ENTRY: ${{ matrix.os == 'ubuntu-latest' && 'docker' || 'colima' }}
+        if: matrix.os == 'ubuntu-latest'
         run: |
           mamba install -c conda-forge "sasl>=0.3.1"
-          ${{ env.DOCKER_ENTRY }} pull bde2020/hive:2.3.2-postgresql-metastore
-          ${{ env.DOCKER_ENTRY }} pull bde2020/hive-metastore-postgresql:2.3.0
+          docker pull bde2020/hive:2.3.2-postgresql-metastore
+          docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Optionally install upstream dev Dask / dask-ml
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
