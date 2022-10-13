@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct CreateExperimentPlanNode {
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub experiment_name: String,
     pub input: LogicalPlan,
     pub if_not_exists: bool,
@@ -87,7 +87,7 @@ impl PyCreateExperiment {
     }
 
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.create_experiment.schema_name.clone())
     }
 

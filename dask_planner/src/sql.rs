@@ -109,7 +109,7 @@ impl ContextProvider for DaskSQLContext {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
-                    if table.name.eq(&name.table()) {
+                    if table.table_name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
                         // Iterate through the DaskTable instance and create a Schema instance

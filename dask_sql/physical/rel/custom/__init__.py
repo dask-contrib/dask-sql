@@ -15,7 +15,7 @@ from .predict_model import PredictModelPlugin
 from .schemas import ShowSchemasPlugin
 from .show_columns import ShowColumnsPlugin
 from .show_models import ShowModelsPlugin
-from .tables import ShowTablesPlugin
+from .show_tables import ShowTablesPlugin
 from .use_schema import UseSchemaPlugin
 
 __all__ = [

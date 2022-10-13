@@ -27,10 +27,8 @@ class DescribeModelPlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         describe_model = rel.describe_model()
 
-        schema_name, model_name = (
-            describe_model.getSchemaName(),
-            describe_model.getModelName(),
-        )
+        schema_name = describe_model.getSchemaName() or context.schema_name
+        model_name = describe_model.getTableName()
 
         if model_name not in context.schema[schema_name].models:
             raise RuntimeError(f"A model with the name {model_name} is not present.")

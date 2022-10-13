@@ -269,7 +269,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getCurrentNodeTableName")]
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
-            Ok(dask_table) => Ok(dask_table.name),
+            Ok(dask_table) => Ok(dask_table.table_name),
             Err(_e) => Err(py_type_err("Unable to determine current node table name")),
         }
     }

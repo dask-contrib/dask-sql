@@ -10,7 +10,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 
 #[derive(Clone)]
 pub struct PredictModelPlanNode {
-    pub schema_name: String, // "something" in `something.model_name`
+    pub schema_name: Option<String>, // "something" in `something.model_name`
     pub model_name: String,
     pub input: LogicalPlan,
 }
@@ -66,7 +66,7 @@ pub struct PyPredictModel {
 #[pymethods]
 impl PyPredictModel {
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.predict_model.schema_name.clone())
     }
 

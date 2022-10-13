@@ -9,7 +9,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 
 #[derive(Clone)]
 pub struct DropModelPlanNode {
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
     pub if_exists: bool,
     pub schema: DFSchemaRef,
@@ -68,7 +68,7 @@ pub struct PyDropModel {
 #[pymethods]
 impl PyDropModel {
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.drop_model.schema_name.clone())
     }
 

@@ -24,7 +24,8 @@ class DropModelPlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         drop_model = rel.drop_model()
 
-        schema_name, model_name = drop_model.getSchemaName(), drop_model.getModelName()
+        schema_name = drop_model.getSchemaName() or context.schema_name
+        model_name = drop_model.getTableName()
 
         if model_name not in context.schema[schema_name].models:
             if not drop_model.getIfExists():

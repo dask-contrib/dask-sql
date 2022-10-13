@@ -13,7 +13,7 @@ use crate::{
 #[derive(Clone)]
 pub struct CreateTablePlanNode {
     pub schema: DFSchemaRef,
-    pub schema_name: String, // "something" in `something.table_name`
+    pub schema_name: Option<String>, // "something" in `something.table_name`
     pub table_name: String,
     pub if_not_exists: bool,
     pub or_replace: bool,
@@ -74,7 +74,7 @@ pub struct PyCreateTable {
 #[pymethods]
 impl PyCreateTable {
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.create_table.schema_name.clone())
     }
 

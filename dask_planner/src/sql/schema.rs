@@ -27,7 +27,7 @@ impl DaskSchema {
     }
 
     pub fn add_table(&mut self, table: table::DaskTable) {
-        self.tables.insert(table.name.clone(), table);
+        self.tables.insert(table.table_name.clone(), table);
     }
 
     pub fn add_or_overload_function(

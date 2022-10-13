@@ -52,11 +52,8 @@ class PredictModelPlugin(BaseRelPlugin):
         predict_model = rel.predict_model()
 
         sql_select = predict_model.getSelect()
-
-        schema_name, model_name = (
-            predict_model.getSchemaName(),
-            predict_model.getModelName(),
-        )
+        schema_name = predict_model.getSchemaName() or context.schema_name
+        model_name = predict_model.getModelName()
 
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)

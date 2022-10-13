@@ -25,7 +25,7 @@ class DropTablePlugin(BaseRelPlugin):
         # Rust create_memory_table instance handle
         drop_table = rel.drop_table()
 
-        # can we avoid hardcoding the schema name?
+        # TODO: can we avoid hardcoding the schema name?
         schema_name, table_name = context.schema_name, drop_table.getName()
 
         if table_name not in context.schema[schema_name].tables:

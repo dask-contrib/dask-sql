@@ -63,13 +63,8 @@ pub struct PyShowModels {
 #[pymethods]
 impl PyShowModels {
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
-        Ok(self
-            .show_models
-            .schema_name
-            .as_ref()
-            .cloned()
-            .unwrap_or_default())
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.show_models.schema_name.clone())
     }
 }
 

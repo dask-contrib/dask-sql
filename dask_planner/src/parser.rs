@@ -165,7 +165,7 @@ impl PySqlArg {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateModel {
     /// schema and model name, i.e. 'schema_name.model_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
     /// input query
     pub select: DaskStatement,
@@ -181,7 +181,7 @@ pub struct CreateModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateExperiment {
     /// schema and experiment name, i.e. 'schema_name.experiment_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub experiment_name: String,
     /// input query
     pub select: DaskStatement,
@@ -197,7 +197,7 @@ pub struct CreateExperiment {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictModel {
     /// schema and model name, i.e. 'schema_name.model_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
     /// input query
     pub select: DaskStatement,
@@ -218,7 +218,7 @@ pub struct CreateCatalogSchema {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTable {
     /// schema and table name, i.e. 'schema_name.table_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub table_name: String,
     /// whether or not IF NOT EXISTS was specified
     pub if_not_exists: bool,
@@ -232,7 +232,7 @@ pub struct CreateTable {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DropModel {
     /// schema and model name, i.e. 'schema_name.table_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
     /// whether or not IF NOT EXISTS was specified
     pub if_exists: bool,
@@ -242,7 +242,7 @@ pub struct DropModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportModel {
     /// schema and model name, i.e. 'schema_name.table_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
     /// kwargs specified in WITH
     pub with_options: Vec<(String, PySqlArg)>,
@@ -252,7 +252,7 @@ pub struct ExportModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescribeModel {
     /// schema and model name, i.e. 'schema_name.table_name'
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
 }
 
@@ -810,7 +810,7 @@ impl<'a> DaskParser<'a> {
             ));
         }
 
-        let (mdl_schema, mdl_name) =
+        let (schema_name, model_name) =
             DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
@@ -829,8 +829,8 @@ impl<'a> DaskParser<'a> {
         self.parser.expect_token(&Token::RParen)?;
 
         let predict = PredictModel {
-            schema_name: mdl_schema,
-            model_name: mdl_name,
+            schema_name,
+            model_name,
             select,
         };
         Ok(DaskStatement::PredictModel(Box::new(predict)))
@@ -1048,7 +1048,7 @@ impl<'a> DaskParser<'a> {
                         self.parser.prev_token();
 
                         // Parse schema and table name
-                        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(
+                        let (schema_name, table_name) = DaskParserUtils::elements_from_object_name(
                             &self.parser.parse_object_name()?,
                         )?;
 
@@ -1060,8 +1060,8 @@ impl<'a> DaskParser<'a> {
                         self.parser.expect_token(&Token::RParen)?;
 
                         let create = CreateTable {
-                            schema_name: tbl_schema,
-                            table_name: tbl_name,
+                            schema_name,
+                            table_name,
                             if_not_exists,
                             or_replace,
                             with_options,
@@ -1182,14 +1182,11 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL SHOW COLUMNS FROM <table>
     fn parse_show_columns(&mut self) -> Result<DaskStatement, ParserError> {
         self.parser.expect_keyword(Keyword::FROM)?;
-        let (tbl_schema, tbl_name) =
+        let (schema_name, table_name) =
             DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         Ok(DaskStatement::ShowColumns(Box::new(ShowColumns {
-            table_name: tbl_name,
-            schema_name: match tbl_schema.as_str() {
-                "" => None,
-                _ => Some(tbl_schema),
-            },
+            schema_name,
+            table_name,
         })))
     }
 
@@ -1210,7 +1207,7 @@ impl<'a> DaskParser<'a> {
         let obj_name = self.parser.parse_object_name()?;
         self.parser
             .expect_keywords(&[Keyword::COMPUTE, Keyword::STATISTICS, Keyword::FOR])?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(&obj_name)?;
+        let (schema_name, table_name) = DaskParserUtils::elements_from_object_name(&obj_name)?;
         let columns = match self
             .parser
             .parse_keywords(&[Keyword::ALL, Keyword::COLUMNS])
@@ -1242,11 +1239,8 @@ impl<'a> DaskParser<'a> {
             }
         };
         Ok(DaskStatement::AnalyzeTable(Box::new(AnalyzeTable {
-            table_name: tbl_name,
-            schema_name: match tbl_schema.as_str() {
-                "" => None,
-                _ => Some(tbl_schema),
-            },
+            schema_name,
+            table_name,
             columns,
         })))
     }

@@ -10,7 +10,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 #[derive(Clone)]
 pub struct DescribeModelPlanNode {
     pub schema: DFSchemaRef,
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub model_name: String,
 }
 
@@ -66,7 +66,7 @@ pub struct PyDescribeModel {
 #[pymethods]
 impl PyDescribeModel {
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.describe_model.schema_name.clone())
     }
 
