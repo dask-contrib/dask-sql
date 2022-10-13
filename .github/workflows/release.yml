@@ -53,10 +53,11 @@ jobs:
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
-          CIBW_ARCHS_LINUX: 'x86_64'
+          CIBW_ARCHS_LINUX: 'aarch64 x86_64'
           CIBW_ARCHS_WINDOWS: 'AMD64'
           CIBW_ARCHS_MACOS: 'x86_64 arm64'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
+          CIBW_ENVIRONMENT_LINUX: 'CARGO_NET_GIT_FETCH_WITH_CLI="true"'
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
