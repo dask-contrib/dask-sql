@@ -491,6 +491,7 @@ impl DaskSQLContext {
             DaskStatement::ExportModel(export_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ExportModelPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    schema_name: export_model.schema_name,
                     model_name: export_model.model_name,
                     with_options: export_model.with_options,
                 }),

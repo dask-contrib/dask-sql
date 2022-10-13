@@ -28,7 +28,7 @@ class DescribeModelPlugin(BaseRelPlugin):
         describe_model = rel.describe_model()
 
         schema_name = describe_model.getSchemaName() or context.schema_name
-        model_name = describe_model.getTableName()
+        model_name = describe_model.getModelName()
 
         if model_name not in context.schema[schema_name].models:
             raise RuntimeError(f"A model with the name {model_name} is not present.")

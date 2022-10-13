@@ -25,7 +25,7 @@ class DropModelPlugin(BaseRelPlugin):
         drop_model = rel.drop_model()
 
         schema_name = drop_model.getSchemaName() or context.schema_name
-        model_name = drop_model.getTableName()
+        model_name = drop_model.getModelName()
 
         if model_name not in context.schema[schema_name].models:
             if not drop_model.getIfExists():
