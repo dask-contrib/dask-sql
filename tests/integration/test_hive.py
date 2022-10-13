@@ -60,8 +60,6 @@ def hive_cursor():
     """
     client = docker.from_env()
 
-    breakpoint()
-
     network = None
     hive_server = None
     hive_metastore = None
