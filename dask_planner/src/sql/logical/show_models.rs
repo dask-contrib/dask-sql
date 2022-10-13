@@ -1,13 +1,11 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical;
-use datafusion_expr::logical_plan::UserDefinedLogicalNode;
-use datafusion_expr::{Expr, LogicalPlan};
-use pyo3::prelude::*;
-
-use fmt::Debug;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
+use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use fmt::Debug;
+use pyo3::prelude::*;
+
+use crate::sql::logical::py_type_err;
 
 #[derive(Clone)]
 pub struct ShowModelsPlanNode {
@@ -75,12 +73,12 @@ impl PyShowModels {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyShowModels {
+impl TryFrom<LogicalPlan> for PyShowModels {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::Extension(extension) => {
+            LogicalPlan::Extension(extension) => {
                 if let Some(ext) = extension.node.as_any().downcast_ref::<ShowModelsPlanNode>() {
                     Ok(PyShowModels {
                         show_models: ext.clone(),

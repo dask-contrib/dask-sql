@@ -1,7 +1,7 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical;
 use datafusion_expr::logical_plan::TableScan;
 use pyo3::prelude::*;
+
+use crate::sql::{exceptions::py_type_err, logical};
 
 #[pyclass(name = "TableScan", module = "dask_planner", subclass)]
 #[derive(Clone)]

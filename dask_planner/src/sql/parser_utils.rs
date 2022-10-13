@@ -1,5 +1,4 @@
-use datafusion_sql::sqlparser::ast::ObjectName;
-use datafusion_sql::sqlparser::parser::ParserError;
+use datafusion_sql::sqlparser::{ast::ObjectName, parser::ParserError};
 
 pub struct DaskParserUtils;
 

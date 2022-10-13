@@ -1,14 +1,11 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use crate::dialect::DaskDialect;
-use crate::error::DaskPlannerError;
 use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-use datafusion_sql::sqlparser::ast::DataType as SQLType;
-use datafusion_sql::sqlparser::parser::Parser;
-use datafusion_sql::sqlparser::tokenizer::Tokenizer;
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
+use pyo3::{prelude::*, types::PyDict};
+
+use crate::{dialect::DaskDialect, error::DaskPlannerError};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]

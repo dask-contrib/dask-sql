@@ -1,7 +1,10 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical::PyLogicalPlan;
-use datafusion_expr::{logical_plan::CreateMemoryTable, logical_plan::CreateView, LogicalPlan};
+use datafusion_expr::{
+    logical_plan::{CreateMemoryTable, CreateView},
+    LogicalPlan,
+};
 use pyo3::prelude::*;
+
+use crate::sql::{exceptions::py_type_err, logical::PyLogicalPlan};
 
 #[pyclass(name = "CreateMemoryTable", module = "dask_planner", subclass)]
 #[derive(Clone)]
