@@ -1,9 +1,7 @@
-use crate::expression::PyExpr;
-
 use datafusion_expr::{logical_plan::Filter, LogicalPlan};
-
-use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
+
+use crate::{expression::PyExpr, sql::exceptions::py_type_err};
 
 #[pyclass(name = "Filter", module = "dask_planner", subclass)]
 #[derive(Clone)]

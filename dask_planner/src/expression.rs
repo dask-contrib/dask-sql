@@ -1,14 +1,25 @@
-use crate::error::{DaskPlannerError, Result};
-use crate::sql::exceptions::{py_runtime_err, py_type_err};
-use crate::sql::logical;
-use crate::sql::types::RexType;
+use std::{convert::From, sync::Arc};
+
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
-use datafusion_expr::Operator;
-use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
+use datafusion_expr::{
+    lit,
+    utils::exprlist_to_fields,
+    BuiltinScalarFunction,
+    Expr,
+    LogicalPlan,
+    Operator,
+};
 use pyo3::prelude::*;
-use std::convert::From;
-use std::sync::Arc;
+
+use crate::{
+    error::{DaskPlannerError, Result},
+    sql::{
+        exceptions::{py_runtime_err, py_type_err},
+        logical,
+        types::RexType,
+    },
+};
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
@@ -805,10 +816,10 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
 
 #[cfg(test)]
 mod test {
-    use crate::error::Result;
-    use crate::expression::PyExpr;
     use datafusion_common::{Column, ScalarValue};
     use datafusion_expr::Expr;
+
+    use crate::{error::Result, expression::PyExpr};
 
     #[test]
     fn get_value_u32() -> Result<()> {

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import dask.dataframe as dd
 from dask import config as dask_config
 from dask.blockwise import Blockwise
+from dask.highlevelgraph import MaterializedLayer
 from dask.layers import DataFrameIOLayer
 
 from dask_sql.datacontainer import DataContainer
@@ -59,7 +60,9 @@ class DaskLimitPlugin(BaseRelPlugin):
                 dask_config.get("sql.limit.check-first-partition")
                 and all(
                     [
-                        isinstance(layer, (DataFrameIOLayer, Blockwise))
+                        isinstance(
+                            layer, (DataFrameIOLayer, Blockwise, MaterializedLayer)
+                        )
                         for layer in df.dask.layers.values()
                     ]
                 )

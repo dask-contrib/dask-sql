@@ -1,16 +1,14 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical;
-use pyo3::prelude::*;
-
-use datafusion_expr::logical_plan::UserDefinedLogicalNode;
-use datafusion_expr::{Expr, LogicalPlan};
-use datafusion_sql::sqlparser::ast::{Expr as SqlParserExpr, Value};
-
-use fmt::Debug;
-use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
+use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use fmt::Debug;
+use pyo3::prelude::*;
+
+use crate::{
+    parser::PySqlArg,
+    sql::{exceptions::py_type_err, logical},
+};
 
 #[derive(Clone)]
 pub struct CreateTablePlanNode {
@@ -19,7 +17,7 @@ pub struct CreateTablePlanNode {
     pub table_name: String,
     pub if_not_exists: bool,
     pub or_replace: bool,
-    pub with_options: Vec<SqlParserExpr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 impl Debug for CreateTablePlanNode {
@@ -91,43 +89,8 @@ impl PyCreateTable {
     }
 
     #[pyo3(name = "getSQLWithOptions")]
-    fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
-        let mut options: HashMap<String, String> = HashMap::new();
-        for elem in &self.create_table.with_options {
-            if let SqlParserExpr::BinaryOp { left, op: _, right } = elem {
-                let key: Result<String, PyErr> = match *left.clone() {
-                    SqlParserExpr::Identifier(ident) => Ok(ident.value),
-                    _ => Err(py_type_err(format!(
-                        "unexpected `left` Value type encountered: {:?}",
-                        left
-                    ))),
-                };
-                let val: Result<String, PyErr> = match *right.clone() {
-                    SqlParserExpr::Value(value) => match value {
-                        Value::SingleQuotedString(e) => Ok(e.replace('\'', "")),
-                        Value::DoubleQuotedString(e) => Ok(e.replace('\"', "")),
-                        Value::Boolean(e) => {
-                            if e {
-                                Ok("True".to_string())
-                            } else {
-                                Ok("False".to_string())
-                            }
-                        }
-                        Value::Number(e, ..) => Ok(e),
-                        _ => Err(py_type_err(format!(
-                            "unexpected Value type encountered: {:?}",
-                            value
-                        ))),
-                    },
-                    _ => Err(py_type_err(format!(
-                        "encountered unexpected Expr type: {:?}",
-                        right
-                    ))),
-                };
-                options.insert(key?, val?);
-            }
-        }
-        Ok(options)
+    fn sql_with_options(&self) -> PyResult<Vec<(String, PySqlArg)>> {
+        Ok(self.create_table.with_options.clone())
     }
 }
 
