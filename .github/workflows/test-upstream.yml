@@ -19,9 +19,10 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upstream: ${{ (github.event.schedule == '0 3 * * *' && 'DataFusion') ||
-                    (github.event.schedule == '0 0 * * *' && 'Dask') ||
-                    (github.event.inputs.upstreamLib)}}
+  which_upstream: |
+    (github.event.schedule == '0 3 * * *' && 'DataFusion')
+    || (github.event.schedule == '0 0 * * *' && 'Dask')
+    || (github.event.inputs.upstreamLib)
 
 jobs:
   test-dev:
