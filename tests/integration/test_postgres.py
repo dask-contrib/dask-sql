@@ -3,7 +3,8 @@ import sys
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    sys.platform in ("win32", "darwin"), reason="hive testing not supported on Windows/macOS"
+    sys.platform in ("win32", "darwin"),
+    reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
