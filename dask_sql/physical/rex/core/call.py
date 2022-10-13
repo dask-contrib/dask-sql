@@ -1,7 +1,6 @@
 import logging
 import operator
 import re
-from datetime import timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -664,7 +663,7 @@ class TimeStampAddOperation(Operation):
         elif unit in {"HOUR", "SQL_TSI_HOUR"}:
             return df + timedelta(hours=interval)
         elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
-            return df + timedelta(minutes=interval)
+            return df + np.timedelta64(interval, "m")
         elif unit in {"SECOND", "SQL_TSI_SECOND"}:
             return df + timedelta(seconds=interval)
         elif unit in {"MILLISECOND", "MILLISECONDS"}:

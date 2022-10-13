@@ -73,7 +73,7 @@ def test_literals(c):
         """SELECT 'a string äö' AS "S",
                     4.4 AS "F",
                     -4564347464 AS "I",
-                    -- TIME '08:08:00.091' AS "T",
+                    TIME '08:08:00.091' AS "T",
                     TIMESTAMP '2022-04-06 17:33:21' AS "DT",
                     DATE '1991-06-02' AS "D",
                     INTERVAL '1' DAY AS "IN"
@@ -85,10 +85,27 @@ def test_literals(c):
             "S": ["a string äö"],
             "F": [4.4],
             "I": [-4564347464],
-            # "T": [pd.to_datetime("1970-01-01 08:08:00.091")], Depends on https://github.com/apache/arrow-datafusion/issues/2883"
+            "T": [pd.to_datetime("1970-01-01 08:08:00.091")],
             "DT": [pd.to_datetime("2022-04-06 17:33:21")],
             "D": [pd.to_datetime("1991-06-02 00:00")],
             "IN": [pd.to_timedelta("1d")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+
+def test_date_interval_math(c):
+    df = c.sql(
+        """SELECT
+                DATE '1998-08-18' - INTERVAL '4 days' AS "before",
+                DATE '1998-08-18' + INTERVAL '4 days' AS "after"
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "before": [pd.to_datetime("1998-08-14 00:00")],
+            "after": [pd.to_datetime("1998-08-22 00:00")],
         }
     )
     assert_eq(df, expected_df)

@@ -2,20 +2,163 @@
 //!
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
-use crate::dialect::DaskDialect;
-use crate::sql::parser_utils::DaskParserUtils;
+use std::collections::VecDeque;
+
 use datafusion_sql::sqlparser::{
-    ast::{Expr, SelectItem, Statement as SQLStatement},
+    ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use std::collections::VecDeque;
+use pyo3::prelude::*;
+
+use crate::{
+    dialect::DaskDialect,
+    sql::{exceptions::py_type_err, parser_utils::DaskParserUtils, types::SqlTypeName},
+};
 
 macro_rules! parser_err {
     ($MSG:expr) => {
         Err(ParserError::ParserError($MSG.to_string()))
     };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CustomExpr {
+    Map(Vec<Expr>),
+    Multiset(Vec<Expr>),
+    Nested(Vec<(String, PySqlArg)>),
+}
+
+#[pyclass(name = "SqlArg", module = "datafusion")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PySqlArg {
+    expr: Option<Expr>,
+    custom: Option<CustomExpr>,
+}
+
+impl PySqlArg {
+    pub fn new(expr: Option<Expr>, custom: Option<CustomExpr>) -> Self {
+        Self { expr, custom }
+    }
+
+    fn expected<T>(&self, expected: &str) -> PyResult<T> {
+        Err(match &self.custom {
+            Some(custom_expr) => {
+                py_type_err(format!("Expected {}, found: {:?}", expected, custom_expr))
+            }
+            None => match &self.expr {
+                Some(expr) => py_type_err(format!("Expected {}, found: {:?}", expected, expr)),
+                None => py_type_err("PySqlArg must be either a standard or custom AST expression"),
+            },
+        })
+    }
+}
+
+#[pymethods]
+impl PySqlArg {
+    #[pyo3(name = "isCollection")]
+    pub fn is_collection(&self) -> PyResult<bool> {
+        Ok(match &self.custom {
+            Some(custom_expr) => !matches!(custom_expr, CustomExpr::Nested(_)),
+            None => match &self.expr {
+                Some(expr) => matches!(expr, Expr::Array(_)),
+                None => return self.expected(""),
+            },
+        })
+    }
+
+    #[pyo3(name = "isKwargs")]
+    pub fn is_kwargs(&self) -> PyResult<bool> {
+        Ok(matches!(&self.custom, Some(CustomExpr::Nested(_))))
+    }
+
+    #[pyo3(name = "getOperandList")]
+    pub fn get_operand_list(&self) -> PyResult<Vec<PySqlArg>> {
+        Ok(match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(exprs) | CustomExpr::Multiset(exprs) => exprs
+                    .iter()
+                    .map(|e| PySqlArg::new(Some(e.clone()), None))
+                    .collect(),
+                _ => vec![],
+            },
+            None => match &self.expr {
+                Some(expr) => match expr {
+                    Expr::Array(array) => array
+                        .elem
+                        .iter()
+                        .map(|e| PySqlArg::new(Some(e.clone()), None))
+                        .collect(),
+                    _ => vec![],
+                },
+                None => return self.expected(""),
+            },
+        })
+    }
+
+    #[pyo3(name = "getKwargs")]
+    pub fn get_kwargs(&self) -> PyResult<Vec<(String, PySqlArg)>> {
+        Ok(match &self.custom {
+            Some(CustomExpr::Nested(kwargs)) => kwargs.clone(),
+            _ => vec![],
+        })
+    }
+
+    #[pyo3(name = "getSqlType")]
+    pub fn get_sql_type(&self) -> PyResult<SqlTypeName> {
+        Ok(match &self.custom {
+            Some(custom_expr) => match custom_expr {
+                CustomExpr::Map(_) => SqlTypeName::MAP,
+                CustomExpr::Multiset(_) => SqlTypeName::MULTISET,
+                _ => return self.expected("Map or multiset"),
+            },
+            None => match &self.expr {
+                Some(Expr::Array(_)) => SqlTypeName::ARRAY,
+                Some(Expr::Identifier(Ident { .. })) => SqlTypeName::VARCHAR,
+                Some(Expr::Value(scalar)) => match scalar {
+                    Value::Boolean(_) => SqlTypeName::BOOLEAN,
+                    Value::Number(_, false) => SqlTypeName::BIGINT,
+                    Value::SingleQuotedString(_) => SqlTypeName::VARCHAR,
+                    _ => return self.expected("Boolean, integer, float, or single-quoted string"),
+                },
+                Some(Expr::UnaryOp {
+                    op: UnaryOperator::Minus,
+                    expr,
+                }) => match &**expr {
+                    Expr::Value(Value::Number(_, false)) => SqlTypeName::BIGINT,
+                    _ => return self.expected("Integer or float"),
+                },
+                Some(_) => return self.expected("Array, identifier, or scalar"),
+                None => return self.expected(""),
+            },
+        })
+    }
+
+    #[pyo3(name = "getSqlValue")]
+    pub fn get_sql_value(&self) -> PyResult<String> {
+        Ok(match &self.custom {
+            None => match &self.expr {
+                Some(Expr::Identifier(Ident { value, .. })) => value.to_string(),
+                Some(Expr::Value(scalar)) => match scalar {
+                    Value::Boolean(true) => "1".to_string(),
+                    Value::Boolean(false) => "".to_string(),
+                    Value::SingleQuotedString(string) => string.to_string(),
+                    Value::Number(value, false) => value.to_string(),
+                    _ => return self.expected("Boolean, integer, float, or single-quoted string"),
+                },
+                Some(Expr::UnaryOp {
+                    op: UnaryOperator::Minus,
+                    expr,
+                }) => match &**expr {
+                    Expr::Value(Value::Number(value, false)) => format!("-{}", value),
+                    _ => return self.expected("Integer or float"),
+                },
+                _ => return self.expected("Array, identifier, or scalar"),
+            },
+            _ => return self.expected("Standard sqlparser AST expression"),
+        })
+    }
 }
 
 /// Dask-SQL extension DDL for `CREATE MODEL`
@@ -30,7 +173,22 @@ pub struct CreateModel {
     /// To replace the model or not
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
+}
+
+/// Dask-SQL extension DDL for `CREATE EXPERIMENT`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateExperiment {
+    /// experiment name
+    pub name: String,
+    /// input Query
+    pub select: DaskStatement,
+    /// IF NOT EXISTS
+    pub if_not_exists: bool,
+    /// To replace the model or not
+    pub or_replace: bool,
+    /// with options
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `PREDICT`
@@ -67,7 +225,7 @@ pub struct CreateTable {
     /// or replace
     pub or_replace: bool,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `CREATE VIEW`
@@ -98,7 +256,7 @@ pub struct ExportModel {
     /// model name
     pub name: String,
     /// with options
-    pub with_options: Vec<Expr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 /// Dask-SQL extension DDL for `DESCRIBE MODEL`
@@ -167,6 +325,8 @@ pub enum DaskStatement {
     Statement(Box<SQLStatement>),
     /// Extension: `CREATE MODEL`
     CreateModel(Box<CreateModel>),
+    /// Extension: `CREATE EXPERIMENT`
+    CreateExperiment(Box<CreateExperiment>),
     /// Extension: `CREATE SCHEMA`
     CreateCatalogSchema(Box<CreateCatalogSchema>),
     /// Extension: `CREATE TABLE`
@@ -383,6 +543,19 @@ impl<'a> DaskParser<'a> {
 
                         // use custom parsing
                         self.parse_create_model(if_not_exists, or_replace)
+                    }
+                    "experiment" => {
+                        // move one token forward
+                        self.parser.next_token();
+
+                        let if_not_exists = self.parser.parse_keywords(&[
+                            Keyword::IF,
+                            Keyword::NOT,
+                            Keyword::EXISTS,
+                        ]);
+
+                        // use custom parsing
+                        self.parse_create_experiment(if_not_exists, or_replace)
                     }
                     "schema" => {
                         // move one token forward
@@ -645,7 +818,7 @@ impl<'a> DaskParser<'a> {
         }
 
         let (mdl_schema, mdl_name) =
-            DaskParserUtils::elements_from_tablefactor(&self.parser.parse_table_factor()?)?;
+            DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         self.parser.expect_token(&Token::Comma)?;
 
         // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
@@ -658,13 +831,14 @@ impl<'a> DaskParser<'a> {
         ])?;
         self.parser.prev_token();
 
-        let sql_statement = self.parse_statement()?;
+        let select = self.parse_statement()?;
+
         self.parser.expect_token(&Token::RParen)?;
 
         let predict = PredictModel {
             schema_name: mdl_schema,
             name: mdl_name,
-            select: sql_statement,
+            select,
         };
         Ok(DaskStatement::PredictModel(Box::new(predict)))
     }
@@ -676,14 +850,12 @@ impl<'a> DaskParser<'a> {
         or_replace: bool,
     ) -> Result<DaskStatement, ParserError> {
         let model_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
         self.parser.expect_keyword(Keyword::WITH)?;
-
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
-
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::LParen)?;
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+        self.parser.expect_token(&Token::RParen)?;
 
         // Parse the nested query statement
         self.parser.expect_keyword(Keyword::AS)?;
@@ -711,6 +883,106 @@ impl<'a> DaskParser<'a> {
             with_options,
         };
         Ok(DaskStatement::CreateModel(Box::new(create)))
+    }
+
+    // copied from sqlparser crate and adapted to work with DaskParser
+    fn parse_comma_separated<T, F>(&mut self, mut f: F) -> Result<Vec<T>, ParserError>
+    where
+        F: FnMut(&mut DaskParser<'a>) -> Result<T, ParserError>,
+    {
+        let mut values = vec![];
+        loop {
+            values.push(f(self)?);
+            if !self.parser.consume_token(&Token::Comma) {
+                break;
+            }
+        }
+        Ok(values)
+    }
+
+    fn parse_key_value_pair(&mut self) -> Result<(String, PySqlArg), ParserError> {
+        let key = self.parser.parse_identifier()?;
+        self.parser.expect_token(&Token::Eq)?;
+        match self.parser.next_token() {
+            Token::LParen => {
+                let key_value_pairs =
+                    self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+                self.parser.expect_token(&Token::RParen)?;
+                Ok((
+                    key.value,
+                    PySqlArg::new(None, Some(CustomExpr::Nested(key_value_pairs))),
+                ))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "map" => {
+                // TODO this does not support map or multiset expressions within the map
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok((
+                    key.value,
+                    PySqlArg::new(None, Some(CustomExpr::Map(values))),
+                ))
+            }
+            Token::Word(w) if w.value.to_lowercase().as_str() == "multiset" => {
+                // TODO this does not support map or multiset expressions within the multiset
+                self.parser.expect_token(&Token::LBracket)?;
+                let values = self.parser.parse_comma_separated(Parser::parse_expr)?;
+                self.parser.expect_token(&Token::RBracket)?;
+                Ok((
+                    key.value,
+                    PySqlArg::new(None, Some(CustomExpr::Multiset(values))),
+                ))
+            }
+            _ => {
+                self.parser.prev_token();
+                Ok((
+                    key.value,
+                    PySqlArg::new(Some(self.parser.parse_expr()?), None),
+                ))
+            }
+        }
+    }
+
+    /// Parse Dask-SQL CREATE EXPERIMENT statement
+    fn parse_create_experiment(
+        &mut self,
+        if_not_exists: bool,
+        or_replace: bool,
+    ) -> Result<DaskStatement, ParserError> {
+        let experiment_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
+        self.parser.expect_keyword(Keyword::WITH)?;
+        self.parser.expect_token(&Token::LParen)?;
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+        self.parser.expect_token(&Token::RParen)?;
+
+        // Parse the nested query statement
+        self.parser.expect_keyword(Keyword::AS)?;
+        self.parser.expect_token(&Token::LParen)?;
+
+        // Limit our input to  ANALYZE, DESCRIBE, SELECT, SHOW statements
+        // TODO: find a more sophisticated way to allow any statement that would return a table
+        self.parser.expect_one_of_keywords(&[
+            Keyword::SELECT,
+            Keyword::DESCRIBE,
+            Keyword::SHOW,
+            Keyword::ANALYZE,
+        ])?;
+        self.parser.prev_token();
+
+        let select = self.parse_statement()?;
+
+        self.parser.expect_token(&Token::RParen)?;
+
+        let create = CreateExperiment {
+            name: experiment_name.to_string(),
+            select,
+            if_not_exists,
+            or_replace,
+            with_options,
+        };
+        Ok(DaskStatement::CreateExperiment(Box::new(create)))
     }
 
     /// Parse Dask-SQL CREATE {IF NOT EXISTS | OR REPLACE} SCHEMA ... statement
@@ -773,13 +1045,20 @@ impl<'a> DaskParser<'a> {
                         }
                     }
                     "with" => {
-                        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
+                        // `table_name` has been parsed at this point but is needed, reset consumption
                         self.parser.prev_token();
 
-                        let table_factor = self.parser.parse_table_factor()?;
-                        let (tbl_schema, tbl_name) =
-                            DaskParserUtils::elements_from_tablefactor(&table_factor)?;
-                        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+                        // Parse schema and table name
+                        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(
+                            &self.parser.parse_object_name()?,
+                        )?;
+
+                        // Parse WITH options
+                        self.parser.expect_keyword(Keyword::WITH)?;
+                        self.parser.expect_token(&Token::LParen)?;
+                        let with_options =
+                            self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+                        self.parser.expect_token(&Token::RParen)?;
 
                         let create = CreateTable {
                             table_schema: tbl_schema,
@@ -822,14 +1101,12 @@ impl<'a> DaskParser<'a> {
         }
 
         let model_name = self.parser.parse_object_name()?;
+
+        // Parse WITH options
         self.parser.expect_keyword(Keyword::WITH)?;
-
-        // `table_name` has been parsed at this point but is needed in `parse_table_factor`, reset consumption
-        self.parser.prev_token();
-        self.parser.prev_token();
-
-        let table_factor = self.parser.parse_table_factor()?;
-        let with_options = DaskParserUtils::options_from_tablefactor(&table_factor);
+        self.parser.expect_token(&Token::LParen)?;
+        let with_options = self.parse_comma_separated(DaskParser::parse_key_value_pair)?;
+        self.parser.expect_token(&Token::RParen)?;
 
         let export = ExportModel {
             name: model_name.to_string(),
@@ -897,8 +1174,8 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL SHOW COLUMNS FROM <table>
     fn parse_show_columns(&mut self) -> Result<DaskStatement, ParserError> {
         self.parser.expect_keyword(Keyword::FROM)?;
-        let table_factor = self.parser.parse_table_factor()?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let (tbl_schema, tbl_name) =
+            DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
         Ok(DaskStatement::ShowColumns(Box::new(ShowColumns {
             table_name: tbl_name,
             schema_name: match tbl_schema.as_str() {
@@ -910,13 +1187,10 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL ANALYZE TABLE <table>
     fn parse_analyze_table(&mut self) -> Result<DaskStatement, ParserError> {
-        let table_factor = self.parser.parse_table_factor()?;
-        // parse_table_factor parses the following keyword as an alias, so we need to go back a token
-        // TODO: open an issue in sqlparser around this when possible
-        self.parser.prev_token();
+        let obj_name = self.parser.parse_object_name()?;
         self.parser
             .expect_keywords(&[Keyword::COMPUTE, Keyword::STATISTICS, Keyword::FOR])?;
-        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_tablefactor(&table_factor)?;
+        let (tbl_schema, tbl_name) = DaskParserUtils::elements_from_object_name(&obj_name)?;
         let columns = match self
             .parser
             .parse_keywords(&[Keyword::ALL, Keyword::COLUMNS])
@@ -955,5 +1229,55 @@ impl<'a> DaskParser<'a> {
             },
             columns,
         })))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parser::{DaskParser, DaskStatement};
+
+    #[test]
+    fn create_model() {
+        let sql = r#"CREATE MODEL my_model WITH (
+            model_class = 'mock.MagicMock',
+            target_column = 'target',
+            fit_kwargs = (
+                single_quoted_string = 'hello',
+                double_quoted_string = "hi",
+                integer = -300,
+                float = 23.45,
+                boolean = False,
+                array = ARRAY [ 1, 2 ],
+                dict = MAP [ 'a', 1 ],
+                set = MULTISET [ 1, 1, 2, 3 ]
+            )
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )"#;
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+
+        match &statements[0] {
+            DaskStatement::CreateModel(create_model) => {
+                let expected = "[\
+                    (\"model_class\", PySqlArg { expr: Some(Value(SingleQuotedString(\"mock.MagicMock\"))), custom: None }), \
+                    (\"target_column\", PySqlArg { expr: Some(Value(SingleQuotedString(\"target\"))), custom: None }), \
+                    (\"fit_kwargs\", PySqlArg { expr: None, custom: Some(Nested([\
+                        (\"single_quoted_string\", PySqlArg { expr: Some(Value(SingleQuotedString(\"hello\"))), custom: None }), \
+                        (\"double_quoted_string\", PySqlArg { expr: Some(Identifier(Ident { value: \"hi\", quote_style: Some('\"') })), custom: None }), \
+                        (\"integer\", PySqlArg { expr: Some(UnaryOp { op: Minus, expr: Value(Number(\"300\", false)) }), custom: None }), \
+                        (\"float\", PySqlArg { expr: Some(Value(Number(\"23.45\", false))), custom: None }), \
+                        (\"boolean\", PySqlArg { expr: Some(Value(Boolean(false))), custom: None }), \
+                        (\"array\", PySqlArg { expr: Some(Array(Array { elem: [Value(Number(\"1\", false)), Value(Number(\"2\", false))], named: true })), custom: None }), \
+                        (\"dict\", PySqlArg { expr: None, custom: Some(Map([Value(SingleQuotedString(\"a\")), Value(Number(\"1\", false))])) }), \
+                        (\"set\", PySqlArg { expr: None, custom: Some(Multiset([Value(Number(\"1\", false)), Value(Number(\"1\", false)), Value(Number(\"2\", false)), Value(Number(\"3\", false))])) })\
+                    ])) })\
+                ]";
+                assert_eq!(expected, &format!("{:?}", create_model.with_options));
+            }
+            _ => panic!(),
+        }
     }
 }

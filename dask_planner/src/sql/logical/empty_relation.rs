@@ -1,7 +1,7 @@
 use datafusion_expr::logical_plan::{EmptyRelation, LogicalPlan};
+use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;
-use pyo3::prelude::*;
 
 #[pyclass(name = "EmptyRelation", module = "dask_planner", subclass)]
 #[derive(Clone)]
