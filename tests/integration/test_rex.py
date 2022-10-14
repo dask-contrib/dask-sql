@@ -583,19 +583,19 @@ def test_date_functions(c):
             TIMESTAMPADD(SECOND, 1, d) as "plus_1_sec",
             TIMESTAMPADD(MICROSECOND, 999*1000, d) as "plus_999_millisec",
             TIMESTAMPADD(MICROSECOND, 999, d) as "plus_999_microsec",
-            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt"
+            TIMESTAMPADD(QUARTER, 1, d) as "plus_1_qt",
 
-            -- CEIL(d TO DAY) as ceil_to_day,
-            -- CEIL(d TO HOUR) as ceil_to_hour,
-            -- CEIL(d TO MINUTE) as ceil_to_minute,
-            -- CEIL(d TO SECOND) as ceil_to_seconds,
-            -- CEIL(d TO MILLISECOND) as ceil_to_millisec,
+            CEIL(d TO DAY) as ceil_to_day,
+            CEIL(d TO HOUR) as ceil_to_hour,
+            CEIL(d TO MINUTE) as ceil_to_minute,
+            CEIL(d TO SECOND) as ceil_to_seconds,
+            CEIL(d TO MILLISECOND) as ceil_to_millisec,
 
-            -- FLOOR(d TO DAY) as floor_to_day,
-            -- FLOOR(d TO HOUR) as floor_to_hour,
-            -- FLOOR(d TO MINUTE) as floor_to_minute,
-            -- FLOOR(d TO SECOND) as floor_to_seconds,
-            -- FLOOR(d TO MILLISECOND) as floor_to_millisec
+            FLOOR(d TO DAY) as floor_to_day,
+            FLOOR(d TO HOUR) as floor_to_hour,
+            FLOOR(d TO MINUTE) as floor_to_minute,
+            FLOOR(d TO SECOND) as floor_to_seconds,
+            FLOOR(d TO MILLISECOND) as floor_to_millisec
 
         FROM df
     """
@@ -629,27 +629,27 @@ def test_date_functions(c):
             "plus_999_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000 * 999 + 47)],
             "plus_999_microsec": [datetime(2021, 10, 3, 15, 53, 42, 1046)],
             "plus_1_qt": [datetime(2022, 1, 3, 15, 53, 42, 47)],
-            # "ceil_to_day": [datetime(2021, 10, 4)],
-            # "ceil_to_hour": [datetime(2021, 10, 3, 16)],
-            # "ceil_to_minute": [datetime(2021, 10, 3, 15, 54)],
-            # "ceil_to_seconds": [datetime(2021, 10, 3, 15, 53, 43)],
-            # "ceil_to_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000)],
-            # "floor_to_day": [datetime(2021, 10, 3)],
-            # "floor_to_hour": [datetime(2021, 10, 3, 15)],
-            # "floor_to_minute": [datetime(2021, 10, 3, 15, 53)],
-            # "floor_to_seconds": [datetime(2021, 10, 3, 15, 53, 42)],
-            # "floor_to_millisec": [datetime(2021, 10, 3, 15, 53, 42)],
+            "ceil_to_day": [datetime(2021, 10, 4)],
+            "ceil_to_hour": [datetime(2021, 10, 3, 16)],
+            "ceil_to_minute": [datetime(2021, 10, 3, 15, 54)],
+            "ceil_to_seconds": [datetime(2021, 10, 3, 15, 53, 43)],
+            "ceil_to_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000)],
+            "floor_to_day": [datetime(2021, 10, 3)],
+            "floor_to_hour": [datetime(2021, 10, 3, 15)],
+            "floor_to_minute": [datetime(2021, 10, 3, 15, 53)],
+            "floor_to_seconds": [datetime(2021, 10, 3, 15, 53, 42)],
+            "floor_to_millisec": [datetime(2021, 10, 3, 15, 53, 42)],
         }
     )
 
     assert_eq(df, expected_df, check_dtype=False)
 
     # test exception handling
-    # with pytest.raises(NotImplementedError):
-    #     df = c.sql(
-    #         """
-    #         SELECT
-    #             FLOOR(d TO YEAR) as floor_to_year
-    #         FROM df
-    #         """
-    #     )
+    with pytest.raises(NotImplementedError):
+        df = c.sql(
+            """
+            SELECT
+                FLOOR(d TO YEAR) as floor_to_year
+            FROM df
+            """
+        )

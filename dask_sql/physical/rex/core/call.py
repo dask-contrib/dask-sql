@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+from datetime import timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -99,6 +100,8 @@ class PredicateBasedOperation(Operation):
         self.false_route = false_route
 
     def apply(self, *operands, **kwargs):
+        if isinstance(self, CeilFloorOperation):
+            operands = (operands[0].astype("datetime64[ns]"), operands[1])
         if self.predicate(operands[0]):
             return self.true_route(*operands, **kwargs)
 
@@ -663,7 +666,7 @@ class TimeStampAddOperation(Operation):
         elif unit in {"HOUR", "SQL_TSI_HOUR"}:
             return df + timedelta(hours=interval)
         elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
-            return df + np.timedelta64(interval, "m")
+            return df + timedelta(minutes=interval)
         elif unit in {"SECOND", "SQL_TSI_SECOND"}:
             return df + timedelta(seconds=interval)
         elif unit in {"MILLISECOND", "MILLISECONDS"}:
@@ -1020,6 +1023,8 @@ class RexCallPlugin(BaseRexPlugin):
         "datepart": DatePartOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
+        "timestampceil": CeilFloorOperation("ceil"),
+        "timestampfloor": CeilFloorOperation("floor"),
     }
 
     def convert(
