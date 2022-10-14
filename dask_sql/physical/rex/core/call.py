@@ -1,7 +1,7 @@
 import logging
 import operator
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -100,7 +100,7 @@ class PredicateBasedOperation(Operation):
         self.false_route = false_route
 
     def apply(self, *operands, **kwargs):
-        if isinstance(self, CeilFloorOperation):
+        if isinstance(self, CeilFloorOperation) and not isinstance(operands[0], datetime) and len(operands) == 2:
             operands = (operands[0].astype("datetime64[ns]"), operands[1])
         if self.predicate(operands[0]):
             return self.true_route(*operands, **kwargs)
@@ -644,7 +644,7 @@ class TimeStampAddOperation(Operation):
                     year = year + (month // 12)
                     month = month % 12
                 # Check leap day
-                if year % 4 !=0 and month == 2 and date.day == 29:
+                if year % 4 != 0 and month == 2 and date.day == 29:
                     result.append(date.replace(year=year, month=3, day=1))
                 # Replace February 30 with March 2
                 elif month == 2 and date.day == 30:
@@ -654,7 +654,7 @@ class TimeStampAddOperation(Operation):
                     result.append(date.replace(year=year, month=3, day=3))
                 # Check months with 30 days
                 elif month in [4, 6, 9, 11] and date.day == 31:
-                    result.append(date.replace(year=year, month=month+1, day=1))
+                    result.append(date.replace(year=year, month=month + 1, day=1))
                 else:
                     result.append(date.replace(year=year, month=month))
             return pd.Series(result)

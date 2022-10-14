@@ -153,8 +153,12 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "last_day" => {
-                let sig = Signature::variadic(vec![DataType::Timestamp(TimeUnit::Nanosecond, None)], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
+                let sig = Signature::variadic(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampadd" => {

@@ -1,12 +1,12 @@
-use core::iter::Peekable;
-use core::str::Chars;
-use datafusion_sql::sqlparser::ast::{
-    Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value,
+use core::{iter::Peekable, str::Chars};
+
+use datafusion_sql::sqlparser::{
+    ast::{Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value},
+    dialect::Dialect,
+    keywords::Keyword,
+    parser::{Parser, ParserError},
+    tokenizer::Token,
 };
-use datafusion_sql::sqlparser::dialect::Dialect;
-use datafusion_sql::sqlparser::parser::{Parser, ParserError};
-use datafusion_sql::sqlparser::tokenizer::Token;
-use datafusion_sql::sqlparser::keywords::Keyword;
 
 #[derive(Debug)]
 pub struct DaskDialect {}
@@ -140,7 +140,7 @@ impl Dialect for DaskDialect {
                         special: false,
                     })))
                 }
-                _ => Ok(None)
+                _ => Ok(None),
             }
         }
         match parse_expr(parser) {
