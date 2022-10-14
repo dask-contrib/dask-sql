@@ -605,11 +605,14 @@ class ToTimestampOperation(Operation):
         super().__init__(self.to_timestamp)
 
     def to_timestamp(self, df, format):
+        # Remove double and single quotes from string
+        format = format.replace("\"", "")
+        format = format.replace("\'", "")
+
         df = pd.to_datetime(df, unit="s")
         df = df.strftime(format)
         result = [timestamp for timestamp in df]
-        result = pd.Series(result)
-        return result
+        return pd.Series(result)
 
 
 class YearOperation(Operation):

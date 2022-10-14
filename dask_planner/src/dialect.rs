@@ -123,7 +123,7 @@ impl Dialect for DaskDialect {
                         })))
                     }
                 }
-                _ => Ok(None)
+                _ => Ok(None),
             }
         }
         match parse_expr(parser) {
