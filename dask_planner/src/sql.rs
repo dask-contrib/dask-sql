@@ -157,7 +157,7 @@ impl ContextProvider for DaskSQLContext {
                     vec![DataType::Date64, DataType::Utf8],
                     Volatility::Immutable,
                 );
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Utf8)));
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "atan2" | "mod" => {

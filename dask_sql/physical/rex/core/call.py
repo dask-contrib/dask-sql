@@ -606,8 +606,8 @@ class ToTimestampOperation(Operation):
 
     def to_timestamp(self, df, format):
         # Remove double and single quotes from string
-        format = format.replace("\"", "")
-        format = format.replace("\'", "")
+        format = format.replace('"', "")
+        format = format.replace("'", "")
 
         df = pd.to_datetime(df, unit="s")
         df = df.strftime(format)

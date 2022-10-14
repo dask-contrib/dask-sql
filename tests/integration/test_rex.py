@@ -675,9 +675,9 @@ def test_totimestamp(c):
     expected_df = pd.DataFrame(
         {
             "date": [
-                "2008-02-15 11:01:40",
-                "2014-07-23 00:00:00",
-                "2058-12-02 16:53:20",
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
             ],
         }
     )
@@ -693,9 +693,9 @@ def test_totimestamp(c):
     expected_df = pd.DataFrame(
         {
             "date": [
-                "15/02/2008",
-                "23/07/2014",
-                "02/12/2058",
+                datetime(2008, 2, 15),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2),
             ],
         }
     )
