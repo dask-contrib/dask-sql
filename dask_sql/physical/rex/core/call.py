@@ -600,7 +600,7 @@ class ExtractOperation(Operation):
         elif what == "SECOND":
             return df.second
         elif what == "WEEK":
-            return df.isocalendar().week
+            return df.week
         elif what == "YEAR":
             return df.year
         else:
@@ -874,7 +874,7 @@ class DatePartOperation(Operation):
         elif what == "SECOND":
             return df.second
         elif what == "WEEK":
-            return df.isocalendar().week
+            return df.week
         elif what == "YEAR":
             return df.year
         else:
