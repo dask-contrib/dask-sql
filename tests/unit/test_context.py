@@ -63,7 +63,7 @@ def test_explain(gpu):
 
     sql_string = c.explain("SELECT * FROM df")
 
-    assert sql_string.startswith("Projection: #df.a\n")
+    assert sql_string.startswith("Projection: df.a\n")
 
     # TODO: Need to add statistics to Rust optimizer before this can be uncommented.
     # c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
@@ -82,7 +82,7 @@ def test_explain(gpu):
         "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
     )
 
-    assert sql_string.startswith("Projection: #other_df.a\n")
+    assert sql_string.startswith("Projection: other_df.a\n")
 
 
 @pytest.mark.parametrize(

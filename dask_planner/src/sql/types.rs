@@ -1,14 +1,11 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use crate::dialect::DaskDialect;
-use crate::error::DaskPlannerError;
 use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-use datafusion_sql::sqlparser::ast::DataType as SQLType;
-use datafusion_sql::sqlparser::parser::Parser;
-use datafusion_sql::sqlparser::tokenizer::Tokenizer;
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
+use pyo3::{prelude::*, types::PyDict};
+
+use crate::{dialect::DaskDialect, error::DaskPlannerError};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
@@ -246,6 +243,7 @@ impl SqlTypeName {
             DataType::Float16 => Ok(SqlTypeName::REAL),
             DataType::Float32 => Ok(SqlTypeName::FLOAT),
             DataType::Float64 => Ok(SqlTypeName::DOUBLE),
+            DataType::Time32(_) | DataType::Time64(_) => Ok(SqlTypeName::TIME),
             DataType::Timestamp(_unit, tz) => match tz {
                 Some(_) => Ok(SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE),
                 None => Ok(SqlTypeName::TIMESTAMP),

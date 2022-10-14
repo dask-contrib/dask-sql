@@ -1,14 +1,15 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical;
-use pyo3::prelude::*;
-
-use datafusion_expr::logical_plan::{Extension, UserDefinedLogicalNode};
-use datafusion_expr::{Expr, LogicalPlan};
-
-use fmt::Debug;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
+use datafusion_expr::{
+    logical_plan::{Extension, UserDefinedLogicalNode},
+    Expr,
+    LogicalPlan,
+};
+use fmt::Debug;
+use pyo3::prelude::*;
+
+use crate::sql::{exceptions::py_type_err, logical};
 
 #[derive(Clone)]
 pub struct ShowTablesPlanNode {

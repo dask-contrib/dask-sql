@@ -1,8 +1,6 @@
-import datetime
 import logging
 import operator
 import re
-from datetime import timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -17,7 +15,11 @@ from dask.utils import random_state_data
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.datacontainer import DataContainer
-from dask_sql.mappings import cast_column_to_type, sql_to_python_type
+from dask_sql.mappings import (
+    cast_column_to_type,
+    sql_to_python_type,
+    sql_to_python_value,
+)
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.physical.rex.core.literal import SargPythonImplementation
@@ -185,7 +187,7 @@ class IntDivisionOperator(Operation):
         # We do not need to truncate in this case
         # So far, I did not spot any other occurrence
         # of this function.
-        if isinstance(result, (datetime.timedelta, np.timedelta64)):
+        if isinstance(result, np.timedelta64):
             return result
         else:
             return da.trunc(result).astype(np.int64)
@@ -239,11 +241,13 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        if not is_frame(operand):  # pragma: no cover
-            return operand
-
         output_type = str(rex.getType())
-        python_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
+        sql_type = SqlTypeName.fromString(output_type.upper())
+
+        if not is_frame(operand):  # pragma: no cover
+            return sql_to_python_value(sql_type, operand)
+
+        python_type = sql_to_python_type(sql_type)
 
         return_column = cast_column_to_type(operand, python_type)
 
@@ -623,19 +627,19 @@ class TimeStampAddOperation(Operation):
         df = convert_to_datetime(df)
 
         if unit in {"DAY", "SQL_TSI_DAY"}:
-            return df + timedelta(days=interval)
+            return df + np.timedelta64(interval, "D")
         elif unit in {"HOUR", "SQL_TSI_HOUR"}:
-            return df + timedelta(hours=interval)
+            return df + np.timedelta64(interval, "h")
         elif unit == "MICROSECOND":
-            return df + timedelta(microseconds=interval)
+            return df + np.timedelta64(interval, "us")
         elif unit == "MILLISECOND":
-            return df + timedelta(miliseconds=interval)
+            return df + np.timedelta64(interval, "ms")
         elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
-            return df + timedelta(minutes=interval)
+            return df + np.timedelta64(interval, "m")
         elif unit in {"SECOND", "SQL_TSI_SECOND"}:
-            return df + timedelta(seconds=interval)
+            return df + np.timedelta64(interval, "s")
         elif unit in {"WEEK", "SQL_TSI_WEEK"}:
-            return df + timedelta(days=interval * 7)
+            return df + np.timedelta64(interval * 7, "W")
         else:
             raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
 

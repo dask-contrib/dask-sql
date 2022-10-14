@@ -1,13 +1,28 @@
 name: Nightly upstream testing
 on:
   schedule:
-    - cron: "0 0 * * *" # Daily “At 00:00” UTC
+    - cron: "0 0 * * *" # Daily “At 00:00” UTC for upstream dask testing
+    - cron: "0 3 * * *" # Daily "At 03:00" UTC for upstream datafusion testing
   workflow_dispatch: # allows you to trigger the workflow run manually
-
+    inputs:
+      upstreamLib:
+        type: choice
+        description: 'Library to update for upstream testing'
+        required: false
+        default: 'Dask'
+        options:
+          - Dask
+          - DataFusion
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
     shell: bash -l {0}
+
+env:
+  which_upstream: |
+    (github.event.schedule == '0 3 * * *' && 'DataFusion')
+    || (github.event.schedule == '0 0 * * *' && 'Dask')
+    || (github.event.inputs.upstreamLib)
 
 jobs:
   test-dev:
@@ -38,12 +53,11 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Setup Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        id: rust-toolchain
-        with:
-          toolchain: stable
-          override: true
+      - name: Optionally update upstream cargo dependencies
+        if: env.which_upstream == 'DataFusion'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -54,6 +68,7 @@ jobs:
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Install upstream dev Dask / dask-ml
+        if: env.which_upstream == 'Dask'
         run: |
           mamba update dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
@@ -76,12 +91,11 @@ jobs:
           channels: dask/label/dev,conda-forge,nodefaults
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Setup Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        id: rust-toolchain
-        with:
-          toolchain: stable
-          override: true
+      - name: Optionally update upstream cargo dependencies
+        if: env.which_upstream == 'DataFusion'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -93,6 +107,7 @@ jobs:
           pip list
           mamba list
       - name: Install upstream dev dask-ml
+        if: env.which_upstream == 'Dask'
         run: |
           mamba update dask
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
@@ -121,6 +136,13 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,nodefaults
           channel-priority: strict
+      - name: Optionally update upstream cargo dependencies
+        if: env.which_upstream == 'DataFusion'
+        env:
+          UPDATE_ALL_CARGO_DEPS: false
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           mamba install setuptools-rust
@@ -130,6 +152,7 @@ jobs:
           pip list
           mamba list
       - name: Install upstream dev Dask / dask-ml
+        if: env.which_upstream == 'Dask'
         run: |
           python -m pip install --no-deps git+https://github.com/dask/dask
           python -m pip install --no-deps git+https://github.com/dask/distributed
@@ -154,7 +177,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = "⚠️ Upstream CI failed ⚠️"
+            const title = "⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️"
             const workflow_url = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
             const issue_body = `[Workflow Run URL](${workflow_url})`
             // Run GraphQL query against GitHub API to find the most recent open issue used for reporting failures
