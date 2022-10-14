@@ -695,7 +695,7 @@ def test_totimestamp(c):
             "date": [
                 datetime(2008, 2, 15),
                 datetime(2014, 7, 23),
-                datetime(2058, 12, 2),
+                datetime(2058, 2, 12),
             ],
         }
     )
