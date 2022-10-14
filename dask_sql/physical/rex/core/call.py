@@ -604,10 +604,12 @@ class ToTimestampOperation(Operation):
     def __init__(self):
         super().__init__(self.to_timestamp)
 
-    def to_timestamp(self, df, format="%Y-%m-%d %H:%M:%S"):
-        df = df.astype("datetime64[s]")
-        df = df.dt.strftime(format)
-        return df
+    def to_timestamp(self, df, format):
+        df = pd.to_datetime(df, unit="s")
+        df = df.strftime(format)
+        result = [timestamp for timestamp in df]
+        result = pd.Series(result)
+        return result
 
 
 class YearOperation(Operation):
@@ -986,7 +988,7 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
-        "totimestamp": ToTimestampOperation(),
+        "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),

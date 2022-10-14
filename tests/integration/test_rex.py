@@ -683,3 +683,21 @@ def test_totimestamp(c):
     )
 
     assert_eq(df, expected_df, check_dtype=False)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                "15/02/2008",
+                "23/07/2014",
+                "02/12/2058",
+            ],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)

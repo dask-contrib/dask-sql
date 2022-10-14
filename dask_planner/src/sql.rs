@@ -152,6 +152,14 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
+            "dsql_totimestamp" => {
+                let sig = Signature::variadic(
+                    vec![DataType::Date64, DataType::Utf8],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Utf8)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
             "atan2" | "mod" => {
                 let sig = Signature::variadic(
                     vec![DataType::Float64, DataType::Float64],
