@@ -1,24 +1,26 @@
-use crate::sql::logical;
-use crate::sql::types::rel_data_type::RelDataType;
-use crate::sql::types::rel_data_type_field::RelDataTypeField;
-use crate::sql::types::DaskTypeMap;
-use crate::sql::types::SqlTypeName;
-
-use async_trait::async_trait;
+use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
+use async_trait::async_trait;
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
-
+use datafusion_optimizer::utils::split_conjunction;
 use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
-use datafusion_optimizer::utils::split_conjunction;
-use std::any::Any;
-use std::sync::Arc;
-
-use super::logical::create_table::CreateTablePlanNode;
-use super::logical::predict_model::PredictModelPlanNode;
+use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
+use crate::{
+    error::DaskPlannerError,
+    sql::{
+        logical,
+        types::{
+            rel_data_type::RelDataType,
+            rel_data_type_field::RelDataTypeField,
+            DaskTypeMap,
+            SqlTypeName,
+        },
+    },
+};
 
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
@@ -154,7 +156,9 @@ impl DaskTable {
 }
 
 /// Traverses the logical plan to locate the Table associated with the query
-pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
+pub(crate) fn table_from_logical_plan(
+    plan: &LogicalPlan,
+) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
@@ -169,7 +173,10 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 let data_type: &DataType = field.data_type();
                 cols.push((
                     String::from(field.name()),
-                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone().into()),
+                    DaskTypeMap::from(
+                        SqlTypeName::from_arrow(data_type)?,
+                        data_type.clone().into(),
+                    ),
                 ));
             }
 
@@ -184,12 +191,12 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 } => (schema, table),
             };
 
-            Some(DaskTable {
+            Ok(Some(DaskTable {
                 schema: String::from(schema),
                 name: String::from(tbl),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
-            })
+            }))
         }
         LogicalPlan::Join(join) => {
             //TODO: Don't always hardcode the left
@@ -205,43 +212,46 @@ pub(crate) fn table_from_logical_plan(plan: &LogicalPlan) -> Option<DaskTable> {
                 let data_type: &DataType = field.data_type();
                 cols.push((
                     String::from(field.name()),
-                    DaskTypeMap::from(SqlTypeName::from_arrow(data_type), data_type.clone().into()),
+                    DaskTypeMap::from(
+                        SqlTypeName::from_arrow(data_type)?,
+                        data_type.clone().into(),
+                    ),
                 ));
             }
 
-            Some(DaskTable {
+            Ok(Some(DaskTable {
                 schema: String::from("EmptySchema"),
                 name: String::from("EmptyRelation"),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
-            })
+            }))
         }
         LogicalPlan::Extension(ex) => {
             let node = ex.node.as_any();
             if let Some(e) = node.downcast_ref::<CreateTablePlanNode>() {
-                Some(DaskTable {
+                Ok(Some(DaskTable {
                     schema: e.table_schema.clone(),
                     name: e.table_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
-                })
+                }))
             } else if let Some(e) = node.downcast_ref::<PredictModelPlanNode>() {
-                Some(DaskTable {
+                Ok(Some(DaskTable {
                     schema: e.model_schema.clone(),
                     name: e.model_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
-                })
+                }))
             } else {
-                todo!(
+                Err(DaskPlannerError::Internal(format!(
                     "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
                     plan
-                )
+                )))
             }
         }
-        _ => todo!(
+        _ => Err(DaskPlannerError::Internal(format!(
             "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
             plan
-        ),
+        ))),
     }
 }

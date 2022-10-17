@@ -329,11 +329,11 @@ def test_intersect(c):
     actual_df = c.sql(
         """
     select count(*) from (
-    select * from df_simple
+    select a, b from df_simple
     intersect
-    select * from df_simple
+    select a, b from df_simple
     intersect
-    select * from df_wide
+    select a, b from df_wide
     ) hot_item
     limit 100
     """
