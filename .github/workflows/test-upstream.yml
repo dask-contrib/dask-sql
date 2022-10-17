@@ -5,7 +5,7 @@ on:
     - cron: "0 3 * * *" # Daily "At 03:00" UTC for upstream datafusion testing
   workflow_dispatch: # allows you to trigger the workflow run manually
     inputs:
-      upstreamLib:
+      which_upstream:
         type: choice
         description: 'Library to update for upstream testing'
         required: false
@@ -19,10 +19,14 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upstream: |
-    (github.event.schedule == '0 3 * * *' && 'DataFusion')
-    || (github.event.schedule == '0 0 * * *' && 'Dask')
-    || (github.event.inputs.upstreamLib)
+  which_upsteam: |
+    github.event_name == 'workflow_dispatch'
+    && inputs.which_upstream
+    || (
+      github.event.schedule == '0 0 * * *'
+      && 'Dask'
+      || 'DataFusion'
+    )
 
 jobs:
   test-dev:
