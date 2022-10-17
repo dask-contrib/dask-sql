@@ -216,7 +216,7 @@ fn create_plan(
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
             let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
-            let expr_name = expr.name()?;
+            let expr_name = expr.canonical_name();
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
             let aggr_expr = vec![count(count_expr).alias(&alias)];
             LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, aggr_expr)?)

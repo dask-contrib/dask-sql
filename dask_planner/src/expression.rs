@@ -798,7 +798,7 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::Alias(expr, _) => get_expr_name(expr),
-        _ => expr.name().map_err(|e| e.into()),
+        _ => Ok(expr.canonical_name()),
     }
 }
 
