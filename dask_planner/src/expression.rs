@@ -3,10 +3,14 @@ use std::{convert::From, sync::Arc};
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::{
+    expr::BinaryExpr,
     lit,
     utils::exprlist_to_fields,
+    Between,
     BuiltinScalarFunction,
+    Case,
     Expr,
+    Like,
     LogicalPlan,
     Operator,
 };
@@ -284,11 +288,11 @@ impl PyExpr {
                 .collect()),
 
             // Expr(s) that require more specific processing
-            Expr::Case {
+            Expr::Case(Case {
                 expr,
                 when_then_expr,
                 else_expr,
-            } => {
+            }) => {
                 let mut operands: Vec<PyExpr> = Vec::new();
 
                 if let Some(e) = expr {
@@ -315,28 +319,28 @@ impl PyExpr {
 
                 Ok(operands)
             }
-            Expr::BinaryExpr { left, right, .. } => Ok(vec![
+            Expr::BinaryExpr(BinaryExpr { left, right, .. }) => Ok(vec![
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
-            Expr::Like { expr, pattern, .. } => Ok(vec![
+            Expr::Like(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::ILike { expr, pattern, .. } => Ok(vec![
+            Expr::ILike(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::SimilarTo { expr, pattern, .. } => Ok(vec![
+            Expr::SimilarTo(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::Between {
+            Expr::Between(Between {
                 expr,
                 negated: _,
                 low,
                 high,
-            } => Ok(vec![
+            }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
@@ -357,11 +361,11 @@ impl PyExpr {
     #[pyo3(name = "getOperatorName")]
     pub fn get_operator_name(&self) -> PyResult<String> {
         Ok(match &self.expr {
-            Expr::BinaryExpr {
+            Expr::BinaryExpr(BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => format!("{}", op),
+            }) => format!("{}", op),
             Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
             Expr::ScalarUDF { fun, .. } => fun.name.clone(),
             Expr::Cast { .. } => "cast".to_string(),
@@ -378,21 +382,21 @@ impl PyExpr {
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
-            Expr::Like { negated, .. } => {
+            Expr::Like(Like { negated, .. }) => {
                 if *negated {
                     "not like".to_string()
                 } else {
                     "like".to_string()
                 }
             }
-            Expr::ILike { negated, .. } => {
+            Expr::ILike(Like { negated, .. }) => {
                 if *negated {
                     "not ilike".to_string()
                 } else {
                     "ilike".to_string()
                 }
             }
-            Expr::SimilarTo { negated, .. } => {
+            Expr::SimilarTo(Like { negated, .. }) => {
                 if *negated {
                     "not similar to".to_string()
                 } else {
@@ -412,11 +416,11 @@ impl PyExpr {
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
         Ok(String::from(match &self.expr {
-            Expr::BinaryExpr {
+            Expr::BinaryExpr(BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => match op {
+            }) => match op {
                 Operator::Eq
                 | Operator::NotEq
                 | Operator::Lt
@@ -724,7 +728,7 @@ impl PyExpr {
     #[pyo3(name = "isNegated")]
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Between { negated, .. }
+            Expr::Between(Between { negated, .. })
             | Expr::Exists { negated, .. }
             | Expr::InList { negated, .. }
             | Expr::InSubquery { negated, .. } => Ok(*negated),
@@ -763,9 +767,9 @@ impl PyExpr {
     #[pyo3(name = "getEscapeChar")]
     pub fn get_escape_char(&self) -> PyResult<Option<char>> {
         match &self.expr {
-            Expr::Like { escape_char, .. }
-            | Expr::ILike { escape_char, .. }
-            | Expr::SimilarTo { escape_char, .. } => Ok(*escape_char),
+            Expr::Like(Like { escape_char, .. })
+            | Expr::ILike(Like { escape_char, .. })
+            | Expr::SimilarTo(Like { escape_char, .. }) => Ok(*escape_char),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} not one of Like/ILike/SimilarTo",
                 &self.expr
