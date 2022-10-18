@@ -19,14 +19,16 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upsteam: |
-    github.event_name == 'workflow_dispatch'
-    && inputs.which_upstream
-    || (
-      github.event.schedule == '0 0 * * *'
-      && 'Dask'
-      || 'DataFusion'
-    )
+  which_upsteam: >-
+    ${{
+      github.event_name == 'workflow_dispatch'
+      && inputs.which_upstream
+      || (
+        github.event.schedule == '0 0 * * *'
+        && 'Dask'
+        || 'DataFusion'
+      )
+    }}
 
 jobs:
   test-dev:
@@ -41,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
@@ -65,10 +67,10 @@ jobs:
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
-      - name: Install hive testing dependencies for Linux
+      - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install -c conda-forge sasl>=0.3.1
+          mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Install upstream dev Dask / dask-ml
