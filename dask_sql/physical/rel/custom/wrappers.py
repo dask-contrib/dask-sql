@@ -8,8 +8,11 @@ import dask.array as da
 import dask.dataframe as dd
 import dask.delayed
 import numpy as np
-import sklearn.base
-import sklearn.metrics
+try:
+    import sklearn.base
+    import sklearn.metrics
+except ImportError:  # pragma: no cover
+    raise ValueError("sklearn must be installed")
 
 logger = logging.getLogger(__name__)
 
