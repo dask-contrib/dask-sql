@@ -59,10 +59,27 @@ def test_intervals(c):
         """SELECT INTERVAL '3' DAY as "IN"
         """
     )
-
     expected_df = pd.DataFrame(
         {
             "IN": [pd.to_timedelta("3d")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+    date1 = datetime(2021, 10, 3, 15, 53, 42, 47)
+    date2 = datetime(2021, 2, 28, 15, 53, 42, 47)
+    dates = dd.from_pandas(pd.DataFrame({"d": [date1, date2]}), npartitions=1)
+    c.register_dask_table(dates, "dates")
+    df = c.sql(
+        """SELECT d + INTERVAL '5 days' AS "Plus_5_days" FROM dates
+        """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "Plus_5_days": [
+                datetime(2021, 10, 8, 15, 53, 42, 47),
+                datetime(2021, 3, 5, 15, 53, 42, 47),
+            ]
         }
     )
     assert_eq(df, expected_df)
