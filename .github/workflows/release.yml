@@ -2,7 +2,6 @@ name: Upload Python package
 on:
   release:
     types: [created]
-  pull_request: # for testing
 
 # for testing
 concurrency:
@@ -25,16 +24,6 @@ jobs:
         python: ["8", "9", "10"] # 3.x
     steps:
       - uses: actions/checkout@v3
-      # - name: Set up Python
-      #   uses: conda-incubator/setup-miniconda@v2
-      #   with:
-      #     miniforge-variant: Mambaforge
-      #     use-mamba: true
-      #     python-version: 3.${{ matrix.python }}
-      #     channel-priority: strict
-      #     channels: conda-forge,nodefaults
-      #     activate-environment: dask-sql
-      #     environment-file: ${{ env.CONDA_FILE }}
       - name: Install dependencies
         run: |
           pip install setuptools setuptools-rust wheel twine
@@ -80,3 +69,8 @@ jobs:
         with:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
+      - name: Publish package
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: twine upload dist/*
