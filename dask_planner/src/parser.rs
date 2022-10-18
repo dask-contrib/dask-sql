@@ -2,19 +2,20 @@
 //!
 //! Declares a SQL parser based on sqlparser that handles custom formats that we need.
 
-use crate::sql::exceptions::py_type_err;
-use crate::sql::types::SqlTypeName;
-use pyo3::prelude::*;
+use std::collections::VecDeque;
 
-use crate::dialect::DaskDialect;
-use crate::sql::parser_utils::DaskParserUtils;
 use datafusion_sql::sqlparser::{
     ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
-use std::collections::VecDeque;
+use pyo3::prelude::*;
+
+use crate::{
+    dialect::DaskDialect,
+    sql::{exceptions::py_type_err, parser_utils::DaskParserUtils, types::SqlTypeName},
+};
 
 macro_rules! parser_err {
     ($MSG:expr) => {
