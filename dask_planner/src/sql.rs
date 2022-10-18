@@ -153,7 +153,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "last_day" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
                     Volatility::Immutable,
                 );
@@ -162,7 +162,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampadd" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Utf8, DataType::Int64, DataType::Date64],
                     Volatility::Immutable,
                 );
@@ -170,7 +170,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampceil" | "timestampfloor" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Date64, DataType::Utf8],
                     Volatility::Immutable,
                 );

@@ -100,12 +100,6 @@ class PredicateBasedOperation(Operation):
         self.false_route = false_route
 
     def apply(self, *operands, **kwargs):
-        if (
-            isinstance(self, CeilFloorOperation)
-            and not isinstance(operands[0], datetime)
-            and len(operands) == 2
-        ):
-            operands = (operands[0].astype("datetime64[ns]"), operands[1])
         if self.predicate(operands[0]):
             return self.true_route(*operands, **kwargs)
 
