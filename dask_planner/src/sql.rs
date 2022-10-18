@@ -153,17 +153,20 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "dsql_totimestamp" => {
-                let sig = Signature::one_of(vec![
-                    TypeSignature::Variadic(vec![DataType::Int8, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::Int16, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::Int32, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::Int64, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::UInt8, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::UInt16, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::UInt32, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::UInt64, DataType::Utf8]),
-                    TypeSignature::Variadic(vec![DataType::Utf8, DataType::Utf8]),
-                ], Volatility::Immutable);
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Variadic(vec![DataType::Int8, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::Int16, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::Int32, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::Int64, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::UInt8, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::UInt16, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::UInt32, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::UInt64, DataType::Utf8]),
+                        TypeSignature::Variadic(vec![DataType::Utf8, DataType::Utf8]),
+                    ],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
