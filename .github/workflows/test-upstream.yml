@@ -19,14 +19,16 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upsteam: |
-    github.event_name == 'workflow_dispatch'
-    && inputs.which_upstream
-    || (
-      github.event.schedule == '0 0 * * *'
-      && 'Dask'
-      || 'DataFusion'
-    )
+  which_upsteam: >-
+    ${{
+      github.event_name == 'workflow_dispatch'
+      && inputs.which_upstream
+      || (
+        github.event.schedule == '0 0 * * *'
+        && 'Dask'
+        || 'DataFusion'
+      )
+    }}
 
 jobs:
   test-dev:
