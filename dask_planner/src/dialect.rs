@@ -80,47 +80,28 @@ impl Dialect for DaskDialect {
                     parser.expect_token(&Token::LParen)?;
                     let expr = parser.parse_expr()?;
                     let comma = parser.consume_token(&Token::Comma);
-                    if comma {
-                        // Parse TO_TIMESTAMP(d, "%Y-%m-%d %H:%M:%S")
-                        let time_format = parser.next_token();
-                        parser.expect_token(&Token::RParen)?;
-
-                        // convert to function args
-                        let args = vec![
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
-                                Value::SingleQuotedString(time_format.to_string()),
-                            ))),
-                        ];
-
-                        Ok(Some(Expr::Function(Function {
-                            name: ObjectName(vec![Ident::new("dsql_totimestamp")]),
-                            args,
-                            over: None,
-                            distinct: false,
-                            special: false,
-                        })))
+                    let time_format = if comma {
+                        parser.next_token().to_string()
                     } else {
-                        // Parse TO_TIMESTAMP(d)
-                        let time_format = "%Y-%m-%d %H:%M:%S";
-                        parser.expect_token(&Token::RParen)?;
+                        "%Y-%m-%d %H:%M:%S".to_string()
+                    };
+                    parser.expect_token(&Token::RParen)?;
 
-                        // convert to function args
-                        let args = vec![
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
-                                Value::SingleQuotedString(time_format.to_string()),
-                            ))),
-                        ];
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_format),
+                        ))),
+                    ];
 
-                        Ok(Some(Expr::Function(Function {
-                            name: ObjectName(vec![Ident::new("dsql_totimestamp")]),
-                            args,
-                            over: None,
-                            distinct: false,
-                            special: false,
-                        })))
-                    }
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("dsql_totimestamp")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
                 }
                 _ => Ok(None),
             }
