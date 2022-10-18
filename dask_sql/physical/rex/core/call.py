@@ -1,7 +1,7 @@
 import logging
 import operator
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
