@@ -16,9 +16,25 @@ env:
   RUSTFLAGS: "-C debuginfo=1"
 
 jobs:
+  detect-ci-trigger:
+    name: Check for upstream trigger phrase
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    outputs:
+      triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - uses: xarray-contrib/ci-trigger@v1.1
+        id: detect-trigger
+        with:
+          keyword: "[test-df-upstream]"
+
   # Check crate compiles
   linux-build-lib:
     name: cargo check
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -27,6 +43,11 @@ jobs:
         with:
           path: /home/runner/.cargo
           key: cargo-cache
+      - name: Optionally update upstream dependencies
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Check workspace in debug mode
         run: |
           cd dask_planner
@@ -39,6 +60,7 @@ jobs:
   # test the crate
   linux-test:
     name: cargo test
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -49,6 +71,11 @@ jobs:
         with:
           path: /home/runner/.cargo
           key: cargo-cache
+      - name: Optionally update upstream dependencies
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Run tests
         run: |
           cd dask_planner
