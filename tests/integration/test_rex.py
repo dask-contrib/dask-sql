@@ -671,7 +671,6 @@ def test_totimestamp(c):
         SELECT to_timestamp(a) AS date FROM df
     """
     )
-
     expected_df = pd.DataFrame(
         {
             "date": [
@@ -681,7 +680,6 @@ def test_totimestamp(c):
             ],
         }
     )
-
     assert_eq(df, expected_df, check_dtype=False)
 
     df = c.sql(
@@ -689,7 +687,6 @@ def test_totimestamp(c):
         SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
     """
     )
-
     expected_df = pd.DataFrame(
         {
             "date": [
@@ -699,5 +696,41 @@ def test_totimestamp(c):
             ],
         }
     )
+    assert_eq(df, expected_df, check_dtype=False)
 
+    df = pd.DataFrame(
+        {
+            "a": ['1997-02-28 10:30:00', '1997-03-28 10:30:01'],
+        }
+    )
+    c.create_table("df", df)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+                datetime(1997, 3, 28, 10, 30, 1),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28),
+                datetime(1997, 3, 28),
+            ],
+        }
+    )
     assert_eq(df, expected_df, check_dtype=False)

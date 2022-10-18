@@ -609,10 +609,14 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        df = pd.to_datetime(df, unit="s")
-        df = df.strftime(format)
-        result = [timestamp for timestamp in df]
-        return pd.Series(result)
+        if df.dtype == "object":
+            df = pd.to_datetime(df)
+            return df.strftime(format)
+        else:
+            df = pd.to_datetime(df, unit="s")
+            df = df.strftime(format)
+            result = [timestamp for timestamp in df]
+            return pd.Series(result)
 
 
 class YearOperation(Operation):
