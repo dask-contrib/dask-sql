@@ -73,7 +73,7 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
-        if: github.event_name == "release"
+        if: github.event_name == 'release'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
