@@ -639,6 +639,7 @@ class DatetimeSubOperation(Operation):
     Datetime subtraction is a special case of the `minus` operation
     which also specifies a sql interval return type for the operation.
     """
+
     def __init__(self):
         super().__init__(self.datetime_sub)
 

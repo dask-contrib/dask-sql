@@ -11,7 +11,7 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
@@ -154,7 +154,11 @@ impl ContextProvider for DaskSQLContext {
             }
             "timestampdiff" => {
                 let sig = Signature::exact(
-                    vec![DataType::Utf8, DataType::Timestamp(TimeUnit::Nanosecond, None), DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    vec![
+                        DataType::Utf8,
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        DataType::Timestamp(TimeUnit::Nanosecond, None)
+                    ],
                     Volatility::Immutable,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));

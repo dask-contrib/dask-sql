@@ -678,11 +678,13 @@ def test_date_functions(c):
 def test_timestampdiff(c):
     ts_literal1 = datetime(2002, 3, 7, 9, 10, 5, 123)
     ts_literal2 = datetime(2001, 6, 5, 10, 11, 6, 234)
-    df = dd.from_pandas(pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}), npartitions=1)
+    df = dd.from_pandas(
+        pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}),
+        npartitions=1,
+    )
     c.register_dask_table(df, "df")
 
-    query = (
-    """
+    query = """
         SELECT timestampdiff(NANOSECOND, ts_literal1, ts_literal2) as res0,
         timestampdiff(MICROSECOND, ts_literal1, ts_literal2) as res1,
         timestampdiff(SECOND, ts_literal1, ts_literal2) as res2,
@@ -695,7 +697,6 @@ def test_timestampdiff(c):
         timestampdiff(YEAR, ts_literal1, ts_literal2) as res9
         FROM df
     """
-    )
     df = c.sql(query)
 
     expected_df = pd.DataFrame(
