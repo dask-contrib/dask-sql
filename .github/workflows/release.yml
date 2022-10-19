@@ -2,6 +2,7 @@ name: Upload Python package
 on:
   release:
     types: [created]
+  pull_request:
 
 # for testing
 concurrency:
@@ -24,6 +25,8 @@ jobs:
         python: ["8", "9", "10"] # 3.x
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Install dependencies
         run: |
           pip install setuptools setuptools-rust wheel twine
@@ -70,6 +73,7 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
+        if: github.event_name == "release"
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
