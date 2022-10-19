@@ -216,7 +216,7 @@ fn create_plan(
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
             let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
-            let expr_name = expr.name()?;
+            let expr_name = expr.canonical_name();
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
             let aggr_expr = vec![count(count_expr).alias(&alias)];
             LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, aggr_expr)?)
@@ -695,19 +695,19 @@ mod tests {
         \n      Projection: SUM(__dask_sql_count__1) AS c_a, COUNT(a.a) AS cd_a\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(__dask_sql_count__1), COUNT(a.a)]]\
         \n          Aggregate: groupBy=[[a.a]], aggr=[[COUNT(a.a) AS __dask_sql_count__1]]\
-        \n            TableScan: a projection=[a, b, c, d]\
+        \n            TableScan: a projection=[a]\
         \n      Projection: SUM(__dask_sql_count__2) AS c_b, COUNT(a.b) AS cd_b\
         \n        Aggregate: groupBy=[[]], aggr=[[SUM(__dask_sql_count__2), COUNT(a.b)]]\
         \n          Aggregate: groupBy=[[a.b]], aggr=[[COUNT(a.b) AS __dask_sql_count__2]]\
-        \n            TableScan: a projection=[a, b, c, d]\
+        \n            TableScan: a projection=[b]\
         \n    Projection: SUM(__dask_sql_count__3) AS c_c, COUNT(a.c) AS cd_c\
         \n      Aggregate: groupBy=[[]], aggr=[[SUM(__dask_sql_count__3), COUNT(a.c)]]\
         \n        Aggregate: groupBy=[[a.c]], aggr=[[COUNT(a.c) AS __dask_sql_count__3]]\
-        \n          TableScan: a projection=[a, b, c, d]\
+        \n          TableScan: a projection=[c]\
         \n  Projection: SUM(__dask_sql_count__4) AS c_d, COUNT(a.d) AS cd_d\
         \n    Aggregate: groupBy=[[]], aggr=[[SUM(__dask_sql_count__4), COUNT(a.d)]]\
         \n      Aggregate: groupBy=[[a.d]], aggr=[[COUNT(a.d) AS __dask_sql_count__4]]\
-        \n        TableScan: a projection=[a, b, c, d]";
+        \n        TableScan: a projection=[d]";
         assert_fully_optimized_plan_eq(&plan, expected);
 
         Ok(())
