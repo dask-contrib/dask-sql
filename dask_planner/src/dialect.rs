@@ -69,7 +69,7 @@ impl Dialect for DaskDialect {
                     ];
 
                     Ok(Some(Expr::Function(Function {
-                        name: ObjectName(vec![Ident::new("TIMESTAMPADD")]),
+                        name: ObjectName(vec![Ident::new("timestampadd")]),
                         args,
                         over: None,
                         distinct: false,

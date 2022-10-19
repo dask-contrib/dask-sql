@@ -615,6 +615,7 @@ class TimeStampAddOperation(Operation):
         super().__init__(self.timestampadd)
 
     def timestampadd(self, unit, interval, df: SeriesOrScalar):
+        unit = unit.upper()
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
