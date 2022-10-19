@@ -33,7 +33,7 @@ dependencies:
 - sphinx
 - tpot
 - tzlocal>=2.1
-- uvicorn>=0.11.3
+- uvicorn>=0.13.4
 # GPU-specific requirements
 - cudatoolkit=11.5
 - cudf=22.12
