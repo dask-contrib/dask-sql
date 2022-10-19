@@ -19,7 +19,7 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upsteam: >-
+  which_upstream: >-
     ${{
       github.event_name == 'workflow_dispatch'
       && inputs.which_upstream
