@@ -673,7 +673,9 @@ class TimeStampAddOperation(Operation):
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
             return df + timedelta(microseconds=interval)
         else:
-            raise NotImplementedError(f"Timestamp addition with {unit} is not supported.")
+            raise NotImplementedError(
+                f"Timestamp addition with {unit} is not supported."
+            )
 
 
 class CeilFloorOperation(PredicateBasedOperation):

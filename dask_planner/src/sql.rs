@@ -164,13 +164,16 @@ impl ContextProvider for DaskSQLContext {
             "timestampadd" => {
                 let sig = Signature::one_of(
                     vec![
-                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Int64, DataType::Date64]),
-                        TypeSignature::Exact(
-                            vec![
-                                DataType::Utf8,
-                                DataType::Int64,
-                                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                            ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
                     ],
                     Volatility::Immutable,
                 );
