@@ -1237,6 +1237,23 @@ mod test {
     use crate::parser::{DaskParser, DaskStatement};
 
     #[test]
+    fn timestampadd() {
+        let sql = "SELECT TIMESTAMPADD(YEAR, 2, d) FROM t";
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+        let actual = format!("{:?}", statements[0]);
+        let expected = "projection: [\
+        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"timestampadd\", quote_style: None }]), \
+        args: [\
+        Unnamed(Expr(Value(SingleQuotedString(\"YEAR\")))), \
+        Unnamed(Expr(Value(Number(\"2\", false)))), \
+        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None })))\
+        ], over: None, distinct: false, special: false }))\
+        ]";
+        assert!(actual.contains(expected));
+    }
+
+    #[test]
     fn create_model() {
         let sql = r#"CREATE MODEL my_model WITH (
             model_class = 'mock.MagicMock',
