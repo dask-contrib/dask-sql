@@ -155,15 +155,15 @@ impl ContextProvider for DaskSQLContext {
             "dsql_totimestamp" => {
                 let sig = Signature::one_of(
                     vec![
-                        TypeSignature::Variadic(vec![DataType::Int8, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::Int16, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::Int32, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::Int64, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::UInt8, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::UInt16, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::UInt32, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::UInt64, DataType::Utf8]),
-                        TypeSignature::Variadic(vec![DataType::Utf8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
                     ],
                     Volatility::Immutable,
                 );
