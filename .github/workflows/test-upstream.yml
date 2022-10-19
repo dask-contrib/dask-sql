@@ -5,7 +5,7 @@ on:
     - cron: "0 3 * * *" # Daily "At 03:00" UTC for upstream datafusion testing
   workflow_dispatch: # allows you to trigger the workflow run manually
     inputs:
-      upstreamLib:
+      which_upstream:
         type: choice
         description: 'Library to update for upstream testing'
         required: false
@@ -19,10 +19,16 @@ defaults:
     shell: bash -l {0}
 
 env:
-  which_upstream: |
-    (github.event.schedule == '0 3 * * *' && 'DataFusion')
-    || (github.event.schedule == '0 0 * * *' && 'Dask')
-    || (github.event.inputs.upstreamLib)
+  which_upstream: >-
+    ${{
+      github.event_name == 'workflow_dispatch'
+      && inputs.which_upstream
+      || (
+        github.event.schedule == '0 0 * * *'
+        && 'Dask'
+        || 'DataFusion'
+      )
+    }}
 
 jobs:
   test-dev:
@@ -37,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
@@ -61,10 +67,10 @@ jobs:
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
-      - name: Install hive testing dependencies for Linux
+      - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install -c conda-forge sasl>=0.3.1
+          mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Install upstream dev Dask / dask-ml
@@ -113,7 +119,11 @@ jobs:
           python -m pip install --no-deps git+https://github.com/dask/dask-ml
       - name: run a dask cluster
         run: |
-          docker-compose -f .github/cluster-upstream.yml up -d
+          if [[ $which_upstream == "Dask" ]]; then
+            docker-compose -f .github/cluster-upstream.yml up -d
+          else
+            docker-compose -f .github/cluster.yml up -d
+          fi
 
           # periodically ping logs until a connection has been established; assume failure after 2 minutes
           timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'

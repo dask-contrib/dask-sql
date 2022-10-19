@@ -53,7 +53,6 @@ impl DaskSqlOptimizer {
             Box::new(ReduceCrossJoin::new()),
             Box::new(CommonSubexprEliminate::new()),
             Box::new(EliminateLimit::new()),
-            Box::new(ProjectionPushDown::new()),
             Box::new(RewriteDisjunctivePredicate::new()),
             Box::new(FilterNullJoinKeys::default()),
             Box::new(ReduceOuterJoin::new()),
@@ -62,6 +61,12 @@ impl DaskSqlOptimizer {
             // Box::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
             Box::new(EliminateAggDistinct::new()),
+            // The previous optimizations added expressions and projections,
+            // that might benefit from the following rules
+            Box::new(SimplifyExpressions::new()),
+            Box::new(UnwrapCastInComparison::new()),
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(ProjectionPushDown::new()),
         ];
         Self {
             skip_failing_rules,
