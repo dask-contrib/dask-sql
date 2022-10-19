@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from tests.integration.fixtures import skip_if_external_scheduler
+from tests.integration.fixtures import xfail_if_external_scheduler
 from tests.utils import assert_eq
 
 fugue_sql = pytest.importorskip("fugue_sql")
@@ -13,7 +13,7 @@ if fugue_sql:
     from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
 
 
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_simple_statement(client):
     with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
         df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
@@ -44,7 +44,7 @@ def test_simple_statement(client):
 
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
         assert_eq(df, pd.DataFrame({"a": [1]}))

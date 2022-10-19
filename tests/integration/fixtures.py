@@ -340,7 +340,7 @@ def client():
         yield client
 
 
-skip_if_external_scheduler = pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
+xfail_if_external_scheduler = pytest.mark.xfail(
+    condition=os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )

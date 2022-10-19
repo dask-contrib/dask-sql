@@ -1,9 +1,9 @@
 from dask.datasets import timeseries
 
-from tests.integration.fixtures import skip_if_external_scheduler
+from tests.integration.fixtures import xfail_if_external_scheduler
 
 
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_complex_query(c):
     df = timeseries(freq="1d").persist()
     c.create_table("timeseries", df)
