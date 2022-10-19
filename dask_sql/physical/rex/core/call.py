@@ -567,35 +567,35 @@ class ExtractOperation(Operation):
     def extract(self, what, df: SeriesOrScalar):
         df = convert_to_datetime(df)
 
-        if what == "CENTURY":
+        if what in {"CENTURY", "CENTURIES"}:
             return da.trunc(df.year / 100)
-        elif what == "DAY":
+        elif what in {"DAY", "DAYS"}:
             return df.day
-        elif what == "DECADE":
+        elif what in {"DECADE", "DECADES"}:
             return da.trunc(df.year / 10)
         elif what == "DOW":
             return (df.dayofweek + 1) % 7
         elif what == "DOY":
             return df.dayofyear
-        elif what == "HOUR":
+        elif what in {"HOUR", "HOURS"}:
             return df.hour
         elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
-        elif what in {"MILLENIUM", "MILLENNIUM"}:
+        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
             return da.trunc(df.year / 1000)
         elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
-        elif what == "MINUTE":
+        elif what in {"MINUTE", "MINUTES"}:
             return df.minute
-        elif what == "MONTH":
+        elif what in {"MONTH", "MONTHS"}:
             return df.month
-        elif what == "QUARTER":
+        elif what in {"QUARTER", "QUARTERS"}:
             return df.quarter
-        elif what == "SECOND":
+        elif what in {"SECOND", "SECONDS"}:
             return df.second
-        elif what == "WEEK":
+        elif what in {"WEEK", "WEEKS"}:
             return df.week
-        elif what == "YEAR":
+        elif what in {"YEAR", "YEARS"}:
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
@@ -621,7 +621,7 @@ class TimeStampAddOperation(Operation):
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
         df = df.astype("datetime64[ns]")
 
-        if unit in {"YEAR"}:
+        if unit in {"YEAR", "YEARS"}:
             result = []
             for date in df:
                 year = date.year + interval
@@ -631,10 +631,10 @@ class TimeStampAddOperation(Operation):
                 else:
                     result.append(date.replace(year=year))
             return pd.Series(result)
-        elif unit in {"QUARTER", "MONTH"}:
+        elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
             result = []
             for date in df:
-                if unit == "QUARTER":
+                if unit in {"QUARTER", "QUARTERS"}:
                     month = date.month + (3 * interval)
                 else:  # "MONTH"
                     month = date.month + interval
@@ -657,23 +657,23 @@ class TimeStampAddOperation(Operation):
                 else:
                     result.append(date.replace(year=year, month=month))
             return pd.Series(result)
-        elif unit in {"WEEK", "SQL_TSI_WEEK"}:
+        elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
             week = interval * 7
             return df + timedelta(days=week)
-        elif unit in {"DAY", "SQL_TSI_DAY"}:
+        elif unit in {"DAY", "DAYS", "SQL_TSI_DAY"}:
             return df + timedelta(days=interval)
-        elif unit in {"HOUR", "SQL_TSI_HOUR"}:
+        elif unit in {"HOUR", "HOURS", "SQL_TSI_HOUR"}:
             return df + timedelta(hours=interval)
-        elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
+        elif unit in {"MINUTE", "MINUTES", "SQL_TSI_MINUTE"}:
             return df + timedelta(minutes=interval)
-        elif unit in {"SECOND", "SQL_TSI_SECOND"}:
+        elif unit in {"SECOND", "SECONDS", "SQL_TSI_SECOND"}:
             return df + timedelta(seconds=interval)
         elif unit in {"MILLISECOND", "MILLISECONDS"}:
             return df + timedelta(miliseconds=interval)
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
             return df + timedelta(microseconds=interval)
         else:
-            raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
+            raise NotImplementedError(f"Timestamp addition with {unit} is not supported.")
 
 
 class CeilFloorOperation(PredicateBasedOperation):
@@ -839,38 +839,37 @@ class DatePartOperation(Operation):
         what = what.upper()
         df = convert_to_datetime(df)
 
-        if what == "YEAR":
+        if what in {"YEAR", "YEARS"}:
             return df.year
-
-        if what == "CENTURY":
+        elif what in {"CENTURY", "CENTURIES"}:
             return da.trunc(df.year / 100)
-        elif what == "DAY":
+        elif what in {"DAY", "DAYS"}:
             return df.day
-        elif what == "DECADE":
+        elif what in {"DECADE", "DECADES"}:
             return da.trunc(df.year / 10)
         elif what == "DOW":
             return (df.dayofweek + 1) % 7
         elif what == "DOY":
             return df.dayofyear
-        elif what == "HOUR":
+        elif what in {"HOUR", "HOURS"}:
             return df.hour
         elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
-        elif what in {"MILLENIUM", "MILLENNIUM"}:
+        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
             return da.trunc(df.year / 1000)
         elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
-        elif what == "MINUTE":
+        elif what in {"MINUTE", "MINUTES"}:
             return df.minute
-        elif what == "MONTH":
+        elif what in {"MONTH", "MONTHS"}:
             return df.month
-        elif what == "QUARTER":
+        elif what in {"QUARTER", "QUARTERS"}:
             return df.quarter
-        elif what == "SECOND":
+        elif what in {"SECOND", "SECONDS"}:
             return df.second
-        elif what == "WEEK":
+        elif what in {"WEEK", "WEEKS"}:
             return df.week
-        elif what == "YEAR":
+        elif what in {"YEAR", "YEARS"}:
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
