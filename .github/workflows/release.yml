@@ -9,6 +9,10 @@ concurrency:
   group: release-${{ github.head_ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   build:
     name: build py3.${{ matrix.python }} on ${{ matrix.os }}
@@ -22,6 +26,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -55,17 +63,17 @@ jobs:
         run: |
           pip install -U setuptools-rust
           python setup.py sdist
-      - name: list dist files
-        run: ls -lh dist/
+      - name: Check dist files
+        run: |
+          pip install -U twine
+
+          twine check dist/*
+          ls -lh dist/
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
-      - name: Manually install twine
-        run: |
-          pip install -U twine
-          which twine
       - name: Publish package
         if: github.event_name == 'release'
         env:
