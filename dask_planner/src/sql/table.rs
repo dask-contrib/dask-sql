@@ -51,8 +51,7 @@ impl TableSource for DaskTableSource {
         &self,
         filter: &Expr,
     ) -> datafusion_common::Result<TableProviderFilterPushDown> {
-        let mut filters = vec![];
-        split_conjunction(filter, &mut filters);
+        let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
             // TODO this should return Exact but we cannot make that change until we
             // are actually pushing the TableScan filters down to the reader because
@@ -161,7 +160,7 @@ pub(crate) fn table_from_logical_plan(
 ) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
-        LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
+        LogicalPlan::Filter(filter) => table_from_logical_plan(filter.input()),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();

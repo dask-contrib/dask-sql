@@ -10,7 +10,7 @@ on:
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
 concurrency:
-  group: style-${{ github.ref }}
+  group: docker-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
