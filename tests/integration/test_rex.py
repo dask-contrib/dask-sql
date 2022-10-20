@@ -18,9 +18,6 @@ def test_year(c, datetime_table):
     assert result_df.compute().iloc[0][0] == 2014
 
 
-@pytest.mark.xfail(
-    reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
-)
 def test_case(c, df):
     result_df = c.sql(
         """

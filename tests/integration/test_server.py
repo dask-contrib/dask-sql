@@ -26,7 +26,6 @@ def app_client():
         app.client.close()
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_routes(app_client):
     assert app_client.post("/v1/statement", data="SELECT 1 + 1").status_code == 200
     assert app_client.get("/v1/statement", data="SELECT 1 + 1").status_code == 405
@@ -36,7 +35,6 @@ def test_routes(app_client):
     assert app_client.get("/v1/cancel/some-wrong-uuid").status_code == 405
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_sql_query_cancel(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + 1")
     assert response.status_code == 200

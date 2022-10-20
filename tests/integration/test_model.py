@@ -557,8 +557,6 @@ def test_export_model(c, training_df, tmpdir):
         )
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@xfail_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
