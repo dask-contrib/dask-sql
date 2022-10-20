@@ -214,7 +214,7 @@ jobs:
             const result = await github.graphql(query, variables)
             // If no issue is open, create a new issue,
             // else update the body of the existing issue.
-            if (result.repository.issues.edges.length === 0) || result.repository.issues.edges[0].node.title !== title) {
+            if (result.repository.issues.edges.length === 0 || result.repository.issues.edges[0].node.title !== title) {
                 github.issues.create({
                     owner: variables.owner,
                     repo: variables.name,
