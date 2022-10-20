@@ -25,13 +25,6 @@ jobs:
         python: ["8", "9", "10"] # 3.x
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install dependencies
-        run: |
-          pip install setuptools setuptools-rust wheel twine
-          which python
-          pip list
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -51,9 +44,9 @@ jobs:
           CIBW_ENVIRONMENT_LINUX: 'CARGO_NET_GIT_FETCH_WITH_CLI="true" PATH="$HOME/.cargo/bin:$PATH"'
           # Without CARGO_NET_GIT_FETCH_WITH_CLI we oom (https://github.com/rust-lang/cargo/issues/10583)
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
+          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust twine'
           CIBW_BEFORE_BUILD_LINUX: >
-            pip install -U setuptools-rust &&
+            pip install -U setuptools-rust twine &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
             rustup show
         with:
@@ -72,6 +65,8 @@ jobs:
         with:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
+      - name: Check if twine was successfully installed
+        run: which twine
       - name: Publish package
         if: github.event_name == 'release'
         env:
