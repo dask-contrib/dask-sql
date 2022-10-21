@@ -157,7 +157,7 @@ impl ContextProvider for DaskSQLContext {
                     vec![
                         DataType::Utf8,
                         DataType::Timestamp(TimeUnit::Nanosecond, None),
-                        DataType::Timestamp(TimeUnit::Nanosecond, None)
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
                     ],
                     Volatility::Immutable,
                 );

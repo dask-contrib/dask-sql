@@ -664,14 +664,80 @@ class DatetimeSubOperation(Operation):
         elif unit in {"WEEK", "WEEKS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 7
         elif unit in {"MONTH", "MONTHS"}:
-            # TODO: Account for different lengths of months
-            return ((((result / 1_000_000_000) / 3600) / 24) / 7) // 4
+            # TODO: Figure out a way to do this without calling compute()
+            result = []
+            for ind in range(len(df1)):
+                year1 = df1[ind].dt.year.compute()[ind]
+                year2 = df2[ind].dt.year.compute()[ind]
+                diff = (year2 - year1) * 12
+
+                month1 = df1[ind].dt.month.compute()[ind]
+                month2 = df2[ind].dt.month.compute()[ind]
+                diff += (month2 - month1)
+
+                day1 = df1[ind].dt.day.compute()[ind]
+                day2 = df2[ind].dt.day.compute()[ind]
+                # TODO: Account for different month lengths
+                # TODO: Acount for negative results
+                if day2 < day1:
+                    diff = diff - 1
+                result.append(diff)
+            return pd.Series(result)
         elif unit in {"QUARTER", "QUARTERS"}:
-            # TODO: Account for different lengths of months
-            return (((((result / 1_000_000_000) / 3600) / 24) / 7) / 4) // 4
+            # TODO: Figure out a way to do this without calling compute()
+            result = []
+            for ind in range(len(df1)):
+                year1 = df1[ind].dt.year.compute()[ind]
+                year2 = df2[ind].dt.year.compute()[ind]
+                diff = (year2 - year1) * 4
+
+                month1 = df1[ind].dt.month.compute()[ind]
+                month2 = df2[ind].dt.month.compute()[ind]
+                diff += (month2 - month1) // 3
+
+                day1 = df1[ind].dt.day.compute()[ind]
+                day2 = df2[ind].dt.day.compute()[ind]
+                # TODO: Account for different month lengths
+                # TODO: Account for negative results
+                if day2 < day1:
+                    diff = diff - 1
+                result.append(diff)
+            return pd.Series(result)
         elif unit in {"YEAR", "YEARS"}:
-            # TODO: Account for leap years
-            return (((((result / 1_000_000_000) / 3600) / 24) / 7) / 4) // 365
+            # TODO: Figure out a way to do this without calling compute()
+            result = []
+            for ind in range(len(df1)):
+                year1 = df1[ind].dt.year.compute()[ind]
+                year2 = df2[ind].dt.year.compute()[ind]
+                diff = year2 - year1
+
+                # Account for leap years
+                if year1 % 4 == 0 or year2 % 4 == 0:
+                    month1 = df1[ind].dt.month.compute()[ind]
+                    month2 = df2[ind].dt.month.compute()[ind]
+
+                    day1 = df1[ind].dt.day.compute()[ind]
+                    day2 = df2[ind].dt.day.compute()[ind]
+
+                    if (
+                        year1 < year2
+                        and month1 == 2
+                        and day1 == 29
+                        and month2 == 2
+                        and day2 == 28
+                    ):
+                        diff = diff - 1
+                    elif (
+                        year1 > year2
+                        and month1 == 2
+                        and day1 == 28
+                        and month2 == 2
+                        and day2 == 29
+                    ):
+                        diff = diff + 1
+
+                result.append(diff)
+            return pd.Series(result)
         else:
             raise NotImplementedError(
                 f"Timestamp difference with {unit} is not supported."
