@@ -9,6 +9,7 @@ concurrency:
   group: release-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
     shell: bash -l {0}
@@ -27,9 +28,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: conda-incubator/setup-miniconda@v2
         with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
           python-version: "3.8"
+          channel-priority: strict
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -61,11 +65,12 @@ jobs:
       - name: Build source distribution
         if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
         run: |
-          pip install -U setuptools-rust
+          mamba setuptools-rust
+
           python setup.py sdist
       - name: Check dist files
         run: |
-          pip install -U twine
+          mamba install twine
 
           twine check dist/*
           ls -lh dist/
