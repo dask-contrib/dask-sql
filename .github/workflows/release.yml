@@ -65,7 +65,7 @@ jobs:
       - name: Build source distribution
         if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
         run: |
-          mamba setuptools-rust
+          mamba install setuptools-rust
 
           python setup.py sdist
       - name: Check dist files
