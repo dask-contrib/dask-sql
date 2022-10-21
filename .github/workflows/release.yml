@@ -27,13 +27,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.8"
-          channel-priority: strict
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -62,6 +55,13 @@ jobs:
           package-dir: .
           output-dir: dist
           config-file: "dask_planner/pyproject.toml"
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
       - name: Build source distribution
         if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
         run: |
