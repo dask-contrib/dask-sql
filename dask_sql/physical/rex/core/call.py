@@ -719,8 +719,8 @@ class DatetimeSubOperation(Operation):
                 month2 = df2[ind].dt.month.compute()[ind]
 
                 day1 = df1[ind].dt.day.compute()[ind]
-                day2 = df2[ind].dt.day.compute()[ind]                
-                
+                day2 = df2[ind].dt.day.compute()[ind]
+
                 # Special logic for leap days
                 leap_day = False
                 if year1 % 4 == 0 or year2 % 4 == 0:
