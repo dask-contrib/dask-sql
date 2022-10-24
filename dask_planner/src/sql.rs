@@ -148,12 +148,12 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "year" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Int64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "atan2" | "mod" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Float64, DataType::Float64],
                     Volatility::Immutable,
                 );
@@ -161,7 +161,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
-                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Float64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -231,23 +231,23 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "every" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Int64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "bit_and" | "bit_or" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Int64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "single_value" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Int64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction =
                     Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_count" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Float64, DataType::Float64],
                     Volatility::Immutable,
                 );
@@ -255,7 +255,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_syy" | "regr_sxx" => {
-                let sig = Signature::variadic(
+                let sig = Signature::exact(
                     vec![DataType::Float64, DataType::Float64],
                     Volatility::Immutable,
                 );
@@ -263,7 +263,7 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "var_pop" => {
-                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let sig = Signature::exact(vec![DataType::Float64], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
