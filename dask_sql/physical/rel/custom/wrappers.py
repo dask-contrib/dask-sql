@@ -233,7 +233,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             else:
                 # TODO: implement Dask-ML's get_scorer() function
                 # scorer = get_scorer(scoring, compute=compute)
-                pass
+                raise NotImplementedError("get_scorer function not implemented")
             return scorer(self, X, y)
         else:
             return self._postfit_estimator.score(X, y)
