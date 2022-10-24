@@ -32,7 +32,7 @@ def cast_datetime_to_string(df):
     return df
 
 
-def eq_sqlite(sql, **dfs):
+def eq_sqlite(sql, check_index=True, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
 
@@ -51,7 +51,7 @@ def eq_sqlite(sql, **dfs):
     dask_result = dask_result.fillna(np.NaN)
     sqlite_result = sqlite_result.fillna(np.NaN)
 
-    assert_eq(dask_result, sqlite_result, check_dtype=False)
+    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=check_index)
 
 
 def make_rand_df(size: int, **kwargs):
@@ -960,6 +960,7 @@ def test_union():
             UNION ALL SELECT * FROM c
         ORDER BY b NULLS FIRST, c NULLS FIRST
         """,
+        check_index=False,
         a=a,
         b=b,
         c=c,
