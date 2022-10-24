@@ -1272,10 +1272,10 @@ mod test {
         assert_eq!(1, statements.len());
         let actual = format!("{:?}", statements[0]);
         let expected = "projection: [\
-        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"\"dsql_totimestamp\"\", quote_style: None }]), \
+        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), \
         args: [\
         Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), \
-        Unnamed(Expr(Value(SingleQuotedString(\"%d/%m/%Y\"))))\
+        Unnamed(Expr(Value(SingleQuotedString(\"\"%d/%m/%Y\"\"))))\
         ], over: None, distinct: false, special: false }))\
         ]";
         assert!(actual.contains(expected));
