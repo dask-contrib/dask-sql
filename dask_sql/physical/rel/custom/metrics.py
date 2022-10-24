@@ -1,3 +1,5 @@
+# Copyright 2017, Dask developers
+# Dask-ML project - https://github.com/dask/dask-ml
 from typing import Optional, TypeVar
 
 import dask
@@ -9,6 +11,7 @@ from dask.array import Array
 from dask.utils import derived_from
 
 ArrayLike = TypeVar("ArrayLike", Array, np.ndarray)
+
 
 def accuracy_score(
     y_true: ArrayLike,

@@ -64,15 +64,12 @@ The key-value parameters control, how and which model is trained:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
       Have a look into the
-      `dask-ml docu on ParallelPostFit <https://ml.dask.org/meta-estimators.html#parallel-prediction-and-transformation>`_
-      to learn more about it. Defaults to false. Typically you set
+      Defaults to false. Typically you set
       it to true for sklearn models if predicting on big data.
     * ``wrap_fit``:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Have a look into the
-      `dask-ml docu on Incremental <https://ml.dask.org/incremental.html>`_
-      to learn more about it. Defaults to false. Typically you set
+      Defaults to false. Typically you set
       it to true for sklearn models if training on big data.
     * ``fit_kwargs``:
       keyword arguments sent to the call to ``fit()``.
@@ -85,7 +82,7 @@ Example:
 .. raw:: html
 
     <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE MODEL</span> <span class="n">my_model</span> <span class="k">WITH</span> <span class="p">(</span>
-        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'dask_ml.xgboost.XGBClassifier'</span><span class="p">,</span>
+        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'sklearn.ensemble.GradientBoostingClassifier'</span><span class="p">,</span>
         <span class="n">target_column</span> <span class="o">=</span> <span class="s1">'target'</span>
     <span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
         <span class="k">SELECT</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">target</span>
@@ -104,11 +101,10 @@ prediction, depending if your model can cope with
 dask dataframes.
 
     * if you are training on relatively small amounts
-      of data but predicting on large data samples
-      (and you are not using a model build for usage with dask
-      from the dask-ml package), you might want to set
-      ``wrap_predict`` to True. With this option,
-      model interference will be parallelized/distributed.
+      of data but predicting on large data samples,
+      you might want to set ``wrap_predict`` to True.
+      With this option, model interference will be
+      parallelized/distributed.
     * If you are training on large amounts of data,
       you can try setting wrap_fit to True. This will
       do the same on the training step, but works only on

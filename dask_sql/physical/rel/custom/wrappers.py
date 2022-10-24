@@ -11,7 +11,8 @@ import dask.delayed
 import numpy as np
 import sklearn.base
 import sklearn.metrics
-from sklearn.metrics import check_scoring as sklearn_check_scoring, make_scorer
+from sklearn.metrics import check_scoring as sklearn_check_scoring
+from sklearn.metrics import make_scorer
 from sklearn.utils.validation import check_is_fitted
 
 try:
@@ -20,7 +21,12 @@ try:
 except ImportError:  # pragma: no cover
     raise ImportError("sklearn must be installed")
 
-from dask_sql.physical.rel.custom.metrics import accuracy_score, log_loss, mean_squared_error, r2_score
+from dask_sql.physical.rel.custom.metrics import (
+    accuracy_score,
+    log_loss,
+    mean_squared_error,
+    r2_score,
+)
 
 logger = logging.getLogger(__name__)
 
