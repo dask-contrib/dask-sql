@@ -42,12 +42,12 @@ class CreateModelPlugin(BaseRelPlugin):
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
-      Defaults to false. Typically you set
-      it to true for sklearn models if predicting on big data.
+      Defaults to false. Typically you set it to true for
+      sklearn models if predicting on big data.
     * wrap_fit: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Defaults to false. Typically you set
-      it to true for sklearn models if training on big data.
+      Defaults to false. Typically you set it to true for
+      sklearn models if training on big data.
     * fit_kwargs: keyword arguments sent to the call to fit().
 
     All other arguments are passed to the constructor of the

@@ -48,9 +48,6 @@ The key-value parameters control, how and which model is trained:
       It is the full python module path to the class of the model to train.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
-      Have a look into the
-      `dask-ml documentation <https://ml.dask.org/index.html>`_
-      for more information on which models work best.
       You might need to install necessary packages to use
       the models.
     * ``target_column``:
@@ -63,14 +60,13 @@ The key-value parameters control, how and which model is trained:
     * ``wrap_predict``:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
-      Have a look into the
-      Defaults to false. Typically you set
-      it to true for sklearn models if predicting on big data.
+      Defaults to false. Typically you set it to true for
+      sklearn models if predicting on big data.
     * ``wrap_fit``:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Defaults to false. Typically you set
-      it to true for sklearn models if training on big data.
+      Defaults to false. Typically you set it to true for
+      sklearn models if training on big data.
     * ``fit_kwargs``:
       keyword arguments sent to the call to ``fit()``.
 

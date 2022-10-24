@@ -30,9 +30,6 @@ class CreateExperimentPlugin(BaseRelPlugin):
     * model_class: Full path to the class of the model which has to be tuned.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
-      Have a look into the
-      [dask-ml documentation](https://ml.dask.org/index.html)
-      for more information on which models work best.
       You might need to install necessary packages to use
       the models.
     * experiment_class : Full path of the Hyperparameter tuner
@@ -64,7 +61,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             CREATE EXPERIMENT my_exp WITH(
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],
                                 learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]
