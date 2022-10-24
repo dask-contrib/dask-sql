@@ -13,7 +13,7 @@ try:
     import sklearn.base
     import sklearn.metrics
 except ImportError:  # pragma: no cover
-    raise ValueError("sklearn must be installed")
+    raise ImportError("sklearn must be installed")
 
 logger = logging.getLogger(__name__)
 
