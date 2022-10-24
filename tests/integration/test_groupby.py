@@ -363,9 +363,7 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.parametrize(
-    "gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.xfail))]
-)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_regr_aggregation(c, timeseries_df, gpu):
     # test regr_count
     regr_count = c.sql(
