@@ -677,10 +677,12 @@ class DatetimeSubOperation(Operation):
 
                 day1 = df1[ind].dt.day.compute()[ind]
                 day2 = df2[ind].dt.day.compute()[ind]
-                # TODO: Account for different month lengths
-                # TODO: Acount for negative results
-                if day2 < day1:
+
+                if diff > 0 and day1 > day2:
                     diff = diff - 1
+                elif diff < 0 and day2 > day1:
+                    diff = diff + 1
+
                 result.append(diff)
             return pd.Series(result)
         elif unit in {"QUARTER", "QUARTERS"}:
@@ -697,10 +699,12 @@ class DatetimeSubOperation(Operation):
 
                 day1 = df1[ind].dt.day.compute()[ind]
                 day2 = df2[ind].dt.day.compute()[ind]
-                # TODO: Account for different month lengths
-                # TODO: Account for negative results
-                if day2 < day1:
+
+                if diff > 0 and day1 > day2:
                     diff = diff - 1
+                elif diff < 0 and day2 > day1:
+                    diff = diff + 1
+
                 result.append(diff)
             return pd.Series(result)
         elif unit in {"YEAR", "YEARS"}:
@@ -711,14 +715,15 @@ class DatetimeSubOperation(Operation):
                 year2 = df2[ind].dt.year.compute()[ind]
                 diff = year2 - year1
 
-                # Account for leap years
+                month1 = df1[ind].dt.month.compute()[ind]
+                month2 = df2[ind].dt.month.compute()[ind]
+
+                day1 = df1[ind].dt.day.compute()[ind]
+                day2 = df2[ind].dt.day.compute()[ind]                
+                
+                # Special logic for leap days
+                leap_day = False
                 if year1 % 4 == 0 or year2 % 4 == 0:
-                    month1 = df1[ind].dt.month.compute()[ind]
-                    month2 = df2[ind].dt.month.compute()[ind]
-
-                    day1 = df1[ind].dt.day.compute()[ind]
-                    day2 = df2[ind].dt.day.compute()[ind]
-
                     if (
                         year1 < year2
                         and month1 == 2
@@ -727,6 +732,7 @@ class DatetimeSubOperation(Operation):
                         and day2 == 28
                     ):
                         diff = diff - 1
+                        leap_day = True
                     elif (
                         year1 > year2
                         and month1 == 2
@@ -735,6 +741,16 @@ class DatetimeSubOperation(Operation):
                         and day2 == 29
                     ):
                         diff = diff + 1
+                        leap_day = True
+                if not leap_day:
+                    # Special logic to add or remove a year,
+                    # depending on the month/day of the year
+                    if year2 > year1 and month1 >= month2:
+                        if (month2 == month1 and day1 > day2) or month1 > month2:
+                            diff = diff - 1
+                    elif year1 > year2 and month2 >= month1:
+                        if (month2 == month1 and day2 > day1) or month2 > month1:
+                            diff = diff + 1
 
                 result.append(diff)
             return pd.Series(result)
