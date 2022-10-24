@@ -2,7 +2,7 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 
-from dask_planner.rust import DaskStatistics
+from dask_sql import Statistics
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -23,10 +23,11 @@ def test_sql_query_explain(c, gpu):
     assert "Aggregate: groupBy=[[other_df.a]], aggr=[[MIN(other_df.a)]]" in sql_string
 
 
+@pytest.mark.xfail(reason="Need to add statistics to Rust optimizer")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_statistics_explain(c, gpu):
     df = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", df, statistics=DaskStatistics(row_count=1337))
+    c.create_table("df", df, statistics=Statistics(row_count=1337), gpu=gpu)
 
     sql_string = c.explain("SELECT * FROM df")
 

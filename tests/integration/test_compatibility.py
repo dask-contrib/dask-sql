@@ -594,13 +594,16 @@ def test_window_row_number_partition_by():
     )
 
 
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
 def test_window_ranks():
     a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
     eq_sqlite(
         """
         SELECT *,
             RANK() OVER (PARTITION BY a ORDER BY b DESC NULLS FIRST, c) AS a1,
-            DENSE_RANK() OVER (ORDER BY a ASC, b DESC NULLS LAST, c DESC) AS a2
+            DENSE_RANK() OVER (ORDER BY a ASC, b DESC NULLS LAST, c DESC) AS a2,
             PERCENT_RANK() OVER (ORDER BY a ASC, b ASC NULLS LAST, c) AS a4
         FROM a
         """,
@@ -608,6 +611,9 @@ def test_window_ranks():
     )
 
 
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
 def test_window_ranks_partition_by():
     a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
     eq_sqlite(
@@ -625,6 +631,9 @@ def test_window_ranks_partition_by():
     )
 
 
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
 def test_window_lead_lag():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
     eq_sqlite(
@@ -645,6 +654,9 @@ def test_window_lead_lag():
     )
 
 
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
 def test_window_lead_lag_partition_by():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
     eq_sqlite(
@@ -954,6 +966,9 @@ def test_union():
     )
 
 
+@pytest.mark.xfail(
+    reason="'ANTI' joins not supported yet, see https://github.com/dask-contrib/dask-sql/issues/879"
+)
 def test_except():
     a = make_rand_df(30, b=(int, 10), c=(str, 10))
     b = make_rand_df(80, b=(int, 50), c=(str, 50))
@@ -970,6 +985,9 @@ def test_except():
     )
 
 
+@pytest.mark.xfail(
+    reason="INTERSECT is not compliant with SQLite, see https://github.com/dask-contrib/dask-sql/issues/880"
+)
 def test_intersect():
     a = make_rand_df(30, b=(int, 10), c=(str, 10))
     b = make_rand_df(80, b=(int, 50), c=(str, 50))
