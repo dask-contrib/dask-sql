@@ -1,20 +1,24 @@
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::decorrelate_where_exists::DecorrelateWhereExists;
-use datafusion_optimizer::decorrelate_where_in::DecorrelateWhereIn;
-use datafusion_optimizer::eliminate_filter::EliminateFilter;
-use datafusion_optimizer::reduce_cross_join::ReduceCrossJoin;
-use datafusion_optimizer::reduce_outer_join::ReduceOuterJoin;
-use datafusion_optimizer::rewrite_disjunctive_predicate::RewriteDisjunctivePredicate;
-use datafusion_optimizer::scalar_subquery_to_join::ScalarSubqueryToJoin;
-use datafusion_optimizer::simplify_expressions::SimplifyExpressions;
-use datafusion_optimizer::type_coercion::TypeCoercion;
-use datafusion_optimizer::unwrap_cast_in_comparison::UnwrapCastInComparison;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate, eliminate_limit::EliminateLimit,
-    filter_null_join_keys::FilterNullJoinKeys, filter_push_down::FilterPushDown,
-    limit_push_down::LimitPushDown, optimizer::OptimizerRule,
-    projection_push_down::ProjectionPushDown, subquery_filter_to_join::SubqueryFilterToJoin,
+    common_subexpr_eliminate::CommonSubexprEliminate,
+    decorrelate_where_exists::DecorrelateWhereExists,
+    decorrelate_where_in::DecorrelateWhereIn,
+    eliminate_filter::EliminateFilter,
+    eliminate_limit::EliminateLimit,
+    filter_null_join_keys::FilterNullJoinKeys,
+    filter_push_down::FilterPushDown,
+    limit_push_down::LimitPushDown,
+    optimizer::OptimizerRule,
+    projection_push_down::ProjectionPushDown,
+    reduce_cross_join::ReduceCrossJoin,
+    reduce_outer_join::ReduceOuterJoin,
+    rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
+    scalar_subquery_to_join::ScalarSubqueryToJoin,
+    simplify_expressions::SimplifyExpressions,
+    subquery_filter_to_join::SubqueryFilterToJoin,
+    type_coercion::TypeCoercion,
+    unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerConfig,
 };
 use log::trace;
@@ -49,7 +53,6 @@ impl DaskSqlOptimizer {
             Box::new(ReduceCrossJoin::new()),
             Box::new(CommonSubexprEliminate::new()),
             Box::new(EliminateLimit::new()),
-            Box::new(ProjectionPushDown::new()),
             Box::new(RewriteDisjunctivePredicate::new()),
             Box::new(FilterNullJoinKeys::default()),
             Box::new(ReduceOuterJoin::new()),
@@ -58,6 +61,12 @@ impl DaskSqlOptimizer {
             // Box::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
             Box::new(EliminateAggDistinct::new()),
+            // The previous optimizations added expressions and projections,
+            // that might benefit from the following rules
+            Box::new(SimplifyExpressions::new()),
+            Box::new(UnwrapCastInComparison::new()),
+            Box::new(CommonSubexprEliminate::new()),
+            Box::new(ProjectionPushDown::new()),
         ];
         Self {
             skip_failing_rules,
@@ -101,8 +110,8 @@ impl DaskSqlOptimizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::dialect::DaskDialect;
-    use crate::sql::optimizer::DaskSqlOptimizer;
+    use std::{any::Any, collections::HashMap, sync::Arc};
+
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
     use datafusion_common::{DataFusionError, Result};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
@@ -111,9 +120,8 @@ mod tests {
         sqlparser::{ast::Statement, parser::Parser},
         TableReference,
     };
-    use std::any::Any;
-    use std::collections::HashMap;
-    use std::sync::Arc;
+
+    use crate::{dialect::DaskDialect, sql::optimizer::DaskSqlOptimizer};
 
     #[test]
     fn subquery_filter_with_cast() -> Result<()> {
