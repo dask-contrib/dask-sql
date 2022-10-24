@@ -673,7 +673,7 @@ class DatetimeSubOperation(Operation):
 
                 month1 = df1[ind].dt.month.compute()[ind]
                 month2 = df2[ind].dt.month.compute()[ind]
-                diff += (month2 - month1)
+                diff += month2 - month1
 
                 day1 = df1[ind].dt.day.compute()[ind]
                 day2 = df2[ind].dt.day.compute()[ind]

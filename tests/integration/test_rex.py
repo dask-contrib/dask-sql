@@ -714,7 +714,7 @@ def test_timestampdiff(c):
         }
     )
 
-    assert_eq(df, expected_df)
+    assert_eq(df, expected_df, check_dtype=False)
 
     test = pd.DataFrame(
         {
