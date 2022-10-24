@@ -1254,6 +1254,34 @@ mod test {
     }
 
     #[test]
+    fn to_timestamp() {
+        let sql = "SELECT TO_TIMESTAMP(d) FROM t";
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+        let actual = format!("{:?}", statements[0]);
+        let expected = "projection: [\
+        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), \
+        args: [\
+        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None })))\
+        ], over: None, distinct: false, special: false }))\
+        ]";
+        assert!(actual.contains(expected));
+
+        let sql = "SELECT TO_TIMESTAMP(d, \"%d/%m/%Y\") FROM t";
+        let statements = DaskParser::parse_sql(sql).unwrap();
+        assert_eq!(1, statements.len());
+        let actual = format!("{:?}", statements[0]);
+        let expected = "projection: [\
+        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), \
+        args: [\
+        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), \
+        Unnamed(Expr(Value(SingleQuotedString(\"%d/%m/%Y\"))))\
+        ], over: None, distinct: false, special: false }))\
+        ]";
+        assert!(actual.contains(expected));
+    }
+
+    #[test]
     fn create_model() {
         let sql = r#"CREATE MODEL my_model WITH (
             model_class = 'mock.MagicMock',

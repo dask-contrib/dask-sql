@@ -35,6 +35,11 @@ if TYPE_CHECKING:
     import dask_sql
     from dask_planner.rust import Expression, LogicalPlan
 
+try:
+    import cudf as pdlike
+except ImportError:
+    import pandas as pdlike
+
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
 
@@ -610,13 +615,13 @@ class ToTimestampOperation(Operation):
         format = format.replace("'", "")
 
         if df.dtype == "object":
-            df = pd.to_datetime(df)
+            df = pdlike.to_datetime(df)
             return df.strftime(format)
         else:
-            df = pd.to_datetime(df, unit="s")
+            df = pdlike.to_datetime(df, unit="s")
             df = df.strftime(format)
             result = [timestamp for timestamp in df]
-            return pd.Series(result)
+            return pdlike.Series(result)
 
 
 class YearOperation(Operation):
