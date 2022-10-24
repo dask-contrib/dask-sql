@@ -50,7 +50,7 @@ class CreateModelPlugin(BaseRelPlugin):
       to learn more about it. Defaults to false. Typically you set
       it to true for sklearn models if predicting on big data.
     * wrap_fit: Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.Incremental`.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
       Have a look into the
       [dask-ml docu](https://ml.dask.org/incremental.html)
       to learn more about it. Defaults to false. Typically you set
@@ -158,10 +158,7 @@ class CreateModelPlugin(BaseRelPlugin):
 
         model = ModelClass(**kwargs)
         if wrap_fit:
-            try:
-                from dask_ml.wrappers import Incremental
-            except ImportError:  # pragma: no cover
-                raise ValueError("Wrapping requires dask-ml to be installed.")
+            from dask_sql.physical.rel.custom.wrappers import Incremental
 
             model = Incremental(estimator=model)
 

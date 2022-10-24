@@ -69,7 +69,7 @@ The key-value parameters control, how and which model is trained:
       it to true for sklearn models if predicting on big data.
     * ``wrap_fit``:
       Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.Incremental`.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
       Have a look into the
       `dask-ml docu on Incremental <https://ml.dask.org/incremental.html>`_
       to learn more about it. Defaults to false. Typically you set
