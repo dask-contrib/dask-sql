@@ -152,7 +152,7 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
-            "atan2" | "mod" => {
+            "mod" => {
                 let sig = generate_numeric_signatures(2);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
@@ -163,15 +163,18 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "rand" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Volatile);
+                let sig = Signature::one_of(vec![
+                    TypeSignature::Exact(vec![]),
+                    TypeSignature::Exact(vec![DataType::Int64]),
+                ], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "rand_integer" => {
-                let sig = Signature::variadic(
-                    vec![DataType::Int64, DataType::Int64],
-                    Volatility::Volatile,
-                );
+                let sig = Signature::one_of(vec![
+                    TypeSignature::Exact(vec![DataType::Int64]),
+                    TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
+                ], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -250,11 +253,6 @@ impl ContextProvider for DaskSQLContext {
             }
             "regr_syy" | "regr_sxx" => {
                 let sig = generate_numeric_signatures(2);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
-            }
-            "var_pop" => {
-                let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
@@ -571,7 +569,19 @@ impl PlanVisitor for OptimizablePlanVisitor {
 fn generate_numeric_signatures(n: i32) -> Signature {
     // Generates all combinations of vectors of length n,
     // i.e., the Cartesian product
-    let datatypes = vec![DataType::Int8, DataType::Int16, DataType::Int32, DataType::Int64, DataType::UInt8, DataType::UInt16, DataType::UInt32, DataType::UInt64, DataType::Float16, DataType::Float32, DataType::Float64];
+    let datatypes = vec![
+        DataType::Int8,
+        DataType::Int16,
+        DataType::Int32,
+        DataType::Int64,
+        DataType::UInt8,
+        DataType::UInt16,
+        DataType::UInt32,
+        DataType::UInt64,
+        DataType::Float16,
+        DataType::Float32,
+        DataType::Float64,
+    ];
     let mut cartesian_setup = vec![];
     // cartesian_setup = [datatypes, datatypes] when n == 2, etc.
     for _ in 0..n {
@@ -605,5 +615,5 @@ fn generate_numeric_signatures(n: i32) -> Signature {
         one_of_vector.push(TypeSignature::Exact(vector.clone()));
     }
 
-    return Signature::one_of(one_of_vector.clone(), Volatility::Immutable);
+    Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
 }
