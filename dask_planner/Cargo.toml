@@ -9,12 +9,12 @@ edition = "2021"
 rust-version = "1.62"
 
 [dependencies]
-arrow = { version = "24.0.0", features = ["prettyprint"] }
+arrow = { version = "25.0.0", features = ["prettyprint"] }
 async-trait = "0.1.58"
-datafusion-common = { git = "https://github.com/apache/arrow-datafusion/", rev = "d2d8447ed23bab3c9b9fd89abe469d584e84df6b" }
-datafusion-expr = { git = "https://github.com/apache/arrow-datafusion/", rev = "d2d8447ed23bab3c9b9fd89abe469d584e84df6b" }
-datafusion-optimizer = { git = "https://github.com/apache/arrow-datafusion/", rev = "d2d8447ed23bab3c9b9fd89abe469d584e84df6b" }
-datafusion-sql = { git = "https://github.com/apache/arrow-datafusion/", rev = "d2d8447ed23bab3c9b9fd89abe469d584e84df6b" }
+datafusion-common = { git = "https://github.com/apache/arrow-datafusion/", rev = "54d2870a56d8d8f914a617a7e2d52e387ef5dba2" }
+datafusion-expr = { git = "https://github.com/apache/arrow-datafusion/", rev = "54d2870a56d8d8f914a617a7e2d52e387ef5dba2" }
+datafusion-optimizer = { git = "https://github.com/apache/arrow-datafusion/", rev = "54d2870a56d8d8f914a617a7e2d52e387ef5dba2" }
+datafusion-sql = { git = "https://github.com/apache/arrow-datafusion/", rev = "54d2870a56d8d8f914a617a7e2d52e387ef5dba2" }
 env_logger = "0.9"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
