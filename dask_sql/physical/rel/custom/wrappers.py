@@ -8,6 +8,8 @@ from typing import Any, Callable, Tuple, Union
 import dask.array as da
 import dask.dataframe as dd
 import dask.delayed
+from dask.delayed import Delayed
+from dask.highlevelgraph import HighLevelGraph
 import numpy as np
 import sklearn.base
 import sklearn.metrics
@@ -512,7 +514,7 @@ class Incremental(ParallelPostFit):
         if not dask.is_dask_collection(X) and not dask.is_dask_collection(y):
             result = estimator.partial_fit(X=X, y=y, **fit_kwargs)
         else:
-            result = estimator.fit(
+            result = fit(
                 estimator,
                 X,
                 y,
@@ -698,3 +700,109 @@ def check_scoring(estimator, scoring=None, **kwargs):
         func, kwargs = SCORERS[scoring]
         return make_scorer(func, **kwargs)
     return res
+
+
+def fit(
+    model,
+    x,
+    y,
+    compute=True,
+    shuffle_blocks=True,
+    random_state=None,
+    assume_equal_chunks=False,
+    **kwargs
+):
+    """Fit scikit learn model against dask arrays
+    Model must support the ``partial_fit`` interface for online or batch
+    learning.
+    Ideally your rows are independent and identically distributed. By default,
+    this function will step through chunks of the arrays in random order.
+    Parameters
+    ----------
+    model: sklearn model
+        Any model supporting partial_fit interface
+    x: dask Array
+        Two dimensional array, likely tall and skinny
+    y: dask Array
+        One dimensional array with same chunks as x's rows
+    compute : bool
+        Whether to compute this result
+    shuffle_blocks : bool
+        Whether to shuffle the blocks with ``random_state`` or not
+    random_state : int or numpy.random.RandomState
+        Random state to use when shuffling blocks
+    kwargs:
+        options to pass to partial_fit
+    """
+
+    nblocks, x_name = _blocks_and_name(x)
+    if y is not None:
+        y_nblocks, y_name = _blocks_and_name(y)
+        assert y_nblocks == nblocks
+    else:
+        y_name = ""
+
+    if not hasattr(model, "partial_fit"):
+        msg = "The class '{}' does not implement 'partial_fit'."
+        raise ValueError(msg.format(type(model)))
+
+    order = list(range(nblocks))
+    if shuffle_blocks:
+        rng = sklearn.utils.check_random_state(random_state)
+        rng.shuffle(order)
+
+    name = "fit-" + dask.base.tokenize(model, x, y, kwargs, order)
+
+    if hasattr(x, "chunks") and x.ndim > 1:
+        x_extra = (0,)
+    else:
+        x_extra = ()
+
+    dsk = {(name, -1): model}
+    dsk.update(
+        {
+            (name, i): (
+                _partial_fit,
+                (name, i - 1),
+                (x_name, order[i]) + x_extra,
+                (y_name, order[i]),
+                kwargs,
+            )
+            for i in range(nblocks)
+        }
+    )
+
+    dependencies = [x]
+    if y is not None:
+        dependencies.append(y)
+    new_dsk = HighLevelGraph.from_collections(name, dsk, dependencies=dependencies)
+    value = Delayed((name, nblocks - 1), dsk)#new_dsk)
+
+    if compute:
+        return value.compute()
+    else:
+        return value
+
+
+def _blocks_and_name(obj):
+    if hasattr(obj, "chunks"):
+        nblocks = len(obj.chunks[0])
+        name = obj.name
+
+    elif hasattr(obj, "npartitions"):
+        # dataframe, bag
+        nblocks = obj.npartitions
+        if hasattr(obj, "_name"):
+            # dataframe
+            name = obj._name
+        else:
+            # bag
+            name = obj.name
+
+    return nblocks, name
+
+
+def _partial_fit(model, x, y, kwargs=None):
+    kwargs = kwargs or dict()
+    model.partial_fit(x, y, **kwargs)
+    return model
