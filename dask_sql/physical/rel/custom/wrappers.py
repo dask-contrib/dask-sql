@@ -8,11 +8,11 @@ from typing import Any, Callable, Tuple, Union
 import dask.array as da
 import dask.dataframe as dd
 import dask.delayed
-from dask.delayed import Delayed
-from dask.highlevelgraph import HighLevelGraph
 import numpy as np
 import sklearn.base
 import sklearn.metrics
+from dask.delayed import Delayed
+from dask.highlevelgraph import HighLevelGraph
 from sklearn.metrics import check_scoring as sklearn_check_scoring
 from sklearn.metrics import make_scorer
 from sklearn.utils.validation import check_is_fitted
@@ -710,7 +710,7 @@ def fit(
     shuffle_blocks=True,
     random_state=None,
     assume_equal_chunks=False,
-    **kwargs
+    **kwargs,
 ):
     """Fit scikit learn model against dask arrays
     Model must support the ``partial_fit`` interface for online or batch
@@ -776,7 +776,7 @@ def fit(
     if y is not None:
         dependencies.append(y)
     new_dsk = HighLevelGraph.from_collections(name, dsk, dependencies=dependencies)
-    value = Delayed((name, nblocks - 1), dsk)#new_dsk)
+    value = Delayed((name, nblocks - 1), new_dsk)
 
     if compute:
         return value.compute()
