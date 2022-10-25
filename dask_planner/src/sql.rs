@@ -163,18 +163,24 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "rand" => {
-                let sig = Signature::one_of(vec![
-                    TypeSignature::Exact(vec![]),
-                    TypeSignature::Exact(vec![DataType::Int64]),
-                ], Volatility::Immutable);
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![]),
+                        TypeSignature::Exact(vec![DataType::Int64]),
+                    ],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "rand_integer" => {
-                let sig = Signature::one_of(vec![
-                    TypeSignature::Exact(vec![DataType::Int64]),
-                    TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
-                ], Volatility::Immutable);
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Int64]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
+                    ],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
