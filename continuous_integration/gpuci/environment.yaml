@@ -20,6 +20,8 @@ dependencies:
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
+# TODO: remove once issues with pytest=7.2.0 are resolved
+- py
 - psycopg2
 - pyarrow>=6.0.1
 - pygments>=2.7.1
