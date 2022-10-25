@@ -12,7 +12,7 @@ dependencies:
   - fugue>=0.7.0
   - jpype1>=1.0.2
   - fastapi>=0.69.0
-  - uvicorn>=0.11.3
+  - uvicorn>=0.13.4
   - tzlocal>=2.1
   - prompt_toolkit>=3.0.8
   - pygments>=2.7.1

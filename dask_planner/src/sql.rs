@@ -9,47 +9,61 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use crate::sql::exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err};
+use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion_common::{DFSchema, DataFusionError};
-use datafusion_expr::logical_plan::Extension;
 use datafusion_expr::{
-    AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan, PlanVisitor, ReturnTypeFunction,
-    ScalarFunctionImplementation, ScalarUDF, Signature, StateTypeFunction, TableSource,
-    TypeSignature, Volatility,
+    logical_plan::Extension,
+    AccumulatorFunctionImplementation,
+    AggregateUDF,
+    LogicalPlan,
+    PlanVisitor,
+    ReturnTypeFunction,
+    ScalarFunctionImplementation,
+    ScalarUDF,
+    Signature,
+    StateTypeFunction,
+    TableSource,
+    TypeSignature,
+    Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
     planner::{ContextProvider, SqlToRel},
-    ResolvedTableReference, TableReference,
+    ResolvedTableReference,
+    TableReference,
 };
-
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use crate::dialect::DaskDialect;
-use crate::parser::{DaskParser, DaskStatement};
-use crate::sql::logical::analyze_table::AnalyzeTablePlanNode;
-use crate::sql::logical::create_experiment::CreateExperimentPlanNode;
-use crate::sql::logical::create_model::CreateModelPlanNode;
-use crate::sql::logical::create_table::CreateTablePlanNode;
-use crate::sql::logical::create_view::CreateViewPlanNode;
-use crate::sql::logical::describe_model::DescribeModelPlanNode;
-use crate::sql::logical::drop_model::DropModelPlanNode;
-use crate::sql::logical::export_model::ExportModelPlanNode;
-use crate::sql::logical::predict_model::PredictModelPlanNode;
-use crate::sql::logical::show_columns::ShowColumnsPlanNode;
-use crate::sql::logical::show_models::ShowModelsPlanNode;
-use crate::sql::logical::show_schema::ShowSchemasPlanNode;
-use crate::sql::logical::show_tables::ShowTablesPlanNode;
-
-use crate::sql::logical::PyLogicalPlan;
 use pyo3::prelude::*;
 
-use self::logical::create_catalog_schema::CreateCatalogSchemaPlanNode;
-use self::logical::drop_schema::DropSchemaPlanNode;
-use self::logical::use_schema::UseSchemaPlanNode;
+use self::logical::{
+    create_catalog_schema::CreateCatalogSchemaPlanNode,
+    drop_schema::DropSchemaPlanNode,
+    use_schema::UseSchemaPlanNode,
+};
+use crate::{
+    dialect::DaskDialect,
+    parser::{DaskParser, DaskStatement},
+    sql::{
+        exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
+        logical::{
+            analyze_table::AnalyzeTablePlanNode,
+            create_experiment::CreateExperimentPlanNode,
+            create_model::CreateModelPlanNode,
+            create_table::CreateTablePlanNode,
+            create_view::CreateViewPlanNode,
+            describe_model::DescribeModelPlanNode,
+            drop_model::DropModelPlanNode,
+            export_model::ExportModelPlanNode,
+            predict_model::PredictModelPlanNode,
+            show_columns::ShowColumnsPlanNode,
+            show_models::ShowModelsPlanNode,
+            show_schema::ShowSchemasPlanNode,
+            show_tables::ShowTablesPlanNode,
+            PyLogicalPlan,
+        },
+    },
+};
 
 /// DaskSQLContext is main interface used for interacting with DataFusion to
 /// parse SQL queries, build logical plans, and optimize logical plans.
@@ -292,7 +306,7 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
+    fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 }
