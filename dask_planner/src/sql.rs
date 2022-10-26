@@ -306,7 +306,7 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
+    fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 }

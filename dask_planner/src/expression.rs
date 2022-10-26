@@ -3,13 +3,14 @@ use std::{convert::From, sync::Arc};
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::{
-    expr::BinaryExpr,
+    expr::{BinaryExpr, Cast},
     lit,
     utils::exprlist_to_fields,
     Between,
     BuiltinScalarFunction,
     Case,
     Expr,
+    GetIndexedField,
     Like,
     LogicalPlan,
     Operator,
@@ -269,8 +270,8 @@ impl PyExpr {
             | Expr::IsNotFalse(expr)
             | Expr::IsNotUnknown(expr)
             | Expr::Negative(expr)
-            | Expr::GetIndexedField { expr, .. }
-            | Expr::Cast { expr, .. }
+            | Expr::GetIndexedField(GetIndexedField { expr, .. })
+            | Expr::Cast(Cast { expr, .. })
             | Expr::TryCast { expr, .. }
             | Expr::Sort { expr, .. }
             | Expr::InSubquery { expr, .. } => {
@@ -485,6 +486,7 @@ impl PyExpr {
                 ScalarValue::IntervalMonthDayNano(..) => "IntervalMonthDayNano",
                 ScalarValue::List(..) => "List",
                 ScalarValue::Struct(..) => "Struct",
+                ScalarValue::FixedSizeBinary(_, _) => "FixedSizeBinary",
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
                 BuiltinScalarFunction::Abs => "Abs",
@@ -496,7 +498,7 @@ impl PyExpr {
                     )))
                 }
             },
-            Expr::Cast { expr: _, data_type } => match data_type {
+            Expr::Cast(Cast { expr: _, data_type }) => match data_type {
                 DataType::Null => "NULL",
                 DataType::Boolean => "BOOLEAN",
                 DataType::Int8 | DataType::UInt8 => "TINYINT",
