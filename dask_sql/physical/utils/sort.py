@@ -12,12 +12,19 @@ def apply_sort(
     sort_columns: List[str],
     sort_ascending: List[bool],
     sort_null_first: List[bool],
+    sort_num_rows: int = None,
 ) -> dd.DataFrame:
     # when sort_values doesn't support lists of ascending / null
     # position booleans, we can still do the sort provided that
     # the list(s) are homogeneous:
     single_ascending = len(set(sort_ascending)) == 1
     single_null_first = len(set(sort_null_first)) == 1
+
+    if sort_num_rows is not None and single_ascending and not any(sort_null_first):
+        if sort_ascending[0]:
+            return df.nsmallest(n=sort_num_rows, columns=sort_columns)
+        else:
+            return df.nlargest(n=sort_num_rows, columns=sort_columns)
 
     # pandas / cudf don't support lists of null positions
     if df.npartitions == 1 and single_null_first:

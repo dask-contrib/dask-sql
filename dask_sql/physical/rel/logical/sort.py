@@ -27,9 +27,16 @@ class DaskSortPlugin(BaseRelPlugin):
         ]
         sort_ascending = [expr.isSortAscending() for expr in sort_expressions]
         sort_null_first = [expr.isSortNullsFirst() for expr in sort_expressions]
-
-        df = df.persist()
-        df = apply_sort(df, sort_columns, sort_ascending, sort_null_first)
+        sort_num_rows = rel.sort().getNumRows()
+        if (
+            sort_num_rows is None
+            or any(sort_null_first)
+            or len(set(sort_ascending)) != 1
+        ):
+            df = df.persist()
+        df = apply_sort(
+            df, sort_columns, sort_ascending, sort_null_first, sort_num_rows
+        )
 
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         # No column type has changed, so no need to cast again
