@@ -195,7 +195,7 @@ def test_transform(kind):
 
 
 @pytest.mark.parametrize("dataframes", [False, True])
-def test_incremental_basic(scheduler, dataframes):
+def test_incremental_basic(dataframes):
     # Create observations that we know linear models can recover
     n, d = 100, 3
     rng = da.random.RandomState(42)
@@ -220,9 +220,7 @@ def test_incremental_basic(scheduler, dataframes):
         y = y.to_dask_array(lengths=True)
 
     for slice_ in da.core.slices_from_chunks(X.chunks):
-        est2.partial_fit(
-            X[slice_].compute(), y[slice_[0]].compute(), classes=[0, 1]
-        )
+        est2.partial_fit(X[slice_].compute(), y[slice_[0]].compute(), classes=[0, 1])
 
     assert isinstance(result.estimator_.coef_, np.ndarray)
     rel_error = np.linalg.norm(clf.coef_ - est2.coef_)
