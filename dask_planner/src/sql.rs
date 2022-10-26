@@ -623,3 +623,60 @@ fn generate_numeric_signatures(n: i32) -> Signature {
 
     Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
 }
+
+#[allow(dead_code)]
+fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
+    let mut exact_vector = vec![];
+    let mut datatypes_iter = cartesian_setup.iter();
+    // First pass
+    if let Some(first_iter) = datatypes_iter.next() {
+        for datatype in first_iter {
+            exact_vector.push(vec![datatype.clone()]);
+        }
+    }
+    // Generate the Cartesian product
+    for iter in datatypes_iter {
+        let mut outer_temp = vec![];
+        for outer_datatype in exact_vector {
+            for inner_datatype in iter {
+                let mut inner_temp = outer_datatype.clone();
+                inner_temp.push(inner_datatype.clone());
+                outer_temp.push(inner_temp);
+            }
+        }
+        exact_vector = outer_temp;
+    }
+
+    // Create vector of TypeSignatures
+    let mut one_of_vector = vec![];
+    for vector in exact_vector.iter() {
+        one_of_vector.push(TypeSignature::Exact(vector.clone()));
+    }
+
+    Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sql::generate_signatures;
+    use arrow::datatypes::DataType;
+    use datafusion_expr::{Signature, TypeSignature, Volatility};
+
+    #[test]
+    fn test_generate_signatures() {
+        let sig = generate_signatures(vec![
+            vec![DataType::Int64, DataType::Float64],
+            vec![DataType::Utf8, DataType::Int64]
+        ]);
+        let expected = Signature::one_of(
+            vec![
+                TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
+                TypeSignature::Exact(vec![DataType::Float64, DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Float64, DataType::Int64]),
+            ],
+            Volatility::Immutable,
+        );
+        assert_eq!(sig, expected);
+    }
+}
