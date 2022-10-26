@@ -1,20 +1,21 @@
 # Copyright 2017, Dask developers
 # Dask-ML project - https://github.com/dask/dask-ml
+from collections.abc import Sequence
+
 import dask
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from collections.abc import Sequence
+from dask.array.utils import assert_eq as assert_eq_ar
+from dask.dataframe.utils import assert_eq as assert_eq_df
 from sklearn.base import clone
 from sklearn.decomposition import PCA
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 
-from dask.array.utils import assert_eq as assert_eq_ar
-from dask.dataframe.utils import assert_eq as assert_eq_df
-from dask_sql.physical.rel.custom.wrappers import ParallelPostFit, Incremental
+from dask_sql.physical.rel.custom.wrappers import Incremental, ParallelPostFit
 
 
 def _check_axis_partitioning(chunks, n_features):
@@ -33,7 +34,7 @@ def check_random_state(random_state):
     if random_state is None:
         return da.random.RandomState()
     # elif isinstance(random_state, Integral):
-        # return da.random.RandomState(random_state)
+    #     return da.random.RandomState(random_state)
     elif isinstance(random_state, np.random.RandomState):
         return da.random.RandomState(random_state.randint())
     elif isinstance(random_state, da.random.RandomState):
@@ -206,47 +207,46 @@ def test_incremental_basic(scheduler, dataframes):
         X = dd.from_array(X)
         y = dd.from_array(y)
 
-    with scheduler() as (s, [_, _]):
-        est1 = SGDClassifier(random_state=0, tol=1e-3, average=True)
-        est2 = clone(est1)
+    est1 = SGDClassifier(random_state=0, tol=1e-3, average=True)
+    est2 = clone(est1)
 
-        clf = Incremental(est1, random_state=0)
-        result = clf.fit(X, y, classes=[0, 1])
-        assert result is clf
+    clf = Incremental(est1, random_state=0)
+    result = clf.fit(X, y, classes=[0, 1])
+    assert result is clf
 
-        # est2 is a sklearn optimizer; this is just a benchmark
-        if dataframes:
-            X = X.to_dask_array(lengths=True)
-            y = y.to_dask_array(lengths=True)
+    # est2 is a sklearn optimizer; this is just a benchmark
+    if dataframes:
+        X = X.to_dask_array(lengths=True)
+        y = y.to_dask_array(lengths=True)
 
-        for slice_ in da.core.slices_from_chunks(X.chunks):
-            est2.partial_fit(
-                X[slice_].compute(), y[slice_[0]].compute(), classes=[0, 1]
-            )
+    for slice_ in da.core.slices_from_chunks(X.chunks):
+        est2.partial_fit(
+            X[slice_].compute(), y[slice_[0]].compute(), classes=[0, 1]
+        )
 
-        assert isinstance(result.estimator_.coef_, np.ndarray)
-        rel_error = np.linalg.norm(clf.coef_ - est2.coef_)
-        rel_error /= np.linalg.norm(clf.coef_)
-        assert rel_error < 0.9
+    assert isinstance(result.estimator_.coef_, np.ndarray)
+    rel_error = np.linalg.norm(clf.coef_ - est2.coef_)
+    rel_error /= np.linalg.norm(clf.coef_)
+    assert rel_error < 0.9
 
-        assert set(dir(clf.estimator_)) == set(dir(est2))
+    assert set(dir(clf.estimator_)) == set(dir(est2))
 
-        #  Predict
-        result = clf.predict(X)
-        expected = est2.predict(X)
-        assert isinstance(result, da.Array)
-        if dataframes:
-            # Compute is needed because chunk sizes of this array are unknown
-            result = result.compute()
-        rel_error = np.linalg.norm(result - expected)
-        rel_error /= np.linalg.norm(expected)
-        assert rel_error < 0.3
+    #  Predict
+    result = clf.predict(X)
+    expected = est2.predict(X)
+    assert isinstance(result, da.Array)
+    if dataframes:
+        # Compute is needed because chunk sizes of this array are unknown
+        result = result.compute()
+    rel_error = np.linalg.norm(result - expected)
+    rel_error /= np.linalg.norm(expected)
+    assert rel_error < 0.3
 
-        # score
-        result = clf.score(X, y)
-        expected = est2.score(*dask.compute(X, y))
-        assert abs(result - expected) < 0.1
+    # score
+    result = clf.score(X, y)
+    expected = est2.score(*dask.compute(X, y))
+    assert abs(result - expected) < 0.1
 
-        clf = Incremental(SGDClassifier(random_state=0, tol=1e-3, average=True))
-        clf.partial_fit(X, y, classes=[0, 1])
-        assert set(dir(clf.estimator_)) == set(dir(est2))
+    clf = Incremental(SGDClassifier(random_state=0, tol=1e-3, average=True))
+    clf.partial_fit(X, y, classes=[0, 1])
+    assert set(dir(clf.estimator_)) == set(dir(est2))
