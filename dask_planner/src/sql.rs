@@ -658,15 +658,16 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use crate::sql::generate_signatures;
     use arrow::datatypes::DataType;
     use datafusion_expr::{Signature, TypeSignature, Volatility};
+
+    use crate::sql::generate_signatures;
 
     #[test]
     fn test_generate_signatures() {
         let sig = generate_signatures(vec![
             vec![DataType::Int64, DataType::Float64],
-            vec![DataType::Utf8, DataType::Int64]
+            vec![DataType::Utf8, DataType::Int64],
         ]);
         let expected = Signature::one_of(
             vec![
