@@ -62,7 +62,7 @@ The key-value parameters control, how and which model is trained:
       want to set this parameter.
     * ``wrap_predict``:
       Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.ParallelPostFit`.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
       Have a look into the
       `dask-ml docu on ParallelPostFit <https://ml.dask.org/meta-estimators.html#parallel-prediction-and-transformation>`_
       to learn more about it. Defaults to false. Typically you set
