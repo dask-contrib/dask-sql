@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
@@ -43,7 +44,7 @@ class CreateModelPlugin(BaseRelPlugin):
       unsupervised algorithms). This means, you typically
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.ParallelPostFit`.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
       Have a look into the
       [dask-ml docu](https://ml.dask.org/meta-estimators.html#parallel-prediction-and-transformation)
       to learn more about it. Defaults to false. Typically you set
@@ -165,10 +166,7 @@ class CreateModelPlugin(BaseRelPlugin):
             model = Incremental(estimator=model)
 
         if wrap_predict:
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError("Wrapping requires dask-ml to be installed.")
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             # When `wrap_predict` is set to True we train on single partition frames
             # because this is only useful for non dask distributed models
@@ -183,7 +181,16 @@ class CreateModelPlugin(BaseRelPlugin):
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
-            model = ParallelPostFit(estimator=model)
+            if "sklearn" in model_class:
+                output_meta = np.array([])
+                model = ParallelPostFit(
+                    estimator=model,
+                    predict_meta=output_meta,
+                    predict_proba_meta=output_meta,
+                    transform_meta=output_meta,
+                )
+            else:
+                model = ParallelPostFit(estimator=model)
 
         else:
             model.fit(X, y, **fit_kwargs)

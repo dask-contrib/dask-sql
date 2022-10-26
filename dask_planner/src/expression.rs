@@ -1,14 +1,30 @@
-use crate::error::{DaskPlannerError, Result};
-use crate::sql::exceptions::{py_runtime_err, py_type_err};
-use crate::sql::logical;
-use crate::sql::types::RexType;
+use std::{convert::From, sync::Arc};
+
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
-use datafusion_expr::Operator;
-use datafusion_expr::{lit, utils::exprlist_to_fields, BuiltinScalarFunction, Expr, LogicalPlan};
+use datafusion_expr::{
+    expr::{BinaryExpr, Cast},
+    lit,
+    utils::exprlist_to_fields,
+    Between,
+    BuiltinScalarFunction,
+    Case,
+    Expr,
+    GetIndexedField,
+    Like,
+    LogicalPlan,
+    Operator,
+};
 use pyo3::prelude::*;
-use std::convert::From;
-use std::sync::Arc;
+
+use crate::{
+    error::{DaskPlannerError, Result},
+    sql::{
+        exceptions::{py_runtime_err, py_type_err},
+        logical,
+        types::RexType,
+    },
+};
 
 /// An PyExpr that can be used on a DataFrame
 #[pyclass(name = "Expression", module = "datafusion", subclass)]
@@ -254,8 +270,8 @@ impl PyExpr {
             | Expr::IsNotFalse(expr)
             | Expr::IsNotUnknown(expr)
             | Expr::Negative(expr)
-            | Expr::GetIndexedField { expr, .. }
-            | Expr::Cast { expr, .. }
+            | Expr::GetIndexedField(GetIndexedField { expr, .. })
+            | Expr::Cast(Cast { expr, .. })
             | Expr::TryCast { expr, .. }
             | Expr::Sort { expr, .. }
             | Expr::InSubquery { expr, .. } => {
@@ -273,11 +289,11 @@ impl PyExpr {
                 .collect()),
 
             // Expr(s) that require more specific processing
-            Expr::Case {
+            Expr::Case(Case {
                 expr,
                 when_then_expr,
                 else_expr,
-            } => {
+            }) => {
                 let mut operands: Vec<PyExpr> = Vec::new();
 
                 if let Some(e) = expr {
@@ -304,28 +320,28 @@ impl PyExpr {
 
                 Ok(operands)
             }
-            Expr::BinaryExpr { left, right, .. } => Ok(vec![
+            Expr::BinaryExpr(BinaryExpr { left, right, .. }) => Ok(vec![
                 PyExpr::from(*left.clone(), self.input_plan.clone()),
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
-            Expr::Like { expr, pattern, .. } => Ok(vec![
+            Expr::Like(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::ILike { expr, pattern, .. } => Ok(vec![
+            Expr::ILike(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::SimilarTo { expr, pattern, .. } => Ok(vec![
+            Expr::SimilarTo(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
-            Expr::Between {
+            Expr::Between(Between {
                 expr,
                 negated: _,
                 low,
                 high,
-            } => Ok(vec![
+            }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
@@ -346,11 +362,11 @@ impl PyExpr {
     #[pyo3(name = "getOperatorName")]
     pub fn get_operator_name(&self) -> PyResult<String> {
         Ok(match &self.expr {
-            Expr::BinaryExpr {
+            Expr::BinaryExpr(BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => format!("{}", op),
+            }) => format!("{}", op),
             Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
             Expr::ScalarUDF { fun, .. } => fun.name.clone(),
             Expr::Cast { .. } => "cast".to_string(),
@@ -367,21 +383,21 @@ impl PyExpr {
             Expr::InList { .. } => "in list".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
-            Expr::Like { negated, .. } => {
+            Expr::Like(Like { negated, .. }) => {
                 if *negated {
                     "not like".to_string()
                 } else {
                     "like".to_string()
                 }
             }
-            Expr::ILike { negated, .. } => {
+            Expr::ILike(Like { negated, .. }) => {
                 if *negated {
                     "not ilike".to_string()
                 } else {
                     "ilike".to_string()
                 }
             }
-            Expr::SimilarTo { negated, .. } => {
+            Expr::SimilarTo(Like { negated, .. }) => {
                 if *negated {
                     "not similar to".to_string()
                 } else {
@@ -401,11 +417,11 @@ impl PyExpr {
     #[pyo3(name = "getType")]
     pub fn get_type(&self) -> PyResult<String> {
         Ok(String::from(match &self.expr {
-            Expr::BinaryExpr {
+            Expr::BinaryExpr(BinaryExpr {
                 left: _,
                 op,
                 right: _,
-            } => match op {
+            }) => match op {
                 Operator::Eq
                 | Operator::NotEq
                 | Operator::Lt
@@ -470,6 +486,7 @@ impl PyExpr {
                 ScalarValue::IntervalMonthDayNano(..) => "IntervalMonthDayNano",
                 ScalarValue::List(..) => "List",
                 ScalarValue::Struct(..) => "Struct",
+                ScalarValue::FixedSizeBinary(_, _) => "FixedSizeBinary",
             },
             Expr::ScalarFunction { fun, args: _ } => match fun {
                 BuiltinScalarFunction::Abs => "Abs",
@@ -481,7 +498,7 @@ impl PyExpr {
                     )))
                 }
             },
-            Expr::Cast { expr: _, data_type } => match data_type {
+            Expr::Cast(Cast { expr: _, data_type }) => match data_type {
                 DataType::Null => "NULL",
                 DataType::Boolean => "BOOLEAN",
                 DataType::Int8 | DataType::UInt8 => "TINYINT",
@@ -713,7 +730,7 @@ impl PyExpr {
     #[pyo3(name = "isNegated")]
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Between { negated, .. }
+            Expr::Between(Between { negated, .. })
             | Expr::Exists { negated, .. }
             | Expr::InList { negated, .. }
             | Expr::InSubquery { negated, .. } => Ok(*negated),
@@ -752,9 +769,9 @@ impl PyExpr {
     #[pyo3(name = "getEscapeChar")]
     pub fn get_escape_char(&self) -> PyResult<Option<char>> {
         match &self.expr {
-            Expr::Like { escape_char, .. }
-            | Expr::ILike { escape_char, .. }
-            | Expr::SimilarTo { escape_char, .. } => Ok(*escape_char),
+            Expr::Like(Like { escape_char, .. })
+            | Expr::ILike(Like { escape_char, .. })
+            | Expr::SimilarTo(Like { escape_char, .. }) => Ok(*escape_char),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} not one of Like/ILike/SimilarTo",
                 &self.expr
@@ -783,7 +800,7 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::Alias(expr, _) => get_expr_name(expr),
-        _ => expr.name().map_err(|e| e.into()),
+        _ => Ok(expr.canonical_name()),
     }
 }
 
@@ -805,10 +822,10 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
 
 #[cfg(test)]
 mod test {
-    use crate::error::Result;
-    use crate::expression::PyExpr;
     use datafusion_common::{Column, ScalarValue};
     use datafusion_expr::Expr;
+
+    use crate::{error::Result, expression::PyExpr};
 
     #[test]
     fn get_value_u32() -> Result<()> {

@@ -18,6 +18,9 @@ dependencies:
 - pre-commit
 - prompt_toolkit=3.0.8
 - psycopg2
+# TODO: remove once py is added to pytest downstream libraries
+# https://github.com/pytest-dev/pytest-xdist/issues/832
+- py
 - pyarrow=6.0.1
 - pygments=2.7.1
 - pyhive
@@ -25,10 +28,9 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.8
-- rust=1.62.1
 - scikit-learn=1.0.0
 - setuptools-rust=1.4.1
 - sphinx
 - tpot
 - tzlocal=2.1
-- uvicorn=0.11.3
+- uvicorn=0.13.4

@@ -1,25 +1,26 @@
-use crate::sql::logical;
-use crate::sql::types::rel_data_type::RelDataType;
-use crate::sql::types::rel_data_type_field::RelDataTypeField;
-use crate::sql::types::DaskTypeMap;
-use crate::sql::types::SqlTypeName;
-
-use async_trait::async_trait;
+use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
+use async_trait::async_trait;
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
-
+use datafusion_optimizer::utils::split_conjunction;
 use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
-use crate::error::DaskPlannerError;
-use datafusion_optimizer::utils::split_conjunction;
-use std::any::Any;
-use std::sync::Arc;
-
-use super::logical::create_table::CreateTablePlanNode;
-use super::logical::predict_model::PredictModelPlanNode;
+use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
+use crate::{
+    error::DaskPlannerError,
+    sql::{
+        logical,
+        types::{
+            rel_data_type::RelDataType,
+            rel_data_type_field::RelDataTypeField,
+            DaskTypeMap,
+            SqlTypeName,
+        },
+    },
+};
 
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
@@ -50,8 +51,7 @@ impl TableSource for DaskTableSource {
         &self,
         filter: &Expr,
     ) -> datafusion_common::Result<TableProviderFilterPushDown> {
-        let mut filters = vec![];
-        split_conjunction(filter, &mut filters);
+        let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
             // TODO this should return Exact but we cannot make that change until we
             // are actually pushing the TableScan filters down to the reader because
@@ -160,7 +160,7 @@ pub(crate) fn table_from_logical_plan(
 ) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
-        LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
+        LogicalPlan::Filter(filter) => table_from_logical_plan(filter.input()),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
