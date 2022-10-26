@@ -935,7 +935,7 @@ def test_experiment_automl_regressor(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_predict_with_nullable_types(c):
     df = pd.DataFrame(
         {
