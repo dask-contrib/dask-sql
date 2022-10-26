@@ -776,7 +776,7 @@ def fit(
     if y is not None:
         dependencies.append(y)
     new_dsk = HighLevelGraph.from_collections(name, dsk, dependencies=dependencies)
-    value = Delayed((name, nblocks - 1), new_dsk)
+    value = Delayed((name, nblocks - 1), new_dsk, layer=name)
 
     if compute:
         return value.compute()
