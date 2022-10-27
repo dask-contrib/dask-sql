@@ -677,12 +677,7 @@ def test_date_functions(c):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_totimestamp(c, gpu):
-    if gpu:
-        import cudf as pdlike
-    else:
-        import pandas as pdlike
-
-    df = pdlike.DataFrame(
+    df = pd.DataFrame(
         {
             "a": [1203073300, 1406073600, 2806073600],
         }
@@ -694,7 +689,7 @@ def test_totimestamp(c, gpu):
         SELECT to_timestamp(a) AS date FROM df
     """
     )
-    expected_df = pdlike.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "date": [
                 datetime(2008, 2, 15, 11, 1, 40),
@@ -710,7 +705,7 @@ def test_totimestamp(c, gpu):
         SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
     """
     )
-    expected_df = pdlike.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "date": [
                 datetime(2008, 2, 15),
@@ -721,7 +716,7 @@ def test_totimestamp(c, gpu):
     )
     assert_eq(df, expected_df, check_dtype=False)
 
-    df = pdlike.DataFrame(
+    df = pd.DataFrame(
         {
             "a": ["1997-02-28 10:30:00", "1997-03-28 10:30:01"],
         }
@@ -733,7 +728,7 @@ def test_totimestamp(c, gpu):
         SELECT to_timestamp(a) AS date FROM df
     """
     )
-    expected_df = pdlike.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "date": [
                 datetime(1997, 2, 28, 10, 30, 0),
@@ -748,7 +743,7 @@ def test_totimestamp(c, gpu):
         SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
     """
     )
-    expected_df = pdlike.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "date": [
                 datetime(1997, 2, 28),
