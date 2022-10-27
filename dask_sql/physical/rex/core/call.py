@@ -535,6 +535,21 @@ class TrimOperation(Operation):
         return strip_call(search)
 
 
+class ReplaceOperation(Operation):
+    """The replace operator (replace occurrences of pattern in a string)"""
+
+    def __init__(self):
+        super().__init__(self.replace)
+
+    def replace(self, s, pat, repl):
+        if isinstance(s, str):
+            return s.replace(pat, repl)
+        elif isinstance(s, dd.Series):
+            return s.str.replace(pat, repl)
+        else:
+            raise TypeError("The string expression must be a string or a column name")
+
+
 class OverlayOperation(Operation):
     """The overlay operator (replace string according to positions)"""
 
@@ -965,6 +980,7 @@ class RexCallPlugin(BaseRexPlugin):
         "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        "replace": ReplaceOperation(),
         # date/time operations
         "extract": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
