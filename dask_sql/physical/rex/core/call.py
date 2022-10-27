@@ -542,12 +542,10 @@ class ReplaceOperation(Operation):
         super().__init__(self.replace)
 
     def replace(self, s, pat, repl):
-        if isinstance(s, str):
-            return s.replace(pat, repl)
-        elif isinstance(s, dd.Series):
-            return s.str.replace(pat, repl)
-        else:
-            raise TypeError("The string expression must be a string or a column name")
+        if is_frame(s):
+            s = s.str
+
+        return s.replace(pat, repl)
 
 
 class OverlayOperation(Operation):
