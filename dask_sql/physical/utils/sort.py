@@ -20,11 +20,23 @@ def apply_sort(
     single_ascending = len(set(sort_ascending)) == 1
     single_null_first = len(set(sort_null_first)) == 1
 
-    if sort_num_rows is not None and single_ascending and not any(sort_null_first):
-        if sort_ascending[0]:
-            return df.nsmallest(n=sort_num_rows, columns=sort_columns)
-        else:
-            return df.nlargest(n=sort_num_rows, columns=sort_columns)
+    if is_topk_optimizable(
+        df=df,
+        sort_columns=sort_columns,
+        single_ascending=single_ascending,
+        sort_null_first=sort_null_first,
+        sort_num_rows=sort_num_rows,
+    ):
+        return topk_sort(
+            df=df,
+            sort_columns=sort_columns,
+            sort_ascending=sort_ascending,
+            sort_num_rows=sort_num_rows,
+        )
+
+    else:
+        # Pre persist before sort to avoid duplicate compute
+        df = df.persist()
 
     # pandas / cudf don't support lists of null positions
     if df.npartitions == 1 and single_null_first:
@@ -64,6 +76,18 @@ def apply_sort(
     ).persist()
 
 
+def topk_sort(
+    df: dd.DataFrame,
+    sort_columns: List[str],
+    sort_ascending: List[bool],
+    sort_num_rows: int = None,
+):
+    if sort_ascending[0]:
+        return df.nsmallest(n=sort_num_rows, columns=sort_columns)
+    else:
+        return df.nlargest(n=sort_num_rows, columns=sort_columns)
+
+
 def sort_partition_func(
     partition: pd.DataFrame,
     sort_columns: List[str],
@@ -92,3 +116,22 @@ def sort_partition_func(
         )
 
     return partition
+
+
+def is_topk_optimizable(
+    df: dd.DataFrame,
+    sort_columns: List[str],
+    single_ascending: bool,
+    sort_null_first: List[bool],
+    sort_num_rows: int = None,
+):
+    if (
+        sort_num_rows is None
+        or not single_ascending
+        or any(sort_null_first)
+        # pandas doesnt support nsmallest/nlargest with object dtypes
+        or ("pandas" in str(df._partition_type) and any(df[sort_columns] == "object"))
+    ):
+        return False
+
+    return True
