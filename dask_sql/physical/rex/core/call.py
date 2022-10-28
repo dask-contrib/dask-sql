@@ -618,7 +618,10 @@ class ToTimestampOperation(Operation):
             df = pdlike.to_datetime(df)
             return df.strftime(format)
         else:
-            df = pdlike.to_datetime(df, unit="s")
+            try:
+                df = pdlike.to_datetime(df, unit="s")
+            except TypeError:
+                df = pdlike.to_datetime(df.to_cupy(), unit="s")
             df = df.strftime(format)
             result = [timestamp for timestamp in df]
             return pdlike.Series(result)
