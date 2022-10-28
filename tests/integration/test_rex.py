@@ -679,6 +679,7 @@ def test_date_functions(c):
 def test_totimestamp(c, gpu):
     if gpu:
         import cudf
+        import dask_cudf
     else:
         cudf = None
 
@@ -687,8 +688,11 @@ def test_totimestamp(c, gpu):
             "a": np.array([1203073300, 1406073600, 2806073600]),
         }
     )
-    df = cudf.from_pandas(df) if cudf else df
-    c.create_table("df", df, gpu=gpu)
+    if gpu:
+        df = cudf.from_pandas(df)
+        c.create_table("df", dask_cudf.from_cudf(df, npartitions=1), gpu=gpu)
+    else:
+        c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
@@ -727,8 +731,11 @@ def test_totimestamp(c, gpu):
             "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
         }
     )
-    df = cudf.from_pandas(df) if cudf else df
-    c.create_table("df", df, gpu=gpu)
+    if gpu:
+        df = cudf.from_pandas(df)
+        c.create_table("df", dask_cudf.from_cudf(df, npartitions=1), gpu=gpu)
+    else:
+        c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
