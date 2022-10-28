@@ -3,6 +3,7 @@ import operator
 import re
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
+from datetime import datetime
 
 import dask.array as da
 import dask.dataframe as dd
@@ -34,11 +35,6 @@ from dask_sql.utils import (
 if TYPE_CHECKING:
     import dask_sql
     from dask_planner.rust import Expression, LogicalPlan
-
-try:
-    import cudf as pdlike
-except ImportError:
-    import pandas as pdlike
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -614,17 +610,17 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        if df.dtype == "object":
-            df = pdlike.to_datetime(df)
-            return df.strftime(format)
+        # String cases
+        if type(df) == str:
+            return datetime.strptime(df, format)
+        elif df.dtype == "object":
+            df = dd.to_datetime(df)
+        # Integer cases
+        elif np.isscalar(df):
+            return datetime.utcfromtimestamp(df)
         else:
-            try:
-                df = pdlike.to_datetime(df, unit="s")
-            except TypeError:
-                df = pdlike.to_datetime(df.to_cupy(), unit="s")
-            df = df.strftime(format)
-            result = [timestamp for timestamp in df]
-            return pdlike.Series(result)
+            df = dd.to_datetime(df, unit="s")
+        return df.dt.strftime(format)
 
 
 class YearOperation(Operation):

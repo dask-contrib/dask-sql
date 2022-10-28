@@ -766,3 +766,25 @@ def test_totimestamp(c, gpu):
         }
     )
     assert_eq(df, expected_df, check_dtype=False)
+
+    int_input = 1203073300
+    df = c.sql(f"SELECT to_timestamp('{int_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "1997-02-28 10:30:00"
+    df = c.sql(f"SELECT to_timestamp('{string_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
