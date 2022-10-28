@@ -679,9 +679,6 @@ def test_date_functions(c):
 def test_totimestamp(c, gpu):
     if gpu:
         import cudf
-        import dask_cudf
-    else:
-        cudf = None
 
     df = pd.DataFrame(
         {
@@ -690,9 +687,7 @@ def test_totimestamp(c, gpu):
     )
     if gpu:
         df = cudf.from_pandas(df)
-        c.create_table("df", dask_cudf.from_cudf(df, npartitions=1), gpu=gpu)
-    else:
-        c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
@@ -733,9 +728,7 @@ def test_totimestamp(c, gpu):
     )
     if gpu:
         df = cudf.from_pandas(df)
-        c.create_table("df", dask_cudf.from_cudf(df, npartitions=1), gpu=gpu)
-    else:
-        c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
         """
@@ -768,7 +761,7 @@ def test_totimestamp(c, gpu):
     assert_eq(df, expected_df, check_dtype=False)
 
     int_input = 1203073300
-    df = c.sql(f"SELECT to_timestamp('{int_input}') as date")
+    df = c.sql(f"SELECT to_timestamp({int_input}) as date")
     expected_df = pd.DataFrame(
         {
             "date": [

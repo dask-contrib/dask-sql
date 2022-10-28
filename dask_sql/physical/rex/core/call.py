@@ -1,9 +1,9 @@
 import logging
 import operator
 import re
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
-from datetime import datetime
 
 import dask.array as da
 import dask.dataframe as dd
