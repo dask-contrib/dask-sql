@@ -130,7 +130,10 @@ def is_topk_optimizable(
         or not single_ascending
         or any(sort_null_first)
         # pandas doesnt support nsmallest/nlargest with object dtypes
-        or ("pandas" in str(df._partition_type) and any(df[sort_columns] == "object"))
+        or (
+            "pandas" in str(df._partition_type)
+            and any(df[sort_columns].dtypes == "object")
+        )
     ):
         return False
 
