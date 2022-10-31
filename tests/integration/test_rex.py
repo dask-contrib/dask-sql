@@ -521,7 +521,9 @@ def test_string_functions(c, gpu):
             SUBSTR(a, 3, 6) AS s,
             INITCAP(a) AS t,
             INITCAP(UPPER(a)) AS u,
-            INITCAP(LOWER(a)) AS v
+            INITCAP(LOWER(a)) AS v,
+            REPLACE(a, 'r', 'l') as w,
+            REPLACE('Another String', 'th', 'b') as x
         FROM
             {input_table}
         """
@@ -554,6 +556,8 @@ def test_string_functions(c, gpu):
             "t": ["A Normal String"],
             "u": ["A Normal String"],
             "v": ["A Normal String"],
+            "w": ["a nolmal stling"],
+            "x": ["Anober String"],
         }
     )
 
