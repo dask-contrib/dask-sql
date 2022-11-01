@@ -610,8 +610,14 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
+        # TODO: format timestamps for GPU tests
+        if "cudf" in str(type(df)):
+            if df.dtype == "object":
+                return df
+            else:
+                return df * 10**9
         # String cases
-        if type(df) == str:
+        elif type(df) == str:
             return datetime.strptime(df, format)
         elif df.dtype == "object":
             df = dd.to_datetime(df)

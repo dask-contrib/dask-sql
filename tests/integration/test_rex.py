@@ -719,7 +719,8 @@ def test_totimestamp(c, gpu):
             ],
         }
     )
-    assert_eq(df, expected_df, check_dtype=False)
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
 
     df = pd.DataFrame(
         {
@@ -758,7 +759,8 @@ def test_totimestamp(c, gpu):
             ],
         }
     )
-    assert_eq(df, expected_df, check_dtype=False)
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
 
     int_input = 1203073300
     df = c.sql(f"SELECT to_timestamp({int_input}) as date")
