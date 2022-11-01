@@ -612,6 +612,8 @@ class ToTimestampOperation(Operation):
 
         # TODO: format timestamps for GPU tests
         if "cudf" in str(type(df)):
+            if format != "%Y-%m-%d %H:%M:%S":
+                print("Formatting timestamps not supported on GPU")
             if df.dtype == "object":
                 return df
             else:
@@ -623,7 +625,8 @@ class ToTimestampOperation(Operation):
             df = dd.to_datetime(df)
         # Integer cases
         elif np.isscalar(df):
-            return datetime.utcfromtimestamp(df)
+            df = datetime.utcfromtimestamp(df)
+            return df.strftime(format)
         else:
             df = dd.to_datetime(df, unit="s")
         return df.dt.strftime(format)
