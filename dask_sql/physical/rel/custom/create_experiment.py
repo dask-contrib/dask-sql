@@ -166,7 +166,11 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
             logger.info(tune_fit_kwargs)
-            search.fit(X.to_dask_array(lengths=True), y.to_dask_array(lengths=True), **tune_fit_kwargs)
+            search.fit(
+                X.to_dask_array(lengths=True),
+                y.to_dask_array(lengths=True),
+                **tune_fit_kwargs,
+            )
             df = pd.DataFrame(search.cv_results_)
             df["model_class"] = model_class
 
