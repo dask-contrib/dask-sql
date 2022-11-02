@@ -78,7 +78,7 @@ Example:
 .. raw:: html
 
     <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE MODEL</span> <span class="n">my_model</span> <span class="k">WITH</span> <span class="p">(</span>
-        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'sklearn.ensemble.GradientBoostingClassifier'</span><span class="p">,</span>
+        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'xgboost.XGBClassifier'</span><span class="p">,</span>
         <span class="n">target_column</span> <span class="o">=</span> <span class="s1">'target'</span>
     <span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
         <span class="k">SELECT</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">target</span>

@@ -69,7 +69,7 @@ class CreateModelPlugin(BaseRelPlugin):
     Examples:
 
         CREATE MODEL my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'xgboost.XGBClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, target
