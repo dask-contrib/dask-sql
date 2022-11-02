@@ -681,16 +681,11 @@ def test_date_functions(c):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_totimestamp(c, gpu):
-    if gpu:
-        import cudf
-
     df = pd.DataFrame(
         {
             "a": np.array([1203073300, 1406073600, 2806073600]),
         }
     )
-    if gpu:
-        df = cudf.from_pandas(df)
     c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
@@ -731,8 +726,6 @@ def test_totimestamp(c, gpu):
             "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
         }
     )
-    if gpu:
-        df = cudf.from_pandas(df)
     c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
