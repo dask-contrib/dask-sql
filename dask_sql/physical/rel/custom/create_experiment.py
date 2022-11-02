@@ -33,11 +33,6 @@ class CreateExperimentPlugin(BaseRelPlugin):
       You might need to install necessary packages to use
       the models.
     * experiment_class : Full path of the Hyperparameter tuner
-      from dask_ml, choose dask tuner class carefully based on what you
-      exactly need (memory vs compute constrains), refer:
-      [dask-ml documentation](https://ml.dask.org/hyper-parameter-search.html)
-      (for tuning hyperparameter of the models both model_class and experiment class are
-      required parameters.)
     * tune_parameters:
       Key-value of pairs of Hyperparameters to tune, i.e Search Space for
       particular model to tune
