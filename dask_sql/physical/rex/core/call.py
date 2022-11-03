@@ -619,30 +619,34 @@ class ToTimestampOperation(Operation):
         super().__init__(self.to_timestamp)
 
     def to_timestamp(self, df, format):
+        default_format = "%Y-%m-%d %H:%M:%S"
         # Remove double and single quotes from string
         format = format.replace('"', "")
         format = format.replace("'", "")
 
         # TODO: format timestamps for GPU tests
         if "cudf" in str(type(df)):
-            if format != "%Y-%m-%d %H:%M:%S":
-                print("Formatting timestamps not supported on GPU")
+            if format != default_format:
+                raise RuntimeError("Non-default timestamp formats not supported on GPU")
             if df.dtype == "object":
                 return df
             else:
-                return df * 10**9
+                nanoseconds_to_seconds = 10**9
+                return df * nanoseconds_to_seconds
         # String cases
         elif type(df) == str:
             return datetime.strptime(df, format)
         elif df.dtype == "object":
-            df = dd.to_datetime(df)
+            return dd.to_datetime(df, format=format)
         # Integer cases
         elif np.isscalar(df):
-            df = datetime.utcfromtimestamp(df)
-            return df.strftime(format)
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return datetime.utcfromtimestamp(df)
         else:
-            df = dd.to_datetime(df, unit="s")
-        return df.dt.strftime(format)
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return dd.to_datetime(df, unit="s")
 
 
 class YearOperation(Operation):

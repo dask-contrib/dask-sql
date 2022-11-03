@@ -76,6 +76,7 @@ impl Dialect for DaskDialect {
                     })))
                 }
                 Token::Word(w) if w.value.to_lowercase() == "to_timestamp" => {
+                    // TO_TIMESTAMP(d, "%d/%m/%Y")
                     parser.next_token(); // skip to_timestamp
                     parser.expect_token(&Token::LParen)?;
                     let expr = parser.parse_expr()?;

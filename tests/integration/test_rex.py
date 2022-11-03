@@ -706,24 +706,6 @@ def test_totimestamp(c, gpu):
     )
     assert_eq(df, expected_df, check_dtype=False)
 
-    df = c.sql(
-        """
-        SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
-    """
-    )
-    expected_df = pd.DataFrame(
-        {
-            "date": [
-                datetime(2008, 2, 15),
-                datetime(2014, 7, 23),
-                datetime(2058, 2, 12),
-            ],
-        }
-    )
-    # TODO: format timestamps for GPU tests
-    if not gpu:
-        assert_eq(df, expected_df, check_dtype=False)
-
     df = pd.DataFrame(
         {
             "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
@@ -746,16 +728,23 @@ def test_totimestamp(c, gpu):
     )
     assert_eq(df, expected_df, check_dtype=False)
 
+    df = pd.DataFrame(
+        {
+            "a": np.array(["02/28/1997", "03/28/1997"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
     df = c.sql(
         """
-        SELECT to_timestamp(a, "%d/%m/%Y") AS date FROM df
+        SELECT to_timestamp(a, "%m/%d/%Y") AS date FROM df
     """
     )
     expected_df = pd.DataFrame(
         {
             "date": [
-                datetime(1997, 2, 28),
-                datetime(1997, 3, 28),
+                datetime(1997, 2, 28, 0, 0, 0),
+                datetime(1997, 3, 28, 0, 0, 0),
             ],
         }
     )
@@ -780,6 +769,17 @@ def test_totimestamp(c, gpu):
         {
             "date": [
                 datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "02/28/1997"
+    df = c.sql(f"SELECT to_timestamp('{string_input}', '%m/%d/%Y') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
             ],
         }
     )
