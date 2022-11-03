@@ -60,63 +60,59 @@ impl PyWindow {
     /// Returns order by columns in a window function expression
     #[pyo3(name = "getSortExprs")]
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        match expr.expr {
+        match expr.expr.unalias() {
             Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
-            _ => Err(py_type_err(format!(
-                "Provided Expr {:?} is not a WindowFunction type",
-                expr.expr
-            ))),
+            other => Err(not_window_function_err(other)),
         }
     }
 
     /// Return partition by columns in a window function expression
     #[pyo3(name = "getPartitionExprs")]
     pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        match expr.expr {
+        match expr.expr.unalias() {
             Expr::WindowFunction { partition_by, .. } => {
                 py_expr_list(&self.window.input, &partition_by)
             }
-            _ => Err(py_type_err(format!(
-                "Provided Expr {:?} is not a WindowFunction type",
-                expr.expr
-            ))),
+            other => Err(not_window_function_err(other)),
         }
     }
 
     /// Return input args for window function
     #[pyo3(name = "getArgs")]
     pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
-        match expr.expr {
+        match expr.expr.unalias() {
             Expr::WindowFunction { args, .. } => py_expr_list(&self.window.input, &args),
-            _ => Err(py_type_err(format!(
-                "Provided Expr {:?} is not a WindowFunction type",
-                expr
-            ))),
+            other => Err(not_window_function_err(other)),
         }
     }
 
     /// Return window function name
     #[pyo3(name = "getWindowFuncName")]
     pub fn window_func_name(&self, expr: PyExpr) -> PyResult<String> {
-        match expr.expr {
+        match expr.expr.unalias() {
             Expr::WindowFunction { fun, .. } => Ok(fun.to_string()),
-            _ => Err(py_type_err(format!(
-                "Provided Expr {:?} is not a WindowFunction type",
-                expr
-            ))),
+            other => Err(not_window_function_err(other)),
         }
     }
 
     /// Returns a Pywindow frame for a given window function expression
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
-        match expr.expr {
+        match expr.expr.unalias() {
             Expr::WindowFunction { window_frame, .. } => {
                 window_frame.map(|window_frame| window_frame.into())
             }
             _ => None,
         }
     }
+}
+
+fn not_window_function_err(expr: Expr) -> PyErr {
+    py_type_err(format!(
+        "Provided {} Expr {:?} is not a WindowFunction type",
+        expr.variant_name(),
+        expr
+    ))
 }
 
 #[pymethods]
@@ -164,7 +160,8 @@ impl PyWindowFrameBound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(val))
             | WindowFrameBound::Following(ScalarValue::UInt64(val)) => Ok(val),
             WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x)).into(),
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
+                    .into(),
             ),
             WindowFrameBound::CurrentRow => Ok(None),
         }
@@ -176,7 +173,8 @@ impl PyWindowFrameBound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(v))
             | WindowFrameBound::Following(ScalarValue::UInt64(v)) => Ok(v.is_none()),
             WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x)).into(),
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
+                    .into(),
             ),
             WindowFrameBound::CurrentRow => Ok(false),
         }
