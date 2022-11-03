@@ -3,6 +3,7 @@ use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, Wind
 use pyo3::prelude::*;
 
 use crate::{
+    error::DaskPlannerError,
     expression::{py_expr_list, PyExpr},
     sql::exceptions::py_type_err,
 };
@@ -63,7 +64,7 @@ impl PyWindow {
             Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
-                expr
+                expr.expr
             ))),
         }
     }
@@ -77,7 +78,7 @@ impl PyWindow {
             }
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a WindowFunction type",
-                expr
+                expr.expr
             ))),
         }
     }
@@ -158,22 +159,26 @@ impl PyWindowFrameBound {
     }
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
-    pub fn get_offset(&self) -> Option<u64> {
+    pub fn get_offset(&self) -> PyResult<Option<u64>> {
         match self.frame_bound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(val))
-            | WindowFrameBound::Following(ScalarValue::UInt64(val)) => val,
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => panic!("{:?}", x),
-            WindowFrameBound::CurrentRow => None,
+            | WindowFrameBound::Following(ScalarValue::UInt64(val)) => Ok(val),
+            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x)).into(),
+            ),
+            WindowFrameBound::CurrentRow => Ok(None),
         }
     }
     /// Returns if the frame bound is unbounded
     #[pyo3(name = "isUnbounded")]
-    pub fn is_unbounded(&self) -> bool {
+    pub fn is_unbounded(&self) -> PyResult<bool> {
         match &self.frame_bound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(v))
-            | WindowFrameBound::Following(ScalarValue::UInt64(v)) => v.is_none(),
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => panic!("{:?}", x),
-            WindowFrameBound::CurrentRow => false,
+            | WindowFrameBound::Following(ScalarValue::UInt64(v)) => Ok(v.is_none()),
+            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x)).into(),
+            ),
+            WindowFrameBound::CurrentRow => Ok(false),
         }
     }
 }
