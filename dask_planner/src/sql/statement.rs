@@ -1,6 +1,6 @@
-use crate::parser::DaskStatement;
-
 use pyo3::prelude::*;
+
+use crate::parser::DaskStatement;
 
 #[pyclass(name = "Statement", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]

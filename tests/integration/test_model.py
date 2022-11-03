@@ -205,9 +205,6 @@ def test_create_model_with_prediction(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(
-    reason="WIP DataFusion - fails to parse ARRAY in KV pairs in WITH clause, WITH clause was previsouly ignored"
-)
 @skip_if_external_scheduler
 def test_iterative_and_prediction(c, training_df):
     c.sql(
@@ -229,7 +226,6 @@ def test_iterative_and_prediction(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_show_models(c, training_df):
     c.sql(
@@ -315,7 +311,6 @@ def test_wrong_training_or_prediction(c, training_df):
         )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_correct_argument_passing(c, training_df):
     c.sql(
         """
@@ -323,10 +318,14 @@ def test_correct_argument_passing(c, training_df):
             model_class = 'mock.MagicMock',
             target_column = 'target',
             fit_kwargs = (
-                first_arg = 3,
-                second_arg = ARRAY [ 1, 2 ],
-                third_arg = MAP [ 'a', 1 ],
-                forth_arg = MULTISET [ 1, 1, 2, 3 ]
+                single_quoted_string = 'hello',
+                double_quoted_string = "hi",
+                integer = -300,
+                float = 23.45,
+                boolean = False,
+                array = ARRAY [ 1, 2 ],
+                dict = MAP [ 'a', 1 ],
+                set = MULTISET [ 1, 1, 2, 3 ]
             )
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -344,7 +343,14 @@ def test_correct_argument_passing(c, training_df):
     fit_function.assert_called_once()
     call_kwargs = fit_function.call_args.kwargs
     assert call_kwargs == dict(
-        first_arg=3, second_arg=[1, 2], third_arg={"a": 1}, forth_arg=set([1, 2, 3])
+        single_quoted_string="hello",
+        double_quoted_string="hi",
+        integer=-300,
+        float=23.45,
+        boolean=False,
+        array=[1, 2],
+        dict={"a": 1},
+        set=set([1, 2, 3]),
     )
 
 
@@ -674,7 +680,6 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_ml_experiment(c, client, training_df):
 
@@ -768,7 +773,14 @@ def test_ml_experiment(c, client, training_df):
             """
             CREATE EXPERIMENT my_exp64 WITH (
                 automl_class = 'that.is.not.a.python.class',
-                automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True,max_eval_time_mins=1),
+                automl_kwargs = (
+                    population_size = 2,
+                    generations = 2,
+                    cv = 2,
+                    n_jobs = -1,
+                    use_dask = True,
+                    max_eval_time_mins = 1
+                ),
                 target_column = 'target'
             ) AS (
                 SELECT x, y, x*y > 0 AS target
@@ -869,7 +881,6 @@ def test_ml_experiment(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
@@ -895,7 +906,6 @@ def test_experiment_automl_classifier(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@pytest.mark.skip(reason="WIP DataFusion")
 @skip_if_external_scheduler
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
@@ -924,3 +934,79 @@ def test_experiment_automl_regressor(c, client, training_df):
     ), "Best model was not registered"
 
     check_trained_model(c, "my_automl_exp2")
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+def test_predict_with_nullable_types(c):
+    df = pd.DataFrame(
+        {
+            "rough_day_of_year": [0, 1, 2, 3],
+            "prev_day_inches_rained": [0.0, 1.0, 2.0, 3.0],
+            "rained": [False, False, False, True],
+        }
+    )
+    c.create_table("train_set", df)
+
+    model_class = "'sklearn.linear_model.LogisticRegression'"
+
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL model WITH (
+            model_class = {model_class},
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'rained'
+        ) AS (
+            SELECT *
+            FROM train_set
+        )
+        """
+    )
+
+    expected = c.sql(
+        """
+        SELECT * FROM PREDICT(
+            MODEL model,
+            SELECT * FROM train_set
+        )
+        """
+    )
+
+    df = pd.DataFrame(
+        {
+            "rough_day_of_year": pd.Series([0, 1, 2, 3], dtype="Int32"),
+            "prev_day_inches_rained": pd.Series([0.0, 1.0, 2.0, 3.0], dtype="Float32"),
+            "rained": pd.Series([False, False, False, True]),
+        }
+    )
+    c.create_table("train_set", df)
+
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL model WITH (
+            model_class = {model_class},
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'rained'
+        ) AS (
+            SELECT *
+            FROM train_set
+        )
+        """
+    )
+
+    result = c.sql(
+        """
+        SELECT * FROM PREDICT(
+            MODEL model,
+            SELECT * FROM train_set
+        )
+        """
+    )
+
+    assert_eq(
+        expected,
+        result,
+        check_dtype=False,
+    )

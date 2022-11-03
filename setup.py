@@ -45,7 +45,7 @@ setup(
         "dask[dataframe,distributed]>=2022.3.0",
         "pandas>=1.4.0",
         "fastapi>=0.69.0",
-        "uvicorn>=0.11.3",
+        "uvicorn>=0.13.4",
         "tzlocal>=2.1",
         "prompt_toolkit>=3.0.8",
         "pygments>=2.7.1",

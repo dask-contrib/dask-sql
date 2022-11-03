@@ -1,23 +1,20 @@
-use crate::sql::exceptions::py_type_err;
-use crate::sql::logical;
-use crate::sql::parser_utils::DaskParserUtils;
-use pyo3::prelude::*;
-
-use datafusion_expr::logical_plan::UserDefinedLogicalNode;
-use datafusion_expr::{Expr, LogicalPlan};
-use datafusion_sql::sqlparser::ast::Expr as SqlParserExpr;
-
-use fmt::Debug;
-use std::collections::HashMap;
 use std::{any::Any, fmt, sync::Arc};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
+use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use fmt::Debug;
+use pyo3::prelude::*;
+
+use crate::{
+    parser::PySqlArg,
+    sql::{exceptions::py_type_err, logical},
+};
 
 #[derive(Clone)]
 pub struct ExportModelPlanNode {
     pub schema: DFSchemaRef,
     pub model_name: String,
-    pub with_options: Vec<SqlParserExpr>,
+    pub with_options: Vec<(String, PySqlArg)>,
 }
 
 impl Debug for ExportModelPlanNode {
@@ -77,23 +74,8 @@ impl PyExportModel {
     }
 
     #[pyo3(name = "getSQLWithOptions")]
-    fn sql_with_options(&self) -> PyResult<HashMap<String, String>> {
-        let mut options: HashMap<String, String> = HashMap::new();
-        for elem in &self.export_model.with_options {
-            match elem {
-                SqlParserExpr::BinaryOp { left, op: _, right } => {
-                    options.insert(
-                        DaskParserUtils::str_from_expr(*left.clone()),
-                        DaskParserUtils::str_from_expr(*right.clone()),
-                    );
-                }
-                _ => {
-                    return Err(py_type_err(
-                        "Encountered non SqlParserExpr::BinaryOp expression, with arguments can only be of Key/Value pair types"));
-                }
-            }
-        }
-        Ok(options)
+    fn sql_with_options(&self) -> PyResult<Vec<(String, PySqlArg)>> {
+        Ok(self.export_model.with_options.clone())
     }
 }
 

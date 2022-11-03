@@ -1,37 +1,53 @@
-name: Rust
+name: Test Rust package
 
 on:
   # always trigger on PR
   push:
+    branches:
+      - main
   pull_request:
   # manual trigger
   # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
 
+env:
+  # Disable full debug symbol generation to speed up CI build and keep memory down
+  # "1" means line tables only, which is useful for panic tracebacks.
+  RUSTFLAGS: "-C debuginfo=1"
+
 jobs:
+  detect-ci-trigger:
+    name: Check for upstream trigger phrase
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    outputs:
+      triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - uses: xarray-contrib/ci-trigger@v1.1
+        id: detect-trigger
+        with:
+          keyword: "[test-df-upstream]"
+
   # Check crate compiles
   linux-build-lib:
     name: cargo check
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
-    container:
-      image: amd64/rust
-      env:
-        # Disable full debug symbol generation to speed up CI build and keep memory down
-        # "1" means line tables only, which is useful for panic tracebacks.
-        RUSTFLAGS: "-C debuginfo=1"
     steps:
       - uses: actions/checkout@v3
       - name: Cache Cargo
         uses: actions/cache@v3
         with:
-          # these represent dependencies downloaded by cargo
-          # and thus do not depend on the OS, arch nor rust version.
-          path: /github/home/.cargo
-          key: cargo-cache-
-      - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-builder
-        with:
-          rust-version: stable
+          path: /home/runner/.cargo
+          key: cargo-cache
+      - name: Optionally update upstream dependencies
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Check workspace in debug mode
         run: |
           cd dask_planner
@@ -43,15 +59,9 @@ jobs:
 
   # test the crate
   linux-test:
-    name: cargo test (amd64)
-    needs: [linux-build-lib]
+    name: cargo test
+    needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
-    container:
-      image: amd64/rust
-      env:
-        # Disable full debug symbol generation to speed up CI build and keep memory down
-        # "1" means line tables only, which is useful for panic tracebacks.
-        RUSTFLAGS: "-C debuginfo=1"
     steps:
       - uses: actions/checkout@v3
         with:
@@ -59,13 +69,13 @@ jobs:
       - name: Cache Cargo
         uses: actions/cache@v3
         with:
-          path: /github/home/.cargo
-          # this key equals the ones on `linux-build-lib` for re-use
-          key: cargo-cache-
-      - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-builder
-        with:
-          rust-version: stable
+          path: /home/runner/.cargo
+          key: cargo-cache
+      - name: Optionally update upstream dependencies
+        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Run tests
         run: |
           cd dask_planner

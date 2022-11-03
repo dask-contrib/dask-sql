@@ -10,7 +10,7 @@ from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -95,19 +95,22 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
     """
 
-    class_name = "com.dask.sql.parser.SqlCreateExperiment"
+    class_name = "CreateExperiment"
 
-    def convert(
-        self, sql: "org.apache.calcite.sql.SqlNode", context: "dask_sql.Context"
-    ) -> DataContainer:
-        select = sql.getSelect()
-        schema_name, experiment_name = context.fqn(sql.getExperimentName())
-        kwargs = convert_sql_kwargs(sql.getKwargs())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        create_experiment = rel.create_experiment()
+        select = create_experiment.getSelectQuery()
+
+        schema_name, experiment_name = (
+            context.schema_name,
+            create_experiment.getExperimentName(),
+        )
+        kwargs = convert_sql_kwargs(create_experiment.getSQLWithOptions())
 
         if experiment_name in context.schema[schema_name].experiments:
-            if sql.getIfNotExists():
+            if create_experiment.getIfNotExists():
                 return
-            elif not sql.getReplace():
+            elif not create_experiment.getOrReplace():
                 raise RuntimeError(
                     f"A experiment with the name {experiment_name} is already present."
                 )
@@ -139,8 +142,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
         automl_kwargs = kwargs.pop("automl_kwargs", {})
         logger.info(parameters)
 
-        select_query = context._to_sql_string(select)
-        training_df = context.sql(select_query)
+        training_df = context.sql(select)
         if not target_column:
             raise ValueError(
                 "Unsupervised Algorithm cannot be tuned Automatically,"
@@ -166,12 +168,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import tuner {experiment_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             model = ModelClass()
 
@@ -197,12 +194,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import automl model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             automl = AutoMLClass(**automl_kwargs)
             # should be avoided if  data doesn't fit in memory
