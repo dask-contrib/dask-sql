@@ -162,17 +162,17 @@ impl PyWindowFrameBound {
         match self.frame_bound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(val))
             | WindowFrameBound::Following(ScalarValue::UInt64(val)) => val,
-            WindowFrameBound::Preceding(_) | WindowFrameBound::Following(_) => None,
+            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => panic!("{:?}", x),
             WindowFrameBound::CurrentRow => None,
         }
     }
     /// Returns if the frame bound is unbounded
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> bool {
-        match self.frame_bound {
-            WindowFrameBound::Preceding(ScalarValue::UInt64(None))
-            | WindowFrameBound::Following(ScalarValue::UInt64(None)) => true,
-            WindowFrameBound::Preceding(_) | WindowFrameBound::Following(_) => false,
+        match &self.frame_bound {
+            WindowFrameBound::Preceding(ScalarValue::UInt64(v))
+            | WindowFrameBound::Following(ScalarValue::UInt64(v)) => v.is_none(),
+            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => panic!("{:?}", x),
             WindowFrameBound::CurrentRow => false,
         }
     }
