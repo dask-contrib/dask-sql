@@ -351,9 +351,10 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "arrow",
+ "chrono",
  "ordered-float",
  "sqlparser",
 ]
@@ -361,7 +362,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
@@ -373,7 +374,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "arrow",
  "async-trait",
@@ -388,31 +389,37 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "ahash 0.8.0",
  "arrow",
+ "arrow-buffer",
+ "arrow-schema",
  "blake2",
  "blake3",
  "chrono",
  "datafusion-common",
  "datafusion-expr",
  "datafusion-row",
+ "half",
  "hashbrown",
+ "itertools",
  "lazy_static",
  "md-5",
+ "num-traits",
  "ordered-float",
  "paste",
  "rand",
  "regex",
  "sha2",
  "unicode-segmentation",
+ "uuid",
 ]
 
 [[package]]
 name = "datafusion-row"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -423,7 +430,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "13.0.0"
-source = "git+https://github.com/apache/arrow-datafusion/?rev=54d2870a56d8d8f914a617a7e2d52e387ef5dba2#54d2870a56d8d8f914a617a7e2d52e387ef5dba2"
+source = "git+https://github.com/apache/arrow-datafusion/?rev=c9442ce6ecf7efeb238c6c25c0519350d0ba3839#c9442ce6ecf7efeb238c6c25c0519350d0ba3839"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -441,6 +448,12 @@ dependencies = [
  "crypto-common",
  "subtle",
 ]
+
+[[package]]
+name = "either"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 
 [[package]]
 name = "env_logger"
@@ -555,6 +568,15 @@ name = "indoc"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adab1eaa3408fb7f0c777a73e7465fd5656136fc93b670eb6df3c88c2c1344e3"
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itoa"
@@ -1083,9 +1105,9 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "sqlparser"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0781f2b6bd03e5adf065c8e772b49eaea9f640d06a1b9130330fe8bd2563f4fd"
+checksum = "86be66ea0b2b22749cfa157d16e2e84bf793e626a3375f4d378dc289fa03affb"
 dependencies = [
  "log",
 ]

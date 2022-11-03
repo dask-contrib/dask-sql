@@ -1,3 +1,4 @@
+use datafusion_common::ScalarValue;
 use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
 use pyo3::prelude::*;
 
@@ -127,12 +128,12 @@ impl PyWindowFrame {
     /// Returns starting bound
     #[pyo3(name = "getLowerBound")]
     pub fn get_lower_bound(&self) -> PyResult<PyWindowFrameBound> {
-        Ok(self.window_frame.start_bound.into())
+        Ok(self.window_frame.start_bound.clone().into())
     }
     /// Returns end bound
     #[pyo3(name = "getUpperBound")]
     pub fn get_upper_bound(&self) -> PyResult<PyWindowFrameBound> {
-        Ok(self.window_frame.end_bound.into())
+        Ok(self.window_frame.end_bound.clone().into())
     }
 }
 
@@ -147,19 +148,21 @@ impl PyWindowFrameBound {
     /// Returns if the frame bound is preceding
     #[pyo3(name = "isPreceding")]
     pub fn is_preceding(&self) -> bool {
-        matches!(self.frame_bound, WindowFrameBound::Preceding(..))
+        matches!(self.frame_bound, WindowFrameBound::Preceding(_))
     }
 
     /// Returns if the frame bound is following
     #[pyo3(name = "isFollowing")]
     pub fn is_following(&self) -> bool {
-        matches!(self.frame_bound, WindowFrameBound::Following(..))
+        matches!(self.frame_bound, WindowFrameBound::Following(_))
     }
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
     pub fn get_offset(&self) -> Option<u64> {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => val,
+            WindowFrameBound::Preceding(ScalarValue::UInt64(val))
+            | WindowFrameBound::Following(ScalarValue::UInt64(val)) => val,
+            WindowFrameBound::Preceding(_) | WindowFrameBound::Following(_) => None,
             WindowFrameBound::CurrentRow => None,
         }
     }
@@ -167,7 +170,9 @@ impl PyWindowFrameBound {
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> bool {
         match self.frame_bound {
-            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => val.is_none(),
+            WindowFrameBound::Preceding(ScalarValue::UInt64(None))
+            | WindowFrameBound::Following(ScalarValue::UInt64(None)) => true,
+            WindowFrameBound::Preceding(_) | WindowFrameBound::Following(_) => false,
             WindowFrameBound::CurrentRow => false,
         }
     }
