@@ -2,6 +2,7 @@ from typing import List
 
 import dask.dataframe as dd
 import pandas as pd
+from dask import config as dask_config
 from dask.utils import M
 
 from dask_sql.utils import make_pickable_without_dask_sql
@@ -133,6 +134,10 @@ def is_topk_optimizable(
         or (
             "pandas" in str(df._partition_type)
             and any(df[sort_columns].dtypes == "object")
+        )
+        or (
+            sort_num_rows * len(df.columns)
+            > dask_config.get("sql.sort.topk-nelem-limit")
         )
     ):
         return False
