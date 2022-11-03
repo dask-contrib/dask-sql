@@ -748,7 +748,7 @@ def test_totimestamp(c, gpu):
             ],
         }
     )
-    # TODO: format timestamps for GPU tests
+    # https://github.com/rapidsai/cudf/issues/12062
     if not gpu:
         assert_eq(df, expected_df, check_dtype=False)
 
