@@ -420,3 +420,17 @@ def test_sort_topk(gpu):
     df_result = c.sql("""SELECT * FROM df ORDER BY a, b DESC NULLS LAST LIMIT 10""")
     assert all(["nlargest" not in key for key in df_result.dask.layers.keys()])
     assert all(["nsmallest" not in key for key in df_result.dask.layers.keys()])
+
+    # Assert optimization isn't applied when the number of requested elements
+    # exceed topk-nelem-limit config value
+    # Default topk-nelem-limit is 1M and 334k*3columns takes it above this limit
+    df_result = c.sql("""SELECT * FROM df ORDER BY a, b LIMIT 333334""")
+    assert all(["nlargest" not in key for key in df_result.dask.layers.keys()])
+    assert all(["nsmallest" not in key for key in df_result.dask.layers.keys()])
+
+    df_result = c.sql(
+        """SELECT * FROM df ORDER BY a, b LIMIT 10""",
+        config_options={"sql.sort.topk-nelem-limit": 29},
+    )
+    assert all(["nlargest" not in key for key in df_result.dask.layers.keys()])
+    assert all(["nsmallest" not in key for key in df_result.dask.layers.keys()])
