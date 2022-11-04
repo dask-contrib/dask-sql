@@ -21,8 +21,8 @@ impl PySort {
     }
 
     #[pyo3(name = "getNumRows")]
-    pub fn get_fetch_val(&self) -> Option<usize> {
-        self.sort.fetch
+    pub fn get_fetch_val(&self) -> PyResult<Option<usize>> {
+        Ok(self.sort.fetch)
     }
 }
 

@@ -57,7 +57,7 @@ properties:
           topk-nelem-limit:
             type: integer
             description: |
-              Configure the total number of elements below which dask should attempt to apply the top-k
-              optimization if possible. nelem is defined as the limit or ``k`` value times the number of
-              columns. Default is ``1000000`` corresponding to a LIMIT clause of 1 million in a 1 column
-              table.
+              Total number of elements below which dask-sql should attempt to apply the top-k
+              optimization (when possible). ``nelem`` is defined as the limit or ``k`` value times the
+              number of columns. Default is 1000000, corresponding to a LIMIT clause of 1 million in a
+              1 column table.
