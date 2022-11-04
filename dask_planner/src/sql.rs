@@ -570,7 +570,6 @@ impl DaskSQLContext {
                     schema: Arc::new(DFSchema::empty()),
                     old_schema_name: alter_schema.old_schema_name,
                     new_schema_name: alter_schema.new_schema_name,
-                    if_exists: alter_schema.if_exists,
                 }),
             })),
         }

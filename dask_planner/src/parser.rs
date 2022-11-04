@@ -330,7 +330,6 @@ pub struct AlterTable {
 pub struct AlterSchema {
     pub old_schema_name: String,
     pub new_schema_name: String,
-    pub if_exists: bool,
 }
 
 /// Dask-SQL Statement representations.
@@ -1312,8 +1311,6 @@ impl<'a> DaskParser<'a> {
     }
 
     fn parse_alter_schema(&mut self) -> Result<DaskStatement, ParserError> {
-        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
-
         // parse old schema name
         let old_schema_name = self.parser.parse_identifier()?.value;
 
@@ -1326,7 +1323,6 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::AlterSchema(Box::new(AlterSchema {
             old_schema_name,
             new_schema_name,
-            if_exists,
         })))
     }
 }

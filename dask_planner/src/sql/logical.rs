@@ -40,6 +40,8 @@ use datafusion_expr::LogicalPlan;
 use pyo3::prelude::*;
 
 use self::{
+    alter_schema::AlterSchemaPlanNode,
+    alter_table::AlterTablePlanNode,
     analyze_table::AnalyzeTablePlanNode,
     create_catalog_schema::CreateCatalogSchemaPlanNode,
     create_experiment::CreateExperimentPlanNode,
@@ -229,6 +231,16 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::AlterTable as PyAlterTable
+    pub fn alter_table(&self) -> PyResult<alter_table::PyAlterTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::AlterSchema as PyAlterSchema
+    pub fn alter_schema(&self) -> PyResult<alter_schema::PyAlterSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -336,6 +348,10 @@ impl PyLogicalPlan {
                     "UseSchema"
                 } else if node.downcast_ref::<AnalyzeTablePlanNode>().is_some() {
                     "AnalyzeTable"
+                } else if node.downcast_ref::<AlterTablePlanNode>().is_some() {
+                    "AlterTable"
+                } else if node.downcast_ref::<AlterSchemaPlanNode>().is_some() {
+                    "AlterSchema"
                 } else {
                     // Default to generic `Extension`
                     "Extension"

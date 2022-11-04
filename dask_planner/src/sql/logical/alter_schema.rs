@@ -16,7 +16,6 @@ pub struct AlterSchemaPlanNode {
     pub schema: DFSchemaRef,
     pub old_schema_name: String,
     pub new_schema_name: String,
-    pub if_exists: bool,
 }
 
 impl Debug for AlterSchemaPlanNode {
@@ -41,7 +40,7 @@ impl UserDefinedLogicalNode for AlterSchemaPlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // ALTER TABLE {table_name}
+        // ALTER SCHEMA {table_name}
         vec![]
     }
 
@@ -62,7 +61,6 @@ impl UserDefinedLogicalNode for AlterSchemaPlanNode {
             schema: Arc::new(DFSchema::empty()),
             old_schema_name: self.old_schema_name.clone(),
             new_schema_name: self.new_schema_name.clone(),
-            if_exists: self.if_exists,
         })
     }
 }
@@ -82,11 +80,6 @@ impl PyAlterSchema {
     #[pyo3(name = "getNewSchemaName")]
     fn get_new_schema_name(&self) -> PyResult<String> {
         Ok(self.alter_schema.new_schema_name.clone())
-    }
-
-    #[pyo3(name = "getIfExists")]
-    fn get_if_exists(&self) -> PyResult<bool> {
-        Ok(self.alter_schema.if_exists)
     }
 }
 
