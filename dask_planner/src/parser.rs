@@ -373,7 +373,7 @@ pub enum DaskStatement {
     AnalyzeTable(Box<AnalyzeTable>),
     // Extension: `ALTER TABLE`
     AlterTable(Box<AlterTable>),
-    // Extension: `ALTER TABLE`
+    // Extension: `ALTER SCHEMA`
     AlterSchema(Box<AlterSchema>),
 }
 
