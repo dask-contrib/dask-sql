@@ -412,5 +412,4 @@ def test_alter_table(c, df_simple):
 
     c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
 
-    print(c.schema[c.schema_name].tables)
     del c.schema[c.schema_name].tables["physics"]
