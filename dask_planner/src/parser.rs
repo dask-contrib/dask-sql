@@ -316,6 +316,23 @@ pub struct AnalyzeTable {
     pub columns: Vec<String>,
 }
 
+/// Dask-SQL extension DDL for `ALTER TABLE`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlterTable {
+    pub old_table_name: String,
+    pub new_table_name: String,
+    pub schema_name: Option<String>,
+    pub if_exists: bool,
+}
+
+/// Dask-SQL extension DDL for `ALTER SCHEMA`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlterSchema {
+    pub old_schema_name: String,
+    pub new_schema_name: String,
+    pub if_exists: bool,
+}
+
 /// Dask-SQL Statement representations.
 ///
 /// Tokens parsed by `DaskParser` are converted into these values.
@@ -355,6 +372,10 @@ pub enum DaskStatement {
     UseSchema(Box<UseSchema>),
     // Extension: `ANALYZE TABLE`
     AnalyzeTable(Box<AnalyzeTable>),
+    // Extension: `ALTER TABLE`
+    AlterTable(Box<AlterTable>),
+    // Extension: `ALTER TABLE`
+    AlterSchema(Box<AlterSchema>),
 }
 
 /// SQL Parser
@@ -497,6 +518,11 @@ impl<'a> DaskParser<'a> {
                         // move one token foward
                         self.parser.next_token();
                         self.parse_analyze()
+                    }
+                    Keyword::ALTER => {
+                        // move one token forward
+                        self.parser.next_token();
+                        self.parse_alter()
                     }
                     _ => {
                         match w.value.to_lowercase().as_str() {
@@ -794,6 +820,36 @@ impl<'a> DaskParser<'a> {
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
                     self.parser.parse_analyze()?,
+                )))
+            }
+        }
+    }
+
+    /// Parse a SQL ALTER statement
+    pub fn parse_alter(&mut self) -> Result<DaskStatement, ParserError> {
+        match self.parser.peek_token() {
+            Token::Word(w) => {
+                match w.keyword {
+                    Keyword::TABLE => {
+                        self.parser.next_token();
+                        self.parse_alter_table()
+                    }
+                    Keyword::SCHEMA => {
+                        self.parser.next_token();
+                        self.parse_alter_schema()
+                    }
+                    _ => {
+                        // use the native parser
+                        Ok(DaskStatement::Statement(Box::from(
+                            self.parser.parse_alter()?,
+                        )))
+                    }
+                }
+            }
+            _ => {
+                // use the native parser
+                Ok(DaskStatement::Statement(Box::from(
+                    self.parser.parse_alter()?,
                 )))
             }
         }
@@ -1228,6 +1284,49 @@ impl<'a> DaskParser<'a> {
                 _ => Some(tbl_schema),
             },
             columns,
+        })))
+    }
+
+    fn parse_alter_table(&mut self) -> Result<DaskStatement, ParserError> {
+        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+
+        // parse fully qualified old table name
+        let (schema_name, old_table_name) =
+            DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
+
+        self.parser
+            .expect_keywords(&[Keyword::RENAME, Keyword::TO])?;
+
+        // parse new table name
+        let new_table_name = self.parser.parse_identifier()?.value;
+
+        Ok(DaskStatement::AlterTable(Box::new(AlterTable {
+            old_table_name,
+            new_table_name,
+            schema_name: match schema_name.as_str() {
+                "" => None,
+                _ => Some(schema_name),
+            },
+            if_exists,
+        })))
+    }
+
+    fn parse_alter_schema(&mut self) -> Result<DaskStatement, ParserError> {
+        let if_exists = self.parser.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+
+        // parse old schema name
+        let old_schema_name = self.parser.parse_identifier()?.value;
+
+        self.parser
+            .expect_keywords(&[Keyword::RENAME, Keyword::TO])?;
+
+        // parse new schema name
+        let new_schema_name = self.parser.parse_identifier()?.value;
+
+        Ok(DaskStatement::AlterSchema(Box::new(AlterSchema {
+            old_schema_name,
+            new_schema_name,
+            if_exists,
         })))
     }
 }

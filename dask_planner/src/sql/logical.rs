@@ -4,6 +4,8 @@ use crate::sql::{
 };
 
 pub mod aggregate;
+pub mod alter_schema;
+pub mod alter_table;
 pub mod analyze_table;
 pub mod create_catalog_schema;
 pub mod create_experiment;
