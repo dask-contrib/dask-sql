@@ -9,6 +9,9 @@ sql:
   limit:
     check-first-partition: True
 
+  optimize: True
+
   predicate_pushdown: True
 
-  optimize: True
+  sort:
+    topk-nelem-limit: 1000000
