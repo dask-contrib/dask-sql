@@ -400,7 +400,7 @@ impl DaskSQLContext {
             Ok(valid) => {
                 if valid {
                     optimizer::DaskSqlOptimizer::new(true)
-                        .run_optimizations(existing_plan.original_plan)
+                        .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,

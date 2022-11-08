@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
@@ -8,8 +10,9 @@ use datafusion_optimizer::{
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
     filter_push_down::FilterPushDown,
+    inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
-    optimizer::OptimizerRule,
+    optimizer::{Optimizer, OptimizerRule},
     projection_push_down::ProjectionPushDown,
     reduce_cross_join::ReduceCrossJoin,
     reduce_outer_join::ReduceOuterJoin,
@@ -30,81 +33,65 @@ use eliminate_agg_distinct::EliminateAggDistinct;
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
-    optimizations: Vec<Box<dyn OptimizerRule + Send + Sync>>,
+    optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new(skip_failing_rules: bool) -> Self {
-        let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
-            Box::new(TypeCoercion::new()),
-            Box::new(SimplifyExpressions::new()),
-            Box::new(UnwrapCastInComparison::new()),
-            Box::new(DecorrelateWhereExists::new()),
-            Box::new(DecorrelateWhereIn::new()),
-            Box::new(ScalarSubqueryToJoin::new()),
-            Box::new(SubqueryFilterToJoin::new()),
+        let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
+            Arc::new(InlineTableScan::new()),
+            Arc::new(TypeCoercion::new()),
+            Arc::new(SimplifyExpressions::new()),
+            Arc::new(UnwrapCastInComparison::new()),
+            Arc::new(DecorrelateWhereExists::new()),
+            Arc::new(DecorrelateWhereIn::new()),
+            Arc::new(ScalarSubqueryToJoin::new()),
+            Arc::new(SubqueryFilterToJoin::new()),
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
-            Box::new(SimplifyExpressions::new()),
-            Box::new(EliminateFilter::new()),
-            Box::new(ReduceCrossJoin::new()),
-            Box::new(CommonSubexprEliminate::new()),
-            Box::new(EliminateLimit::new()),
-            Box::new(RewriteDisjunctivePredicate::new()),
-            Box::new(FilterNullJoinKeys::default()),
-            Box::new(ReduceOuterJoin::new()),
-            Box::new(FilterPushDown::new()),
-            Box::new(LimitPushDown::new()),
-            // Box::new(SingleDistinctToGroupBy::new()),
+            Arc::new(SimplifyExpressions::new()),
+            Arc::new(EliminateFilter::new()),
+            Arc::new(ReduceCrossJoin::new()),
+            Arc::new(CommonSubexprEliminate::new()),
+            Arc::new(EliminateLimit::new()),
+            Arc::new(RewriteDisjunctivePredicate::new()),
+            Arc::new(FilterNullJoinKeys::default()),
+            Arc::new(ReduceOuterJoin::new()),
+            Arc::new(FilterPushDown::new()),
+            Arc::new(LimitPushDown::new()),
             // Dask-SQL specific optimizations
-            Box::new(EliminateAggDistinct::new()),
+            Arc::new(EliminateAggDistinct::new()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
-            Box::new(SimplifyExpressions::new()),
-            Box::new(UnwrapCastInComparison::new()),
-            Box::new(CommonSubexprEliminate::new()),
-            Box::new(ProjectionPushDown::new()),
+            Arc::new(SimplifyExpressions::new()),
+            Arc::new(UnwrapCastInComparison::new()),
+            Arc::new(CommonSubexprEliminate::new()),
+            Arc::new(ProjectionPushDown::new()),
         ];
+
         Self {
             skip_failing_rules,
-            optimizations: rules,
+            optimizer: Optimizer::with_rules(rules),
         }
     }
 
     /// Iteratoes through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
-    pub(crate) fn run_optimizations(
-        &self,
-        plan: LogicalPlan,
-    ) -> Result<LogicalPlan, DataFusionError> {
-        let mut resulting_plan: LogicalPlan = plan;
-        for optimization in &self.optimizations {
-            match optimization.optimize(&resulting_plan, &mut OptimizerConfig::new()) {
-                Ok(optimized_plan) => {
-                    trace!(
-                        "== AFTER APPLYING RULE {} ==\n{}",
-                        optimization.name(),
-                        optimized_plan.display_indent()
-                    );
-                    resulting_plan = optimized_plan
-                }
-                Err(e) => {
-                    if self.skip_failing_rules {
-                        println!(
-                            "Skipping optimizer rule {} due to unexpected error: {}",
-                            optimization.name(),
-                            e
-                        );
-                    } else {
-                        return Err(e);
-                    }
-                }
-            }
-        }
-        Ok(resulting_plan)
+    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+        let mut config =
+            OptimizerConfig::default().with_skip_failing_rules(self.skip_failing_rules);
+        self.optimizer.optimize(&plan, &mut config, Self::observe)
+    }
+
+    fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
+        trace!(
+            "== AFTER APPLYING RULE {} ==\n{}\n",
+            optimization.name(),
+            optimized_plan.display_indent()
+        );
     }
 }
 
@@ -158,7 +145,7 @@ mod tests {
 
         // optimize the logical plan
         let optimizer = DaskSqlOptimizer::new(false);
-        optimizer.run_optimizations(plan)
+        optimizer.optimize(plan)
     }
 
     struct MySchemaProvider {}
