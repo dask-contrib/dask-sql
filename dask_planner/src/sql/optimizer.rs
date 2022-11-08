@@ -89,7 +89,7 @@ impl DaskSqlOptimizer {
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
-        println!(
+        trace!(
             "== AFTER APPLYING RULE {} ==\n{}\n",
             optimization.name(),
             optimized_plan.display_indent()
