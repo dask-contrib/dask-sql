@@ -3,7 +3,6 @@ import os
 import pytest
 
 XFAIL_QUERIES = (
-    4,
     5,
     6,
     8,
