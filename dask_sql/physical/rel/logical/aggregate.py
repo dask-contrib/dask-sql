@@ -457,7 +457,16 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 filter_backend_col = None
 
             try:
-                aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
+                if aggregation_name == "sum" and isinstance(df._meta, pd.DataFrame):
+                    aggregation_function = AggregationSpecification(
+                        dd.Aggregation(
+                            name="custom_sum",
+                            chunk=lambda s: s.sum(min_count=1),
+                            agg=lambda s0: s0.sum(min_count=1),
+                        )
+                    )
+                else:
+                    aggregation_function = self.AGGREGATION_MAPPING[aggregation_name]
             except KeyError:
                 try:
                     aggregation_function = context.schema[schema_name].functions[

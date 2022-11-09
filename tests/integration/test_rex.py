@@ -367,11 +367,12 @@ def test_coalesce(c, gpu):
             COALESCE(NULL, NULL) as c2,
             COALESCE(NULL, 'hi') as c3,
             COALESCE(NULL, NULL, 'bye', 5/0) as c4,
-            COALESCE(NULL, 3/2, NULL, 'fly') as c5
+            COALESCE(NULL, 3/2, NULL, 'fly') as c5,
+            COALESCE(SUM(b), 'why', 2.2) as c6,
+            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c7
         FROM df
         """
     )
-    print(df.c2.compute())
 
     expected_df = pd.DataFrame(
         {
@@ -380,6 +381,8 @@ def test_coalesce(c, gpu):
             "c3": ["hi"],
             "c4": ["bye"],
             "c5": ["1"],
+            "c6": ["why"],
+            "c7": [1.0],
         }
     )
 

@@ -578,12 +578,14 @@ class CoalesceOperation(Operation):
 
     def coalesce(self, *operands):
         for operand in operands:
-            if isinstance(operand, dd.Series):
-                breakpoint()
-                raise NotImplementedError(
-                    "Coalesce with functions is not (yet) implemented."
-                )
-            elif not pd.isna(operand):
+            if is_frame(operand):
+                # Check if frame evaluates to nan or NA
+                if not operand.isnull().all().compute():
+                    return operand
+                else:
+                    continue
+
+            if not pd.isna(operand):
                 return operand
 
 
