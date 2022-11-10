@@ -17,7 +17,6 @@ use datafusion_optimizer::{
     reduce_outer_join::ReduceOuterJoin,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
-    simplify_expressions::SimplifyExpressions,
     subquery_filter_to_join::SubqueryFilterToJoin,
     type_coercion::TypeCoercion,
     unwrap_cast_in_comparison::UnwrapCastInComparison,
@@ -30,6 +29,12 @@ use eliminate_agg_distinct::EliminateAggDistinct;
 
 mod filter_push_down;
 use filter_push_down::FilterPushDown;
+
+use crate::sql::optimizer::simplify_expressions::SimplifyExpressions;
+
+mod simplify_expressions;
+
+pub mod type_coercion;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
