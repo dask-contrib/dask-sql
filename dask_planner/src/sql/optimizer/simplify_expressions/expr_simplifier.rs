@@ -23,7 +23,7 @@ use arrow::{
     error::ArrowError,
     record_batch::RecordBatch,
 };
-use datafusion_common::{DFSchema, DFSchemaRef, DataFusionError, Result, ScalarValue};
+use datafusion_common::{DFSchema, DataFusionError, Result, ScalarValue};
 use datafusion_expr::{
     and,
     expr_rewriter::{ExprRewritable, ExprRewriter, RewriteRecursion},
@@ -39,7 +39,6 @@ use datafusion_optimizer::simplify_expressions::SimplifyInfo;
 use datafusion_physical_expr::{create_physical_expr, execution_props::ExecutionProps};
 
 use super::utils::*;
-use crate::sql::optimizer::type_coercion::TypeCoercionRewriter;
 
 /// This structure handles API for expression simplification
 pub struct ExprSimplifier<S> {
