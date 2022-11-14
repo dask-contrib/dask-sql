@@ -680,7 +680,19 @@ def test_date_functions(c):
 
 
 @pytest.mark.parametrize(
-    "gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.skip))]
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
+                ),
+            ),
+        ),
+    ],
 )
 def test_totimestamp(c, gpu):
     df = pd.DataFrame(
