@@ -6,7 +6,8 @@ use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate,
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
-    eliminate_filter::EliminateFilter,
+    // TODO: need to handle EmptyRelation for GPU cases
+    // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
     inline_table_scan::InlineTableScan,
@@ -60,7 +61,8 @@ impl DaskSqlOptimizer {
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
             Arc::new(SimplifyExpressions::new()),
-            Arc::new(EliminateFilter::new()),
+            // TODO: need to handle EmptyRelation for GPU cases
+            // Arc::new(EliminateFilter::new()),
             Arc::new(ReduceCrossJoin::new()),
             Arc::new(CommonSubexprEliminate::new()),
             Arc::new(EliminateLimit::new()),
