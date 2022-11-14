@@ -208,8 +208,7 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
     df = parquet_ddf
     expected_df = df_func(df)
 
-    # TODO: divisions should be consistent when successfully doing predicate pushdown
-    assert_eq(return_df, expected_df, check_divisions=False)
+    assert_eq(return_df, expected_df, check_index=False)
 
 
 def test_filtered_csv(tmpdir, c):
