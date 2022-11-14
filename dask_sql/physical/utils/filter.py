@@ -245,7 +245,14 @@ class RegenerableLayer:
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
-        result = func(*inputs, *regen_args, **regen_kwargs)
+        try:
+            result = func(*inputs, *regen_args, **regen_kwargs)
+        # FIXME: not immediately obvious what is causing this KeyError for some predicate pushdowns
+        except KeyError:
+            raise ValueError(
+                "`_regenerate_collection` failed. "
+                "Not all HLG layers are regenerable."
+            )
         _regen_cache[self.layer.output] = result
         return result
 
