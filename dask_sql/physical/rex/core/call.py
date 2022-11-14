@@ -642,7 +642,7 @@ class ToTimestampOperation(Operation):
         elif np.isscalar(df):
             if format != default_format:
                 raise RuntimeError("Integer input does not accept a format argument")
-            return datetime.utcfromtimestamp(df)
+            return np.datetime64(int(df), "s")
         else:
             if format != default_format:
                 raise RuntimeError("Integer input does not accept a format argument")
