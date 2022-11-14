@@ -635,7 +635,7 @@ class ToTimestampOperation(Operation):
                 return df * nanoseconds_to_seconds
         # String cases
         elif type(df) == str:
-            return datetime.strptime(df, format)
+            return np.datetime64(datetime.strptime(df, format))
         elif df.dtype == "object":
             return dd.to_datetime(df, format=format)
         # Integer cases
