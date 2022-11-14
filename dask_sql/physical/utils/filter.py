@@ -91,7 +91,7 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     try:
         return dsk.layers[name]._regenerate_collection(
             dsk,
-            new_kwargs={io_layer: {"filters": filters}},
+            new_kwargs={io_layer: {"filters": filters, "index": False}},
         )
     except ValueError as err:
         # Most-likely failed to apply filters in read_parquet.
@@ -245,14 +245,7 @@ class RegenerableLayer:
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
-        try:
-            result = func(*inputs, *regen_args, **regen_kwargs)
-        # FIXME: not immediately obvious what is causing this KeyError for some predicate pushdowns
-        except KeyError:
-            raise ValueError(
-                "`_regenerate_collection` failed. "
-                "Not all HLG layers are regenerable."
-            )
+        result = func(*inputs, *regen_args, **regen_kwargs)
         _regen_cache[self.layer.output] = result
         return result
 
