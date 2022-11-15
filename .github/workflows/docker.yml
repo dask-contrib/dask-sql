@@ -32,7 +32,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Docker meta for main image
         id: docker_meta_main
-        uses: crazy-max/ghaction-docker-meta@v1
+        uses: crazy-max/ghaction-docker-meta@v4
         with:
           images: nbraun/dask-sql
       - name: Build and push main image
@@ -47,7 +47,7 @@ jobs:
           push: true
       - name: Docker meta for cloud image
         id: docker_meta_cloud
-        uses: crazy-max/ghaction-docker-meta@v1
+        uses: crazy-max/ghaction-docker-meta@v4
         with:
           images: nbraun/dask-sql-cloud
       - name: Build and push cloud image
