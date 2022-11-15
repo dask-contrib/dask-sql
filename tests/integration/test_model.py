@@ -887,7 +887,7 @@ def test_experiment_automl_classifier(c, client, training_df):
         """
         CREATE EXPERIMENT my_automl_exp1 WITH (
             automl_class = 'tpot.TPOTClassifier',
-            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True),
+            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -916,7 +916,6 @@ def test_experiment_automl_regressor(c, client, training_df):
             generations=2,
             cv=2,
             n_jobs=-1,
-            use_dask=True,
             max_eval_time_mins=1),
 
             target_column = 'target'
