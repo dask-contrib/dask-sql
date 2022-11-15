@@ -1,10 +1,14 @@
+import dask
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.utils_test import hlg_layer
+from packaging.version import parse as parseVersion
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
+
+DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
 
 
 def test_filter(c, df):
@@ -208,7 +212,10 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
     df = parquet_ddf
     expected_df = df_func(df)
 
-    assert_eq(return_df, expected_df, check_index=False)
+    # divisions aren't equal for older dask versions
+    assert_eq(
+        return_df, expected_df, check_index=False, check_divisions=DASK_GT_2022_4_2
+    )
 
 
 def test_filtered_csv(tmpdir, c):
