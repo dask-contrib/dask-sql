@@ -182,6 +182,9 @@ def test_string_operations():
     assert ops_mapping["substring"](a, 2) == " normal string"
     assert ops_mapping["substring"](a, 2, 2) == " n"
     assert ops_mapping["initcap"](a) == "A Normal String"
+    assert ops_mapping["replace"](a, "nor", "") == "a mal string"
+    assert ops_mapping["replace"](a, "normal", "new") == "a new string"
+    assert ops_mapping["replace"]("hello", "", "w") == "whwewlwlwow"
 
 
 def test_dates():

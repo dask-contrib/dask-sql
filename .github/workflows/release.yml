@@ -50,7 +50,7 @@ jobs:
           output-dir: dist
           config-file: "dask_planner/pyproject.toml"
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v2.2.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
