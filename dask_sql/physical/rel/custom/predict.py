@@ -30,8 +30,7 @@ class PredictModelPlugin(BaseRelPlugin):
     Please note however, that it will need to act on Dask dataframes. If you
     are using a model not optimized for this, it might be that you run out of memory if
     your data is larger than the RAM of a single machine.
-    To prevent this, have a look into the dask-ml package,
-    especially the [ParallelPostFit](https://ml.dask.org/meta-estimators.html)
+    To prevent this, have a look into the dask_sql.physical.rel.custom.wrappers.ParallelPostFit
     meta-estimator. If you are using a model trained with `CREATE MODEL`
     and the `wrap_predict` flag, this is done automatically.
 
