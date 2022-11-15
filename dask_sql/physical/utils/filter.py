@@ -91,6 +91,7 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     try:
         return dsk.layers[name]._regenerate_collection(
             dsk,
+            # TODO: shouldn't need to specify index=False after dask#9661 is merged
             new_kwargs={io_layer: {"filters": filters, "index": False}},
         )
     except ValueError as err:
