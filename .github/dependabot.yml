@@ -10,3 +10,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "datafusion-*"
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      # Check for updates to GitHub Actions every weekday
+      interval: "weekly"
