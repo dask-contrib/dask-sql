@@ -62,7 +62,7 @@ impl TableSource for DaskTableSource {
             // to retain the Filter operator in the plan as well
             Ok(TableProviderFilterPushDown::Inexact)
         } else {
-            Ok(TableProviderFilterPushDown::Unsupported)
+            Ok(TableProviderFilterPushDown::Inexact)
         }
     }
 }

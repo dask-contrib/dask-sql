@@ -1,7 +1,12 @@
-use datafusion_expr::logical_plan::TableScan;
+use std::sync::Arc;
+
+use datafusion_expr::{logical_plan::TableScan, LogicalPlan};
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical};
+use crate::{
+    expression::{py_expr_list, PyExpr},
+    sql::exceptions::py_type_err,
+};
 
 #[pyclass(name = "TableScan", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -31,14 +36,22 @@ impl PyTableScan {
     fn contains_projections(&self) -> bool {
         self.table_scan.projection.is_some()
     }
+
+    #[pyo3(name = "getFilters")]
+    fn scan_filters(&self) -> PyResult<Vec<PyExpr>> {
+        py_expr_list(
+            &Arc::new(LogicalPlan::TableScan(self.table_scan.clone())),
+            &self.table_scan.filters,
+        )
+    }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyTableScan {
+impl TryFrom<LogicalPlan> for PyTableScan {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::TableScan(table_scan) => Ok(PyTableScan { table_scan }),
+            LogicalPlan::TableScan(table_scan) => Ok(PyTableScan { table_scan }),
             _ => Err(py_type_err("unexpected plan")),
         }
     }
