@@ -457,7 +457,7 @@ mod tests {
     fn assert_fully_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
         let optimizer = DaskSqlOptimizer::new(false);
         let optimized_plan = optimizer
-            .run_optimizations(plan.clone())
+            .optimize(plan.clone())
             .expect("failed to optimize plan");
         let formatted_plan = format!("{}", optimized_plan.display_indent());
         assert_eq!(expected, formatted_plan);
