@@ -5,6 +5,7 @@ import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
+from dask.distributed import Client, LocalCluster
 
 from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
@@ -151,18 +152,38 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-def test_clustering_and_prediction(c, training_df):
-    c.sql(
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_clustering_and_prediction(c, training_df, gpu):
+    if gpu:
+        df = timeseries(freq="1d").reset_index(drop=True)
+        c.create_table("gpu_timeseries", df, persist=True, gpu=True)
+
+        cluster = LocalCluster()
+        client = Client(cluster)
+
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'cuml.dask.cluster.KMeans'
+            ) AS (
+                SELECT x, y
+                FROM gpu_timeseries
+                LIMIT 100
+            )
         """
-        CREATE MODEL my_model WITH (
-            model_class = 'sklearn.cluster.KMeans'
-        ) AS (
-            SELECT x, y
-            FROM timeseries
-            LIMIT 100
         )
-    """
-    )
+    else:
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'sklearn.cluster.KMeans'
+            ) AS (
+                SELECT x, y
+                FROM timeseries
+                LIMIT 100
+            )
+        """
+        )
 
     check_trained_model(c)
 
@@ -887,7 +908,7 @@ def test_experiment_automl_classifier(c, client, training_df):
         """
         CREATE EXPERIMENT my_automl_exp1 WITH (
             automl_class = 'tpot.TPOTClassifier',
-            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1),
+            automl_kwargs = (population_size=2, generations=2, cv=2, n_jobs=-1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -912,7 +933,7 @@ def test_experiment_automl_regressor(c, client, training_df):
         """
         CREATE EXPERIMENT my_automl_exp2 WITH (
             automl_class = 'tpot.TPOTRegressor',
-            automl_kwargs = (population_size = 2,
+            automl_kwargs = (population_size=2,
             generations=2,
             cv=2,
             n_jobs=-1,
