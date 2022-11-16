@@ -11,7 +11,7 @@ jobs:
     if: github.repository == 'dask-contrib/dask-sql'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Parse current axis YAML
         uses: the-coding-turtle/ga-yaml-parser@v0.1.1

@@ -43,7 +43,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "LEFT": "left",
         "RIGHT": "right",
         "FULL": "outer",
-        "SEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
+        "LEFTSEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:

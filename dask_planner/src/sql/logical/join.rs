@@ -82,8 +82,10 @@ impl PyJoin {
             JoinType::Left => Ok("LEFT".to_string()),
             JoinType::Right => Ok("RIGHT".to_string()),
             JoinType::Full => Ok("FULL".to_string()),
-            JoinType::Semi => Ok("SEMI".to_string()),
-            JoinType::Anti => Ok("ANTI".to_string()),
+            JoinType::LeftSemi => Ok("LEFTSEMI".to_string()),
+            JoinType::LeftAnti => Ok("LEFTANTI".to_string()),
+            JoinType::RightSemi => Ok("RIGHTSEMI".to_string()),
+            JoinType::RightAnti => Ok("RIGHTANTI".to_string()),
         }
     }
 }
