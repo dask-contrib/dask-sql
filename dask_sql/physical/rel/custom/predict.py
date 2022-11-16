@@ -61,17 +61,21 @@ class PredictModelPlugin(BaseRelPlugin):
 
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)
-        df = df.set_index(df.columns[0], drop=False)
-        prediction = model.predict(df[training_columns])
-        # Convert numpy.ndarray to Dask Series
-        prediction = dd.from_pandas(
-            pd.Series(prediction, index=df.index),
-            npartitions=df.npartitions,
-        )
-        predicted_df = df.assign(target=prediction)
-        # Need to drop first column to reset index
-        # because the first column is equal to the index
-        predicted_df = predicted_df.drop(columns=[df.columns[0]]).reset_index()
+        try:
+            prediction = model.predict(df[training_columns])
+            predicted_df = df.assign(target=prediction)
+        except TypeError:
+            df = df.set_index(df.columns[0], drop=False)
+            prediction = model.predict(df[training_columns])
+            # Convert numpy.ndarray to Dask Series
+            prediction = dd.from_pandas(
+                pd.Series(prediction, index=df.index),
+                npartitions=df.npartitions,
+            )
+            predicted_df = df.assign(target=prediction)
+            # Need to drop first column to reset index
+            # because the first column is equal to the index
+            predicted_df = predicted_df.drop(columns=[df.columns[0]]).reset_index()
 
         # Create a temporary context, which includes the
         # new "table" so that we can use the normal
