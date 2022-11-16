@@ -152,38 +152,38 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_clustering_and_prediction(c, training_df, gpu):
-    if gpu:
-        df = timeseries(freq="1d").reset_index(drop=True)
-        c.create_table("gpu_timeseries", df, persist=True, gpu=True)
-
-        cluster = LocalCluster()
-        client = Client(cluster)
-
-        c.sql(
-            """
-            CREATE MODEL my_model WITH (
-                model_class = 'cuml.dask.cluster.KMeans'
-            ) AS (
-                SELECT x, y
-                FROM gpu_timeseries
-                LIMIT 100
-            )
+def test_clustering_and_prediction(c, training_df):
+    c.sql(
         """
+        CREATE MODEL my_model WITH (
+            model_class = 'sklearn.cluster.KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
         )
-    else:
-        c.sql(
-            """
-            CREATE MODEL my_model WITH (
-                model_class = 'sklearn.cluster.KMeans'
-            ) AS (
-                SELECT x, y
-                FROM timeseries
-                LIMIT 100
-            )
+    """
+    )
+
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_gpu_clustering_and_prediction(c, gpu_training_df):
+    cluster = LocalCluster()
+    client = Client(cluster)
+
+    c.sql(
         """
+        CREATE MODEL my_model WITH (
+            model_class = 'cuml.dask.cluster.KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
         )
+    """
+    )
 
     check_trained_model(c)
 
