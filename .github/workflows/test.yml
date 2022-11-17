@@ -24,7 +24,7 @@ jobs:
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - uses: xarray-contrib/ci-trigger@v1.1
@@ -41,12 +41,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v2.2.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -58,10 +58,10 @@ jobs:
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
-      - name: Install hive testing dependencies for Linux
+      - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install -c conda-forge sasl>=0.3.1
+          mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Optionally install upstream dev Dask / dask-ml
@@ -87,9 +87,9 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v2.2.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -137,9 +137,9 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v2.2.0
         with:
           python-version: "3.8"
           mamba-version: "*"

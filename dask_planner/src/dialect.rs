@@ -140,6 +140,35 @@ impl Dialect for DaskDialect {
                         special: false,
                     })))
                 }
+                Token::Word(w) if w.value.to_lowercase() == "to_timestamp" => {
+                    // TO_TIMESTAMP(d, "%d/%m/%Y")
+                    parser.next_token(); // skip to_timestamp
+                    parser.expect_token(&Token::LParen)?;
+                    let expr = parser.parse_expr()?;
+                    let comma = parser.consume_token(&Token::Comma);
+                    let time_format = if comma {
+                        parser.next_token().to_string()
+                    } else {
+                        "%Y-%m-%d %H:%M:%S".to_string()
+                    };
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_format),
+                        ))),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("dsql_totimestamp")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
                 _ => Ok(None),
             }
         }

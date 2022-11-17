@@ -59,10 +59,27 @@ def test_intervals(c):
         """SELECT INTERVAL '3' DAY as "IN"
         """
     )
-
     expected_df = pd.DataFrame(
         {
             "IN": [pd.to_timedelta("3d")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+    date1 = datetime(2021, 10, 3, 15, 53, 42, 47)
+    date2 = datetime(2021, 2, 28, 15, 53, 42, 47)
+    dates = dd.from_pandas(pd.DataFrame({"d": [date1, date2]}), npartitions=1)
+    c.register_dask_table(dates, "dates")
+    df = c.sql(
+        """SELECT d + INTERVAL '5 days' AS "Plus_5_days" FROM dates
+        """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "Plus_5_days": [
+                datetime(2021, 10, 8, 15, 53, 42, 47),
+                datetime(2021, 3, 5, 15, 53, 42, 47),
+            ]
         }
     )
     assert_eq(df, expected_df)
@@ -505,7 +522,9 @@ def test_string_functions(c, gpu):
             SUBSTR(a, 3, 6) AS s,
             INITCAP(a) AS t,
             INITCAP(UPPER(a)) AS u,
-            INITCAP(LOWER(a)) AS v
+            INITCAP(LOWER(a)) AS v,
+            REPLACE(a, 'r', 'l') as w,
+            REPLACE('Another String', 'th', 'b') as x
         FROM
             {input_table}
         """
@@ -538,6 +557,8 @@ def test_string_functions(c, gpu):
             "t": ["A Normal String"],
             "u": ["A Normal String"],
             "v": ["A Normal String"],
+            "w": ["a nolmal stling"],
+            "x": ["Anober String"],
         }
     )
 
@@ -653,3 +674,122 @@ def test_date_functions(c):
             FROM df
             """
         )
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
+                ),
+            ),
+        ),
+    ],
+)
+def test_totimestamp(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": np.array([1203073300, 1406073600, 2806073600]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+                datetime(1997, 3, 28, 10, 30, 1),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["02/28/1997", "03/28/1997"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%m/%d/%Y") AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+                datetime(1997, 3, 28, 0, 0, 0),
+            ],
+        }
+    )
+    # https://github.com/rapidsai/cudf/issues/12062
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
+
+    int_input = 1203073300
+    df = c.sql(f"SELECT to_timestamp({int_input}) as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "1997-02-28 10:30:00"
+    df = c.sql(f"SELECT to_timestamp('{string_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "02/28/1997"
+    df = c.sql(f"SELECT to_timestamp('{string_input}', '%m/%d/%Y') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
