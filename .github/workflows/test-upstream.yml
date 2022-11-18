@@ -46,7 +46,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags.
       - name: Set up Python
@@ -86,7 +86,7 @@ jobs:
     name: "Test upstream dev in a dask cluster"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
@@ -138,7 +138,7 @@ jobs:
     name: "Test importing with bare requirements and upstream dev"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
@@ -181,7 +181,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Report failures
         uses: actions/github-script@v3
         with:
