@@ -42,12 +42,12 @@ class CreateModelPlugin(BaseRelPlugin):
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if predicting on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if predicting on big data.
     * wrap_fit: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if training on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if training on big data.
     * fit_kwargs: keyword arguments sent to the call to fit().
 
     All other arguments are passed to the constructor of the
@@ -125,9 +125,20 @@ class CreateModelPlugin(BaseRelPlugin):
             raise ValueError("Parameters must include a 'model_class' parameter.")
 
         target_column = kwargs.pop("target_column", "")
-        wrap_predict = kwargs.pop("wrap_predict", False)
-        wrap_fit = kwargs.pop("wrap_fit", False)
+        wrap_predict = kwargs.pop("wrap_predict", None)
+        wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
+
+        if wrap_predict is None:
+            if "sklearn" in model_class or ("cuml" in model_class and "cuml.dask" not in model_class):
+                wrap_predict = True
+            else:
+                wrap_predict = False
+        if wrap_fit is None:
+            if "sklearn" in model_class or ("cuml" in model_class and "cuml.dask" not in model_class):
+                wrap_predict = True
+            else:
+                wrap_fit = False
 
         training_df = context.sql(select)
 
