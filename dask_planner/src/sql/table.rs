@@ -56,23 +56,20 @@ impl TableSource for DaskTableSource {
             // TODO this should return Exact but we cannot make that change until we
             // are actually pushing the TableScan filters down to the reader because
             // returning Exact here would remove the Filter from the plan
-            Ok(TableProviderFilterPushDown::Inexact)
+            Ok(TableProviderFilterPushDown::Exact)
         } else if filters.iter().any(|f| is_supported_push_down_expr(f)) {
             // we can partially apply the filter in the TableScan but we need
             // to retain the Filter operator in the plan as well
             Ok(TableProviderFilterPushDown::Inexact)
         } else {
-            Ok(TableProviderFilterPushDown::Inexact)
+            Ok(TableProviderFilterPushDown::Unsupported)
         }
     }
 }
 
-fn is_supported_push_down_expr(expr: &Expr) -> bool {
-    match expr {
-        // for now, we just attempt to push down simple IS NOT NULL filters on columns
-        Expr::IsNotNull(ref a) => matches!(a.as_ref(), Expr::Column(_)),
-        _ => false,
-    }
+fn is_supported_push_down_expr(_expr: &Expr) -> bool {
+    // For now we support all kinds of expr's at this level
+    true
 }
 
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
