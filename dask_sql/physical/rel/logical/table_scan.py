@@ -43,8 +43,9 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
         dc = context.schema[schema_name].tables[table_name]
 
-        dc = self._apply_projections(table_scan, dask_table, dc)
+        # Apply filter before projections since filter columns may not be in projections
         dc = self._apply_filters(table_scan, rel, dc, context)
+        dc = self._apply_projections(table_scan, dask_table, dc)
 
         cc = dc.column_container
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
