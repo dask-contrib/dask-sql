@@ -130,13 +130,17 @@ class CreateModelPlugin(BaseRelPlugin):
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
         if wrap_predict is None:
-            if "sklearn" in model_class or ("cuml" in model_class and "cuml.dask" not in model_class):
+            if "sklearn" in model_class or (
+                "cuml" in model_class and "cuml.dask" not in model_class
+            ):
                 wrap_predict = True
             else:
                 wrap_predict = False
         if wrap_fit is None:
-            if "sklearn" in model_class or ("cuml" in model_class and "cuml.dask" not in model_class):
-                wrap_predict = True
+            if "sklearn" in model_class or (
+                "cuml" in model_class and "cuml.dask" not in model_class
+            ):
+                wrap_fit = True
             else:
                 wrap_fit = False
 
