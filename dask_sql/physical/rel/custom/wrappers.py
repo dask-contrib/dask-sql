@@ -515,7 +515,9 @@ class Incremental(ParallelPostFit):
             try:
                 result = estimator.partial_fit(X=X, y=y, **fit_kwargs)
             except ValueError:
-                result = estimator.partial_fit(X=X, y=y, classes=np.unique(y), **fit_kwargs)
+                result = estimator.partial_fit(
+                    X=X, y=y, classes=np.unique(y), **fit_kwargs
+                )
         else:
             result = fit(
                 estimator,

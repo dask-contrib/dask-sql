@@ -137,9 +137,10 @@ class CreateModelPlugin(BaseRelPlugin):
             else:
                 wrap_predict = False
         if wrap_fit is None:
-            if ("sklearn" in model_class or (
-                "cuml" in model_class and "cuml.dask" not in model_class
-            )) and hasattr(model_class, "partial_fit"):
+            if (
+                "sklearn" in model_class
+                or ("cuml" in model_class and "cuml.dask" not in model_class)
+            ) and hasattr(model_class, "partial_fit"):
                 wrap_fit = True
             else:
                 wrap_fit = False
