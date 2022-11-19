@@ -512,7 +512,10 @@ class Incremental(ParallelPostFit):
     def _fit_for_estimator(self, estimator, X, y, **fit_kwargs):
         check_scoring(estimator, self.scoring)
         if not dask.is_dask_collection(X) and not dask.is_dask_collection(y):
-            result = estimator.partial_fit(X=X, y=y, **fit_kwargs)
+            try:
+                result = estimator.partial_fit(X=X, y=y, **fit_kwargs)
+            except ValueError:
+                result = estimator.partial_fit(X=X, y=y, classes=np.unique(y), **fit_kwargs)
         else:
             result = fit(
                 estimator,
