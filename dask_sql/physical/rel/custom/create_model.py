@@ -129,6 +129,15 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
+        try:
+            ModelClass = import_class(model_class)
+        except ImportError:
+            raise ValueError(
+                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
+            )
+
+        model = ModelClass(**kwargs)
+
         if wrap_predict is None:
             if "sklearn" in model_class or (
                 "cuml" in model_class and "cuml.dask" not in model_class
@@ -140,7 +149,7 @@ class CreateModelPlugin(BaseRelPlugin):
             if (
                 "sklearn" in model_class
                 or ("cuml" in model_class and "cuml.dask" not in model_class)
-            ) and hasattr(model_class, "partial_fit"):
+            ) and hasattr(model, "partial_fit"):
                 wrap_fit = True
             else:
                 wrap_fit = False
@@ -157,14 +166,6 @@ class CreateModelPlugin(BaseRelPlugin):
             X = training_df
             y = None
 
-        try:
-            ModelClass = import_class(model_class)
-        except ImportError:
-            raise ValueError(
-                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
-            )
-
-        model = ModelClass(**kwargs)
         if wrap_fit:
             from dask_sql.physical.rel.custom.wrappers import Incremental
 

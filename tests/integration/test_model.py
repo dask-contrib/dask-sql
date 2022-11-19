@@ -527,7 +527,7 @@ def test_export_model(c, training_df, tmpdir):
     )
 
     assert (
-        pickle.load(open(str(temporary_file), "rb")).__class__.__name__
+        pickle.load(open(str(temporary_file), "rb")).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
     temporary_file = os.path.join(tmpdir, "model.joblib")
@@ -541,7 +541,7 @@ def test_export_model(c, training_df, tmpdir):
     )
 
     assert (
-        joblib.load(str(temporary_file)).__class__.__name__
+        joblib.load(str(temporary_file)).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
 
@@ -586,7 +586,7 @@ def test_mlflow_export(c, training_df, tmpdir):
     )
     # for sklearn compatible model
     assert (
-        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        mlflow.sklearn.load_model(str(temporary_dir)).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
 
