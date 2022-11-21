@@ -43,7 +43,7 @@ jobs:
           context: .
           file: ./docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: linux/amd64
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
           load: true
@@ -58,7 +58,7 @@ jobs:
           context: .
           file: ./docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: linux/amd64
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
           labels: ${{ steps.docker_meta_cloud.outputs.labels }}
           load: true
