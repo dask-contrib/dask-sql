@@ -577,16 +577,18 @@ class CoalesceOperation(Operation):
         super().__init__(self.coalesce)
 
     def coalesce(self, *operands):
+        result = None
         for operand in operands:
             if is_frame(operand):
                 # Check if frame evaluates to nan or NA
-                if not operand.isnull().all().compute():
-                    return operand
+                if len(operand) == 1 and not operand.isnull().all().compute():
+                    return operand if result is None else result.fillna(operand)
                 else:
-                    continue
+                    result = operand if result is None else result.fillna(operand)
+            elif not pd.isna(operand):
+                return operand if result is None else result.fillna(operand)
 
-            if not pd.isna(operand):
-                return operand
+        return result
 
 
 class ExtractOperation(Operation):

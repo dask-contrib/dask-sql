@@ -386,9 +386,7 @@ def test_coalesce(c, gpu):
         }
     )
 
-    df["c2"] = df["c2"].astype("float64")
-    df["c5"] = df["c5"].astype("O")
-    assert_eq(df, expected_df)
+    assert_eq(df, expected_df, check_dtype=False)
     c.drop_table("df")
 
 
