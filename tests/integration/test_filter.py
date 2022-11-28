@@ -157,20 +157,35 @@ def test_filter_year(c):
         (
             "SELECT * FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
-            [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
+            [
+                [("a", "==", 1), ("b", "<", 10)],
+                [("a", "==", 1), ("b", ">", 5)],
+                [("b", ">", 5), ("b", "<", 10)],
+                [("a", "==", 1)],
+            ],
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
             lambda x: x[(x["b"] == 1) | (x["b"] == 6)],
             [[("b", "==", 1)], [("b", "==", 6)]],
-            # marks=pytest.mark.xfail(
-            #    reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
-            # ),
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b IN (1, 3, 5, 6)",
+            lambda x: x[(x["b"] == 1) | (x["b"] == 3) | (x["b"] == 5) | (x["b"] == 6)],
+            [[("b", "==", 1)], [("b", "==", 3)], [("b", "==", 5)], [("b", "==", 6)]],
+            marks=pytest.mark.xfail(
+                reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
+            ),
         ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
-            [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
+            [
+                [("a", "==", 1), ("b", "<", 10)],
+                [("a", "==", 1), ("b", ">", 5)],
+                [("b", ">", 5), ("b", "<", 10)],
+                [("a", "==", 1)],
+            ],
         ),
         (
             # Original filters NOT in disjunctive normal form
