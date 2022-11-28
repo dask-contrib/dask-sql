@@ -5,7 +5,6 @@ import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
-from dask.distributed import Client, LocalCluster
 
 from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
