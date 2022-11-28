@@ -677,3 +677,122 @@ def test_date_functions(c):
             FROM df
             """
         )
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
+                ),
+            ),
+        ),
+    ],
+)
+def test_totimestamp(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": np.array([1203073300, 1406073600, 2806073600]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+                datetime(1997, 3, 28, 10, 30, 1),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["02/28/1997", "03/28/1997"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%m/%d/%Y") AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+                datetime(1997, 3, 28, 0, 0, 0),
+            ],
+        }
+    )
+    # https://github.com/rapidsai/cudf/issues/12062
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
+
+    int_input = 1203073300
+    df = c.sql(f"SELECT to_timestamp({int_input}) as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "1997-02-28 10:30:00"
+    df = c.sql(f"SELECT to_timestamp('{string_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "02/28/1997"
+    df = c.sql(f"SELECT to_timestamp('{string_input}', '%m/%d/%Y') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)

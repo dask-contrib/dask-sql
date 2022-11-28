@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -613,6 +614,41 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class ToTimestampOperation(Operation):
+    def __init__(self):
+        super().__init__(self.to_timestamp)
+
+    def to_timestamp(self, df, format):
+        default_format = "%Y-%m-%d %H:%M:%S"
+        # Remove double and single quotes from string
+        format = format.replace('"', "")
+        format = format.replace("'", "")
+
+        # TODO: format timestamps for GPU tests
+        if "cudf" in str(type(df)):
+            if format != default_format:
+                raise RuntimeError("Non-default timestamp formats not supported on GPU")
+            if df.dtype == "object":
+                return df
+            else:
+                nanoseconds_to_seconds = 10**9
+                return df * nanoseconds_to_seconds
+        # String cases
+        elif type(df) == str:
+            return np.datetime64(datetime.strptime(df, format))
+        elif df.dtype == "object":
+            return dd.to_datetime(df, format=format)
+        # Integer cases
+        elif np.isscalar(df):
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return np.datetime64(int(df), "s")
+        else:
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return dd.to_datetime(df, unit="s")
+
+
 class YearOperation(Operation):
     def __init__(self):
         super().__init__(self.extract_year)
@@ -990,6 +1026,7 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),

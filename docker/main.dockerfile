@@ -12,7 +12,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install conda dependencies for dask-sql
 COPY docker/conda.txt /opt/dask_sql/
-RUN mamba install --freeze-installed -y \
+RUN mamba install -y \
     # build requirements
     "setuptools-rust>=1.4.1" \
     # core dependencies
