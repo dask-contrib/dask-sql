@@ -1,4 +1,6 @@
 import logging
+import operator
+from functools import reduce
 from typing import TYPE_CHECKING
 
 from dask_sql.datacontainer import DataContainer
@@ -76,14 +78,15 @@ class DaskTableScanPlugin(BaseRelPlugin):
         cc = dc.column_container
         filters = table_scan.getFilters()
         # All partial filters here are applied in conjunction (&)
-        df_condition = None
-        for filter in filters:
-            filter_condition = RexConverter.convert(rel, filter, dc, context=context)
-            df_condition = (
-                filter_condition
-                if df_condition is None
-                else (df_condition & filter_condition)
+        if filters:
+            df_condition = reduce(
+                operator.and_,
+                [
+                    RexConverter.convert(rel, rex, dc, context=context)
+                    for rex in filters
+                ],
             )
+
         if len(filters) > 0:
             df = filter_or_scalar(df, df_condition)
 
