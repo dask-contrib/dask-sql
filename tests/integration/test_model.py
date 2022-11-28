@@ -169,10 +169,7 @@ def test_clustering_and_prediction(c, training_df):
 
 
 @pytest.mark.gpu
-def test_gpu_clustering_and_prediction(c, gpu_training_df):
-    cluster = LocalCluster()
-    client = Client(cluster)
-
+def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
     c.sql(
         """
         CREATE MODEL my_model WITH (
