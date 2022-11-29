@@ -11,10 +11,11 @@ rust-version = "1.62"
 [dependencies]
 arrow = { version = "26.0.0", features = ["prettyprint"] }
 async-trait = "0.1.58"
-datafusion-common = "14.0.0"
-datafusion-expr = "14.0.0"
-datafusion-optimizer = "14.0.0"
-datafusion-sql = "14.0.0"
+# https://github.com/rust-lang/cargo/issues/1462 is interesting :)
+datafusion-common = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
+datafusion-expr = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
+datafusion-optimizer = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
+datafusion-sql = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
