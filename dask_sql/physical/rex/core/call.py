@@ -713,96 +713,15 @@ class DatetimeSubOperation(Operation):
         elif unit in {"WEEK", "WEEKS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 7
         elif unit in {"MONTH", "MONTHS"}:
-            # TODO: Figure out a way to do this without calling compute()
-            result = []
-            for ind in range(len(df1)):
-                year1 = df1[ind].dt.year.compute()[ind]
-                year2 = df2[ind].dt.year.compute()[ind]
-                diff = (year2 - year1) * 12
-
-                month1 = df1[ind].dt.month.compute()[ind]
-                month2 = df2[ind].dt.month.compute()[ind]
-                diff += month2 - month1
-
-                day1 = df1[ind].dt.day.compute()[ind]
-                day2 = df2[ind].dt.day.compute()[ind]
-
-                if diff > 0 and day1 > day2:
-                    diff = diff - 1
-                elif diff < 0 and day2 > day1:
-                    diff = diff + 1
-
-                result.append(diff)
-            return pd.Series(result)
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_month
         elif unit in {"QUARTER", "QUARTERS"}:
-            # TODO: Figure out a way to do this without calling compute()
-            result = []
-            for ind in range(len(df1)):
-                year1 = df1[ind].dt.year.compute()[ind]
-                year2 = df2[ind].dt.year.compute()[ind]
-                diff = (year2 - year1) * 4
-
-                month1 = df1[ind].dt.month.compute()[ind]
-                month2 = df2[ind].dt.month.compute()[ind]
-                diff += (month2 - month1) // 3
-
-                day1 = df1[ind].dt.day.compute()[ind]
-                day2 = df2[ind].dt.day.compute()[ind]
-
-                if diff > 0 and day1 > day2:
-                    diff = diff - 1
-                elif diff < 0 and day2 > day1:
-                    diff = diff + 1
-
-                result.append(diff)
-            return pd.Series(result)
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_quarter
         elif unit in {"YEAR", "YEARS"}:
-            # TODO: Figure out a way to do this without calling compute()
-            result = []
-            for ind in range(len(df1)):
-                year1 = df1[ind].dt.year.compute()[ind]
-                year2 = df2[ind].dt.year.compute()[ind]
-                diff = year2 - year1
-
-                month1 = df1[ind].dt.month.compute()[ind]
-                month2 = df2[ind].dt.month.compute()[ind]
-
-                day1 = df1[ind].dt.day.compute()[ind]
-                day2 = df2[ind].dt.day.compute()[ind]
-
-                # Special logic for leap days
-                leap_day = False
-                if year1 % 4 == 0 or year2 % 4 == 0:
-                    if (
-                        year1 < year2
-                        and month1 == 2
-                        and day1 == 29
-                        and month2 == 2
-                        and day2 == 28
-                    ):
-                        diff = diff - 1
-                        leap_day = True
-                    elif (
-                        year1 > year2
-                        and month1 == 2
-                        and day1 == 28
-                        and month2 == 2
-                        and day2 == 29
-                    ):
-                        diff = diff + 1
-                        leap_day = True
-                if not leap_day:
-                    # Special logic to add or remove a year,
-                    # depending on the month/day of the year
-                    if year2 > year1 and month1 >= month2:
-                        if (month2 == month1 and day1 > day2) or month1 > month2:
-                            diff = diff - 1
-                    elif year1 > year2 and month2 >= month1:
-                        if (month2 == month1 and day2 > day1) or month2 > month1:
-                            diff = diff + 1
-
-                result.append(diff)
-            return pd.Series(result)
+            return (((result / 1_000_000_000) / 3600) / 24) // 365
         else:
             raise NotImplementedError(
                 f"Timestamp difference with {unit} is not supported."
