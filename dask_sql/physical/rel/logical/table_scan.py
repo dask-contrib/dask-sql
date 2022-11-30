@@ -86,8 +86,6 @@ class DaskTableScanPlugin(BaseRelPlugin):
                     for rex in filters
                 ],
             )
-
-        if len(filters) > 0:
             df = filter_or_scalar(df, df_condition)
 
         return DataContainer(df, cc)
