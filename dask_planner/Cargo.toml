@@ -10,8 +10,7 @@ rust-version = "1.62"
 
 [dependencies]
 arrow = { version = "26.0.0", features = ["prettyprint"] }
-async-trait = "0.1.58"
-# https://github.com/rust-lang/cargo/issues/1462 is interesting :)
+async-trait = "0.1.59"
 datafusion-common = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
 datafusion-expr = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
 datafusion-optimizer = {git = "https://github.com/sarahyurick/arrow-datafusion", branch = "push_down_filter"}
