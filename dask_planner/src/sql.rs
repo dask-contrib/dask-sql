@@ -11,7 +11,7 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
@@ -150,6 +150,36 @@ impl ContextProvider for DaskSQLContext {
             "year" => {
                 let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampdiff" => {
+                let sig = Signature::exact(
+                    vec![
+                        DataType::Utf8,
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "dsql_totimestamp" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Int8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "mod" => {
@@ -400,7 +430,7 @@ impl DaskSQLContext {
             Ok(valid) => {
                 if valid {
                     optimizer::DaskSqlOptimizer::new(true)
-                        .run_optimizations(existing_plan.original_plan)
+                        .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,
