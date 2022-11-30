@@ -10,12 +10,12 @@ use datafusion_optimizer::{
     // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
-    // filter_push_down::FilterPushDown,  // From #924
-    push_down_filter::PushDownFilter as FilterPushDown,
     inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
     projection_push_down::ProjectionPushDown,
+    // filter_push_down::FilterPushDown,  // From #924
+    push_down_filter::PushDownFilter as FilterPushDown,
     reduce_cross_join::ReduceCrossJoin,
     reduce_outer_join::ReduceOuterJoin,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
