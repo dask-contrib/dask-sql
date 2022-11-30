@@ -53,13 +53,11 @@ impl TableSource for DaskTableSource {
     ) -> datafusion_common::Result<TableProviderFilterPushDown> {
         let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
-            // TODO this should return Exact but we cannot make that change until we
-            // are actually pushing the TableScan filters down to the reader because
-            // returning Exact here would remove the Filter from the plan
+            // Push down filters to the tablescan operation if all are supported
             Ok(TableProviderFilterPushDown::Exact)
         } else if filters.iter().any(|f| is_supported_push_down_expr(f)) {
-            // we can partially apply the filter in the TableScan but we need
-            // to retain the Filter operator in the plan as well
+            // Partially apply the filter in the TableScan but retain
+            // the Filter operator in the plan as well
             Ok(TableProviderFilterPushDown::Inexact)
         } else {
             Ok(TableProviderFilterPushDown::Unsupported)
