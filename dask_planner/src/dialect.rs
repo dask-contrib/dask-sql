@@ -75,6 +75,33 @@ impl Dialect for DaskDialect {
                         special: false,
                     })))
                 }
+                Token::Word(w) if w.value.to_lowercase() == "timestampdiff" => {
+                    parser.next_token(); // skip timestampdiff
+                    parser.expect_token(&Token::LParen)?;
+                    let time_unit = parser.next_token();
+                    parser.expect_token(&Token::Comma)?;
+                    let expr1 = parser.parse_expr()?;
+                    parser.expect_token(&Token::Comma)?;
+                    let expr2 = parser.parse_expr()?;
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_unit.to_string()),
+                        ))),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr1)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr2)),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("timestampdiff")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
                 Token::Word(w) if w.value.to_lowercase() == "to_timestamp" => {
                     // TO_TIMESTAMP(d, "%d/%m/%Y")
                     parser.next_token(); // skip to_timestamp
