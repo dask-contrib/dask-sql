@@ -16,7 +16,6 @@ uvicorn>=0.13.4
 pyarrow>=6.0.1
 prompt_toolkit>=3.0.8
 pygments>=2.7.1
-dask-ml>=2022.1.22
 scikit-learn>=1.0.0
 intake>=0.6.0
 pre-commit>=2.11.1

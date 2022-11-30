@@ -107,7 +107,7 @@ and then later register it in the :class:`~dask_sql.Context` via SQL:
 
     # a dask.distributed Client
     client = Client(...)
-    client.publish_dataset(my_ds=df)
+    client.publish_dataset(my_df=df)
 
 Later in SQL:
 
@@ -119,7 +119,7 @@ Later in SQL:
 
         CREATE TABLE my_data WITH (
             format = 'memory',
-            location = 'my_ds'
+            location = 'my_df'
         )
 
   .. group-tab:: GPU
@@ -128,7 +128,7 @@ Later in SQL:
 
         CREATE TABLE my_data WITH (
             format = 'memory',
-            location = 'my_ds',
+            location = 'my_df',
             gpu = True
         )
 

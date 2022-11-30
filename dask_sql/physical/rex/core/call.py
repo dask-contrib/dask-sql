@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -613,6 +614,41 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
+class ToTimestampOperation(Operation):
+    def __init__(self):
+        super().__init__(self.to_timestamp)
+
+    def to_timestamp(self, df, format):
+        default_format = "%Y-%m-%d %H:%M:%S"
+        # Remove double and single quotes from string
+        format = format.replace('"', "")
+        format = format.replace("'", "")
+
+        # TODO: format timestamps for GPU tests
+        if "cudf" in str(type(df)):
+            if format != default_format:
+                raise RuntimeError("Non-default timestamp formats not supported on GPU")
+            if df.dtype == "object":
+                return df
+            else:
+                nanoseconds_to_seconds = 10**9
+                return df * nanoseconds_to_seconds
+        # String cases
+        elif type(df) == str:
+            return np.datetime64(datetime.strptime(df, format))
+        elif df.dtype == "object":
+            return dd.to_datetime(df, format=format)
+        # Integer cases
+        elif np.isscalar(df):
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return np.datetime64(int(df), "s")
+        else:
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return dd.to_datetime(df, unit="s")
+
+
 class YearOperation(Operation):
     def __init__(self):
         super().__init__(self.extract_year)
@@ -645,6 +681,51 @@ class TimeStampAddOperation(Operation):
             return df + np.timedelta64(interval * 7, "W")
         else:
             raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
+
+
+class DatetimeSubOperation(Operation):
+    """
+    Datetime subtraction is a special case of the `minus` operation
+    which also specifies a sql interval return type for the operation.
+    """
+
+    def __init__(self):
+        super().__init__(self.datetime_sub)
+
+    def datetime_sub(self, unit, df1, df2):
+        subtraction_op = ReduceOperation(
+            operation=operator.sub, unary_operation=lambda x: -x
+        )
+        result = subtraction_op(df2, df1)
+
+        if unit in {"NANOSECOND", "NANOSECONDS"}:
+            return result
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
+            return result // 1_000
+        elif unit in {"SECOND", "SECONDS"}:
+            return result // 1_000_000_000
+        elif unit in {"MINUTE", "MINUTES"}:
+            return (result / 1_000_000_000) // 60
+        elif unit in {"HOUR", "HOURS"}:
+            return (result / 1_000_000_000) // 3600
+        elif unit in {"DAY", "DAYS"}:
+            return ((result / 1_000_000_000) / 3600) // 24
+        elif unit in {"WEEK", "WEEKS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 7
+        elif unit in {"MONTH", "MONTHS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_month
+        elif unit in {"QUARTER", "QUARTERS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_quarter
+        elif unit in {"YEAR", "YEARS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 365
+        else:
+            raise NotImplementedError(
+                f"Timestamp difference with {unit} is not supported."
+            )
 
 
 class CeilFloorOperation(PredicateBasedOperation):
@@ -990,10 +1071,12 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
+        "timestampdiff": DatetimeSubOperation(),
     }
 
     def convert(

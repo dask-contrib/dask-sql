@@ -746,3 +746,216 @@ def test_date_functions(c):
             FROM df
             """
         )
+
+
+def test_timestampdiff(c):
+    ts_literal1 = datetime(2002, 3, 7, 9, 10, 5, 123)
+    ts_literal2 = datetime(2001, 6, 5, 10, 11, 6, 234)
+    df = dd.from_pandas(
+        pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}),
+        npartitions=1,
+    )
+    c.register_dask_table(df, "df")
+
+    query = """
+        SELECT timestampdiff(NANOSECOND, ts_literal1, ts_literal2) as res0,
+        timestampdiff(MICROSECOND, ts_literal1, ts_literal2) as res1,
+        timestampdiff(SECOND, ts_literal1, ts_literal2) as res2,
+        timestampdiff(MINUTE, ts_literal1, ts_literal2) as res3,
+        timestampdiff(HOUR, ts_literal1, ts_literal2) as res4,
+        timestampdiff(DAY, ts_literal1, ts_literal2) as res5,
+        timestampdiff(WEEK, ts_literal1, ts_literal2) as res6,
+        timestampdiff(MONTH, ts_literal1, ts_literal2) as res7,
+        timestampdiff(QUARTER, ts_literal1, ts_literal2) as res8,
+        timestampdiff(YEAR, ts_literal1, ts_literal2) as res9
+        FROM df
+    """
+    df = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "res0": [-23756338999889000],
+            "res1": [-23756338999889],
+            "res2": [-23756338],
+            "res3": [-395938],
+            "res4": [-6598],
+            "res5": [-274],
+            "res6": [-39],
+            "res7": [-9],
+            "res8": [-3],
+            "res9": [0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    test = pd.DataFrame(
+        {
+            "a": [
+                datetime(2002, 6, 5, 2, 1, 5, 200),
+                datetime(2002, 9, 1),
+                datetime(1970, 12, 3),
+            ],
+            "b": [
+                datetime(2002, 6, 7, 1, 0, 2, 100),
+                datetime(2003, 6, 5),
+                datetime(2038, 6, 5),
+            ],
+        }
+    )
+    c.create_table("test", test)
+
+    query = (
+        "SELECT timestampdiff(NANOSECOND, a, b) as nanoseconds,"
+        "timestampdiff(MICROSECOND, a, b) as microseconds,"
+        "timestampdiff(SECOND, a, b) as seconds,"
+        "timestampdiff(MINUTE, a, b) as minutes,"
+        "timestampdiff(HOUR, a, b) as hours,"
+        "timestampdiff(DAY, a, b) as days,"
+        "timestampdiff(WEEK, a, b) as weeks,"
+        "timestampdiff(MONTH, a, b) as months,"
+        "timestampdiff(QUARTER, a, b) as quarters,"
+        "timestampdiff(YEAR, a, b) as years"
+        " FROM test"
+    )
+    ddf = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "nanoseconds": [
+                169136999900000,
+                23932800000000000,
+                2130278400000000000,
+            ],
+            "microseconds": [169136999900, 23932800000000, 2130278400000000],
+            "seconds": [169136, 23932800, 2130278400],
+            "minutes": [2818, 398880, 35504640],
+            "hours": [46, 6648, 591744],
+            "days": [1, 277, 24656],
+            "weeks": [0, 39, 3522],
+            "months": [0, 9, 810],
+            "quarters": [0, 3, 270],
+            "years": [0, 0, 67],
+        }
+    )
+
+    assert_eq(ddf, expected_df, check_dtype=False)
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
+                ),
+            ),
+        ),
+    ],
+)
+def test_totimestamp(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": np.array([1203073300, 1406073600, 2806073600]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+                datetime(1997, 3, 28, 10, 30, 1),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["02/28/1997", "03/28/1997"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%m/%d/%Y") AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+                datetime(1997, 3, 28, 0, 0, 0),
+            ],
+        }
+    )
+    # https://github.com/rapidsai/cudf/issues/12062
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
+
+    int_input = 1203073300
+    df = c.sql(f"SELECT to_timestamp({int_input}) as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "1997-02-28 10:30:00"
+    df = c.sql(f"SELECT to_timestamp('{string_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "02/28/1997"
+    df = c.sql(f"SELECT to_timestamp('{string_input}', '%m/%d/%Y') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)

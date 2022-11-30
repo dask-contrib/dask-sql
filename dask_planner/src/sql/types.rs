@@ -339,7 +339,7 @@ impl SqlTypeName {
                 let tokens = tokenizer.tokenize().map_err(DaskPlannerError::from)?;
                 let mut parser = Parser::new(tokens, &dialect);
                 match parser.parse_data_type().map_err(DaskPlannerError::from)? {
-                    SQLType::Decimal(_, _) => Ok(SqlTypeName::DECIMAL),
+                    SQLType::Decimal(_) => Ok(SqlTypeName::DECIMAL),
                     SQLType::Binary(_) => Ok(SqlTypeName::BINARY),
                     SQLType::Varbinary(_) => Ok(SqlTypeName::VARBINARY),
                     SQLType::Varchar(_) | SQLType::Nvarchar(_) => Ok(SqlTypeName::VARCHAR),

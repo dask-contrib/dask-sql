@@ -18,8 +18,6 @@ except ImportError:
     xgboost = None
     dask_cudf = None
 
-pytest.importorskip("dask_ml")
-
 
 def check_trained_model(c, model_name=None):
     if model_name is None:
@@ -157,7 +155,24 @@ def test_clustering_and_prediction(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model WITH (
-            model_class = 'dask_ml.cluster.KMeans'
+            model_class = 'sklearn.cluster.KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
+    c.sql(
+        """
+        CREATE MODEL my_model WITH (
+            model_class = 'cuml.dask.cluster.KMeans'
         ) AS (
             SELECT x, y
             FROM timeseries
@@ -244,7 +259,7 @@ def test_show_models(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model2 WITH (
-            model_class = 'dask_ml.cluster.KMeans'
+            model_class = 'sklearn.cluster.KMeans'
         ) AS (
             SELECT x, y
             FROM timeseries
@@ -689,7 +704,7 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
         CREATE EXPERIMENT my_exp WITH (
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -729,7 +744,7 @@ def test_ml_experiment(c, client, training_df):
             """
             CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
             model_class = 'that.is.not.a.python.class',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -792,7 +807,7 @@ def test_ml_experiment(c, client, training_df):
         """
         CREATE EXPERIMENT my_exp WITH (
         model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-        experiment_class = 'dask_ml.model_selection.GridSearchCV',
+        experiment_class = 'sklearn.model_selection.GridSearchCV',
         tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                            max_depth = ARRAY [3,4,5,10]),
         target_column = 'target'
@@ -814,7 +829,7 @@ def test_ml_experiment(c, client, training_df):
             """
             CREATE EXPERIMENT my_exp WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -829,7 +844,7 @@ def test_ml_experiment(c, client, training_df):
         """
         CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -845,7 +860,7 @@ def test_ml_experiment(c, client, training_df):
         """
         CREATE OR REPLACE EXPERIMENT my_exp WITH (
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -865,8 +880,8 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
             CREATE EXPERIMENT my_exp1 WITH (
-                model_class = 'dask_ml.cluster.KMeans',
-                experiment_class = 'dask_ml.model_selection.RandomizedSearchCV',
+                model_class = 'sklearn.cluster.KMeans',
+                experiment_class = 'sklearn.model_selection.RandomizedSearchCV',
                 tune_parameters = (n_clusters = ARRAY [3,4,16],tol = ARRAY [0.1,0.01,0.001],
                                    max_iter = ARRAY [3,4,5,10])
             ) AS (
@@ -887,7 +902,7 @@ def test_experiment_automl_classifier(c, client, training_df):
         """
         CREATE EXPERIMENT my_automl_exp1 WITH (
             automl_class = 'tpot.TPOTClassifier',
-            automl_kwargs = (population_size = 2 ,generations=2,cv=2,n_jobs=-1,use_dask=True),
+            automl_kwargs = (population_size=2, generations=2, cv=2, n_jobs=-1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -912,11 +927,10 @@ def test_experiment_automl_regressor(c, client, training_df):
         """
         CREATE EXPERIMENT my_automl_exp2 WITH (
             automl_class = 'tpot.TPOTRegressor',
-            automl_kwargs = (population_size = 2,
+            automl_kwargs = (population_size=2,
             generations=2,
             cv=2,
             n_jobs=-1,
-            use_dask=True,
             max_eval_time_mins=1),
 
             target_column = 'target'
