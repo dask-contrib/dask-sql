@@ -676,6 +676,100 @@ def test_date_functions(c):
         )
 
 
+def test_timestampdiff(c):
+    ts_literal1 = datetime(2002, 3, 7, 9, 10, 5, 123)
+    ts_literal2 = datetime(2001, 6, 5, 10, 11, 6, 234)
+    df = dd.from_pandas(
+        pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}),
+        npartitions=1,
+    )
+    c.register_dask_table(df, "df")
+
+    query = """
+        SELECT timestampdiff(NANOSECOND, ts_literal1, ts_literal2) as res0,
+        timestampdiff(MICROSECOND, ts_literal1, ts_literal2) as res1,
+        timestampdiff(SECOND, ts_literal1, ts_literal2) as res2,
+        timestampdiff(MINUTE, ts_literal1, ts_literal2) as res3,
+        timestampdiff(HOUR, ts_literal1, ts_literal2) as res4,
+        timestampdiff(DAY, ts_literal1, ts_literal2) as res5,
+        timestampdiff(WEEK, ts_literal1, ts_literal2) as res6,
+        timestampdiff(MONTH, ts_literal1, ts_literal2) as res7,
+        timestampdiff(QUARTER, ts_literal1, ts_literal2) as res8,
+        timestampdiff(YEAR, ts_literal1, ts_literal2) as res9
+        FROM df
+    """
+    df = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "res0": [-23756338999889000],
+            "res1": [-23756338999889],
+            "res2": [-23756338],
+            "res3": [-395938],
+            "res4": [-6598],
+            "res5": [-274],
+            "res6": [-39],
+            "res7": [-9],
+            "res8": [-3],
+            "res9": [0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    test = pd.DataFrame(
+        {
+            "a": [
+                datetime(2002, 6, 5, 2, 1, 5, 200),
+                datetime(2002, 9, 1),
+                datetime(1970, 12, 3),
+            ],
+            "b": [
+                datetime(2002, 6, 7, 1, 0, 2, 100),
+                datetime(2003, 6, 5),
+                datetime(2038, 6, 5),
+            ],
+        }
+    )
+    c.create_table("test", test)
+
+    query = (
+        "SELECT timestampdiff(NANOSECOND, a, b) as nanoseconds,"
+        "timestampdiff(MICROSECOND, a, b) as microseconds,"
+        "timestampdiff(SECOND, a, b) as seconds,"
+        "timestampdiff(MINUTE, a, b) as minutes,"
+        "timestampdiff(HOUR, a, b) as hours,"
+        "timestampdiff(DAY, a, b) as days,"
+        "timestampdiff(WEEK, a, b) as weeks,"
+        "timestampdiff(MONTH, a, b) as months,"
+        "timestampdiff(QUARTER, a, b) as quarters,"
+        "timestampdiff(YEAR, a, b) as years"
+        " FROM test"
+    )
+    ddf = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "nanoseconds": [
+                169136999900000,
+                23932800000000000,
+                2130278400000000000,
+            ],
+            "microseconds": [169136999900, 23932800000000, 2130278400000000],
+            "seconds": [169136, 23932800, 2130278400],
+            "minutes": [2818, 398880, 35504640],
+            "hours": [46, 6648, 591744],
+            "days": [1, 277, 24656],
+            "weeks": [0, 39, 3522],
+            "months": [0, 9, 810],
+            "quarters": [0, 3, 270],
+            "years": [0, 0, 67],
+        }
+    )
+
+    assert_eq(ddf, expected_df, check_dtype=False)
+
+
 @pytest.mark.parametrize(
     "gpu",
     [

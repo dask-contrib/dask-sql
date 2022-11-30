@@ -726,6 +726,51 @@ class TimeStampAddOperation(Operation):
             )
 
 
+class DatetimeSubOperation(Operation):
+    """
+    Datetime subtraction is a special case of the `minus` operation
+    which also specifies a sql interval return type for the operation.
+    """
+
+    def __init__(self):
+        super().__init__(self.datetime_sub)
+
+    def datetime_sub(self, unit, df1, df2):
+        subtraction_op = ReduceOperation(
+            operation=operator.sub, unary_operation=lambda x: -x
+        )
+        result = subtraction_op(df2, df1)
+
+        if unit in {"NANOSECOND", "NANOSECONDS"}:
+            return result
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
+            return result // 1_000
+        elif unit in {"SECOND", "SECONDS"}:
+            return result // 1_000_000_000
+        elif unit in {"MINUTE", "MINUTES"}:
+            return (result / 1_000_000_000) // 60
+        elif unit in {"HOUR", "HOURS"}:
+            return (result / 1_000_000_000) // 3600
+        elif unit in {"DAY", "DAYS"}:
+            return ((result / 1_000_000_000) / 3600) // 24
+        elif unit in {"WEEK", "WEEKS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 7
+        elif unit in {"MONTH", "MONTHS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_month
+        elif unit in {"QUARTER", "QUARTERS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_quarter
+        elif unit in {"YEAR", "YEARS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 365
+        else:
+            raise NotImplementedError(
+                f"Timestamp difference with {unit} is not supported."
+            )
+
+
 class CeilFloorOperation(PredicateBasedOperation):
     """
     Apply ceil/floor operations on a series depending on its dtype (datetime like vs normal)
@@ -1075,6 +1120,7 @@ class RexCallPlugin(BaseRexPlugin):
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),
         "timestampfloor": CeilFloorOperation("floor"),
+        "timestampdiff": DatetimeSubOperation(),
     }
 
     def convert(

@@ -161,6 +161,14 @@ impl ContextProvider for DaskSQLContext {
                     Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
+            "timestampceil" | "timestampfloor" => {
+                let sig = Signature::exact(
+                    vec![DataType::Date64, DataType::Utf8],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
             "timestampadd" => {
                 let sig = Signature::one_of(
                     vec![
@@ -180,12 +188,16 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
-            "timestampceil" | "timestampfloor" => {
+            "timestampdiff" => {
                 let sig = Signature::exact(
-                    vec![DataType::Date64, DataType::Utf8],
+                    vec![
+                        DataType::Utf8,
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                    ],
                     Volatility::Immutable,
                 );
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "dsql_totimestamp" => {
