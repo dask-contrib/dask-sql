@@ -45,8 +45,6 @@ impl TableSource for DaskTableSource {
         self.schema.clone()
     }
 
-    // temporarily disable clippy until TODO comment below is addressed
-    #[allow(clippy::if_same_then_else)]
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
