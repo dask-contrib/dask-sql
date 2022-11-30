@@ -357,7 +357,9 @@ def test_null(c):
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_coalesce(c, gpu):
-    df = dd.from_pandas(pd.DataFrame({"a": [1], "b": [np.nan]}), npartitions=1)
+    df = dd.from_pandas(
+        pd.DataFrame({"a": [1, 2, 3], "b": [np.nan] * 3}), npartitions=1
+    )
     c.create_table("df", df, gpu=gpu)
 
     df = c.sql(
@@ -382,7 +384,29 @@ def test_coalesce(c, gpu):
             "c4": ["bye"],
             "c5": ["1"],
             "c6": ["why"],
-            "c7": [1.0],
+            "c7": [2.0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(a, b) as c1,
+            COALESCE(b, a) as c2,
+            COALESCE(a, a) as c3,
+            COALESCE(b, b) as c4
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [1, 2, 3],
+            "c2": [1, 2, 3],
+            "c3": [1, 2, 3],
+            "c4": [np.nan] * 3,
         }
     )
 

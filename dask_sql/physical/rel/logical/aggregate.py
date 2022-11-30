@@ -457,6 +457,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 filter_backend_col = None
 
             try:
+                # This unifies CPU and GPU behavior by ensuring that performing a
+                # sum on a null column results in null and not 0
                 if aggregation_name == "sum" and isinstance(df._meta, pd.DataFrame):
                     aggregation_function = AggregationSpecification(
                         dd.Aggregation(
