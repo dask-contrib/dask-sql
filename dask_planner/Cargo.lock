@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "arrow",
  "chrono",
@@ -419,7 +419,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "ahash 0.8.1",
  "arrow",
@@ -431,7 +431,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "arrow",
  "async-trait",
@@ -446,7 +446,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "ahash 0.8.1",
  "arrow",
@@ -476,7 +476,7 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -487,7 +487,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "14.0.0"
-source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#b59cd11f4333cc109ba9e74ddbbad31c379961ae"
+source = "git+https://github.com/sarahyurick/arrow-datafusion?branch=push_down_filter#6d62ca94482f7f09861a9e2204a1c5648b72723c"
 dependencies = [
  "arrow",
  "datafusion-common",

@@ -10,6 +10,8 @@ use datafusion_optimizer::{
     // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
+    // filter_push_down::FilterPushDown,  // From #924
+    push_down_filter::PushDownFilter as FilterPushDown,
     inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
@@ -28,9 +30,6 @@ use log::trace;
 
 mod eliminate_agg_distinct;
 use eliminate_agg_distinct::EliminateAggDistinct;
-
-mod filter_push_down;
-use filter_push_down::FilterPushDown;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
