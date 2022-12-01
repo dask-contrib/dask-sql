@@ -573,6 +573,25 @@ class OverlayOperation(Operation):
         return s
 
 
+class CoalesceOperation(Operation):
+    def __init__(self):
+        super().__init__(self.coalesce)
+
+    def coalesce(self, *operands):
+        result = None
+        for operand in operands:
+            if is_frame(operand):
+                # Check if frame evaluates to nan or NA
+                if len(operand) == 1 and not operand.isnull().all().compute():
+                    return operand if result is None else result.fillna(operand)
+                else:
+                    result = operand if result is None else result.fillna(operand)
+            elif not pd.isna(operand):
+                return operand if result is None else result.fillna(operand)
+
+        return result
+
+
 class ExtractOperation(Operation):
     def __init__(self):
         super().__init__(self.extract)
@@ -1059,6 +1078,7 @@ class RexCallPlugin(BaseRexPlugin):
         "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
         "extract": ExtractOperation(),
