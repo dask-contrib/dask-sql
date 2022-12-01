@@ -53,8 +53,7 @@ impl Dialect for DaskDialect {
                     parser.next_token(); // skip ceil
                     parser.expect_token(&Token::LParen)?;
                     let expr = parser.parse_expr()?;
-                    let keyword_to = parser.parse_keyword(Keyword::TO);
-                    if !keyword_to {
+                    if !parser.parse_keyword(Keyword::TO) {
                         // Parse CEIL(expr) as normal
                         parser.prev_token();
                         parser.prev_token();
@@ -85,8 +84,7 @@ impl Dialect for DaskDialect {
                     parser.next_token(); // skip floor
                     parser.expect_token(&Token::LParen)?;
                     let expr = parser.parse_expr()?;
-                    let keyword_to = parser.parse_keyword(Keyword::TO);
-                    if !keyword_to {
+                    if !parser.parse_keyword(Keyword::TO) {
                         // Parse FLOOR(expr) as normal
                         parser.prev_token();
                         parser.prev_token();
