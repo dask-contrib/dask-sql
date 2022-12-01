@@ -475,7 +475,10 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => "LargeBinary",
                 ScalarValue::Date32(_value) => "Date32",
                 ScalarValue::Date64(_value) => "Date64",
-                ScalarValue::Time64(_value) => "Time64",
+                ScalarValue::Time32Second(_value) => "Time32",
+                ScalarValue::Time32Millisecond(_value) => "Time32",
+                ScalarValue::Time64Microsecond(_value) => "Time64",
+                ScalarValue::Time64Nanosecond(_value) => "Time64",
                 ScalarValue::Null => "Null",
                 ScalarValue::TimestampSecond(..) => "TimestampSecond",
                 ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
@@ -591,7 +594,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getDecimal128Value")]
-    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
+    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, i8)> {
         match self.get_scalar_value()? {
             ScalarValue::Decimal128(value, precision, scale) => Ok((*value, *precision, *scale)),
             other => Err(unexpected_literal_value(other)),
@@ -681,7 +684,7 @@ impl PyExpr {
     #[pyo3(name = "getTime64Value")]
     pub fn time_64_value(&self) -> PyResult<Option<i64>> {
         match self.get_scalar_value()? {
-            ScalarValue::Time64(value) => Ok(*value),
+            ScalarValue::Time64Nanosecond(value) => Ok(*value),
             other => Err(unexpected_literal_value(other)),
         }
     }

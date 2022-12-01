@@ -10,13 +10,13 @@ use datafusion_optimizer::{
     // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
-    filter_push_down::FilterPushDown,
+    push_down_filter::PushDownFilter,
     inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
     projection_push_down::ProjectionPushDown,
-    reduce_cross_join::ReduceCrossJoin,
-    reduce_outer_join::ReduceOuterJoin,
+    eliminate_cross_join::EliminateCrossJoin,
+    eliminate_outer_join::EliminateOuterJoin,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
     simplify_expressions::SimplifyExpressions,
@@ -56,13 +56,13 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             // TODO: need to handle EmptyRelation for GPU cases
             // Arc::new(EliminateFilter::new()),
-            Arc::new(ReduceCrossJoin::new()),
+            Arc::new(EliminateCrossJoin::new()),
             Arc::new(CommonSubexprEliminate::new()),
             Arc::new(EliminateLimit::new()),
             Arc::new(RewriteDisjunctivePredicate::new()),
             Arc::new(FilterNullJoinKeys::default()),
-            Arc::new(ReduceOuterJoin::new()),
-            Arc::new(FilterPushDown::new()),
+            Arc::new(EliminateOuterJoin::new()),
+            Arc::new(PushDownFilter::new()),
             Arc::new(LimitPushDown::new()),
             // Dask-SQL specific optimizations
             Arc::new(EliminateAggDistinct::new()),
@@ -102,7 +102,7 @@ mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{DataFusionError, Result};
+    use datafusion_common::{DataFusionError, Result, ScalarValue};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{
         planner::{ContextProvider, SqlToRel},
@@ -187,6 +187,10 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
+            None
+        }
+
+        fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
             None
         }
     }
