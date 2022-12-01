@@ -338,7 +338,6 @@ impl ContextProvider for DaskSQLContext {
     fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
         None
     }
-
 }
 
 #[pymethods]
