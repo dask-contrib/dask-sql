@@ -10,7 +10,6 @@ use datafusion_optimizer::{
     // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     filter_null_join_keys::FilterNullJoinKeys,
-    filter_push_down::FilterPushDown,
     inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
