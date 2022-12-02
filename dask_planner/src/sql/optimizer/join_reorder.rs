@@ -207,7 +207,7 @@ mod tests {
     use std::{any::Any, sync::Arc};
 
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::Result;
+    use datafusion_common::{Result, Statistics};
     use datafusion_expr::{
         logical_plan::builder::LogicalTableSource,
         JoinType,
@@ -219,6 +219,7 @@ mod tests {
     };
 
     use super::*;
+    use crate::sql::table::DaskTableSource;
 
     #[test]
     fn inner_join_simple() -> Result<()> {
@@ -292,7 +293,7 @@ mod tests {
             Field::new(&format!("{}_c", table_name), DataType::UInt32, false),
             Field::new(&format!("{}_d", table_name), DataType::UInt32, false),
         ]);
-        table_scan(Some(table_name), &schema, None)
+        table_scan(Some(table_name), &schema, None, size)
             .expect("creating scan")
             .build()
             .expect("building plan")
@@ -302,9 +303,15 @@ mod tests {
         name: Option<&str>,
         table_schema: &Schema,
         projection: Option<Vec<usize>>,
+        table_size: usize,
     ) -> Result<LogicalPlanBuilder> {
         let tbl_schema = Arc::new(table_schema.clone());
-        let table_source = Arc::new(LogicalTableSource::new(tbl_schema));
+        let mut statistics = Statistics::default();
+        statistics.num_rows = Some(table_size);
+        let table_source = Arc::new(DaskTableSource::new_with_statistics(
+            tbl_schema,
+            Some(statistics),
+        ));
         LogicalPlanBuilder::scan(name.unwrap_or("test"), table_source, projection)
     }
 }
