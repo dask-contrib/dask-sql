@@ -627,9 +627,6 @@ def test_string_functions(c, gpu):
     )
 
 
-@pytest.mark.skip(
-    reason="TIMESTAMP add, ceil, floor for dt ops not supported by parser"
-)
 def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
@@ -653,7 +650,7 @@ def test_date_functions(c):
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
 
             LAST_DAY(d) as "last_day",
 
