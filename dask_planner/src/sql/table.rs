@@ -25,12 +25,16 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    table_size: Option<usize>,
 }
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema.
     pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+        Self {
+            schema,
+            table_size: None,
+        }
     }
 }
 
