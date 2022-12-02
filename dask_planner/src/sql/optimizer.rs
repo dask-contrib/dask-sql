@@ -30,6 +30,8 @@ use log::trace;
 mod eliminate_agg_distinct;
 use eliminate_agg_distinct::EliminateAggDistinct;
 
+mod join_reorder;
+
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
