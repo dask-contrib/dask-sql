@@ -72,7 +72,7 @@ impl OptimizerRule for JoinReorder {
             let mut j = 0;
             let mut result = vec![];
             for _ in 0..n {
-                if filtered_dimensions[i].size >= unfiltered_dimensions[j].size {
+                if filtered_dimensions[i].size <= unfiltered_dimensions[j].size {
                     i += 1;
                     result.push(filtered_dimensions[i].clone());
                 } else {
