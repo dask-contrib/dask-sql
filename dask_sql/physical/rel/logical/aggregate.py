@@ -229,18 +229,15 @@ class DaskAggregatePlugin(BaseRelPlugin):
             logger.debug("Performing full-table aggregation")
 
         # Do all aggregates
-        df_result, output_column_order, cc = self._do_aggregations(
+        df_agg, output_column_order, cc = self._do_aggregations(
             rel,
             dc,
             group_columns,
             context,
         )
 
-        # SQL does not care about the index, but we do not want to have any multiindices
-        df_agg = df_result.reset_index(drop=True)
-
-        # Fix the column names and the order of them, as this was messed with during the aggregations
-        df_agg.columns = df_agg.columns.get_level_values(-1)
+        # SQL does not care about the index, but if group columns were specified we'll want to keep those
+        df_agg = df_agg.reset_index(drop=(not group_columns))
 
         def try_get_backend_by_frontend_name(oc):
             try:
@@ -304,13 +301,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 output_column_order,
                 cc,
             )
-
-        # SQL needs to have a column with the grouped values as the first
-        # output column.
-        # As the values of the group columns
-        # are the same for a single group anyways, we just use the first row
-        for col in group_columns:
-            collected_aggregations[None].append((col, col, "first"))
 
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
