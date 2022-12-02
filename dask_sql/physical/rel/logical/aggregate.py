@@ -12,7 +12,6 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.call import IsNullOperation
-from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
@@ -500,7 +499,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # groupby, which is only supported if we are not using any custom aggregations
         # and our pandas version support dropna for groupbys
         aggregations_dict = defaultdict(dict)
-        fast_groupby = True
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
             input_col = dc.column_container.get_backend_by_frontend_name(input_col)
@@ -516,8 +514,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 logger.debug(f"Using original output_col value of '{output_col}'")
 
             aggregations_dict[input_col][output_col] = aggregation_f
-            if not isinstance(aggregation_f, str):
-                fast_groupby = False
 
         # filter dataframe if specified
         if filter_column:
@@ -537,21 +533,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # if split_out > 1, we cannot do a sorted groupby
         sort = False if groupby_agg_options.get("split_out", 1) > 1 else True
 
-        # perform groupby operation; if we are using custom aggregations, we must handle
-        # null values manually (this is slow)
-        if fast_groupby:
-            grouped_df = tmp_df.groupby(
-                by=(group_columns or [additional_column_name]), dropna=False, sort=sort
-            )
-        else:
-            group_columns = [
-                tmp_df[dc.column_container.get_backend_by_frontend_name(group_column)]
-                for group_column in group_columns
-            ]
-            group_columns_and_nulls = get_groupby_with_nulls_cols(
-                tmp_df, group_columns, additional_column_name
-            )
-            grouped_df = tmp_df.groupby(by=group_columns_and_nulls, sort=sort)
+        # perform groupby operation
+        grouped_df = tmp_df.groupby(
+            by=(group_columns or [additional_column_name]), dropna=False, sort=sort
+        )
 
         # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
