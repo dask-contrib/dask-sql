@@ -2,11 +2,11 @@
 //! https://ieeexplore.ieee.org/document/9378281
 
 use datafusion_common::Result;
-use datafusion_expr::{Expr, Join, LogicalPlan, TableScan};
+use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, TableScan};
 use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
 
 #[derive(Default)]
-struct JoinReorder {}
+pub struct JoinReorder {}
 
 impl OptimizerRule for JoinReorder {
     fn name(&self) -> &str {
@@ -113,7 +113,17 @@ fn has_dominant_fact(join: &Join) -> bool {
 /// instead we only allowed operators from selected set of
 /// operators
 fn is_simple_join(join: &Join) -> bool {
-    todo!()
+    //TODO check for deterministic join/filter expressions
+
+    fn is_simple_rel(plan: &LogicalPlan) -> bool {
+        match plan {
+            LogicalPlan::Filter(filter) => is_simple_rel(filter.input()),
+            LogicalPlan::TableScan(_) => true,
+            _ => false,
+        }
+    }
+
+    join.join_type == JoinType::Inner && is_simple_rel(&join.left) && is_simple_rel(&join.right)
 }
 
 /// We reorder only if the number of shuffles do not increase
@@ -152,7 +162,54 @@ fn build_join_tree(tree_type: TreeType, fact: &Table, dims: &[Table]) -> Logical
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    use std::sync::Arc;
 
-    fn test() {}
+    use arrow::datatypes::{DataType, Field, Schema};
+    use datafusion_common::Result;
+    use datafusion_expr::{
+        logical_plan::builder::LogicalTableSource,
+        JoinType,
+        LogicalPlan,
+        LogicalPlanBuilder,
+    };
+
+    use crate::sql::optimizer::join_reorder::is_simple_join;
+
+    fn test_simple_join() -> Result<()> {
+        let a = test_table_scan("a", 100);
+        let b = test_table_scan("b", 100);
+        let join = LogicalPlanBuilder::from(a)
+            .join(&b, JoinType::Inner, (vec!["a"], vec!["b"]), None)?
+            .build()?;
+        if let LogicalPlan::Join(join) = join {
+            assert!(is_simple_join(&join));
+        } else {
+            panic!();
+        }
+        Ok(())
+    }
+
+    fn test_table_scan(table_name: &str, size: usize) -> LogicalPlan {
+        let schema = Schema::new(vec![
+            Field::new("a", DataType::UInt32, false),
+            Field::new("b", DataType::UInt32, false),
+            Field::new("c", DataType::UInt32, false),
+            Field::new("d", DataType::UInt32, false),
+        ]);
+        table_scan(Some(table_name), &schema, None)
+            .expect("creating scan")
+            .build()
+            .expect("building plan")
+    }
+
+    pub fn table_scan(
+        name: Option<&str>,
+        table_schema: &Schema,
+        projection: Option<Vec<usize>>,
+    ) -> Result<LogicalPlanBuilder> {
+        let tbl_schema = Arc::new(table_schema.clone());
+        let table_source = Arc::new(LogicalTableSource::new(tbl_schema));
+        LogicalPlanBuilder::scan(name.unwrap_or("test"), table_source, projection)
+    }
 }

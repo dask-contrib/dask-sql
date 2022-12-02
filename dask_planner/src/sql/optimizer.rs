@@ -31,6 +31,7 @@ mod eliminate_agg_distinct;
 use eliminate_agg_distinct::EliminateAggDistinct;
 
 mod join_reorder;
+use join_reorder::JoinReorder;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -74,6 +75,7 @@ impl DaskSqlOptimizer {
             Arc::new(UnwrapCastInComparison::new()),
             Arc::new(CommonSubexprEliminate::new()),
             Arc::new(ProjectionPushDown::new()),
+            Arc::new(JoinReorder::default()),
         ];
 
         Self {
