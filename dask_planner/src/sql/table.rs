@@ -41,6 +41,11 @@ impl DaskTableSource {
     pub fn new_with_statistics(schema: SchemaRef, statistics: Option<Statistics>) -> Self {
         Self { schema, statistics }
     }
+
+    /// Access optional statistics associated with this table source
+    pub fn statistics(&self) -> Option<&Statistics> {
+        self.statistics.as_ref()
+    }
 }
 
 /// Implement TableSource, used in the logical query plan and in logical query optimizations

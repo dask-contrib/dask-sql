@@ -1,9 +1,13 @@
 //! Join reordering based on the paper "Improving Join Reordering for Large Scale Distributed Computing"
 //! https://ieeexplore.ieee.org/document/9378281
 
-use datafusion_common::Result;
+use std::collections::{HashMap, HashSet};
+
+use datafusion_common::{Column, Result};
 use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, TableScan};
 use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
+
+use crate::sql::table::DaskTableSource;
 
 pub struct JoinReorder {
     /// Ratio of the size of the largest Dimension table to Fact table
@@ -36,7 +40,7 @@ impl OptimizerRule for JoinReorder {
             }
 
             let joins = extract_joins(join);
-            let (fact, dims) = extract_fact_dimensions(&joins);
+            let (fact, dims) = extract_fact_dimensions(&plan, &joins);
             if fact.is_none() {
                 println!("There is no dominant fact table");
                 return Ok(None);
@@ -117,6 +121,36 @@ enum TreeType {
     RightDeep,
 }
 
+fn get_table_sizes(plan: &LogicalPlan) -> HashMap<String, usize> {
+    //TODO might be better to get this directly from the context rather than from the plan
+    let mut sizes = HashMap::new();
+
+    fn get_table_sizes_inner(plan: &LogicalPlan, sizes: &mut HashMap<String, usize>) {
+        match plan {
+            LogicalPlan::TableScan(scan) => {
+                let source = scan
+                    .source
+                    .as_any()
+                    .downcast_ref::<DaskTableSource>()
+                    .expect("should be a DaskTableSource");
+                if let Some(stats) = source.statistics() {
+                    if let Some(row_count) = stats.num_rows {
+                        sizes.insert(scan.table_name.clone(), row_count);
+                    }
+                }
+            }
+            _ => {
+                for child in &plan.inputs() {
+                    get_table_sizes_inner(child, sizes);
+                }
+            }
+        }
+    }
+
+    get_table_sizes_inner(plan, &mut sizes);
+    sizes
+}
+
 /// build a list of all joins
 fn extract_joins(join: &Join) -> Vec<Join> {
     fn extract_joins_inner(plan: &LogicalPlan, joins: &mut Vec<Join>) {
@@ -171,15 +205,74 @@ fn tree_type(_join: &Join) -> TreeType {
 
 /// Extract the fact table from the join, along with a list of dimension tables that
 /// join to the fact table
-fn extract_fact_dimensions(joins: &[Join]) -> (Option<Table>, Vec<Table>) {
+fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[Join]) -> (Option<Table>, Vec<Table>) {
     // at least half of joins should be inner joins involving one common table (the fact table)
     // other tables being joined with fact table are considered dimension tables
 
+    let mut table_names_unique = HashSet::new();
+    let mut table_names = vec![];
     for join in joins {
-        if join.join_type == JoinType::Inner {}
+        if join.join_type == JoinType::Inner {
+            for (l, r) in &join.on {
+                for col in &[l, r] {
+                    if let Some(table_name) = resolve_table(&join.left, col) {
+                        table_names_unique.insert(table_name.clone());
+                        table_names.push(table_name);
+                    }
+                    if let Some(table_name) = resolve_table(&join.right, col) {
+                        table_names_unique.insert(table_name.clone());
+                        table_names.push(table_name);
+                    }
+                }
+            }
+        }
     }
 
+    let table_sizes = get_table_sizes(plan);
+
+    let mut fact_table = None;
+    let mut fact_table_size = 0_usize;
+    for table_name in &table_names_unique {
+        let count = table_names
+            .iter()
+            .filter(|name| *name == table_name)
+            .count();
+        println!("{} = {}", table_name, count);
+        if count >= joins.len() / 2 {
+            let size = *table_sizes.get(table_name).unwrap_or(&0_usize);
+            println!("candidate fact table {} with size {}", table_name, size);
+            if fact_table.is_none() || size > fact_table_size {
+                fact_table = Some(table_name.clone());
+                fact_table_size = size;
+            }
+        }
+    }
+
+    println!("fact table: {:?}", fact_table);
+
     todo!()
+}
+
+fn resolve_table(plan: &LogicalPlan, col: &Column) -> Option<String> {
+    match plan {
+        LogicalPlan::TableScan(scan) => {
+            if let Ok(_) = scan.projected_schema.index_of_column(col) {
+                Some(scan.table_name.clone())
+            } else {
+                None
+            }
+        }
+        LogicalPlan::Join(join) => {
+            resolve_table(&join.left, col).or_else(|| resolve_table(&join.right, col))
+        }
+        _ => {
+            if plan.inputs().is_empty() {
+                None
+            } else {
+                resolve_table(plan.inputs()[0], col)
+            }
+        }
+    }
 }
 
 fn get_unfiltered_dimensions(dims: &[Table]) -> Vec<Table> {
@@ -204,19 +297,11 @@ fn build_join_tree(_tree_type: TreeType, _fact: &Table, _dims: &[Table]) -> Logi
 
 #[cfg(test)]
 mod tests {
-    use std::{any::Any, sync::Arc};
+    use std::sync::Arc;
 
-    use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+    use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_common::{Result, Statistics};
-    use datafusion_expr::{
-        logical_plan::builder::LogicalTableSource,
-        JoinType,
-        LogicalPlan,
-        LogicalPlanBuilder,
-        TableProviderFilterPushDown,
-        TableSource,
-        TableType,
-    };
+    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder, TableProviderFilterPushDown};
 
     use super::*;
     use crate::sql::table::DaskTableSource;
@@ -253,11 +338,68 @@ mod tests {
 
     #[test]
     fn test_extract_joins() -> Result<()> {
+        let join = create_test_plan()?;
+        if let LogicalPlan::Join(join) = join {
+            let joins = extract_joins(&join);
+            assert_eq!(3, joins.len());
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_fact_dimension() -> Result<()> {
+        let plan = create_test_plan()?;
+        if let LogicalPlan::Join(ref join) = plan {
+            let joins = extract_joins(&join);
+            let _ = extract_fact_dimensions(&plan, &joins);
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_columns() -> Result<()> {
+        let plan = create_test_plan()?;
+        assert_eq!(
+            "fact",
+            resolve_table(&plan, &create_column("fact_b")).unwrap()
+        );
+        assert_eq!(
+            "fact",
+            resolve_table(&plan, &create_column("fact_c")).unwrap()
+        );
+        assert_eq!(
+            "fact",
+            resolve_table(&plan, &create_column("fact_d")).unwrap()
+        );
+        assert_eq!(
+            "dim1",
+            resolve_table(&plan, &create_column("dim1_a")).unwrap()
+        );
+        assert_eq!(
+            "dim2",
+            resolve_table(&plan, &create_column("dim2_a")).unwrap()
+        );
+        assert_eq!(
+            "dim3",
+            resolve_table(&plan, &create_column("dim3_a")).unwrap()
+        );
+        Ok(())
+    }
+
+    fn create_column(name: &str) -> Column {
+        Column::new(None::<String>, name.to_owned())
+    }
+
+    fn create_test_plan() -> Result<LogicalPlan> {
         let dim1 = test_table_scan("dim1", 100);
         let dim2 = test_table_scan("dim2", 200);
         let dim3 = test_table_scan("dim3", 300);
         let fact = test_table_scan("fact", 10000);
-        let join = LogicalPlanBuilder::from(fact)
+        LogicalPlanBuilder::from(fact)
             .join(
                 &dim1,
                 JoinType::Inner,
@@ -276,14 +418,7 @@ mod tests {
                 (vec!["fact_d"], vec!["dim3_a"]),
                 None,
             )?
-            .build()?;
-        if let LogicalPlan::Join(join) = join {
-            let joins = extract_joins(&join);
-            assert_eq!(3, joins.len());
-        } else {
-            panic!()
-        }
-        Ok(())
+            .build()
     }
 
     fn test_table_scan(table_name: &str, size: usize) -> LogicalPlan {
