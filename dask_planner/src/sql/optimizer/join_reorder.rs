@@ -47,7 +47,7 @@ impl OptimizerRule for JoinReorder {
                 // get a list of joins, un-nested
                 let joins = unnest_joins(join);
 
-                // let (fact, dims) = extract_fact_dimensions(&plan, &joins);
+                let (fact, dims) = extract_fact_dimensions(&plan, &joins);
 
                 // if fact.is_none() {
                 //     println!("There is no dominant fact table");
@@ -118,6 +118,7 @@ struct JoinInput {
 }
 
 impl JoinInput {
+
     /// Create a dummy table with infinite size
     fn dummy(size: usize) -> Self {
         Self {
@@ -141,34 +142,38 @@ enum TreeType {
     RightDeep,
 }
 
-fn get_table_sizes(plan: &LogicalPlan) -> HashMap<String, usize> {
-    //TODO might be better to get this directly from the context rather than from the plan
-    let mut sizes = HashMap::new();
+fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
+    match plan {
+        LogicalPlan::TableScan(scan) => {
+            let source = scan
+                .source
+                .as_any()
+                .downcast_ref::<DaskTableSource>()
+                .expect("should be a DaskTableSource");
+            if let Some(stats) = source.statistics() {
+                stats.num_rows
+            } else {
 
-    fn get_table_sizes_inner(plan: &LogicalPlan, sizes: &mut HashMap<String, usize>) {
-        match plan {
-            LogicalPlan::TableScan(scan) => {
-                let source = scan
-                    .source
-                    .as_any()
-                    .downcast_ref::<DaskTableSource>()
-                    .expect("should be a DaskTableSource");
-                if let Some(stats) = source.statistics() {
-                    if let Some(row_count) = stats.num_rows {
-                        sizes.insert(scan.table_name.clone(), row_count);
-                    }
-                }
-            }
-            _ => {
-                for child in &plan.inputs() {
-                    get_table_sizes_inner(child, sizes);
-                }
+                // TODO until stats are actually available
+                let n = match scan.table_name.as_str() {
+                    "catalog_returns" => 4_000_000,
+                    "catalog_sales" => 35_000_000,
+                    "customer_demographics" => 35_000,
+                    "date_dim" => 3000,
+                    "household_demographics" => 500,
+                    "inventory" => 116_000_000,
+                    "item" => 29_000,
+                    "promotion" => 100,
+                    "warehouse" => 10,
+                    _ => 100,
+                };
+
+                Some(n)
+
             }
         }
+        _ => get_table_size(&plan.inputs()[0])
     }
-
-    get_table_sizes_inner(plan, &mut sizes);
-    sizes
 }
 
 /// build a list of all joins
@@ -181,9 +186,6 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
     ) {
         match plan {
             LogicalPlan::Join(join) => {
-                // let mut table_plans = HashMap::new();
-                // let mut table_names = vec![];
-
                 let mut left_name = None;
                 let mut left_plan = None;
                 let mut right_name = None;
@@ -227,12 +229,12 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
                     left: JoinInput {
                         name: left_name.unwrap(),
                         plan: left_plan.clone(),
-                        size: 0,
+                        size: get_table_size(left_plan.as_ref().unwrap()).unwrap(),
                     },
                     right: JoinInput {
                         name: right_name.unwrap(),
                         plan: right_plan.clone(),
-                        size: 0,
+                        size: get_table_size(right_plan.as_ref().unwrap()).unwrap(),
                     },
                 };
 
@@ -308,61 +310,55 @@ fn tree_type(_join: &Join) -> TreeType {
 
 /// Extract the fact table from the join, along with a list of dimension tables that
 /// join to the fact table
-// fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[Join]) -> (Option<JoinInput>, Vec<JoinInput>) {
-//     // at least half of joins should be inner joins involving one common table (the fact table)
-//     // other tables being joined with fact table are considered dimension tables
-//
-//     let mut table_names_unique = HashSet::new();
-//     let mut table_names = vec![];
-//     for join in joins {
-//         if join.join_type == JoinType::Inner {
-//             for (l, r) in &join.on {
-//                 for col in &[l, r] {
-//                     if let Some(table_name) = resolve_table(&join.left, col) {
-//                         table_names_unique.insert(table_name.clone());
-//                         table_names.push(table_name);
-//                     }
-//                     if let Some(table_name) = resolve_table(&join.right, col) {
-//                         table_names_unique.insert(table_name.clone());
-//                         table_names.push(table_name);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//
-//     // detect fact and dimension tables
-//     let table_sizes = get_table_sizes(plan);
-//     let mut fact_table = None;
-//     let mut fact_table_size = 0_usize;
-//     for table_name in &table_names_unique {
-//         let count = table_names
-//             .iter()
-//             .filter(|name| *name == table_name)
-//             .count();
-//         println!("{} = {}", table_name, count);
-//         if count >= joins.len() / 2 {
-//             let size = *table_sizes.get(table_name).unwrap_or(&0_usize);
-//             println!("candidate fact table {} with size {}", table_name, size);
-//             if fact_table.is_none() || size > fact_table_size {
-//                 fact_table = Some(table_name.clone());
-//                 fact_table_size = size;
-//             }
-//         }
-//     }
-//
-//     if let Some(fact_table) = fact_table {
-//         let dim_tables: Vec<String> = table_names_unique.iter().filter(|name| *name != &fact_table).cloned().collect();
-//         println!("fact table: {:?}", fact_table);
-//         println!("dimension tables: {:?}", dim_tables);
-//
-//         //TODO check fact_dimension_ratio
-//
-//
-//     }
-//
-//     todo!()
-// }
+fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<JoinInput>) {
+    // at least half of joins should be inner joins involving one common table (the fact table)
+    // other tables being joined with fact table are considered dimension tables
+
+    let mut table_names_unique = HashSet::new();
+    let mut table_names = vec![];
+    let mut table_sizes = HashMap::new();
+    for join in joins {
+        table_names_unique.insert(join.left.name.clone());
+        table_names_unique.insert(join.right.name.clone());
+        table_names.push(join.left.name.clone());
+        table_names.push(join.right.name.clone());
+        table_sizes.insert(&join.left.name, join.left.size);
+        table_sizes.insert(&join.right.name, join.right.size);
+    }
+
+    // detect fact and dimension tables
+    let mut fact_table = None;
+    let mut fact_table_size = 0_usize;
+    for table_name in &table_names_unique {
+        let count = table_names
+            .iter()
+            .filter(|name| *name == table_name)
+            .count();
+        println!("{} = {}", table_name, count);
+        if count >= joins.len() / 2 {
+
+            let size = *table_sizes.get(table_name).unwrap_or(&0_usize);
+
+            println!("candidate fact table {} with size {}", table_name, size);
+            if fact_table.is_none() || size > fact_table_size {
+                fact_table = Some(table_name.clone());
+                fact_table_size = size;
+            }
+        }
+    }
+
+    if let Some(fact_table) = fact_table {
+        let dim_tables: Vec<String> = table_names_unique.iter().filter(|name| *name != &fact_table).cloned().collect();
+        println!("fact table: {:?}", fact_table);
+        println!("dimension tables: {:?}", dim_tables);
+
+        //TODO check fact_dimension_ratio
+
+
+    }
+
+    todo!()
+}
 
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
 /// column (which is used in a join expression)
