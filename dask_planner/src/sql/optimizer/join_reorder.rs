@@ -199,12 +199,20 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
         left_count: &mut usize,
         right_count: &mut usize,
     ) {
+        //TODO increment left_count and right_count depending on which side the nested join
+        // is, so we can determine if the join is LeftDeep, RightDeep, or something else
+
         match plan {
             LogicalPlan::Join(join) => {
                 let mut left_name = None;
                 let mut left_plan = None;
                 let mut right_name = None;
                 let mut right_plan = None;
+
+                if join.filter.is_some() {
+                    //TODO cannot just drop join filters
+                    todo!()
+                }
 
                 for (l, r) in &join.on {
                     // left and right could be in either order but we need to make sure the condition is between left and right
@@ -256,7 +264,7 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
                     on: join.on.clone(),
                 };
 
-                //println!("JOIN: {:?}", simple_join);
+                println!("JOIN: {:?}", simple_join);
 
                 joins.push(simple_join);
 
@@ -399,11 +407,11 @@ fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
 /// column (which is used in a join expression)
 fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, LogicalPlan)> {
-    // println!(
-    //     "Looking for column {} in plan: {}",
-    //     col,
-    //     plan.display_indent()
-    // );
+    println!(
+        "Looking for column {} in plan: {}",
+        col,
+        plan.display_indent()
+    );
 
     match plan {
         LogicalPlan::TableScan(scan) => {
@@ -439,13 +447,37 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
             if plan.inputs().is_empty() {
                 None
             } else {
-                match resolve_table_plan(plan.inputs()[0], col) {
-                    Some((name, _)) => {
-                        // return the entire sub-plan that contains the relation (but no joins)
-                        Some((name, plan.clone()))
-                    }
-                    None => None,
-                }
+                let table_plan = resolve_table_plan(plan.inputs()[0], col);
+
+                //TODO reimplement this so that we don't drop filters wrapping table scans
+
+                return table_plan;
+                // match table_plan {
+                //     Some((name, _)) => {
+                //         // return the entire sub-plan that contains the relation (but no joins)
+                //
+                //         // TODO remove this debug assertion
+                //         if plan_contains_join(plan) {
+                //             panic!("failed to unnest join");
+                //         }
+                //
+                //         Some((name, plan.clone()))
+                //     }
+                //     None => None,
+                // }
+            }
+        }
+    }
+}
+
+fn plan_contains_join(plan: &LogicalPlan) -> bool {
+    match plan {
+        LogicalPlan::Join(_) => true,
+        other => {
+            if other.inputs().len() == 0 {
+                false
+            } else {
+                plan_contains_join(&other.inputs()[0])
             }
         }
     }
