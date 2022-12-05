@@ -427,14 +427,14 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
                 let mut x = col.clone();
                 x.relation = None;
                 match resolve_table_plan(&alias.input, &x) {
-                    Some((a, b)) => Some((a, plan.clone())),
+                    Some((a, _)) => Some((a, plan.clone())),
                     None => None,
                 }
             }
             _ => None,
         },
-        LogicalPlan::Filter(filter) => match resolve_table_plan(plan.inputs()[0], col) {
-            Some((a, b)) => Some((a, plan.clone())),
+        LogicalPlan::Filter(filter) => match resolve_table_plan(filter.input(), col) {
+            Some((a, _)) => Some((a, plan.clone())),
             None => None,
         },
         LogicalPlan::Join(join) => {
@@ -478,18 +478,18 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
     }
 }
 
-fn plan_contains_join(plan: &LogicalPlan) -> bool {
-    match plan {
-        LogicalPlan::Join(_) => true,
-        other => {
-            if other.inputs().len() == 0 {
-                false
-            } else {
-                plan_contains_join(&other.inputs()[0])
-            }
-        }
-    }
-}
+// fn plan_contains_join(plan: &LogicalPlan) -> bool {
+//     match plan {
+//         LogicalPlan::Join(_) => true,
+//         other => {
+//             if other.inputs().len() == 0 {
+//                 false
+//             } else {
+//                 plan_contains_join(&other.inputs()[0])
+//             }
+//         }
+//     }
+// }
 
 fn get_unfiltered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
     dims.iter().filter(|t| !t.has_filter()).cloned().collect()
@@ -597,56 +597,59 @@ mod tests {
         if let LogicalPlan::Join(join) = join {
             let joins = unnest_joins(&join);
             assert_eq!(3, joins.len());
+
+            assert_eq!("SimpleJoin { \
+                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
+                right: JoinInput { name: \"dim3\", plan: TableScan: dim3, size: 300 }, \
+                on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[0]));
+
+            assert_eq!("SimpleJoin { \
+                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
+                right: JoinInput { name: \"dim2\", plan: TableScan: dim2, size: 200 }, \
+                on: [(Column { relation: Some(\"fact\"), name: \"fact_c\" }, Column { relation: Some(\"dim2\"), name: \"dim2_a\" })] }", &format!("{:?}", joins[1]));
+
+            assert_eq!("SimpleJoin { \
+                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
+                right: JoinInput { name: \"dim1\", plan: TableScan: dim1, size: 100 }, \
+                on: [(Column { relation: Some(\"fact\"), name: \"fact_b\" }, Column { relation: Some(\"dim1\"), name: \"dim1_a\" })] }", &format!("{:?}", joins[2]));
         } else {
             panic!()
         }
         Ok(())
     }
 
-    // #[test]
-    // fn test_extract_fact_dimension() -> Result<()> {
-    //     let plan = create_test_plan()?;
-    //     if let LogicalPlan::Join(ref join) = plan {
-    //         let joins = unnest_joins(&join);
-    //         let _ = extract_fact_dimensions(&plan, &joins);
-    //     } else {
-    //         panic!()
-    //     }
-    //     Ok(())
-    // }
+    #[test]
+    fn test_extract_fact_dimension() -> Result<()> {
+        let plan = create_test_plan()?;
+        if let LogicalPlan::Join(ref join) = plan {
+            let joins = unnest_joins(&join);
+            let (fact, dims) = extract_fact_dimensions(&joins);
+            assert_eq!("fact", fact.unwrap().name);
+            let dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
+            assert_eq!(vec!["dim3", "dim2", "dim1"], dim_names);
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
 
-    // #[test]
-    // fn test_resolve_columns() -> Result<()> {
-    //     let plan = create_test_plan()?;
-    //     assert_eq!(
-    //         "fact",
-    //         resolve_table_plan(&plan, &create_column("fact_b")).unwrap()
-    //     );
-    //     assert_eq!(
-    //         "fact",
-    //         resolve_table_plan(&plan, &create_column("fact_c")).unwrap()
-    //     );
-    //     assert_eq!(
-    //         "fact",
-    //         resolve_table_plan(&plan, &create_column("fact_d")).unwrap()
-    //     );
-    //     assert_eq!(
-    //         "dim1",
-    //         resolve_table_plan(&plan, &create_column("dim1_a")).unwrap()
-    //     );
-    //     assert_eq!(
-    //         "dim2",
-    //         resolve_table_plan(&plan, &create_column("dim2_a")).unwrap()
-    //     );
-    //     assert_eq!(
-    //         "dim3",
-    //         resolve_table_plan(&plan, &create_column("dim3_a")).unwrap()
-    //     );
-    //     Ok(())
-    // }
+    #[test]
+    fn test_resolve_columns() -> Result<()> {
+        let plan = create_test_plan()?;
 
-    fn create_column(name: &str) -> Column {
-        Column::new(None::<String>, name.to_owned())
+        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) {
+            let col = Column::new(None::<String>, column_name.to_owned());
+            let (name, _) = resolve_table_plan(&plan, &col).unwrap();
+            assert_eq!(name, expected_table_name);
+        }
+
+        test(&plan, "fact_b", "fact");
+        test(&plan, "fact_c", "fact");
+        test(&plan, "fact_d", "fact");
+        test(&plan, "dim1_a", "dim1");
+        test(&plan, "dim2_a", "dim2");
+        test(&plan, "dim3_a", "dim3");
+        Ok(())
     }
 
     fn create_test_plan() -> Result<LogicalPlan> {
