@@ -59,7 +59,6 @@ setup(
             "mock>=4.0.3",
             "sphinx>=3.2.1",
             "pyarrow>=6.0.1",
-            "dask-ml>=2022.1.22",
             "scikit-learn>=1.0.0",
             "intake>=0.6.0",
             "pre-commit",

@@ -12,11 +12,11 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install conda dependencies for dask-sql
 COPY docker/conda.txt /opt/dask_sql/
-RUN mamba install --freeze-installed -y \
+RUN mamba install -y \
     # build requirements
     "setuptools-rust>=1.4.1" \
     # core dependencies
-    "dask>=2022.3.0" \
+    "dask>=2022.3.0, <=2022.11.1" \
     "pandas>=1.4.0" \
     "fastapi>=0.69.0" \
     "uvicorn>=0.13.4" \
@@ -27,7 +27,6 @@ RUN mamba install --freeze-installed -y \
     nest-asyncio \
     # additional dependencies
     "pyarrow>=6.0.1" \
-    "dask-ml>=2022.1.22" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay

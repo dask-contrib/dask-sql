@@ -3,11 +3,19 @@
 """Meta-estimators for parallelizing estimators using the scikit-learn API."""
 import logging
 import warnings
+from typing import Any, Callable, Tuple, Union
 
 import dask.array as da
 import dask.dataframe as dd
 import dask.delayed
 import numpy as np
+import sklearn.base
+import sklearn.metrics
+from dask.delayed import Delayed
+from dask.highlevelgraph import HighLevelGraph
+from sklearn.metrics import check_scoring as sklearn_check_scoring
+from sklearn.metrics import make_scorer
+from sklearn.utils.validation import check_is_fitted
 
 try:
     import sklearn.base
@@ -15,7 +23,29 @@ try:
 except ImportError:  # pragma: no cover
     raise ImportError("sklearn must be installed")
 
+from dask_sql.physical.rel.custom.metrics import (
+    accuracy_score,
+    log_loss,
+    mean_squared_error,
+    r2_score,
+)
+
 logger = logging.getLogger(__name__)
+
+
+# Scorers
+accuracy_scorer: Tuple[Any, Any] = (accuracy_score, {})
+neg_mean_squared_error_scorer = (mean_squared_error, dict(greater_is_better=False))
+r2_scorer: Tuple[Any, Any] = (r2_score, {})
+neg_log_loss_scorer = (log_loss, dict(greater_is_better=False, needs_proba=True))
+
+
+SCORERS = dict(
+    accuracy=accuracy_scorer,
+    neg_mean_squared_error=neg_mean_squared_error_scorer,
+    r2=r2_scorer,
+    neg_log_loss=neg_log_loss_scorer,
+)
 
 
 class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixin):
@@ -231,9 +261,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             if not dask.is_dask_collection(X) and not dask.is_dask_collection(y):
                 scorer = sklearn.metrics.get_scorer(scoring)
             else:
-                # TODO: implement Dask-ML's get_scorer() function
-                # scorer = get_scorer(scoring, compute=compute)
-                raise NotImplementedError("get_scorer function not implemented")
+                scorer = get_scorer(scoring, compute=compute)
             return scorer(self, X, y)
         else:
             return self._postfit_estimator.score(X, y)
@@ -386,6 +414,145 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
         return getattr(estimator, method)
 
 
+class Incremental(ParallelPostFit):
+    """Metaestimator for feeding Dask Arrays to an estimator blockwise.
+    This wrapper provides a bridge between Dask objects and estimators
+    implementing the ``partial_fit`` API. These *incremental learners* can
+    train on batches of data. This fits well with Dask's blocked data
+    structures.
+    .. note::
+       This meta-estimator is not appropriate for hyperparameter optimization
+       on larger-than-memory datasets.
+    See the `list of incremental learners`_ in the scikit-learn documentation
+    for a list of estimators that implement the ``partial_fit`` API. Note that
+    `Incremental` is not limited to just these classes, it will work on any
+    estimator implementing ``partial_fit``, including those defined outside of
+    scikit-learn itself.
+    Calling :meth:`Incremental.fit` with a Dask Array will pass each block of
+    the Dask array or arrays to ``estimator.partial_fit`` *sequentially*.
+    Like :class:`ParallelPostFit`, the methods available after fitting (e.g.
+    :meth:`Incremental.predict`, etc.) are all parallel and delayed.
+    The ``estimator_`` attribute is a clone of `estimator` that was actually
+    used during the call to ``fit``. All attributes learned during training
+    are available on ``Incremental`` directly.
+    .. _list of incremental learners: https://scikit-learn.org/stable/modules/computing.html#incremental-learning  # noqa
+    Parameters
+    ----------
+    estimator : Estimator
+        Any object supporting the scikit-learn ``partial_fit`` API.
+    scoring : string or callable, optional
+        A single string (see :ref:`scoring_parameter`) or a callable
+        (see :ref:`scoring`) to evaluate the predictions on the test set.
+        For evaluating multiple metrics, either give a list of (unique)
+        strings or a dict with names as keys and callables as values.
+        NOTE that when using custom scorers, each scorer should return a
+        single value. Metric functions returning a list/array of values
+        can be wrapped into multiple scorers that return one value each.
+        See :ref:`multimetric_grid_search` for an example.
+        .. warning::
+           If None, the estimator's default scorer (if available) is used.
+           Most scikit-learn estimators will convert large Dask arrays to
+           a single NumPy array, which may exhaust the memory of your worker.
+           You probably want to always specify `scoring`.
+    random_state : int or numpy.random.RandomState, optional
+        Random object that determines how to shuffle blocks.
+    shuffle_blocks : bool, default True
+        Determines whether to call ``partial_fit`` on a randomly selected chunk
+        of the Dask arrays (default), or to fit in sequential order. This does
+        not control shuffle between blocks or shuffling each block.
+    predict_meta: pd.Series, pd.DataFrame, np.array deafult: None(infer)
+        An empty ``pd.Series``, ``pd.DataFrame``, ``np.array`` that matches the output
+        type of the estimators ``predict`` call.
+        This meta is necessary for  for some estimators to work with
+        ``dask.dataframe`` and ``dask.array``
+    predict_proba_meta: pd.Series, pd.DataFrame, np.array deafult: None(infer)
+        An empty ``pd.Series``, ``pd.DataFrame``, ``np.array`` that matches the output
+        type of the estimators ``predict_proba`` call.
+        This meta is necessary for  for some estimators to work with
+        ``dask.dataframe`` and ``dask.array``
+    transform_meta: pd.Series, pd.DataFrame, np.array deafult: None(infer)
+        An empty ``pd.Series``, ``pd.DataFrame``, ``np.array`` that matches the output
+        type of the estimators ``transform`` call.
+        This meta is necessary for  for some estimators to work with
+        ``dask.dataframe`` and ``dask.array``
+    Attributes
+    ----------
+    estimator_ : Estimator
+        A clone of `estimator` that was actually fit during the ``.fit`` call.
+
+    """
+
+    def __init__(
+        self,
+        estimator=None,
+        scoring=None,
+        shuffle_blocks=True,
+        random_state=None,
+        assume_equal_chunks=True,
+        predict_meta=None,
+        predict_proba_meta=None,
+        transform_meta=None,
+    ):
+        self.shuffle_blocks = shuffle_blocks
+        self.random_state = random_state
+        self.assume_equal_chunks = assume_equal_chunks
+        super(Incremental, self).__init__(
+            estimator=estimator,
+            scoring=scoring,
+            predict_meta=predict_meta,
+            predict_proba_meta=predict_proba_meta,
+            transform_meta=transform_meta,
+        )
+
+    @property
+    def _postfit_estimator(self):
+        check_is_fitted(self, "estimator_")
+        return self.estimator_
+
+    def _fit_for_estimator(self, estimator, X, y, **fit_kwargs):
+        check_scoring(estimator, self.scoring)
+        if not dask.is_dask_collection(X) and not dask.is_dask_collection(y):
+            result = estimator.partial_fit(X=X, y=y, **fit_kwargs)
+        else:
+            result = fit(
+                estimator,
+                X,
+                y,
+                random_state=self.random_state,
+                shuffle_blocks=self.shuffle_blocks,
+                assume_equal_chunks=self.assume_equal_chunks,
+                **fit_kwargs,
+            )
+
+        copy_learned_attributes(result, self)
+        self.estimator_ = result
+        return self
+
+    def fit(self, X, y=None, **fit_kwargs):
+        estimator = sklearn.base.clone(self.estimator)
+        self._fit_for_estimator(estimator, X, y, **fit_kwargs)
+        return self
+
+    def partial_fit(self, X, y=None, **fit_kwargs):
+        """Fit the underlying estimator.
+        If this estimator has not been previously fit, this is identical to
+        :meth:`Incremental.fit`. If it has been previously fit,
+        ``self.estimator_`` is used as the starting point.
+        Parameters
+        ----------
+        X, y : array-like
+        **kwargs
+            Additional fit-kwargs for the underlying estimator.
+        Returns
+        -------
+        self : object
+        """
+        estimator = getattr(self, "estimator_", None)
+        if estimator is None:
+            estimator = sklearn.base.clone(self.estimator)
+        return self._fit_for_estimator(estimator, X, y, **fit_kwargs)
+
+
 def _predict(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
@@ -495,3 +662,147 @@ def copy_learned_attributes(from_estimator, to_estimator):
 
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
+
+
+def get_scorer(scoring: Union[str, Callable], compute: bool = True) -> Callable:
+    """Get a scorer from string
+    Parameters
+    ----------
+    scoring : str | callable
+        scoring method as string. If callable it is returned as is.
+    Returns
+    -------
+    scorer : callable
+        The scorer.
+    """
+    # This is the same as sklearns, only we use our SCORERS dict,
+    # and don't have back-compat code
+    if isinstance(scoring, str):
+        try:
+            scorer, kwargs = SCORERS[scoring]
+        except KeyError:
+            raise ValueError(
+                "{} is not a valid scoring value. "
+                "Valid options are {}".format(scoring, sorted(SCORERS))
+            )
+    else:
+        scorer = scoring
+        kwargs = {}
+
+    kwargs["compute"] = compute
+
+    return make_scorer(scorer, **kwargs)
+
+
+def check_scoring(estimator, scoring=None, **kwargs):
+    res = sklearn_check_scoring(estimator, scoring=scoring, **kwargs)
+    if scoring in SCORERS.keys():
+        func, kwargs = SCORERS[scoring]
+        return make_scorer(func, **kwargs)
+    return res
+
+
+def fit(
+    model,
+    x,
+    y,
+    compute=True,
+    shuffle_blocks=True,
+    random_state=None,
+    assume_equal_chunks=False,
+    **kwargs,
+):
+    """Fit scikit learn model against dask arrays
+    Model must support the ``partial_fit`` interface for online or batch
+    learning.
+    Ideally your rows are independent and identically distributed. By default,
+    this function will step through chunks of the arrays in random order.
+    Parameters
+    ----------
+    model: sklearn model
+        Any model supporting partial_fit interface
+    x: dask Array
+        Two dimensional array, likely tall and skinny
+    y: dask Array
+        One dimensional array with same chunks as x's rows
+    compute : bool
+        Whether to compute this result
+    shuffle_blocks : bool
+        Whether to shuffle the blocks with ``random_state`` or not
+    random_state : int or numpy.random.RandomState
+        Random state to use when shuffling blocks
+    kwargs:
+        options to pass to partial_fit
+    """
+
+    nblocks, x_name = _blocks_and_name(x)
+    if y is not None:
+        y_nblocks, y_name = _blocks_and_name(y)
+        assert y_nblocks == nblocks
+    else:
+        y_name = ""
+
+    if not hasattr(model, "partial_fit"):
+        msg = "The class '{}' does not implement 'partial_fit'."
+        raise ValueError(msg.format(type(model)))
+
+    order = list(range(nblocks))
+    if shuffle_blocks:
+        rng = sklearn.utils.check_random_state(random_state)
+        rng.shuffle(order)
+
+    name = "fit-" + dask.base.tokenize(model, x, y, kwargs, order)
+
+    if hasattr(x, "chunks") and x.ndim > 1:
+        x_extra = (0,)
+    else:
+        x_extra = ()
+
+    dsk = {(name, -1): model}
+    dsk.update(
+        {
+            (name, i): (
+                _partial_fit,
+                (name, i - 1),
+                (x_name, order[i]) + x_extra,
+                (y_name, order[i]),
+                kwargs,
+            )
+            for i in range(nblocks)
+        }
+    )
+
+    dependencies = [x]
+    if y is not None:
+        dependencies.append(y)
+    new_dsk = HighLevelGraph.from_collections(name, dsk, dependencies=dependencies)
+    value = Delayed((name, nblocks - 1), new_dsk, layer=name)
+
+    if compute:
+        return value.compute()
+    else:
+        return value
+
+
+def _blocks_and_name(obj):
+    if hasattr(obj, "chunks"):
+        nblocks = len(obj.chunks[0])
+        name = obj.name
+
+    elif hasattr(obj, "npartitions"):
+        # dataframe, bag
+        nblocks = obj.npartitions
+        if hasattr(obj, "_name"):
+            # dataframe
+            name = obj._name
+        else:
+            # bag
+            name = obj.name
+
+    return nblocks, name
+
+
+def _partial_fit(model, x, y, kwargs=None):
+    kwargs = kwargs or dict()
+    model.partial_fit(x, y, **kwargs)
+    return model

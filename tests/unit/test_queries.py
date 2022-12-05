@@ -3,7 +3,6 @@ import os
 import pytest
 
 XFAIL_QUERIES = (
-    4,
     5,
     6,
     8,
@@ -12,7 +11,6 @@ XFAIL_QUERIES = (
     14,
     16,
     18,
-    21,
     22,
     23,
     24,
@@ -21,7 +19,6 @@ XFAIL_QUERIES = (
     35,
     36,
     39,
-    40,
     41,
     44,
     45,
@@ -38,11 +35,8 @@ XFAIL_QUERIES = (
     69,
     70,
     72,
-    75,
     77,
-    78,
     80,
-    84,
     86,
     87,
     88,
