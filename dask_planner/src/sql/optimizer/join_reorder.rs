@@ -128,12 +128,18 @@ impl OptimizerRule for JoinReorder {
 /// Represents a Fact or Dimension table, possibly nested in a filter.
 #[derive(Clone, Debug)]
 struct JoinInput {
+    /// Name of the fact or dimension table represented by this join input
     name: String,
+    /// Plan containing the table scan for the fact or dimension table. May also contain
+    /// Filter and SubqueryAlias.
     plan: LogicalPlan,
+    /// Estimated size of the underlying table before any filtering is applied
     size: usize,
 }
 
 impl JoinInput {
+
+    /// Get the name of the fact or dimension table represented by this join input
     fn name(&self) -> &str {
         &self.name
     }
@@ -178,7 +184,7 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
             if let Some(stats) = source.statistics() {
                 stats.num_rows
             } else {
-                // TODO until stats are actually available
+                // TODO hard-coded stats for manual testing until stats are available
                 let n = match scan.table_name.as_str() {
                     "catalog_returns" => 4_000_000,
                     "catalog_sales" => 35_000_000,
