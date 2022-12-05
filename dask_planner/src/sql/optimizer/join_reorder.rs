@@ -1,12 +1,14 @@
 //! Join reordering based on the paper "Improving Join Reordering for Large Scale Distributed Computing"
 //! https://ieeexplore.ieee.org/document/9378281
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-use datafusion_common::{Column, Result};
-use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, TableScan};
+use datafusion_common::{Column, DFSchema, Result};
+use datafusion_expr::{EmptyRelation, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
-use uuid::fmt::Simple;
 
 use crate::sql::table::DaskTableSource;
 
@@ -47,54 +49,53 @@ impl OptimizerRule for JoinReorder {
                 // get a list of joins, un-nested
                 let joins = unnest_joins(join);
 
-                let (fact, dims) = extract_fact_dimensions(&plan, &joins);
+                let (fact, dims) = extract_fact_dimensions(&joins);
+                if fact.is_none() {
+                    println!("There is no dominant fact table");
+                    return Ok(None);
+                }
+                let fact = fact.unwrap(); // unwrap here is safe due to previous check
 
-                // if fact.is_none() {
-                //     println!("There is no dominant fact table");
-                //     return Ok(None);
-                // }
-                // let fact = fact.unwrap(); // unwrap here is safe due to previous check
-                //
-                // let tree_type = tree_type(join);
-                // let n = dims.len();
-                //
-                // let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
-                // unfiltered_dimensions.push(JoinInput::dummy(usize::MAX));
-                // //TODO sort unfiltered list on user-provided order in original
-                // // join, if not already in that order?
-                //
-                // let mut filtered_dimensions = get_filtered_dimensions(&dims);
-                // filtered_dimensions.push(JoinInput::dummy(usize::MIN));
-                // // sort on size of dimension tables
-                // filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
-                //
-                // // Merge both the lists of dimensions by giving user order
-                // // the preference for tables without a selective predicate,
-                // // whereas for tables with selective predicates giving preference
-                // // to smaller tables. When comparing the top of both
-                // // the lists, if size of the top table in the selective predicate
-                // // list is smaller than top of the other list, choose it otherwise
-                // // vice-versa.
-                // // This algorithm is a greedy approach where smaller
-                // // joins with filtered dimension table are preferred for execution
-                // // earlier than other Joins to improve Join performance. We try to keep
-                // // the user order intact when unsure about reordering to make sure
-                // // regressions are minimized.
-                // let mut i = 0;
-                // let mut j = 0;
-                // let mut result = vec![];
-                // for _ in 0..n {
-                //     if filtered_dimensions[i].size <= unfiltered_dimensions[j].size {
-                //         i += 1;
-                //         result.push(filtered_dimensions[i].clone());
-                //     } else {
-                //         j += 1;
-                //         result.push(unfiltered_dimensions[i].clone());
-                //     }
-                // }
-                // return Ok(Some(build_join_tree(tree_type, &fact, &result)));
+                let tree_type = tree_type(join);
+                let n = dims.len();
 
-                Ok(None)
+                let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
+                unfiltered_dimensions.push(JoinInput::dummy(usize::MAX));
+
+                let mut filtered_dimensions = get_filtered_dimensions(&dims);
+                filtered_dimensions.push(JoinInput::dummy(usize::MIN));
+                // sort on size of dimension tables
+                filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+
+                // Merge both the lists of dimensions by giving user order
+                // the preference for tables without a selective predicate,
+                // whereas for tables with selective predicates giving preference
+                // to smaller tables. When comparing the top of both
+                // the lists, if size of the top table in the selective predicate
+                // list is smaller than top of the other list, choose it otherwise
+                // vice-versa.
+                // This algorithm is a greedy approach where smaller
+                // joins with filtered dimension table are preferred for execution
+                // earlier than other Joins to improve Join performance. We try to keep
+                // the user order intact when unsure about reordering to make sure
+                // regressions are minimized.
+                let mut i = 0;
+                let mut j = 0;
+                let mut result = vec![];
+                for _ in 0..n {
+                    if filtered_dimensions[i].size <= unfiltered_dimensions[j].size {
+                        i += 1;
+                        result.push(filtered_dimensions[i].clone());
+                    } else {
+                        j += 1;
+                        result.push(unfiltered_dimensions[i].clone());
+                    }
+                }
+                let optimized = build_join_tree(tree_type, &joins, &fact, &result).unwrap(); // TODO use ?
+
+                println!("Optimized: {}", optimized.display_indent());
+
+                return Ok(Some(optimized));
             }
             _ => {
                 println!("not a join");
@@ -109,22 +110,37 @@ impl OptimizerRule for JoinReorder {
     }
 }
 
-/// Represents a Fact or Dimension table, or a dummy table.
+/// Represents a Fact or Dimension table, possibly nested in a filter.
 #[derive(Clone, Debug)]
 struct JoinInput {
     name: String,
-    plan: Option<LogicalPlan>,
+    plan: LogicalPlan,
     size: usize,
 }
 
 impl JoinInput {
-
     /// Create a dummy table with infinite size
     fn dummy(size: usize) -> Self {
         Self {
             name: "_dummy_".to_string(),
-            plan: None,
+            plan: LogicalPlan::EmptyRelation(EmptyRelation {
+                produce_one_row: false,
+                schema: Arc::new(DFSchema::empty()),
+            }),
             size,
+        }
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Determine if this plan contains any filters
+    fn has_filter(&self) -> bool {
+        match &self.plan {
+            LogicalPlan::Filter(_) => true,
+            LogicalPlan::TableScan(scan) => !scan.filters.is_empty(),
+            _ => false,
         }
     }
 }
@@ -134,6 +150,7 @@ impl JoinInput {
 struct SimpleJoin {
     left: JoinInput,
     right: JoinInput,
+    on: Vec<(Column, Column)>,
 }
 
 #[derive(Debug)]
@@ -153,7 +170,6 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
             if let Some(stats) = source.statistics() {
                 stats.num_rows
             } else {
-
                 // TODO until stats are actually available
                 let n = match scan.table_name.as_str() {
                     "catalog_returns" => 4_000_000,
@@ -169,10 +185,9 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                 };
 
                 Some(n)
-
             }
         }
-        _ => get_table_size(&plan.inputs()[0])
+        _ => get_table_size(&plan.inputs()[0]),
     }
 }
 
@@ -225,20 +240,23 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
                     }
                 }
 
+                let ll_size = get_table_size(left_plan.as_ref().unwrap()).unwrap();
+                let rr_size = get_table_size(right_plan.as_ref().unwrap()).unwrap();
                 let simple_join = SimpleJoin {
                     left: JoinInput {
                         name: left_name.unwrap(),
-                        plan: left_plan.clone(),
-                        size: get_table_size(left_plan.as_ref().unwrap()).unwrap(),
+                        plan: left_plan.unwrap().clone(),
+                        size: ll_size,
                     },
                     right: JoinInput {
                         name: right_name.unwrap(),
-                        plan: right_plan.clone(),
-                        size: get_table_size(right_plan.as_ref().unwrap()).unwrap(),
+                        plan: right_plan.unwrap().clone(),
+                        size: rr_size,
                     },
+                    on: join.on.clone(),
                 };
 
-                println!("JOIN: {:?}", simple_join);
+                //println!("JOIN: {:?}", simple_join);
 
                 joins.push(simple_join);
 
@@ -310,7 +328,7 @@ fn tree_type(_join: &Join) -> TreeType {
 
 /// Extract the fact table from the join, along with a list of dimension tables that
 /// join to the fact table
-fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<JoinInput>) {
+fn extract_fact_dimensions(joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<JoinInput>) {
     // at least half of joins should be inner joins involving one common table (the fact table)
     // other tables being joined with fact table are considered dimension tables
 
@@ -336,7 +354,6 @@ fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[SimpleJoin]) -> (Option<
             .count();
         println!("{} = {}", table_name, count);
         if count >= joins.len() / 2 {
-
             let size = *table_sizes.get(table_name).unwrap_or(&0_usize);
 
             println!("candidate fact table {} with size {}", table_name, size);
@@ -348,16 +365,35 @@ fn extract_fact_dimensions(plan: &LogicalPlan, joins: &[SimpleJoin]) -> (Option<
     }
 
     if let Some(fact_table) = fact_table {
-        let dim_tables: Vec<String> = table_names_unique.iter().filter(|name| *name != &fact_table).cloned().collect();
+        let dim_tables: Vec<String> = table_names_unique
+            .iter()
+            .filter(|name| *name != &fact_table)
+            .cloned()
+            .collect();
         println!("fact table: {:?}", fact_table);
         println!("dimension tables: {:?}", dim_tables);
 
         //TODO check fact_dimension_ratio
-
-
+        let fact_table = get_plan(joins, &fact_table);
+        let dim_tables = dim_tables
+            .iter()
+            .map(|name| get_plan(joins, &name).unwrap())
+            .collect();
+        (fact_table, dim_tables)
+    } else {
+        (None, vec![])
     }
+}
 
-    todo!()
+fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
+    for join in joins {
+        if join.left.name == name {
+            return Some(join.left.clone());
+        } else if join.right.name == name {
+            return Some(join.right.clone());
+        }
+    }
+    None
 }
 
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
@@ -415,25 +451,64 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
     }
 }
 
-// fn get_unfiltered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
-//     // TODO also look at filters pushed down to the table scan
-//     dims.iter()
-//         // .filter(|t| t.filter.is_none())
-//         .cloned()
-//         .collect()
-// }
-//
-// fn get_filtered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
-//     // TODO also look at filters pushed down to the table scan
-//     dims.iter()
-//         // .filter(|t| t.filter.is_some())
-//         .cloned()
-//         .collect()
-// }
-//
-// fn build_join_tree(_tree_type: TreeType, _fact: &JoinInput, _dims: &[JoinInput]) -> LogicalPlan {
-//     todo!()
-// }
+fn get_unfiltered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
+    dims.iter().filter(|t| !t.has_filter()).cloned().collect()
+}
+
+fn get_filtered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
+    dims.iter().filter(|t| t.has_filter()).cloned().collect()
+}
+
+fn build_join_tree(
+    _tree_type: TreeType,
+    joins: &[SimpleJoin],
+    fact: &JoinInput,
+    dims: &[JoinInput],
+) -> Result<LogicalPlan> {
+    println!(
+        "build_join_tree() fact={}, dims={:?}",
+        fact.name,
+        dims.iter().map(|d| d.name()).collect::<Vec<&str>>()
+    );
+
+    //TODO respect tree_type
+
+    println!("fact schema: {:?}", fact.plan.schema().field_names());
+
+    let mut b = LogicalPlanBuilder::from(fact.plan.clone());
+    let mut prev_table_name = fact.name().to_owned();
+
+    for dim in dims {
+        println!("dim schema: {:?}", dim.plan.schema().field_names());
+
+        let mut join_keys = vec![];
+
+        for join in joins {
+            if join.left.name == prev_table_name && join.right.name == dim.name() {
+                join_keys = join.on.clone();
+            } else if join.right.name == prev_table_name && join.left.name == dim.name() {
+                join_keys = join.on.clone();
+            }
+        }
+
+        let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
+        let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
+
+        println!(
+            "Joining {} to {} on {:?} = {:?}",
+            prev_table_name,
+            dim.name(),
+            left_keys,
+            right_keys
+        );
+
+        b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
+
+        prev_table_name = dim.name().to_owned();
+    }
+
+    b.build()
+}
 
 #[cfg(test)]
 mod tests {
@@ -441,7 +516,7 @@ mod tests {
 
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_common::{Result, Statistics};
-    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder, TableProviderFilterPushDown};
+    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder};
 
     use super::*;
     use crate::sql::table::DaskTableSource;
