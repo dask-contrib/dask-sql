@@ -408,11 +408,11 @@ fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
 /// column (which is used in a join expression)
 fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, LogicalPlan)> {
-    // println!(
-    //     "Looking for column {} in plan: {}",
-    //     col,
-    //     plan.display_indent()
-    // );
+    println!(
+        "Looking for column {} in plan: {}",
+        col,
+        plan.display_indent()
+    );
 
     match plan {
         LogicalPlan::TableScan(scan) => {
@@ -427,7 +427,7 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
                 let mut x = col.clone();
                 x.relation = None;
                 match resolve_table_plan(&alias.input, &x) {
-                    Some((a, _)) => Some((a, plan.clone())),
+                    Some(_) => Some((alias.alias.clone(), plan.clone())),
                     None => None,
                 }
             }
@@ -556,7 +556,7 @@ mod tests {
 
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_common::{Result, Statistics};
-    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder};
+    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder, SubqueryAlias};
 
     use super::*;
     use crate::sql::table::DaskTableSource;
@@ -625,8 +625,9 @@ mod tests {
             let joins = unnest_joins(&join);
             let (fact, dims) = extract_fact_dimensions(&joins);
             assert_eq!("fact", fact.unwrap().name);
-            let dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
-            assert_eq!(vec!["dim3", "dim2", "dim1"], dim_names);
+            let mut dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
+            dim_names.sort();
+            assert_eq!(vec!["dim1", "dim2", "dim3"], dim_names);
         } else {
             panic!()
         }
@@ -649,6 +650,25 @@ mod tests {
         test(&plan, "dim1_a", "dim1");
         test(&plan, "dim2_a", "dim2");
         test(&plan, "dim3_a", "dim3");
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_aliased_columns() -> Result<()> {
+        let plan = create_test_plan_with_aliases()?;
+
+        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) {
+            let col = Column::from(column_name);
+            let (name, _) = resolve_table_plan(&plan, &col).unwrap();
+            assert_eq!(name, expected_table_name);
+        }
+
+        test(&plan, "fact_b", "fact");
+        test(&plan, "fact_c", "fact");
+        test(&plan, "fact_d", "fact");
+        test(&plan, "dim1.date_dim_a", "dim1");
+        test(&plan, "dim2.date_dim_a", "dim2");
+        test(&plan, "dim3.date_dim_a", "dim3");
         Ok(())
     }
 
@@ -677,6 +697,43 @@ mod tests {
                 None,
             )?
             .build()
+    }
+
+    fn create_test_plan_with_aliases() -> Result<LogicalPlan> {
+        let dim1 = aliased_plan(test_table_scan("date_dim", 100), "dim1");
+        let dim2 = aliased_plan(test_table_scan("date_dim", 200), "dim2");
+        let dim3 = aliased_plan(test_table_scan("date_dim", 300), "dim3");
+        let fact = test_table_scan("fact", 10000);
+        LogicalPlanBuilder::from(fact)
+            .join(
+                &dim1,
+                JoinType::Inner,
+                (vec!["fact_b"], vec!["date_dim_a"]),
+                None,
+            )?
+            .join(
+                &dim2,
+                JoinType::Inner,
+                (vec!["fact_c"], vec!["date_dim_a"]),
+                None,
+            )?
+            .join(
+                &dim3,
+                JoinType::Inner,
+                (vec!["fact_d"], vec!["date_dim_a"]),
+                None,
+            )?
+            .build()
+    }
+
+    fn aliased_plan(plan: LogicalPlan, alias: &str) -> LogicalPlan {
+        let schema = plan.schema().as_ref().clone();
+        let schema = schema.replace_qualifier(alias);
+        LogicalPlan::SubqueryAlias(SubqueryAlias {
+            input: Arc::new(plan),
+            alias: alias.to_string(),
+            schema: Arc::new(schema),
+        })
     }
 
     fn test_table_scan(table_name: &str, size: usize) -> LogicalPlan {
