@@ -88,7 +88,7 @@ impl OptimizerRule for JoinReorder {
                         result.push(filtered_dimensions[i].clone());
                     } else {
                         j += 1;
-                        result.push(unfiltered_dimensions[i].clone());
+                        result.push(unfiltered_dimensions[j].clone());
                     }
                 }
                 let optimized = build_join_tree(tree_type, &joins, &fact, &result).unwrap(); // TODO use ?
@@ -151,6 +151,7 @@ struct SimpleJoin {
     left: JoinInput,
     right: JoinInput,
     on: Vec<(Column, Column)>,
+    //TODO track join filters here as well ?
 }
 
 #[derive(Debug)]
@@ -407,11 +408,11 @@ fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
 /// column (which is used in a join expression)
 fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, LogicalPlan)> {
-    println!(
-        "Looking for column {} in plan: {}",
-        col,
-        plan.display_indent()
-    );
+    // println!(
+    //     "Looking for column {} in plan: {}",
+    //     col,
+    //     plan.display_indent()
+    // );
 
     match plan {
         LogicalPlan::TableScan(scan) => {
@@ -421,6 +422,21 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
                 None
             }
         }
+        LogicalPlan::SubqueryAlias(alias) => match &col.relation {
+            Some(r) if alias.alias == *r => {
+                let mut x = col.clone();
+                x.relation = None;
+                match resolve_table_plan(&alias.input, &x) {
+                    Some((a, b)) => Some((a, plan.clone())),
+                    None => None,
+                }
+            }
+            _ => None,
+        },
+        LogicalPlan::Filter(filter) => match resolve_table_plan(plan.inputs()[0], col) {
+            Some((a, b)) => Some((a, plan.clone())),
+            None => None,
+        },
         LogicalPlan::Join(join) => {
             let ll = resolve_table_plan(&join.left, col);
             let rr = resolve_table_plan(&join.right, col);
@@ -435,14 +451,6 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
                 None
             }
         }
-        LogicalPlan::SubqueryAlias(alias) => match &col.relation {
-            Some(r) if alias.alias == *r => {
-                let mut x = col.clone();
-                x.relation = None;
-                resolve_table_plan(&alias.input, &x)
-            }
-            _ => None,
-        },
         _ => {
             if plan.inputs().is_empty() {
                 None
