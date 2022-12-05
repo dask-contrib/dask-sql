@@ -140,11 +140,15 @@ impl JoinInput {
 
     /// Determine if this plan contains any filters
     fn has_filter(&self) -> bool {
-        match &self.plan {
-            LogicalPlan::Filter(_) => true,
-            LogicalPlan::TableScan(scan) => !scan.filters.is_empty(),
-            _ => false,
-        }
+        has_filter(&self.plan)
+    }
+}
+
+fn has_filter(plan: &LogicalPlan) -> bool {
+    match plan {
+        LogicalPlan::Filter(_) => true,
+        LogicalPlan::TableScan(scan) => !scan.filters.is_empty(),
+        _ => plan.inputs().iter().any(|child| has_filter(child)),
     }
 }
 
