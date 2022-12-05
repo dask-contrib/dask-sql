@@ -44,7 +44,7 @@ impl OptimizerRule for JoinReorder {
                 println!("simple join");
 
                 // get a list of joins, un-nested
-                let (tree_type, joins) = unnest_joins(join);
+                let (tree_type, joins) = unnest_joins(join)?;
 
                 let (fact, dims) = extract_fact_dimensions(&joins);
                 if fact.is_none() {
@@ -138,7 +138,6 @@ struct JoinInput {
 }
 
 impl JoinInput {
-
     /// Get the name of the fact or dimension table represented by this join input
     fn name(&self) -> &str {
         &self.name
@@ -206,13 +205,13 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
 }
 
 /// build a list of all joins
-fn unnest_joins(join: &Join) -> (TreeType, Vec<SimpleJoin>) {
+fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
     fn unnest_joins_inner(
         plan: &LogicalPlan,
         joins: &mut Vec<SimpleJoin>,
         left_count: &mut usize,
         right_count: &mut usize,
-    ) {
+    ) -> Result<()> {
         //TODO increment left_count and right_count depending on which side the nested join
         // is, so we can determine if the join is LeftDeep, RightDeep, or something else
 
@@ -224,8 +223,9 @@ fn unnest_joins(join: &Join) -> (TreeType, Vec<SimpleJoin>) {
                 let mut right_plan = None;
 
                 if join.filter.is_some() {
-                    //TODO cannot just drop join filters
-                    todo!()
+                    return Err(DataFusionError::Plan(
+                        "No support for joins with filters yet".to_string(),
+                    ));
                 }
 
                 for (l, r) in &join.on {
@@ -282,15 +282,16 @@ fn unnest_joins(join: &Join) -> (TreeType, Vec<SimpleJoin>) {
 
                 joins.push(simple_join);
 
-                unnest_joins_inner(&join.left, joins, left_count, right_count);
-                unnest_joins_inner(&join.right, joins, left_count, right_count);
+                unnest_joins_inner(&join.left, joins, left_count, right_count)?;
+                unnest_joins_inner(&join.right, joins, left_count, right_count)?;
             }
             other => {
                 for child in other.inputs() {
-                    unnest_joins_inner(child, joins, left_count, right_count);
+                    unnest_joins_inner(child, joins, left_count, right_count)?;
                 }
             }
         }
+        Ok(())
     }
 
     let mut left_count = 0;
@@ -301,12 +302,12 @@ fn unnest_joins(join: &Join) -> (TreeType, Vec<SimpleJoin>) {
         &mut joins,
         &mut left_count,
         &mut right_count,
-    );
+    )?;
 
     println!("nest counts: left={}, right={}", left_count, right_count);
 
     //TODO do not hard-code TreeType
-    (TreeType::LeftDeep, joins)
+    Ok((TreeType::LeftDeep, joins))
 }
 
 /// Simple Join Constraint: Only INNER Joins are consid-
@@ -595,7 +596,7 @@ mod tests {
     fn test_unnest_joins() -> Result<()> {
         let join = create_test_plan()?;
         if let LogicalPlan::Join(join) = join {
-            let (_tree_type, joins) = unnest_joins(&join);
+            let (_tree_type, joins) = unnest_joins(&join)?;
             assert_eq!(3, joins.len());
 
             assert_eq!("SimpleJoin { \
@@ -652,7 +653,7 @@ mod tests {
     fn test_extract_fact_dimension() -> Result<()> {
         let plan = create_test_plan()?;
         if let LogicalPlan::Join(ref join) = plan {
-            let (_tree_type, joins) = unnest_joins(&join);
+            let (_tree_type, joins) = unnest_joins(&join)?;
             let (fact, dims) = extract_fact_dimensions(&joins);
             assert_eq!("fact", fact.unwrap().name);
             let mut dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
