@@ -32,8 +32,6 @@ impl OptimizerRule for JoinReorder {
         plan: &LogicalPlan,
         _config: &mut OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
-        println!("JoinReorder::try_optimize()");
-
         match plan {
             LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
                 // we can only reorder simple joins, as defined in `is_simple_join`
@@ -41,7 +39,10 @@ impl OptimizerRule for JoinReorder {
                     println!("Not a simple join");
                     return Ok(None);
                 }
-                println!("simple join");
+                println!(
+                    "JoinReorder attempting to optimize join: {}",
+                    plan.display_indent()
+                );
 
                 // get a list of joins, un-nested
                 let (tree_type, joins) = unnest_joins(join)?;
@@ -59,23 +60,23 @@ impl OptimizerRule for JoinReorder {
                 let mut filtered_dimensions = get_filtered_dimensions(&dims);
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
 
-                for dim in &unfiltered_dimensions {
-                    println!(
-                        "UNFILTERED: {} {} {}",
-                        dim.name,
-                        dim.size,
-                        dim.plan.display_indent()
-                    );
-                }
-
-                for dim in &filtered_dimensions {
-                    println!(
-                        "FILTERED: {} {} {}",
-                        dim.name,
-                        dim.size,
-                        dim.plan.display_indent()
-                    );
-                }
+                // for dim in &unfiltered_dimensions {
+                //     println!(
+                //         "UNFILTERED: {} {} {}",
+                //         dim.name,
+                //         dim.size,
+                //         dim.plan.display_indent()
+                //     );
+                // }
+                //
+                // for dim in &filtered_dimensions {
+                //     println!(
+                //         "FILTERED: {} {} {}",
+                //         dim.name,
+                //         dim.size,
+                //         dim.plan.display_indent()
+                //     );
+                // }
 
                 // Merge both the lists of dimensions by giving user order
                 // the preference for tables without a selective predicate,
@@ -230,10 +231,11 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
 
                 for (l, r) in &join.on {
                     // left and right could be in either order but we need to make sure the condition is between left and right
-                    if let Some((left_table_name, left_subplan)) = resolve_table_plan(&join.left, l)
+                    if let Some((left_table_name, left_subplan)) =
+                        resolve_table_plan(&join.left, l)?
                     {
                         if let Some((right_table_name, right_subplan)) =
-                            resolve_table_plan(&join.right, r)
+                            resolve_table_plan(&join.right, r)?
                         {
                             //TODO if overwriting existing plan, check they match first
                             left_name = Some(left_table_name);
@@ -245,10 +247,10 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
                             todo!()
                         }
                     } else if let Some((left_table_name, left_subplan)) =
-                        resolve_table_plan(&join.right, l)
+                        resolve_table_plan(&join.right, l)?
                     {
                         if let Some((right_table_name, right_subplan)) =
-                            resolve_table_plan(&join.left, r)
+                            resolve_table_plan(&join.left, r)?
                         {
                             //TODO if overwriting existing plan, check they match first
                             left_name = Some(left_table_name);
@@ -278,7 +280,7 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
                     on: join.on.clone(),
                 };
 
-                println!("JOIN: {:?}", simple_join);
+                // println!("JOIN: {:?}", simple_join);
 
                 joins.push(simple_join);
 
@@ -304,7 +306,7 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
         &mut right_count,
     )?;
 
-    println!("nest counts: left={}, right={}", left_count, right_count);
+    //println!("nest counts: left={}, right={}", left_count, right_count);
 
     //TODO do not hard-code TreeType
     Ok((TreeType::LeftDeep, joins))
@@ -424,15 +426,17 @@ fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
 }
 
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
-/// column (which is used in a join expression)
-fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, LogicalPlan)> {
+/// column (which is used in a join expression), along with any Filter or SubqueryAlias nodes.
+///
+/// The returned plan should not contain any joins.
+fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Result<Option<(String, LogicalPlan)>> {
     // println!(
     //     "Looking for column {} in plan: {}",
     //     col,
     //     plan.display_indent()
     // );
 
-    match plan {
+    let option = match plan {
         LogicalPlan::TableScan(scan) => {
             if let Ok(_) = scan.projected_schema.index_of_column(col) {
                 Some((scan.table_name.clone(), plan.clone()))
@@ -444,20 +448,31 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
             Some(r) if alias.alias == *r => {
                 let mut x = col.clone();
                 x.relation = None;
-                match resolve_table_plan(&alias.input, &x) {
-                    Some(_) => Some((alias.alias.clone(), plan.clone())),
+                match resolve_table_plan(&alias.input, &x)? {
+                    Some((_, subplan)) => {
+                        let subplan_aliased = LogicalPlanBuilder::from(subplan)
+                            .alias(&alias.alias)?
+                            .build()?;
+                        Some((alias.alias.clone(), subplan_aliased))
+                    }
                     None => None,
                 }
             }
             _ => None,
         },
-        LogicalPlan::Filter(filter) => match resolve_table_plan(filter.input(), col) {
-            Some((a, _)) => Some((a, plan.clone())),
+        LogicalPlan::Filter(filter) => match resolve_table_plan(filter.input(), col)? {
+            Some((a, subplan)) => {
+                // TODO what if this filter references other output from a join
+                let subplan_filtered = LogicalPlanBuilder::from(subplan)
+                    .filter(filter.predicate().clone())?
+                    .build()?;
+                Some((a, subplan_filtered))
+            }
             None => None,
         },
         LogicalPlan::Join(join) => {
-            let ll = resolve_table_plan(&join.left, col);
-            let rr = resolve_table_plan(&join.right, col);
+            let ll = resolve_table_plan(&join.left, col)?;
+            let rr = resolve_table_plan(&join.right, col)?;
             if ll.is_some() && rr.is_some() {
                 // ambiguous
                 None
@@ -471,9 +486,38 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
         }
         _ => {
             if plan.inputs().len() == 1 {
-                resolve_table_plan(plan.inputs()[0], col)
+                resolve_table_plan(plan.inputs()[0], col)?
             } else {
                 None
+            }
+        }
+    };
+
+    if let Some((_name, _subplan)) = option {
+        // println!("returning: {} = {:?}\n------\n", _name, _subplan);
+
+        // sanity check that we are returning a simple plan with no joins
+        if plan_contains_join(&_subplan) {
+            return Err(DataFusionError::Plan(format!(
+                "Failed to resolve plan for {}",
+                col
+            )));
+        }
+
+        Ok(Some((_name, _subplan)))
+    } else {
+        Ok(None)
+    }
+}
+
+fn plan_contains_join(plan: &LogicalPlan) -> bool {
+    match plan {
+        LogicalPlan::Join(_) => true,
+        other => {
+            if other.inputs().len() == 0 {
+                false
+            } else {
+                plan_contains_join(&other.inputs()[0])
             }
         }
     }
@@ -499,19 +543,71 @@ fn build_join_tree(
         dims.iter().map(|d| d.name()).collect::<Vec<&str>>()
     );
 
-    println!("fact schema: {:?}", fact.plan.schema().field_names());
+    // println!("fact schema: {:?}", fact.plan.schema().field_names());
 
     let mut b = LogicalPlanBuilder::from(fact.plan.clone());
 
+    let mut dims_indirect_join = vec![];
+
     for dim in dims {
-        println!("dim schema: {:?}", dim.plan.schema().field_names());
+        // println!("dim schema: {:?}", dim.plan.schema().field_names());
 
         let mut join_keys = vec![];
 
         for join in joins {
+            // println!(
+            //     "inspecting join from {} to {}",
+            //     join.left.name, join.right.name
+            // );
             if join.left.name == fact.name() && join.right.name == dim.name() {
                 join_keys = join.on.clone();
             } else if join.right.name == fact.name() && join.left.name == dim.name() {
+                join_keys = join.on.clone();
+            }
+        }
+
+        if join_keys.is_empty() {
+            // this happens when the original join does not contain a direct join between
+            // the fact table and this dimension table
+            dims_indirect_join.push(dim);
+        } else {
+            let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
+            let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
+
+            println!(
+                "Joining {} to {} on {:?} = {:?}",
+                fact.name(),
+                dim.name(),
+                left_keys,
+                right_keys
+            );
+
+            match tree_type {
+                TreeType::LeftDeep => {
+                    b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
+                }
+                TreeType::RightDeep => {
+                    b = LogicalPlanBuilder::from(dim.plan.clone()).join(
+                        &b.build()?,
+                        JoinType::Inner,
+                        (left_keys, right_keys),
+                        None,
+                    )?;
+                }
+            }
+        }
+    }
+
+    // add remaining joins
+    for dim in dims_indirect_join {
+        let mut join_keys = vec![];
+
+        for join in joins {
+            // println!(
+            //     "inspecting join from {} to {}",
+            //     join.left.name, join.right.name
+            // );
+            if join.left.name == dim.name() || join.right.name == dim.name() {
                 join_keys = join.on.clone();
             }
         }
@@ -521,17 +617,8 @@ fn build_join_tree(
                 "Could not determine join keys".to_string(),
             ));
         }
-
         let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
         let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
-
-        println!(
-            "Joining {} to {} on {:?} = {:?}",
-            fact.name(),
-            dim.name(),
-            left_keys,
-            right_keys
-        );
 
         match tree_type {
             TreeType::LeftDeep => {
@@ -669,18 +756,19 @@ mod tests {
     fn test_resolve_columns() -> Result<()> {
         let plan = create_test_plan()?;
 
-        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) {
+        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) -> Result<()> {
             let col = Column::new(None::<String>, column_name.to_owned());
-            let (name, _) = resolve_table_plan(&plan, &col).unwrap();
+            let (name, _) = resolve_table_plan(&plan, &col)?.unwrap();
             assert_eq!(name, expected_table_name);
+            Ok(())
         }
 
-        test(&plan, "fact_b", "fact");
-        test(&plan, "fact_c", "fact");
-        test(&plan, "fact_d", "fact");
-        test(&plan, "dim1_a", "dim1");
-        test(&plan, "dim2_a", "dim2");
-        test(&plan, "dim3_a", "dim3");
+        test(&plan, "fact_b", "fact")?;
+        test(&plan, "fact_c", "fact")?;
+        test(&plan, "fact_d", "fact")?;
+        test(&plan, "dim1_a", "dim1")?;
+        test(&plan, "dim2_a", "dim2")?;
+        test(&plan, "dim3_a", "dim3")?;
         Ok(())
     }
 
@@ -688,18 +776,19 @@ mod tests {
     fn test_resolve_aliased_columns() -> Result<()> {
         let plan = create_test_plan_with_aliases()?;
 
-        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) {
+        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) -> Result<()> {
             let col = Column::from(column_name);
-            let (name, _) = resolve_table_plan(&plan, &col).unwrap();
+            let (name, _) = resolve_table_plan(&plan, &col)?.unwrap();
             assert_eq!(name, expected_table_name);
+            Ok(())
         }
 
-        test(&plan, "fact_b", "fact");
-        test(&plan, "fact_c", "fact");
-        test(&plan, "fact_d", "fact");
-        test(&plan, "dim1.date_dim_a", "dim1");
-        test(&plan, "dim2.date_dim_a", "dim2");
-        test(&plan, "dim3.date_dim_a", "dim3");
+        test(&plan, "fact_b", "fact")?;
+        test(&plan, "fact_c", "fact")?;
+        test(&plan, "fact_d", "fact")?;
+        test(&plan, "dim1.date_dim_a", "dim1")?;
+        test(&plan, "dim2.date_dim_a", "dim2")?;
+        test(&plan, "dim3.date_dim_a", "dim3")?;
         Ok(())
     }
 
