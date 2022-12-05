@@ -152,6 +152,42 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
+            "last_day" => {
+                let sig = Signature::exact(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampceil" | "timestampfloor" => {
+                let sig = Signature::exact(
+                    vec![DataType::Date64, DataType::Utf8],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampadd" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
             "timestampdiff" => {
                 let sig = Signature::exact(
                     vec![
