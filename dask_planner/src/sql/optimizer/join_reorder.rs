@@ -1,13 +1,10 @@
 //! Join reordering based on the paper "Improving Join Reordering for Large Scale Distributed Computing"
 //! https://ieeexplore.ieee.org/document/9378281
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::HashMap;
 
-use datafusion_common::{Column, DFSchema, Result};
-use datafusion_expr::{EmptyRelation, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
+use datafusion_common::{Column, DataFusionError, Result};
+use datafusion_expr::{Join, JoinType, LogicalPlan, LogicalPlanBuilder};
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 
 use crate::sql::table::DaskTableSource;
@@ -47,7 +44,7 @@ impl OptimizerRule for JoinReorder {
                 println!("simple join");
 
                 // get a list of joins, un-nested
-                let joins = unnest_joins(join);
+                let (tree_type, joins) = unnest_joins(join);
 
                 let (fact, dims) = extract_fact_dimensions(&joins);
                 if fact.is_none() {
@@ -56,7 +53,6 @@ impl OptimizerRule for JoinReorder {
                 }
                 let fact = fact.unwrap(); // unwrap here is safe due to previous check
 
-                let tree_type = tree_type(join);
                 let n = dims.len();
 
                 let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
@@ -200,7 +196,7 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
 }
 
 /// build a list of all joins
-fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
+fn unnest_joins(join: &Join) -> (TreeType, Vec<SimpleJoin>) {
     fn unnest_joins_inner(
         plan: &LogicalPlan,
         joins: &mut Vec<SimpleJoin>,
@@ -299,7 +295,8 @@ fn unnest_joins(join: &Join) -> Vec<SimpleJoin> {
 
     println!("nest counts: left={}, right={}", left_count, right_count);
 
-    joins
+    //TODO do not hard-code TreeType
+    (TreeType::LeftDeep, joins)
 }
 
 /// Simple Join Constraint: Only INNER Joins are consid-
@@ -337,23 +334,25 @@ fn is_simple_join(join: &Join) -> bool {
     is_simple_rel(&LogicalPlan::Join(join.clone()))
 }
 
-fn tree_type(_join: &Join) -> TreeType {
-    //TODO implement
-    TreeType::LeftDeep
-}
-
 /// Extract the fact table from the join, along with a list of dimension tables that
 /// join to the fact table
 fn extract_fact_dimensions(joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<JoinInput>) {
     // at least half of joins should be inner joins involving one common table (the fact table)
     // other tables being joined with fact table are considered dimension tables
 
-    let mut table_names_unique = HashSet::new();
+    // use Vec rather than HashSet to build list of unique table names because
+    // we need to preserve the order they appear in joins
+    let mut table_names_unique: Vec<String> = vec![];
+
     let mut table_names = vec![];
     let mut table_sizes = HashMap::new();
     for join in joins {
-        table_names_unique.insert(join.left.name.clone());
-        table_names_unique.insert(join.right.name.clone());
+        if !table_names_unique.contains(&join.left.name) {
+            table_names_unique.push(join.left.name.clone());
+        }
+        if !table_names_unique.contains(&join.right.name) {
+            table_names_unique.push(join.right.name.clone());
+        }
         table_names.push(join.left.name.clone());
         table_names.push(join.right.name.clone());
         table_sizes.insert(&join.left.name, join.left.size);
@@ -363,6 +362,7 @@ fn extract_fact_dimensions(joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<Join
     // detect fact and dimension tables
     let mut fact_table = None;
     let mut fact_table_size = 0_usize;
+
     for table_name in &table_names_unique {
         let count = table_names
             .iter()
@@ -415,11 +415,11 @@ fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
 /// Find the leaf sub-plan in a join that contains the relation referenced by the specific
 /// column (which is used in a join expression)
 fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, LogicalPlan)> {
-    println!(
-        "Looking for column {} in plan: {}",
-        col,
-        plan.display_indent()
-    );
+    // println!(
+    //     "Looking for column {} in plan: {}",
+    //     col,
+    //     plan.display_indent()
+    // );
 
     match plan {
         LogicalPlan::TableScan(scan) => {
@@ -459,44 +459,14 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Option<(String, Logic
             }
         }
         _ => {
-            if plan.inputs().is_empty() {
-                None
+            if plan.inputs().len() == 1 {
+                resolve_table_plan(plan.inputs()[0], col)
             } else {
-                let table_plan = resolve_table_plan(plan.inputs()[0], col);
-
-                //TODO reimplement this so that we don't drop filters wrapping table scans
-
-                return table_plan;
-                // match table_plan {
-                //     Some((name, _)) => {
-                //         // return the entire sub-plan that contains the relation (but no joins)
-                //
-                //         // TODO remove this debug assertion
-                //         if plan_contains_join(plan) {
-                //             panic!("failed to unnest join");
-                //         }
-                //
-                //         Some((name, plan.clone()))
-                //     }
-                //     None => None,
-                // }
+                None
             }
         }
     }
 }
-
-// fn plan_contains_join(plan: &LogicalPlan) -> bool {
-//     match plan {
-//         LogicalPlan::Join(_) => true,
-//         other => {
-//             if other.inputs().len() == 0 {
-//                 false
-//             } else {
-//                 plan_contains_join(&other.inputs()[0])
-//             }
-//         }
-//     }
-// }
 
 fn get_unfiltered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
     dims.iter().filter(|t| !t.has_filter()).cloned().collect()
@@ -507,7 +477,7 @@ fn get_filtered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
 }
 
 fn build_join_tree(
-    _tree_type: TreeType,
+    tree_type: TreeType,
     joins: &[SimpleJoin],
     fact: &JoinInput,
     dims: &[JoinInput],
@@ -518,12 +488,9 @@ fn build_join_tree(
         dims.iter().map(|d| d.name()).collect::<Vec<&str>>()
     );
 
-    //TODO respect tree_type
-
     println!("fact schema: {:?}", fact.plan.schema().field_names());
 
     let mut b = LogicalPlanBuilder::from(fact.plan.clone());
-    let mut prev_table_name = fact.name().to_owned();
 
     for dim in dims {
         println!("dim schema: {:?}", dim.plan.schema().field_names());
@@ -531,11 +498,17 @@ fn build_join_tree(
         let mut join_keys = vec![];
 
         for join in joins {
-            if join.left.name == prev_table_name && join.right.name == dim.name() {
+            if join.left.name == fact.name() && join.right.name == dim.name() {
                 join_keys = join.on.clone();
-            } else if join.right.name == prev_table_name && join.left.name == dim.name() {
+            } else if join.right.name == fact.name() && join.left.name == dim.name() {
                 join_keys = join.on.clone();
             }
+        }
+
+        if join_keys.is_empty() {
+            return Err(DataFusionError::Plan(
+                "Could not determine join keys".to_string(),
+            ));
         }
 
         let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
@@ -543,15 +516,25 @@ fn build_join_tree(
 
         println!(
             "Joining {} to {} on {:?} = {:?}",
-            prev_table_name,
+            fact.name(),
             dim.name(),
             left_keys,
             right_keys
         );
 
-        b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
-
-        prev_table_name = dim.name().to_owned();
+        match tree_type {
+            TreeType::LeftDeep => {
+                b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
+            }
+            TreeType::RightDeep => {
+                b = LogicalPlanBuilder::from(dim.plan.clone()).join(
+                    &b.build()?,
+                    JoinType::Inner,
+                    (left_keys, right_keys),
+                    None,
+                )?;
+            }
+        }
     }
 
     b.build()
@@ -602,7 +585,7 @@ mod tests {
     fn test_unnest_joins() -> Result<()> {
         let join = create_test_plan()?;
         if let LogicalPlan::Join(join) = join {
-            let joins = unnest_joins(&join);
+            let (_tree_type, joins) = unnest_joins(&join);
             assert_eq!(3, joins.len());
 
             assert_eq!("SimpleJoin { \
@@ -629,18 +612,28 @@ mod tests {
     #[test]
     fn optimize_joins() -> Result<()> {
         let plan = create_test_plan()?;
+        let formatted_plan = format!("{}", plan.display_indent());
+        let expected_plan = r#"Inner Join: fact.fact_d = dim3.dim3_a
+  Inner Join: fact.fact_c = dim2.dim2_a
+    Inner Join: fact.fact_b = dim1.dim1_a
+      TableScan: fact
+      TableScan: dim1
+    TableScan: dim2
+  Filter: dim3.dim3_b <= Int32(100)
+    TableScan: dim3"#;
+        assert_eq!(expected_plan, formatted_plan);
         let rule = JoinReorder::default();
         let mut config = OptimizerConfig::default();
         let optimized_plan = rule.try_optimize(&plan, &mut config)?.unwrap();
         let formatted_plan = format!("{}", optimized_plan.display_indent());
-        let expected_plan = r#"Inner Join: 
-  Inner Join: 
+        let expected_plan = r#"Inner Join: fact.fact_b = dim1.dim1_a
+  Inner Join: fact.fact_c = dim2.dim2_a
     Inner Join: fact.fact_d = dim3.dim3_a
       TableScan: fact
       Filter: dim3.dim3_b <= Int32(100)
         TableScan: dim3
-    TableScan: dim1
-  TableScan: dim2"#;
+    TableScan: dim2
+  TableScan: dim1"#;
         assert_eq!(expected_plan, formatted_plan);
         Ok(())
     }
@@ -649,7 +642,7 @@ mod tests {
     fn test_extract_fact_dimension() -> Result<()> {
         let plan = create_test_plan()?;
         if let LogicalPlan::Join(ref join) = plan {
-            let joins = unnest_joins(&join);
+            let (_tree_type, joins) = unnest_joins(&join);
             let (fact, dims) = extract_fact_dimensions(&joins);
             assert_eq!("fact", fact.unwrap().name);
             let mut dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
