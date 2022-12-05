@@ -60,12 +60,26 @@ impl OptimizerRule for JoinReorder {
                 let n = dims.len();
 
                 let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
-                unfiltered_dimensions.push(JoinInput::dummy(usize::MAX));
-
                 let mut filtered_dimensions = get_filtered_dimensions(&dims);
-                filtered_dimensions.push(JoinInput::dummy(usize::MIN));
-                // sort on size of dimension tables
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+
+                for dim in &unfiltered_dimensions {
+                    println!(
+                        "UNFILTERED: {} {} {}",
+                        dim.name,
+                        dim.size,
+                        dim.plan.display_indent()
+                    );
+                }
+
+                for dim in &filtered_dimensions {
+                    println!(
+                        "FILTERED: {} {} {}",
+                        dim.name,
+                        dim.size,
+                        dim.plan.display_indent()
+                    );
+                }
 
                 // Merge both the lists of dimensions by giving user order
                 // the preference for tables without a selective predicate,
@@ -79,18 +93,23 @@ impl OptimizerRule for JoinReorder {
                 // earlier than other Joins to improve Join performance. We try to keep
                 // the user order intact when unsure about reordering to make sure
                 // regressions are minimized.
-                let mut i = 0;
-                let mut j = 0;
                 let mut result = vec![];
                 for _ in 0..n {
-                    if filtered_dimensions[i].size <= unfiltered_dimensions[j].size {
-                        i += 1;
-                        result.push(filtered_dimensions[i].clone());
+                    if filtered_dimensions.len() > 0 && unfiltered_dimensions.len() > 0 {
+                        if filtered_dimensions[0].size >= unfiltered_dimensions[0].size {
+                            result.push(filtered_dimensions.remove(0));
+                        } else {
+                            result.push(unfiltered_dimensions.remove(0));
+                        }
+                    } else if filtered_dimensions.len() > 0 {
+                        result.push(filtered_dimensions.remove(0));
                     } else {
-                        j += 1;
-                        result.push(unfiltered_dimensions[j].clone());
+                        result.push(unfiltered_dimensions.remove(0));
                     }
                 }
+                assert!(filtered_dimensions.is_empty());
+                assert!(unfiltered_dimensions.is_empty());
+
                 let optimized = build_join_tree(tree_type, &joins, &fact, &result).unwrap(); // TODO use ?
 
                 println!("Optimized: {}", optimized.display_indent());
@@ -119,18 +138,6 @@ struct JoinInput {
 }
 
 impl JoinInput {
-    /// Create a dummy table with infinite size
-    fn dummy(size: usize) -> Self {
-        Self {
-            name: "_dummy_".to_string(),
-            plan: LogicalPlan::EmptyRelation(EmptyRelation {
-                produce_one_row: false,
-                schema: Arc::new(DFSchema::empty()),
-            }),
-            size,
-        }
-    }
-
     fn name(&self) -> &str {
         &self.name
     }
@@ -556,7 +563,7 @@ mod tests {
 
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_common::{Result, Statistics};
-    use datafusion_expr::{JoinType, LogicalPlan, LogicalPlanBuilder, SubqueryAlias};
+    use datafusion_expr::{col, lit, JoinType, LogicalPlan, LogicalPlanBuilder, SubqueryAlias};
 
     use super::*;
     use crate::sql::table::DaskTableSource;
@@ -600,7 +607,8 @@ mod tests {
 
             assert_eq!("SimpleJoin { \
                 left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim3\", plan: TableScan: dim3, size: 300 }, \
+                right: JoinInput { name: \"dim3\", plan: Filter: dim3.dim3_b <= Int32(100)
+  TableScan: dim3, size: 300 }, \
                 on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[0]));
 
             assert_eq!("SimpleJoin { \
@@ -615,6 +623,25 @@ mod tests {
         } else {
             panic!()
         }
+        Ok(())
+    }
+
+    #[test]
+    fn optimize_joins() -> Result<()> {
+        let plan = create_test_plan()?;
+        let rule = JoinReorder::default();
+        let mut config = OptimizerConfig::default();
+        let optimized_plan = rule.try_optimize(&plan, &mut config)?.unwrap();
+        let formatted_plan = format!("{}", optimized_plan.display_indent());
+        let expected_plan = r#"Inner Join: 
+  Inner Join: 
+    Inner Join: fact.fact_d = dim3.dim3_a
+      TableScan: fact
+      Filter: dim3.dim3_b <= Int32(100)
+        TableScan: dim3
+    TableScan: dim1
+  TableScan: dim2"#;
+        assert_eq!(expected_plan, formatted_plan);
         Ok(())
     }
 
@@ -677,6 +704,12 @@ mod tests {
         let dim2 = test_table_scan("dim2", 200);
         let dim3 = test_table_scan("dim3", 300);
         let fact = test_table_scan("fact", 10000);
+
+        // add a filter to one dimension
+        let dim3 = LogicalPlanBuilder::from(dim3)
+            .filter(col("dim3_b").lt_eq(lit(100)))?
+            .build()?;
+
         LogicalPlanBuilder::from(fact)
             .join(
                 &dim1,
