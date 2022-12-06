@@ -17,6 +17,8 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 
 from dask_sql.physical.rel.custom.wrappers import Incremental, ParallelPostFit
 
+from ..integration.fixtures import skip_if_external_scheduler
+
 
 def _check_axis_partitioning(chunks, n_features):
     c = chunks[1][0]
@@ -123,6 +125,7 @@ def assert_estimator_equal(left, right, exclude=None, **kwargs):
         _assert_eq(l, r, name=attr, **kwargs)
 
 
+@skip_if_external_scheduler
 def test_parallelpostfit_basic():
     clf = ParallelPostFit(GradientBoostingClassifier())
 
@@ -194,6 +197,7 @@ def test_transform(kind):
     assert_eq_ar(result, expected)
 
 
+@skip_if_external_scheduler
 @pytest.mark.parametrize("dataframes", [False, True])
 def test_incremental_basic(dataframes):
     # Create observations that we know linear models can recover
