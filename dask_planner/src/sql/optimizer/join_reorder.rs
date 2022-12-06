@@ -1,7 +1,7 @@
 //! Join reordering based on the paper "Improving Join Reordering for Large Scale Distributed Computing"
 //! https://ieeexplore.ieee.org/document/9378281
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use datafusion_common::{Column, DataFusionError, Result};
 use datafusion_expr::{Join, JoinType, LogicalPlan, LogicalPlanBuilder};
@@ -60,23 +60,23 @@ impl OptimizerRule for JoinReorder {
                 let mut filtered_dimensions = get_filtered_dimensions(&dims);
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
 
-                // for dim in &unfiltered_dimensions {
-                //     println!(
-                //         "UNFILTERED: {} {} {}",
-                //         dim.name,
-                //         dim.size,
-                //         dim.plan.display_indent()
-                //     );
-                // }
-                //
-                // for dim in &filtered_dimensions {
-                //     println!(
-                //         "FILTERED: {} {} {}",
-                //         dim.name,
-                //         dim.size,
-                //         dim.plan.display_indent()
-                //     );
-                // }
+                for dim in &unfiltered_dimensions {
+                    println!(
+                        "UNFILTERED: {} {} {}",
+                        dim.name,
+                        dim.size,
+                        dim.plan.display_indent()
+                    );
+                }
+
+                for dim in &filtered_dimensions {
+                    println!(
+                        "FILTERED: {} {} {}",
+                        dim.name,
+                        dim.size,
+                        dim.plan.display_indent()
+                    );
+                }
 
                 // Merge both the lists of dimensions by giving user order
                 // the preference for tables without a selective predicate,
@@ -93,7 +93,7 @@ impl OptimizerRule for JoinReorder {
                 let mut result = vec![];
                 for _ in 0..n {
                     if filtered_dimensions.len() > 0 && unfiltered_dimensions.len() > 0 {
-                        if filtered_dimensions[0].size >= unfiltered_dimensions[0].size {
+                        if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
                             result.push(filtered_dimensions.remove(0));
                         } else {
                             result.push(unfiltered_dimensions.remove(0));
@@ -436,88 +436,76 @@ fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Result<Option<(String
     //     plan.display_indent()
     // );
 
-    let option = match plan {
-        LogicalPlan::TableScan(scan) => {
-            if let Ok(_) = scan.projected_schema.index_of_column(col) {
-                Some((scan.table_name.clone(), plan.clone()))
-            } else {
-                None
-            }
-        }
-        LogicalPlan::SubqueryAlias(alias) => match &col.relation {
-            Some(r) if alias.alias == *r => {
-                let mut x = col.clone();
-                x.relation = None;
-                match resolve_table_plan(&alias.input, &x)? {
-                    Some((_, subplan)) => {
-                        let subplan_aliased = LogicalPlanBuilder::from(subplan)
-                            .alias(&alias.alias)?
-                            .build()?;
-                        Some((alias.alias.clone(), subplan_aliased))
-                    }
-                    None => None,
+    fn get_table_scan_name(plan: &LogicalPlan, col: &Column) -> Option<String> {
+        match plan {
+            LogicalPlan::TableScan(scan) => {
+                if let Ok(_) = scan.projected_schema.index_of_column(col) {
+                    Some(scan.table_name.clone())
+                } else {
+                    None
                 }
             }
-            _ => None,
-        },
-        LogicalPlan::Filter(filter) => match resolve_table_plan(filter.input(), col)? {
-            Some((a, subplan)) => {
-                // TODO what if this filter references other output from a join
-                let subplan_filtered = LogicalPlanBuilder::from(subplan)
-                    .filter(filter.predicate().clone())?
-                    .build()?;
-                Some((a, subplan_filtered))
-            }
-            None => None,
-        },
-        LogicalPlan::Join(join) => {
-            let ll = resolve_table_plan(&join.left, col)?;
-            let rr = resolve_table_plan(&join.right, col)?;
-            if ll.is_some() && rr.is_some() {
-                // ambiguous
+            LogicalPlan::SubqueryAlias(alias) => match &col.relation {
+                Some(r) if *r == alias.alias => {
+                    let mut aliased_column = col.clone();
+                    aliased_column.relation = None;
+                    if let Some(_) = get_table_scan_name(&alias.input, &aliased_column) {
+                        Some(alias.alias.clone())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+            _ => {
+                for input in &plan.inputs() {
+                    if let Some(x) = get_table_scan_name(input, col) {
+                        return Some(x);
+                    }
+                }
                 None
-            } else if ll.is_some() {
-                ll
-            } else if rr.is_some() {
-                rr
+            }
+        }
+    }
+
+    let mut candidate_plan = Arc::new(plan.clone());
+    loop {
+        let scan_name = get_table_scan_name(&candidate_plan, col);
+        if scan_name.is_some() {
+            if let Some(join) = find_join(&candidate_plan) {
+                if get_table_scan_name(&join.left, col).is_some() {
+                    candidate_plan = join.left.clone();
+                } else if get_table_scan_name(&join.right, col).is_some() {
+                    candidate_plan = join.right.clone();
+                }
             } else {
-                None
+                println!(
+                    "found plan for {}: {}",
+                    col,
+                    candidate_plan.display_indent()
+                );
+                return Ok(Some((scan_name.unwrap(), candidate_plan.as_ref().clone())));
             }
+        } else {
+            return Ok(None);
         }
-        _ => {
-            if plan.inputs().len() == 1 {
-                resolve_table_plan(plan.inputs()[0], col)?
-            } else {
-                None
-            }
-        }
-    };
-
-    if let Some((_name, _subplan)) = option {
-        // println!("returning: {} = {:?}\n------\n", _name, _subplan);
-
-        // sanity check that we are returning a simple plan with no joins
-        if plan_contains_join(&_subplan) {
-            return Err(DataFusionError::Plan(format!(
-                "Failed to resolve plan for {}",
-                col
-            )));
-        }
-
-        Ok(Some((_name, _subplan)))
-    } else {
-        Ok(None)
     }
 }
 
-fn plan_contains_join(plan: &LogicalPlan) -> bool {
+/// find first (top-level) join in plan
+fn find_join(plan: &LogicalPlan) -> Option<Join> {
     match plan {
-        LogicalPlan::Join(_) => true,
+        LogicalPlan::Join(join) => Some(join.clone()),
         other => {
             if other.inputs().len() == 0 {
-                false
+                None
             } else {
-                plan_contains_join(&other.inputs()[0])
+                for input in &other.inputs() {
+                    if let Some(join) = find_join(*input) {
+                        return Some(join);
+                    }
+                }
+                None
             }
         }
     }
@@ -689,7 +677,7 @@ mod tests {
             assert_eq!("SimpleJoin { \
                 left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
                 right: JoinInput { name: \"dim3\", plan: Filter: dim3.dim3_b <= Int32(100)
-  TableScan: dim3, size: 300 }, \
+  TableScan: dim3, size: 50 }, \
                 on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[0]));
 
             assert_eq!("SimpleJoin { \
@@ -795,7 +783,7 @@ mod tests {
     fn create_test_plan() -> Result<LogicalPlan> {
         let dim1 = test_table_scan("dim1", 100);
         let dim2 = test_table_scan("dim2", 200);
-        let dim3 = test_table_scan("dim3", 300);
+        let dim3 = test_table_scan("dim3", 50);
         let fact = test_table_scan("fact", 10000);
 
         // add a filter to one dimension

@@ -88,12 +88,15 @@ impl DaskSqlOptimizer {
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
         let mut config =
-            OptimizerConfig::default().with_skip_failing_rules(self.skip_failing_rules);
+            OptimizerConfig::default()
+                .with_skip_failing_rules(self.skip_failing_rules)
+                .with_max_passes(1) // TODO
+            ;
         self.optimizer.optimize(&plan, &mut config, Self::observe)
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
-        trace!(
+        println!(
             "== AFTER APPLYING RULE {} ==\n{}\n",
             optimization.name(),
             optimized_plan.display_indent()
