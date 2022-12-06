@@ -185,17 +185,36 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                 stats.num_rows
             } else {
                 // TODO hard-coded stats for manual testing until stats are available
+                // these numbers based on sf100
                 let n = match scan.table_name.as_str() {
-                    "catalog_returns" => 4_000_000,
-                    "catalog_sales" => 35_000_000,
-                    "customer_demographics" => 35_000,
-                    "date_dim" => 3000,
-                    "household_demographics" => 500,
-                    "inventory" => 116_000_000,
-                    "item" => 29_000,
-                    "promotion" => 100,
-                    "warehouse" => 10,
-                    _ => 100,
+                    "call_center" => 30,
+                    "catalog_page" => 20400,
+                    "catalog_returns" => 14404374,
+                    "catalog_sales" => 143997065,
+                    "customer_address" => 1000000,
+                    "customer_demographics" => 1920800,
+                    "customer" => 2000000,
+                    "date_dim" => 73049,
+                    "household_demographics" => 7200,
+                    "income_band" => 20,
+                    "inventory" => 399330000,
+                    "item" => 204000,
+                    "promotion" => 1000,
+                    "reason" => 55,
+                    "ship_mode" => 20,
+                    "store" => 402,
+                    "store_returns" => 28795080,
+                    "store_sales" => 287997024,
+                    "time_dim" => 86400,
+                    "warehouse" => 15,
+                    "web_page" => 2040,
+                    "web_returns" => 7197670,
+                    "web_sales" => 72001237,
+                    "web_site" => 24,
+                    other => {
+                        println!("No row count available for table '{}'", other);
+                        100
+                    }
                 };
 
                 Some(n)
