@@ -16,7 +16,7 @@ RUN mamba install -y \
     # build requirements
     "setuptools-rust>=1.4.1" \
     # core dependencies
-    "dask>=2022.3.0, <=2022.11.1" \
+    "dask>=2022.3.0" \
     "pandas>=1.4.0" \
     "fastapi>=0.69.0" \
     "uvicorn>=0.13.4" \
