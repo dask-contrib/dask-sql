@@ -263,3 +263,8 @@ def test_filtered_csv(tmpdir, c):
     expected_df = df[df["b"] < 10]
 
     assert_eq(return_df, expected_df)
+
+
+# TODO
+def test_filter_columns_post_join(c):
+    pass

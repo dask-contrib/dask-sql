@@ -58,7 +58,7 @@ use std::{
 
 use datafusion_common::{Column, DFSchema, Result};
 use datafusion_expr::{
-    logical_plan::{Analyze, Join, LogicalPlan, Projection},
+    logical_plan::{Analyze, LogicalPlan, Projection},
     Aggregate,
     CreateMemoryTable,
     CreateView,
@@ -74,7 +74,6 @@ use datafusion_expr::{
     Window,
 };
 use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
-
 use log::warn;
 
 /// Optimizer rule dropping join key columns post join
@@ -111,18 +110,20 @@ impl OptimizerRule for FilterColumnsPostJoin {
 
         // Second: Iterate through LogicalPlan with &plan.inputs()
         let mut counter = 1;
-        let mut current_step = plan.inputs();  // &Vec<&LogicalPlan>
+        let mut current_step = plan.inputs();
         let mut current_plan;
         let mut join_flag = false;
 
         loop {
-            if current_step.len() > 1 {
+            if current_step.is_empty() {
+                break;
+            } else if current_step.len() > 1 {
                 // TODO: Handle a Join, CrossJoin, or Union
                 break;
             }
             current_plan = current_step[0];
             match current_plan {
-                LogicalPlan::Join(Join { ref schema, .. }) => {
+                LogicalPlan::Join(_) => {
                     join_flag = true;
 
                     // Remove duplicates from HashSet
@@ -136,9 +137,12 @@ impl OptimizerRule for FilterColumnsPostJoin {
                         for dfschema in all_schemas {
                             let dfschema_fields = dfschema.fields();
                             for field in dfschema_fields {
-                                let field_expr =
-                                    Expr::Column(Column::from_qualified_name(&field.qualified_name()));
-                                if (column == &field_expr) && !projection_schema_fields.contains(field) {
+                                let field_expr = Expr::Column(Column::from_qualified_name(
+                                    &field.qualified_name(),
+                                ));
+                                if (column == &field_expr)
+                                    && !projection_schema_fields.contains(field)
+                                {
                                     projection_schema_fields.push(field.clone());
                                 }
                             }
@@ -146,7 +150,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
                     }
                     let projection_schema = DFSchema::new_with_metadata(
                         projection_schema_fields,
-                        schema.metadata().clone(),
+                        HashMap::new(),
                     );
                     // Create a Projection with the columns from the HashSet
                     let projection_step = LogicalPlan::Projection(Projection {
@@ -182,12 +186,8 @@ impl OptimizerRule for FilterColumnsPostJoin {
                 }
             }
 
-            if current_plan.inputs().is_empty() {
-                break;
-            } else {
-                current_step = current_plan.inputs();
-                counter += 1;
-            }
+            current_step = current_plan.inputs();
+            counter += 1;
         }
 
         if join_flag {
@@ -216,10 +216,10 @@ impl OptimizerRule for FilterColumnsPostJoin {
                         });
                     }
                     LogicalPlan::Filter(f) => {
-                        return_plan = LogicalPlan::Filter(Filter::try_new(
-                            f.predicate().clone(),
-                            Arc::new(previous_step.clone()),
-                        ).unwrap());
+                        return_plan = LogicalPlan::Filter(
+                            Filter::try_new(f.predicate().clone(), Arc::new(previous_step.clone()))
+                                .unwrap(),
+                            );
                     }
                     LogicalPlan::Window(w) => {
                         return_plan = LogicalPlan::Window(Window {
@@ -299,7 +299,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
                     }
                     _ => {
                         warn!("Skipping optimizer rule 'FilterColumnsPostJoin'");
-                        return Ok(plan.clone())
+                        return Ok(plan.clone());
                     }
                 }
                 previous_step = &return_plan;
@@ -338,4 +338,23 @@ fn get_column_name(column: &Expr) -> Option<Expr> {
     }
 }
 
-// TODO: Add tests
+#[cfg(test)]
+mod tests {
+    #[test]
+    // TODO: Implement
+    fn test_single_join() -> Result<()> {
+        Ok(())
+    }
+    // TODO: Do we need this?
+    fn test_single_join_with_aliases() -> Result<()> {
+        Ok(())
+    }
+    // TODO: Implement
+    fn test_multiple_joins() -> Result<()> {
+        Ok(())
+    }
+    // TODO: Do we need this?
+    fn test_multiple_joins_with_aliases() -> Result<()> {
+        Ok(())
+    }
+}
