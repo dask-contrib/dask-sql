@@ -47,7 +47,7 @@ impl OptimizerRule for JoinReorder {
                 // get a list of joins, un-nested
                 let (tree_type, joins) = unnest_joins(join)?;
                 for join in &joins {
-                    println!("Join: {:?}", join)
+                    println!("Join: {} to {} on {:?}", join.left.name, join.right.name, join.on);
                 }
 
                 let (fact, dims) = extract_fact_dimensions(&joins);
@@ -325,6 +325,8 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
                 unnest_joins_inner(&join.left, joins, left_count, right_count)?;
                 unnest_joins_inner(&join.right, joins, left_count, right_count)?;
 
+                // add the join to the list after recursing into the children so that we
+                // preserve the user-defined order of joins
                 joins.push(simple_join);
             }
             other => {
