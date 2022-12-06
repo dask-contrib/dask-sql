@@ -4,8 +4,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use datafusion_common::{Column, DataFusionError, Result};
-use datafusion_expr::{Join, JoinType, LogicalPlan, LogicalPlanBuilder};
-use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
+use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
+use datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule};
 
 use crate::sql::table::DaskTableSource;
 
@@ -46,6 +46,9 @@ impl OptimizerRule for JoinReorder {
 
                 // get a list of joins, un-nested
                 let (tree_type, joins) = unnest_joins(join)?;
+                for join in &joins {
+                    println!("Join: {:?}", join)
+                }
 
                 let (fact, dims) = extract_fact_dimensions(&joins);
                 if fact.is_none() {
@@ -151,9 +154,23 @@ impl JoinInput {
 }
 
 fn has_filter(plan: &LogicalPlan) -> bool {
+    /// We want to ignore "IsNotNull" filters that are added for join keys since they exist
+    /// for most dimension tables
+    fn is_real_filter(predicate: &Expr) -> bool {
+        let exprs = split_conjunction(predicate);
+        let x = exprs
+            .iter()
+            .filter(|e| match e {
+                Expr::IsNotNull(_) => false,
+                _ => true,
+            })
+            .count();
+        x > 0
+    }
+
     match plan {
-        LogicalPlan::Filter(_) => true,
-        LogicalPlan::TableScan(scan) => !scan.filters.is_empty(),
+        LogicalPlan::Filter(filter) => is_real_filter(filter.predicate()),
+        LogicalPlan::TableScan(scan) => scan.filters.iter().any(is_real_filter),
         _ => plan.inputs().iter().any(|child| has_filter(child)),
     }
 }
@@ -305,10 +322,10 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
 
                 // println!("JOIN: {:?}", simple_join);
 
-                joins.push(simple_join);
-
                 unnest_joins_inner(&join.left, joins, left_count, right_count)?;
                 unnest_joins_inner(&join.right, joins, left_count, right_count)?;
+
+                joins.push(simple_join);
             }
             other => {
                 for child in other.inputs() {
@@ -699,9 +716,8 @@ mod tests {
 
             assert_eq!("SimpleJoin { \
                 left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim3\", plan: Filter: dim3.dim3_b <= Int32(100)
-  TableScan: dim3, size: 50 }, \
-                on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[0]));
+                right: JoinInput { name: \"dim1\", plan: TableScan: dim1, size: 100 }, \
+                on: [(Column { relation: Some(\"fact\"), name: \"fact_b\" }, Column { relation: Some(\"dim1\"), name: \"dim1_a\" })] }", &format!("{:?}", joins[0]));
 
             assert_eq!("SimpleJoin { \
                 left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
@@ -710,8 +726,9 @@ mod tests {
 
             assert_eq!("SimpleJoin { \
                 left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim1\", plan: TableScan: dim1, size: 100 }, \
-                on: [(Column { relation: Some(\"fact\"), name: \"fact_b\" }, Column { relation: Some(\"dim1\"), name: \"dim1_a\" })] }", &format!("{:?}", joins[2]));
+                right: JoinInput { name: \"dim3\", plan: Filter: dim3.dim3_b <= Int32(100)
+  TableScan: dim3, size: 50 }, \
+                on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[2]));
         } else {
             panic!()
         }
@@ -735,14 +752,14 @@ mod tests {
         let mut config = OptimizerConfig::default();
         let optimized_plan = rule.try_optimize(&plan, &mut config)?.unwrap();
         let formatted_plan = format!("{}", optimized_plan.display_indent());
-        let expected_plan = r#"Inner Join: fact.fact_b = dim1.dim1_a
-  Inner Join: fact.fact_c = dim2.dim2_a
+        let expected_plan = r#"Inner Join: fact.fact_c = dim2.dim2_a
+  Inner Join: fact.fact_b = dim1.dim1_a
     Inner Join: fact.fact_d = dim3.dim3_a
       TableScan: fact
       Filter: dim3.dim3_b <= Int32(100)
         TableScan: dim3
-    TableScan: dim2
-  TableScan: dim1"#;
+    TableScan: dim1
+  TableScan: dim2"#;
         assert_eq!(expected_plan, formatted_plan);
         Ok(())
     }
