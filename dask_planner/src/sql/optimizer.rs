@@ -83,7 +83,7 @@ impl DaskSqlOptimizer {
         }
     }
 
-    /// Iteratoes through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
+    /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
         let mut config =
