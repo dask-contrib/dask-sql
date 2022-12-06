@@ -107,7 +107,7 @@ impl OptimizerRule for JoinReorder {
                 assert!(filtered_dimensions.is_empty());
                 assert!(unfiltered_dimensions.is_empty());
 
-                let optimized = build_join_tree(tree_type, &joins, &fact, &result).unwrap(); // TODO use ?
+                let optimized = build_join_tree(tree_type, &joins, &fact, &result)?;
 
                 println!("Optimized: {}", optimized.display_indent());
 
@@ -243,8 +243,10 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
                             right_name = Some(right_table_name);
                             right_plan = Some(right_subplan);
                         } else {
-                            println!("NOT FOUND: left={}, right={}", l, r);
-                            todo!()
+                            return Err(DataFusionError::Plan(format!(
+                                "Failed to unnest join: left={}, right={}",
+                                l, r
+                            )));
                         }
                     } else if let Some((left_table_name, left_subplan)) =
                         resolve_table_plan(&join.right, l)?
@@ -258,8 +260,10 @@ fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
                             right_name = Some(right_table_name);
                             right_plan = Some(right_subplan);
                         } else {
-                            println!("NOT FOUND: left={}, right={}", l, r);
-                            todo!()
+                            return Err(DataFusionError::Plan(format!(
+                                "Failed to unnest join: left={}, right={}",
+                                l, r
+                            )));
                         }
                     }
                 }
