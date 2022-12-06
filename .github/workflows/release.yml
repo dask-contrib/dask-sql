@@ -30,7 +30,7 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: rustup target add aarch64-apple-darwin
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.10.2
+        uses: pypa/cibuildwheel@v2.11.2
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
