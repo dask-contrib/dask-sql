@@ -58,11 +58,24 @@ use std::{
 
 use datafusion_common::{Column, DFSchema, Result};
 use datafusion_expr::{
-    logical_plan::{Join, LogicalPlan, Projection, Analyze},
+    logical_plan::{Analyze, Join, LogicalPlan, Projection},
+    Aggregate,
+    CreateMemoryTable,
+    CreateView,
+    Distinct,
+    Explain,
     Expr,
-    SubqueryAlias, Filter, Window, Repartition, CreateMemoryTable, CreateView, Explain, Limit, Distinct, Aggregate, Sort, Subquery,
+    Filter,
+    Limit,
+    Repartition,
+    Sort,
+    Subquery,
+    SubqueryAlias,
+    Window,
 };
 use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
+
+use log::warn;
 
 /// Optimizer rule dropping join key columns post join
 #[derive(Default)]
@@ -81,8 +94,6 @@ impl OptimizerRule for FilterColumnsPostJoin {
         plan: &LogicalPlan,
         _optimizer_config: &mut OptimizerConfig,
     ) -> Result<LogicalPlan> {
-        // TODO: Break code into functions where appropriate
-
         // First: Grab projected columns with &plan.expressions() and add to HashSet
         let mut post_join_columns: HashSet<Expr> = HashSet::new();
         let projected_columns = &plan.expressions();
@@ -95,17 +106,19 @@ impl OptimizerRule for FilterColumnsPostJoin {
         // with an i32 key to keep track of the order
         let mut new_plan: HashMap<i32, LogicalPlan> = HashMap::new();
         new_plan.insert(0, plan.clone());
+        // Store info about all columns in all schemas
+        let all_schemas = &plan.all_schemas();
 
         // Second: Iterate through LogicalPlan with &plan.inputs()
         let mut counter = 1;
         let mut current_step = plan.inputs();  // &Vec<&LogicalPlan>
         let mut current_plan;
         let mut join_flag = false;
-        let mut previous_projection = false;
 
         loop {
             if current_step.len() > 1 {
-                break;  // TODO: Check logic here
+                // TODO: Handle a Join, CrossJoin, or Union
+                break;
             }
             current_plan = current_step[0];
             match current_plan {
@@ -118,21 +131,23 @@ impl OptimizerRule for FilterColumnsPostJoin {
                     let projection_columns: Vec<Expr> =
                         post_join_columns.clone().into_iter().collect();
                     // Prepare schema
-                    let current_schema_fields = schema.fields().clone();
                     let mut projection_schema_fields = vec![];
-                    // TODO: Ensure that all columns are added to schema
-                    for column in post_join_columns {
-                        for field in &current_schema_fields {
-                            let field_expr = Expr::Column(
-                                Column::from_qualified_name(&field.qualified_name()),
-                            );
-                            if column == field_expr {
-                                projection_schema_fields.push(field.clone());
+                    for column in &post_join_columns {
+                        for dfschema in all_schemas {
+                            let dfschema_fields = dfschema.fields();
+                            for field in dfschema_fields {
+                                let field_expr =
+                                    Expr::Column(Column::from_qualified_name(&field.qualified_name()));
+                                if (column == &field_expr) && !projection_schema_fields.contains(field) {
+                                    projection_schema_fields.push(field.clone());
+                                }
                             }
                         }
                     }
-                    // TODO: new() is deprecated
-                    let projection_schema = DFSchema::new(projection_schema_fields);
+                    let projection_schema = DFSchema::new_with_metadata(
+                        projection_schema_fields,
+                        schema.metadata().clone(),
+                    );
                     // Create a Projection with the columns from the HashSet
                     let projection_step = LogicalPlan::Projection(Projection {
                         expr: projection_columns,
@@ -146,26 +161,16 @@ impl OptimizerRule for FilterColumnsPostJoin {
                     // Add Projection to HashMap
                     new_plan.insert(counter, projection_step);
                     // Add Join to HashMap
-                    counter = counter + 1;
+                    counter += 1;
                     new_plan.insert(counter, current_plan.clone());
-                    previous_projection = true;
-                    // TODO: Work on logic for multiple Joins
-                    break;  // TODO: Remove to allow multiple Joins
                 }
                 LogicalPlan::Projection(_) => {
                     // TODO: Check so that we don't build a stack of projections
-                    if !previous_projection {
-                        // Is not a Join, so just add LogicalPlan to HashMap
-                        new_plan.insert(counter, current_plan.clone());
-                    } else {
-                        counter = counter - 1;
-                    }
-                    previous_projection = true;
+                    new_plan.insert(counter, current_plan.clone());
                 }
                 _ => {
                     // Is not a Join, so just add LogicalPlan to HashMap
                     new_plan.insert(counter, current_plan.clone());
-                    previous_projection = false;
                 }
             }
 
@@ -181,14 +186,13 @@ impl OptimizerRule for FilterColumnsPostJoin {
                 break;
             } else {
                 current_step = current_plan.inputs();
-                counter = counter + 1;
+                counter += 1;
             }
         }
 
         if join_flag {
-            counter = counter - 1;
+            counter -= 1;
             // Organize HashMap into LogicalPlan to return
-            // TODO: Use a LogicalPlanBuilder instead
             let mut previous_step = new_plan.get(&counter).unwrap();
             let mut next_step;
             let mut return_plan = plan.clone();
@@ -211,15 +215,12 @@ impl OptimizerRule for FilterColumnsPostJoin {
                             schema: s.schema.clone(),
                         });
                     }
-                    /*
-                    // TODO: Use private fields
                     LogicalPlan::Filter(f) => {
-                        return_plan = LogicalPlan::Filter(Filter {
-                            predicate: f.predicate().clone(),
-                            input: Arc::new(previous_step.clone()),
-                        });
+                        return_plan = LogicalPlan::Filter(Filter::try_new(
+                            f.predicate().clone(),
+                            Arc::new(previous_step.clone()),
+                        ).unwrap());
                     }
-                    */
                     LogicalPlan::Window(w) => {
                         return_plan = LogicalPlan::Window(Window {
                             input: Arc::new(previous_step.clone()),
@@ -237,21 +238,21 @@ impl OptimizerRule for FilterColumnsPostJoin {
                         return_plan = LogicalPlan::CreateMemoryTable(CreateMemoryTable {
                             name: c.name.clone(),
                             input: Arc::new(previous_step.clone()),
-                            if_not_exists: c.if_not_exists.clone(),
-                            or_replace: c.or_replace.clone(),
+                            if_not_exists: c.if_not_exists,
+                            or_replace: c.or_replace,
                         });
                     }
                     LogicalPlan::CreateView(c) => {
                         return_plan = LogicalPlan::CreateView(CreateView {
                             name: c.name.clone(),
                             input: Arc::new(previous_step.clone()),
-                            or_replace: c.or_replace.clone(),
+                            or_replace: c.or_replace,
                             definition: c.definition.clone(),
                         });
                     }
                     LogicalPlan::Explain(e) => {
                         return_plan = LogicalPlan::Explain(Explain {
-                            verbose: e.verbose.clone(),
+                            verbose: e.verbose,
                             plan: Arc::new(previous_step.clone()),
                             stringified_plans: e.stringified_plans.clone(),
                             schema: e.schema.clone(),
@@ -259,15 +260,15 @@ impl OptimizerRule for FilterColumnsPostJoin {
                     }
                     LogicalPlan::Analyze(a) => {
                         return_plan = LogicalPlan::Analyze(Analyze {
-                            verbose: a.verbose.clone(),
+                            verbose: a.verbose,
                             input: Arc::new(previous_step.clone()),
                             schema: a.schema.clone(),
                         });
                     }
                     LogicalPlan::Limit(l) => {
                         return_plan = LogicalPlan::Limit(Limit {
-                            skip: l.skip.clone(),
-                            fetch: l.fetch.clone(),
+                            skip: l.skip,
+                            fetch: l.fetch,
                             input: Arc::new(previous_step.clone()),
                         });
                     }
@@ -288,7 +289,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
                         return_plan = LogicalPlan::Sort(Sort {
                             expr: s.expr.clone(),
                             input: Arc::new(previous_step.clone()),
-                            fetch: s.fetch.clone(),
+                            fetch: s.fetch,
                         });
                     }
                     LogicalPlan::Subquery(_) => {
@@ -296,10 +297,10 @@ impl OptimizerRule for FilterColumnsPostJoin {
                             subquery: Arc::new(previous_step.clone()),
                         });
                     }
-                    // LogicalPlan::Join(f) => _,
-                    // LogicalPlan::CrossJoin(f) => _,
-                    // LogicalPlan::Union(f) => _,
-                    _ => return Ok(plan.clone()),
+                    _ => {
+                        warn!("Skipping optimizer rule 'FilterColumnsPostJoin'");
+                        return Ok(plan.clone())
+                    }
                 }
                 previous_step = &return_plan;
             }
@@ -320,11 +321,15 @@ fn get_column_name(column: &Expr) -> Option<Expr> {
     match column {
         Expr::Column(c) => {
             let mut column_string = c.flat_name();
-            if column_string.contains(")") {
-                let start_bytes = column_string.find("(").unwrap_or(0) + 1;
-                let end_bytes = column_string.find(")").unwrap_or(0);
-                column_string = (&column_string[start_bytes..end_bytes]).to_string();
-                Some(Expr::Column(Column::from_qualified_name(&column_string)))
+            if column_string.contains(')') {
+                let start_bytes = column_string.find('(').unwrap_or(0) + 1;
+                let end_bytes = column_string.find(')').unwrap_or(0);
+                if start_bytes < end_bytes {
+                    column_string = column_string[start_bytes..end_bytes].to_string();
+                    Some(Expr::Column(Column::from_qualified_name(&column_string)))
+                } else {
+                    Some(column.clone())
+                }
             } else {
                 Some(column.clone())
             }
