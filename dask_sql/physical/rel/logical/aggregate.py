@@ -495,9 +495,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     ):
         tmp_df = dc.df
 
-        # format aggregations for Dask; also check if we can use fast path for
-        # groupby, which is only supported if we are not using any custom aggregations
-        # and our pandas version support dropna for groupbys
+        # format aggregations for Dask
         aggregations_dict = defaultdict(dict)
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
