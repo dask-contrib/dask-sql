@@ -52,7 +52,6 @@ jobs:
           use-mamba: true
           python-version: ${{ matrix.python }}
           channel-priority: strict
-          channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Build the Rust DataFusion bindings
@@ -67,7 +66,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          mamba update dask
+          mamba install dask/label/dev::dask
       - name: Test with pytest
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
@@ -94,7 +93,6 @@ jobs:
           use-mamba: true
           python-version: "3.9"
           channel-priority: strict
-          channels: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && 'dask/label/dev,conda-forge,nodefaults' || 'conda-forge,nodefaults' }}
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
       - name: Build the Rust DataFusion bindings
@@ -110,7 +108,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          mamba update dask
+          mamba install dask/label/dev::dask
       - name: run a dask cluster
         env:
           UPSTREAM: ${{ needs.detect-ci-trigger.outputs.triggered }}
