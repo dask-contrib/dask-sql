@@ -55,8 +55,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
-          # need flexible channel priority to force-install Dask nightlies
-          channel-priority: ${{ env.which_upstream == 'Dask' && 'flexible' || 'strict' }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
       - name: Optionally update upstream cargo dependencies
@@ -92,8 +91,7 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: "3.9"
-          # need flexible channel priority to force-install Dask nightlies
-          channel-priority: ${{ env.which_upstream == 'Dask' && 'flexible' || 'strict' }}
+          channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
       - name: Optionally update upstream cargo dependencies
