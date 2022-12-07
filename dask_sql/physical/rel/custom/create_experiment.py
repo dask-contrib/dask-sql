@@ -161,7 +161,9 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     model_class = cpu_classes[model_class]
                 if experiment_class in cpu_classes:
                     experiment_class = cpu_classes[experiment_class]
-            elif dask_cudf is not None and type(training_df) == dask_cudf.core.DataFrame:
+            elif (
+                dask_cudf is not None and type(training_df) == dask_cudf.core.DataFrame
+            ):
                 if model_class in gpu_classes:
                     model_class = gpu_classes[model_class]
                 if experiment_class in gpu_classes:

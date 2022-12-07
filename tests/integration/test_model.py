@@ -1196,6 +1196,7 @@ def test_agnostic_cpu(c, training_df):
     check_trained_model(c)
 
 
+@pytest.mark.gpu
 def test_agnostic_gpu(c, gpu_training_df, gpu_client):
     model_query = """
         CREATE OR REPLACE MODEL my_model WITH (
