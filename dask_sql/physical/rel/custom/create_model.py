@@ -1,18 +1,28 @@
 import logging
 from typing import TYPE_CHECKING
 
+import dask.dataframe as dd
 import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.physical.rel.custom.ml_classes import get_cpu_classes, get_gpu_classes
 from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:
     import dask_sql
     from dask_sql.rust import LogicalPlan
 
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
+
 logger = logging.getLogger(__name__)
+
+cpu_classes = get_cpu_classes()
+gpu_classes = get_gpu_classes()
 
 
 class CreateModelPlugin(BaseRelPlugin):
@@ -140,6 +150,13 @@ class CreateModelPlugin(BaseRelPlugin):
         else:
             X = training_df
             y = None
+
+        if type(training_df) == dd.core.DataFrame:
+            if model_class in cpu_classes:
+                model_class = cpu_classes[model_class]
+        elif dask_cudf is not None and type(training_df) == dask_cudf.core.DataFrame:
+            if model_class in gpu_classes:
+                model_class = gpu_classes[model_class]
 
         try:
             ModelClass = import_class(model_class)

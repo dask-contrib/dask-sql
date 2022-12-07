@@ -1024,3 +1024,266 @@ def test_predict_with_nullable_types(c):
         result,
         check_dtype=False,
     )
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+def test_agnostic_cpu(c, training_df):
+    c.sql(
+        """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'GradientBoostingClassifier',
+            wrap_predict = True,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    check_trained_model(c)
+
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LogisticRegression',
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LinearRegression',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    c.sql(
+        """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    check_trained_model(c)
+
+    c.sql(
+        """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'SGDClassifier',
+            wrap_fit = True,
+            target_column = 'target',
+            fit_kwargs = ( classes = ARRAY [0, 1] )
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    check_trained_model(c)
+
+    c.sql(
+        """
+        CREATE OR REPLACE EXPERIMENT my_exp WITH (
+        model_class = 'GradientBoostingClassifier',
+        experiment_class = 'GridSearchCV',
+        tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                           max_depth = ARRAY [3,4,5,10]),
+        target_column = 'target'
+    ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+    check_trained_model(c, "my_exp")
+
+    c.sql(
+        """
+        CREATE OR REPLACE EXPERIMENT my_exp WITH (
+        model_class = 'GradientBoostingClassifier',
+        experiment_class = 'RandomizedSearchCV',
+        tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
+                           max_depth = ARRAY [3,4,5,10]),
+        target_column = 'target'
+    ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+        """
+    )
+    check_trained_model(c, "my_exp")
+
+    c.sql(
+        """
+        CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
+            model_class = 'LGBMClassifier',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    check_trained_model(c, "my_model_lightgbm")
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBRegressor',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBClassifier',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBRegressor',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBClassifier',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+
+def test_agnostic_gpu(c, gpu_training_df, gpu_client):
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LogisticRegression',
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+
+    model_query = """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LinearRegression',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y AS target
+            FROM timeseries
+        )
+        """
+    c.sql(model_query)
+
+    c.sql(
+        """
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+
+    # TODO: Add experiment_class tests
+    # GPU experiment_class is not currently supported: https://github.com/dask-contrib/dask-sql/issues/943
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBRegressor',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBClassifier',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBRegressor',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBClassifier',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
