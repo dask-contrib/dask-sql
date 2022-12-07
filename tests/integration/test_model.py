@@ -1028,7 +1028,7 @@ def test_predict_with_nullable_types(c):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-def test_agnostic_cpu(c, training_df):
+def test_agnostic_cpu(c, training_df, client):
     c.sql(
         """
         CREATE OR REPLACE MODEL my_model WITH (
@@ -1240,19 +1240,6 @@ def test_agnostic_gpu(c, gpu_training_df, gpu_client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBRegressor',
-        target_column = 'target',
-        tree_method= 'gpu_hist'
-    ) AS (
-        SELECT x, y, x*y  AS target
-        FROM timeseries
-    )
-    """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    model_query = """
-    CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'DaskXGBClassifier',
         target_column = 'target',
         tree_method= 'gpu_hist'
     ) AS (
