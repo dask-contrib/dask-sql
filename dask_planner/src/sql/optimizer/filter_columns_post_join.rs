@@ -60,6 +60,7 @@ use datafusion_common::{Column, DFSchema, Result};
 use datafusion_expr::{
     logical_plan::{Analyze, LogicalPlan, Projection},
     Aggregate,
+    BinaryExpr,
     CreateMemoryTable,
     CreateView,
     Distinct,
@@ -97,8 +98,10 @@ impl OptimizerRule for FilterColumnsPostJoin {
         let mut post_join_columns: HashSet<Expr> = HashSet::new();
         let projected_columns = &plan.expressions();
         for column in projected_columns {
-            if let Some(expr) = get_column_name(column) {
-                post_join_columns.insert(expr);
+            if let Some(exprs) = get_column_name(column) {
+                for expr in exprs {
+                    post_join_columns.insert(expr);
+                }
             }
         }
         // For storing the steps of the LogicalPlan,
@@ -148,10 +151,8 @@ impl OptimizerRule for FilterColumnsPostJoin {
                             }
                         }
                     }
-                    let projection_schema = DFSchema::new_with_metadata(
-                        projection_schema_fields,
-                        HashMap::new(),
-                    );
+                    let projection_schema =
+                        DFSchema::new_with_metadata(projection_schema_fields, HashMap::new());
                     // Create a Projection with the columns from the HashSet
                     let projection_step = LogicalPlan::Projection(Projection {
                         expr: projection_columns,
@@ -178,11 +179,13 @@ impl OptimizerRule for FilterColumnsPostJoin {
                 }
             }
 
+            // TODO: Revisit to_columns() or expr_to_columns()
             let current_columns = &current_plan.expressions();
             for column in current_columns {
-                // TODO: Check that we are properly parsing all columns
-                if let Some(expr) = get_column_name(column) {
-                    post_join_columns.insert(expr);
+                if let Some(exprs) = get_column_name(column) {
+                    for expr in exprs {
+                        post_join_columns.insert(expr);
+                    }
                 }
             }
 
@@ -219,7 +222,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
                         return_plan = LogicalPlan::Filter(
                             Filter::try_new(f.predicate().clone(), Arc::new(previous_step.clone()))
                                 .unwrap(),
-                            );
+                        );
                     }
                     LogicalPlan::Window(w) => {
                         return_plan = LogicalPlan::Window(Window {
@@ -316,7 +319,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
     }
 }
 
-fn get_column_name(column: &Expr) -> Option<Expr> {
+fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
     // TODO: Make more robust
     match column {
         Expr::Column(c) => {
@@ -326,15 +329,28 @@ fn get_column_name(column: &Expr) -> Option<Expr> {
                 let end_bytes = column_string.find(')').unwrap_or(0);
                 if start_bytes < end_bytes {
                     column_string = column_string[start_bytes..end_bytes].to_string();
-                    Some(Expr::Column(Column::from_qualified_name(&column_string)))
+                    Some(vec![Expr::Column(Column::from_qualified_name(&column_string))])
                 } else {
-                    Some(column.clone())
+                    Some(vec![column.clone()])
                 }
             } else {
-                Some(column.clone())
+                Some(vec![column.clone()])
             }
         }
-        _ => None,
+        Expr::AggregateFunction { args, .. } => {
+            Some(args.clone())
+        }
+        /*
+        // TODO
+        Expr::BinaryExpr(BinaryExpr { left, right, .. }) => {
+            // Without: 21 failures
+            // With: Also 21 failures, with different queries
+            Some(vec![*left.clone(), *right.clone()])
+        }
+        */
+        _ => {
+            None
+        }
     }
 }
 
