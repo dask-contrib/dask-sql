@@ -375,7 +375,7 @@ def get_gpu_classes():
         # XGBoost
         "XGBRegressor": "xgboost.XGBRegressor",
         "DaskXGBRegressor": "xgboost.dask.DaskXGBRegressor",
-        "XGBClassifier": "xgboost.XGBClassifier",
-        "DaskXGBClassifier": "xgboost.dask.DaskXGBClassifier",
+        # "XGBClassifier": "xgboost.XGBClassifier",
+        # "DaskXGBClassifier": "xgboost.dask.DaskXGBClassifier",
     }
     return gpu_classes
