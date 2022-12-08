@@ -1147,6 +1147,7 @@ def test_agnostic_cpu(c, training_df, client):
     )
     check_trained_model(c, "my_model_lightgbm")
 
+def test_agnostic_cpu1(c, training_df, client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBRegressor',
@@ -1159,21 +1160,25 @@ def test_agnostic_cpu(c, training_df, client):
     c.sql(model_query)
     check_trained_model(c)
 
+def test_agnostic_cpu2(c, training_df, client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBClassifier',
         target_column = 'target'
     ) AS (
-        SELECT x, y, x*y  AS target
+        SELECT x, y, x*y > 0  AS target
         FROM timeseries
+        LIMIT 100
     )
     """
     c.sql(model_query)
     check_trained_model(c)
 
+def test_agnostic_cpu3(c, training_df, client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBRegressor',
+        wrap_predict = True,
         target_column = 'target'
     ) AS (
         SELECT x, y, x*y  AS target
@@ -1183,13 +1188,15 @@ def test_agnostic_cpu(c, training_df, client):
     c.sql(model_query)
     check_trained_model(c)
 
+def test_agnostic_cpu4(c, training_df, client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBClassifier',
         target_column = 'target'
     ) AS (
-        SELECT x, y, x*y  AS target
+        SELECT x, y, x*y > 0  AS target
         FROM timeseries
+        LIMIT 100
     )
     """
     c.sql(model_query)
@@ -1237,6 +1244,8 @@ def test_agnostic_gpu(c, gpu_training_df, gpu_client):
     # TODO: Add experiment_class tests
     # GPU experiment_class is not currently supported: https://github.com/dask-contrib/dask-sql/issues/943
 
+@pytest.mark.gpu
+def test_agnostic_gpu1(c, gpu_training_df, gpu_client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBRegressor',
@@ -1250,9 +1259,28 @@ def test_agnostic_gpu(c, gpu_training_df, gpu_client):
     c.sql(model_query)
     check_trained_model(c)
 
+@pytest.mark.gpu
+def test_agnostic_gpu2(c, gpu_training_df, gpu_client):
+    model_query = """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBClassifier',
+        target_column = 'target',
+        tree_method= 'gpu_hist'
+    ) AS (
+        SELECT x, y, x*y > 0  AS target
+        FROM timeseries
+        LIMIT 100
+    )
+    """
+    c.sql(model_query)
+    check_trained_model(c)
+
+@pytest.mark.gpu
+def test_agnostic_gpu3(c, gpu_training_df, gpu_client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBRegressor',
+        wrap_predict = True,
         target_column = 'target',
         tree_method= 'gpu_hist'
     ) AS (
@@ -1263,14 +1291,17 @@ def test_agnostic_gpu(c, gpu_training_df, gpu_client):
     c.sql(model_query)
     check_trained_model(c)
 
+@pytest.mark.gpu
+def test_agnostic_gpu4(c, gpu_training_df, gpu_client):
     model_query = """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBClassifier',
         target_column = 'target',
         tree_method= 'gpu_hist'
     ) AS (
-        SELECT x, y, x*y  AS target
+        SELECT x, y, x*y > 0  AS target
         FROM timeseries
+        LIMIT 100
     )
     """
     c.sql(model_query)
