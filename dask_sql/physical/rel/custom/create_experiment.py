@@ -157,12 +157,10 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
         if model_class and experiment_class:
             if type(training_df) == dd.core.DataFrame:
-                if model_class in cpu_classes:
-                    model_class = cpu_classes[model_class]
-                if experiment_class in cpu_classes:
-                    experiment_class = cpu_classes[experiment_class]
+                model_class = cpu_classes.get(model_class, model_class)
+                experiment_class = cpu_classes.get(experiment_class, experiment_class)
             elif (
-                dask_cudf is not None and type(training_df) == dask_cudf.core.DataFrame
+                "cudf" in str(training_df._partition_type)
             ):
                 if model_class in gpu_classes:
                     model_class = gpu_classes[model_class]
