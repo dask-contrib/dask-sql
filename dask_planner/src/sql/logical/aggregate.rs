@@ -1,6 +1,7 @@
 use datafusion_expr::{
     logical_plan::{Aggregate, Distinct},
     Expr,
+    GroupingSet,
     LogicalPlan,
 };
 use pyo3::prelude::*;
@@ -23,7 +24,7 @@ impl PyAggregate {
     #[pyo3(name = "getDistinctColumns")]
     pub fn distinct_columns(&self) -> PyResult<Vec<String>> {
         match &self.distinct {
-            Some(e) => Ok(e.input.schema().field_names()),
+            Some(dist) => Ok(dist.input.schema().field_names()),
             None => Err(py_type_err(
                 "distinct_columns invoked for non distinct instance",
             )),
@@ -34,7 +35,21 @@ impl PyAggregate {
     #[pyo3(name = "getGroupSets")]
     pub fn group_expressions(&self) -> PyResult<Vec<PyExpr>> {
         match &self.aggregate {
-            Some(e) => py_expr_list(&e.input, &e.group_expr),
+            Some(agg) => {
+                if agg.group_expr.is_empty() {
+                    return Ok(vec![]);
+                }
+                match &agg.group_expr[0] {
+                    Expr::Column(_) => py_expr_list(&agg.input, &agg.group_expr),
+                    Expr::GroupingSet(GroupingSet::Rollup(exprs)) => {
+                        py_expr_list(&agg.input, exprs)
+                    }
+                    other => Err(py_type_err(format!(
+                        "Unsupported group expression {:?}",
+                        other
+                    ))),
+                }
+            }
             None => Ok(vec![]),
         }
     }
@@ -66,6 +81,22 @@ impl PyAggregate {
     #[pyo3(name = "isDistinctNode")]
     pub fn distinct_node(&self) -> PyResult<bool> {
         Ok(self.distinct.is_some())
+    }
+
+    #[pyo3(name = "isRollupAggregation")]
+    pub fn rollup_aggregation(&self) -> PyResult<bool> {
+        match &self.aggregate {
+            Some(agg) => {
+                if agg.group_expr.is_empty() {
+                    return Ok(false);
+                }
+                match &agg.group_expr[0] {
+                    Expr::GroupingSet(GroupingSet::Rollup(_)) => Ok(true),
+                    _ => Ok(false),
+                }
+            }
+            None => Ok(false),
+        }
     }
 }
 
