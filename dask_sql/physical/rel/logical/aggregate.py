@@ -228,28 +228,22 @@ class DaskAggregatePlugin(BaseRelPlugin):
             # To reuse the code, we just create a new column at the end with a single value
             logger.debug("Performing full-table aggregation")
 
-        # do all aggregates; if a rollup is specified, aggregate for all groupby combinations
-        # and concat together
-        if not agg.isRollupAggregation():
-            df_result, output_column_order, cc = self._do_aggregations(
-                rel,
-                dc,
-                group_columns,
-                context,
-            )
-            # SQL does not care about the index, but we do not want to have any multiindices
-            df_agg = df_result.reset_index(drop=True)
-        else:
-            # want to retain the output column order of the original groupby
-            df_result, output_column_order, cc = self._do_aggregations(
-                rel,
-                dc,
-                group_columns,
-                context,
-            )
-            # SQL does not care about the index, but we do not want to have any multiindices
-            dfs = [df_result.reset_index(drop=True)]
+        # Do all aggregates
+        df_result, output_column_order, cc = self._do_aggregations(
+            rel,
+            dc,
+            group_columns,
+            context,
+        )
+        # SQL does not care about the index, but we do not want to have any multiindices
+        df_agg = df_result.reset_index(drop=True)
+
+        # if a rollup groupby is specified, we also need to aggregate for the remaining groupby
+        # combinations and concat these to the original result
+        if agg.isRollupAggregation():
+            dfs = [df_agg]
             for i in reversed(range(len(group_columns))):
+                # want to retain the output column order of the original groupby
                 df_result, _, _ = self._do_aggregations(
                     rel,
                     dc,
