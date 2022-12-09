@@ -108,8 +108,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
         // TODO: Add projection after *every* Join in a stack of Joins
-        let optimized_plan = optimize_top_down(plan, all_schemas);
-        optimized_plan
+        optimize_top_down(plan, all_schemas);
     }
 
     fn name(&self) -> &str {
@@ -424,8 +423,8 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
         Expr::BinaryExpr(BinaryExpr { left, right, .. }) => {
             let mut return_vector = vec![];
 
-            return_vector = push_column_names(&left, &return_vector);
-            return_vector = push_column_names(&right, &return_vector);
+            return_vector = push_column_names(left, &return_vector);
+            return_vector = push_column_names(right, &return_vector);
 
             Some(return_vector)
         }
@@ -438,12 +437,12 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
         }
         Expr::Sort { expr, .. } => {
             let mut return_vector = vec![];
-            return_vector = push_column_names(&expr, &return_vector);
+            return_vector = push_column_names(expr, &return_vector);
             Some(return_vector)
         }
         Expr::Alias(a, _) => {
             let mut return_vector = vec![];
-            return_vector = push_column_names(&a, &return_vector);
+            return_vector = push_column_names(a, &return_vector);
             Some(return_vector)
         }
         Expr::Case(c) => {
@@ -451,7 +450,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
             let case_expr = &c.expr;
             if let Some(ce) = case_expr {
-                return_vector = push_column_names(&ce, &return_vector);
+                return_vector = push_column_names(ce, &return_vector);
             }
 
             // Vec<(Box<Expr>, Box<Expr>)>
@@ -466,7 +465,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
             let else_expr = &c.else_expr;
             if let Some(ce) = else_expr {
-                return_vector = push_column_names(&ce, &return_vector);
+                return_vector = push_column_names(ce, &return_vector);
             }
 
             Some(return_vector)
@@ -476,7 +475,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 }
 
 fn push_column_names(column: &Expr, vector: &Vec<Expr>) -> Vec<Expr> {
-    let mut return_vector = vector.clone();
+    let mut return_vector = vector.to_owned();
     let exprs = get_column_name(column);
     if let Some(expr) = exprs {
         for e in expr {

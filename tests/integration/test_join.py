@@ -387,7 +387,9 @@ def test_filter_columns_post_join(c):
     query = "SELECT SUM(df.a) as sum_a, df2.b FROM df INNER JOIN df2 ON df.c=df2.c GROUP BY df2.b"
 
     explain_string = c.explain(query)
-    assert ("Projection: df.a, df2.b" in explain_string) or ("Projection: df2.b, df.a" in explain_string)
+    assert ("Projection: df.a, df2.b" in explain_string) or (
+        "Projection: df2.b, df.a" in explain_string
+    )
 
     result_df = c.sql(query)
     expected_df = pd.DataFrame({"sum_a": [24, 24, 12], "b": [1, 2, 3]})
