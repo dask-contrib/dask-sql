@@ -108,7 +108,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
         // TODO: Add projection after *every* Join in a stack of Joins
-        optimize_top_down(plan, all_schemas);
+        optimize_top_down(plan, all_schemas)
     }
 
     fn name(&self) -> &str {
