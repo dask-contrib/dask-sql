@@ -155,14 +155,18 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_clustering_and_prediction(c, gpu):
-    if gpu:
-        gpu_training_df()
-        gpu_client()
-    else:
-        training_df()
-
+@pytest.mark.parametrize(
+    "df, cli",
+    [
+        (pytest.lazy_fixture("training_df"), None),
+        pytest.param(
+            pytest.lazy_fixture("gpu_training_df"),
+            pytest.lazy_fixture("gpu_client"),
+            marks=pytest.mark.gpu,
+        ),
+    ],
+)
+def test_clustering_and_prediction(c, df, cli):
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -1069,19 +1073,23 @@ def test_ml_class_mappings(gpu):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu, df, cli",
+    [
+        (False, pytest.lazy_fixture("training_df"), pytest.lazy_fixture("client")),
+        pytest.param(
+            True,
+            pytest.lazy_fixture("gpu_training_df"),
+            pytest.lazy_fixture("gpu_client"),
+            marks=pytest.mark.gpu,
+        ),
+    ],
+)
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
 )
-def test_agnostic_xgb_models(c, gpu):
-    if gpu:
-        gpu_training_df()
-        gpu_client()
-    else:
-        training_df()
-        client()
-
+def test_agnostic_xgb_models(c, gpu, df, cli):
     # XGBClassifiers error on GPU
     if not gpu:
         c.sql(
