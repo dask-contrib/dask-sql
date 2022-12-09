@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from tests.integration.fixtures import client, gpu_client, skip_if_external_scheduler
+from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
 
 try:
@@ -155,18 +155,23 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize(
-    "df, cli",
-    [
-        (pytest.lazy_fixture("training_df"), None),
-        pytest.param(
-            pytest.lazy_fixture("gpu_training_df"),
-            pytest.lazy_fixture("gpu_client"),
-            marks=pytest.mark.gpu,
-        ),
-    ],
-)
-def test_clustering_and_prediction(c, df, cli):
+def test_clustering_and_prediction(c, training_df):
+    c.sql(
+        """
+        CREATE MODEL my_model WITH (
+            model_class = 'KMeans'
+        ) AS (
+            SELECT x, y
+            FROM timeseries
+            LIMIT 100
+        )
+    """
+    )
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -1073,52 +1078,70 @@ def test_ml_class_mappings(gpu):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize(
-    "gpu, df, cli",
-    [
-        (False, pytest.lazy_fixture("training_df"), pytest.lazy_fixture("client")),
-        pytest.param(
-            True,
-            pytest.lazy_fixture("gpu_training_df"),
-            pytest.lazy_fixture("gpu_client"),
-            marks=pytest.mark.gpu,
-        ),
-    ],
-)
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
 )
-def test_agnostic_xgb_models(c, gpu, df, cli):
-    # XGBClassifiers error on GPU
-    if not gpu:
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'DaskXGBClassifier',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0  AS target
-            FROM timeseries
-            LIMIT 100
-        )
+def test_agnostic_cpu_xgb_models(c, training_df, client):
+    c.sql(
         """
-        )
-        check_trained_model(c)
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBClassifier',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y > 0  AS target
+        FROM timeseries
+        LIMIT 100
+    )
+    """
+    )
+    check_trained_model(c)
 
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'XGBClassifier',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0  AS target
-            FROM timeseries
-            LIMIT 100
-        )
+    c.sql(
         """
-        )
-        check_trained_model(c)
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBClassifier',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y > 0  AS target
+        FROM timeseries
+        LIMIT 100
+    )
+    """
+    )
+    check_trained_model(c)
+
+    c.sql(
+        """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBRegressor',
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    )
+    check_trained_model(c)
+
+    c.sql(
+        """
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBRegressor',
+        wrap_predict = True,
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM timeseries
+    )
+    """
+    )
+    check_trained_model(c)
+
+
+@pytest.mark.gpu
+def test_agnostic_gpu_xgb_models(c, gpu_training_df, gpu_client):
+    # XGBClassifiers error on GPU
 
     c.sql(
         """
