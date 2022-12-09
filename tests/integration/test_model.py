@@ -112,7 +112,8 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
             SELECT x, y, x*y AS target
             FROM timeseries
         )
-    """)
+    """
+    )
     check_trained_model(c)
 
 
@@ -129,7 +130,8 @@ def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """)
+    """
+    )
     check_trained_model(c)
 
 
@@ -146,20 +148,21 @@ def test_xgboost_training_prediction(c, gpu_training_df):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """)
+    """
+    )
     check_trained_model(c)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize(
-    "df,client",
-    [
-        (training_df, None),
-        pytest.param(gpu_training_df, gpu_client, marks=pytest.mark.gpu),
-    ],
-)
-def test_clustering_and_prediction(c, df, client):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_clustering_and_prediction(c, gpu):
+    if gpu:
+        gpu_training_df()
+        gpu_client()
+    else:
+        training_df()
+
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -722,7 +725,7 @@ def test_ml_experiment(c, client, training_df):
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'experiment_class' "
-        "parameter for tuning sklearn.ensemble.GradientBoostingClassifier.",
+        "parameter for tuning GradientBoostingClassifier.",
     ):
         c.sql(
             """
@@ -1051,31 +1054,39 @@ def test_ml_class_mappings(gpu):
     if gpu:
         classes_dict = get_gpu_classes()
     else:
-        from sklearn.experimental import enable_iterative_imputer, enable_halving_search_cv
+        from sklearn.experimental import (
+            enable_iterative_imputer,
+            enable_halving_search_cv,
+        )
+
         classes_dict = get_cpu_classes()
 
     for key in classes_dict:
-        if not ("XGB" in key and xgboost is None) and not ("LGBM" in key and lightgbm is None):
+        if not ("XGB" in key and xgboost is None) and not (
+            "LGBM" in key and lightgbm is None
+        ):
             import_class(classes_dict[key])
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-@pytest.mark.parametrize(
-    "gpu,df,cli",
-    [
-        (False, training_df, client),
-        pytest.param(True, gpu_training_df, gpu_client, marks=pytest.mark.gpu),
-    ],
-)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
 )
-def test_agnostic_xgb_models(c, gpu, df, cli):
+def test_agnostic_xgb_models(c, gpu):
+    if gpu:
+        gpu_training_df()
+        gpu_client()
+    else:
+        training_df()
+        client()
+
     # XGBClassifiers error on GPU
     if not gpu:
-        c.sql("""
+        c.sql(
+            """
         CREATE OR REPLACE MODEL my_model WITH (
             model_class = 'DaskXGBClassifier',
             target_column = 'target'
@@ -1084,10 +1095,12 @@ def test_agnostic_xgb_models(c, gpu, df, cli):
             FROM timeseries
             LIMIT 100
         )
-        """)
+        """
+        )
         check_trained_model(c)
 
-        c.sql("""
+        c.sql(
+            """
         CREATE OR REPLACE MODEL my_model WITH (
             model_class = 'XGBClassifier',
             target_column = 'target'
@@ -1096,10 +1109,12 @@ def test_agnostic_xgb_models(c, gpu, df, cli):
             FROM timeseries
             LIMIT 100
         )
-        """)
+        """
+        )
         check_trained_model(c)
 
-    c.sql("""
+    c.sql(
+        """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBRegressor',
         target_column = 'target'
@@ -1107,10 +1122,12 @@ def test_agnostic_xgb_models(c, gpu, df, cli):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """)
+    """
+    )
     check_trained_model(c)
 
-    c.sql("""
+    c.sql(
+        """
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBRegressor',
         wrap_predict = True,
@@ -1119,5 +1136,6 @@ def test_agnostic_xgb_models(c, gpu, df, cli):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """)
+    """
+    )
     check_trained_model(c)
