@@ -108,7 +108,8 @@ impl OptimizerRule for FilterColumnsPostJoin {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
         // TODO: Add projection after *every* Join in a stack of Joins
-        optimize_top_down(plan, all_schemas)
+        let optimized_plan = optimize_top_down(plan, all_schemas);
+        optimized_plan
     }
 
     fn name(&self) -> &str {
@@ -119,9 +120,6 @@ impl OptimizerRule for FilterColumnsPostJoin {
 fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> Result<LogicalPlan> {
     // First: Grab first round of columns with &plan.expressions() and add to HashSet
     let mut post_join_columns: HashSet<Expr> = HashSet::new();
-    // TODO: Do we need this?
-    // let first_columns = &plan.expressions();
-    // insert_post_join_columns(&mut post_join_columns, first_columns);
 
     // For storing the steps of the LogicalPlan,
     // with an i32 key to keep track of the order
@@ -137,8 +135,8 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
         if current_plan.inputs().is_empty() {
             break;
         } else if current_plan.inputs().len() > 1 {
-            match &current_plan {
-                &LogicalPlan::Join(ref j) => {
+            match current_plan {
+                LogicalPlan::Join(ref j) => {
                     join_flag = true;
 
                     // Check so that we don't build a stack of projections
@@ -181,25 +179,25 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                     }
 
                     // Recurse on left and right inputs of Join
-                    let left_join_plan = optimize_top_down(&*j.left, all_schemas).unwrap();
-                    let right_join_plan = optimize_top_down(&*j.right, all_schemas).unwrap();
+                    let left_join_plan = optimize_top_down(&j.left, all_schemas).unwrap();
+                    let right_join_plan = optimize_top_down(&j.right, all_schemas).unwrap();
                     let join_plan = LogicalPlan::Join(Join {
                         left: Arc::new(left_join_plan),
                         right: Arc::new(right_join_plan),
                         on: j.on.clone(),
                         filter: j.filter.clone(),
-                        join_type: j.join_type.clone(),
-                        join_constraint: j.join_constraint.clone(),
+                        join_type: j.join_type,
+                        join_constraint: j.join_constraint,
                         schema: j.schema.clone(),
                         null_equals_null: j.null_equals_null,
                     });
                     // Add Join to HashMap
                     new_plan.insert(counter, join_plan);
                 }
-                &LogicalPlan::CrossJoin(ref c) => {
+                LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_crossjoin_plan = optimize_top_down(&*c.left, all_schemas).unwrap();
-                    let right_crossjoin_plan = optimize_top_down(&*c.right, all_schemas).unwrap();
+                    let left_crossjoin_plan = optimize_top_down(&c.left, all_schemas).unwrap();
+                    let right_crossjoin_plan = optimize_top_down(&c.right, all_schemas).unwrap();
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
                         left: Arc::new(left_crossjoin_plan),
                         right: Arc::new(right_crossjoin_plan),
@@ -208,11 +206,11 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                     // Add CrossJoin to HashMap
                     new_plan.insert(counter, crossjoin_plan);
                 }
-                &LogicalPlan::Union(ref u) => {
+                LogicalPlan::Union(ref u) => {
                     // Recurse on inputs vector of Union
                     let mut new_inputs = vec![];
                     for input in &u.inputs {
-                        let new_input = optimize_top_down(&*input, all_schemas);
+                        let new_input = optimize_top_down(input, all_schemas);
                         match new_input {
                             Ok(i) => new_inputs.push(Arc::new(i)),
                             _ => {
@@ -380,10 +378,7 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
     }
 }
 
-fn insert_post_join_columns(
-    post_join_columns: &mut HashSet<Expr>,
-    inserted_columns: &Vec<Expr>,
-) {
+fn insert_post_join_columns(post_join_columns: &mut HashSet<Expr>, inserted_columns: &Vec<Expr>) {
     for column in inserted_columns {
         if let Some(exprs) = get_column_name(column) {
             for expr in exprs {
@@ -394,7 +389,6 @@ fn insert_post_join_columns(
 }
 
 fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
-    // TODO: Make more robust
     // TODO: Can we use to_columns() or expr_to_columns() here?
     match column {
         Expr::Column(c) => {
@@ -404,7 +398,9 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
                 let end_bytes = column_string.find(')').unwrap_or(0);
                 if start_bytes < end_bytes {
                     column_string = column_string[start_bytes..end_bytes].to_string();
-                    Some(vec![Expr::Column(Column::from_qualified_name(&column_string))])
+                    Some(vec![Expr::Column(Column::from_qualified_name(
+                        &column_string,
+                    ))])
                 } else {
                     Some(vec![column.clone()])
                 }
@@ -414,185 +410,167 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
         }
         Expr::AggregateFunction { args, filter, .. } => {
             let mut return_vector = vec![];
+
             for arg in args {
-                let exprs = get_column_name(arg);
-                // TODO: Break out into separate function
-                match exprs {
-                    Some(expr) => {
-                        for e in expr {
-                            return_vector.push(e);
-                        }
-                    }
-                    None => (),
-                }
+                return_vector = push_column_names(arg, &return_vector);
             }
+
             for f in filter {
-                let exprs = get_column_name(f);
-                // TODO: Break out into separate function
-                match exprs {
-                    Some(expr) => {
-                        for e in expr {
-                            return_vector.push(e);
-                        }
-                    }
-                    None => (),
-                }
+                return_vector = push_column_names(f, &return_vector);
             }
+
             Some(return_vector)
         }
         Expr::BinaryExpr(BinaryExpr { left, right, .. }) => {
-            let left_expr = get_column_name(&*left.clone());
-            let right_expr = get_column_name(&*right.clone());
             let mut return_vector = vec![];
-            // TODO: Break out into separate function
-            match left_expr {
-                Some(expr) => {
-                    for e in expr {
-                        return_vector.push(e);
-                    }
-                }
-                None => (),
-            }
-            // TODO: Break out into separate function
-            match right_expr {
-                Some(expr) => {
-                    for e in expr {
-                        return_vector.push(e);
-                    }
-                }
-                None => (),
-            }
+
+            return_vector = push_column_names(&left, &return_vector);
+            return_vector = push_column_names(&right, &return_vector);
+
             Some(return_vector)
         }
         Expr::ScalarFunction { args, .. } => {
             let mut return_vector = vec![];
             for arg in args {
-                let exprs = get_column_name(arg);
-                // TODO: Break out into separate function
-                match exprs {
-                    Some(expr) => {
-                        for e in expr {
-                            return_vector.push(e);
-                        }
-                    }
-                    None => (),
-                }
+                return_vector = push_column_names(arg, &return_vector);
             }
             Some(return_vector)
         }
         Expr::Sort { expr, .. } => {
             let mut return_vector = vec![];
-            let exprs = get_column_name(&*expr.clone());
-            // TODO: Break out into separate function
-            match exprs {
-                Some(expr) => {
-                    for e in expr {
-                        return_vector.push(e);
-                    }
-                }
-                None => (),
-            }
+            return_vector = push_column_names(&expr, &return_vector);
             Some(return_vector)
         }
         Expr::Alias(a, _) => {
             let mut return_vector = vec![];
-            let exprs = get_column_name(&*a.clone());
-            // TODO: Break out into separate function
-            match exprs {
-                Some(expr) => {
-                    for e in expr {
-                        return_vector.push(e);
-                    }
-                }
-                None => (),
-            }
+            return_vector = push_column_names(&a, &return_vector);
             Some(return_vector)
         }
         Expr::Case(c) => {
             let mut return_vector = vec![];
-            let case_expr = c.expr.clone();
-            match case_expr {
-                Some(ce) => {
-                    let exprs = get_column_name(&*ce.clone());
-                    // TODO: Break out into separate function
-                    match exprs {
-                        Some(expr) => {
-                            for e in expr {
-                                return_vector.push(e);
-                            }
-                        }
-                        None => (),
-                    }
-                }
-                None => (),
+
+            let case_expr = &c.expr;
+            if let Some(ce) = case_expr {
+                return_vector = push_column_names(&ce, &return_vector);
             }
 
             // Vec<(Box<Expr>, Box<Expr>)>
-            let when_then_expr = c.when_then_expr.clone();
+            let when_then_expr = &c.when_then_expr;
             for wte in when_then_expr {
-                let wte0 = wte.0;
-                let exprs0 = get_column_name(&*wte0.clone());
-                // TODO: Break out into separate function
-                match exprs0 {
-                    Some(expr) => {
-                        for e in expr {
-                            return_vector.push(e);
-                        }
-                    }
-                    None => (),
-                }
-                let wte1 = wte.1;
-                let exprs1 = get_column_name(&*wte1.clone());
-                // TODO: Break out into separate function
-                match exprs1 {
-                    Some(expr) => {
-                        for e in expr {
-                            return_vector.push(e);
-                        }
-                    }
-                    None => (),
-                }
+                let wte0 = &wte.0;
+                return_vector = push_column_names(wte0, &return_vector);
+
+                let wte1 = &wte.1;
+                return_vector = push_column_names(wte1, &return_vector);
             }
 
-            let else_expr = c.else_expr.clone();
-            match else_expr {
-                Some(ce) => {
-                    let exprs = get_column_name(&*ce.clone());
-                    // TODO: Break out into separate function
-                    match exprs {
-                        Some(expr) => {
-                            for e in expr {
-                                return_vector.push(e);
-                            }
-                        }
-                        None => (),
-                    }
-                }
-                None => (),
+            let else_expr = &c.else_expr;
+            if let Some(ce) = else_expr {
+                return_vector = push_column_names(&ce, &return_vector);
             }
+
             Some(return_vector)
         }
-        _ => None
+        _ => None,
     }
+}
+
+fn push_column_names(column: &Expr, vector: &Vec<Expr>) -> Vec<Expr> {
+    let mut return_vector = vector.clone();
+    let exprs = get_column_name(column);
+    if let Some(expr) = exprs {
+        for e in expr {
+            return_vector.push(e);
+        }
+    }
+    return_vector
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use arrow::datatypes::{DataType, Field, Schema};
+    use datafusion_expr::{
+        col,
+        logical_plan::{builder::LogicalTableSource, JoinType, LogicalPlanBuilder},
+        sum,
+    };
+
+    use super::*;
+
+    /// Optimize with just the filter_columns_post_join rule
+    fn optimized_plan_eq(plan: &LogicalPlan, expected1: &str, expected2: &str) -> bool {
+        let rule = FilterColumnsPostJoin::new();
+        let optimized_plan = rule
+            .optimize(plan, &mut OptimizerConfig::new())
+            .expect("failed to optimize plan");
+        let formatted_plan = format!("{}", optimized_plan.display_indent());
+
+        if formatted_plan == expected1 || formatted_plan == expected2 {
+            true
+        } else {
+            false
+        }
+    }
+
     #[test]
-    // TODO: Implement
     fn test_single_join() -> Result<()> {
+        // Projection: SUM(df.a), df2.b
+        //   Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]
+        //     Inner Join: df.c = df2.c
+        //       TableScan: df
+        //       TableScan: df2
+        let plan = LogicalPlanBuilder::from(test_table_scan("df", "a"))
+            .join(
+                &LogicalPlanBuilder::from(test_table_scan("df2", "b")).build()?,
+                JoinType::Inner,
+                (vec!["c"], vec!["c"]),
+                None,
+            )?
+            .aggregate(vec![col("df2.b")], vec![sum(col("df.a"))])?
+            .project(vec![sum(col("df.a")), col("df2.b")])?
+            .build()?;
+
+        let expected1 = "Projection: SUM(df.a), df2.b\
+        \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
+        \n    Projection: df.a, df2.b\
+        \n      Inner Join: df.c = df2.c\
+        \n        TableScan: df\
+        \n        TableScan: df2";
+
+        let expected2 = "Projection: SUM(df.a), df2.b\
+        \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
+        \n    Projection: df2.b, df.a\
+        \n      Inner Join: df.c = df2.c\
+        \n        TableScan: df\
+        \n        TableScan: df2";
+
+        assert_eq!(optimized_plan_eq(&plan, expected1, expected2), true);
+
         Ok(())
     }
-    // TODO: Do we need this?
-    fn test_single_join_with_aliases() -> Result<()> {
-        Ok(())
+
+    /// Create a LogicalPlanBuilder representing a scan of a table with the provided name and schema.
+    /// This is mostly used for testing and documentation.
+    pub fn table_scan(
+        name: Option<&str>,
+        table_schema: &Schema,
+        projection: Option<Vec<usize>>,
+    ) -> Result<LogicalPlanBuilder> {
+        let tbl_schema = Arc::new(table_schema.clone());
+        let table_source = Arc::new(LogicalTableSource::new(tbl_schema));
+        LogicalPlanBuilder::scan(name.unwrap_or("test"), table_source, projection)
     }
-    // TODO: Implement
-    fn test_multiple_joins() -> Result<()> {
-        Ok(())
-    }
-    // TODO: Do we need this?
-    fn test_multiple_joins_with_aliases() -> Result<()> {
-        Ok(())
+
+    fn test_table_scan(table_name: &str, column_name: &str) -> LogicalPlan {
+        let schema = Schema::new(vec![
+            Field::new(column_name, DataType::UInt32, false),
+            Field::new("c", DataType::UInt32, false),
+        ]);
+        table_scan(Some(table_name), &schema, None)
+            .expect("creating scan")
+            .build()
+            .expect("building plan")
     }
 }
