@@ -2,7 +2,7 @@ def get_cpu_classes():
     cpu_classes = {
         # From: https://scikit-learn.org/stable/modules/classes.html
         # sklearn.base: Base classes
-        "BaseEstimator": "sklearn.base.Estimator",
+        "BaseEstimator": "sklearn.base.BaseEstimator",
         "BiclusterMixin": "sklearn.base.BiclusterMixin",
         "ClassifierMixin": "sklearn.base.ClassifierMixin",
         "ClusterMixin": "sklearn.base.ClusterMixin",
@@ -353,11 +353,11 @@ def get_gpu_classes():
         "MissingIndicator": "cuml.preprocessing.MissingIndicator",
         "KBinsDiscretizer": "cuml.preprocessing.KBinsDiscretizer",
         "FunctionTransformer": "cuml.preprocessing.FunctionTransformer",
-        "ColumnTransformer": "cuml.preprocessing.ColumnTransformer",
+        "ColumnTransformer": "cuml.compose.ColumnTransformer",
         "GridSearchCV": "sklearn.model_selection.GridSearchCV",
         "Pipeline": "sklearn.pipeline.Pipeline",
         # Other
-        "UniversalBase": "cuml.experimental.common.base.UniversalBase",
+        # "UniversalBase": "cuml.experimental.common.base.UniversalBase",
         "Lars": "cuml.experimental.linear_model.lars.Lars",
         "TfidfVectorizer": "cuml.feature_extraction._tfidf_vectorizer.TfidfVectorizer",
         "CountVectorizer": "cuml.feature_extraction._vectorizers.CountVectorizer",
@@ -373,9 +373,10 @@ def get_gpu_classes():
         "TargetEncoder": "cuml.preprocessing.TargetEncoder",
         "PorterStemmer": "cuml.preprocessing.text.stem.porter_stemmer.PorterStemmer",
         # XGBoost
+        "LGBMClassifier": "lightgbm.LGBMClassifier",  # not compatible on GPU
         "XGBRegressor": "xgboost.XGBRegressor",
         "DaskXGBRegressor": "xgboost.dask.DaskXGBRegressor",
-        # "XGBClassifier": "xgboost.XGBClassifier",
-        # "DaskXGBClassifier": "xgboost.dask.DaskXGBClassifier",
+        "XGBClassifier": "xgboost.XGBClassifier",  # not compatible on GPU
+        "DaskXGBClassifier": "xgboost.dask.DaskXGBClassifier",  # not compatible on GPU
     }
     return gpu_classes

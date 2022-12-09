@@ -1,12 +1,13 @@
 import os
 import pickle
+import sys
 
 import joblib
 import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from tests.integration.fixtures import skip_if_external_scheduler
+from tests.integration.fixtures import client, gpu_client, skip_if_external_scheduler
 from tests.utils import assert_eq
 
 try:
@@ -58,6 +59,7 @@ def gpu_training_df(c):
         df = timeseries(freq="1d").reset_index(drop=True)
         df = dask_cudf.from_dask_dataframe(df)
         c.create_table("timeseries", input_table=df)
+
     return None
 
 
@@ -67,7 +69,7 @@ def test_training_and_prediction(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
@@ -77,15 +79,15 @@ def test_training_and_prediction(c, training_df):
         )
     """
     )
-
     check_trained_model(c)
 
 
 @pytest.mark.gpu
 def test_cuml_training_and_prediction(c, gpu_training_df):
-    model_query = """
+    c.sql(
+        """
         CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'cuml.linear_model.LogisticRegression',
+            model_class = 'LogisticRegression',
             wrap_predict = True,
             wrap_fit = False,
             target_column = 'target'
@@ -93,50 +95,50 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
             SELECT x, y, x*y > 0 AS target
             FROM timeseries
         )
-        """
-    c.sql(model_query)
+    """
+    )
     check_trained_model(c)
 
 
 @pytest.mark.gpu
 @skip_if_external_scheduler
 def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
-
-    model_query = """
+    c.sql(
+        """
         CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'cuml.dask.linear_model.LinearRegression',
+            model_class = 'LinearRegression',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y AS target
             FROM timeseries
         )
-        """
-    c.sql(model_query)
+    """)
     check_trained_model(c)
 
 
 @skip_if_external_scheduler
 @pytest.mark.gpu
 def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
-    model_query = """
+    c.sql(
+        """
     CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'xgboost.dask.DaskXGBRegressor',
+        model_class = 'DaskXGBRegressor',
         target_column = 'target',
         tree_method= 'gpu_hist'
     ) AS (
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """
-    c.sql(model_query)
+    """)
     check_trained_model(c)
 
 
 @pytest.mark.gpu
 def test_xgboost_training_prediction(c, gpu_training_df):
-    model_query = """
+    c.sql(
+        """
     CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'xgboost.XGBRegressor',
+        model_class = 'XGBRegressor',
         wrap_predict = True,
         target_column = 'target',
         tree_method= 'gpu_hist'
@@ -144,18 +146,24 @@ def test_xgboost_training_prediction(c, gpu_training_df):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """
-    c.sql(model_query)
+    """)
     check_trained_model(c)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-def test_clustering_and_prediction(c, training_df):
+@pytest.mark.parametrize(
+    "df,client",
+    [
+        (training_df, None),
+        pytest.param(gpu_training_df, gpu_client, marks=pytest.mark.gpu),
+    ],
+)
+def test_clustering_and_prediction(c, df, client):
     c.sql(
         """
         CREATE MODEL my_model WITH (
-            model_class = 'sklearn.cluster.KMeans'
+            model_class = 'KMeans'
         ) AS (
             SELECT x, y
             FROM timeseries
@@ -163,24 +171,6 @@ def test_clustering_and_prediction(c, training_df):
         )
     """
     )
-
-    check_trained_model(c)
-
-
-@pytest.mark.gpu
-def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
-    c.sql(
-        """
-        CREATE MODEL my_model WITH (
-            model_class = 'cuml.dask.cluster.KMeans'
-        ) AS (
-            SELECT x, y
-            FROM timeseries
-            LIMIT 100
-        )
-    """
-    )
-
     check_trained_model(c)
 
 
@@ -190,7 +180,7 @@ def test_create_model_with_prediction(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
@@ -204,7 +194,7 @@ def test_create_model_with_prediction(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model2 WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
@@ -225,7 +215,7 @@ def test_iterative_and_prediction(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model WITH (
-            model_class = 'sklearn.linear_model.SGDClassifier',
+            model_class = 'SGDClassifier',
             wrap_fit = True,
             target_column = 'target',
             fit_kwargs = ( classes = ARRAY [0, 1] )
@@ -236,7 +226,6 @@ def test_iterative_and_prediction(c, training_df):
         )
     """
     )
-
     check_trained_model(c)
 
 
@@ -246,7 +235,7 @@ def test_show_models(c, training_df):
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
@@ -256,10 +245,11 @@ def test_show_models(c, training_df):
         )
     """
     )
+
     c.sql(
         """
         CREATE MODEL my_model2 WITH (
-            model_class = 'sklearn.cluster.KMeans'
+            model_class = 'KMeans'
         ) AS (
             SELECT x, y
             FROM timeseries
@@ -267,10 +257,11 @@ def test_show_models(c, training_df):
         )
     """
     )
+
     c.sql(
         """
         CREATE MODEL my_model3 WITH (
-            model_class = 'sklearn.linear_model.SGDClassifier',
+            model_class = 'SGDClassifier',
             wrap_fit = True,
             target_column = 'target',
             fit_kwargs = ( classes = ARRAY [0, 1] )
@@ -281,6 +272,7 @@ def test_show_models(c, training_df):
         )
     """
     )
+
     result = c.sql("SHOW MODELS")
     expected = pd.DataFrame(["my_model1", "my_model2", "my_model3"], columns=["Models"])
 
@@ -478,7 +470,7 @@ def test_describe_model(c, training_df):
     c.sql(
         """
         CREATE MODEL ex_describe_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
@@ -521,7 +513,7 @@ def test_export_model(c, training_df, tmpdir):
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -530,6 +522,7 @@ def test_export_model(c, training_df, tmpdir):
         )
     """
     )
+
     # Happy flow
     temporary_file = os.path.join(tmpdir, "pickle_model.pkl")
     c.sql(
@@ -545,6 +538,7 @@ def test_export_model(c, training_df, tmpdir):
         pickle.load(open(str(temporary_file), "rb")).__class__.__name__
         == "GradientBoostingClassifier"
     )
+
     temporary_file = os.path.join(tmpdir, "model.joblib")
     c.sql(
         """EXPORT MODEL my_model with (
@@ -581,7 +575,7 @@ def test_mlflow_export(c, training_df, tmpdir):
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -590,6 +584,7 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
     """
     )
+
     temporary_dir = os.path.join(tmpdir, "mlflow")
     c.sql(
         """EXPORT MODEL my_model with (
@@ -599,6 +594,7 @@ def test_mlflow_export(c, training_df, tmpdir):
             temporary_dir
         )
     )
+
     # for sklearn compatible model
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
@@ -618,6 +614,7 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
     """
     )
+
     temporary_dir = os.path.join(tmpdir, "non_sklearn")
     with pytest.raises(NotImplementedError):
         c.sql(
@@ -636,10 +633,11 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
+
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
-            model_class = 'xgboost.dask.DaskXGBClassifier',
+            model_class = 'DaskXGBClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -648,6 +646,7 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
         )
     """
     )
+
     temporary_dir = os.path.join(tmpdir, "mlflow_xgboost")
     c.sql(
         """EXPORT MODEL my_model_xgboost with (
@@ -657,6 +656,7 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
             temporary_dir
         )
     )
+
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "DaskXGBClassifier"
@@ -667,10 +667,11 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     # Test only when mlflow & lightgbm was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
+
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
-            model_class = 'lightgbm.LGBMClassifier',
+            model_class = 'LGBMClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -679,6 +680,7 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
         )
     """
     )
+
     temporary_dir = os.path.join(tmpdir, "mlflow_lightgbm")
     c.sql(
         """EXPORT MODEL my_model_lightgbm with (
@@ -688,6 +690,7 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
             temporary_dir
         )
     )
+
     assert (
         mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
         == "LGBMClassifier"
@@ -697,16 +700,14 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
 def test_ml_experiment(c, client, training_df):
-
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'model_class' " "or 'automl_class' parameter.",
     ):
-
         c.sql(
             """
         CREATE EXPERIMENT my_exp WITH (
-            experiment_class = 'sklearn.model_selection.GridSearchCV',
+            experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -717,6 +718,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
         )
+
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'experiment_class' "
@@ -725,7 +727,7 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
         CREATE EXPERIMENT my_exp WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -746,7 +748,7 @@ def test_ml_experiment(c, client, training_df):
             """
             CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
             model_class = 'that.is.not.a.python.class',
-            experiment_class = 'sklearn.model_selection.GridSearchCV',
+            experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -766,7 +768,7 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
             CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
-            model_class =  'sklearn.ensemble.GradientBoostingClassifier',
+            model_class =  'GradientBoostingClassifier',
             experiment_class = 'that.is.not.a.python.class',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
@@ -778,6 +780,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
         )
+
     with pytest.raises(
         ValueError,
         match="Can not import automl model that.is.not.a.python.class. "
@@ -804,12 +807,13 @@ def test_ml_experiment(c, client, training_df):
             )
             """
         )
+
     # happy flow
     c.sql(
         """
         CREATE EXPERIMENT my_exp WITH (
-        model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-        experiment_class = 'sklearn.model_selection.GridSearchCV',
+        model_class = 'GradientBoostingClassifier',
+        experiment_class = 'GridSearchCV',
         tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                            max_depth = ARRAY [3,4,5,10]),
         target_column = 'target'
@@ -830,8 +834,8 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
             CREATE EXPERIMENT my_exp WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'sklearn.model_selection.GridSearchCV',
+            model_class = 'GradientBoostingClassifier',
+            experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -842,11 +846,12 @@ def test_ml_experiment(c, client, training_df):
         )
             """
         )
+
     c.sql(
         """
         CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'sklearn.model_selection.GridSearchCV',
+            model_class = 'GradientBoostingClassifier',
+            experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -858,11 +863,12 @@ def test_ml_experiment(c, client, training_df):
 
         """
     )
+
     c.sql(
         """
         CREATE OR REPLACE EXPERIMENT my_exp WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'sklearn.model_selection.GridSearchCV',
+            model_class = 'GradientBoostingClassifier',
+            experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
             target_column = 'target'
@@ -882,8 +888,8 @@ def test_ml_experiment(c, client, training_df):
         c.sql(
             """
             CREATE EXPERIMENT my_exp1 WITH (
-                model_class = 'sklearn.cluster.KMeans',
-                experiment_class = 'sklearn.model_selection.RandomizedSearchCV',
+                model_class = 'KMeans',
+                experiment_class = 'RandomizedSearchCV',
                 tune_parameters = (n_clusters = ARRAY [3,4,16],tol = ARRAY [0.1,0.01,0.001],
                                    max_iter = ARRAY [3,4,5,10])
             ) AS (
@@ -899,6 +905,7 @@ def test_ml_experiment(c, client, training_df):
 @skip_if_external_scheduler
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
+
     # currently tested with tpot==
     c.sql(
         """
@@ -913,6 +920,7 @@ def test_experiment_automl_classifier(c, client, training_df):
         )
         """
     )
+
     assert (
         "my_automl_exp1" in c.schema[c.schema_name].models
     ), "Best model was not registered"
@@ -924,6 +932,7 @@ def test_experiment_automl_classifier(c, client, training_df):
 @skip_if_external_scheduler
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
+
     # test regressor
     c.sql(
         """
@@ -943,6 +952,7 @@ def test_experiment_automl_regressor(c, client, training_df):
         )
         """
     )
+
     assert (
         "my_automl_exp2" in c.schema[c.schema_name].models
     ), "Best model was not registered"
@@ -962,7 +972,7 @@ def test_predict_with_nullable_types(c):
     )
     c.create_table("train_set", df)
 
-    model_class = "'sklearn.linear_model.LogisticRegression'"
+    model_class = "'LogisticRegression'"
 
     c.sql(
         f"""
@@ -1028,126 +1038,68 @@ def test_predict_with_nullable_types(c):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
-def test_agnostic_cpu(c, training_df, client):
-    c.sql(
-        """
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_ml_class_mappings(gpu):
+    from dask_sql.physical.rel.custom.ml_classes import get_cpu_classes, get_gpu_classes
+    from dask_sql.utils import import_class
+
+    try:
+        import lightgbm
+    except KeyError:
+        lightgbm = None
+
+    if gpu:
+        classes_dict = get_gpu_classes()
+    else:
+        from sklearn.experimental import enable_iterative_imputer, enable_halving_search_cv
+        classes_dict = get_cpu_classes()
+
+    for key in classes_dict:
+        if not ("XGB" in key and xgboost is None) and not ("LGBM" in key and lightgbm is None):
+            import_class(classes_dict[key])
+
+
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
+@pytest.mark.parametrize(
+    "gpu,df,cli",
+    [
+        (False, training_df, client),
+        pytest.param(True, gpu_training_df, gpu_client, marks=pytest.mark.gpu),
+    ],
+)
+@pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
+)
+def test_agnostic_xgb_models(c, gpu, df, cli):
+    # XGBClassifiers error on GPU
+    if not gpu:
+        c.sql("""
         CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'GradientBoostingClassifier',
-            wrap_predict = True,
+            model_class = 'DaskXGBClassifier',
             target_column = 'target'
         ) AS (
-            SELECT x, y, x*y > 0 AS target
+            SELECT x, y, x*y > 0  AS target
             FROM timeseries
             LIMIT 100
         )
-    """
-    )
-    check_trained_model(c)
+        """)
+        check_trained_model(c)
 
-    model_query = """
+        c.sql("""
         CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LogisticRegression',
-            wrap_predict = True,
-            wrap_fit = False,
+            model_class = 'XGBClassifier',
             target_column = 'target'
         ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-        )
-        """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    model_query = """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LinearRegression',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y AS target
-            FROM timeseries
-        )
-        """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    c.sql(
-        """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'KMeans'
-        ) AS (
-            SELECT x, y
+            SELECT x, y, x*y > 0  AS target
             FROM timeseries
             LIMIT 100
         )
-    """
-    )
-    check_trained_model(c)
+        """)
+        check_trained_model(c)
 
-    c.sql(
-        """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'SGDClassifier',
-            wrap_fit = True,
-            target_column = 'target',
-            fit_kwargs = ( classes = ARRAY [0, 1] )
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
-        )
-    """
-    )
-    check_trained_model(c)
-
-    c.sql(
-        """
-        CREATE OR REPLACE EXPERIMENT my_exp WITH (
-        model_class = 'GradientBoostingClassifier',
-        experiment_class = 'GridSearchCV',
-        tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
-                           max_depth = ARRAY [3,4,5,10]),
-        target_column = 'target'
-    ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
-        )
-        """
-    )
-    check_trained_model(c, "my_exp")
-
-    c.sql(
-        """
-        CREATE OR REPLACE EXPERIMENT my_exp WITH (
-        model_class = 'GradientBoostingClassifier',
-        experiment_class = 'RandomizedSearchCV',
-        tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
-                           max_depth = ARRAY [3,4,5,10]),
-        target_column = 'target'
-    ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
-        )
-        """
-    )
-    check_trained_model(c, "my_exp")
-
-    c.sql(
-        """
-        CREATE MODEL IF NOT EXISTS my_model_lightgbm WITH (
-            model_class = 'LGBMClassifier',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
-        )
-    """
-    )
-    check_trained_model(c, "my_model_lightgbm")
-
-    model_query = """
+    c.sql("""
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'DaskXGBRegressor',
         target_column = 'target'
@@ -1155,24 +1107,10 @@ def test_agnostic_cpu(c, training_df, client):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """
-    c.sql(model_query)
+    """)
     check_trained_model(c)
 
-    model_query = """
-    CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'DaskXGBClassifier',
-        target_column = 'target'
-    ) AS (
-        SELECT x, y, x*y > 0  AS target
-        FROM timeseries
-        LIMIT 100
-    )
-    """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    model_query = """
+    c.sql("""
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'XGBRegressor',
         wrap_predict = True,
@@ -1181,88 +1119,5 @@ def test_agnostic_cpu(c, training_df, client):
         SELECT x, y, x*y  AS target
         FROM timeseries
     )
-    """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    model_query = """
-    CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'XGBClassifier',
-        target_column = 'target'
-    ) AS (
-        SELECT x, y, x*y > 0  AS target
-        FROM timeseries
-        LIMIT 100
-    )
-    """
-    c.sql(model_query)
-    check_trained_model(c)
-
-
-@pytest.mark.gpu
-def test_agnostic_gpu(c, gpu_training_df, gpu_client):
-    model_query = """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LogisticRegression',
-            wrap_predict = True,
-            wrap_fit = False,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-        )
-        """
-    c.sql(model_query)
-
-    model_query = """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LinearRegression',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y AS target
-            FROM timeseries
-        )
-        """
-    c.sql(model_query)
-
-    c.sql(
-        """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'KMeans'
-        ) AS (
-            SELECT x, y
-            FROM timeseries
-            LIMIT 100
-        )
-    """
-    )
-
-    # TODO: Add experiment_class tests
-    # GPU experiment_class is not currently supported: https://github.com/dask-contrib/dask-sql/issues/943
-
-    model_query = """
-    CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'DaskXGBRegressor',
-        target_column = 'target',
-        tree_method= 'gpu_hist'
-    ) AS (
-        SELECT x, y, x*y  AS target
-        FROM timeseries
-    )
-    """
-    c.sql(model_query)
-    check_trained_model(c)
-
-    model_query = """
-    CREATE OR REPLACE MODEL my_model WITH (
-        model_class = 'XGBRegressor',
-        wrap_predict = True,
-        target_column = 'target',
-        tree_method= 'gpu_hist'
-    ) AS (
-        SELECT x, y, x*y  AS target
-        FROM timeseries
-    )
-    """
-    c.sql(model_query)
+    """)
     check_trained_model(c)

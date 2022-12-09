@@ -13,11 +13,6 @@ if TYPE_CHECKING:
     import dask_sql
     from dask_sql.rust import LogicalPlan
 
-try:
-    import dask_cudf
-except ImportError:
-    dask_cudf = None
-
 logger = logging.getLogger(__name__)
 
 cpu_classes = get_cpu_classes()
@@ -159,13 +154,9 @@ class CreateExperimentPlugin(BaseRelPlugin):
             if type(training_df) == dd.core.DataFrame:
                 model_class = cpu_classes.get(model_class, model_class)
                 experiment_class = cpu_classes.get(experiment_class, experiment_class)
-            elif (
-                "cudf" in str(training_df._partition_type)
-            ):
-                if model_class in gpu_classes:
-                    model_class = gpu_classes[model_class]
-                if experiment_class in gpu_classes:
-                    experiment_class = gpu_classes[experiment_class]
+            elif "cudf" in str(training_df._partition_type):
+                model_class = gpu_classes.get(model_class, model_class)
+                experiment_class = gpu_classes.get(experiment_class, experiment_class)
 
             try:
                 ModelClass = import_class(model_class)
