@@ -1055,8 +1055,8 @@ def test_ml_class_mappings(gpu):
         classes_dict = get_gpu_classes()
     else:
         from sklearn.experimental import (
-            enable_iterative_imputer,
             enable_halving_search_cv,
+            enable_iterative_imputer,
         )
 
         classes_dict = get_cpu_classes()
