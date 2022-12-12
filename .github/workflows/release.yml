@@ -2,6 +2,11 @@ name: Upload Python package
 on:
   release:
     types: [created]
+  pull_request:
+
+  concurrency:
+    group: release-${{ github.head_ref }}
+    cancel-in-progress: true
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -74,6 +79,7 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
+        if: github.event_name == 'release'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
