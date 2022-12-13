@@ -495,22 +495,24 @@ mod tests {
         TableScan: date_dim
     SubqueryAlias: dim2
       TableScan: date_dim
-  SubqueryAlias: dim3
-    TableScan: date_dim"#;
+  Filter: dim3.date_dim_b <= Int32(100)
+    SubqueryAlias: dim3
+      TableScan: date_dim"#;
         assert_eq!(expected_plan, formatted_plan);
         let rule = JoinReorder::default();
         let mut config = OptimizerConfig::default();
         let optimized_plan = rule.try_optimize(&plan, &mut config)?.unwrap();
         let formatted_plan = format!("{}", optimized_plan.display_indent());
-        let expected_plan = r#"Inner Join: fact.fact_d = dim3.date_dim_a
-  Inner Join: fact.fact_c = dim2.date_dim_a
-    Inner Join: fact.fact_b = dim1.date_dim_a
+        let expected_plan = r#"Inner Join: fact.fact_c = dim2.date_dim_a
+  Inner Join: fact.fact_b = dim1.date_dim_a
+    Inner Join: fact.fact_d = dim3.date_dim_a
       TableScan: fact
-      SubqueryAlias: dim1
-        TableScan: date_dim
-    SubqueryAlias: dim2
+      Filter: dim3.date_dim_b <= Int32(100)
+        SubqueryAlias: dim3
+          TableScan: date_dim
+    SubqueryAlias: dim1
       TableScan: date_dim
-  SubqueryAlias: dim3
+  SubqueryAlias: dim2
     TableScan: date_dim"#;
         assert_eq!(expected_plan, formatted_plan);
         Ok(())
@@ -552,31 +554,31 @@ mod tests {
     fn create_test_plan_with_aliases() -> Result<LogicalPlan> {
         let dim1 = aliased_plan(test_table_scan("date_dim", 100), "dim1");
         let dim2 = aliased_plan(test_table_scan("date_dim", 200), "dim2");
-        let dim3 = aliased_plan(test_table_scan("date_dim", 300), "dim3");
+        let dim3 = aliased_plan(test_table_scan("date_dim", 50), "dim3");
         let fact = test_table_scan("fact", 10000);
 
         // add a filter to one dimension
         let dim3 = LogicalPlanBuilder::from(dim3)
-            .filter(col("dim3_b").lt_eq(lit(100)))?
+            .filter(col("dim3.date_dim_b").lt_eq(lit(100)))?
             .build()?;
 
         LogicalPlanBuilder::from(fact)
             .join(
                 &dim1,
                 JoinType::Inner,
-                (vec!["fact_b"], vec!["date_dim_a"]),
+                (vec!["fact_b"], vec!["dim1.date_dim_a"]),
                 None,
             )?
             .join(
                 &dim2,
                 JoinType::Inner,
-                (vec!["fact_c"], vec!["date_dim_a"]),
+                (vec!["fact_c"], vec!["dim2.date_dim_a"]),
                 None,
             )?
             .join(
                 &dim3,
                 JoinType::Inner,
-                (vec!["fact_d"], vec!["date_dim_a"]),
+                (vec!["fact_d"], vec!["dim3.date_dim_a"]),
                 None,
             )?
             .build()
