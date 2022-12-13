@@ -1,23 +1,33 @@
 //! Join reordering based on the paper "Improving Join Reordering for Large Scale Distributed Computing"
 //! https://ieeexplore.ieee.org/document/9378281
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashSet;
 
-use datafusion_common::{Column, DataFusionError, Result};
+use datafusion_common::{Column, Result};
 use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
 use datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule};
 
 use crate::sql::table::DaskTableSource;
 
 pub struct JoinReorder {
-    /// Ratio of the size of the largest Dimension table to Fact table
+    /// Maximum number of fact tables to allow in a join
+    max_fact_tables: usize,
+    /// Ratio of the size of the dimension tables to fact tables
     fact_dimension_ratio: f64,
+    /// Whether to preserve user-defined order of unfiltered dimensions
+    preserve_user_order: bool,
+    /// Constant to use when determining the number of rows produced by a
+    /// filtered relation
+    filter_selectivity: f64,
 }
 
 impl Default for JoinReorder {
     fn default() -> Self {
         Self {
+            max_fact_tables: 2,
             fact_dimension_ratio: 0.3,
+            preserve_user_order: true,
+            filter_selectivity: 1.0,
         }
     }
 }
@@ -32,11 +42,12 @@ impl OptimizerRule for JoinReorder {
         plan: &LogicalPlan,
         _config: &mut OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
+        //TODO is this transformUp or transformDown?
+        // TODO too many clones - use Box/Rc/Arc to reduce
         match plan {
             LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
-                // we can only reorder simple joins, as defined in `is_simple_join`
-                if !is_simple_join(join) {
-                    println!("Not a simple join");
+                if !is_supported_join(join) {
+                    println!("Not a supported join");
                     return Ok(None);
                 }
                 println!(
@@ -44,41 +55,35 @@ impl OptimizerRule for JoinReorder {
                     plan.display_indent()
                 );
 
-                // get a list of joins, un-nested
-                let (tree_type, joins) = unnest_joins(join)?;
-                for join in &joins {
-                    println!("Join: {} to {} on {:?}", join.left.name, join.right.name, join.on);
-                }
+                // extract the relations and join conditions
+                let (rels, mut conds) = extract_inner_joins(plan);
 
-                let (fact, dims) = extract_fact_dimensions(&joins);
-                if fact.is_none() {
-                    println!("There is no dominant fact table");
+                // split rels into facts and dims
+                let rels: Vec<Relation> = rels.into_iter().map(|rel| Relation::new(rel)).collect();
+                let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
+                let mut facts = vec![];
+                let mut dims = vec![];
+                for rel in &rels {
+                    if rel.size as f64 / largest_rel > self.fact_dimension_ratio {
+                        facts.push(rel.clone());
+                    } else {
+                        dims.push(rel.clone());
+                    }
+                }
+                println!("There are {} facts and {} dims", facts.len(), dims.len());
+                if facts.is_empty() {
                     return Ok(None);
                 }
-                let fact = fact.unwrap(); // unwrap here is safe due to previous check
-
-                let n = dims.len();
 
                 let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
                 let mut filtered_dimensions = get_filtered_dimensions(&dims);
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
-
                 for dim in &unfiltered_dimensions {
-                    println!(
-                        "UNFILTERED: {} {} {}",
-                        dim.name,
-                        dim.size,
-                        dim.plan.display_indent()
-                    );
+                    println!("UNFILTERED: {} {}", dim.size, dim.plan.display_indent());
                 }
 
                 for dim in &filtered_dimensions {
-                    println!(
-                        "FILTERED: {} {} {}",
-                        dim.name,
-                        dim.size,
-                        dim.plan.display_indent()
-                    );
+                    println!("FILTERED: {} {}", dim.size, dim.plan.display_indent());
                 }
 
                 // Merge both the lists of dimensions by giving user order
@@ -94,7 +99,7 @@ impl OptimizerRule for JoinReorder {
                 // the user order intact when unsure about reordering to make sure
                 // regressions are minimized.
                 let mut result = vec![];
-                for _ in 0..n {
+                while filtered_dimensions.len() > 0 || unfiltered_dimensions.len() > 0 {
                     if filtered_dimensions.len() > 0 && unfiltered_dimensions.len() > 0 {
                         if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
                             result.push(filtered_dimensions.remove(0));
@@ -110,14 +115,31 @@ impl OptimizerRule for JoinReorder {
                 assert!(filtered_dimensions.is_empty());
                 assert!(unfiltered_dimensions.is_empty());
 
-                let optimized = build_join_tree(tree_type, &joins, &fact, &result)?;
+                let dim_plans: Vec<LogicalPlan> =
+                    result.iter().map(|rel| rel.plan.clone()).collect();
+                let optimized = if facts.len() == 1 {
+                    build_join_tree(&facts[0].plan, &dim_plans, &mut conds)?
+                } else {
+                    // build one join tree for each fact table
+                    let fact_dim_joins = facts
+                        .iter()
+                        .map(|f| build_join_tree(&f.plan, &dim_plans, &mut conds))
+                        .collect::<Result<Vec<_>>>()?;
+                    // join the trees together
+                    build_join_tree(&fact_dim_joins[0], &fact_dim_joins[1..], &mut conds)?
+                };
 
-                println!("Optimized: {}", optimized.display_indent());
-
-                return Ok(Some(optimized));
+                if conds.is_empty() {
+                    println!("Optimized: {}", optimized.display_indent());
+                    return Ok(Some(optimized));
+                } else {
+                    println!("Did not use all join conditions");
+                    return Ok(None);
+                }
             }
             _ => {
                 println!("not a join");
+                // TODO do we need to manually recurse here
                 Ok(Some(utils::optimize_children(self, plan, _config)?))
             }
         }
@@ -131,9 +153,7 @@ impl OptimizerRule for JoinReorder {
 
 /// Represents a Fact or Dimension table, possibly nested in a filter.
 #[derive(Clone, Debug)]
-struct JoinInput {
-    /// Name of the fact or dimension table represented by this join input
-    name: String,
+struct Relation {
     /// Plan containing the table scan for the fact or dimension table. May also contain
     /// Filter and SubqueryAlias.
     plan: LogicalPlan,
@@ -141,10 +161,10 @@ struct JoinInput {
     size: usize,
 }
 
-impl JoinInput {
-    /// Get the name of the fact or dimension table represented by this join input
-    fn name(&self) -> &str {
-        &self.name
+impl Relation {
+    fn new(plan: LogicalPlan) -> Self {
+        let size = get_table_size(&plan).unwrap_or(100);
+        Self { plan, size }
     }
 
     /// Determine if this plan contains any filters
@@ -175,19 +195,138 @@ fn has_filter(plan: &LogicalPlan) -> bool {
     }
 }
 
-/// Simple join between two relations (no nested joins)
-#[derive(Debug)]
-struct SimpleJoin {
-    left: JoinInput,
-    right: JoinInput,
-    on: Vec<(Column, Column)>,
-    //TODO track join filters here as well ?
+/// Extracts items of consecutive inner joins and join conditions.
+/// This method works for bushy trees and left/right deep trees.
+fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Column, Column)>) {
+    fn _extract_inner_joins(
+        plan: &LogicalPlan,
+        rels: &mut Vec<LogicalPlan>,
+        conds: &mut HashSet<(Column, Column)>,
+    ) {
+        match plan {
+            LogicalPlan::Join(join)
+                if join.join_type == JoinType::Inner && join.filter.is_none() =>
+            {
+                _extract_inner_joins(&join.left, rels, conds);
+                _extract_inner_joins(&join.right, rels, conds);
+                // TODO could also handle join conditions here?
+
+                for (l, r) in &join.on {
+                    conds.insert((l.clone(), r.clone()));
+                }
+            }
+            _ => {
+                if find_join(plan).is_some() {
+                    for x in plan.inputs() {
+                        _extract_inner_joins(x, rels, conds);
+                    }
+                } else {
+                    // leaf node
+                    rels.push(plan.clone())
+                }
+            }
+        }
+    }
+
+    let mut rels = vec![];
+    let mut conds = HashSet::new();
+    _extract_inner_joins(plan, &mut rels, &mut conds);
+    (rels, conds)
 }
 
-#[derive(Debug)]
-enum TreeType {
-    LeftDeep,
-    RightDeep,
+/// Simple Join Constraint: Only INNER Joins are consid-
+/// ered which can be composed of other Joins too. But apart
+/// from the Joins, none of the operator in both the left and
+/// right side of the join should be non-deterministic, or have
+/// output greater than the input to the operator. For instance,
+/// Filter would be allowed operator as it reduces the output
+/// over input, but a project adding extra column will not
+/// be allowed. It is difficult to reason about operators that
+/// add extra to output when dealing with just table sizes, so
+/// instead we only allowed operators from selected set of
+/// operators
+fn is_supported_join(join: &Join) -> bool {
+    //TODO check for deterministic join/filter expressions
+
+    fn is_supported_rel(plan: &LogicalPlan) -> bool {
+        // println!("is_simple_rel? {}", plan.display_indent());
+        match plan {
+            LogicalPlan::Join(join) => {
+                join.join_type == JoinType::Inner
+                    && join.filter.is_none()
+                    && is_supported_rel(&join.left)
+                    && is_supported_rel(&join.right)
+            }
+            LogicalPlan::Filter(filter) => is_supported_rel(filter.input()),
+            LogicalPlan::SubqueryAlias(sq) => is_supported_rel(&sq.input),
+            LogicalPlan::TableScan(_) => true,
+            _ => {
+                println!("not a simple join: {}", plan.display_indent());
+                false
+            }
+        }
+    }
+
+    is_supported_rel(&LogicalPlan::Join(join.clone()))
+}
+
+/// find first (top-level) join in plan
+fn find_join(plan: &LogicalPlan) -> Option<Join> {
+    match plan {
+        LogicalPlan::Join(join) => Some(join.clone()),
+        other => {
+            if other.inputs().len() == 0 {
+                None
+            } else {
+                for input in &other.inputs() {
+                    if let Some(join) = find_join(*input) {
+                        return Some(join);
+                    }
+                }
+                None
+            }
+        }
+    }
+}
+
+fn get_unfiltered_dimensions(dims: &[Relation]) -> Vec<Relation> {
+    dims.iter().filter(|t| !t.has_filter()).cloned().collect()
+}
+
+fn get_filtered_dimensions(dims: &[Relation]) -> Vec<Relation> {
+    dims.iter().filter(|t| t.has_filter()).cloned().collect()
+}
+
+fn build_join_tree(
+    fact: &LogicalPlan,
+    dims: &[LogicalPlan],
+    conds: &mut HashSet<(Column, Column)>,
+) -> Result<LogicalPlan> {
+    let mut b = LogicalPlanBuilder::from(fact.clone());
+    for dim in dims {
+        // find join keys between the fact and this dim
+        let mut join_keys = vec![];
+        for (l, r) in conds.iter() {
+            if (fact.schema().index_of_column(l).is_ok() && dim.schema().index_of_column(r).is_ok())
+                || fact.schema().index_of_column(r).is_ok()
+                    && dim.schema().index_of_column(l).is_ok()
+            {
+                join_keys.push((l.clone(), r.clone()));
+            }
+        }
+        if !join_keys.is_empty() {
+            let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
+            let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
+
+            for key in join_keys {
+                conds.remove(&key);
+            }
+
+            println!("Joining fact to dim on {:?} = {:?}", left_keys, right_keys);
+            b = b.join(&dim, JoinType::Inner, (left_keys, right_keys), None)?;
+        }
+    }
+    b.build()
 }
 
 fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
@@ -241,433 +380,6 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
     }
 }
 
-/// build a list of all joins
-fn unnest_joins(join: &Join) -> Result<(TreeType, Vec<SimpleJoin>)> {
-    fn unnest_joins_inner(
-        plan: &LogicalPlan,
-        joins: &mut Vec<SimpleJoin>,
-        left_count: &mut usize,
-        right_count: &mut usize,
-    ) -> Result<()> {
-        //TODO increment left_count and right_count depending on which side the nested join
-        // is, so we can determine if the join is LeftDeep, RightDeep, or something else
-
-        match plan {
-            LogicalPlan::Join(join) => {
-                let mut left_name = None;
-                let mut left_plan = None;
-                let mut right_name = None;
-                let mut right_plan = None;
-
-                if join.filter.is_some() {
-                    return Err(DataFusionError::Plan(
-                        "No support for joins with filters yet".to_string(),
-                    ));
-                }
-
-                for (l, r) in &join.on {
-                    // left and right could be in either order but we need to make sure the condition is between left and right
-                    if let Some((left_table_name, left_subplan)) =
-                        resolve_table_plan(&join.left, l)?
-                    {
-                        if let Some((right_table_name, right_subplan)) =
-                            resolve_table_plan(&join.right, r)?
-                        {
-                            //TODO if overwriting existing plan, check they match first
-                            left_name = Some(left_table_name);
-                            left_plan = Some(left_subplan);
-                            right_name = Some(right_table_name);
-                            right_plan = Some(right_subplan);
-                        } else {
-                            return Err(DataFusionError::Plan(format!(
-                                "Failed to unnest join: left={}, right={}",
-                                l, r
-                            )));
-                        }
-                    } else if let Some((left_table_name, left_subplan)) =
-                        resolve_table_plan(&join.right, l)?
-                    {
-                        if let Some((right_table_name, right_subplan)) =
-                            resolve_table_plan(&join.left, r)?
-                        {
-                            //TODO if overwriting existing plan, check they match first
-                            left_name = Some(left_table_name);
-                            left_plan = Some(left_subplan);
-                            right_name = Some(right_table_name);
-                            right_plan = Some(right_subplan);
-                        } else {
-                            return Err(DataFusionError::Plan(format!(
-                                "Failed to unnest join: left={}, right={}",
-                                l, r
-                            )));
-                        }
-                    }
-                }
-
-                let ll_size = get_table_size(left_plan.as_ref().unwrap()).unwrap();
-                let rr_size = get_table_size(right_plan.as_ref().unwrap()).unwrap();
-                let simple_join = SimpleJoin {
-                    left: JoinInput {
-                        name: left_name.unwrap(),
-                        plan: left_plan.unwrap().clone(),
-                        size: ll_size,
-                    },
-                    right: JoinInput {
-                        name: right_name.unwrap(),
-                        plan: right_plan.unwrap().clone(),
-                        size: rr_size,
-                    },
-                    on: join.on.clone(),
-                };
-
-                // println!("JOIN: {:?}", simple_join);
-
-                unnest_joins_inner(&join.left, joins, left_count, right_count)?;
-                unnest_joins_inner(&join.right, joins, left_count, right_count)?;
-
-                // add the join to the list after recursing into the children so that we
-                // preserve the user-defined order of joins
-                joins.push(simple_join);
-            }
-            other => {
-                for child in other.inputs() {
-                    unnest_joins_inner(child, joins, left_count, right_count)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    let mut left_count = 0;
-    let mut right_count = 0;
-    let mut joins = vec![];
-    unnest_joins_inner(
-        &LogicalPlan::Join(join.clone()),
-        &mut joins,
-        &mut left_count,
-        &mut right_count,
-    )?;
-
-    //println!("nest counts: left={}, right={}", left_count, right_count);
-
-    //TODO do not hard-code TreeType
-    Ok((TreeType::LeftDeep, joins))
-}
-
-/// Simple Join Constraint: Only INNER Joins are consid-
-/// ered which can be composed of other Joins too. But apart
-/// from the Joins, none of the operator in both the left and
-/// right side of the join should be non-deterministic, or have
-/// output greater than the input to the operator. For instance,
-/// Filter would be allowed operator as it reduces the output
-/// over input, but a project adding extra column will not
-/// be allowed. It is difficult to reason about operators that
-/// add extra to output when dealing with just table sizes, so
-/// instead we only allowed operators from selected set of
-/// operators
-fn is_simple_join(join: &Join) -> bool {
-    //TODO check for deterministic join/filter expressions
-
-    fn is_simple_rel(plan: &LogicalPlan) -> bool {
-        // println!("is_simple_rel? {}", plan.display_indent());
-        match plan {
-            LogicalPlan::Join(join) => {
-                join.join_type == JoinType::Inner
-                    && is_simple_rel(&join.left)
-                    && is_simple_rel(&join.right)
-            }
-            LogicalPlan::Filter(filter) => is_simple_rel(filter.input()),
-            LogicalPlan::SubqueryAlias(sq) => is_simple_rel(&sq.input),
-            LogicalPlan::TableScan(_) => true,
-            _ => {
-                println!("not a simple join: {}", plan.display_indent());
-                false
-            }
-        }
-    }
-
-    is_simple_rel(&LogicalPlan::Join(join.clone()))
-}
-
-/// Extract the fact table from the join, along with a list of dimension tables that
-/// join to the fact table
-fn extract_fact_dimensions(joins: &[SimpleJoin]) -> (Option<JoinInput>, Vec<JoinInput>) {
-    // at least half of joins should be inner joins involving one common table (the fact table)
-    // other tables being joined with fact table are considered dimension tables
-
-    // use Vec rather than HashSet to build list of unique table names because
-    // we need to preserve the order they appear in joins
-    let mut table_names_unique: Vec<String> = vec![];
-
-    let mut table_names = vec![];
-    let mut table_sizes = HashMap::new();
-    for join in joins {
-        if !table_names_unique.contains(&join.left.name) {
-            table_names_unique.push(join.left.name.clone());
-        }
-        if !table_names_unique.contains(&join.right.name) {
-            table_names_unique.push(join.right.name.clone());
-        }
-        table_names.push(join.left.name.clone());
-        table_names.push(join.right.name.clone());
-        table_sizes.insert(&join.left.name, join.left.size);
-        table_sizes.insert(&join.right.name, join.right.size);
-    }
-
-    // detect fact and dimension tables
-    let mut fact_table = None;
-    let mut fact_table_size = 0_usize;
-
-    for table_name in &table_names_unique {
-        let count = table_names
-            .iter()
-            .filter(|name| *name == table_name)
-            .count();
-        println!("{} = {}", table_name, count);
-        if count >= joins.len() / 2 {
-            let size = *table_sizes.get(table_name).unwrap_or(&0_usize);
-
-            println!("candidate fact table {} with size {}", table_name, size);
-            if fact_table.is_none() || size > fact_table_size {
-                fact_table = Some(table_name.clone());
-                fact_table_size = size;
-            }
-        }
-    }
-
-    if let Some(fact_table) = fact_table {
-        let dim_tables: Vec<String> = table_names_unique
-            .iter()
-            .filter(|name| *name != &fact_table)
-            .cloned()
-            .collect();
-        println!("fact table: {:?}", fact_table);
-        println!("dimension tables: {:?}", dim_tables);
-
-        //TODO check fact_dimension_ratio
-        let fact_table = get_plan(joins, &fact_table);
-        let dim_tables = dim_tables
-            .iter()
-            .map(|name| get_plan(joins, &name).unwrap())
-            .collect();
-        (fact_table, dim_tables)
-    } else {
-        (None, vec![])
-    }
-}
-
-fn get_plan(joins: &[SimpleJoin], name: &str) -> Option<JoinInput> {
-    for join in joins {
-        if join.left.name == name {
-            return Some(join.left.clone());
-        } else if join.right.name == name {
-            return Some(join.right.clone());
-        }
-    }
-    None
-}
-
-/// Find the leaf sub-plan in a join that contains the relation referenced by the specific
-/// column (which is used in a join expression), along with any Filter or SubqueryAlias nodes.
-///
-/// The returned plan should not contain any joins.
-fn resolve_table_plan(plan: &LogicalPlan, col: &Column) -> Result<Option<(String, LogicalPlan)>> {
-    // println!(
-    //     "Looking for column {} in plan: {}",
-    //     col,
-    //     plan.display_indent()
-    // );
-
-    fn get_table_scan_name(plan: &LogicalPlan, col: &Column) -> Option<String> {
-        match plan {
-            LogicalPlan::TableScan(scan) => {
-                if let Ok(_) = scan.projected_schema.index_of_column(col) {
-                    Some(scan.table_name.clone())
-                } else {
-                    None
-                }
-            }
-            LogicalPlan::SubqueryAlias(alias) => match &col.relation {
-                Some(r) if *r == alias.alias => {
-                    let mut aliased_column = col.clone();
-                    aliased_column.relation = None;
-                    if let Some(_) = get_table_scan_name(&alias.input, &aliased_column) {
-                        Some(alias.alias.clone())
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            },
-            _ => {
-                for input in &plan.inputs() {
-                    if let Some(x) = get_table_scan_name(input, col) {
-                        return Some(x);
-                    }
-                }
-                None
-            }
-        }
-    }
-
-    let mut candidate_plan = Arc::new(plan.clone());
-    loop {
-        let scan_name = get_table_scan_name(&candidate_plan, col);
-        if scan_name.is_some() {
-            if let Some(join) = find_join(&candidate_plan) {
-                if get_table_scan_name(&join.left, col).is_some() {
-                    candidate_plan = join.left.clone();
-                } else if get_table_scan_name(&join.right, col).is_some() {
-                    candidate_plan = join.right.clone();
-                }
-            } else {
-                println!(
-                    "found plan for {}: {}",
-                    col,
-                    candidate_plan.display_indent()
-                );
-                return Ok(Some((scan_name.unwrap(), candidate_plan.as_ref().clone())));
-            }
-        } else {
-            return Ok(None);
-        }
-    }
-}
-
-/// find first (top-level) join in plan
-fn find_join(plan: &LogicalPlan) -> Option<Join> {
-    match plan {
-        LogicalPlan::Join(join) => Some(join.clone()),
-        other => {
-            if other.inputs().len() == 0 {
-                None
-            } else {
-                for input in &other.inputs() {
-                    if let Some(join) = find_join(*input) {
-                        return Some(join);
-                    }
-                }
-                None
-            }
-        }
-    }
-}
-
-fn get_unfiltered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
-    dims.iter().filter(|t| !t.has_filter()).cloned().collect()
-}
-
-fn get_filtered_dimensions(dims: &[JoinInput]) -> Vec<JoinInput> {
-    dims.iter().filter(|t| t.has_filter()).cloned().collect()
-}
-
-fn build_join_tree(
-    tree_type: TreeType,
-    joins: &[SimpleJoin],
-    fact: &JoinInput,
-    dims: &[JoinInput],
-) -> Result<LogicalPlan> {
-    println!(
-        "build_join_tree() fact={}, dims={:?}",
-        fact.name,
-        dims.iter().map(|d| d.name()).collect::<Vec<&str>>()
-    );
-
-    // println!("fact schema: {:?}", fact.plan.schema().field_names());
-
-    let mut b = LogicalPlanBuilder::from(fact.plan.clone());
-
-    let mut dims_indirect_join = vec![];
-
-    for dim in dims {
-        // println!("dim schema: {:?}", dim.plan.schema().field_names());
-
-        let mut join_keys = vec![];
-
-        for join in joins {
-            // println!(
-            //     "inspecting join from {} to {}",
-            //     join.left.name, join.right.name
-            // );
-            if join.left.name == fact.name() && join.right.name == dim.name() {
-                join_keys = join.on.clone();
-            } else if join.right.name == fact.name() && join.left.name == dim.name() {
-                join_keys = join.on.clone();
-            }
-        }
-
-        if join_keys.is_empty() {
-            // this happens when the original join does not contain a direct join between
-            // the fact table and this dimension table
-            dims_indirect_join.push(dim);
-        } else {
-            let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
-            let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
-
-            println!(
-                "Joining {} to {} on {:?} = {:?}",
-                fact.name(),
-                dim.name(),
-                left_keys,
-                right_keys
-            );
-
-            match tree_type {
-                TreeType::LeftDeep => {
-                    b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
-                }
-                TreeType::RightDeep => {
-                    b = LogicalPlanBuilder::from(dim.plan.clone()).join(
-                        &b.build()?,
-                        JoinType::Inner,
-                        (left_keys, right_keys),
-                        None,
-                    )?;
-                }
-            }
-        }
-    }
-
-    // add remaining joins
-    for dim in dims_indirect_join {
-        let mut join_keys = vec![];
-
-        for join in joins {
-            // println!(
-            //     "inspecting join from {} to {}",
-            //     join.left.name, join.right.name
-            // );
-            if join.left.name == dim.name() || join.right.name == dim.name() {
-                join_keys = join.on.clone();
-            }
-        }
-
-        if join_keys.is_empty() {
-            return Err(DataFusionError::Plan(
-                "Could not determine join keys".to_string(),
-            ));
-        }
-        let left_keys: Vec<Column> = join_keys.iter().map(|(l, _r)| l.clone()).collect();
-        let right_keys: Vec<Column> = join_keys.iter().map(|(_l, r)| r.clone()).collect();
-
-        match tree_type {
-            TreeType::LeftDeep => {
-                b = b.join(&dim.plan, JoinType::Inner, (left_keys, right_keys), None)?;
-            }
-            TreeType::RightDeep => {
-                b = LogicalPlanBuilder::from(dim.plan.clone()).join(
-                    &b.build()?,
-                    JoinType::Inner,
-                    (left_keys, right_keys),
-                    None,
-                )?;
-            }
-        }
-    }
-
-    b.build()
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -687,7 +399,7 @@ mod tests {
             .join(&b, JoinType::Inner, (vec!["t1_a"], vec!["t2_b"]), None)?
             .build()?;
         if let LogicalPlan::Join(join) = join {
-            assert!(is_simple_join(&join));
+            assert!(is_supported_join(&join));
         } else {
             panic!();
         }
@@ -702,7 +414,7 @@ mod tests {
             .join(&b, JoinType::Left, (vec!["t1_a"], vec!["t2_b"]), None)?
             .build()?;
         if let LogicalPlan::Join(join) = join {
-            assert!(!is_simple_join(&join));
+            assert!(!is_supported_join(&join));
         } else {
             panic!();
         }
@@ -710,30 +422,18 @@ mod tests {
     }
 
     #[test]
-    fn test_unnest_joins() -> Result<()> {
+    fn test_extract_inner_joins() -> Result<()> {
         let join = create_test_plan()?;
-        if let LogicalPlan::Join(join) = join {
-            let (_tree_type, joins) = unnest_joins(&join)?;
-            assert_eq!(3, joins.len());
-
-            assert_eq!("SimpleJoin { \
-                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim1\", plan: TableScan: dim1, size: 100 }, \
-                on: [(Column { relation: Some(\"fact\"), name: \"fact_b\" }, Column { relation: Some(\"dim1\"), name: \"dim1_a\" })] }", &format!("{:?}", joins[0]));
-
-            assert_eq!("SimpleJoin { \
-                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim2\", plan: TableScan: dim2, size: 200 }, \
-                on: [(Column { relation: Some(\"fact\"), name: \"fact_c\" }, Column { relation: Some(\"dim2\"), name: \"dim2_a\" })] }", &format!("{:?}", joins[1]));
-
-            assert_eq!("SimpleJoin { \
-                left: JoinInput { name: \"fact\", plan: TableScan: fact, size: 10000 }, \
-                right: JoinInput { name: \"dim3\", plan: Filter: dim3.dim3_b <= Int32(100)
-  TableScan: dim3, size: 50 }, \
-                on: [(Column { relation: Some(\"fact\"), name: \"fact_d\" }, Column { relation: Some(\"dim3\"), name: \"dim3_a\" })] }", &format!("{:?}", joins[2]));
-        } else {
-            panic!()
-        }
+        let (rels, conds) = extract_inner_joins(&join);
+        assert_eq!(4, rels.len());
+        assert_eq!(3, conds.len());
+        assert_eq!("TableScan: fact", &format!("{:?}", rels[0]));
+        assert_eq!("TableScan: dim1", &format!("{:?}", rels[1]));
+        assert_eq!("TableScan: dim2", &format!("{:?}", rels[2]));
+        assert_eq!(
+            "Filter: dim3.dim3_b <= Int32(100)\n  TableScan: dim3",
+            &format!("{:?}", rels[3])
+        );
         Ok(())
     }
 
@@ -763,62 +463,6 @@ mod tests {
     TableScan: dim1
   TableScan: dim2"#;
         assert_eq!(expected_plan, formatted_plan);
-        Ok(())
-    }
-
-    #[test]
-    fn test_extract_fact_dimension() -> Result<()> {
-        let plan = create_test_plan()?;
-        if let LogicalPlan::Join(ref join) = plan {
-            let (_tree_type, joins) = unnest_joins(&join)?;
-            let (fact, dims) = extract_fact_dimensions(&joins);
-            assert_eq!("fact", fact.unwrap().name);
-            let mut dim_names = dims.iter().map(|d| d.name()).collect::<Vec<&str>>();
-            dim_names.sort();
-            assert_eq!(vec!["dim1", "dim2", "dim3"], dim_names);
-        } else {
-            panic!()
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn test_resolve_columns() -> Result<()> {
-        let plan = create_test_plan()?;
-
-        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) -> Result<()> {
-            let col = Column::new(None::<String>, column_name.to_owned());
-            let (name, _) = resolve_table_plan(&plan, &col)?.unwrap();
-            assert_eq!(name, expected_table_name);
-            Ok(())
-        }
-
-        test(&plan, "fact_b", "fact")?;
-        test(&plan, "fact_c", "fact")?;
-        test(&plan, "fact_d", "fact")?;
-        test(&plan, "dim1_a", "dim1")?;
-        test(&plan, "dim2_a", "dim2")?;
-        test(&plan, "dim3_a", "dim3")?;
-        Ok(())
-    }
-
-    #[test]
-    fn test_resolve_aliased_columns() -> Result<()> {
-        let plan = create_test_plan_with_aliases()?;
-
-        fn test(plan: &LogicalPlan, column_name: &str, expected_table_name: &str) -> Result<()> {
-            let col = Column::from(column_name);
-            let (name, _) = resolve_table_plan(&plan, &col)?.unwrap();
-            assert_eq!(name, expected_table_name);
-            Ok(())
-        }
-
-        test(&plan, "fact_b", "fact")?;
-        test(&plan, "fact_c", "fact")?;
-        test(&plan, "fact_d", "fact")?;
-        test(&plan, "dim1.date_dim_a", "dim1")?;
-        test(&plan, "dim2.date_dim_a", "dim2")?;
-        test(&plan, "dim3.date_dim_a", "dim3")?;
         Ok(())
     }
 
