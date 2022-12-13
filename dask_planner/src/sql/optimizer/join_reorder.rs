@@ -74,9 +74,25 @@ impl OptimizerRule for JoinReorder {
                 if facts.is_empty() {
                     return Ok(None);
                 }
+                if facts.len() > self.max_fact_tables {
+                    println!("Too many fact tables");
+                    return Ok(None);
+                }
 
                 let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
-                let mut filtered_dimensions = get_filtered_dimensions(&dims);
+                if !self.preserve_user_order {
+                    unfiltered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+                }
+
+                let filtered_dimensions = get_filtered_dimensions(&dims);
+                let mut filtered_dimensions: Vec<Relation> = filtered_dimensions
+                    .iter()
+                    .map(|rel| Relation {
+                        plan: rel.plan.clone(),
+                        size: (rel.size as f64 * self.filter_selectivity) as usize,
+                    })
+                    .collect();
+
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
                 for dim in &unfiltered_dimensions {
                     println!("UNFILTERED: {} {}", dim.size, dim.plan.display_indent());
@@ -246,7 +262,7 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Column
 /// instead we only allowed operators from selected set of
 /// operators
 fn is_supported_join(join: &Join) -> bool {
-    //TODO check for deterministic join/filter expressions
+    //TODO check for deterministic filter expressions
 
     fn is_supported_rel(plan: &LogicalPlan) -> bool {
         // println!("is_simple_rel? {}", plan.display_indent());
@@ -392,7 +408,7 @@ mod tests {
     use crate::sql::table::DaskTableSource;
 
     #[test]
-    fn inner_join_simple() -> Result<()> {
+    fn inner_join_supported() -> Result<()> {
         let a = test_table_scan("t1", 100);
         let b = test_table_scan("t2", 100);
         let join = LogicalPlanBuilder::from(a)
@@ -407,7 +423,7 @@ mod tests {
     }
 
     #[test]
-    fn outer_join_not_simple() -> Result<()> {
+    fn outer_join_not_supported() -> Result<()> {
         let a = test_table_scan("t1", 100);
         let b = test_table_scan("t2", 100);
         let join = LogicalPlanBuilder::from(a)
@@ -431,7 +447,8 @@ mod tests {
         assert_eq!("TableScan: dim1", &format!("{:?}", rels[1]));
         assert_eq!("TableScan: dim2", &format!("{:?}", rels[2]));
         assert_eq!(
-            "Filter: dim3.dim3_b <= Int32(100)\n  TableScan: dim3",
+            "Filter: dim3.dim3_b <= Int32(100)
+  TableScan: dim3",
             &format!("{:?}", rels[3])
         );
         Ok(())
@@ -462,6 +479,39 @@ mod tests {
         TableScan: dim3
     TableScan: dim1
   TableScan: dim2"#;
+        assert_eq!(expected_plan, formatted_plan);
+        Ok(())
+    }
+
+    #[test]
+    fn optimize_joins_aliases() -> Result<()> {
+        let plan = create_test_plan_with_aliases()?;
+        let formatted_plan = format!("{}", plan.display_indent());
+        let expected_plan = r#"Inner Join: fact.fact_d = dim3.date_dim_a
+  Inner Join: fact.fact_c = dim2.date_dim_a
+    Inner Join: fact.fact_b = dim1.date_dim_a
+      TableScan: fact
+      SubqueryAlias: dim1
+        TableScan: date_dim
+    SubqueryAlias: dim2
+      TableScan: date_dim
+  SubqueryAlias: dim3
+    TableScan: date_dim"#;
+        assert_eq!(expected_plan, formatted_plan);
+        let rule = JoinReorder::default();
+        let mut config = OptimizerConfig::default();
+        let optimized_plan = rule.try_optimize(&plan, &mut config)?.unwrap();
+        let formatted_plan = format!("{}", optimized_plan.display_indent());
+        let expected_plan = r#"Inner Join: fact.fact_d = dim3.date_dim_a
+  Inner Join: fact.fact_c = dim2.date_dim_a
+    Inner Join: fact.fact_b = dim1.date_dim_a
+      TableScan: fact
+      SubqueryAlias: dim1
+        TableScan: date_dim
+    SubqueryAlias: dim2
+      TableScan: date_dim
+  SubqueryAlias: dim3
+    TableScan: date_dim"#;
         assert_eq!(expected_plan, formatted_plan);
         Ok(())
     }
@@ -504,6 +554,12 @@ mod tests {
         let dim2 = aliased_plan(test_table_scan("date_dim", 200), "dim2");
         let dim3 = aliased_plan(test_table_scan("date_dim", 300), "dim3");
         let fact = test_table_scan("fact", 10000);
+
+        // add a filter to one dimension
+        let dim3 = LogicalPlanBuilder::from(dim3)
+            .filter(col("dim3_b").lt_eq(lit(100)))?
+            .build()?;
+
         LogicalPlanBuilder::from(fact)
             .join(
                 &dim1,
