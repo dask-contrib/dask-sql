@@ -107,8 +107,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
     ) -> Result<LogicalPlan> {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
-        // TODO: Add projection after *every* Join in a stack of Joins
-        optimize_top_down(plan, all_schemas)
+        optimize_top_down(plan, all_schemas, HashSet::new(), None)
     }
 
     fn name(&self) -> &str {
@@ -116,15 +115,14 @@ impl OptimizerRule for FilterColumnsPostJoin {
     }
 }
 
-fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> Result<LogicalPlan> {
-    // First: Grab first round of columns with &plan.expressions() and add to HashSet
-    let mut post_join_columns: HashSet<Expr> = HashSet::new();
+fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>, projected_columns: HashSet<Expr>, table_scan: Option<LogicalPlan>) -> Result<LogicalPlan> {
+    let mut post_join_columns: HashSet<Expr> = projected_columns.clone();
 
     // For storing the steps of the LogicalPlan,
     // with an i32 key to keep track of the order
     let mut new_plan: HashMap<i32, LogicalPlan> = HashMap::new();
 
-    // Second: Iterate through LogicalPlan with &plan.inputs()
+    // Iterate through LogicalPlan with &plan.inputs()
     let mut counter = 0;
     let mut current_plan = plan.clone();
     let mut join_flag = false;
@@ -138,13 +136,29 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                 LogicalPlan::Join(ref j) => {
                     join_flag = true;
 
+                    // If every single potential_dropped_columns is in post_join_columns,
+                    // then there's no use doing an additional projection
+                    // because we would not be dropping any columns used by the Join
+                    let mut should_project = false;
+                    let current_columns = &current_plan.expressions();
+                    let mut potential_dropped_columns = HashSet::new();
+                    insert_post_join_columns(&mut potential_dropped_columns, current_columns);
+                    for column in potential_dropped_columns {
+                        if !post_join_columns.contains(&column) {
+                            should_project = true;
+                        }
+                    }
+
                     // Check so that we don't build a stack of projections
-                    if !previous_projection {
+                    if !previous_projection && should_project {
+                        // Remove un-projectable columns
+                        post_join_columns = filter_post_join_columns(&post_join_columns, table_scan);
                         // Remove duplicates from HashSet
                         post_join_columns = post_join_columns.iter().cloned().collect();
                         // Convert HashSet to Vector
                         let projection_columns: Vec<Expr> =
                             post_join_columns.clone().into_iter().collect();
+
                         // Prepare schema
                         let mut projection_schema_fields = vec![];
                         for column in &post_join_columns {
@@ -164,6 +178,7 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                         }
                         let projection_schema =
                             DFSchema::new_with_metadata(projection_schema_fields, HashMap::new());
+
                         // Create a Projection with the columns from the HashSet
                         let projection_plan = LogicalPlan::Projection(Projection {
                             expr: projection_columns,
@@ -177,9 +192,22 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                         counter += 1;
                     }
 
+                    let current_columns = &current_plan.expressions();
+                    insert_post_join_columns(&mut post_join_columns, current_columns);
+
+                    let mut left_table_join = None;
+                    let mut right_table_join = None;
+                    let j_left = &*j.left;
+                    let j_right = &*j.right;
+                    if let LogicalPlan::TableScan(_) = j_left {
+                        right_table_join = Some(j_left.clone());
+                    }
+                    if let LogicalPlan::TableScan(_) = j_right {
+                        left_table_join = Some(j_right.clone());
+                    }
                     // Recurse on left and right inputs of Join
-                    let left_join_plan = optimize_top_down(&j.left, all_schemas).unwrap();
-                    let right_join_plan = optimize_top_down(&j.right, all_schemas).unwrap();
+                    let left_join_plan = optimize_top_down(&j.left, all_schemas, post_join_columns.clone(), left_table_join).unwrap();
+                    let right_join_plan = optimize_top_down(&j.right, all_schemas, post_join_columns.clone(), right_table_join).unwrap();
                     let join_plan = LogicalPlan::Join(Join {
                         left: Arc::new(left_join_plan),
                         right: Arc::new(right_join_plan),
@@ -190,18 +218,20 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                         schema: j.schema.clone(),
                         null_equals_null: j.null_equals_null,
                     });
+
                     // Add Join to HashMap
                     new_plan.insert(counter, join_plan);
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_crossjoin_plan = optimize_top_down(&c.left, all_schemas).unwrap();
-                    let right_crossjoin_plan = optimize_top_down(&c.right, all_schemas).unwrap();
+                    let left_crossjoin_plan = optimize_top_down(&c.left, all_schemas, post_join_columns.clone(), None).unwrap();
+                    let right_crossjoin_plan = optimize_top_down(&c.right, all_schemas, post_join_columns.clone(), None).unwrap();
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
                         left: Arc::new(left_crossjoin_plan),
                         right: Arc::new(right_crossjoin_plan),
                         schema: c.schema.clone(),
                     });
+
                     // Add CrossJoin to HashMap
                     new_plan.insert(counter, crossjoin_plan);
                 }
@@ -209,7 +239,7 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                     // Recurse on inputs vector of Union
                     let mut new_inputs = vec![];
                     for input in &u.inputs {
-                        let new_input = optimize_top_down(input, all_schemas);
+                        let new_input = optimize_top_down(input, all_schemas, post_join_columns.clone(), None);
                         match new_input {
                             Ok(i) => new_inputs.push(Arc::new(i)),
                             _ => {
@@ -218,11 +248,13 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                             }
                         }
                     }
+
                     let union_plan = LogicalPlan::Union(Union {
                         inputs: new_inputs,
                         schema: u.schema.clone(),
                         alias: u.alias.clone(),
                     });
+
                     // Add Union to HashMap
                     new_plan.insert(counter, union_plan);
                 }
@@ -231,15 +263,17 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
                     return Ok(plan.clone());
                 }
             }
+            counter += 1;
             break;
         } else {
             match current_plan {
                 LogicalPlan::Projection(ref p) => {
                     new_plan.insert(counter, current_plan.clone());
+                    previous_projection = true;
+
                     // Reset HashSet with projected columns
                     post_join_columns = HashSet::new();
                     insert_post_join_columns(&mut post_join_columns, &p.expr);
-                    previous_projection = true;
                 }
                 _ => {
                     // Is not a Join, so just add LogicalPlan to HashMap
@@ -377,6 +411,29 @@ fn optimize_top_down(plan: &LogicalPlan, all_schemas: &Vec<&Arc<DFSchema>>) -> R
     }
 }
 
+fn filter_post_join_columns(post_join_columns: &HashSet<Expr>, table_scan: Option<LogicalPlan>) -> HashSet<Expr> {
+    match table_scan {
+        Some(LogicalPlan::TableScan(t)) => {
+            let mut result = HashSet::new();
+            let table_name = t.table_name + ".";
+            for column in post_join_columns {
+                match column {
+                    Expr::Column(c) => {
+                        let column_name = c.flat_name();
+                        if !column_name.contains(&table_name) {
+                            result.insert(column.clone());
+                        } else {
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            result
+        }
+        _ => post_join_columns.clone(),
+    }
+}
+
 fn insert_post_join_columns(post_join_columns: &mut HashSet<Expr>, inserted_columns: &Vec<Expr>) {
     for column in inserted_columns {
         if let Some(exprs) = get_column_name(column) {
@@ -397,6 +454,9 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
                 let end_bytes = column_string.find(')').unwrap_or(0);
                 if start_bytes < end_bytes {
                     column_string = column_string[start_bytes..end_bytes].to_string();
+                    if column_string.contains('(') {
+                        column_string += ")";
+                    }
                     Some(vec![Expr::Column(Column::from_qualified_name(
                         &column_string,
                     ))])
@@ -468,6 +528,11 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
                 return_vector = push_column_names(ce, &return_vector);
             }
 
+            Some(return_vector)
+        }
+        Expr::IsNull(expr) => {
+            let mut return_vector = vec![];
+            return_vector = push_column_names(expr, &return_vector);
             Some(return_vector)
         }
         _ => None,
