@@ -696,9 +696,6 @@ def test_string_overlay(c, gpu):
     )
 
 
-@pytest.mark.xfail(
-    reason="TIMESTAMP add, ceil, floor for dt ops not supported by parser"
-)
 def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
