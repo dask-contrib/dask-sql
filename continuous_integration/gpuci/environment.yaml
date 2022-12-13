@@ -6,7 +6,6 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
-- dask-ml>=2022.1.22
 - dask>=2022.3.0
 - fastapi>=0.69.0
 - fugue>=0.7.0
@@ -20,6 +19,9 @@ dependencies:
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
+# TODO: remove once py is added to pytest downstream libraries
+# https://github.com/pytest-dev/pytest-xdist/issues/832
+- py
 - psycopg2
 - pyarrow>=6.0.1
 - pygments>=2.7.1
@@ -33,14 +35,14 @@ dependencies:
 - sphinx
 - tpot
 - tzlocal>=2.1
-- uvicorn>=0.11.3
+- uvicorn>=0.13.4
 # GPU-specific requirements
 - cudatoolkit=11.5
-- cudf=22.12
-- cuml=22.12
-- dask-cudf=22.12
-- dask-cuda=22.12
+- cudf=23.02
+- cuml=23.02
+- dask-cudf=23.02
+- dask-cuda=23.02
 - numpy>=1.20.1
 - ucx-proc=*=gpu
-- ucx-py=0.29
+- ucx-py=0.30
 - xgboost=*=cuda_*

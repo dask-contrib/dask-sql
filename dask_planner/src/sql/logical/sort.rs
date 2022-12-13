@@ -19,6 +19,11 @@ impl PySort {
     pub fn sort_expressions(&self) -> PyResult<Vec<PyExpr>> {
         py_expr_list(&self.sort.input, &self.sort.expr)
     }
+
+    #[pyo3(name = "getNumRows")]
+    pub fn get_fetch_val(&self) -> PyResult<Option<usize>> {
+        Ok(self.sort.fetch)
+    }
 }
 
 impl TryFrom<LogicalPlan> for PySort {
