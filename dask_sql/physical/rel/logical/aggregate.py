@@ -12,7 +12,6 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.call import IsNullOperation
-from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
@@ -229,14 +228,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
             logger.debug("Performing full-table aggregation")
 
         # Do all aggregates
-        df_result, output_column_order, cc = self._do_aggregations(
+        df_agg, output_column_order, cc = self._do_aggregations(
             rel,
             dc,
             group_columns,
             context,
         )
-        # SQL does not care about the index, but we do not want to have any multiindices
-        df_agg = df_result.reset_index(drop=True)
+        # SQL does not care about the index, but if group columns were specified we'll want to keep those
+        df_agg = df_agg.reset_index(drop=(not group_columns))
 
         # if a rollup groupby is specified, we also need to aggregate for the remaining groupby
         # combinations and concat these to the original result
@@ -250,11 +249,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     group_columns[:i],
                     context,
                 )
-                dfs.append(df_result.reset_index(drop=True))
+                dfs.append(df_result.reset_index(drop=(not group_columns)))
             df_agg = dd.concat(dfs)
-
-        # Fix the column names and the order of them, as this was messed with during the aggregations
-        df_agg.columns = df_agg.columns.get_level_values(-1)
 
         def try_get_backend_by_frontend_name(oc):
             try:
@@ -318,13 +314,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 output_column_order,
                 cc,
             )
-
-        # SQL needs to have a column with the grouped values as the first
-        # output column.
-        # As the values of the group columns
-        # are the same for a single group anyways, we just use the first row
-        for col in group_columns:
-            collected_aggregations[None].append((col, col, "first"))
 
         # Now we can go ahead and use these grouped aggregations
         # to perform the actual aggregation
@@ -520,11 +509,8 @@ class DaskAggregatePlugin(BaseRelPlugin):
     ):
         tmp_df = dc.df
 
-        # format aggregations for Dask; also check if we can use fast path for
-        # groupby, which is only supported if we are not using any custom aggregations
-        # and our pandas version support dropna for groupbys
+        # format aggregations for Dask
         aggregations_dict = defaultdict(dict)
-        fast_groupby = True
         for aggregation in aggregations:
             input_col, output_col, aggregation_f = aggregation
             input_col = dc.column_container.get_backend_by_frontend_name(input_col)
@@ -540,8 +526,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 logger.debug(f"Using original output_col value of '{output_col}'")
 
             aggregations_dict[input_col][output_col] = aggregation_f
-            if not isinstance(aggregation_f, str):
-                fast_groupby = False
 
         # filter dataframe if specified
         if filter_column:
@@ -561,21 +545,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # if split_out > 1, we cannot do a sorted groupby
         sort = False if groupby_agg_options.get("split_out", 1) > 1 else True
 
-        # perform groupby operation; if we are using custom aggregations, we must handle
-        # null values manually (this is slow)
-        if fast_groupby:
-            grouped_df = tmp_df.groupby(
-                by=(group_columns or [additional_column_name]), dropna=False, sort=sort
-            )
-        else:
-            group_columns = [
-                tmp_df[dc.column_container.get_backend_by_frontend_name(group_column)]
-                for group_column in group_columns
-            ]
-            group_columns_and_nulls = get_groupby_with_nulls_cols(
-                tmp_df, group_columns, additional_column_name
-            )
-            grouped_df = tmp_df.groupby(by=group_columns_and_nulls, sort=sort)
+        # perform groupby operation
+        grouped_df = tmp_df.groupby(
+            by=(group_columns or [additional_column_name]), dropna=False, sort=sort
+        )
 
         # apply the aggregation(s)
         logger.debug(f"Performing aggregation {dict(aggregations_dict)}")
