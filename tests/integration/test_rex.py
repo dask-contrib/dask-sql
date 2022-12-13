@@ -352,6 +352,65 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_coalesce(c, gpu):
+    df = dd.from_pandas(
+        pd.DataFrame({"a": [1, 2, 3], "b": [np.nan] * 3}), npartitions=1
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(3, 5) as c1,
+            COALESCE(NULL, NULL) as c2,
+            COALESCE(NULL, 'hi') as c3,
+            COALESCE(NULL, NULL, 'bye', 5/0) as c4,
+            COALESCE(NULL, 3/2, NULL, 'fly') as c5,
+            COALESCE(SUM(b), 'why', 2.2) as c6,
+            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c7
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [3],
+            "c2": [np.nan],
+            "c3": ["hi"],
+            "c4": ["bye"],
+            "c5": ["1"],
+            "c6": ["why"],
+            "c7": [2.0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(a, b) as c1,
+            COALESCE(b, a) as c2,
+            COALESCE(a, a) as c3,
+            COALESCE(b, b) as c4
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [1, 2, 3],
+            "c2": [1, 2, 3],
+            "c3": [1, 2, 3],
+            "c4": [np.nan] * 3,
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+    c.drop_table("df")
+
+
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
     df["b"] = df["b"].apply(
@@ -663,7 +722,7 @@ def test_date_functions(c):
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
 
             LAST_DAY(d) as "last_day",
 

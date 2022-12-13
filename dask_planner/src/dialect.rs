@@ -3,6 +3,7 @@ use core::{iter::Peekable, str::Chars};
 use datafusion_sql::sqlparser::{
     ast::{Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value},
     dialect::Dialect,
+    keywords::Keyword,
     parser::{Parser, ParserError},
     tokenizer::Token,
 };
@@ -47,6 +48,68 @@ impl Dialect for DaskDialect {
     fn parse_prefix(&self, parser: &mut Parser) -> Option<Result<Expr, ParserError>> {
         fn parse_expr(parser: &mut Parser) -> Result<Option<Expr>, ParserError> {
             match parser.peek_token() {
+                Token::Word(w) if w.value.to_lowercase() == "ceil" => {
+                    // CEIL(d TO DAY)
+                    parser.next_token(); // skip ceil
+                    parser.expect_token(&Token::LParen)?;
+                    let expr = parser.parse_expr()?;
+                    if !parser.parse_keyword(Keyword::TO) {
+                        // Parse CEIL(expr) as normal
+                        parser.prev_token();
+                        parser.prev_token();
+                        parser.prev_token();
+                        return Ok(None);
+                    }
+                    let time_unit = parser.next_token();
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_unit.to_string()),
+                        ))),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("timestampceil")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
+                Token::Word(w) if w.value.to_lowercase() == "floor" => {
+                    // FLOOR(d TO DAY)
+                    parser.next_token(); // skip floor
+                    parser.expect_token(&Token::LParen)?;
+                    let expr = parser.parse_expr()?;
+                    if !parser.parse_keyword(Keyword::TO) {
+                        // Parse FLOOR(expr) as normal
+                        parser.prev_token();
+                        parser.prev_token();
+                        parser.prev_token();
+                        return Ok(None);
+                    }
+                    let time_unit = parser.next_token();
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString(time_unit.to_string()),
+                        ))),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("timestampfloor")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
                 Token::Word(w) if w.value.to_lowercase() == "timestampadd" => {
                     // TIMESTAMPADD(YEAR, 2, d)
                     parser.next_token(); // skip timestampadd
