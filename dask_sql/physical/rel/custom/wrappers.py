@@ -17,6 +17,8 @@ from sklearn.metrics import check_scoring as sklearn_check_scoring
 from sklearn.metrics import make_scorer
 from sklearn.utils.validation import check_is_fitted
 
+from dask_sql.utils import make_pickable_without_dask_sql
+
 try:
     import sklearn.base
     import sklearn.metrics
@@ -198,10 +200,14 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
         if isinstance(X, da.Array):
             if output_meta is None:
                 output_meta = _get_output_dask_ar_meta_for_estimator(
-                    _transform, self._postfit_estimator, X
+                    _transform,
+                    self._postfit_estimator,
+                    X,
                 )
             return X.map_blocks(
-                _transform, estimator=self._postfit_estimator, meta=output_meta
+                _transform,
+                estimator=self._postfit_estimator,
+                meta=output_meta,
             )
         elif isinstance(X, dd._Frame):
             if output_meta is None:
@@ -219,7 +225,9 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                     # for infering meta
                     output_meta = dd.core.no_default
                 return X.map_partitions(
-                    _transform, estimator=self._postfit_estimator, meta=output_meta
+                    _transform,
+                    estimator=self._postfit_estimator,
+                    meta=output_meta,
                 )
         else:
             return _transform(X, estimator=self._postfit_estimator)
@@ -315,7 +323,9 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 if output_meta is None:
                     output_meta = dd.core.no_default
                 return X.map_partitions(
-                    _predict, estimator=self._postfit_estimator, meta=output_meta
+                    _predict,
+                    estimator=self._postfit_estimator,
+                    meta=output_meta,
                 )
         else:
             return _predict(X, estimator=self._postfit_estimator)
@@ -558,6 +568,7 @@ class Incremental(ParallelPostFit):
         return self._fit_for_estimator(estimator, X, y, **fit_kwargs)
 
 
+@make_pickable_without_dask_sql
 def _predict(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
@@ -566,6 +577,7 @@ def _predict(part, estimator, output_meta=None):
     return estimator.predict(part)
 
 
+@make_pickable_without_dask_sql
 def _predict_proba(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
@@ -574,6 +586,7 @@ def _predict_proba(part, estimator, output_meta=None):
     return estimator.predict_proba(part)
 
 
+@make_pickable_without_dask_sql
 def _transform(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
