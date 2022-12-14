@@ -6,7 +6,6 @@ from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_table_schema(c, df):
     original_df = c.sql("SELECT * FROM df")
 
@@ -18,11 +17,16 @@ def test_table_schema(c, df):
     c.sql('USE SCHEMA "foo"')
     assert_eq(original_df, c.sql("SELECT * FROM root.df"))
 
-    c.sql("CREATE TABLE bar AS TABLE root.df")
+    # TODO: https://github.com/dask-contrib/dask-sql/issues/771
+    # For now, we create table bar another (equivalent) way
+    # c.sql("CREATE TABLE bar AS TABLE root.df")
+    c.sql("CREATE TABLE bar AS (SELECT * FROM root.df)")
     assert_eq(original_df, c.sql("SELECT * FROM bar"))
 
     with pytest.raises(KeyError):
-        c.sql("CREATE TABLE other.bar AS TABLE df")
+        # TODO: https://github.com/dask-contrib/dask-sql/issues/771
+        # c.sql("CREATE TABLE other.bar AS TABLE df")
+        c.sql("CREATE TABLE other.bar AS (SELECT * FROM root.df)")
 
     c.sql('USE SCHEMA "root"')
     assert_eq(original_df, c.sql("SELECT * FROM foo.bar"))
@@ -32,7 +36,7 @@ def test_table_schema(c, df):
 
     c.sql("DROP SCHEMA foo")
 
-    with pytest.raises(ParsingException):
+    with pytest.raises(KeyError):
         c.sql("SELECT * FROM foo.bar")
 
 

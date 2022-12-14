@@ -43,6 +43,10 @@ class CreateTablePlugin(BaseRelPlugin):
 
         dask_table = rel.getTable()
         schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
+        if "." in table_name:
+            raise KeyError(
+                f"Cannot create table from {table_name} due to schema error."
+            )
 
         if table_name in context.schema[schema_name].tables:
             if create_table.getIfNotExists():
