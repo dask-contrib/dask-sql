@@ -156,8 +156,7 @@ fn optimize_top_down(
                     // Check so that we don't build a stack of projections
                     if !previous_projection && should_project {
                         // Remove un-projectable columns
-                        post_join_columns =
-                            filter_post_join_columns(&post_join_columns, schemas);
+                        post_join_columns = filter_post_join_columns(&post_join_columns, schemas);
                         // Remove duplicates from HashSet
                         post_join_columns = post_join_columns.iter().cloned().collect();
                         // Convert HashSet to Vector
@@ -229,12 +228,18 @@ fn optimize_top_down(
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_crossjoin_plan =
-                        optimize_top_down(&c.left, &c.left.all_schemas(), post_join_columns.clone())
-                            .unwrap();
-                    let right_crossjoin_plan =
-                        optimize_top_down(&c.right, &c.right.all_schemas(), post_join_columns.clone())
-                            .unwrap();
+                    let left_crossjoin_plan = optimize_top_down(
+                        &c.left,
+                        &c.left.all_schemas(),
+                        post_join_columns.clone(),
+                    )
+                    .unwrap();
+                    let right_crossjoin_plan = optimize_top_down(
+                        &c.right,
+                        &c.right.all_schemas(),
+                        post_join_columns.clone(),
+                    )
+                    .unwrap();
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
                         left: Arc::new(left_crossjoin_plan),
                         right: Arc::new(right_crossjoin_plan),
@@ -248,8 +253,11 @@ fn optimize_top_down(
                     // Recurse on inputs vector of Union
                     let mut new_inputs = vec![];
                     for input in &u.inputs {
-                        let new_input =
-                            optimize_top_down(input, &input.all_schemas(), post_join_columns.clone());
+                        let new_input = optimize_top_down(
+                            input,
+                            &input.all_schemas(),
+                            post_join_columns.clone(),
+                        );
                         match new_input {
                             Ok(i) => new_inputs.push(Arc::new(i)),
                             _ => {
@@ -553,6 +561,16 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
         Expr::IsNull(expr) => {
             let mut return_vector = vec![];
             return_vector = push_column_names(expr, &return_vector);
+            Some(return_vector)
+        }
+        Expr::IsNotNull(expr) => {
+            let mut return_vector = vec![];
+            return_vector = push_column_names(expr, &return_vector);
+            Some(return_vector)
+        }
+        Expr::Cast(c) => {
+            let mut return_vector = vec![];
+            return_vector = push_column_names(&c.expr, &return_vector);
             Some(return_vector)
         }
         _ => None,
