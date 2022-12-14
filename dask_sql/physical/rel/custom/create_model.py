@@ -183,7 +183,7 @@ class CreateModelPlugin(BaseRelPlugin):
             if y is not None:
                 y_d = y.repartition(npartitions=1).to_delayed()
             else:
-                y_d = None
+                y_d = [None]
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
