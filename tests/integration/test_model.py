@@ -311,7 +311,7 @@ def test_wrong_training_or_prediction(c, training_df):
         """
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ImportError):
         c.sql(
             """
             CREATE MODEL my_model WITH (
