@@ -1,14 +1,14 @@
-use crate::expression::PyExpr;
-use crate::sql::column;
-
 use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
     Expr,
 };
-
-use crate::sql::exceptions::py_type_err;
 use pyo3::prelude::*;
+
+use crate::{
+    expression::PyExpr,
+    sql::{column, exceptions::py_type_err},
+};
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -82,8 +82,10 @@ impl PyJoin {
             JoinType::Left => Ok("LEFT".to_string()),
             JoinType::Right => Ok("RIGHT".to_string()),
             JoinType::Full => Ok("FULL".to_string()),
-            JoinType::Semi => Ok("SEMI".to_string()),
-            JoinType::Anti => Ok("ANTI".to_string()),
+            JoinType::LeftSemi => Ok("LEFTSEMI".to_string()),
+            JoinType::LeftAnti => Ok("LEFTANTI".to_string()),
+            JoinType::RightSemi => Ok("RIGHTSEMI".to_string()),
+            JoinType::RightAnti => Ok("RIGHTANTI".to_string()),
         }
     }
 }

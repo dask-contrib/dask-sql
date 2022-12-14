@@ -1,16 +1,16 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.10.0
     hooks:
       - id: black
         language_version: python3
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+  - repo: https://github.com/PyCQA/flake8
+    rev: 5.0.4
     hooks:
       - id: flake8
         language_version: python3
   - repo: https://github.com/pycqa/isort
-    rev: 5.7.0
+    rev: 5.10.1
     hooks:
       - id: isort
         args:
@@ -19,8 +19,6 @@ repos:
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
-      - id: fmt
-        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: cargo-check
         args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']
       - id: clippy
@@ -33,3 +31,12 @@ repos:
       - id: check-yaml
         exclude: ^continuous_integration/recipe/
       - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format files with cargo fmt.
+        entry: cargo +nightly fmt
+        language: system
+        types: [rust]
+        args: ['--manifest-path', './dask_planner/Cargo.toml', '--verbose', '--']

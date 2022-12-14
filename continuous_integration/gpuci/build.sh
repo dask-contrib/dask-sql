@@ -11,7 +11,7 @@ function hasArg {
 }
 
 # Set path and build parallel level
-export PATH=/opt/conda/bin:/usr/local/cuda/bin:$PATH
+export PATH=/opt/cargo/bin:/opt/conda/bin:/usr/local/cuda/bin:$PATH
 export PARALLEL_LEVEL=${PARALLEL_LEVEL:-4}
 
 # Set home to the job's workspace
@@ -51,6 +51,9 @@ python -m pip install git+https://github.com/dask/dask
 
 gpuci_logger "Install distributed"
 python -m pip install git+https://github.com/dask/distributed
+
+gpuci_logger "Install latest dask-cuda"
+gpuci_mamba_retry update -y -c rapidsai-nightly dask-cuda
 
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"

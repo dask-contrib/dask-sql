@@ -3,18 +3,23 @@
 FROM daskdev/dask:latest
 LABEL author "Nils Braun <nilslennartbraun@gmail.com>"
 
-# Install dependencies for dask-sql
+# Install rustc & gcc for compilation of DataFusion planner
+ADD https://sh.rustup.rs /rustup-init.sh
+RUN sh /rustup-init.sh -y --default-toolchain=stable --profile=minimal \
+    && apt-get update \
+    && apt-get install gcc -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install conda dependencies for dask-sql
 COPY docker/conda.txt /opt/dask_sql/
-RUN conda config --add channels conda-forge \
-    && /opt/conda/bin/mamba install --freeze-installed -y \
+RUN mamba install -y \
     # build requirements
-    "rust=1.62.1" \
     "setuptools-rust>=1.4.1" \
     # core dependencies
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \
     "fastapi>=0.69.0" \
-    "uvicorn>=0.11.3" \
+    "uvicorn>=0.13.4" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
@@ -22,12 +27,9 @@ RUN conda config --add channels conda-forge \
     nest-asyncio \
     # additional dependencies
     "pyarrow>=6.0.1" \
-    "dask-ml>=2022.1.22" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
-    && conda clean -ay \
-    && apt-get update \
-    && apt-get install build-essential -y
+    && conda clean -ay
 
 # install dask-sql
 COPY setup.py /opt/dask_sql/

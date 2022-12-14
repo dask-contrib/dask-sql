@@ -10,7 +10,8 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="hive testing not supported on Windows"
+    sys.platform in ("win32", "darwin"),
+    reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -66,6 +67,7 @@ def hive_cursor():
 
     tmpdir = tempfile.mkdtemp()
     tmpdir_parted = tempfile.mkdtemp()
+    tmpdir_multiparted = tempfile.mkdtemp()
 
     try:
         network = client.networks.create("dask-sql-hive", driver="bridge")
@@ -75,7 +77,11 @@ def hive_cursor():
             hostname="hive-server",
             name="hive-server",
             network="dask-sql-hive",
-            volumes=[f"{tmpdir}:{tmpdir}", f"{tmpdir_parted}:{tmpdir_parted}"],
+            volumes=[
+                f"{tmpdir}:{tmpdir}",
+                f"{tmpdir_parted}:{tmpdir_parted}",
+                f"{tmpdir_multiparted}:{tmpdir_multiparted}",
+            ],
             environment={
                 "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL": "jdbc:postgresql://hive-metastore-postgresql/metastore",
                 **DEFAULT_CONFIG,
@@ -147,9 +153,19 @@ def hive_cursor():
         cursor.execute("INSERT INTO df_part PARTITION (j=2) (i) VALUES (1)")
         cursor.execute("INSERT INTO df_part PARTITION (j=4) (i) VALUES (2)")
 
+        cursor.execute(
+            f"""
+            CREATE TABLE df_parts (i INTEGER) PARTITIONED BY (j INTEGER, k STRING)
+            ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_multiparted}'
+            """
+        )
+        cursor.execute("INSERT INTO df_parts PARTITION (j=1, k='a') (i) VALUES (1)")
+        cursor.execute("INSERT INTO df_parts PARTITION (j=2, k='b') (i) VALUES (2)")
+
         # The data files are created as root user by default. Change that:
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_parted])
+        hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir_multiparted])
 
         yield cursor
     except docker.errors.ImageNotFound:
@@ -194,5 +210,18 @@ def test_select_partitions(hive_cursor):
     result_df = c.sql("SELECT * FROM df_part")
     expected_df = pd.DataFrame({"i": [1, 2], "j": [2, 4]}).astype("int32")
     expected_df["j"] = expected_df["j"].astype("int64")
+
+    assert_eq(result_df, expected_df, check_index=False)
+
+
+def test_select_multipartitions(hive_cursor):
+    c = Context()
+    c.create_table("df_parts", hive_cursor)
+
+    result_df = c.sql("SELECT * FROM df_parts")
+    expected_df = pd.DataFrame({"i": [1, 2], "j": [1, 2], "k": ["a", "b"]})
+    expected_df["i"] = expected_df["i"].astype("int32")
+    expected_df["j"] = expected_df["j"].astype("int64")
+    expected_df["k"] = expected_df["k"].astype("object")
 
     assert_eq(result_df, expected_df, check_index=False)

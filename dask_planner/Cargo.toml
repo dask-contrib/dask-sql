@@ -9,20 +9,20 @@ edition = "2021"
 rust-version = "1.62"
 
 [dependencies]
-arrow = { version = "23.0.0", features = ["prettyprint"] }
-async-trait = "0.1.41"
-datafusion-common = { git = "https://github.com/apache/arrow-datafusion/", rev = "1261741af2a5e142fa0c7916e759859cc18ea59a" }
-datafusion-expr = { git = "https://github.com/apache/arrow-datafusion/", rev = "1261741af2a5e142fa0c7916e759859cc18ea59a" }
-datafusion-optimizer = { git = "https://github.com/apache/arrow-datafusion/", rev = "1261741af2a5e142fa0c7916e759859cc18ea59a" }
-datafusion-sql = { git = "https://github.com/apache/arrow-datafusion/", rev = "1261741af2a5e142fa0c7916e759859cc18ea59a" }
-env_logger = "0.9"
+arrow = { version = "26.0.0", features = ["prettyprint"] }
+async-trait = "0.1.59"
+datafusion-common = "14.0.0"
+datafusion-expr = "14.0.0"
+datafusion-optimizer = "14.0.0"
+datafusion-sql = "14.0.0"
+env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
-pyo3 = { version = "0.17.1", features = ["extension-module", "abi3", "abi3-py38"] }
-rand = "0.7"
-tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
-uuid = { version = "0.8", features = ["v4"] }
+pyo3 = { version = "0.17.3", features = ["extension-module", "abi3", "abi3-py38"] }
+rand = "0.8"
+tokio = { version = "1.23", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
+uuid = { version = "1.2", features = ["v4"] }
 
 [lib]
 crate-type = ["cdylib"]
