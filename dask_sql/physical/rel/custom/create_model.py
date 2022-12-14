@@ -132,8 +132,8 @@ class CreateModelPlugin(BaseRelPlugin):
         try:
             ModelClass = import_class(model_class)
         except ImportError:
-            raise ValueError(
-                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
+            raise ImportError(
+                f"Failed to import model {model_class}. Make sure it is spelled correctly and the relevant packages are installed."
             )
 
         model = ModelClass(**kwargs)
