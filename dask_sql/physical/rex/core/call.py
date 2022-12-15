@@ -694,11 +694,11 @@ class TimeStampAddOperation(Operation):
         elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
             if unit in {"QUARTER", "QUARTERS"}:
                 avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
-                quarter = interval * avg_days_in_quarter
+                quarter = np.ceil(interval * avg_days_in_quarter)
                 return df + timedelta(days=quarter)
             else:  # "MONTH"
                 avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
-                month = interval * avg_days_in_month
+                month = np.ceil(interval * avg_days_in_month)
                 return df + timedelta(days=month)
         elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
             week = interval * 7
