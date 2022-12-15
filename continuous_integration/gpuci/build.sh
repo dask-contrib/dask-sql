@@ -52,6 +52,9 @@ python -m pip install git+https://github.com/dask/dask
 gpuci_logger "Install distributed"
 python -m pip install git+https://github.com/dask/distributed
 
+gpuci_logger "Install latest dask-cuda"
+gpuci_mamba_retry update -y -c rapidsai-nightly dask-cuda
+
 gpuci_logger "Install dask-sql"
 pip install -e ".[dev]"
 

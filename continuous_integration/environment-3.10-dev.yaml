@@ -3,7 +3,6 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
-- dask-ml>=2022.1.22
 - dask>=2022.3.0
 - fastapi>=0.69.0
 - fugue>=0.7.0
@@ -17,6 +16,9 @@ dependencies:
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
+# TODO: remove once py is added to pytest downstream libraries
+# https://github.com/pytest-dev/pytest-xdist/issues/832
+- py
 - psycopg2
 - pyarrow>=6.0.1
 - pygments>=2.7.1

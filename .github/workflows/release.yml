@@ -30,7 +30,7 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: rustup target add aarch64-apple-darwin
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.10.2
+        uses: pypa/cibuildwheel@v2.11.3
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
@@ -50,7 +50,7 @@ jobs:
           output-dir: dist
           config-file: "dask_planner/pyproject.toml"
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v2.2.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true

@@ -125,8 +125,7 @@ following sql statements
 Want to increase the performance of your model by tuning the
 parameters? Use the hyperparameter tuning directly
 in SQL using below SQL syntax, choose different tuners
-from the dask_ml package based on memory and compute constraints and
-for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-parameter-search.html#incremental-hyperparameter-optimization>`_
+based on memory and compute constraints.
 
 ..
     TODO - add a GPU section to these examples once we have working CREATE EXPERIMENT tests for GPU
@@ -135,7 +134,7 @@ for more details refer to the `dask ml documentation <https://ml.dask.org/hyper-
 
  CREATE EXPERIMENT my_exp WITH (
     model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-    experiment_class = 'dask_ml.model_selection.GridSearchCV',
+    experiment_class = 'sklearn.model_selection.GridSearchCV',
     tune_parameters = (n_estimators = ARRAY [16, 32, 2],
                     learning_rate = ARRAY [0.1,0.01,0.001],
                    max_depth = ARRAY [3,4,5,10]
@@ -258,7 +257,6 @@ and the boolean target ``label``.
     SELECT * FROM training_data
 
     -- We can now train a model from the sklearn package.
-    -- Make sure to install it together with dask-ml with conda or pip.
     CREATE OR REPLACE MODEL my_model WITH (
         model_class = 'sklearn.ensemble.GradientBoostingClassifier',
         wrap_predict = True,
@@ -282,7 +280,7 @@ and the boolean target ``label``.
     -- experiment to tune different hyperparameters
     CREATE EXPERIMENT my_exp WITH(
     model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-    experiment_class = 'dask_ml.model_selection.GridSearchCV',
+    experiment_class = 'sklearn.model_selection.GridSearchCV',
     tune_parameters = (n_estimators = ARRAY [16, 32, 2],
                     learning_rate = ARRAY [0.1,0.01,0.001],
                    max_depth = ARRAY [3,4,5,10]

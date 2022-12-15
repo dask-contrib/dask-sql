@@ -11,7 +11,7 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion_common::{DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
@@ -150,32 +150,104 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "year" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
-            "atan2" | "mod" => {
-                let sig = Signature::variadic(
-                    vec![DataType::Float64, DataType::Float64],
+            "last_day" => {
+                let sig = Signature::exact(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampceil" | "timestampfloor" => {
+                let sig = Signature::exact(
+                    vec![DataType::Date64, DataType::Utf8],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampadd" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampdiff" => {
+                let sig = Signature::exact(
+                    vec![
+                        DataType::Utf8,
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "dsql_totimestamp" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Int8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "mod" => {
+                let sig = generate_numeric_signatures(2);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
+                let sig = generate_numeric_signatures(1);
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "rand" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![]),
+                        TypeSignature::Exact(vec![DataType::Int64]),
+                    ],
                     Volatility::Immutable,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
-            "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
-                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
-            }
-            "rand" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Volatile);
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
-            }
             "rand_integer" => {
-                let sig = Signature::variadic(
-                    vec![DataType::Int64, DataType::Int64],
-                    Volatility::Volatile,
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Int64]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
+                    ],
+                    Volatility::Immutable,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
@@ -233,39 +305,28 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "every" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "bit_and" | "bit_or" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "single_value" => {
-                let sig = Signature::variadic(vec![DataType::Int64], Volatility::Immutable);
+                let sig = generate_numeric_signatures(1);
                 let rtf: ReturnTypeFunction =
                     Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_count" => {
-                let sig = Signature::variadic(
-                    vec![DataType::Float64, DataType::Float64],
-                    Volatility::Immutable,
-                );
+                let sig = generate_numeric_signatures(2);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_syy" | "regr_sxx" => {
-                let sig = Signature::variadic(
-                    vec![DataType::Float64, DataType::Float64],
-                    Volatility::Immutable,
-                );
-                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
-                return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
-            }
-            "var_pop" => {
-                let sig = Signature::variadic(vec![DataType::Float64], Volatility::Immutable);
+                let sig = generate_numeric_signatures(2);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
@@ -308,7 +369,7 @@ impl ContextProvider for DaskSQLContext {
         None
     }
 
-    fn get_variable_type(&self, _: &[String]) -> Option<arrow::datatypes::DataType> {
+    fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 }
@@ -407,7 +468,7 @@ impl DaskSQLContext {
             Ok(valid) => {
                 if valid {
                     optimizer::DaskSqlOptimizer::new(true)
-                        .run_optimizations(existing_plan.original_plan)
+                        .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,
@@ -592,5 +653,115 @@ impl PlanVisitor for OptimizablePlanVisitor {
 
     fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
         Ok(true)
+    }
+}
+
+fn generate_numeric_signatures(n: i32) -> Signature {
+    // Generates all combinations of vectors of length n,
+    // i.e., the Cartesian product
+    let datatypes = vec![
+        DataType::Int8,
+        DataType::Int16,
+        DataType::Int32,
+        DataType::Int64,
+        DataType::UInt8,
+        DataType::UInt16,
+        DataType::UInt32,
+        DataType::UInt64,
+        DataType::Float16,
+        DataType::Float32,
+        DataType::Float64,
+    ];
+    let mut cartesian_setup = vec![];
+    // cartesian_setup = [datatypes, datatypes] when n == 2, etc.
+    for _ in 0..n {
+        cartesian_setup.push(datatypes.clone());
+    }
+
+    let mut exact_vector = vec![];
+    let mut datatypes_iter = cartesian_setup.iter();
+    // First pass
+    if let Some(first_iter) = datatypes_iter.next() {
+        for datatype in first_iter {
+            exact_vector.push(vec![datatype.clone()]);
+        }
+    }
+    // Generate list of lists with length n
+    for iter in datatypes_iter {
+        let mut outer_temp = vec![];
+        for outer_datatype in exact_vector {
+            for inner_datatype in iter {
+                let mut inner_temp = outer_datatype.clone();
+                inner_temp.push(inner_datatype.clone());
+                outer_temp.push(inner_temp);
+            }
+        }
+        exact_vector = outer_temp;
+    }
+
+    // Create vector of TypeSignatures
+    let mut one_of_vector = vec![];
+    for vector in exact_vector.iter() {
+        one_of_vector.push(TypeSignature::Exact(vector.clone()));
+    }
+
+    Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
+}
+
+#[allow(dead_code)]
+fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
+    let mut exact_vector = vec![];
+    let mut datatypes_iter = cartesian_setup.iter();
+    // First pass
+    if let Some(first_iter) = datatypes_iter.next() {
+        for datatype in first_iter {
+            exact_vector.push(vec![datatype.clone()]);
+        }
+    }
+    // Generate the Cartesian product
+    for iter in datatypes_iter {
+        let mut outer_temp = vec![];
+        for outer_datatype in exact_vector {
+            for inner_datatype in iter {
+                let mut inner_temp = outer_datatype.clone();
+                inner_temp.push(inner_datatype.clone());
+                outer_temp.push(inner_temp);
+            }
+        }
+        exact_vector = outer_temp;
+    }
+
+    // Create vector of TypeSignatures
+    let mut one_of_vector = vec![];
+    for vector in exact_vector.iter() {
+        one_of_vector.push(TypeSignature::Exact(vector.clone()));
+    }
+
+    Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
+}
+
+#[cfg(test)]
+mod test {
+    use arrow::datatypes::DataType;
+    use datafusion_expr::{Signature, TypeSignature, Volatility};
+
+    use crate::sql::generate_signatures;
+
+    #[test]
+    fn test_generate_signatures() {
+        let sig = generate_signatures(vec![
+            vec![DataType::Int64, DataType::Float64],
+            vec![DataType::Utf8, DataType::Int64],
+        ]);
+        let expected = Signature::one_of(
+            vec![
+                TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Int64, DataType::Int64]),
+                TypeSignature::Exact(vec![DataType::Float64, DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Float64, DataType::Int64]),
+            ],
+            Volatility::Immutable,
+        );
+        assert_eq!(sig, expected);
     }
 }
