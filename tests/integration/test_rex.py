@@ -708,7 +708,7 @@ def test_date_functions(c):
             "plus_1_sec": [datetime(2021, 10, 3, 15, 53, 43, 47)],
             "plus_999_millisec": [datetime(2021, 10, 3, 15, 53, 42, 1000 * 999 + 47)],
             "plus_999_microsec": [datetime(2021, 10, 3, 15, 53, 42, 1046)],
-            "plus_1_qt": [datetime(2022, 1, 3, 15, 53, 42, 47)],
+            "plus_1_qt": [datetime(2022, 1, 2, 15, 53, 42, 47)],
             "ceil_to_day": [datetime(2021, 10, 4)],
             "ceil_to_hour": [datetime(2021, 10, 3, 16)],
             "ceil_to_minute": [datetime(2021, 10, 3, 15, 54)],

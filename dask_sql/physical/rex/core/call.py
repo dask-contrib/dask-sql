@@ -689,41 +689,17 @@ class TimeStampAddOperation(Operation):
         df = df.astype("datetime64[ns]")
 
         if unit in {"YEAR", "YEARS"}:
-            result = []
-            for date in df:
-                year = date.year + interval
-                # Check leap day
-                if year % 4 != 0 and date.month == 2 and date.day == 29:
-                    result.append(date.replace(year=year, month=3, day=1))
-                else:
-                    result.append(date.replace(year=year))
-            return pd.Series(result)
+            year = interval * 365
+            return df + timedelta(days=year)
         elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
-            result = []
-            for date in df:
-                if unit in {"QUARTER", "QUARTERS"}:
-                    month = date.month + (3 * interval)
-                else:  # "MONTH"
-                    month = date.month + interval
-                year = date.year
-                if month > 12:
-                    year = year + (month // 12)
-                    month = month % 12
-                # Check leap day
-                if year % 4 != 0 and month == 2 and date.day == 29:
-                    result.append(date.replace(year=year, month=3, day=1))
-                # Replace February 30 with March 2
-                elif month == 2 and date.day == 30:
-                    result.append(date.replace(year=year, month=3, day=2))
-                # Replace February 31 with March 3
-                elif month == 2 and date.day == 31:
-                    result.append(date.replace(year=year, month=3, day=3))
-                # Check months with 30 days
-                elif month in [4, 6, 9, 11] and date.day == 31:
-                    result.append(date.replace(year=year, month=month + 1, day=1))
-                else:
-                    result.append(date.replace(year=year, month=month))
-            return pd.Series(result)
+            if unit in {"QUARTER", "QUARTERS"}:
+                avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+                quarter = interval * avg_days_in_quarter
+                return df + timedelta(days=quarter)
+            else:  # "MONTH"
+                avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+                month = interval * avg_days_in_month
+                return df + timedelta(days=month)
         elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
             week = interval * 7
             return df + timedelta(days=week)
