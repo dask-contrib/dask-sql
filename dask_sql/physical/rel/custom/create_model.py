@@ -134,6 +134,8 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
+        training_df = context.sql(select)
+
         if type(training_df) == dd.core.DataFrame:
             model_class = cpu_classes.get(model_class, model_class)
         elif "cudf" in str(training_df._partition_type):
@@ -163,8 +165,6 @@ class CreateModelPlugin(BaseRelPlugin):
                 wrap_fit = True
             else:
                 wrap_fit = False
-
-        training_df = context.sql(select)
 
         if target_column:
             non_target_columns = [
