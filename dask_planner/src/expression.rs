@@ -126,6 +126,15 @@ impl PyExpr {
     }
 }
 
+macro_rules! extract_scalar_value {
+    ($self: expr, $variant: ident) => {
+        match $self.get_scalar_value()? {
+            ScalarValue::$variant(value) => Ok(*value),
+            other => Err(unexpected_literal_value(other)),
+        }
+    };
+}
+
 #[pymethods]
 impl PyExpr {
     #[staticmethod]
@@ -579,18 +588,12 @@ impl PyExpr {
 
     #[pyo3(name = "getFloat32Value")]
     pub fn float_32_value(&self) -> PyResult<Option<f32>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Float32(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Float32)
     }
 
     #[pyo3(name = "getFloat64Value")]
     pub fn float_64_value(&self) -> PyResult<Option<f64>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Float64(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Float64)
     }
 
     #[pyo3(name = "getDecimal128Value")]
@@ -603,90 +606,57 @@ impl PyExpr {
 
     #[pyo3(name = "getInt8Value")]
     pub fn int_8_value(&self) -> PyResult<Option<i8>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Int8(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Int8)
     }
 
     #[pyo3(name = "getInt16Value")]
     pub fn int_16_value(&self) -> PyResult<Option<i16>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Int16(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Int16)
     }
 
     #[pyo3(name = "getInt32Value")]
     pub fn int_32_value(&self) -> PyResult<Option<i32>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Int32(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Int32)
     }
 
     #[pyo3(name = "getInt64Value")]
     pub fn int_64_value(&self) -> PyResult<Option<i64>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Int64(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Int64)
     }
 
     #[pyo3(name = "getUInt8Value")]
     pub fn uint_8_value(&self) -> PyResult<Option<u8>> {
-        match self.get_scalar_value()? {
-            ScalarValue::UInt8(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, UInt8)
     }
 
     #[pyo3(name = "getUInt16Value")]
     pub fn uint_16_value(&self) -> PyResult<Option<u16>> {
-        match self.get_scalar_value()? {
-            ScalarValue::UInt16(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, UInt16)
     }
 
     #[pyo3(name = "getUInt32Value")]
     pub fn uint_32_value(&self) -> PyResult<Option<u32>> {
-        match self.get_scalar_value()? {
-            ScalarValue::UInt32(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, UInt32)
     }
 
     #[pyo3(name = "getUInt64Value")]
     pub fn uint_64_value(&self) -> PyResult<Option<u64>> {
-        match self.get_scalar_value()? {
-            ScalarValue::UInt64(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, UInt64)
     }
 
     #[pyo3(name = "getDate32Value")]
     pub fn date_32_value(&self) -> PyResult<Option<i32>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Date32(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Date32)
     }
 
     #[pyo3(name = "getDate64Value")]
     pub fn date_64_value(&self) -> PyResult<Option<i64>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Date64(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Date64)
     }
 
     #[pyo3(name = "getTime64Value")]
     pub fn time_64_value(&self) -> PyResult<Option<i64>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Time64Nanosecond(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Time64Nanosecond)
     }
 
     #[pyo3(name = "getTimestampValue")]
@@ -702,10 +672,7 @@ impl PyExpr {
 
     #[pyo3(name = "getBoolValue")]
     pub fn bool_value(&self) -> PyResult<Option<bool>> {
-        match self.get_scalar_value()? {
-            ScalarValue::Boolean(value) => Ok(*value),
-            other => Err(unexpected_literal_value(other)),
-        }
+        extract_scalar_value!(self, Boolean)
     }
 
     #[pyo3(name = "getStringValue")]
