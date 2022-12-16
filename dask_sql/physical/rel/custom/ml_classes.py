@@ -316,7 +316,7 @@ def get_gpu_classes():
         "LabelEncoder": "cuml.dask.preprocessing.LabelEncoder.LabelEncoder",
         "CD": "cuml.dask.solvers.cd.CD",
         # cuml
-        "Base": "cuml.common.base.Base",
+        "Base": "cuml.internals.base.Base",
         "Handle": "cuml.common.handle.Handle",
         "AgglomerativeClustering": "cuml.cluster.agglomerative.AgglomerativeClustering",
         "HDBSCAN": "cuml.cluster.hdbscan.HDBSCAN",
@@ -357,7 +357,7 @@ def get_gpu_classes():
         "GridSearchCV": "sklearn.model_selection.GridSearchCV",
         "Pipeline": "sklearn.pipeline.Pipeline",
         # Other
-        # "UniversalBase": "cuml.experimental.common.base.UniversalBase",
+        "UniversalBase": "cuml.internals.base.UniversalBase",
         "Lars": "cuml.experimental.linear_model.lars.Lars",
         "TfidfVectorizer": "cuml.feature_extraction._tfidf_vectorizer.TfidfVectorizer",
         "CountVectorizer": "cuml.feature_extraction._vectorizers.CountVectorizer",
