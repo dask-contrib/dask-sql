@@ -1045,11 +1045,13 @@ def test_predict_with_limit_offset(c, training_df):
     """
     )
 
-    res = c.sql("""
+    res = c.sql(
+        """
         SELECT * FROM PREDICT (
             MODEL my_model,
             SELECT x, y FROM timeseries LIMIT 100 OFFSET 100
         )
-    """)
+    """
+    )
 
     res.compute()
