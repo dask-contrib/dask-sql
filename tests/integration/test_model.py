@@ -61,6 +61,8 @@ def gpu_training_df(c):
     return None
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_training_and_prediction(c, training_df):
     c.sql(
         """
@@ -147,6 +149,8 @@ def test_xgboost_training_prediction(c, gpu_training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_clustering_and_prediction(c, training_df):
     c.sql(
         """
@@ -180,6 +184,8 @@ def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_create_model_with_prediction(c, training_df):
     c.sql(
         """
@@ -213,6 +219,8 @@ def test_create_model_with_prediction(c, training_df):
     check_trained_model(c, "my_model2")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_iterative_and_prediction(c, training_df):
     c.sql(
         """
@@ -232,6 +240,8 @@ def test_iterative_and_prediction(c, training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_show_models(c, training_df):
     c.sql(
         """
@@ -462,6 +472,8 @@ def test_drop_model(c, training_df):
     assert "my_model" not in c.schema[c.schema_name].models
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_describe_model(c, training_df):
     c.sql(
         """
@@ -497,6 +509,8 @@ def test_describe_model(c, training_df):
         c.sql("DESCRIBE MODEL undefined_model")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_export_model(c, training_df, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
@@ -560,6 +574,8 @@ def test_export_model(c, training_df, tmpdir):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -616,6 +632,8 @@ def test_mlflow_export(c, training_df, tmpdir):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -678,6 +696,8 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
     )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_ml_experiment(c, client, training_df):
 
     with pytest.raises(
@@ -877,6 +897,8 @@ def test_ml_experiment(c, client, training_df):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # currently tested with tpot==
@@ -900,6 +922,8 @@ def test_experiment_automl_classifier(c, client, training_df):
     check_trained_model(c, "my_automl_exp1")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # test regressor
@@ -928,6 +952,8 @@ def test_experiment_automl_regressor(c, client, training_df):
     check_trained_model(c, "my_automl_exp2")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_predict_with_nullable_types(c):
     df = pd.DataFrame(
         {
@@ -1002,6 +1028,8 @@ def test_predict_with_nullable_types(c):
     )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_predict_with_limit_offset(c, training_df):
     c.sql(
         """
