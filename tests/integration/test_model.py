@@ -21,12 +21,6 @@ except ImportError:
     dask_cudf = None
 
 
-# For Dask cluster tests
-if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
-    import sklearn
-
-
 def check_trained_model(c, model_name=None):
     if model_name is None:
         sql = """
@@ -70,6 +64,11 @@ def gpu_training_df(c):
 
 
 def test_training_and_prediction(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -156,6 +155,11 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 
 def test_clustering_and_prediction(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -189,6 +193,11 @@ def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
 
 
 def test_create_model_with_prediction(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
@@ -222,6 +231,11 @@ def test_create_model_with_prediction(c, training_df):
 
 
 def test_iterative_and_prediction(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -241,6 +255,11 @@ def test_iterative_and_prediction(c, training_df):
 
 
 def test_show_models(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
@@ -471,6 +490,11 @@ def test_drop_model(c, training_df):
 
 
 def test_describe_model(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL ex_describe_model WITH (
@@ -506,6 +530,11 @@ def test_describe_model(c, training_df):
 
 
 def test_export_model(c, training_df, tmpdir):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     with pytest.raises(RuntimeError):
         c.sql(
             """EXPORT MODEL not_available_model with (
@@ -572,6 +601,11 @@ def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
 
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model WITH (
@@ -628,6 +662,12 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
+
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL IF NOT EXISTS my_model_xgboost WITH (
@@ -687,6 +727,10 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
 
 
 def test_ml_experiment(c, client, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
 
     with pytest.raises(
         ValueError,
@@ -887,6 +931,12 @@ def test_ml_experiment(c, client, training_df):
 
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
+
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     # currently tested with tpot==
     c.sql(
         """
@@ -910,6 +960,12 @@ def test_experiment_automl_classifier(c, client, training_df):
 
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
+
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     # test regressor
     c.sql(
         """
@@ -937,6 +993,11 @@ def test_experiment_automl_regressor(c, client, training_df):
 
 
 def test_predict_with_nullable_types(c):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     df = pd.DataFrame(
         {
             "rough_day_of_year": [0, 1, 2, 3],
@@ -1011,6 +1072,11 @@ def test_predict_with_nullable_types(c):
 
 
 def test_predict_with_limit_offset(c, training_df):
+    # For Dask cluster tests
+    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
+        import sklearn
+
     c.sql(
         """
         CREATE MODEL my_model WITH (
