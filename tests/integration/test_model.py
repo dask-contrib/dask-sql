@@ -899,6 +899,7 @@ def test_ml_experiment(c, client, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
+@pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # currently tested with tpot==
@@ -924,6 +925,7 @@ def test_experiment_automl_classifier(c, client, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
+@pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # test regressor
