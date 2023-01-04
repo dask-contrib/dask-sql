@@ -688,33 +688,32 @@ class TimeStampAddOperation(Operation):
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
         df = df.astype("datetime64[ns]")
 
+        if "cudf" in str(type(df)):
+            from cudf import DateOffset
+        else:
+            from pandas.tseries.offsets import DateOffset
+
         if unit in {"YEAR", "YEARS"}:
-            year = interval * 365
-            return df + timedelta(days=year)
+            return df + DateOffset(years=interval)
         elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
             if unit in {"QUARTER", "QUARTERS"}:
-                avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
-                quarter = np.ceil(interval * avg_days_in_quarter)
-                return df + timedelta(days=quarter)
+                return df + DateOffset(months=interval*3)
             else:  # "MONTH"
-                avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
-                month = np.ceil(interval * avg_days_in_month)
-                return df + timedelta(days=month)
+                return df + DateOffset(months=interval)
         elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
-            week = interval * 7
-            return df + timedelta(days=week)
+            return df + DateOffset(weeks=interval)
         elif unit in {"DAY", "DAYS", "SQL_TSI_DAY"}:
-            return df + timedelta(days=interval)
+            return df + DateOffset(days=interval)
         elif unit in {"HOUR", "HOURS", "SQL_TSI_HOUR"}:
-            return df + timedelta(hours=interval)
+            return df + DateOffset(hours=interval)
         elif unit in {"MINUTE", "MINUTES", "SQL_TSI_MINUTE"}:
-            return df + timedelta(minutes=interval)
+            return df + DateOffset(minutes=interval)
         elif unit in {"SECOND", "SECONDS", "SQL_TSI_SECOND"}:
-            return df + timedelta(seconds=interval)
+            return df + DateOffset(seconds=interval)
         elif unit in {"MILLISECOND", "MILLISECONDS"}:
-            return df + timedelta(miliseconds=interval)
+            return df + DateOffset(milliseconds=interval)
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
-            return df + timedelta(microseconds=interval)
+            return df + DateOffset(microseconds=interval)
         else:
             raise NotImplementedError(
                 f"Timestamp addition with {unit} is not supported."
