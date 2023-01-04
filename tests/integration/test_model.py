@@ -311,7 +311,7 @@ def test_wrong_training_or_prediction(c, training_df):
         """
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ImportError):
         c.sql(
             """
             CREATE MODEL my_model WITH (
@@ -509,6 +509,8 @@ def test_describe_model(c, training_df):
         c.sql("DESCRIBE MODEL undefined_model")
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@skip_if_external_scheduler
 def test_export_model(c, training_df, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
@@ -542,7 +544,7 @@ def test_export_model(c, training_df, tmpdir):
     )
 
     assert (
-        pickle.load(open(str(temporary_file), "rb")).__class__.__name__
+        pickle.load(open(str(temporary_file), "rb")).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
     temporary_file = os.path.join(tmpdir, "model.joblib")
@@ -556,7 +558,7 @@ def test_export_model(c, training_df, tmpdir):
     )
 
     assert (
-        joblib.load(str(temporary_file)).__class__.__name__
+        joblib.load(str(temporary_file)).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
 
@@ -601,7 +603,7 @@ def test_mlflow_export(c, training_df, tmpdir):
     )
     # for sklearn compatible model
     assert (
-        mlflow.sklearn.load_model(str(temporary_dir)).__class__.__name__
+        mlflow.sklearn.load_model(str(temporary_dir)).estimator.__class__.__name__
         == "GradientBoostingClassifier"
     )
 
@@ -897,6 +899,7 @@ def test_ml_experiment(c, client, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
+@pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # currently tested with tpot==
@@ -922,6 +925,7 @@ def test_experiment_automl_classifier(c, client, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @skip_if_external_scheduler
+@pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
     # test regressor

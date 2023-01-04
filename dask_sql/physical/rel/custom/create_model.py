@@ -42,12 +42,12 @@ class CreateModelPlugin(BaseRelPlugin):
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if predicting on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if predicting on big data.
     * wrap_fit: Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if training on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if training on big data.
     * fit_kwargs: keyword arguments sent to the call to fit().
 
     All other arguments are passed to the constructor of the
@@ -125,9 +125,34 @@ class CreateModelPlugin(BaseRelPlugin):
             raise ValueError("Parameters must include a 'model_class' parameter.")
 
         target_column = kwargs.pop("target_column", "")
-        wrap_predict = kwargs.pop("wrap_predict", False)
-        wrap_fit = kwargs.pop("wrap_fit", False)
+        wrap_predict = kwargs.pop("wrap_predict", None)
+        wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
+
+        try:
+            ModelClass = import_class(model_class)
+        except ImportError:
+            raise ImportError(
+                f"Failed to import model {model_class}. Make sure it is spelled correctly and the relevant packages are installed."
+            )
+
+        model = ModelClass(**kwargs)
+
+        if wrap_predict is None:
+            if "sklearn" in model_class or (
+                "cuml" in model_class and "cuml.dask" not in model_class
+            ):
+                wrap_predict = True
+            else:
+                wrap_predict = False
+        if wrap_fit is None:
+            if (
+                "sklearn" in model_class
+                or ("cuml" in model_class and "cuml.dask" not in model_class)
+            ) and hasattr(model, "partial_fit"):
+                wrap_fit = True
+            else:
+                wrap_fit = False
 
         training_df = context.sql(select)
 
@@ -141,14 +166,6 @@ class CreateModelPlugin(BaseRelPlugin):
             X = training_df
             y = None
 
-        try:
-            ModelClass = import_class(model_class)
-        except ImportError:
-            raise ValueError(
-                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
-            )
-
-        model = ModelClass(**kwargs)
         if wrap_fit:
             from dask_sql.physical.rel.custom.wrappers import Incremental
 
@@ -166,7 +183,7 @@ class CreateModelPlugin(BaseRelPlugin):
             if y is not None:
                 y_d = y.repartition(npartitions=1).to_delayed()
             else:
-                y_d = None
+                y_d = [None]
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
