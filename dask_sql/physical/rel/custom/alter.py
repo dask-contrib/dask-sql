@@ -24,11 +24,13 @@ class AlterSchemaPlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlAlterSchema"
+    class_name = "AlterSchema"
 
-    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context"):
-        old_schema_name = str(sql.getOldSchemaName())
-        new_schema_name = str(sql.getNewSchemaName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
+        alter_schema = rel.alter_schema()
+
+        old_schema_name = alter_schema.getOldSchemaName()
+        new_schema_name = alter_schema.getNewSchemaName()
 
         logger.info(
             f"changing schema name from `{old_schema_name}` to `{new_schema_name}`"
@@ -56,24 +58,29 @@ class AlterTablePlugin(BaseRelPlugin):
     Nothing is returned.
     """
 
-    class_name = "com.dask.sql.parser.SqlAlterTable"
+    class_name = "AlterTable"
 
-    def convert(self, sql: "LogicalPlan", context: "dask_sql.Context"):
-        old_table_name = str(sql.getOldTableName())
-        new_table_name = str(sql.getNewTableName())
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
+        alter_table = rel.alter_table()
+
+        old_table_name = alter_table.getOldTableName()
+        new_table_name = alter_table.getNewTableName()
+        schema_name = alter_table.getSchemaName() or context.schema_name
 
         logger.info(
             f"changing table name from `{old_table_name}` to `{new_table_name}`"
         )
-        if old_table_name not in context.schema[context.schema_name].tables:
-            if not sql.getIfExists():
+        if old_table_name not in context.schema[schema_name].tables:
+            if not alter_table.getIfExists():
                 raise KeyError(
-                    f"Table {old_table_name} was not found, available tables in {context.schema_name} are "
-                    f"- {context.schema[context.schema_name].tables.keys()}"
+                    f"Table {old_table_name} was not found, available tables in {schema_name} are "
+                    f"- {context.schema[schema_name].tables.keys()}"
                 )
             else:
                 return
 
         context.alter_table(
-            old_table_name=old_table_name, new_table_name=new_table_name
+            old_table_name=old_table_name,
+            new_table_name=new_table_name,
+            schema_name=schema_name,
         )

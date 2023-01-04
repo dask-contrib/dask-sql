@@ -542,12 +542,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             for group_name in group_columns
         ]
 
-        # if split_out > 1, we cannot do a sorted groupby
-        sort = False if groupby_agg_options.get("split_out", 1) > 1 else True
-
         # perform groupby operation
         grouped_df = tmp_df.groupby(
-            by=(group_columns or [additional_column_name]), dropna=False, sort=sort
+            by=(group_columns or [additional_column_name]), dropna=False
         )
 
         # apply the aggregation(s)

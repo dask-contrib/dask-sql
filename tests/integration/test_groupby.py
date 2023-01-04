@@ -60,12 +60,9 @@ def test_group_by_multi(c, gpu):
             "av": df.groupby("b").mean()["a"],
             "c": df.groupby("b").count()["a"],
         }
-    ).reset_index(drop=True)
+    )
 
-    result_df["c"] = result_df["c"].astype("int32")
-    expected_df["c"] = expected_df["c"].astype("int32")
-
-    assert_eq(result_df, expected_df)
+    assert_eq(result_df, expected_df, check_index=False)
 
     c.drop_table("df")
 
@@ -298,7 +295,7 @@ def test_stddev(c, gpu):
 
     expected_df = pd.DataFrame({"s": df.groupby("a").std()["b"]})
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
