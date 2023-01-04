@@ -1,7 +1,7 @@
 import logging
 import operator
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -697,7 +697,7 @@ class TimeStampAddOperation(Operation):
             return df + DateOffset(years=interval)
         elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
             if unit in {"QUARTER", "QUARTERS"}:
-                return df + DateOffset(months=interval*3)
+                return df + DateOffset(months=interval * 3)
             else:  # "MONTH"
                 return df + DateOffset(months=interval)
         elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
