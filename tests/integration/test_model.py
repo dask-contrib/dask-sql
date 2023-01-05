@@ -512,7 +512,7 @@ def test_describe_model(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_export_model(c, training_df, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
