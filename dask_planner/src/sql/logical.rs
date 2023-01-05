@@ -31,6 +31,7 @@ pub mod show_models;
 pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
+pub mod subquery_alias;
 pub mod table_scan;
 pub mod use_schema;
 pub mod window;
@@ -134,6 +135,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::SubqueryAlias as PySubqueryAlias
+    pub fn subquery_alias(&self) -> PyResult<subquery_alias::PySubqueryAlias> {
         to_py_plan(self.current_node.as_ref())
     }
 
