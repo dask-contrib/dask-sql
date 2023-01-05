@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
 
 
@@ -137,6 +138,8 @@ def test_literal_null(c):
     assert_eq(df, expected_df)
 
 
+# TODO - https://github.com/dask-contrib/dask-sql/issues/978
+@skip_if_external_scheduler
 def test_random(c):
     query_with_seed = """
             SELECT

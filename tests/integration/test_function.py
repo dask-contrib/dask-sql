@@ -118,7 +118,7 @@ def test_custom_function_row_two_args(c, df, k1, k2, op, retty):
     c.register_function(
         f,
         "f",
-        [("a", np.float), ("k1", const_type_k1), ("k2", const_type_k2)],
+        [("a", np.float64), ("k1", const_type_k1), ("k2", const_type_k2)],
         retty,
         row_udf=True,
     )

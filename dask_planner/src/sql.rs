@@ -12,7 +12,7 @@ pub mod types;
 use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{DFSchema, DataFusionError};
+use datafusion_common::{DFSchema, DataFusionError, ScalarValue};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -47,6 +47,8 @@ use crate::{
     sql::{
         exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
         logical::{
+            alter_schema::AlterSchemaPlanNode,
+            alter_table::AlterTablePlanNode,
             analyze_table::AnalyzeTablePlanNode,
             create_experiment::CreateExperimentPlanNode,
             create_model::CreateModelPlanNode,
@@ -370,6 +372,10 @@ impl ContextProvider for DaskSQLContext {
     fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
+
+    fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
+        None
+    }
 }
 
 #[pymethods]
@@ -613,6 +619,22 @@ impl DaskSQLContext {
                     table_name: analyze_table.table_name,
                     schema_name: analyze_table.schema_name,
                     columns: analyze_table.columns,
+                }),
+            })),
+            DaskStatement::AlterTable(alter_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AlterTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    old_table_name: alter_table.old_table_name,
+                    new_table_name: alter_table.new_table_name,
+                    schema_name: alter_table.schema_name,
+                    if_exists: alter_table.if_exists,
+                }),
+            })),
+            DaskStatement::AlterSchema(alter_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AlterSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    old_schema_name: alter_schema.old_schema_name,
+                    new_schema_name: alter_schema.new_schema_name,
                 }),
             })),
         }

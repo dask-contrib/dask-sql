@@ -282,7 +282,6 @@ fn create_plan(
             LogicalPlan::Projection(Projection::try_new(
                 projected_cols,
                 Arc::new(second_aggregate),
-                None,
             )?)
         };
 
@@ -349,7 +348,6 @@ fn create_plan(
             LogicalPlan::Projection(Projection::try_new(
                 projected_cols,
                 Arc::new(second_aggregate),
-                None,
             )?)
         };
 

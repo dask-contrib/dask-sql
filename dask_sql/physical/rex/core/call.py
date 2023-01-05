@@ -1,7 +1,7 @@
 import logging
 import operator
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -688,57 +688,32 @@ class TimeStampAddOperation(Operation):
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
         df = df.astype("datetime64[ns]")
 
+        if "cudf" in str(type(df)):
+            from cudf import DateOffset
+        else:
+            from pandas.tseries.offsets import DateOffset
+
         if unit in {"YEAR", "YEARS"}:
-            result = []
-            for date in df:
-                year = date.year + interval
-                # Check leap day
-                if year % 4 != 0 and date.month == 2 and date.day == 29:
-                    result.append(date.replace(year=year, month=3, day=1))
-                else:
-                    result.append(date.replace(year=year))
-            return pd.Series(result)
+            return df + DateOffset(years=interval)
         elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
-            result = []
-            for date in df:
-                if unit in {"QUARTER", "QUARTERS"}:
-                    month = date.month + (3 * interval)
-                else:  # "MONTH"
-                    month = date.month + interval
-                year = date.year
-                if month > 12:
-                    year = year + (month // 12)
-                    month = month % 12
-                # Check leap day
-                if year % 4 != 0 and month == 2 and date.day == 29:
-                    result.append(date.replace(year=year, month=3, day=1))
-                # Replace February 30 with March 2
-                elif month == 2 and date.day == 30:
-                    result.append(date.replace(year=year, month=3, day=2))
-                # Replace February 31 with March 3
-                elif month == 2 and date.day == 31:
-                    result.append(date.replace(year=year, month=3, day=3))
-                # Check months with 30 days
-                elif month in [4, 6, 9, 11] and date.day == 31:
-                    result.append(date.replace(year=year, month=month + 1, day=1))
-                else:
-                    result.append(date.replace(year=year, month=month))
-            return pd.Series(result)
+            if unit in {"QUARTER", "QUARTERS"}:
+                return df + DateOffset(months=interval * 3)
+            else:  # "MONTH"
+                return df + DateOffset(months=interval)
         elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
-            week = interval * 7
-            return df + timedelta(days=week)
+            return df + DateOffset(weeks=interval)
         elif unit in {"DAY", "DAYS", "SQL_TSI_DAY"}:
-            return df + timedelta(days=interval)
+            return df + DateOffset(days=interval)
         elif unit in {"HOUR", "HOURS", "SQL_TSI_HOUR"}:
-            return df + timedelta(hours=interval)
+            return df + DateOffset(hours=interval)
         elif unit in {"MINUTE", "MINUTES", "SQL_TSI_MINUTE"}:
-            return df + timedelta(minutes=interval)
+            return df + DateOffset(minutes=interval)
         elif unit in {"SECOND", "SECONDS", "SQL_TSI_SECOND"}:
-            return df + timedelta(seconds=interval)
+            return df + DateOffset(seconds=interval)
         elif unit in {"MILLISECOND", "MILLISECONDS"}:
-            return df + timedelta(miliseconds=interval)
+            return df + DateOffset(milliseconds=interval)
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
-            return df + timedelta(microseconds=interval)
+            return df + DateOffset(microseconds=interval)
         else:
             raise NotImplementedError(
                 f"Timestamp addition with {unit} is not supported."
