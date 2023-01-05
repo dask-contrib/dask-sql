@@ -473,7 +473,33 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
-        result.push(Expr::Column(Column::from_qualified_name(&col.name)));
+        // Grab the table name, either Some(x) or None
+        let column_relation_option = col.relation;
+        // Prepare for formatting
+        let mut column_relation = "".to_string();
+        if !column_relation_option.is_none() {
+            column_relation = column_relation_option.unwrap() + ".";
+        }
+
+        // Grab the column name and format it
+        let mut column_string = col.name;
+        if column_string.contains(')') {
+            let start_bytes = column_string.find('(').unwrap_or(0) + 1;
+            let end_bytes = column_string.find(')').unwrap_or(0);
+            if start_bytes < end_bytes {
+                column_string = column_string[start_bytes..end_bytes].to_string();
+                if !column_string.contains('(') {
+                    let result_string = column_relation + &column_string;
+                    result.push(Expr::Column(Column::from_qualified_name(&result_string)));
+                }
+            } else {
+                let result_string = column_relation + &column_string;
+                result.push(Expr::Column(Column::from_qualified_name(&result_string)));
+            }
+        } else {
+            let result_string = column_relation + &column_string;
+            result.push(Expr::Column(Column::from_qualified_name(&result_string)));
+        }
     }
 
     if result.is_empty() {
