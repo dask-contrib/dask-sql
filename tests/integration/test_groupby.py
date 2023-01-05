@@ -273,6 +273,39 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
+def test_rollup_aggregations(c):
+    df = pd.DataFrame(
+        {
+            "state": ["NY", "NJ"] * 4,
+            "city": ["Buffalo", "Albany", "Trenton", "Newark"] * 2,
+            "a": list(range(8)),
+        }
+    )
+    c.create_table("cities", df)
+
+    return_df = c.sql(
+        """
+    SELECT
+        state, city,
+        SUM(a) as sum,
+        AVG(a) as avg
+    FROM cities
+    GROUP BY ROLLUP(state, city)
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "state": ["NY", "NJ"] * 3 + [None],
+            "city": ["Buffalo", "Albany", "Trenton", "Newark", None, None, None],
+            "sum": [4, 6, 8, 10, 12, 16, 28],
+            "avg": [2, 3, 4, 5, 3, 4, 3.5],
+        }
+    )
+
+    assert_eq(return_df, expected_df, check_index=False)
+
+
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_stddev(c, gpu):
     df = pd.DataFrame(
