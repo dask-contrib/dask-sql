@@ -71,7 +71,6 @@ use datafusion_common::{Column, DFSchema, Result};
 use datafusion_expr::{
     logical_plan::{Analyze, CrossJoin, Join, LogicalPlan, Projection, Union},
     Aggregate,
-    BinaryExpr,
     CreateMemoryTable,
     CreateView,
     Distinct,
@@ -188,7 +187,6 @@ fn optimize_top_down(
                             expr: projection_columns,
                             input: Arc::new(current_plan.clone()),
                             schema: Arc::new(projection_schema.unwrap()),
-                            alias: None,
                         });
 
                         // Add Projection to HashMap
@@ -270,7 +268,6 @@ fn optimize_top_down(
                     let union_plan = LogicalPlan::Union(Union {
                         inputs: new_inputs,
                         schema: u.schema.clone(),
-                        alias: u.alias.clone(),
                     });
 
                     // Add Union to HashMap
@@ -323,7 +320,6 @@ fn optimize_top_down(
                         expr: p.expr.clone(),
                         input: Arc::new(previous_step.clone()),
                         schema: p.schema.clone(),
-                        alias: p.alias.clone(),
                     });
                 }
                 LogicalPlan::SubqueryAlias(s) => {
@@ -472,120 +468,19 @@ fn insert_post_join_columns(post_join_columns: &mut HashSet<Expr>, inserted_colu
 }
 
 fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
-    // TODO: Can we use to_columns() or expr_to_columns() here?
-    match column {
-        Expr::Column(c) => {
-            let mut column_string = c.flat_name();
-            if column_string.contains(')') {
-                let start_bytes = column_string.find('(').unwrap_or(0) + 1;
-                let end_bytes = column_string.find(')').unwrap_or(0);
-                if start_bytes < end_bytes {
-                    column_string = column_string[start_bytes..end_bytes].to_string();
-                    if !column_string.contains('(') {
-                        Some(vec![Expr::Column(Column::from_qualified_name(
-                            &column_string,
-                        ))])
-                    } else {
-                        None
-                    }
-                } else {
-                    Some(vec![column.clone()])
-                }
-            } else {
-                Some(vec![column.clone()])
-            }
-        }
-        Expr::AggregateFunction { args, filter, .. } => {
-            let mut return_vector = vec![];
+    // Returns a Result<HashSet>
+    let hs = column.to_columns().unwrap();
 
-            for arg in args {
-                return_vector = push_column_names(arg, &return_vector);
-            }
-
-            for f in filter {
-                return_vector = push_column_names(f, &return_vector);
-            }
-
-            Some(return_vector)
-        }
-        Expr::BinaryExpr(BinaryExpr { left, right, .. }) => {
-            let mut return_vector = vec![];
-
-            return_vector = push_column_names(left, &return_vector);
-            return_vector = push_column_names(right, &return_vector);
-
-            Some(return_vector)
-        }
-        Expr::ScalarFunction { args, .. } => {
-            let mut return_vector = vec![];
-            for arg in args {
-                return_vector = push_column_names(arg, &return_vector);
-            }
-            Some(return_vector)
-        }
-        Expr::Sort { expr, .. } => {
-            let mut return_vector = vec![];
-            return_vector = push_column_names(expr, &return_vector);
-            Some(return_vector)
-        }
-        Expr::Alias(a, _) => {
-            let mut return_vector = vec![];
-            return_vector = push_column_names(a, &return_vector);
-            Some(return_vector)
-        }
-        Expr::Case(c) => {
-            let mut return_vector = vec![];
-
-            let case_expr = &c.expr;
-            if let Some(ce) = case_expr {
-                return_vector = push_column_names(ce, &return_vector);
-            }
-
-            // Vec<(Box<Expr>, Box<Expr>)>
-            let when_then_expr = &c.when_then_expr;
-            for wte in when_then_expr {
-                let wte0 = &wte.0;
-                return_vector = push_column_names(wte0, &return_vector);
-
-                let wte1 = &wte.1;
-                return_vector = push_column_names(wte1, &return_vector);
-            }
-
-            let else_expr = &c.else_expr;
-            if let Some(ce) = else_expr {
-                return_vector = push_column_names(ce, &return_vector);
-            }
-
-            Some(return_vector)
-        }
-        Expr::IsNull(expr) => {
-            let mut return_vector = vec![];
-            return_vector = push_column_names(expr, &return_vector);
-            Some(return_vector)
-        }
-        Expr::IsNotNull(expr) => {
-            let mut return_vector = vec![];
-            return_vector = push_column_names(expr, &return_vector);
-            Some(return_vector)
-        }
-        Expr::Cast(c) => {
-            let mut return_vector = vec![];
-            return_vector = push_column_names(&c.expr, &return_vector);
-            Some(return_vector)
-        }
-        _ => None,
+    let mut result = vec![];
+    for col in hs {
+        result.push(Expr::Column(Column::from_qualified_name(&col.name)));
     }
-}
 
-fn push_column_names(column: &Expr, vector: &Vec<Expr>) -> Vec<Expr> {
-    let mut return_vector = vector.to_owned();
-    let exprs = get_column_name(column);
-    if let Some(expr) = exprs {
-        for e in expr {
-            return_vector.push(e);
-        }
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
     }
-    return_vector
 }
 
 #[cfg(test)]
