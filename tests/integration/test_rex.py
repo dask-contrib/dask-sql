@@ -654,10 +654,11 @@ def test_date_functions(c):
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
             EXTRACT(YEAR FROM d) AS "year",
+            EXTRACT(DATE FROM d) AS "date",
 
             LAST_DAY(d) as "last_day",
 
-            TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
+            TIMESTAMPADD(YEAR, 1, d) as "plus_1_year",
             TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",
             TIMESTAMPADD(WEEK, 1, d) as "plus_1_week",
             TIMESTAMPADD(DAY, 1, d) as "plus_1_day",
@@ -701,8 +702,9 @@ def test_date_functions(c):
             "second": [42],
             "week": [39],
             "year": [2021],
+            "date": [datetime(2021, 10, 3)],
             "last_day": [datetime(2021, 10, 31, 15, 53, 42, 47)],
-            "plus_1_year": [datetime(2023, 10, 3, 15, 53, 42, 47)],
+            "plus_1_year": [datetime(2022, 10, 3, 15, 53, 42, 47)],
             "plus_1_month": [datetime(2021, 11, 3, 15, 53, 42, 47)],
             "plus_1_week": [datetime(2021, 10, 10, 15, 53, 42, 47)],
             "plus_1_day": [datetime(2021, 10, 4, 15, 53, 42, 47)],

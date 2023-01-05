@@ -1,5 +1,5 @@
+import datetime
 import operator
-from datetime import datetime
 from unittest.mock import MagicMock
 
 import dask.dataframe as dd
@@ -190,7 +190,7 @@ def test_string_operations():
 def test_dates():
     op = call.ExtractOperation()
 
-    date = datetime(2021, 10, 3, 15, 53, 42, 47)
+    date = datetime.datetime(2021, 10, 3, 15, 53, 42, 47)
     assert int(op("CENTURY", date)) == 20
     assert op("DAY", date) == 3
     assert int(op("DECADE", date)) == 202
@@ -206,18 +206,19 @@ def test_dates():
     assert op("SECOND", date) == 42
     assert op("WEEK", date) == 39
     assert op("YEAR", date) == 2021
+    assert op("DATE", date) == datetime.date(2021, 10, 3)
 
     ceil_op = call.CeilFloorOperation("ceil")
     floor_op = call.CeilFloorOperation("floor")
 
-    assert ceil_op(date, "DAY") == datetime(2021, 10, 4)
-    assert ceil_op(date, "HOUR") == datetime(2021, 10, 3, 16)
-    assert ceil_op(date, "MINUTE") == datetime(2021, 10, 3, 15, 54)
-    assert ceil_op(date, "SECOND") == datetime(2021, 10, 3, 15, 53, 43)
-    assert ceil_op(date, "MILLISECOND") == datetime(2021, 10, 3, 15, 53, 42, 1000)
+    assert ceil_op(date, "DAY") == datetime.datetime(2021, 10, 4)
+    assert ceil_op(date, "HOUR") == datetime.datetime(2021, 10, 3, 16)
+    assert ceil_op(date, "MINUTE") == datetime.datetime(2021, 10, 3, 15, 54)
+    assert ceil_op(date, "SECOND") == datetime.datetime(2021, 10, 3, 15, 53, 43)
+    assert ceil_op(date, "MILLISECOND") == datetime.datetime(2021, 10, 3, 15, 53, 42, 1000)
 
-    assert floor_op(date, "DAY") == datetime(2021, 10, 3)
-    assert floor_op(date, "HOUR") == datetime(2021, 10, 3, 15)
-    assert floor_op(date, "MINUTE") == datetime(2021, 10, 3, 15, 53)
-    assert floor_op(date, "SECOND") == datetime(2021, 10, 3, 15, 53, 42)
-    assert floor_op(date, "MILLISECOND") == datetime(2021, 10, 3, 15, 53, 42)
+    assert floor_op(date, "DAY") == datetime.datetime(2021, 10, 3)
+    assert floor_op(date, "HOUR") == datetime.datetime(2021, 10, 3, 15)
+    assert floor_op(date, "MINUTE") == datetime.datetime(2021, 10, 3, 15, 53)
+    assert floor_op(date, "SECOND") == datetime.datetime(2021, 10, 3, 15, 53, 42)
+    assert floor_op(date, "MILLISECOND") == datetime.datetime(2021, 10, 3, 15, 53, 42)
