@@ -209,9 +209,7 @@ impl Dialect for DaskDialect {
                     parser.expect_token(&Token::RParen)?;
 
                     // convert to function args
-                    let args = vec![
-                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
-                    ];
+                    let args = vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))];
 
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("extract_date")]),

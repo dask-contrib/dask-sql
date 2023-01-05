@@ -215,7 +215,9 @@ def test_dates():
     assert ceil_op(date, "HOUR") == datetime.datetime(2021, 10, 3, 16)
     assert ceil_op(date, "MINUTE") == datetime.datetime(2021, 10, 3, 15, 54)
     assert ceil_op(date, "SECOND") == datetime.datetime(2021, 10, 3, 15, 53, 43)
-    assert ceil_op(date, "MILLISECOND") == datetime.datetime(2021, 10, 3, 15, 53, 42, 1000)
+    assert ceil_op(date, "MILLISECOND") == datetime.datetime(
+        2021, 10, 3, 15, 53, 42, 1000
+    )
 
     assert floor_op(date, "DAY") == datetime.datetime(2021, 10, 3)
     assert floor_op(date, "HOUR") == datetime.datetime(2021, 10, 3, 15)
