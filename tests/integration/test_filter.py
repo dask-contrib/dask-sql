@@ -1,10 +1,14 @@
+import dask
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.utils_test import hlg_layer
+from packaging.version import parse as parseVersion
 
 from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
+
+DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
 
 
 def test_filter(c, df):
@@ -153,12 +157,22 @@ def test_filter_year(c):
         (
             "SELECT * FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
-            [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
+            [
+                [("a", "==", 1), ("b", "<", 10)],
+                [("a", "==", 1), ("b", ">", 5)],
+                [("b", ">", 5), ("b", "<", 10)],
+                [("a", "==", 1)],
+            ],
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
             lambda x: x[(x["b"] == 1) | (x["b"] == 6)],
-            [[("b", "<=", 1), ("b", ">=", 1)], [("b", "<=", 6), ("b", ">=", 6)]],
+            [[("b", "==", 1)], [("b", "==", 6)]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b IN (1, 3, 5, 6)",
+            lambda x: x[(x["b"] == 1) | (x["b"] == 3) | (x["b"] == 5) | (x["b"] == 6)],
+            [[("b", "==", 1)], [("b", "==", 3)], [("b", "==", 5)], [("b", "==", 6)]],
             marks=pytest.mark.xfail(
                 reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
             ),
@@ -166,7 +180,12 @@ def test_filter_year(c):
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
-            [[("a", "==", 1)], [("b", "<", 10), ("b", ">", 5)]],
+            [
+                [("a", "==", 1), ("b", "<", 10)],
+                [("a", "==", 1), ("b", ">", 5)],
+                [("b", ">", 5), ("b", "<", 10)],
+                [("a", "==", 1)],
+            ],
         ),
         (
             # Original filters NOT in disjunctive normal form
@@ -202,14 +221,17 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
     if expect_filters:
         got_filters = frozenset(frozenset(v) for v in got_filters)
         expect_filters = frozenset(frozenset(v) for v in filters)
+
     assert got_filters == expect_filters
 
     # Check computed result is correct
     df = parquet_ddf
     expected_df = df_func(df)
 
-    # TODO: divisions should be consistent when successfully doing predicate pushdown
-    assert_eq(return_df, expected_df, check_divisions=False)
+    # divisions aren't equal for older dask versions
+    assert_eq(
+        return_df, expected_df, check_index=False, check_divisions=DASK_GT_2022_4_2
+    )
 
 
 def test_filtered_csv(tmpdir, c):

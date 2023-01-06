@@ -23,10 +23,10 @@ jobs:
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 2
-      - uses: xarray-contrib/ci-trigger@v1.1
+      - uses: xarray-contrib/ci-trigger@v1.2
         id: detect-trigger
         with:
           keyword: "[test-df-upstream]"

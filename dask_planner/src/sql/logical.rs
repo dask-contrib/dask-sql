@@ -4,6 +4,8 @@ use crate::sql::{
 };
 
 pub mod aggregate;
+pub mod alter_schema;
+pub mod alter_table;
 pub mod analyze_table;
 pub mod create_catalog_schema;
 pub mod create_experiment;
@@ -29,6 +31,7 @@ pub mod show_models;
 pub mod show_schema;
 pub mod show_tables;
 pub mod sort;
+pub mod subquery_alias;
 pub mod table_scan;
 pub mod use_schema;
 pub mod window;
@@ -38,6 +41,8 @@ use datafusion_expr::LogicalPlan;
 use pyo3::prelude::*;
 
 use self::{
+    alter_schema::AlterSchemaPlanNode,
+    alter_table::AlterTablePlanNode,
     analyze_table::AnalyzeTablePlanNode,
     create_catalog_schema::CreateCatalogSchemaPlanNode,
     create_experiment::CreateExperimentPlanNode,
@@ -130,6 +135,11 @@ impl PyLogicalPlan {
 
     /// LogicalPlan::Sort as PySort
     pub fn sort(&self) -> PyResult<sort::PySort> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::SubqueryAlias as PySubqueryAlias
+    pub fn subquery_alias(&self) -> PyResult<subquery_alias::PySubqueryAlias> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -227,6 +237,16 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::Extension::AlterTable as PyAlterTable
+    pub fn alter_table(&self) -> PyResult<alter_table::PyAlterTable> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Extension::AlterSchema as PyAlterSchema
+    pub fn alter_schema(&self) -> PyResult<alter_schema::PyAlterSchema> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// Gets the "input" for the current LogicalPlan
     pub fn get_inputs(&mut self) -> PyResult<Vec<PyLogicalPlan>> {
         let mut py_inputs: Vec<PyLogicalPlan> = Vec::new();
@@ -299,6 +319,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
+            LogicalPlan::SetVariable(_) => "SetVariable",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
                 let node = extension.node.as_any();
@@ -334,6 +355,10 @@ impl PyLogicalPlan {
                     "UseSchema"
                 } else if node.downcast_ref::<AnalyzeTablePlanNode>().is_some() {
                     "AnalyzeTable"
+                } else if node.downcast_ref::<AlterTablePlanNode>().is_some() {
+                    "AlterTable"
+                } else if node.downcast_ref::<AlterSchemaPlanNode>().is_some() {
+                    "AlterSchema"
                 } else {
                     // Default to generic `Extension`
                     "Extension"

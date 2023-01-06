@@ -11,8 +11,8 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema};
-use datafusion_common::{DFSchema, DataFusionError};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion_common::{DFSchema, DataFusionError, ScalarValue};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -47,6 +47,8 @@ use crate::{
     sql::{
         exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
         logical::{
+            alter_schema::AlterSchemaPlanNode,
+            alter_table::AlterTablePlanNode,
             analyze_table::AnalyzeTablePlanNode,
             create_experiment::CreateExperimentPlanNode,
             create_model::CreateModelPlanNode,
@@ -164,6 +166,72 @@ impl ContextProvider for DaskSQLContext {
             "year" => {
                 let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "last_day" => {
+                let sig = Signature::exact(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction =
+                    Arc::new(|_| Ok(Arc::new(DataType::Timestamp(TimeUnit::Nanosecond, None))));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampceil" | "timestampfloor" => {
+                let sig = Signature::exact(
+                    vec![DataType::Date64, DataType::Utf8],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampadd" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "timestampdiff" => {
+                let sig = Signature::exact(
+                    vec![
+                        DataType::Utf8,
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
+            "dsql_totimestamp" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Int8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt8, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt16, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt32, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::UInt64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "mod" => {
@@ -332,6 +400,10 @@ impl ContextProvider for DaskSQLContext {
     fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
+
+    fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
+        None
+    }
 }
 
 #[pymethods]
@@ -428,7 +500,7 @@ impl DaskSQLContext {
             Ok(valid) => {
                 if valid {
                     optimizer::DaskSqlOptimizer::new(true)
-                        .run_optimizations(existing_plan.original_plan)
+                        .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,
@@ -575,6 +647,22 @@ impl DaskSQLContext {
                     table_name: analyze_table.table_name,
                     schema_name: analyze_table.schema_name,
                     columns: analyze_table.columns,
+                }),
+            })),
+            DaskStatement::AlterTable(alter_table) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AlterTablePlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    old_table_name: alter_table.old_table_name,
+                    new_table_name: alter_table.new_table_name,
+                    schema_name: alter_table.schema_name,
+                    if_exists: alter_table.if_exists,
+                }),
+            })),
+            DaskStatement::AlterSchema(alter_schema) => Ok(LogicalPlan::Extension(Extension {
+                node: Arc::new(AlterSchemaPlanNode {
+                    schema: Arc::new(DFSchema::empty()),
+                    old_schema_name: alter_schema.old_schema_name,
+                    new_schema_name: alter_schema.new_schema_name,
                 }),
             })),
         }
