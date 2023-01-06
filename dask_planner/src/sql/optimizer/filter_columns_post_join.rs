@@ -32,7 +32,7 @@
 //! ```text
 //! Projection: SUM(df.a), df2.b\
 //!   Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-//!     Projection: df.a, df2.b\
+//!     Projection: a, b\
 //!       Inner Join: df.c = df2.c\
 //!         TableScan: df projection=[a, c], full_filters=[df.c IS NOT NULL]\
 //!         TableScan: df2 projection=[b, c], full_filters=[df2.c IS NOT NULL]\
@@ -77,6 +77,7 @@ use datafusion_expr::{
     Explain,
     Expr,
     Filter,
+    JoinType,
     Limit,
     Repartition,
     Sort,
@@ -150,6 +151,9 @@ fn optimize_top_down(
                         if !post_join_columns.contains(&column) {
                             should_project = true;
                         }
+                    }
+                    if j.join_type == JoinType::LeftSemi || j.join_type == JoinType::RightSemi {
+                        should_project = false;
                     }
 
                     // Check so that we don't build a stack of projections
@@ -473,32 +477,10 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
-        // Grab the table name, either Some(x) or None
-        let column_relation_option = col.relation;
-        // Prepare for formatting
-        let mut column_relation = "".to_string();
-        if !column_relation_option.is_none() {
-            column_relation = column_relation_option.unwrap() + ".";
-        }
-
-        // Grab the column name and format it
-        let mut column_string = col.name;
-        if column_string.contains(')') {
-            let start_bytes = column_string.find('(').unwrap_or(0) + 1;
-            let end_bytes = column_string.find(')').unwrap_or(0);
-            if start_bytes < end_bytes {
-                column_string = column_string[start_bytes..end_bytes].to_string();
-                if !column_string.contains('(') {
-                    let result_string = column_relation + &column_string;
-                    result.push(Expr::Column(Column::from_qualified_name(&result_string)));
-                }
-            } else {
-                let result_string = column_relation + &column_string;
-                result.push(Expr::Column(Column::from_qualified_name(&result_string)));
-            }
-        } else {
-            let result_string = column_relation + &column_string;
-            result.push(Expr::Column(Column::from_qualified_name(&result_string)));
+        // Grab the column name and check that it's not a function
+        let column_string = col.name;
+        if !column_string.contains(')') {
+            result.push(Expr::Column(Column::from_qualified_name(&column_string)));
         }
     }
 
@@ -557,14 +539,14 @@ mod tests {
 
         let expected1 = "Projection: SUM(df.a), df2.b\
         \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-        \n    Projection: df.a, df2.b\
+        \n    Projection: a, b\
         \n      Inner Join: df.c = df2.c\
         \n        TableScan: df\
         \n        TableScan: df2";
 
         let expected2 = "Projection: SUM(df.a), df2.b\
         \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-        \n    Projection: df2.b, df.a\
+        \n    Projection: b, a\
         \n      Inner Join: df.c = df2.c\
         \n        TableScan: df\
         \n        TableScan: df2";
