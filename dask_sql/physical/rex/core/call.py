@@ -635,15 +635,6 @@ class ExtractOperation(Operation):
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
 
-class ExtractDateOperation(Operation):
-    def __init__(self):
-        super().__init__(self.extract_date)
-
-    def extract_date(self, df: SeriesOrScalar):
-        df = convert_to_datetime(df)
-        return df.date
-
-
 class ToTimestampOperation(Operation):
     def __init__(self):
         super().__init__(self.to_timestamp)
@@ -971,6 +962,8 @@ class DatePartOperation(Operation):
             return df.week
         elif what in {"YEAR", "YEARS"}:
             return df.year
+        elif what == "DATE":
+            return df.date
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
@@ -1110,7 +1103,7 @@ class RexCallPlugin(BaseRexPlugin):
         "replace": ReplaceOperation(),
         # date/time operations
         "extract": ExtractOperation(),
-        "extract_date": ExtractDateOperation(),
+        "extract_date": DatePartOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),

@@ -253,7 +253,10 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "extract_date" => {
-                let sig = Signature::exact(vec![DataType::Date64], Volatility::Immutable);
+                let sig = Signature::exact(
+                    vec![DataType::Utf8, DataType::Date64],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
