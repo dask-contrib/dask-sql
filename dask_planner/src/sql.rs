@@ -12,7 +12,7 @@ pub mod types;
 use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{DFSchema, DataFusionError};
+use datafusion_common::{DFSchema, DataFusionError, ScalarValue};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -371,6 +371,10 @@ impl ContextProvider for DaskSQLContext {
 
     fn get_variable_type(&self, _: &[String]) -> Option<DataType> {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
+    }
+
+    fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
+        None
     }
 }
 
