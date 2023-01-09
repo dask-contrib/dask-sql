@@ -65,7 +65,7 @@ setup(
             "black==22.3.0",
             "isort==5.7.0",
         ],
-        "fugue": ["fugue>=0.7.0"],
+        "fugue": ["fugue>=0.7.3"],
     },
     entry_points={
         "console_scripts": [
