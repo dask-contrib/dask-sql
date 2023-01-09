@@ -332,7 +332,7 @@ def gpu_client(gpu_cluster):
 # client for all computations. otherwise, only connect to a client
 # when specified.
 @pytest.fixture(
-    scope="function" if SCHEDULER_ADDR is None else "session",
+    scope="function",
     autouse=False if SCHEDULER_ADDR is None else True,
 )
 def client():

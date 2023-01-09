@@ -149,6 +149,8 @@ def test_xgboost_training_prediction(c, gpu_training_df):
     check_trained_model(c)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@xfail_if_external_scheduler
 def test_clustering_and_prediction(c, training_df):
     c.sql(
         """
@@ -576,6 +578,8 @@ def test_export_model(c, training_df, tmpdir):
         )
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@xfail_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
