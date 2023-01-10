@@ -44,7 +44,8 @@ setup(
     install_requires=[
         "dask[dataframe,distributed]>=2022.3.0",
         "pandas>=1.4.0",
-        "fastapi>=0.69.0",
+        # FIXME: handling is needed for httpx-based fastapi>=0.87.0
+        "fastapi>=0.69.0,<0.87.0",
         "uvicorn>=0.13.4",
         "tzlocal>=2.1",
         "prompt_toolkit>=3.0.8",
