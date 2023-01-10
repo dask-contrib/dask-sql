@@ -11,7 +11,6 @@ fugue_sql = pytest.importorskip("fugue_sql")
 from dask_sql.integrations.fugue import fsql_dask  # noqa: E402
 
 
-@xfail_if_external_scheduler
 def test_fugue_workflow(client):
     dag = fugue_sql.FugueSQLWorkflow()
     df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
@@ -26,7 +25,6 @@ def test_fugue_workflow(client):
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
 
-@xfail_if_external_scheduler
 def test_fugue_fsql(client):
     pdf = pd.DataFrame([[0, "hello"], [1, "world"]], columns=["a", "b"])
     dag = fugue_sql.fsql(
