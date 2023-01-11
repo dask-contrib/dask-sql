@@ -75,6 +75,7 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     name = ddf._name
     try:
         filters = dsk.layers[name]._dnf_filter_expression(dsk)
+        print(f"Newly created filters: {filters}")
         if not isinstance(filters, frozenset):
             # No filters encountered
             return ddf
@@ -179,11 +180,16 @@ _regenerable_ops = set(_comparison_symbols.keys()) | {
     operator.or_,
     operator.getitem,
     M.fillna,
+    # M.isna,
+    # M.astype,
+    # operator.inv,
 }
 
 # Specify functions that must be generated with
 # a different API at the dataframe-collection level
-_special_op_mappings = {M.fillna: dd._Frame.fillna}
+_special_op_mappings = {M.fillna: dd._Frame.fillna,
+                        M.isna: dd._Frame.isna,
+                        M.astype: dd._Frame.astype}
 
 
 class RegenerableLayer:
@@ -245,7 +251,12 @@ class RegenerableLayer:
         regen_args = self.creation_info.get("args", [])
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
+        print(f"new_kwargs: {new_kwargs}")
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
+        print(f"Func: {func}")
+        print(f"Inputs: {inputs}")
+        print(f"Regen Args: {regen_args}")
+        print(f"Regen KWArgs: {regen_kwargs}")
         result = func(*inputs, *regen_args, **regen_kwargs)
         _regen_cache[self.layer.output] = result
         return result
@@ -263,7 +274,14 @@ class RegenerableLayer:
             func = _blockwise_getitem_dnf
         elif op == dd._Frame.fillna:
             func = _blockwise_fillna_dnf
+        elif op == dd._Frame.isna:
+            func = _blockwise_isna_dnf
+        elif op == operator.inv:
+            func = _blockwise_inv_dnf
+        elif op == dd._Frame.astype:
+            func = _blockwise_astype_dnf
         else:
+            print(f"This is the problem spot!~!!! Op: {op}")
             raise ValueError(f"No DNF expression for {op}")
 
         return func(op, self.layer.indices, dsk)
@@ -289,6 +307,7 @@ class RegenerableGraph:
 
         _layers = {}
         for key, layer in hlg.layers.items():
+            # print(f"Graph Key: {key}, Layer: {layer}, Layer Type: {type(layer)}")
             regenerable_layer = None
             if isinstance(layer, DataFrameIOLayer):
                 regenerable_layer = RegenerableLayer(layer, layer.creation_info or {})
@@ -310,6 +329,7 @@ class RegenerableGraph:
                     else:
                         op = tasks[0][0]
                     if op in _regenerable_ops:
+                        print(f"Blockwise OP: {op}")
                         regenerable_layer = RegenerableLayer(
                             layer,
                             {
@@ -317,6 +337,8 @@ class RegenerableGraph:
                                 "kwargs": kwargs,
                             },
                         )
+                    else:
+                        print(f"Blockwise OP: {op} NOT in list of _regenerable_ops")
 
             if regenerable_layer is None:
                 raise ValueError(f"Graph contains non-regenerable layer: {layer}")
@@ -376,5 +398,21 @@ def _blockwise_getitem_dnf(op, indices: list, dsk: RegenerableGraph):
 
 
 def _blockwise_fillna_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return dnf of input collection
+    return _get_blockwise_input(0, indices, dsk)
+
+
+def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return dnf of input collection
+    return _get_blockwise_input(0, indices, dsk)
+
+
+def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return dnf of input collection
+    print(f"Indices: {indices}")
+    return _get_blockwise_input(0, indices, dsk)
+
+
+def _blockwise_astype_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return dnf of input collection
     return _get_blockwise_input(0, indices, dsk)

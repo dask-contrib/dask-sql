@@ -244,6 +244,14 @@ class Context:
             **kwargs,
         )
 
+        # Temporary for testing
+        self.schema[schema_name].tables_meta[table_name.lower()] = {
+            "input_path": input_table,
+            "table_name": table_name,
+            "format": format,
+            "gpu": gpu,
+        }
+
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics

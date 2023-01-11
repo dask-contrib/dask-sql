@@ -269,6 +269,7 @@ class SchemaContainer:
     def __init__(self, name: str):
         self.__name__ = name
         self.tables: Dict[str, DataContainer] = {}
+        self.tables_meta: Dict[str, str] = {}
         self.statistics: Dict[str, Statistics] = {}
         self.experiments: Dict[str, pd.DataFrame] = {}
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
