@@ -963,7 +963,7 @@ class DatePartOperation(Operation):
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":
-            return df.date
+            return df.strftime("%Y-%m-%d")
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
