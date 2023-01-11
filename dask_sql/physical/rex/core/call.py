@@ -137,7 +137,22 @@ class ReduceOperation(Operation):
                 )
             ):
                 operands = tuple(map(as_timelike, operands))
-            return reduce(partial(self.operation, **kwargs), operands)
+            try:
+                return reduce(partial(self.operation, **kwargs), operands)
+            except ValueError:
+                # A value error is raised if we are doing a datetime operation
+                # and the datetimes are formatted as strings
+                new_operands = []
+                for operand in operands:
+                    if is_frame(operand):
+                        # Try to convert to datetime
+                        # This works on the CPU only
+                        new_operand = dd.to_datetime(operand)
+                        new_operands.append(new_operand)
+                    else:
+                        new_operands.append(operand)
+                operands = tuple(new_operands)
+                return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
