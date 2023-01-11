@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
 
 
@@ -19,9 +18,6 @@ def test_year(c, datetime_table):
     assert result_df.compute().iloc[0][0] == 2014
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
-)
 def test_case(c, df):
     result_df = c.sql(
         """
@@ -141,8 +137,6 @@ def test_literal_null(c):
     assert_eq(df, expected_df)
 
 
-# TODO - https://github.com/dask-contrib/dask-sql/issues/978
-@skip_if_external_scheduler
 def test_random(c):
     query_with_seed = """
             SELECT
@@ -517,23 +511,25 @@ def test_integer_div(c, df_simple):
     df = c.sql(
         """
         SELECT
-            -- 1 / a AS a,
+            1 / a AS a,
             a / 2 AS b,
             1.0 / a AS c
         FROM df_simple
     """
     )
 
-    expected_df = pd.DataFrame(index=df_simple.index)
-    # expected_df["a"] = [1, 0, 0] # dtype returned by df for 1/a is float instead of int
-    # expected_df["a"] = expected_df["a"].astype("Int64")
-    expected_df["b"] = [0, 1, 1]
-    expected_df["b"] = expected_df["b"].astype("Int64")
-    expected_df["c"] = [1.0, 0.5, 0.333333]
+    expected_df = pd.DataFrame(
+        {
+            "a": (1 // df_simple.a).astype("Int64"),
+            "b": (df_simple.a // 2).astype("Int64"),
+            "c": 1 / df_simple.a,
+        }
+    )
+
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="Subquery expressions not yet enabled")
+@pytest.mark.xfail(reason="Subquery expressions not yet enabled")
 def test_subqueries(c, user_table_1, user_table_2):
     df = c.sql(
         """
@@ -621,6 +617,76 @@ def test_string_functions(c, gpu):
             "v": ["A Normal String"],
             "w": ["a nolmal stling"],
             "x": ["Anober String"],
+        }
+    )
+
+    assert_eq(
+        df.head(1),
+        expected_df,
+    )
+
+
+@pytest.mark.xfail(reason="POSITION syntax not supported by parser")
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_position(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
+    df = c.sql(
+        f"""
+        SELECT
+            POSITION('a' IN a FROM 4) AS f,
+            POSITION('ZL' IN a) AS g,
+        FROM
+            {input_table}
+        """
+    )
+
+    if gpu:
+        df = df.astype({"f": "int64", "g": "int64"})
+
+    expected_df = pd.DataFrame(
+        {
+            "f": [7],
+            "g": [0],
+        }
+    )
+
+    assert_eq(
+        df.head(1),
+        expected_df,
+    )
+
+
+@pytest.mark.xfail(reason="OVERLAY syntax not supported by parser")
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_overlay(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
+    df = c.sql(
+        f"""
+        SELECT
+            OVERLAY(a PLACING 'XXX' FROM -1) AS l,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS m,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS n,
+        FROM
+            {input_table}
+        """
+    )
+
+    if gpu:
+        df = df.astype({"c": "int64"})  # , "f": "int64", "g": "int64"})
+
+    expected_df = pd.DataFrame(
+        {
+            "l": ["XXXormal string"],
+            "m": ["aXXXmal string"],
+            "n": ["aXXXnormal string"],
         }
     )
 
