@@ -48,7 +48,7 @@ def convert_to_datetime(df):
     return df
 
 
-def is_cudf(obj):
+def is_cudf_type(obj):
     """
     Check if an object is a cuDF type
     """
