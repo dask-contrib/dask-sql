@@ -137,22 +137,7 @@ class ReduceOperation(Operation):
                 )
             ):
                 operands = tuple(map(as_timelike, operands))
-            try:
-                return reduce(partial(self.operation, **kwargs), operands)
-            except ValueError:
-                # A value error is raised if we are doing a datetime operation
-                # and the datetimes are formatted as strings
-                new_operands = []
-                for operand in operands:
-                    if is_frame(operand):
-                        # Try to convert to datetime
-                        # This works on the CPU only
-                        new_operand = dd.to_datetime(operand)
-                        new_operands.append(new_operand)
-                    else:
-                        new_operands.append(operand)
-                operands = tuple(new_operands)
-                return reduce(partial(self.operation, **kwargs), operands)
+            return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
 
@@ -978,7 +963,10 @@ class DatePartOperation(Operation):
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":
-            return df.strftime("%Y-%m-%d")
+            if "cudf" in str(df._meta):
+                return df.strftime("%Y-%m-%d")
+            else:
+                return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
