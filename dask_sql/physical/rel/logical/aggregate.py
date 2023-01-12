@@ -12,7 +12,7 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.call import IsNullOperation
-from dask_sql.utils import new_temporary_column
+from dask_sql.utils import is_cudf, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
@@ -78,7 +78,7 @@ class AggregationSpecification:
 
             if pd.api.types.is_string_dtype(series.dtype):
                 # If dask_cudf strings dtype, return built-in aggregation
-                if "cudf" in str(series._partition_type):
+                if is_cudf(series._partition_type):
                     return built_in_aggregation
 
                 # with pandas StringDtype built-in aggregations work
