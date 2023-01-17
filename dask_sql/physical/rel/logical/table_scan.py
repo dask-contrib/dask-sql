@@ -44,45 +44,8 @@ class DaskTableScanPlugin(BaseRelPlugin):
         # The table(s) we need to return
         dask_table = rel.getTable()
         schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
-
-        filters = table_scan.getFilters()
-        if filters:
-            tbl_meta = context.schema[schema_name].tables_meta[table_name]
-
-            # print(f"Reading table: {table_name} @ {tbl_meta['input_path']}")
-            # print(f"# Of filters from Rust: {len(table_scan.getFilters())}")
-
-            # Generate the filters in DNF form for the cudf reader
-            filters = table_scan.getDNFFilters()
-            # print(f"Filters: {filters}")
-
-            # Columns that should be projected
-            cols = table_scan.getTableScanProjects()
-            # print(f"Columns to read: {cols}")
-
-            if len(filters) > 0:
-                # Prepare the filters to be in the format expected by Python since they came from Rust
-                updated_filters = []
-                for filter_tup in filters:
-                    if filter_tup[2].startswith("Int"):
-                        num = filter_tup[2].split('(')[1].split(')')[0]
-                        updated_filters.append((filter_tup[0], filter_tup[1], int(num)))
-                    else:
-                        updated_filters.append(filter_tup)
-
-
-                # print(f"Updated filters: {updated_filters}")
-                # df = ddf.read_parquet(tbl_meta["input_path"], columns=cols, filters=filters)
-                df = ddf.read_parquet(tbl_meta["input_path"], filters=updated_filters, columns=cols)
-            else:
-                # df = ddf.read_parquet(tbl_meta["input_path"], columns=cols)
-                df = ddf.read_parquet(tbl_meta["input_path"], columns=cols)
-
-            dc = DataContainer(df.copy(), ColumnContainer(df.columns))
-        else:
-            dc = context.schema[schema_name].tables[table_name]
-            # dc = self._apply_filters(table_scan, rel, dc, context)
-
+        
+        dc = self._apply_filters(context.schema[schema_name].tables_meta[table_name], table_scan, rel, context)
         # Apply filter before projections since filter columns may not be in projections
         dc = self._apply_projections(table_scan, dask_table, dc)
 
@@ -110,19 +73,49 @@ class DaskTableScanPlugin(BaseRelPlugin):
         cc = cc.limit_to(field_specifications)
         return DataContainer(df, cc)
 
-    def _apply_filters(self, table_scan, rel, dc, context):
-        df = dc.df
-        cc = dc.column_container
+    def _apply_filters(self, tbl_meta, table_scan, rel, context):
+        # df = dc.df
+        # cc = dc.column_container
+        # Columns that should be projected
+        cols = table_scan.getTableScanProjects()
+
         filters = table_scan.getFilters()
-        # All partial filters here are applied in conjunction (&)
         if filters:
+            # Generate the filters in DNF form for the cudf reader
+            filtered_result = table_scan.getDNFFilters()
+            print(f"Filtered Result: {filtered_result}")
+            filtered = filtered_result.filtered_exprs
+            unfiltered = filtered_result.io_unfilterable_exprs
+            print(f"Filtered: {filtered}")
+            print(f"Un-filtered: {unfiltered}")
+
+            if len(filtered) > 0:
+                # Prepare the filters to be in the format expected by Python since they came from Rust
+                updated_filters = []
+                for filter_tup in filtered:
+                    if filter_tup[2].startswith("Int"):
+                        num = filter_tup[2].split('(')[1].split(')')[0]
+                        updated_filters.append((filter_tup[0], filter_tup[1], int(num)))
+                    else:
+                        updated_filters.append(filter_tup)
+
+
+                df = ddf.read_parquet(tbl_meta["input_path"], filters=updated_filters, columns=cols)
+            else:
+                df = ddf.read_parquet(tbl_meta["input_path"], columns=cols)
+
+            dc = DataContainer(df.copy(), ColumnContainer(df.columns))
+
+            # All partial filters here are applied in conjunction (&)
             df_condition = reduce(
                 operator.and_,
                 [
                     RexConverter.convert(rel, rex, dc, context=context)
-                    for rex in filters
+                    for rex in unfiltered
                 ],
             )
             df = filter_or_scalar(df, df_condition)
+        else:
+            df = ddf.read_parquet(tbl_meta["input_path"], columns=cols)
 
-        return DataContainer(df, cc)
+        return DataContainer(df, ColumnContainer(df.columns))

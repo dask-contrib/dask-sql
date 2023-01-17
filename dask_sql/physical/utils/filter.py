@@ -75,7 +75,6 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     name = ddf._name
     try:
         filters = dsk.layers[name]._dnf_filter_expression(dsk)
-        print(f"Newly created filters: {filters}")
         if not isinstance(filters, frozenset):
             # No filters encountered
             return ddf

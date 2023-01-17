@@ -16,6 +16,16 @@ pub struct PyTableScan {
     input: Arc<LogicalPlan>,
 }
 
+#[pyclass(name = "FilteredResult", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub struct PyFilteredResult {
+    // Exprs that cannot be successfully passed down to the IO layer for filtering and must still be filtered using Dask operations
+    #[pyo3(get)]
+    pub io_unfilterable_exprs: Vec<PyExpr>,
+    #[pyo3(get)]
+    pub filtered_exprs: Vec<(String, String, String)>,
+}
+
 #[pymethods]
 impl PyTableScan {
     #[pyo3(name = "getTableScanProjects")]
@@ -45,8 +55,9 @@ impl PyTableScan {
     }
 
     #[pyo3(name = "getDNFFilters")]
-    fn dnf_io_filters(&self) -> PyResult<Vec<(String, String, String)>> {
+    fn dnf_io_filters(&self) -> PyResult<PyFilteredResult> {
         let mut filters: Vec<(String, String, String)> = Vec::new();
+        let mut unfiltered: Vec<PyExpr> = Vec::new();
         for filter in &self.table_scan.filters {
             match filter {
                 Expr::BinaryExpr(binary_expr) => {
@@ -58,17 +69,18 @@ impl PyTableScan {
                     let right = right_split.nth(0);
                     filters.push((left.unwrap().to_string(), binary_expr.op.to_string(), right.unwrap().to_string()))
                 },
-                // Expr::IsNotNull(expr) => {
-                //     let expr_thing = expr.to_string();
-                //     let mut expr_split = expr_thing.split('.');
-                //     let left = expr_split.nth(1);
-                //     filters.push((left.unwrap().to_string(), "!=".to_string(), "np.nan".to_string()))
-                // },
-                Expr::IsNotNull(expr) => print!("Skipping is not null for now"),
-                _ => panic!("Encountered non BinaryExpr type: {}", filter)
+                _ => {
+                    println!("Unable to apply filter: `{}` to IO reader, using in Dask instead", filter);
+                    let tbl_scan = LogicalPlan::TableScan(self.table_scan.clone());
+                    unfiltered.push(PyExpr::from(filter.clone(), Some(vec![Arc::new(tbl_scan)])))
+                }
             }
         }
-        Ok(filters)
+
+        Ok(PyFilteredResult {
+            io_unfilterable_exprs: unfiltered,
+            filtered_exprs: filters
+        })
     }
 }
 
