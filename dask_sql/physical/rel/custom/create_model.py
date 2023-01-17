@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
@@ -31,9 +32,6 @@ class CreateModelPlugin(BaseRelPlugin):
     * model_class: Full path to the class of the model to train.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
-      Have a look into the
-      [dask-ml documentation](https://ml.dask.org/index.html)
-      for more information on which models work best.
       You might need to install necessary packages to use
       the models.
     * target_column: Which column from the data to use as target.
@@ -43,17 +41,13 @@ class CreateModelPlugin(BaseRelPlugin):
       unsupervised algorithms). This means, you typically
       want to set this parameter.
     * wrap_predict: Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.ParallelPostFit`.
-      Have a look into the
-      [dask-ml docu](https://ml.dask.org/meta-estimators.html#parallel-prediction-and-transformation)
-      to learn more about it. Defaults to false. Typically you set
-      it to true for sklearn models if predicting on big data.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if predicting on big data.
     * wrap_fit: Boolean flag, whether to wrap the selected
-      model with a :class:`dask_ml.wrappers.Incremental`.
-      Have a look into the
-      [dask-ml docu](https://ml.dask.org/incremental.html)
-      to learn more about it. Defaults to false. Typically you set
-      it to true for sklearn models if training on big data.
+      model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if training on big data.
     * fit_kwargs: keyword arguments sent to the call to fit().
 
     All other arguments are passed to the constructor of the
@@ -75,7 +69,7 @@ class CreateModelPlugin(BaseRelPlugin):
     Examples:
 
         CREATE MODEL my_model WITH (
-            model_class = 'dask_ml.xgboost.XGBClassifier',
+            model_class = 'xgboost.XGBClassifier',
             target_column = 'target'
         ) AS (
             SELECT x, y, target
@@ -94,11 +88,10 @@ class CreateModelPlugin(BaseRelPlugin):
         dask dataframes.
 
         * if you are training on relatively small amounts
-          of data but predicting on large data samples
-          (and you are not using a model build for usage with dask
-          from the dask-ml package), you might want to set
-          `wrap_predict` to True. With this option,
-          model interference will be parallelized/distributed.
+          of data but predicting on large data samples,
+          you might want to set `wrap_predict` to True.
+          With this option, model interference will be
+          parallelized/distributed.
         * If you are training on large amounts of data,
           you can try setting wrap_fit to True. This will
           do the same on the training step, but works only on
@@ -133,9 +126,34 @@ class CreateModelPlugin(BaseRelPlugin):
             raise ValueError("Parameters must include a 'model_class' parameter.")
 
         target_column = kwargs.pop("target_column", "")
-        wrap_predict = kwargs.pop("wrap_predict", False)
-        wrap_fit = kwargs.pop("wrap_fit", False)
+        wrap_predict = kwargs.pop("wrap_predict", None)
+        wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
+
+        try:
+            ModelClass = import_class(model_class)
+        except ImportError:
+            raise ImportError(
+                f"Failed to import model {model_class}. Make sure it is spelled correctly and the relevant packages are installed."
+            )
+
+        model = ModelClass(**kwargs)
+
+        if wrap_predict is None:
+            if "sklearn" in model_class or (
+                "cuml" in model_class and "cuml.dask" not in model_class
+            ):
+                wrap_predict = True
+            else:
+                wrap_predict = False
+        if wrap_fit is None:
+            if (
+                "sklearn" in model_class
+                or ("cuml" in model_class and "cuml.dask" not in model_class)
+            ) and hasattr(model, "partial_fit"):
+                wrap_fit = True
+            else:
+                wrap_fit = False
 
         training_df = context.sql(select)
 
@@ -149,27 +167,13 @@ class CreateModelPlugin(BaseRelPlugin):
             X = training_df
             y = None
 
-        try:
-            ModelClass = import_class(model_class)
-        except ImportError:
-            raise ValueError(
-                f"Can not import model {model_class}. Make sure you spelled it correctly and have installed all packages."
-            )
-
-        model = ModelClass(**kwargs)
         if wrap_fit:
-            try:
-                from dask_ml.wrappers import Incremental
-            except ImportError:  # pragma: no cover
-                raise ValueError("Wrapping requires dask-ml to be installed.")
+            from dask_sql.physical.rel.custom.wrappers import Incremental
 
             model = Incremental(estimator=model)
 
         if wrap_predict:
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError("Wrapping requires dask-ml to be installed.")
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             # When `wrap_predict` is set to True we train on single partition frames
             # because this is only useful for non dask distributed models
@@ -180,11 +184,20 @@ class CreateModelPlugin(BaseRelPlugin):
             if y is not None:
                 y_d = y.repartition(npartitions=1).to_delayed()
             else:
-                y_d = None
+                y_d = [None]
 
             delayed_model = [delayed(model.fit)(x_p, y_p) for x_p, y_p in zip(X_d, y_d)]
             model = delayed_model[0].compute()
-            model = ParallelPostFit(estimator=model)
+            if "sklearn" in model_class:
+                output_meta = np.array([])
+                model = ParallelPostFit(
+                    estimator=model,
+                    predict_meta=output_meta,
+                    predict_proba_meta=output_meta,
+                    transform_meta=output_meta,
+                )
+            else:
+                model = ParallelPostFit(estimator=model)
 
         else:
             model.fit(X, y, **fit_kwargs)

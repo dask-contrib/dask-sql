@@ -44,8 +44,9 @@ setup(
     install_requires=[
         "dask[dataframe,distributed]>=2022.3.0",
         "pandas>=1.4.0",
-        "fastapi>=0.69.0",
-        "uvicorn>=0.11.3",
+        # FIXME: handling is needed for httpx-based fastapi>=0.87.0
+        "fastapi>=0.69.0,<0.87.0",
+        "uvicorn>=0.13.4",
         "tzlocal>=2.1",
         "prompt_toolkit>=3.0.8",
         "pygments>=2.7.1",
@@ -59,14 +60,13 @@ setup(
             "mock>=4.0.3",
             "sphinx>=3.2.1",
             "pyarrow>=6.0.1",
-            "dask-ml>=2022.1.22",
             "scikit-learn>=1.0.0",
             "intake>=0.6.0",
             "pre-commit",
             "black==22.3.0",
             "isort==5.7.0",
         ],
-        "fugue": ["fugue>=0.7.0"],
+        "fugue": ["fugue>=0.7.3"],
     },
     entry_points={
         "console_scripts": [

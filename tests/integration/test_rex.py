@@ -18,9 +18,6 @@ def test_year(c, datetime_table):
     assert result_df.compute().iloc[0][0] == 2014
 
 
-@pytest.mark.skip(
-    reason="WIP DataFusion - Enabling CBO generates yet to be implemented edge case"
-)
 def test_case(c, df):
     result_df = c.sql(
         """
@@ -59,10 +56,27 @@ def test_intervals(c):
         """SELECT INTERVAL '3' DAY as "IN"
         """
     )
-
     expected_df = pd.DataFrame(
         {
             "IN": [pd.to_timedelta("3d")],
+        }
+    )
+    assert_eq(df, expected_df)
+
+    date1 = datetime(2021, 10, 3, 15, 53, 42, 47)
+    date2 = datetime(2021, 2, 28, 15, 53, 42, 47)
+    dates = dd.from_pandas(pd.DataFrame({"d": [date1, date2]}), npartitions=1)
+    c.register_dask_table(dates, "dates")
+    df = c.sql(
+        """SELECT d + INTERVAL '5 days' AS "Plus_5_days" FROM dates
+        """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "Plus_5_days": [
+                datetime(2021, 10, 8, 15, 53, 42, 47),
+                datetime(2021, 3, 5, 15, 53, 42, 47),
+            ]
         }
     )
     assert_eq(df, expected_df)
@@ -338,6 +352,65 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_coalesce(c, gpu):
+    df = dd.from_pandas(
+        pd.DataFrame({"a": [1, 2, 3], "b": [np.nan] * 3}), npartitions=1
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(3, 5) as c1,
+            COALESCE(NULL, NULL) as c2,
+            COALESCE(NULL, 'hi') as c3,
+            COALESCE(NULL, NULL, 'bye', 5/0) as c4,
+            COALESCE(NULL, 3/2, NULL, 'fly') as c5,
+            COALESCE(SUM(b), 'why', 2.2) as c6,
+            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c7
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [3],
+            "c2": [np.nan],
+            "c3": ["hi"],
+            "c4": ["bye"],
+            "c5": ["1"],
+            "c6": ["why"],
+            "c7": [2.0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = c.sql(
+        """
+        SELECT
+            COALESCE(a, b) as c1,
+            COALESCE(b, a) as c2,
+            COALESCE(a, a) as c3,
+            COALESCE(b, b) as c4
+        FROM df
+        """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "c1": [1, 2, 3],
+            "c2": [1, 2, 3],
+            "c3": [1, 2, 3],
+            "c4": [np.nan] * 3,
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+    c.drop_table("df")
+
+
 def test_boolean_operations(c):
     df = dd.from_pandas(pd.DataFrame({"b": [1, 0, -1]}), npartitions=1)
     df["b"] = df["b"].apply(
@@ -438,23 +511,25 @@ def test_integer_div(c, df_simple):
     df = c.sql(
         """
         SELECT
-            -- 1 / a AS a,
+            1 / a AS a,
             a / 2 AS b,
             1.0 / a AS c
         FROM df_simple
     """
     )
 
-    expected_df = pd.DataFrame(index=df_simple.index)
-    # expected_df["a"] = [1, 0, 0] # dtype returned by df for 1/a is float instead of int
-    # expected_df["a"] = expected_df["a"].astype("Int64")
-    expected_df["b"] = [0, 1, 1]
-    expected_df["b"] = expected_df["b"].astype("Int64")
-    expected_df["c"] = [1.0, 0.5, 0.333333]
+    expected_df = pd.DataFrame(
+        {
+            "a": (1 // df_simple.a).astype("Int64"),
+            "b": (df_simple.a // 2).astype("Int64"),
+            "c": 1 / df_simple.a,
+        }
+    )
+
     assert_eq(df, expected_df)
 
 
-@pytest.mark.skip(reason="Subquery expressions not yet enabled")
+@pytest.mark.xfail(reason="Subquery expressions not yet enabled")
 def test_subqueries(c, user_table_1, user_table_2):
     df = c.sql(
         """
@@ -505,7 +580,9 @@ def test_string_functions(c, gpu):
             SUBSTR(a, 3, 6) AS s,
             INITCAP(a) AS t,
             INITCAP(UPPER(a)) AS u,
-            INITCAP(LOWER(a)) AS v
+            INITCAP(LOWER(a)) AS v,
+            REPLACE(a, 'r', 'l') as w,
+            REPLACE('Another String', 'th', 'b') as x
         FROM
             {input_table}
         """
@@ -538,6 +615,8 @@ def test_string_functions(c, gpu):
             "t": ["A Normal String"],
             "u": ["A Normal String"],
             "v": ["A Normal String"],
+            "w": ["a nolmal stling"],
+            "x": ["Anober String"],
         }
     )
 
@@ -547,9 +626,76 @@ def test_string_functions(c, gpu):
     )
 
 
-@pytest.mark.skip(
-    reason="TIMESTAMP add, ceil, floor for dt ops not supported by parser"
-)
+@pytest.mark.xfail(reason="POSITION syntax not supported by parser")
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_position(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
+    df = c.sql(
+        f"""
+        SELECT
+            POSITION('a' IN a FROM 4) AS f,
+            POSITION('ZL' IN a) AS g,
+        FROM
+            {input_table}
+        """
+    )
+
+    if gpu:
+        df = df.astype({"f": "int64", "g": "int64"})
+
+    expected_df = pd.DataFrame(
+        {
+            "f": [7],
+            "g": [0],
+        }
+    )
+
+    assert_eq(
+        df.head(1),
+        expected_df,
+    )
+
+
+@pytest.mark.xfail(reason="OVERLAY syntax not supported by parser")
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_string_overlay(c, gpu):
+    if gpu:
+        input_table = "gpu_string_table"
+    else:
+        input_table = "string_table"
+
+    df = c.sql(
+        f"""
+        SELECT
+            OVERLAY(a PLACING 'XXX' FROM -1) AS l,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS m,
+            OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS n,
+        FROM
+            {input_table}
+        """
+    )
+
+    if gpu:
+        df = df.astype({"c": "int64"})  # , "f": "int64", "g": "int64"})
+
+    expected_df = pd.DataFrame(
+        {
+            "l": ["XXXormal string"],
+            "m": ["aXXXmal string"],
+            "n": ["aXXXnormal string"],
+        }
+    )
+
+    assert_eq(
+        df.head(1),
+        expected_df,
+    )
+
+
 def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
@@ -573,7 +719,7 @@ def test_date_functions(c):
             EXTRACT(QUARTER FROM d) AS "quarter",
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
-            EXTRACT(YEAR FROM d) AS "year"
+            EXTRACT(YEAR FROM d) AS "year",
 
             LAST_DAY(d) as "last_day",
 
@@ -656,3 +802,216 @@ def test_date_functions(c):
             FROM df
             """
         )
+
+
+def test_timestampdiff(c):
+    ts_literal1 = datetime(2002, 3, 7, 9, 10, 5, 123)
+    ts_literal2 = datetime(2001, 6, 5, 10, 11, 6, 234)
+    df = dd.from_pandas(
+        pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}),
+        npartitions=1,
+    )
+    c.register_dask_table(df, "df")
+
+    query = """
+        SELECT timestampdiff(NANOSECOND, ts_literal1, ts_literal2) as res0,
+        timestampdiff(MICROSECOND, ts_literal1, ts_literal2) as res1,
+        timestampdiff(SECOND, ts_literal1, ts_literal2) as res2,
+        timestampdiff(MINUTE, ts_literal1, ts_literal2) as res3,
+        timestampdiff(HOUR, ts_literal1, ts_literal2) as res4,
+        timestampdiff(DAY, ts_literal1, ts_literal2) as res5,
+        timestampdiff(WEEK, ts_literal1, ts_literal2) as res6,
+        timestampdiff(MONTH, ts_literal1, ts_literal2) as res7,
+        timestampdiff(QUARTER, ts_literal1, ts_literal2) as res8,
+        timestampdiff(YEAR, ts_literal1, ts_literal2) as res9
+        FROM df
+    """
+    df = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "res0": [-23756338999889000],
+            "res1": [-23756338999889],
+            "res2": [-23756338],
+            "res3": [-395938],
+            "res4": [-6598],
+            "res5": [-274],
+            "res6": [-39],
+            "res7": [-9],
+            "res8": [-3],
+            "res9": [0],
+        }
+    )
+
+    assert_eq(df, expected_df, check_dtype=False)
+
+    test = pd.DataFrame(
+        {
+            "a": [
+                datetime(2002, 6, 5, 2, 1, 5, 200),
+                datetime(2002, 9, 1),
+                datetime(1970, 12, 3),
+            ],
+            "b": [
+                datetime(2002, 6, 7, 1, 0, 2, 100),
+                datetime(2003, 6, 5),
+                datetime(2038, 6, 5),
+            ],
+        }
+    )
+    c.create_table("test", test)
+
+    query = (
+        "SELECT timestampdiff(NANOSECOND, a, b) as nanoseconds,"
+        "timestampdiff(MICROSECOND, a, b) as microseconds,"
+        "timestampdiff(SECOND, a, b) as seconds,"
+        "timestampdiff(MINUTE, a, b) as minutes,"
+        "timestampdiff(HOUR, a, b) as hours,"
+        "timestampdiff(DAY, a, b) as days,"
+        "timestampdiff(WEEK, a, b) as weeks,"
+        "timestampdiff(MONTH, a, b) as months,"
+        "timestampdiff(QUARTER, a, b) as quarters,"
+        "timestampdiff(YEAR, a, b) as years"
+        " FROM test"
+    )
+    ddf = c.sql(query)
+
+    expected_df = pd.DataFrame(
+        {
+            "nanoseconds": [
+                169136999900000,
+                23932800000000000,
+                2130278400000000000,
+            ],
+            "microseconds": [169136999900, 23932800000000, 2130278400000000],
+            "seconds": [169136, 23932800, 2130278400],
+            "minutes": [2818, 398880, 35504640],
+            "hours": [46, 6648, 591744],
+            "days": [1, 277, 24656],
+            "weeks": [0, 39, 3522],
+            "months": [0, 9, 810],
+            "quarters": [0, 3, 270],
+            "years": [0, 0, 67],
+        }
+    )
+
+    assert_eq(ddf, expected_df, check_dtype=False)
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
+                ),
+            ),
+        ),
+    ],
+)
+def test_totimestamp(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": np.array([1203073300, 1406073600, 2806073600]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+                datetime(2014, 7, 23),
+                datetime(2058, 12, 2, 16, 53, 20),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a) AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+                datetime(1997, 3, 28, 10, 30, 1),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    df = pd.DataFrame(
+        {
+            "a": np.array(["02/28/1997", "03/28/1997"]),
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    df = c.sql(
+        """
+        SELECT to_timestamp(a, "%m/%d/%Y") AS date FROM df
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+                datetime(1997, 3, 28, 0, 0, 0),
+            ],
+        }
+    )
+    # https://github.com/rapidsai/cudf/issues/12062
+    if not gpu:
+        assert_eq(df, expected_df, check_dtype=False)
+
+    int_input = 1203073300
+    df = c.sql(f"SELECT to_timestamp({int_input}) as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(2008, 2, 15, 11, 1, 40),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "1997-02-28 10:30:00"
+    df = c.sql(f"SELECT to_timestamp('{string_input}') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 10, 30, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)
+
+    string_input = "02/28/1997"
+    df = c.sql(f"SELECT to_timestamp('{string_input}', '%m/%d/%Y') as date")
+    expected_df = pd.DataFrame(
+        {
+            "date": [
+                datetime(1997, 2, 28, 0, 0, 0),
+            ],
+        }
+    )
+    assert_eq(df, expected_df, check_dtype=False)

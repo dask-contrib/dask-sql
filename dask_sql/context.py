@@ -559,16 +559,20 @@ class Context:
         """
         self.schema[new_schema_name] = self.schema.pop(old_schema_name)
 
-    def alter_table(self, old_table_name, new_table_name):
+    def alter_table(self, old_table_name, new_table_name, schema_name=None):
         """
         Alter Table
 
         Args:
             old_table_name:
             new_table_name:
+            schema_name:
         """
-        self.schema[self.schema_name].tables[new_table_name] = self.schema[
-            self.schema_name
+        if schema_name is None:
+            schema_name = self.schema_name
+
+        self.schema[schema_name].tables[new_table_name] = self.schema[
+            schema_name
         ].tables.pop(old_table_name)
 
     def register_experiment(

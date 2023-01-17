@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
@@ -44,7 +45,7 @@ def as_timelike(op):
         return np.timedelta64(op, "D")
     elif isinstance(op, str):
         return np.datetime64(op)
-    elif pd.api.types.is_datetime64_dtype(op):
+    elif pd.api.types.is_datetime64_dtype(op) or isinstance(op, np.timedelta64):
         return op
     else:
         raise ValueError(f"Don't know how to make {type(op)} timelike")
@@ -535,6 +536,19 @@ class TrimOperation(Operation):
         return strip_call(search)
 
 
+class ReplaceOperation(Operation):
+    """The replace operator (replace occurrences of pattern in a string)"""
+
+    def __init__(self):
+        super().__init__(self.replace)
+
+    def replace(self, s, pat, repl):
+        if is_frame(s):
+            s = s.str
+
+        return s.replace(pat, repl)
+
+
 class OverlayOperation(Operation):
     """The overlay operator (replace string according to positions)"""
 
@@ -559,6 +573,25 @@ class OverlayOperation(Operation):
         return s
 
 
+class CoalesceOperation(Operation):
+    def __init__(self):
+        super().__init__(self.coalesce)
+
+    def coalesce(self, *operands):
+        result = None
+        for operand in operands:
+            if is_frame(operand):
+                # Check if frame evaluates to nan or NA
+                if len(operand) == 1 and not operand.isnull().all().compute():
+                    return operand if result is None else result.fillna(operand)
+                else:
+                    result = operand if result is None else result.fillna(operand)
+            elif not pd.isna(operand):
+                return operand if result is None else result.fillna(operand)
+
+        return result
+
+
 class ExtractOperation(Operation):
     def __init__(self):
         super().__init__(self.extract)
@@ -566,38 +599,73 @@ class ExtractOperation(Operation):
     def extract(self, what, df: SeriesOrScalar):
         df = convert_to_datetime(df)
 
-        if what == "CENTURY":
+        if what in {"CENTURY", "CENTURIES"}:
             return da.trunc(df.year / 100)
-        elif what == "DAY":
+        elif what in {"DAY", "DAYS"}:
             return df.day
-        elif what == "DECADE":
+        elif what in {"DECADE", "DECADES"}:
             return da.trunc(df.year / 10)
         elif what == "DOW":
             return (df.dayofweek + 1) % 7
         elif what == "DOY":
             return df.dayofyear
-        elif what == "HOUR":
+        elif what in {"HOUR", "HOURS"}:
             return df.hour
-        elif what == "MICROSECOND":
+        elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
-        elif what == "MILLENNIUM":
+        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
             return da.trunc(df.year / 1000)
-        elif what == "MILLISECOND":
+        elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
-        elif what == "MINUTE":
+        elif what in {"MINUTE", "MINUTES"}:
             return df.minute
-        elif what == "MONTH":
+        elif what in {"MONTH", "MONTHS"}:
             return df.month
-        elif what == "QUARTER":
+        elif what in {"QUARTER", "QUARTERS"}:
             return df.quarter
-        elif what == "SECOND":
+        elif what in {"SECOND", "SECONDS"}:
             return df.second
-        elif what == "WEEK":
+        elif what in {"WEEK", "WEEKS"}:
             return df.week
-        elif what == "YEAR":
+        elif what in {"YEAR", "YEARS"}:
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
+
+
+class ToTimestampOperation(Operation):
+    def __init__(self):
+        super().__init__(self.to_timestamp)
+
+    def to_timestamp(self, df, format):
+        default_format = "%Y-%m-%d %H:%M:%S"
+        # Remove double and single quotes from string
+        format = format.replace('"', "")
+        format = format.replace("'", "")
+
+        # TODO: format timestamps for GPU tests
+        if "cudf" in str(type(df)):
+            if format != default_format:
+                raise RuntimeError("Non-default timestamp formats not supported on GPU")
+            if df.dtype == "object":
+                return df
+            else:
+                nanoseconds_to_seconds = 10**9
+                return df * nanoseconds_to_seconds
+        # String cases
+        elif type(df) == str:
+            return np.datetime64(datetime.strptime(df, format))
+        elif df.dtype == "object":
+            return dd.to_datetime(df, format=format)
+        # Integer cases
+        elif np.isscalar(df):
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return np.datetime64(int(df), "s")
+        else:
+            if format != default_format:
+                raise RuntimeError("Integer input does not accept a format argument")
+            return dd.to_datetime(df, unit="s")
 
 
 class YearOperation(Operation):
@@ -614,24 +682,87 @@ class TimeStampAddOperation(Operation):
         super().__init__(self.timestampadd)
 
     def timestampadd(self, unit, interval, df: SeriesOrScalar):
-        df = convert_to_datetime(df)
+        unit = unit.upper()
+        interval = int(interval)
+        if interval < 0:
+            raise RuntimeError(f"Negative time interval {interval} is not supported.")
+        df = df.astype("datetime64[ns]")
 
-        if unit in {"DAY", "SQL_TSI_DAY"}:
-            return df + np.timedelta64(interval, "D")
-        elif unit in {"HOUR", "SQL_TSI_HOUR"}:
-            return df + np.timedelta64(interval, "h")
-        elif unit == "MICROSECOND":
-            return df + np.timedelta64(interval, "us")
-        elif unit == "MILLISECOND":
-            return df + np.timedelta64(interval, "ms")
-        elif unit in {"MINUTE", "SQL_TSI_MINUTE"}:
-            return df + np.timedelta64(interval, "m")
-        elif unit in {"SECOND", "SQL_TSI_SECOND"}:
-            return df + np.timedelta64(interval, "s")
-        elif unit in {"WEEK", "SQL_TSI_WEEK"}:
-            return df + np.timedelta64(interval * 7, "W")
+        if "cudf" in str(type(df)):
+            from cudf import DateOffset
         else:
-            raise NotImplementedError(f"Extraction of {unit} is not (yet) implemented.")
+            from pandas.tseries.offsets import DateOffset
+
+        if unit in {"YEAR", "YEARS"}:
+            return df + DateOffset(years=interval)
+        elif unit in {"QUARTER", "QUARTERS", "MONTH", "MONTHS"}:
+            if unit in {"QUARTER", "QUARTERS"}:
+                return df + DateOffset(months=interval * 3)
+            else:  # "MONTH"
+                return df + DateOffset(months=interval)
+        elif unit in {"WEEK", "WEEKS", "SQL_TSI_WEEK"}:
+            return df + DateOffset(weeks=interval)
+        elif unit in {"DAY", "DAYS", "SQL_TSI_DAY"}:
+            return df + DateOffset(days=interval)
+        elif unit in {"HOUR", "HOURS", "SQL_TSI_HOUR"}:
+            return df + DateOffset(hours=interval)
+        elif unit in {"MINUTE", "MINUTES", "SQL_TSI_MINUTE"}:
+            return df + DateOffset(minutes=interval)
+        elif unit in {"SECOND", "SECONDS", "SQL_TSI_SECOND"}:
+            return df + DateOffset(seconds=interval)
+        elif unit in {"MILLISECOND", "MILLISECONDS"}:
+            return df + DateOffset(milliseconds=interval)
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
+            return df + DateOffset(microseconds=interval)
+        else:
+            raise NotImplementedError(
+                f"Timestamp addition with {unit} is not supported."
+            )
+
+
+class DatetimeSubOperation(Operation):
+    """
+    Datetime subtraction is a special case of the `minus` operation
+    which also specifies a sql interval return type for the operation.
+    """
+
+    def __init__(self):
+        super().__init__(self.datetime_sub)
+
+    def datetime_sub(self, unit, df1, df2):
+        subtraction_op = ReduceOperation(
+            operation=operator.sub, unary_operation=lambda x: -x
+        )
+        result = subtraction_op(df2, df1)
+
+        if unit in {"NANOSECOND", "NANOSECONDS"}:
+            return result
+        elif unit in {"MICROSECOND", "MICROSECONDS"}:
+            return result // 1_000
+        elif unit in {"SECOND", "SECONDS"}:
+            return result // 1_000_000_000
+        elif unit in {"MINUTE", "MINUTES"}:
+            return (result / 1_000_000_000) // 60
+        elif unit in {"HOUR", "HOURS"}:
+            return (result / 1_000_000_000) // 3600
+        elif unit in {"DAY", "DAYS"}:
+            return ((result / 1_000_000_000) / 3600) // 24
+        elif unit in {"WEEK", "WEEKS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 7
+        elif unit in {"MONTH", "MONTHS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_month
+        elif unit in {"QUARTER", "QUARTERS"}:
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_quarter
+        elif unit in {"YEAR", "YEARS"}:
+            return (((result / 1_000_000_000) / 3600) / 24) // 365
+        else:
+            raise NotImplementedError(
+                f"Timestamp difference with {unit} is not supported."
+            )
 
 
 class CeilFloorOperation(PredicateBasedOperation):
@@ -797,38 +928,37 @@ class DatePartOperation(Operation):
         what = what.upper()
         df = convert_to_datetime(df)
 
-        if what == "YEAR":
+        if what in {"YEAR", "YEARS"}:
             return df.year
-
-        if what == "CENTURY":
+        elif what in {"CENTURY", "CENTURIES"}:
             return da.trunc(df.year / 100)
-        elif what == "DAY":
+        elif what in {"DAY", "DAYS"}:
             return df.day
-        elif what == "DECADE":
+        elif what in {"DECADE", "DECADES"}:
             return da.trunc(df.year / 10)
         elif what == "DOW":
             return (df.dayofweek + 1) % 7
         elif what == "DOY":
             return df.dayofyear
-        elif what == "HOUR":
+        elif what in {"HOUR", "HOURS"}:
             return df.hour
-        elif what == "MICROSECOND":
+        elif what in {"MICROSECOND", "MICROSECONDS"}:
             return df.microsecond
-        elif what == "MILLENNIUM":
+        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
             return da.trunc(df.year / 1000)
-        elif what == "MILLISECOND":
+        elif what in {"MILLISECOND", "MILLISECONDS"}:
             return da.trunc(1000 * df.microsecond)
-        elif what == "MINUTE":
+        elif what in {"MINUTE", "MINUTES"}:
             return df.minute
-        elif what == "MONTH":
+        elif what in {"MONTH", "MONTHS"}:
             return df.month
-        elif what == "QUARTER":
+        elif what in {"QUARTER", "QUARTERS"}:
             return df.quarter
-        elif what == "SECOND":
+        elif what in {"SECOND", "SECONDS"}:
             return df.second
-        elif what == "WEEK":
+        elif what in {"WEEK", "WEEKS"}:
             return df.week
-        elif what == "YEAR":
+        elif what in {"YEAR", "YEARS"}:
             return df.year
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
@@ -965,6 +1095,8 @@ class RexCallPlugin(BaseRexPlugin):
         "substr": SubStringOperation(),
         "substring": SubStringOperation(),
         "initcap": TensorScalarOperation(lambda x: x.str.title(), lambda x: x.title()),
+        "coalesce": CoalesceOperation(),
+        "replace": ReplaceOperation(),
         # date/time operations
         "extract": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
@@ -976,10 +1108,14 @@ class RexCallPlugin(BaseRexPlugin):
             lambda x: x + pd.tseries.offsets.MonthEnd(1),
             lambda x: convert_to_datetime(x) + pd.tseries.offsets.MonthEnd(1),
         ),
+        "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": DatePartOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
+        "timestampceil": CeilFloorOperation("ceil"),
+        "timestampfloor": CeilFloorOperation("floor"),
+        "timestampdiff": DatetimeSubOperation(),
     }
 
     def convert(

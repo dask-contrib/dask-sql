@@ -1,18 +1,22 @@
+use std::sync::Arc;
+
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
     common_subexpr_eliminate::CommonSubexprEliminate,
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
-    eliminate_filter::EliminateFilter,
+    eliminate_cross_join::EliminateCrossJoin,
+    // TODO: need to handle EmptyRelation for GPU cases
+    // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
+    eliminate_outer_join::EliminateOuterJoin,
     filter_null_join_keys::FilterNullJoinKeys,
-    filter_push_down::FilterPushDown,
+    inline_table_scan::InlineTableScan,
     limit_push_down::LimitPushDown,
-    optimizer::OptimizerRule,
+    optimizer::{Optimizer, OptimizerRule},
     projection_push_down::ProjectionPushDown,
-    reduce_cross_join::ReduceCrossJoin,
-    reduce_outer_join::ReduceOuterJoin,
+    push_down_filter::PushDownFilter,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
     simplify_expressions::SimplifyExpressions,
@@ -30,76 +34,66 @@ use eliminate_agg_distinct::EliminateAggDistinct;
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
-    optimizations: Vec<Box<dyn OptimizerRule + Send + Sync>>,
+    optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new(skip_failing_rules: bool) -> Self {
-        let rules: Vec<Box<dyn OptimizerRule + Send + Sync>> = vec![
-            Box::new(TypeCoercion::new()),
-            Box::new(SimplifyExpressions::new()),
-            Box::new(UnwrapCastInComparison::new()),
-            Box::new(DecorrelateWhereExists::new()),
-            Box::new(DecorrelateWhereIn::new()),
-            Box::new(ScalarSubqueryToJoin::new()),
-            Box::new(SubqueryFilterToJoin::new()),
+        let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
+            Arc::new(InlineTableScan::new()),
+            Arc::new(TypeCoercion::new()),
+            Arc::new(SimplifyExpressions::new()),
+            Arc::new(UnwrapCastInComparison::new()),
+            Arc::new(DecorrelateWhereExists::new()),
+            Arc::new(DecorrelateWhereIn::new()),
+            Arc::new(ScalarSubqueryToJoin::new()),
+            Arc::new(SubqueryFilterToJoin::new()),
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
-            Box::new(SimplifyExpressions::new()),
-            Box::new(EliminateFilter::new()),
-            Box::new(ReduceCrossJoin::new()),
-            Box::new(CommonSubexprEliminate::new()),
-            Box::new(EliminateLimit::new()),
-            Box::new(ProjectionPushDown::new()),
-            Box::new(RewriteDisjunctivePredicate::new()),
-            Box::new(FilterNullJoinKeys::default()),
-            Box::new(ReduceOuterJoin::new()),
-            Box::new(FilterPushDown::new()),
-            Box::new(LimitPushDown::new()),
-            // Box::new(SingleDistinctToGroupBy::new()),
+            Arc::new(SimplifyExpressions::new()),
+            // TODO: need to handle EmptyRelation for GPU cases
+            // Arc::new(EliminateFilter::new()),
+            Arc::new(EliminateCrossJoin::new()),
+            Arc::new(CommonSubexprEliminate::new()),
+            Arc::new(EliminateLimit::new()),
+            Arc::new(RewriteDisjunctivePredicate::new()),
+            Arc::new(FilterNullJoinKeys::default()),
+            Arc::new(EliminateOuterJoin::new()),
+            Arc::new(PushDownFilter::new()),
+            Arc::new(LimitPushDown::new()),
             // Dask-SQL specific optimizations
-            Box::new(EliminateAggDistinct::new()),
+            Arc::new(EliminateAggDistinct::new()),
+            // The previous optimizations added expressions and projections,
+            // that might benefit from the following rules
+            Arc::new(SimplifyExpressions::new()),
+            Arc::new(UnwrapCastInComparison::new()),
+            Arc::new(CommonSubexprEliminate::new()),
+            Arc::new(ProjectionPushDown::new()),
         ];
+
         Self {
             skip_failing_rules,
-            optimizations: rules,
+            optimizer: Optimizer::with_rules(rules),
         }
     }
 
     /// Iteratoes through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
-    pub(crate) fn run_optimizations(
-        &self,
-        plan: LogicalPlan,
-    ) -> Result<LogicalPlan, DataFusionError> {
-        let mut resulting_plan: LogicalPlan = plan;
-        for optimization in &self.optimizations {
-            match optimization.optimize(&resulting_plan, &mut OptimizerConfig::new()) {
-                Ok(optimized_plan) => {
-                    trace!(
-                        "== AFTER APPLYING RULE {} ==\n{}",
-                        optimization.name(),
-                        optimized_plan.display_indent()
-                    );
-                    resulting_plan = optimized_plan
-                }
-                Err(e) => {
-                    if self.skip_failing_rules {
-                        println!(
-                            "Skipping optimizer rule {} due to unexpected error: {}",
-                            optimization.name(),
-                            e
-                        );
-                    } else {
-                        return Err(e);
-                    }
-                }
-            }
-        }
-        Ok(resulting_plan)
+    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+        let mut config =
+            OptimizerConfig::default().with_skip_failing_rules(self.skip_failing_rules);
+        self.optimizer.optimize(&plan, &mut config, Self::observe)
+    }
+
+    fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
+        trace!(
+            "== AFTER APPLYING RULE {} ==\n{}\n",
+            optimization.name(),
+            optimized_plan.display_indent()
+        );
     }
 }
 
@@ -108,7 +102,7 @@ mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{DataFusionError, Result};
+    use datafusion_common::{DataFusionError, Result, ScalarValue};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{
         planner::{ContextProvider, SqlToRel},
@@ -128,14 +122,15 @@ mod tests {
         AND (cast('2002-05-08' as date) + interval '5 days')\
     )";
         let plan = test_sql(sql)?;
-        let expected =
-            "Projection: test.col_int32\n  Filter: CAST(test.col_int32 AS Float64) > __sq_1.__value\
-        \n    CrossJoin:\
-        \n      TableScan: test projection=[col_int32]\
-        \n      Projection: AVG(test.col_int32) AS __value, alias=__sq_1\
-        \n        Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]\
-        \n          Filter: test.col_utf8 >= Utf8(\"2002-05-08\") AND test.col_utf8 <= Utf8(\"2002-05-13\")\
-        \n            TableScan: test projection=[col_int32, col_utf8]";
+        let expected = r#"Projection: test.col_int32
+  Filter: CAST(test.col_int32 AS Float64) > __sq_1.__value
+    CrossJoin:
+      TableScan: test projection=[col_int32]
+      SubqueryAlias: __sq_1
+        Projection: AVG(test.col_int32) AS __value
+          Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]
+            Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
+              TableScan: test projection=[col_int32, col_utf8]"#;
         assert_eq!(expected, format!("{:?}", plan));
         Ok(())
     }
@@ -153,7 +148,7 @@ mod tests {
 
         // optimize the logical plan
         let optimizer = DaskSqlOptimizer::new(false);
-        optimizer.run_optimizations(plan)
+        optimizer.optimize(plan)
     }
 
     struct MySchemaProvider {}
@@ -193,6 +188,10 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
+            None
+        }
+
+        fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
             None
         }
     }

@@ -3,7 +3,8 @@ import sys
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="postgres testing not supported on Windows"
+    sys.platform in ("win32", "darwin"),
+    reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -52,7 +53,7 @@ def engine():
     network.remove()
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_select(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -173,7 +174,7 @@ def test_limit(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_groupby(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -220,7 +221,7 @@ def test_filter(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_string_operations(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -260,7 +261,7 @@ def test_string_operations(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_statistical_functions(assert_query_gives_same_result):
 
     # test regr_count

@@ -45,22 +45,17 @@ impl TableSource for DaskTableSource {
         self.schema.clone()
     }
 
-    // temporarily disable clippy until TODO comment below is addressed
-    #[allow(clippy::if_same_then_else)]
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
     ) -> datafusion_common::Result<TableProviderFilterPushDown> {
-        let mut filters = vec![];
-        split_conjunction(filter, &mut filters);
+        let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
-            // TODO this should return Exact but we cannot make that change until we
-            // are actually pushing the TableScan filters down to the reader because
-            // returning Exact here would remove the Filter from the plan
-            Ok(TableProviderFilterPushDown::Inexact)
+            // Push down filters to the tablescan operation if all are supported
+            Ok(TableProviderFilterPushDown::Exact)
         } else if filters.iter().any(|f| is_supported_push_down_expr(f)) {
-            // we can partially apply the filter in the TableScan but we need
-            // to retain the Filter operator in the plan as well
+            // Partially apply the filter in the TableScan but retain
+            // the Filter operator in the plan as well
             Ok(TableProviderFilterPushDown::Inexact)
         } else {
             Ok(TableProviderFilterPushDown::Unsupported)
@@ -68,12 +63,9 @@ impl TableSource for DaskTableSource {
     }
 }
 
-fn is_supported_push_down_expr(expr: &Expr) -> bool {
-    match expr {
-        // for now, we just attempt to push down simple IS NOT NULL filters on columns
-        Expr::IsNotNull(ref a) => matches!(a.as_ref(), Expr::Column(_)),
-        _ => false,
-    }
+fn is_supported_push_down_expr(_expr: &Expr) -> bool {
+    // For now we support all kinds of expr's at this level
+    true
 }
 
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
@@ -164,7 +156,7 @@ pub(crate) fn table_from_logical_plan(
 ) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
-        LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
+        LogicalPlan::Filter(filter) => table_from_logical_plan(filter.input()),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();

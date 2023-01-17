@@ -32,7 +32,7 @@ def cast_datetime_to_string(df):
     return df
 
 
-def eq_sqlite(sql, **dfs):
+def eq_sqlite(sql, check_index=True, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
 
@@ -51,7 +51,7 @@ def eq_sqlite(sql, **dfs):
     dask_result = dask_result.fillna(np.NaN)
     sqlite_result = sqlite_result.fillna(np.NaN)
 
-    assert_eq(dask_result, sqlite_result, check_dtype=False)
+    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=check_index)
 
 
 def make_rand_df(size: int, **kwargs):
@@ -594,72 +594,83 @@ def test_window_row_number_partition_by():
     )
 
 
-# TODO: Except not implemented so far
-# def test_window_ranks():
-#     a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             RANK() OVER (PARTITION BY a ORDER BY b DESC NULLS FIRST, c) AS a1,
-#             DENSE_RANK() OVER (ORDER BY a ASC, b DESC NULLS LAST, c DESC) AS a2,
-#             PERCENT_RANK() OVER (ORDER BY a ASC, b ASC NULLS LAST, c) AS a4
-#         FROM a
-#         """,
-#         a=a,
-#     )
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
+def test_window_ranks():
+    a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT *,
+            RANK() OVER (PARTITION BY a ORDER BY b DESC NULLS FIRST, c) AS a1,
+            DENSE_RANK() OVER (ORDER BY a ASC, b DESC NULLS LAST, c DESC) AS a2,
+            PERCENT_RANK() OVER (ORDER BY a ASC, b ASC NULLS LAST, c) AS a4
+        FROM a
+        """,
+        a=a,
+    )
 
-# TODO: Except not implemented so far
-# def test_window_ranks_partition_by():
-#     a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT *,
-#             RANK() OVER (PARTITION BY a ORDER BY b DESC NULLS FIRST, c) AS a1,
-#             DENSE_RANK() OVER
-#                 (PARTITION BY a ORDER BY a ASC, b DESC NULLS LAST, c DESC)
-#                 AS a2,
-#             PERCENT_RANK() OVER
-#                 (PARTITION BY a ORDER BY a ASC, b ASC NULLS LAST, c) AS a4
-#         FROM a
-#         """,
-#         a=a,
-#     )
 
-# TODO: Except not implemented so far
-# def test_window_lead_lag():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT
-#             LEAD(b,1) OVER (ORDER BY a) AS a1,
-#             LEAD(b,2,10) OVER (ORDER BY a) AS a2,
-#             LEAD(b,1) OVER (PARTITION BY c ORDER BY a) AS a3,
-#             LEAD(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS a5,
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
+def test_window_ranks_partition_by():
+    a = make_rand_df(100, a=int, b=(float, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT *,
+            RANK() OVER (PARTITION BY a ORDER BY b DESC NULLS FIRST, c) AS a1,
+            DENSE_RANK() OVER
+                (PARTITION BY a ORDER BY a ASC, b DESC NULLS LAST, c DESC)
+                AS a2,
+            PERCENT_RANK() OVER
+                (PARTITION BY a ORDER BY a ASC, b ASC NULLS LAST, c) AS a4
+        FROM a
+        """,
+        a=a,
+    )
 
-#             LAG(b,1) OVER (ORDER BY a) AS b1,
-#             LAG(b,2,10) OVER (ORDER BY a) AS b2,
-#             LAG(b,1) OVER (PARTITION BY c ORDER BY a) AS b3,
-#             LAG(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS b5
-#         FROM a
-#         """,
-#         a=a,
-#     )
 
-# TODO: Except not implemented so far
-# def test_window_lead_lag_partition_by():
-#     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT
-#             LEAD(b,1,10) OVER (PARTITION BY c ORDER BY a) AS a3,
-#             LEAD(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS a5,
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
+def test_window_lead_lag():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT
+            LEAD(b,1) OVER (ORDER BY a) AS a1,
+            LEAD(b,2,10) OVER (ORDER BY a) AS a2,
+            LEAD(b,1) OVER (PARTITION BY c ORDER BY a) AS a3,
+            LEAD(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS a5,
 
-#             LAG(b,1) OVER (PARTITION BY c ORDER BY a) AS b3,
-#             LAG(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS b5
-#         FROM a
-#         """,
-#         a=a,
-#     )
+            LAG(b,1) OVER (ORDER BY a) AS b1,
+            LAG(b,2,10) OVER (ORDER BY a) AS b2,
+            LAG(b,1) OVER (PARTITION BY c ORDER BY a) AS b3,
+            LAG(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS b5
+        FROM a
+        """,
+        a=a,
+    )
+
+
+@pytest.mark.xfail(
+    reason="Need to implement rank/lead/lag window functions, see https://github.com/dask-contrib/dask-sql/issues/878"
+)
+def test_window_lead_lag_partition_by():
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT
+            LEAD(b,1,10) OVER (PARTITION BY c ORDER BY a) AS a3,
+            LEAD(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS a5,
+
+            LAG(b,1) OVER (PARTITION BY c ORDER BY a) AS b3,
+            LAG(b,1) OVER (PARTITION BY c ORDER BY b, a ASC NULLS LAST) AS b5
+        FROM a
+        """,
+        a=a,
+    )
 
 
 def test_window_sum_avg():
@@ -833,19 +844,17 @@ def test_window_count():
                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-                    AS a6
-
-                -- No support for rolling on string types
-                -- {func}(c) OVER () AS b1,
-                -- {func}(c) OVER (PARTITION BY c) AS b2,
-                -- {func}(c) OVER (PARTITION BY c,b) AS b3,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a
-                --     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a DESC
-                --     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a
-                --     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-                --     AS b6
+                    AS a6,
+                {func}(c) OVER () AS b1,
+                {func}(c) OVER (PARTITION BY c) AS b2,
+                {func}(c) OVER (PARTITION BY c,b) AS b3,
+                {func}(c) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
+                {func}(c) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
+                {func}(c) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS b6
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
@@ -858,13 +867,11 @@ def test_window_count():
                 {func}(b) OVER (ORDER BY a DESC
                     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a6,
                 {func}(b) OVER (PARTITION BY c ORDER BY a DESC
-                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9 --,
-
-                -- No support for rolling on string types
-                -- {func}(c) OVER (ORDER BY a DESC
-                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b6,
-                -- {func}(c) OVER (PARTITION BY c ORDER BY a DESC
-                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9,
+                {func}(c) OVER (ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b6,
+                {func}(c) OVER (PARTITION BY c ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
@@ -886,18 +893,16 @@ def test_window_count_partition_by():
                     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a
                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-                    AS a6 --,
-
-                -- No support for rolling on string types
-                -- {func}(c) OVER (PARTITION BY c) AS b2,
-                -- {func}(c) OVER (PARTITION BY c,b) AS b3,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a
-                --     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a DESC
-                --     ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
-                -- {func}(c) OVER (PARTITION BY b ORDER BY a
-                --     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-                --     AS b6
+                    AS a6,
+                {func}(c) OVER (PARTITION BY c) AS b2,
+                {func}(c) OVER (PARTITION BY c,b) AS b3,
+                {func}(c) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b4,
+                {func}(c) OVER (PARTITION BY b ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS b5,
+                {func}(c) OVER (PARTITION BY b ORDER BY a
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS b6
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
@@ -908,11 +913,9 @@ def test_window_count_partition_by():
             f"""
             SELECT a,b,
                 {func}(b) OVER (PARTITION BY c ORDER BY a DESC
-                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9 --,
-
-                -- No support for rolling on string types
-                -- {func}(c) OVER (PARTITION BY c ORDER BY a DESC
-                --     ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS a9,
+                {func}(c) OVER (PARTITION BY c ORDER BY a DESC
+                    ROWS BETWEEN 2 PRECEDING AND 0 PRECEDING) AS b9
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
@@ -957,43 +960,49 @@ def test_union():
             UNION ALL SELECT * FROM c
         ORDER BY b NULLS FIRST, c NULLS FIRST
         """,
+        check_index=False,
         a=a,
         b=b,
         c=c,
     )
 
 
-# TODO: Except not implemented so far
-# def test_except():
-#     a = make_rand_df(30, b=(int, 10), c=(str, 10))
-#     b = make_rand_df(80, b=(int, 50), c=(str, 50))
-#     c = make_rand_df(100, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT * FROM c
-#             EXCEPT SELECT * FROM b
-#             EXCEPT SELECT * FROM c
-#         """,
-#         a=a,
-#         b=b,
-#         c=c,
-#     )
+@pytest.mark.xfail(
+    reason="'ANTI' joins not supported yet, see https://github.com/dask-contrib/dask-sql/issues/879"
+)
+def test_except():
+    a = make_rand_df(30, b=(int, 10), c=(str, 10))
+    b = make_rand_df(80, b=(int, 50), c=(str, 50))
+    c = make_rand_df(100, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT * FROM c
+            EXCEPT SELECT * FROM b
+            EXCEPT SELECT * FROM c
+        """,
+        a=a,
+        b=b,
+        c=c,
+    )
 
-# TODO: Intersect not implemented so far
-# def test_intersect():
-#     a = make_rand_df(30, b=(int, 10), c=(str, 10))
-#     b = make_rand_df(80, b=(int, 50), c=(str, 50))
-#     c = make_rand_df(100, b=(int, 50), c=(str, 50))
-#     eq_sqlite(
-#         """
-#         SELECT * FROM c
-#             INTERSECT SELECT * FROM b
-#             INTERSECT SELECT * FROM c
-#         """,
-#         a=a,
-#         b=b,
-#         c=c,
-#     )
+
+@pytest.mark.xfail(
+    reason="INTERSECT is not compliant with SQLite, see https://github.com/dask-contrib/dask-sql/issues/880"
+)
+def test_intersect():
+    a = make_rand_df(30, b=(int, 10), c=(str, 10))
+    b = make_rand_df(80, b=(int, 50), c=(str, 50))
+    c = make_rand_df(100, b=(int, 50), c=(str, 50))
+    eq_sqlite(
+        """
+        SELECT * FROM c
+            INTERSECT SELECT * FROM b
+            INTERSECT SELECT * FROM c
+        """,
+        a=a,
+        b=b,
+        c=c,
+    )
 
 
 def test_with():

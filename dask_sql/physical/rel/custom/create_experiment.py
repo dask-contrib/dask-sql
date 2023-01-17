@@ -30,17 +30,9 @@ class CreateExperimentPlugin(BaseRelPlugin):
     * model_class: Full path to the class of the model which has to be tuned.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
-      Have a look into the
-      [dask-ml documentation](https://ml.dask.org/index.html)
-      for more information on which models work best.
       You might need to install necessary packages to use
       the models.
     * experiment_class : Full path of the Hyperparameter tuner
-      from dask_ml, choose dask tuner class carefully based on what you
-      exactly need (memory vs compute constrains), refer:
-      [dask-ml documentation](https://ml.dask.org/hyper-parameter-search.html)
-      (for tuning hyperparameter of the models both model_class and experiment class are
-      required parameters.)
     * tune_parameters:
       Key-value of pairs of Hyperparameters to tune, i.e Search Space for
       particular model to tune
@@ -64,7 +56,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
             CREATE EXPERIMENT my_exp WITH(
             model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-            experiment_class = 'dask_ml.model_selection.GridSearchCV',
+            experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],
                                 learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]
@@ -166,18 +158,17 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import tuner {experiment_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             model = ModelClass()
 
             search = ExperimentClass(model, {**parameters}, **experiment_kwargs)
             logger.info(tune_fit_kwargs)
-            search.fit(X, y, **tune_fit_kwargs)
+            search.fit(
+                X.to_dask_array(lengths=True),
+                y.to_dask_array(lengths=True),
+                **tune_fit_kwargs,
+            )
             df = pd.DataFrame(search.cv_results_)
             df["model_class"] = model_class
 
@@ -197,12 +188,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
                     f"Can not import automl model {automl_class}. Make sure you spelled it correctly and have installed all packages."
                 )
 
-            try:
-                from dask_ml.wrappers import ParallelPostFit
-            except ImportError:  # pragma: no cover
-                raise ValueError(
-                    "dask_ml must be installed to use automl and tune hyperparameters"
-                )
+            from dask_sql.physical.rel.custom.wrappers import ParallelPostFit
 
             automl = AutoMLClass(**automl_kwargs)
             # should be avoided if  data doesn't fit in memory
