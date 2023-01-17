@@ -1316,10 +1316,7 @@ impl<'a> DaskParser<'a> {
         Ok(DaskStatement::AlterTable(Box::new(AlterTable {
             old_table_name,
             new_table_name,
-            schema_name: match schema_name.as_str() {
-                "" => None,
-                _ => Some(schema_name),
-            },
+            schema_name,
             if_exists,
         })))
     }
