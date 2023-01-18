@@ -120,9 +120,9 @@ impl PyExpr {
             | Expr::IsUnknown(_)
             | Expr::IsNotTrue(..)
             | Expr::IsNotFalse(..)
+            | Expr::Placeholder { .. }
             | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
-            Expr::Placeholder { .. } => todo!(),
         }
     }
 }

@@ -19,7 +19,7 @@ pub struct PyJoin {
 #[pymethods]
 impl PyJoin {
     #[pyo3(name = "getCondition")]
-    pub fn join_condition(&self) -> PyExpr {
+    pub fn join_condition(&self) -> PyResult<PyExpr> {
         // equi-join filters
         let mut filters: Vec<Expr> = self
             .join
@@ -27,11 +27,11 @@ impl PyJoin {
             .iter()
             .map(|(l, r)| match (l, r) {
                 (Expr::Column(l), Expr::Column(r)) => {
-                    Expr::Column(l.clone()).eq(Expr::Column(r.clone()))
+                    Ok(Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
                 }
-                _ => todo!(),
+                _ => Err(py_type_err("unsupported join condition")),
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
 
         // other filter conditions
         if let Some(filter) = &self.join.filter {
@@ -44,10 +44,10 @@ impl PyJoin {
             .iter()
             .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
 
-        PyExpr::from(
+        Ok(PyExpr::from(
             root_expr,
             Some(vec![self.join.left.clone(), self.join.right.clone()]),
-        )
+        ))
     }
 
     #[pyo3(name = "getJoinConditions")]
