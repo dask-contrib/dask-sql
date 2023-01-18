@@ -1035,7 +1035,7 @@ def test_predict_with_nullable_types(c):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_predict_with_limit_offset(c, training_df):
     c.sql(
         """
