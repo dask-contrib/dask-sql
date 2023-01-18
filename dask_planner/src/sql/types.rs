@@ -45,7 +45,7 @@ impl DaskTypeMap {
 #[pymethods]
 impl DaskTypeMap {
     #[new]
-    #[args(sql_type, py_kwargs = "**")]
+    #[pyo3(signature = (sql_type, **py_kwargs))]
     fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
         let d_type: DataType = match sql_type {
             SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
