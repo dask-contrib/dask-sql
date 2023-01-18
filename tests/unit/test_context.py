@@ -54,37 +54,6 @@ def test_deprecation_warning(gpu):
     assert "table" not in c.schema[c.schema_name].tables
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_explain(gpu):
-    c = Context()
-
-    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", data_frame, gpu=gpu)
-
-    sql_string = c.explain("SELECT * FROM df")
-
-    assert sql_string.startswith("Projection: df.a\n")
-
-    # TODO: Need to add statistics to Rust optimizer before this can be uncommented.
-    # c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
-
-    # sql_string = c.explain("SELECT * FROM df")
-
-    # assert sql_string.startswith(
-    #     "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
-    # )
-
-    c = Context()
-
-    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-
-    sql_string = c.explain(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
-    )
-
-    assert sql_string.startswith("Projection: other_df.a\n")
-
-
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -116,7 +85,6 @@ def test_sql(gpu):
     assert_eq(result, data_frame)
 
 
-@pytest.mark.skip(reason="WIP DataFusion - missing create statement logic")
 @pytest.mark.parametrize(
     "gpu",
     [

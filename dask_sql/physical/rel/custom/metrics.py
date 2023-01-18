@@ -36,7 +36,7 @@ def accuracy_score(
         Otherwise, return the fraction of correctly classified samples.
     sample_weight : 1d array-like, optional
         Sample weights.
-        .. versionadded:: 0.7.0
+        .. versionadded:: 0.7.3
     Returns
     -------
     score : scalar dask Array

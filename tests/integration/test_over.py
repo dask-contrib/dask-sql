@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from tests.utils import assert_eq
 
@@ -108,6 +109,30 @@ def test_over_calls(c, user_table_1):
             "O7b": [2, 1, 1, 1],
             "O8": [3, 3, 1, 3],
             "O9": [1, 3, 1, 3],
+        }
+    )
+
+    assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
+
+
+@pytest.mark.xfail(
+    reason="Need to add single_value window function, see https://github.com/dask-contrib/dask-sql/issues/651"
+)
+def test_over_single_value(c, user_table_1):
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        b,
+        SINGLE_VALUE(user_id*10 - b) OVER (PARTITION BY user_id ORDER BY b) AS "O3",
+    FROM user_table_1
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "user_id": user_table_1.user_id,
+            "b": user_table_1.b,
+            "O3": [19, 7, 19, 27],
         }
     )
 
