@@ -12,7 +12,7 @@ pub mod types;
 use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError, ScalarValue};
+use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -499,7 +499,7 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true)
+                    optimizer::DaskSqlOptimizer::new()
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,

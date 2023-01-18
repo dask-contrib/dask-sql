@@ -20,7 +20,6 @@ use datafusion_optimizer::{
     simplify_expressions::SimplifyExpressions,
     type_coercion::TypeCoercion,
     unwrap_cast_in_comparison::UnwrapCastInComparison,
-    OptimizerConfig,
     OptimizerContext,
 };
 use log::trace;
@@ -31,14 +30,13 @@ use eliminate_agg_distinct::EliminateAggDistinct;
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
-    skip_failing_rules: bool,
     optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(skip_failing_rules: bool) -> Self {
+    pub fn new() -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -72,7 +70,6 @@ impl DaskSqlOptimizer {
         ];
 
         Self {
-            skip_failing_rules,
             optimizer: Optimizer::with_rules(rules),
         }
     }
@@ -98,7 +95,7 @@ mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{config::ConfigOptions, DataFusionError, Result, ScalarValue};
+    use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{
         planner::{ContextProvider, SqlToRel},
@@ -119,10 +116,10 @@ mod tests {
     )";
         let plan = test_sql(sql)?;
         let expected = r#"Projection: test.col_int32
-  Filter: CAST(test.col_int32 AS Float64) > __sq_1.__value
+  Filter: CAST(test.col_int32 AS Float64) > __scalar_sq_1.__value
     CrossJoin:
       TableScan: test projection=[col_int32]
-      SubqueryAlias: __sq_1
+      SubqueryAlias: __scalar_sq_1
         Projection: AVG(test.col_int32) AS __value
           Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]
             Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
@@ -143,7 +140,7 @@ mod tests {
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new(false);
+        let optimizer = DaskSqlOptimizer::new();
         optimizer.optimize(plan)
     }
 

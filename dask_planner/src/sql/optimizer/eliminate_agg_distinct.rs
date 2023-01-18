@@ -141,7 +141,6 @@ impl OptimizerRule for EliminateAggDistinct {
                             group_expr,
                             &distinct_columns,
                             &not_distinct_columns,
-                            optimizer_config,
                             &self.next_id,
                         )
                     })
@@ -186,7 +185,6 @@ fn create_plan(
     group_expr: &Vec<Expr>,
     distinct_columns: &HashSet<Expr>,
     not_distinct_columns: &HashSet<Expr>,
-    optimizer_config: &dyn OptimizerConfig,
     next_id: &AtomicUsize,
 ) -> Result<LogicalPlan> {
     let _distinct_columns = unique_set_without_aliases(distinct_columns);
@@ -471,7 +469,7 @@ mod tests {
 
     /// Optimize with all of the optimizer rules, including eliminate_agg_distinct
     fn assert_fully_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
-        let optimizer = DaskSqlOptimizer::new(false);
+        let optimizer = DaskSqlOptimizer::new();
         let optimized_plan = optimizer
             .optimize(plan.clone())
             .expect("failed to optimize plan");
