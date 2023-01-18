@@ -1057,7 +1057,7 @@ def test_predict_with_nullable_types(c):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 @pytest.mark.skipif(
     sys.version_info < (3, 9),
     reason="Some newer sklearn classes are only available with Python version >= 3.9",
@@ -1089,7 +1089,7 @@ def test_ml_class_mappings(gpu):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
