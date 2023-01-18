@@ -47,7 +47,7 @@ impl Dialect for DaskDialect {
     /// override expression parsing
     fn parse_prefix(&self, parser: &mut Parser) -> Option<Result<Expr, ParserError>> {
         fn parse_expr(parser: &mut Parser) -> Result<Option<Expr>, ParserError> {
-            match parser.peek_token() {
+            match parser.peek_token().token {
                 Token::Word(w) if w.value.to_lowercase() == "ceil" => {
                     // CEIL(d TO DAY)
                     parser.next_token(); // skip ceil

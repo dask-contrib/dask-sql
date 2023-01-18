@@ -153,7 +153,7 @@ pub(crate) fn table_from_logical_plan(
 ) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
-        LogicalPlan::Filter(filter) => table_from_logical_plan(filter.input()),
+        LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();

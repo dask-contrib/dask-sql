@@ -337,7 +337,7 @@ impl SqlTypeName {
                 let dialect = DaskDialect {};
                 let mut tokenizer = Tokenizer::new(&dialect, input_type);
                 let tokens = tokenizer.tokenize().map_err(DaskPlannerError::from)?;
-                let mut parser = Parser::new(tokens, &dialect);
+                let mut parser = Parser::new(&dialect).with_tokens(tokens);
                 match parser.parse_data_type().map_err(DaskPlannerError::from)? {
                     SQLType::Decimal(_) => Ok(SqlTypeName::DECIMAL),
                     SQLType::Binary(_) => Ok(SqlTypeName::BINARY),

@@ -1,5 +1,12 @@
 use datafusion_common::ScalarValue;
-use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
+use datafusion_expr::{
+    expr::WindowFunction,
+    logical_plan::Window,
+    Expr,
+    LogicalPlan,
+    WindowFrame,
+    WindowFrameBound,
+};
 use pyo3::prelude::*;
 
 use crate::{
@@ -61,7 +68,9 @@ impl PyWindow {
     #[pyo3(name = "getSortExprs")]
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
+            Expr::WindowFunction(WindowFunction { order_by, .. }) => {
+                py_expr_list(&self.window.input, &order_by)
+            }
             other => Err(not_window_function_err(other)),
         }
     }
@@ -70,7 +79,7 @@ impl PyWindow {
     #[pyo3(name = "getPartitionExprs")]
     pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { partition_by, .. } => {
+            Expr::WindowFunction(WindowFunction { partition_by, .. }) => {
                 py_expr_list(&self.window.input, &partition_by)
             }
             other => Err(not_window_function_err(other)),
@@ -81,7 +90,9 @@ impl PyWindow {
     #[pyo3(name = "getArgs")]
     pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { args, .. } => py_expr_list(&self.window.input, &args),
+            Expr::WindowFunction(WindowFunction { args, .. }) => {
+                py_expr_list(&self.window.input, &args)
+            }
             other => Err(not_window_function_err(other)),
         }
     }
@@ -90,7 +101,7 @@ impl PyWindow {
     #[pyo3(name = "getWindowFuncName")]
     pub fn window_func_name(&self, expr: PyExpr) -> PyResult<String> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { fun, .. } => Ok(fun.to_string()),
+            Expr::WindowFunction(WindowFunction { fun, .. }) => Ok(fun.to_string()),
             other => Err(not_window_function_err(other)),
         }
     }
@@ -99,9 +110,7 @@ impl PyWindow {
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { window_frame, .. } => {
-                window_frame.map(|window_frame| window_frame.into())
-            }
+            Expr::WindowFunction(WindowFunction { window_frame, .. }) => Some(window_frame.into()),
             _ => None,
         }
     }

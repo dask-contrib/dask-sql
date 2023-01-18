@@ -7,23 +7,21 @@ use datafusion_optimizer::{
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
     eliminate_cross_join::EliminateCrossJoin,
-    // TODO: need to handle EmptyRelation for GPU cases
-    // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     eliminate_outer_join::EliminateOuterJoin,
     filter_null_join_keys::FilterNullJoinKeys,
     inline_table_scan::InlineTableScan,
-    limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
-    projection_push_down::ProjectionPushDown,
     push_down_filter::PushDownFilter,
+    push_down_limit::PushDownLimit,
+    push_down_projection::PushDownProjection,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
     simplify_expressions::SimplifyExpressions,
-    subquery_filter_to_join::SubqueryFilterToJoin,
     type_coercion::TypeCoercion,
     unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerConfig,
+    OptimizerContext,
 };
 use log::trace;
 
@@ -49,7 +47,6 @@ impl DaskSqlOptimizer {
             Arc::new(DecorrelateWhereExists::new()),
             Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
-            Arc::new(SubqueryFilterToJoin::new()),
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
@@ -63,7 +60,7 @@ impl DaskSqlOptimizer {
             Arc::new(FilterNullJoinKeys::default()),
             Arc::new(EliminateOuterJoin::new()),
             Arc::new(PushDownFilter::new()),
-            Arc::new(LimitPushDown::new()),
+            Arc::new(PushDownLimit::new()),
             // Dask-SQL specific optimizations
             Arc::new(EliminateAggDistinct::new()),
             // The previous optimizations added expressions and projections,
@@ -71,7 +68,7 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             Arc::new(CommonSubexprEliminate::new()),
-            Arc::new(ProjectionPushDown::new()),
+            Arc::new(PushDownProjection::new()),
         ];
 
         Self {
@@ -80,12 +77,11 @@ impl DaskSqlOptimizer {
         }
     }
 
-    /// Iteratoes through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
+    /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
-        let mut config =
-            OptimizerConfig::default().with_skip_failing_rules(self.skip_failing_rules);
-        self.optimizer.optimize(&plan, &mut config, Self::observe)
+        let config = OptimizerContext::new();
+        self.optimizer.optimize(&plan, &config, Self::observe)
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
@@ -102,7 +98,7 @@ mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{DataFusionError, Result, ScalarValue};
+    use datafusion_common::{config::ConfigOptions, DataFusionError, Result, ScalarValue};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{
         planner::{ContextProvider, SqlToRel},
@@ -142,7 +138,7 @@ mod tests {
         let statement = &ast[0];
 
         // create a logical query plan
-        let schema_provider = MySchemaProvider {};
+        let schema_provider = MySchemaProvider::new();
         let sql_to_rel = SqlToRel::new(&schema_provider);
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
@@ -151,9 +147,23 @@ mod tests {
         optimizer.optimize(plan)
     }
 
-    struct MySchemaProvider {}
+    struct MySchemaProvider {
+        options: ConfigOptions,
+    }
+
+    impl MySchemaProvider {
+        fn new() -> Self {
+            Self {
+                options: ConfigOptions::default(),
+            }
+        }
+    }
 
     impl ContextProvider for MySchemaProvider {
+        fn options(&self) -> &ConfigOptions {
+            &self.options
+        }
+
         fn get_table_provider(
             &self,
             name: TableReference,
@@ -188,10 +198,6 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
-            None
-        }
-
-        fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
             None
         }
     }

@@ -3,7 +3,7 @@ use std::{convert::From, sync::Arc};
 use arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::{
-    expr::{BinaryExpr, Cast},
+    expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
     lit,
     utils::exprlist_to_fields,
     Between,
@@ -122,6 +122,7 @@ impl PyExpr {
             | Expr::IsNotFalse(..)
             | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
+            Expr::Placeholder { .. } => todo!(),
         }
     }
 }
@@ -231,6 +232,7 @@ impl PyExpr {
             | Expr::Case { .. }
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
+            | Expr::Placeholder { .. }
             | Expr::Wildcard => {
                 return Err(py_type_err(format!(
                     "Encountered unsupported expression type: {}",
@@ -281,18 +283,18 @@ impl PyExpr {
             | Expr::Negative(expr)
             | Expr::GetIndexedField(GetIndexedField { expr, .. })
             | Expr::Cast(Cast { expr, .. })
-            | Expr::TryCast { expr, .. }
-            | Expr::Sort { expr, .. }
+            | Expr::TryCast(TryCast { expr, .. })
+            | Expr::Sort(Sort { expr, .. })
             | Expr::InSubquery { expr, .. } => {
                 Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
             }
 
             // Expr variants containing a collection of Expr(s) for operands
-            Expr::AggregateFunction { args, .. }
+            Expr::AggregateFunction(AggregateFunction { args, .. })
             | Expr::AggregateUDF { args, .. }
             | Expr::ScalarFunction { args, .. }
             | Expr::ScalarUDF { args, .. }
-            | Expr::WindowFunction { args, .. } => Ok(args
+            | Expr::WindowFunction(WindowFunction { args, .. }) => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
                 .collect()),
@@ -361,6 +363,7 @@ impl PyExpr {
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
+            | Expr::Placeholder { .. }
             | Expr::Exists { .. } => Err(py_runtime_err(format!(
                 "Unimplemented Expr type: {}",
                 self.expr
@@ -439,8 +442,6 @@ impl PyExpr {
                 | Operator::GtEq
                 | Operator::And
                 | Operator::Or
-                | Operator::Like
-                | Operator::NotLike
                 | Operator::IsDistinctFrom
                 | Operator::IsNotDistinctFrom
                 | Operator::RegexMatch
@@ -560,26 +561,22 @@ impl PyExpr {
         // TODO refactor to avoid duplication
         match &self.expr {
             Expr::Alias(expr, _) => match expr.as_ref() {
-                Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
-                    match filter {
-                        Some(filter) => {
-                            Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
-                        }
-                        None => Ok(None),
-                    }
-                }
-                _ => Err(py_type_err(
-                    "getFilterExpr() - Non-aggregate expression encountered",
-                )),
-            },
-            Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
-                match filter {
+                Expr::AggregateFunction(AggregateFunction { filter, .. })
+                | Expr::AggregateUDF { filter, .. } => match filter {
                     Some(filter) => {
                         Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
                     }
                     None => Ok(None),
-                }
-            }
+                },
+                _ => Err(py_type_err(
+                    "getFilterExpr() - Non-aggregate expression encountered",
+                )),
+            },
+            Expr::AggregateFunction(AggregateFunction { filter, .. })
+            | Expr::AggregateUDF { filter, .. } => match filter {
+                Some(filter) => Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone()))),
+                None => Ok(None),
+            },
             _ => Err(py_type_err(
                 "getFilterExpr() - Non-aggregate expression encountered",
             )),
@@ -715,7 +712,7 @@ impl PyExpr {
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { asc, .. } => Ok(*asc),
+            Expr::Sort(Sort { asc, .. }) => Ok(*asc),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr
@@ -727,7 +724,7 @@ impl PyExpr {
     #[pyo3(name = "isSortNullsFirst")]
     pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
+            Expr::Sort(Sort { nulls_first, .. }) => Ok(*nulls_first),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr
@@ -777,7 +774,7 @@ fn get_expr_name(expr: &Expr) -> Result<String> {
 /// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
 pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
     match expr {
-        Expr::Sort { expr, .. } => {
+        Expr::Sort(Sort { expr, .. }) => {
             // DataFusion does not support create_name for sort expressions (since they never
             // appear in projections) so we just delegate to the contained expression instead
             expr_to_field(expr, input_plan)

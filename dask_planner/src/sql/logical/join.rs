@@ -25,7 +25,12 @@ impl PyJoin {
             .join
             .on
             .iter()
-            .map(|(l, r)| Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
+            .map(|(l, r)| match (l, r) {
+                (Expr::Column(l), Expr::Column(r)) => {
+                    Expr::Column(l.clone()).eq(Expr::Column(r.clone()))
+                }
+                _ => todo!(),
+            })
             .collect();
 
         // other filter conditions
@@ -67,9 +72,14 @@ impl PyJoin {
 
         let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
         for (mut lhs, mut rhs) in self.join.on.clone() {
-            lhs.relation = Some(lhs_table_name.clone());
-            rhs.relation = Some(rhs_table_name.clone());
-            join_conditions.push((lhs.into(), rhs.into()));
+            match (lhs, rhs) {
+                (Expr::Column(mut lhs), Expr::Column(mut rhs)) => {
+                    lhs.relation = Some(lhs_table_name.clone());
+                    rhs.relation = Some(rhs_table_name.clone());
+                    join_conditions.push((lhs.into(), rhs.into()));
+                }
+                _ => todo!(),
+            }
         }
         Ok(join_conditions)
     }

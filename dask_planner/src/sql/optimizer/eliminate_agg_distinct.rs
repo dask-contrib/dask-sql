@@ -63,14 +63,21 @@
 //!      Aggregate: groupBy=[[a.d]], aggr=[[COUNT(UInt64(1)) AS __dask_sql_count__4]]\
 //!        TableScan: a
 
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 use datafusion_common::{Column, Result};
 use datafusion_expr::{
+    aggregate_function,
     col,
     count,
+    expr::AggregateFunction,
     logical_plan::{Aggregate, LogicalPlan, Projection},
-    AggregateFunction,
     Expr,
     LogicalPlanBuilder,
 };
@@ -79,21 +86,25 @@ use log::trace;
 
 /// Optimizer rule eliminating/moving Aggregate Expr(s) with a `DISTINCT` inner Expr.
 #[derive(Default)]
-pub struct EliminateAggDistinct {}
+pub struct EliminateAggDistinct {
+    next_id: AtomicUsize,
+}
 
 impl EliminateAggDistinct {
     #[allow(missing_docs)]
     pub fn new() -> Self {
-        Self {}
+        Self {
+            next_id: AtomicUsize::new(1),
+        }
     }
 }
 
 impl OptimizerRule for EliminateAggDistinct {
-    fn optimize(
+    fn try_optimize(
         &self,
         plan: &LogicalPlan,
-        optimizer_config: &mut OptimizerConfig,
-    ) -> Result<LogicalPlan> {
+        optimizer_config: &dyn OptimizerConfig,
+    ) -> Result<Option<LogicalPlan>> {
         // optimize inputs first
         let plan = utils::optimize_children(self, plan, optimizer_config)?;
 
@@ -131,6 +142,7 @@ impl OptimizerRule for EliminateAggDistinct {
                             &distinct_columns,
                             &not_distinct_columns,
                             optimizer_config,
+                            &self.next_id,
                         )
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -142,22 +154,22 @@ impl OptimizerRule for EliminateAggDistinct {
                 match plans.len() {
                     0 => {
                         // not a supported case for this optimizer rule
-                        Ok(plan.clone())
+                        Ok(None)
                     }
-                    1 => Ok(plans[0].clone()),
+                    1 => Ok(Some(plans[0].clone())),
                     _ => {
                         // join all of the plans
                         let mut builder = LogicalPlanBuilder::from(plans[0].clone());
                         for plan in plans.iter().skip(1) {
-                            builder = builder.cross_join(plan)?;
+                            builder = builder.cross_join(plan.clone())?;
                         }
                         let join_plan = builder.build()?;
                         trace!("{}", join_plan.display_indent_schema());
-                        Ok(join_plan)
+                        Ok(Some(join_plan))
                     }
                 }
             }
-            _ => Ok(plan),
+            _ => Ok(None),
         }
     }
 
@@ -174,7 +186,8 @@ fn create_plan(
     group_expr: &Vec<Expr>,
     distinct_columns: &HashSet<Expr>,
     not_distinct_columns: &HashSet<Expr>,
-    optimizer_config: &mut OptimizerConfig,
+    optimizer_config: &dyn OptimizerConfig,
+    next_id: &AtomicUsize,
 ) -> Result<LogicalPlan> {
     let _distinct_columns = unique_set_without_aliases(distinct_columns);
     let _not_distinct_columns = unique_set_without_aliases(not_distinct_columns);
@@ -215,7 +228,10 @@ fn create_plan(
         let first_aggregate = {
             let mut group_expr = group_expr.clone();
             group_expr.push(expr.clone());
-            let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
+            let alias = format!(
+                "__dask_sql_count__{}",
+                next_id.fetch_add(1, Ordering::Relaxed)
+            );
             let expr_name = expr.canonical_name();
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
             let aggr_expr = vec![count(count_expr).alias(alias)];
@@ -229,18 +245,18 @@ fn create_plan(
         let second_aggregate = {
             let input_schema = first_aggregate.schema();
             let offset = group_expr.len();
-            let sum = Expr::AggregateFunction {
-                fun: AggregateFunction::Sum,
+            let sum = Expr::AggregateFunction(AggregateFunction {
+                fun: aggregate_function::AggregateFunction::Sum,
                 args: vec![col(&input_schema.field(offset + 1).qualified_name())],
                 distinct: false,
                 filter: None,
-            };
-            let count = Expr::AggregateFunction {
-                fun: AggregateFunction::Count,
+            });
+            let count = Expr::AggregateFunction(AggregateFunction {
+                fun: aggregate_function::AggregateFunction::Count,
                 args: vec![col(&input_schema.field(offset).qualified_name())],
                 distinct: false,
                 filter: None,
-            };
+            });
             let aggr_expr = vec![sum, count];
 
             trace!("aggr_expr = {:?}", aggr_expr);
@@ -307,15 +323,15 @@ fn create_plan(
         // The second aggregate counts the number of values returned by the first aggregate
         let second_aggregate = {
             // Re-create the original Aggregate node without the DISTINCT element
-            let count = Expr::AggregateFunction {
-                fun: AggregateFunction::Count,
+            let count = Expr::AggregateFunction(AggregateFunction {
+                fun: aggregate_function::AggregateFunction::Count,
                 args: vec![col(&first_aggregate
                     .schema()
                     .field(group_expr.len())
                     .qualified_name())],
                 distinct: false,
                 filter: None,
-            };
+            });
             LogicalPlan::Aggregate(Aggregate::try_new(
                 Arc::new(first_aggregate),
                 group_expr.clone(),
@@ -371,12 +387,12 @@ fn gather_expressions(
 ) {
     match aggr_expr {
         Expr::Alias(x, alias) => {
-            if let Expr::AggregateFunction {
-                fun: AggregateFunction::Count,
+            if let Expr::AggregateFunction(AggregateFunction {
+                fun: aggregate_function::AggregateFunction::Count,
                 args,
                 distinct,
                 ..
-            } = x.as_ref()
+            }) = x.as_ref()
             {
                 if *distinct {
                     for arg in args {
@@ -389,12 +405,12 @@ fn gather_expressions(
                 }
             }
         }
-        Expr::AggregateFunction {
-            fun: AggregateFunction::Count,
+        Expr::AggregateFunction(AggregateFunction {
+            fun: aggregate_function::AggregateFunction::Count,
             args,
             distinct,
             ..
-        } => {
+        }) => {
             if *distinct {
                 for arg in args {
                     distinct_columns.insert(arg.clone());
@@ -437,6 +453,7 @@ mod tests {
         count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
     };
+    use datafusion_optimizer::OptimizerContext;
 
     use super::*;
     use crate::sql::optimizer::DaskSqlOptimizer;
@@ -445,8 +462,9 @@ mod tests {
     fn assert_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
         let rule = EliminateAggDistinct::new();
         let optimized_plan = rule
-            .optimize(plan, &mut OptimizerConfig::new())
-            .expect("failed to optimize plan");
+            .try_optimize(plan, &mut OptimizerContext::new())
+            .expect("failed to optimize plan")
+            .unwrap();
         let formatted_plan = format!("{}", optimized_plan.display_indent());
         assert_eq!(expected, formatted_plan);
     }
