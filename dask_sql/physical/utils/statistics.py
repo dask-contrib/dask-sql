@@ -22,31 +22,31 @@ logger = logging.getLogger(__name__)
 def parquet_statistics(
     ddf: dd.DataFrame,
     columns: List | None = None,
-    task_size: int | None = None,
+    files_per_task: int | None = None,
     **compute_kwargs,
-) -> List[dict]:
+) -> List[dict] | None:
     """Extract Parquet statistics from a Dask DataFrame collection
 
     WARNING: This API is experimental
 
     Parameters
     ----------
-    ddf : dd.DataFrame
+    ddf
         Dask-DataFrame object to extract Parquet statistics from.
-    columns : list or None, Optional
+    columns
         List of columns to collect min/max statistics for. If ``None``
         (the default), only 'num-rows' statistics will be collected.
-    task_size : int or None, Optional
+    files_per_task
         The number of distinct files to collect statistics for
         within each ``dask.delayed`` task. By default, this will
         be set to the total number of distinct paths on local
         filesystems, and 16 otherwise.
-    **compute_kwargs : dict
+    **compute_kwargs
         Key-word arguments to pass through to ``dask.compute``.
 
     Returns
     -------
-    statistics : List[dict]
+    statistics
         List of Parquet statistics. Each list element corresponds
         to a distinct task (partition) in ``layer``. Each element
         of ``statistics`` will correspond to a dictionary with
@@ -107,8 +107,8 @@ def parquet_statistics(
         groups[path].append(part)
     group_keys = list(groups.keys())
 
-    # Set task_size according to fs type
-    task_size = task_size or (len(groups) if _is_local_fs(fs) else 16)
+    # Set files_per_task according to fs type
+    files_per_task = files_per_task or (len(groups) if _is_local_fs(fs) else 16)
 
     # Compute and return flattened result
     func = delayed(_read_partition_stats_group)
@@ -116,13 +116,15 @@ def parquet_statistics(
         [
             func(
                 list(
-                    itertools.chain(*[groups[k] for k in group_keys[i : i + task_size]])
+                    itertools.chain(
+                        *[groups[k] for k in group_keys[i : i + files_per_task]]
+                    )
                 ),
                 fs,
                 engine,
                 columns=columns,
             )
-            for i in range(0, len(group_keys), task_size)
+            for i in range(0, len(group_keys), files_per_task)
         ],
         **(compute_kwargs or {}),
     )[0]
@@ -135,7 +137,7 @@ def _read_partition_stats_group(parts, fs, engine, columns=None):
 
 
 def _read_partition_stats(part, fs, columns=None):
-    # Herlper function to read Parquet-metadata
+    # Helper function to read Parquet-metadata
     # statistics for a single partition
 
     if not isinstance(part, list):
