@@ -7,7 +7,7 @@ sql:
     case_sensitive: True
 
   join:
-    broadcast: True
+    broadcast: null
 
   limit:
     check-first-partition: True

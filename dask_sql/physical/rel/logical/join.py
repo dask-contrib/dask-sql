@@ -237,7 +237,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         added_columns = list(lhs_columns_to_add.keys())
 
         broadcast = dask_config.get("sql.join.broadcast")
-        breakpoint()
         df = dd.merge(
             df_lhs_with_tmp,
             df_rhs_with_tmp,
