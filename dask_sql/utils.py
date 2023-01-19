@@ -48,6 +48,13 @@ def convert_to_datetime(df):
     return df
 
 
+def is_cudf_type(obj):
+    """
+    Check if an object is a cuDF type
+    """
+    return "cudf" in (str(type(obj)), str(getattr(obj, "_partition_type", "")))
+
+
 class Pluggable:
     """
     Helper class for everything which can be extended by plugins.
