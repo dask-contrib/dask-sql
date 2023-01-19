@@ -31,15 +31,15 @@ properties:
         type: object
         properties:
 
-        broadcast:
-          type: [boolean, float, "null"]
-          description: |
-            If boolean, it determines whether all joins should use the broadcast join algorithm.
-            If float, it's a value denoting dask's likelihood of selecting a broadcast join based
-            codepath over a shuffle based join. Concretely, dask will select a broadcast based join
-            algorithm if small_table.npartitions < log2(big_table.npartitions) * broadcast_bias
-            Note: Forcing a broadcast join might lead to perf issues or OOM errors in cases where the
-            broadcasted table is too large to fit on a single worker.
+          broadcast:
+            type: [boolean, number, "null"]
+            description: |
+              If boolean, it determines whether all joins should use the broadcast join algorithm.
+              If float, it's a value denoting dask's likelihood of selecting a broadcast join based
+              codepath over a shuffle based join. Concretely, dask will select a broadcast based join
+              algorithm if small_table.npartitions < log2(big_table.npartitions) * broadcast_bias
+              Note: Forcing a broadcast join might lead to perf issues or OOM errors in cases where the
+              broadcasted table is too large to fit on a single worker.
 
       limit:
         type: object
