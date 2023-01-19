@@ -48,8 +48,8 @@ def parquet_statistics(
     -------
     statistics
         List of Parquet statistics. Each list element corresponds
-        to a distinct task (partition) in ``layer``. Each element
-        of ``statistics`` will correspond to a dictionary with
+        to a distinct partition in ``ddf``. Each element of
+        ``statistics`` will correspond to a dictionary with
         'num-rows' and 'columns' keys::
 
             ``{'num-rows': 1024, 'columns': [...]}``
@@ -73,7 +73,10 @@ def parquet_statistics(
             raise ValueError(f"columns={columns} must be a subset of {ddf.columns}")
 
     # Extract "read-parquet" layer from ddf
-    layer = hlg_layer(ddf.dask, "read-parquet")
+    try:
+        layer = hlg_layer(ddf.dask, "read-parquet")
+    except KeyError:
+        layer = None
 
     # Make sure we are dealing with a
     # ParquetFunctionWrapper-based DataFrameIOLayer
