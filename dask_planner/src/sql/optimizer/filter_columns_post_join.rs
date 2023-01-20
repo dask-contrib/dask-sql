@@ -107,7 +107,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
     ) -> Result<LogicalPlan> {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
-        optimize_top_down(plan, all_schemas, HashSet::new(), HashMap::new())
+        optimize_top_down(plan, all_schemas, HashSet::new())
     }
 
     fn name(&self) -> &str {
@@ -119,10 +119,8 @@ fn optimize_top_down(
     plan: &LogicalPlan,
     schemas: &Vec<&Arc<DFSchema>>,
     projected_columns: HashSet<Expr>,
-    subquery_alias: HashMap<String, Arc<LogicalPlan>>,
 ) -> Result<LogicalPlan> {
     let mut post_join_columns: HashSet<Expr> = projected_columns;
-    let mut query_alias = subquery_alias;
 
     // For storing the steps of the LogicalPlan,
     // with an i32 key to keep track of the order
@@ -161,8 +159,7 @@ fn optimize_top_down(
                     // Check so that we don't build a stack of projections
                     if !previous_projection && should_project {
                         // Remove un-projectable columns
-                        post_join_columns =
-                            filter_post_join_columns(&post_join_columns, schemas, query_alias.clone());
+                        post_join_columns = filter_post_join_columns(&post_join_columns, j.schema.clone());
                         // Remove duplicates from HashSet
                         post_join_columns = post_join_columns.iter().cloned().collect();
                         // Convert HashSet to Vector
@@ -208,14 +205,12 @@ fn optimize_top_down(
                         &j.left,
                         &j.left.all_schemas(),
                         post_join_columns.clone(),
-                        query_alias.clone(),
                     )
                     .unwrap();
                     let right_join_plan = optimize_top_down(
                         &j.right,
                         &j.right.all_schemas(),
                         post_join_columns.clone(),
-                        query_alias.clone(),
                     )
                     .unwrap();
                     let join_plan = LogicalPlan::Join(Join {
@@ -238,14 +233,12 @@ fn optimize_top_down(
                         &c.left,
                         &c.left.all_schemas(),
                         post_join_columns.clone(),
-                        query_alias.clone(),
                     )
                     .unwrap();
                     let right_crossjoin_plan = optimize_top_down(
                         &c.right,
                         &c.right.all_schemas(),
                         post_join_columns.clone(),
-                        query_alias.clone(),
                     )
                     .unwrap();
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
@@ -265,7 +258,6 @@ fn optimize_top_down(
                             input,
                             &input.all_schemas(),
                             post_join_columns.clone(),
-                            query_alias.clone(),
                         );
                         match new_input {
                             Ok(i) => new_inputs.push(Arc::new(i)),
@@ -300,14 +292,6 @@ fn optimize_top_down(
                     // Reset HashSet with projected columns
                     post_join_columns = HashSet::new();
                     insert_post_join_columns(&mut post_join_columns, &p.expr);
-                }
-                LogicalPlan::SubqueryAlias(ref s) => {
-                    // Is not a Join, so just add LogicalPlan to HashMap
-                    new_plan.insert(counter, current_plan.clone());
-                    previous_projection = false;
-
-                    // Need to keep track of aliases
-                    query_alias.insert(s.alias.clone(), s.input.clone());
                 }
                 _ => {
                     // Is not a Join, so just add LogicalPlan to HashMap
@@ -446,42 +430,21 @@ fn optimize_top_down(
 
 fn filter_post_join_columns(
     post_join_columns: &HashSet<Expr>,
-    schemas: &Vec<&Arc<DFSchema>>,
-    aliases: HashMap<String, Arc<LogicalPlan>>,
+    dfschema: Arc<DFSchema>,
 ) -> HashSet<Expr> {
     let mut result = HashSet::new();
 
+    // Check which tables/aliases are needed at this point in the plan
     let mut valid_qualifiers: Vec<&str> = vec![];
-    for dfschema in schemas {
-        let dfschema_fields = dfschema.fields();
-        for field in dfschema_fields {
-            let qualifier = field.qualifier();
-            if let Some(q) = qualifier {
-                valid_qualifiers.push(q);
-            }
+    let dfschema_fields = dfschema.fields();
+    for field in dfschema_fields {
+        let qualifier = field.qualifier();
+        if let Some(q) = qualifier {
+            valid_qualifiers.push(q);
         }
     }
 
-    // If we have a SubqueryAlias,
-    // then we also need to check the qualifiers it maps to
-    for possible_alias in valid_qualifiers.clone() {
-        let alias_input = aliases.get(&possible_alias.to_string());
-        if let Some(a) = alias_input {
-            let a_input = &**a;
-            if let LogicalPlan::Projection(p) = a_input {
-                let p_expr = &p.expr;
-                for expr in p_expr {
-                    if let Expr::Column(c) = expr {
-                        let expr_qualifier = &c.relation;
-                        if let Some(q) = expr_qualifier {
-                            valid_qualifiers.push(&q);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    // Remove a column if the table/alias has not been read/used
     for column in post_join_columns {
         if let Expr::Column(c) = column {
             let column_qualifier = &c.relation;
@@ -513,7 +476,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
-        let mut column_relation = col.relation.unwrap_or("".to_string());
+        let mut column_relation = col.relation.unwrap_or_else(|| "".to_string());
         if !column_relation.is_empty() {
             column_relation += ".";
         }
