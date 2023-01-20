@@ -5,20 +5,18 @@ import pytest
 from dask_sql.physical.utils.statistics import parquet_statistics
 
 
-@pytest.mark.parametrize("files_per_task", [None, 2])
-def test_parquet_statistics(parquet_ddf, files_per_task):
+@pytest.mark.parametrize("parallel", [None, False, 2])
+def test_parquet_statistics(parquet_ddf, parallel):
 
     # Check simple num-rows statistics
-    stats = parquet_statistics(parquet_ddf, files_per_task=files_per_task)
+    stats = parquet_statistics(parquet_ddf, parallel=parallel)
     stats_df = pd.DataFrame(stats)
     num_rows = stats_df["num-rows"].sum()
     assert len(stats_df) == parquet_ddf.npartitions
     assert num_rows == len(parquet_ddf)
 
     # Check simple column statistics
-    stats = parquet_statistics(
-        parquet_ddf, columns=["b"], files_per_task=files_per_task
-    )
+    stats = parquet_statistics(parquet_ddf, columns=["b"], parallel=parallel)
     b_stats = [
         {
             "min": stat["columns"][0]["min"],
