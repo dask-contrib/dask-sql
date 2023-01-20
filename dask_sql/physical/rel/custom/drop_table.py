@@ -25,13 +25,23 @@ class DropTablePlugin(BaseRelPlugin):
         # Rust create_memory_table instance handle
         drop_table = rel.drop_table()
 
-        # TODO: can we avoid hardcoding the schema name?
-        schema_name, table_name = context.schema_name, drop_table.getName()
+        qualified_table_name = drop_table.getQualifiedName()
+        *schema_name, table_name = qualified_table_name.split(".")
 
-        if table_name not in context.schema[schema_name].tables:
+        if len(schema_name) > 1:
+            raise RuntimeError(
+                f"Expected unqualified or fully qualified table name, got {qualified_table_name}."
+            )
+
+        schema_name = context.schema_name if not schema_name else schema_name[0]
+
+        if (
+            schema_name not in context.schema
+            or table_name not in context.schema[schema_name].tables
+        ):
             if not drop_table.getIfExists():
                 raise RuntimeError(
-                    f"A table with the name {table_name} is not present."
+                    f"A table with the name {qualified_table_name} is not present."
                 )
             else:
                 return

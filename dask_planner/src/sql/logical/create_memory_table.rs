@@ -15,7 +15,7 @@ pub struct PyCreateMemoryTable {
 
 #[pymethods]
 impl PyCreateMemoryTable {
-    #[pyo3(name = "getTableName")]
+    #[pyo3(name = "getQualifiedName")]
     pub fn get_table_name(&self) -> PyResult<String> {
         Ok(match &self.create_memory_table {
             Some(create_memory_table) => create_memory_table.name.clone(),
