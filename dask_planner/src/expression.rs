@@ -181,7 +181,7 @@ impl PyExpr {
                 }
                 let name = get_expr_name(&self.expr).map_err(py_runtime_err)?;
                 schema
-                    .index_of_column(&Column::from_qualified_name(&name))
+                    .index_of_column(&Column::from_qualified_name(name))
                     .map_err(py_runtime_err)
             }
             _ => Err(py_runtime_err(

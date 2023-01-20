@@ -231,7 +231,7 @@ fn create_plan(
                 next_id.fetch_add(1, Ordering::Relaxed)
             );
             let expr_name = expr.canonical_name();
-            let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
+            let count_expr = Expr::Column(Column::from_qualified_name(expr_name));
             let aggr_expr = vec![count(count_expr).alias(alias)];
             LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, aggr_expr)?)
         };
@@ -245,13 +245,13 @@ fn create_plan(
             let offset = group_expr.len();
             let sum = Expr::AggregateFunction(AggregateFunction {
                 fun: aggregate_function::AggregateFunction::Sum,
-                args: vec![col(&input_schema.field(offset + 1).qualified_name())],
+                args: vec![col(input_schema.field(offset + 1).qualified_name())],
                 distinct: false,
                 filter: None,
             });
             let count = Expr::AggregateFunction(AggregateFunction {
                 fun: aggregate_function::AggregateFunction::Count,
-                args: vec![col(&input_schema.field(offset).qualified_name())],
+                args: vec![col(input_schema.field(offset).qualified_name())],
                 distinct: false,
                 filter: None,
             });
@@ -271,7 +271,7 @@ fn create_plan(
         // wrap in a projection to alias the SUM() back to a COUNT(), and the COUNT() back to
         // a COUNT(DISTINCT), also taking aliases into account
         let projection = {
-            let count_col = col(&second_aggregate.schema().field(0).qualified_name());
+            let count_col = col(second_aggregate.schema().field(0).qualified_name());
             let alias_str = format!("COUNT({})", expr);
             let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
             let count_col = match &not_distinct_expr[0] {
@@ -279,7 +279,7 @@ fn create_plan(
                 _ => count_col.alias(alias_str),
             };
 
-            let count_distinct_col = col(&second_aggregate.schema().field(1).qualified_name());
+            let count_distinct_col = col(second_aggregate.schema().field(1).qualified_name());
             let count_distinct_col = match &distinct_expr[0] {
                 Expr::Alias(_, alias) => count_distinct_col.alias(alias.as_str()),
                 expr => {
@@ -323,7 +323,7 @@ fn create_plan(
             // Re-create the original Aggregate node without the DISTINCT element
             let count = Expr::AggregateFunction(AggregateFunction {
                 fun: aggregate_function::AggregateFunction::Count,
-                args: vec![col(&first_aggregate
+                args: vec![col(first_aggregate
                     .schema()
                     .field(group_expr.len())
                     .qualified_name())],
@@ -343,7 +343,7 @@ fn create_plan(
         // user-supplied alias
         let projection = {
             let mut projected_cols = group_expr.clone();
-            let count_distinct_col = col(&second_aggregate
+            let count_distinct_col = col(second_aggregate
                 .schema()
                 .field(group_expr.len())
                 .qualified_name());
