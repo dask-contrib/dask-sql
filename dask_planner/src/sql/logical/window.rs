@@ -165,13 +165,18 @@ impl PyWindowFrameBound {
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
     pub fn get_offset(&self) -> PyResult<Option<u64>> {
-        match self.frame_bound {
-            WindowFrameBound::Preceding(ScalarValue::UInt64(val))
-            | WindowFrameBound::Following(ScalarValue::UInt64(val)) => Ok(val),
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
-                    .into(),
-            ),
+        match &self.frame_bound {
+            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => match val {
+                x if x.is_null() => Ok(None),
+                ScalarValue::UInt64(v) => Ok(*v),
+                ScalarValue::Int64(v) => Ok(v.map(|n| n as u64)),
+                ref x => Err(DaskPlannerError::Internal(format!(
+                    "Unexpected window frame bound: {:?}",
+                    x
+                ))
+                .into()),
+            },
+            // The below is only safe because window bounds cannot be negative
             WindowFrameBound::CurrentRow => Ok(None),
         }
     }
@@ -179,12 +184,7 @@ impl PyWindowFrameBound {
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> PyResult<bool> {
         match &self.frame_bound {
-            WindowFrameBound::Preceding(ScalarValue::UInt64(v))
-            | WindowFrameBound::Following(ScalarValue::UInt64(v)) => Ok(v.is_none()),
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
-                    .into(),
-            ),
+            WindowFrameBound::Preceding(v) | WindowFrameBound::Following(v) => Ok(v.is_null()),
             WindowFrameBound::CurrentRow => Ok(false),
         }
     }
