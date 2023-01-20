@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from dask_planner.rust import LogicalPlan
 
 
-class ShowModelParamsPlugin(BaseRelPlugin):
+class DescribeModelPlugin(BaseRelPlugin):
     """
     Show all Params used to train a given model along with the columns
     used for training.
@@ -22,12 +22,13 @@ class ShowModelParamsPlugin(BaseRelPlugin):
     The result is also a table, although it is created on the fly.
     """
 
-    class_name = "ShowModelParams"
+    class_name = "DescribeModel"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         describe_model = rel.describe_model()
 
-        schema_name, model_name = context.schema_name, describe_model.getModelName()
+        schema_name = describe_model.getSchemaName() or context.schema_name
+        model_name = describe_model.getModelName()
 
         if model_name not in context.schema[schema_name].models:
             raise RuntimeError(f"A model with the name {model_name} is not present.")

@@ -47,7 +47,8 @@ class ExportModelPlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
         export_model = rel.export_model()
 
-        schema_name, model_name = context.schema_name, export_model.getModelName()
+        schema_name = export_model.getSchemaName() or context.schema_name
+        model_name = export_model.getModelName()
         kwargs = convert_sql_kwargs(export_model.getSQLWithOptions())
 
         format = kwargs.pop("format", "pickle").lower().strip()
