@@ -1056,8 +1056,6 @@ def test_predict_with_nullable_types(c):
     )
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@xfail_if_external_scheduler
 @pytest.mark.skipif(
     sys.version_info < (3, 9),
     reason="Some newer sklearn classes are only available with Python version >= 3.9",
