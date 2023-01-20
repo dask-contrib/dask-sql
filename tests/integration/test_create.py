@@ -116,6 +116,17 @@ def test_wrong_create(c):
 
 
 def test_create_from_query(c, df):
+    with pytest.raises(RuntimeError):
+        c.sql(
+            """
+            CREATE OR REPLACE TABLE
+                other.new_table
+            AS (
+                SELECT * FROM df
+            )
+        """
+        )
+
     c.sql(
         """
         CREATE OR REPLACE TABLE
@@ -133,6 +144,17 @@ def test_create_from_query(c, df):
     )
 
     assert_eq(df, return_df)
+
+    with pytest.raises(RuntimeError):
+        c.sql(
+            """
+            CREATE OR REPLACE VIEW
+                other.new_table
+            AS (
+                SELECT * FROM df
+            )
+        """
+        )
 
     c.sql(
         """
@@ -355,6 +377,9 @@ def test_drop(c):
         )
     """
     )
+
+    with pytest.raises(RuntimeError):
+        c.sql("DROP TABLE other.new_table")
 
     c.sql("DROP TABLE IF EXISTS new_table")
 
