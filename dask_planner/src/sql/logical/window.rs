@@ -169,6 +169,7 @@ impl PyWindowFrameBound {
             WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => match val {
                 x if x.is_null() => Ok(None),
                 ScalarValue::UInt64(v) => Ok(*v),
+                // The cast below is only safe because window bounds cannot be negative
                 ScalarValue::Int64(v) => Ok(v.map(|n| n as u64)),
                 ref x => Err(DaskPlannerError::Internal(format!(
                     "Unexpected window frame bound: {:?}",
@@ -176,7 +177,6 @@ impl PyWindowFrameBound {
                 ))
                 .into()),
             },
-            // The below is only safe because window bounds cannot be negative
             WindowFrameBound::CurrentRow => Ok(None),
         }
     }
