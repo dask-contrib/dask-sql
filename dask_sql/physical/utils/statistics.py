@@ -38,7 +38,6 @@ def parquet_statistics(
     columns
         List of columns to collect min/max statistics for. If ``None``
         (the default), only 'num-rows' statistics will be collected.
-        Default is ``None``.
     parallel
         The number of distinct files to collect statistics for
         within a distinct ``dask.delayed`` task. If ``False``, all
@@ -47,7 +46,7 @@ def parquet_statistics(
         and ``False`` otherwise. Default is ``None``.
     **compute_kwargs
         Key-word arguments to pass through to ``dask.compute`` when
-        ``parallelsim`` is not ``False``.
+        ``parallel`` is not ``False``.
 
     Returns
     -------
