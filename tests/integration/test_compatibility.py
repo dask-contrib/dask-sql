@@ -314,7 +314,7 @@ def test_multi_agg_count_no_group_by():
     )
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
     reason="conflicting aggregation functions: [('count', 'a'), ('count', 'a')]"
 )
 def test_multi_agg_count_no_group_by_dupe_distinct():
@@ -386,7 +386,7 @@ def test_agg_count_distinct_no_group_by():
     )
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
     reason="conflicting aggregation functions: [('count', 'c'), ('count', 'c')]"
 )
 def test_agg_count():
@@ -442,7 +442,7 @@ def test_agg_sum_avg_no_group_by():
     )
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
     reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
 )
 def test_agg_sum_avg():
