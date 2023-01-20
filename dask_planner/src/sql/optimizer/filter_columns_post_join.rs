@@ -77,7 +77,6 @@ use datafusion_expr::{
     Explain,
     Expr,
     Filter,
-    JoinType,
     Limit,
     Repartition,
     Sort,
@@ -151,9 +150,6 @@ fn optimize_top_down(
                         if !post_join_columns.contains(&column) {
                             should_project = true;
                         }
-                    }
-                    if j.join_type == JoinType::LeftSemi || j.join_type == JoinType::RightSemi {
-                        should_project = false;
                     }
 
                     // Check so that we don't build a stack of projections
