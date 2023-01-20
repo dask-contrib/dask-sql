@@ -32,7 +32,7 @@
 //! ```text
 //! Projection: SUM(df.a), df2.b\
 //!   Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-//!     Projection: a, b\
+//!     Projection: df.a, df2.b\
 //!       Inner Join: df.c = df2.c\
 //!         TableScan: df projection=[a, c], full_filters=[df.c IS NOT NULL]\
 //!         TableScan: df2 projection=[b, c], full_filters=[df2.c IS NOT NULL]\
@@ -107,7 +107,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
     ) -> Result<LogicalPlan> {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
-        optimize_top_down(plan, all_schemas, HashSet::new())
+        optimize_top_down(plan, all_schemas, HashSet::new(), HashMap::new())
     }
 
     fn name(&self) -> &str {
@@ -119,8 +119,10 @@ fn optimize_top_down(
     plan: &LogicalPlan,
     schemas: &Vec<&Arc<DFSchema>>,
     projected_columns: HashSet<Expr>,
+    subquery_alias: HashMap<String, Arc<LogicalPlan>>,
 ) -> Result<LogicalPlan> {
     let mut post_join_columns: HashSet<Expr> = projected_columns;
+    let mut query_alias = subquery_alias;
 
     // For storing the steps of the LogicalPlan,
     // with an i32 key to keep track of the order
@@ -159,7 +161,8 @@ fn optimize_top_down(
                     // Check so that we don't build a stack of projections
                     if !previous_projection && should_project {
                         // Remove un-projectable columns
-                        post_join_columns = filter_post_join_columns(&post_join_columns, schemas);
+                        post_join_columns =
+                            filter_post_join_columns(&post_join_columns, schemas, query_alias.clone());
                         // Remove duplicates from HashSet
                         post_join_columns = post_join_columns.iter().cloned().collect();
                         // Convert HashSet to Vector
@@ -198,7 +201,6 @@ fn optimize_top_down(
                         counter += 1;
                     }
 
-                    let current_columns = &current_plan.expressions();
                     insert_post_join_columns(&mut post_join_columns, current_columns);
 
                     // Recurse on left and right inputs of Join
@@ -206,12 +208,14 @@ fn optimize_top_down(
                         &j.left,
                         &j.left.all_schemas(),
                         post_join_columns.clone(),
+                        query_alias.clone(),
                     )
                     .unwrap();
                     let right_join_plan = optimize_top_down(
                         &j.right,
                         &j.right.all_schemas(),
                         post_join_columns.clone(),
+                        query_alias.clone(),
                     )
                     .unwrap();
                     let join_plan = LogicalPlan::Join(Join {
@@ -234,12 +238,14 @@ fn optimize_top_down(
                         &c.left,
                         &c.left.all_schemas(),
                         post_join_columns.clone(),
+                        query_alias.clone(),
                     )
                     .unwrap();
                     let right_crossjoin_plan = optimize_top_down(
                         &c.right,
                         &c.right.all_schemas(),
                         post_join_columns.clone(),
+                        query_alias.clone(),
                     )
                     .unwrap();
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
@@ -259,6 +265,7 @@ fn optimize_top_down(
                             input,
                             &input.all_schemas(),
                             post_join_columns.clone(),
+                            query_alias.clone(),
                         );
                         match new_input {
                             Ok(i) => new_inputs.push(Arc::new(i)),
@@ -293,6 +300,14 @@ fn optimize_top_down(
                     // Reset HashSet with projected columns
                     post_join_columns = HashSet::new();
                     insert_post_join_columns(&mut post_join_columns, &p.expr);
+                }
+                LogicalPlan::SubqueryAlias(ref s) => {
+                    // Is not a Join, so just add LogicalPlan to HashMap
+                    new_plan.insert(counter, current_plan.clone());
+                    previous_projection = false;
+
+                    // Need to keep track of aliases
+                    query_alias.insert(s.alias.clone(), s.input.clone());
                 }
                 _ => {
                     // Is not a Join, so just add LogicalPlan to HashMap
@@ -432,6 +447,7 @@ fn optimize_top_down(
 fn filter_post_join_columns(
     post_join_columns: &HashSet<Expr>,
     schemas: &Vec<&Arc<DFSchema>>,
+    aliases: HashMap<String, Arc<LogicalPlan>>,
 ) -> HashSet<Expr> {
     let mut result = HashSet::new();
 
@@ -442,6 +458,26 @@ fn filter_post_join_columns(
             let qualifier = field.qualifier();
             if let Some(q) = qualifier {
                 valid_qualifiers.push(q);
+            }
+        }
+    }
+
+    // If we have a SubqueryAlias,
+    // then we also need to check the qualifiers it maps to
+    for possible_alias in valid_qualifiers.clone() {
+        let alias_input = aliases.get(&possible_alias.to_string());
+        if let Some(a) = alias_input {
+            let a_input = &**a;
+            if let LogicalPlan::Projection(p) = a_input {
+                let p_expr = &p.expr;
+                for expr in p_expr {
+                    if let Expr::Column(c) = expr {
+                        let expr_qualifier = &c.relation;
+                        if let Some(q) = expr_qualifier {
+                            valid_qualifiers.push(&q);
+                        }
+                    }
+                }
             }
         }
     }
@@ -477,10 +513,15 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
+        let mut column_relation = col.relation.unwrap_or("".to_string());
+        if !column_relation.is_empty() {
+            column_relation += ".";
+        }
         // Grab the column name and check that it's not a function
         let column_string = col.name;
         if !column_string.contains(')') {
-            result.push(Expr::Column(Column::from_qualified_name(&column_string)));
+            let column_result = column_relation + &column_string;
+            result.push(Expr::Column(Column::from_qualified_name(&column_result)));
         }
     }
 
@@ -539,14 +580,14 @@ mod tests {
 
         let expected1 = "Projection: SUM(df.a), df2.b\
         \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-        \n    Projection: a, b\
+        \n    Projection: df.a, df2.b\
         \n      Inner Join: df.c = df2.c\
         \n        TableScan: df\
         \n        TableScan: df2";
 
         let expected2 = "Projection: SUM(df.a), df2.b\
         \n  Aggregate: groupBy=[[df2.b]], aggr=[[SUM(df.a)]]\
-        \n    Projection: b, a\
+        \n    Projection: df2.b, df.a\
         \n      Inner Join: df.c = df2.c\
         \n        TableScan: df\
         \n        TableScan: df2";
