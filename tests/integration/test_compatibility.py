@@ -442,9 +442,6 @@ def test_agg_sum_avg_no_group_by():
     )
 
 
-@pytest.mark.xfail(
-    reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/534"
-)
 def test_agg_sum_avg():
     a = make_rand_df(
         100, a=(int, 50), b=(str, 50), c=(int, 30), d=(str, 40), e=(float, 40)
