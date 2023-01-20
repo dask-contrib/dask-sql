@@ -159,7 +159,8 @@ fn optimize_top_down(
                     // Check so that we don't build a stack of projections
                     if !previous_projection && should_project {
                         // Remove un-projectable columns
-                        post_join_columns = filter_post_join_columns(&post_join_columns, j.schema.clone());
+                        post_join_columns =
+                            filter_post_join_columns(&post_join_columns, j.schema.clone());
                         // Remove duplicates from HashSet
                         post_join_columns = post_join_columns.iter().cloned().collect();
                         // Convert HashSet to Vector
@@ -476,7 +477,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
-        let mut column_relation = col.relation.unwrap_or_else(|| "".to_string());
+        let mut column_relation = col.relation.unwrap_or_default();
         if !column_relation.is_empty() {
             column_relation += ".";
         }
