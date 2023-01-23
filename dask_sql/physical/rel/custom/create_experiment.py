@@ -95,12 +95,10 @@ class CreateExperimentPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         create_experiment = rel.create_experiment()
-        select = create_experiment.getSelectQuery()
 
-        schema_name, experiment_name = (
-            context.schema_name,
-            create_experiment.getExperimentName(),
-        )
+        select = create_experiment.getSelectQuery()
+        schema_name = create_experiment.getSchemaName() or context.schema_name
+        experiment_name = create_experiment.getExperimentName()
         kwargs = convert_sql_kwargs(create_experiment.getSQLWithOptions())
 
         if experiment_name in context.schema[schema_name].experiments:

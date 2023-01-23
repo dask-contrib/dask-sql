@@ -27,16 +27,12 @@ class ShowTablesPlugin(BaseRelPlugin):
     class_name = "ShowTables"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        schema = rel.show_tables().getSchemaName()
-        if schema:
-            schema = str(schema).split(".")[-1]
-        else:
-            schema = context.DEFAULT_SCHEMA_NAME
+        schema_name = rel.show_tables().getSchemaName() or context.schema_name
 
-        if schema not in context.schema:
-            raise AttributeError(f"Schema {schema} is not defined.")
+        if schema_name not in context.schema:
+            raise AttributeError(f"Schema {schema_name} is not defined.")
 
-        df = pd.DataFrame({"Table": list(context.schema[schema].tables.keys())})
+        df = pd.DataFrame({"Table": list(context.schema[schema_name].tables.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

@@ -54,10 +54,8 @@ class PredictModelPlugin(BaseRelPlugin):
         predict_model = rel.predict_model()
 
         sql_select = predict_model.getSelect()
-
-        # The table(s) we need to return
-        dask_table = rel.getTable()
-        schema_name, model_name = [n.lower() for n in context.fqn(dask_table)]
+        schema_name = predict_model.getSchemaName() or context.schema_name
+        model_name = predict_model.getModelName()
 
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)
