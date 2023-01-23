@@ -218,4 +218,4 @@ jobs:
         with:
           log-path: results.jsonl
           issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
-          issue-label: upstream, ${{ env.which_upstream_lower }}
+          issue-label: upstream
