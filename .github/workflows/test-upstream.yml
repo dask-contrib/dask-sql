@@ -34,7 +34,6 @@ jobs:
   test-dev:
     name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
     runs-on: ${{ matrix.os }}
-    if: github.repository == 'dask-contrib/dask-sql'
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     defaults:
@@ -83,7 +82,6 @@ jobs:
       - name: Upload pytest results for failure
         if: |
           failure()
-          && github.repository == 'dask-contrib/dask-sql'
           && steps.run_tests.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
@@ -143,7 +141,6 @@ jobs:
       - name: Upload pytest results for failure
         if: |
           failure()
-          && github.repository == 'dask-contrib/dask-sql'
           && steps.run_tests.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
