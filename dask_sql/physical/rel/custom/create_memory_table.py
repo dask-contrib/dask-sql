@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class CreateTableAsPlugin(BaseRelPlugin):
+class CreateMemoryTablePlugin(BaseRelPlugin):
     """
     Create a table or view from the given SELECT query
     and register it at the context.
@@ -38,8 +38,18 @@ class CreateTableAsPlugin(BaseRelPlugin):
         # Rust create_memory_table instance handle
         create_memory_table = rel.create_memory_table()
 
-        schema_name, table_name = context.schema_name, create_memory_table.getName()
+        qualified_table_name = create_memory_table.getQualifiedName()
+        *schema_name, table_name = qualified_table_name.split(".")
 
+        if len(schema_name) > 1:
+            raise RuntimeError(
+                f"Expected unqualified or fully qualified table name, got {qualified_table_name}."
+            )
+
+        schema_name = context.schema_name if not schema_name else schema_name[0]
+
+        if schema_name not in context.schema:
+            raise RuntimeError(f"A schema with the name {schema_name} is not present.")
         if table_name in context.schema[schema_name].tables:
             if create_memory_table.getIfNotExists():
                 return
@@ -55,7 +65,7 @@ class CreateTableAsPlugin(BaseRelPlugin):
         persist = create_memory_table.isTable()
 
         logger.debug(
-            f"Creating new table with name {table_name} and logical plan {input_rel}"
+            f"Creating new table with name {qualified_table_name} and logical plan {input_rel}"
         )
 
         context.create_table(

@@ -117,8 +117,8 @@ class Context:
         RelConverter.add_plugin_class(custom.AnalyzeTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateExperimentPlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateModelPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateSchemaPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.CreateTableAsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateCatalogSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.CreateMemoryTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.CreateTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.DropSchemaPlugin, replace=False)
@@ -126,11 +126,11 @@ class Context:
         RelConverter.add_plugin_class(custom.ExportModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.PredictModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowColumnsPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.ShowModelParamsPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.DescribeModelPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowModelsPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowSchemasPlugin, replace=False)
         RelConverter.add_plugin_class(custom.ShowTablesPlugin, replace=False)
-        RelConverter.add_plugin_class(custom.SwitchSchemaPlugin, replace=False)
+        RelConverter.add_plugin_class(custom.UseSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.AlterSchemaPlugin, replace=False)
         RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
@@ -559,16 +559,20 @@ class Context:
         """
         self.schema[new_schema_name] = self.schema.pop(old_schema_name)
 
-    def alter_table(self, old_table_name, new_table_name):
+    def alter_table(self, old_table_name, new_table_name, schema_name=None):
         """
         Alter Table
 
         Args:
             old_table_name:
             new_table_name:
+            schema_name:
         """
-        self.schema[self.schema_name].tables[new_table_name] = self.schema[
-            self.schema_name
+        if schema_name is None:
+            schema_name = self.schema_name
+
+        self.schema[schema_name].tables[new_table_name] = self.schema[
+            schema_name
         ].tables.pop(old_table_name)
 
     def register_experiment(

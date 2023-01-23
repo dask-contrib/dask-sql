@@ -2,6 +2,9 @@ import logging
 import uuid
 from typing import TYPE_CHECKING
 
+import dask.dataframe as dd
+import pandas as pd
+
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -30,8 +33,7 @@ class PredictModelPlugin(BaseRelPlugin):
     Please note however, that it will need to act on Dask dataframes. If you
     are using a model not optimized for this, it might be that you run out of memory if
     your data is larger than the RAM of a single machine.
-    To prevent this, have a look into the dask-ml package,
-    especially the [ParallelPostFit](https://ml.dask.org/meta-estimators.html)
+    To prevent this, have a look into the dask_sql.physical.rel.custom.wrappers.ParallelPostFit
     meta-estimator. If you are using a model trained with `CREATE MODEL`
     and the `wrap_predict` flag, this is done automatically.
 
@@ -52,15 +54,26 @@ class PredictModelPlugin(BaseRelPlugin):
         predict_model = rel.predict_model()
 
         sql_select = predict_model.getSelect()
-
-        # The table(s) we need to return
-        dask_table = rel.getTable()
-        schema_name, model_name = [n.lower() for n in context.fqn(dask_table)]
+        schema_name = predict_model.getSchemaName() or context.schema_name
+        model_name = predict_model.getModelName()
 
         model, training_columns = context.schema[schema_name].models[model_name]
         df = context.sql(sql_select)
-        prediction = model.predict(df[training_columns])
-        predicted_df = df.assign(target=prediction)
+        try:
+            prediction = model.predict(df[training_columns])
+            predicted_df = df.assign(target=prediction)
+        except TypeError:
+            df = df.set_index(df.columns[0], drop=False)
+            prediction = model.predict(df[training_columns])
+            # Convert numpy.ndarray to Dask Series
+            prediction = dd.from_pandas(
+                pd.Series(prediction, index=df.index),
+                npartitions=df.npartitions,
+            )
+            predicted_df = df.assign(target=prediction)
+            # Need to drop first column to reset index
+            # because the first column is equal to the index
+            predicted_df = predicted_df.drop(columns=[df.columns[0]]).reset_index()
 
         # Create a temporary context, which includes the
         # new "table" so that we can use the normal

@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
@@ -16,4 +17,20 @@ class SubqueryAlias(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
         (dc,) = self.assert_inputs(rel, 1, context)
-        return dc
+
+        cc = dc.column_container
+
+        alias = rel.subquery_alias().getAlias()
+
+        return DataContainer(
+            dc.df,
+            cc.rename(
+                {
+                    col: renamed_col
+                    for col, renamed_col in zip(
+                        cc.columns,
+                        (f"{alias}.{col.split('.')[-1]}" for col in cc.columns),
+                    )
+                }
+            ),
+        )

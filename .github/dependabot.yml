@@ -10,3 +10,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "datafusion-*"
         update-types: ["version-update:semver-major"]
+      # ignore cibw patch updates
+      - dependency-name: "pypa/cibuildwheel"
+        update-types: ["version-update:semver-patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      # Check for updates to GitHub Actions every weekday
+      interval: "weekly"

@@ -332,7 +332,7 @@ def gpu_client(gpu_cluster):
 # client for all computations. otherwise, only connect to a client
 # when specified.
 @pytest.fixture(
-    scope="function" if SCHEDULER_ADDR is None else "session",
+    scope="function",
     autouse=False if SCHEDULER_ADDR is None else True,
 )
 def client():
@@ -340,7 +340,7 @@ def client():
         yield client
 
 
-skip_if_external_scheduler = pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
+xfail_if_external_scheduler = pytest.mark.xfail(
+    condition=os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )

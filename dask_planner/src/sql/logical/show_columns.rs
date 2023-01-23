@@ -74,13 +74,8 @@ impl PyShowColumns {
     }
 
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
-        Ok(self
-            .show_columns
-            .schema_name
-            .as_ref()
-            .cloned()
-            .unwrap_or_default())
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.show_columns.schema_name.clone())
     }
 }
 

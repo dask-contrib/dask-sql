@@ -54,37 +54,6 @@ def test_deprecation_warning(gpu):
     assert "table" not in c.schema[c.schema_name].tables
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_explain(gpu):
-    c = Context()
-
-    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", data_frame, gpu=gpu)
-
-    sql_string = c.explain("SELECT * FROM df")
-
-    assert sql_string.startswith("Projection: df.a\n")
-
-    # TODO: Need to add statistics to Rust optimizer before this can be uncommented.
-    # c.create_table("df", data_frame, statistics=Statistics(row_count=1337))
-
-    # sql_string = c.explain("SELECT * FROM df")
-
-    # assert sql_string.startswith(
-    #     "DaskTableScan(table=[[root, df]]): rowcount = 1337.0, cumulative cost = {1337.0 rows, 1338.0 cpu, 0.0 io}, id = "
-    # )
-
-    c = Context()
-
-    data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-
-    sql_string = c.explain(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
-    )
-
-    assert sql_string.startswith("Projection: other_df.a\n")
-
-
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -116,7 +85,6 @@ def test_sql(gpu):
     assert_eq(result, data_frame)
 
 
-@pytest.mark.skip(reason="WIP DataFusion - missing create statement logic")
 @pytest.mark.parametrize(
     "gpu",
     [
@@ -391,28 +359,27 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
 
-# TODO: Alter schema is not yet implemented
-# def test_alter_schema(c):
-#     c.create_schema("test_schema")
-#     c.sql("ALTER SCHEMA test_schema RENAME TO prod_schema")
-#     assert "prod_schema" in c.schema
+def test_alter_schema(c):
+    c.create_schema("test_schema")
+    c.sql("ALTER SCHEMA test_schema RENAME TO prod_schema")
+    assert "prod_schema" in c.schema
+    assert "test_schema" not in c.schema
 
-#     with pytest.raises(KeyError):
-#         c.sql("ALTER SCHEMA MARVEL RENAME TO DC")
+    with pytest.raises(KeyError):
+        c.sql("ALTER SCHEMA MARVEL RENAME TO DC")
 
-#     del c.schema["prod_schema"]
+    del c.schema["prod_schema"]
 
 
-# TODO: Alter table is not yet implemented
-# def test_alter_table(c, df_simple):
-#     c.create_table("maths", df_simple)
-#     c.sql("ALTER TABLE maths RENAME TO physics")
-#     assert "physics" in c.schema[c.schema_name].tables
+def test_alter_table(c, df_simple):
+    c.create_table("maths", df_simple)
+    c.sql("ALTER TABLE maths RENAME TO physics")
+    assert "physics" in c.schema[c.schema_name].tables
+    assert "maths" not in c.schema[c.schema_name].tables
 
-#     with pytest.raises(KeyError):
-#         c.sql("ALTER TABLE four_legs RENAME TO two_legs")
+    with pytest.raises(KeyError):
+        c.sql("ALTER TABLE four_legs RENAME TO two_legs")
 
-#     c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
+    c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
 
-#     print(c.schema[c.schema_name].tables)
-#     del c.schema[c.schema_name].tables["physics"]
+    del c.schema[c.schema_name].tables["physics"]

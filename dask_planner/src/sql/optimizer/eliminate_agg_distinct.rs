@@ -218,7 +218,7 @@ fn create_plan(
             let alias = format!("__dask_sql_count__{}", optimizer_config.next_id());
             let expr_name = expr.canonical_name();
             let count_expr = Expr::Column(Column::from_qualified_name(&expr_name));
-            let aggr_expr = vec![count(count_expr).alias(&alias)];
+            let aggr_expr = vec![count(count_expr).alias(alias)];
             LogicalPlan::Aggregate(Aggregate::try_new(input.clone(), group_expr, aggr_expr)?)
         };
 
@@ -262,7 +262,7 @@ fn create_plan(
             let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
             let count_col = match &not_distinct_expr[0] {
                 Expr::Alias(_, alias) => count_col.alias(alias.as_str()),
-                _ => count_col.alias(&alias_str),
+                _ => count_col.alias(alias_str),
             };
 
             let count_distinct_col = col(&second_aggregate.schema().field(1).qualified_name());
@@ -271,7 +271,7 @@ fn create_plan(
                 expr => {
                     let alias_str = format!("COUNT(DISTINCT {})", expr);
                     let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
-                    count_distinct_col.alias(&alias_str)
+                    count_distinct_col.alias(alias_str)
                 }
             };
 
@@ -282,7 +282,6 @@ fn create_plan(
             LogicalPlan::Projection(Projection::try_new(
                 projected_cols,
                 Arc::new(second_aggregate),
-                None,
             )?)
         };
 
@@ -339,7 +338,7 @@ fn create_plan(
                 expr => {
                     let alias_str = format!("COUNT(DISTINCT {})", expr);
                     let alias_str = alias_str.replace('#', ""); // TODO remove this ugly hack
-                    count_distinct_col.alias(&alias_str)
+                    count_distinct_col.alias(alias_str)
                 }
             };
             projected_cols.push(count_distinct_col);
@@ -349,7 +348,6 @@ fn create_plan(
             LogicalPlan::Projection(Projection::try_new(
                 projected_cols,
                 Arc::new(second_aggregate),
-                None,
             )?)
         };
 
@@ -457,7 +455,7 @@ mod tests {
     fn assert_fully_optimized_plan_eq(plan: &LogicalPlan, expected: &str) {
         let optimizer = DaskSqlOptimizer::new(false);
         let optimized_plan = optimizer
-            .run_optimizations(plan.clone())
+            .optimize(plan.clone())
             .expect("failed to optimize plan");
         let formatted_plan = format!("{}", optimized_plan.display_indent());
         assert_eq!(expected, formatted_plan);

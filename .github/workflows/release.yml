@@ -3,12 +3,7 @@ on:
   release:
     types: [created]
 
-# for testing
-concurrency:
-  group: release-${{ github.head_ref }}
-  cancel-in-progress: true
-
- # Required shell entrypoint to have properly activated conda environments
+# Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
     shell: bash -l {0}
@@ -24,11 +19,8 @@ jobs:
         python: ["8", "9", "10"] # 3.x
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          pip install setuptools setuptools-rust wheel twine
-          which python
-          pip list
+        with:
+          fetch-depth: 0
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -38,7 +30,7 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: rustup target add aarch64-apple-darwin
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.10.2
+        uses: pypa/cibuildwheel@v2.11.3
         env:
           CIBW_BUILD: 'cp3${{ matrix.python }}-*'
           CIBW_SKIP: '*musllinux*'
@@ -57,13 +49,25 @@ jobs:
           package-dir: .
           output-dir: dist
           config-file: "dask_planner/pyproject.toml"
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2.2.0
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
       - name: Build source distribution
         if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
         run: |
-          pip install -U setuptools-rust
+          mamba install setuptools-rust
+
           python setup.py sdist
-      - name: list dist files
-        run: ls -lh dist/
+      - name: Check dist files
+        run: |
+          mamba install twine
+
+          twine check dist/*
+          ls -lh dist/
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:

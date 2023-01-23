@@ -12,20 +12,19 @@ use pyo3::prelude::*;
 use crate::sql::{exceptions::py_type_err, logical};
 
 #[derive(Clone)]
-pub struct AnalyzeTablePlanNode {
+pub struct AlterSchemaPlanNode {
     pub schema: DFSchemaRef,
-    pub table_name: String,
-    pub schema_name: Option<String>,
-    pub columns: Vec<String>,
+    pub old_schema_name: String,
+    pub new_schema_name: String,
 }
 
-impl Debug for AnalyzeTablePlanNode {
+impl Debug for AlterSchemaPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
     }
 }
 
-impl UserDefinedLogicalNode for AnalyzeTablePlanNode {
+impl UserDefinedLogicalNode for AlterSchemaPlanNode {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -41,15 +40,15 @@ impl UserDefinedLogicalNode for AnalyzeTablePlanNode {
     fn expressions(&self) -> Vec<Expr> {
         // there is no need to expose any expressions here since DataFusion would
         // not be able to do anything with expressions that are specific to
-        // ANALYZE TABLE {table_name}
+        // ALTER SCHEMA {table_name}
         vec![]
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Analyze Table: table_name: {:?}, columns: {:?}",
-            self.table_name, self.columns
+            "Alter Schema: old_schema_name: {:?}, new_schema_name: {:?}",
+            self.old_schema_name, self.new_schema_name
         )
     }
 
@@ -58,39 +57,33 @@ impl UserDefinedLogicalNode for AnalyzeTablePlanNode {
         _exprs: &[Expr],
         _inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
-        Arc::new(AnalyzeTablePlanNode {
+        Arc::new(AlterSchemaPlanNode {
             schema: Arc::new(DFSchema::empty()),
-            table_name: self.table_name.clone(),
-            schema_name: self.schema_name.clone(),
-            columns: self.columns.clone(),
+            old_schema_name: self.old_schema_name.clone(),
+            new_schema_name: self.new_schema_name.clone(),
         })
     }
 }
 
-#[pyclass(name = "AnalyzeTable", module = "dask_planner", subclass)]
-pub struct PyAnalyzeTable {
-    pub(crate) analyze_table: AnalyzeTablePlanNode,
+#[pyclass(name = "AlterSchema", module = "dask_planner", subclass)]
+pub struct PyAlterSchema {
+    pub(crate) alter_schema: AlterSchemaPlanNode,
 }
 
 #[pymethods]
-impl PyAnalyzeTable {
-    #[pyo3(name = "getTableName")]
-    fn get_table_name(&self) -> PyResult<String> {
-        Ok(self.analyze_table.table_name.clone())
+impl PyAlterSchema {
+    #[pyo3(name = "getOldSchemaName")]
+    fn get_old_schema_name(&self) -> PyResult<String> {
+        Ok(self.alter_schema.old_schema_name.clone())
     }
 
-    #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<Option<String>> {
-        Ok(self.analyze_table.schema_name.clone())
-    }
-
-    #[pyo3(name = "getColumns")]
-    fn get_columns(&self) -> PyResult<Vec<String>> {
-        Ok(self.analyze_table.columns.clone())
+    #[pyo3(name = "getNewSchemaName")]
+    fn get_new_schema_name(&self) -> PyResult<String> {
+        Ok(self.alter_schema.new_schema_name.clone())
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyAnalyzeTable {
+impl TryFrom<logical::LogicalPlan> for PyAlterSchema {
     type Error = PyErr;
 
     fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
@@ -98,15 +91,15 @@ impl TryFrom<logical::LogicalPlan> for PyAnalyzeTable {
             LogicalPlan::Extension(Extension { node })
                 if node
                     .as_any()
-                    .downcast_ref::<AnalyzeTablePlanNode>()
+                    .downcast_ref::<AlterSchemaPlanNode>()
                     .is_some() =>
             {
                 let ext = node
                     .as_any()
-                    .downcast_ref::<AnalyzeTablePlanNode>()
-                    .expect("AnalyzeTablePlanNode");
-                Ok(PyAnalyzeTable {
-                    analyze_table: ext.clone(),
+                    .downcast_ref::<AlterSchemaPlanNode>()
+                    .expect("AlterSchemaPlanNode");
+                Ok(PyAlterSchema {
+                    alter_schema: ext.clone(),
                 })
             }
             _ => Err(py_type_err("unexpected plan")),
