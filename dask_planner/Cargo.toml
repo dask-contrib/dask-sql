@@ -10,7 +10,7 @@ rust-version = "1.62"
 
 [dependencies]
 arrow = { version = "28.0.0", features = ["prettyprint"] }
-async-trait = "0.1.61"
+async-trait = "0.1.63"
 datafusion-common = "15.0.0"
 datafusion-expr = "15.0.0"
 datafusion-optimizer = "15.0.0"
