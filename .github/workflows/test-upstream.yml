@@ -82,7 +82,7 @@ jobs:
       - name: Test with pytest
         id: run_tests
         run: |
-          pytest --report-log test-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+          pytest -x --report-log test-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest results for failure
         if: |
           failure()
@@ -142,7 +142,7 @@ jobs:
       - name: Test with pytest while running an independent dask cluster
         id: run_tests
         run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest -x --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest results for failure
         if: |
           failure()

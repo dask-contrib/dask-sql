@@ -5,6 +5,9 @@ from tests.utils import assert_eq
 
 
 def test_analyze(c, df):
+
+    assert False
+
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
 
     # extract table and compute stats with Dask manually
