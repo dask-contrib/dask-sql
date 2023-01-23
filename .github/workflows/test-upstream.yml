@@ -75,6 +75,10 @@ jobs:
         if: env.which_upstream == 'Dask'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
+      - name: Install pytest-reportlog
+        run: |
+          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
+          mamba install pytest-reportlog
       - name: Test with pytest
         id: run_tests
         run: |
@@ -112,7 +116,8 @@ jobs:
           python setup.py build install
       - name: Install cluster dependencies
         run: |
-          mamba install python-blosc lz4 -c conda-forge
+          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
+          mamba install pytest-reportlog python-blosc lz4 -c conda-forge
 
           which python
           pip list
