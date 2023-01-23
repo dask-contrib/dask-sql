@@ -519,13 +519,18 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
             aggregations_dict[input_col][output_col] = aggregation_f
 
+        group_columns = [
+            dc.column_container.get_backend_by_frontend_name(group_name)
+            for group_name in group_columns
+        ]
+
         # filter dataframe if specified
         if filter_column:
             filter_expression = tmp_df[filter_column]
             tmp_df = tmp_df[filter_expression]
             logger.debug(f"Filtered by {filter_column} before aggregation.")
         if distinct_column:
-            tmp_df = tmp_df.drop_duplicates(subset=[distinct_column])
+            tmp_df = tmp_df.drop_duplicates(subset=(group_columns + [distinct_column]))
             logger.debug(
                 f"Dropped duplicates from {distinct_column} before aggregation."
             )
