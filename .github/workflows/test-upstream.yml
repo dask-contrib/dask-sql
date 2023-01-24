@@ -82,15 +82,15 @@ jobs:
       - name: Test with pytest
         id: run_tests
         run: |
-          pytest -x --report-log test-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+          pytest -x --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest results for failure
         if: |
           failure()
           && steps.run_tests.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
-          name: test-py${{ matrix.python }}-results
-          path: test-py${{ matrix.python }}-results.jsonl
+          name: test-${{ matrix.os }}-py${{ matrix.python }}-results
+          path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
   cluster-dev:
     name: "Test upstream dev in a dask cluster"
