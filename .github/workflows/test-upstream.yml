@@ -212,22 +212,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/download-artifact@v3
-      - name: Prepare logs & issue label
+        with:
+          name: test-ubuntu-latest-py3.10-results
+      - name: Prepare issue label
         run: |
-          # import testing doesn't generate a pytest log but one is needed for xarray-contrib/issue-from-pytest-log
-          if ls test*.jsonl 1> /dev/null 2>&1; then
-            paste -d"\n" test*.jsonl > results.jsonl
-          else
-            touch results.jsonl
-          fi
-
           # convert which_upstream to lowercase
           echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
-      - run: |
-          cat results.jsonl
       - name: Open or update issue on failure
         uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
-          log-path: results.jsonl
+          log-path: test-ubuntu-latest-py3.10-results.jsonl
           issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
           issue-label: upstream
