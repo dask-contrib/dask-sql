@@ -82,16 +82,11 @@ jobs:
       - name: Test with pytest
         id: run_tests
         run: |
-          pytest -x --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
-      - if: |
-          failure()
-          && steps.run_tests.outcome == 'failure'
-        run: |
-          cat test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
+          pytest --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest results for failure
         if: |
-          failure()
-          && steps.run_tests.outcome == 'failure'
+          always()
+          && steps.run_tests.outcome != 'skipped'
         uses: actions/upload-artifact@v3
         with:
           name: test-${{ matrix.os }}-py${{ matrix.python }}-results
@@ -147,16 +142,11 @@ jobs:
       - name: Test with pytest while running an independent dask cluster
         id: run_tests
         run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest -x --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
-      - if: |
-          failure()
-          && steps.run_tests.outcome == 'failure'
-        run: |
-          cat test-cluster-results.jsonl
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest results for failure
         if: |
-          failure()
-          && steps.run_tests.outcome == 'failure'
+          always()
+          && steps.run_tests.outcome != 'skipped'
         uses: actions/upload-artifact@v3
         with:
           name: test-cluster-results
@@ -208,6 +198,7 @@ jobs:
         || needs.cluster-dev.result == 'failure'
         || needs.import-dev.result == 'failure'
       )
+      && github.repository == 'dask-contrib/dask-sql'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -223,4 +214,4 @@ jobs:
         with:
           log-path: test-ubuntu-latest-py3.10-results.jsonl
           issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
-          issue-label: upstream
+          issue-label: upstream-${{ env.which_upstream_lower }}
