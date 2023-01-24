@@ -11,10 +11,10 @@ rust-version = "1.62"
 [dependencies]
 arrow = { version = "29.0.0", features = ["prettyprint"] }
 async-trait = "0.1.61"
-datafusion-common = "16.0.0"
-datafusion-expr = "16.0.0"
-datafusion-optimizer = "16.0.0"
-datafusion-sql = "16.0.0"
+datafusion-common = "16.1.0"
+datafusion-expr = "16.1.0"
+datafusion-optimizer = "16.1.0"
+datafusion-sql = "16.1.0"
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
