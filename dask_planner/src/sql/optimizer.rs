@@ -29,6 +29,8 @@ use log::trace;
 
 mod eliminate_agg_distinct;
 use eliminate_agg_distinct::EliminateAggDistinct;
+mod eliminate_double_distinct;
+use eliminate_double_distinct::EliminateDoubleDistinct;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -66,6 +68,7 @@ impl DaskSqlOptimizer {
             Arc::new(LimitPushDown::new()),
             // Dask-SQL specific optimizations
             Arc::new(EliminateAggDistinct::new()),
+            Arc::new(EliminateDoubleDistinct::new()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
