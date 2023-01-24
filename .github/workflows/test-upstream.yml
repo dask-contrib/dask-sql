@@ -138,9 +138,9 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
           python-version: "3.8"
-          mamba-version: "*"
-          channels: conda-forge,nodefaults
           channel-priority: strict
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'

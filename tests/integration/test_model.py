@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from tests.integration.fixtures import skip_if_external_scheduler
+from tests.integration.fixtures import xfail_if_external_scheduler
 from tests.utils import assert_eq
 
 try:
@@ -62,7 +62,7 @@ def gpu_training_df(c):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_training_and_prediction(c, training_df):
     c.sql(
         """
@@ -99,7 +99,7 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
 
 
 @pytest.mark.gpu
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
 
     model_query = """
@@ -115,7 +115,7 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
     check_trained_model(c)
 
 
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 @pytest.mark.gpu
 def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
     model_query = """
@@ -150,7 +150,7 @@ def test_xgboost_training_prediction(c, gpu_training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_clustering_and_prediction(c, training_df):
     c.sql(
         """
@@ -185,7 +185,7 @@ def test_gpu_clustering_and_prediction(c, gpu_training_df, gpu_client):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_create_model_with_prediction(c, training_df):
     c.sql(
         """
@@ -220,7 +220,11 @@ def test_create_model_with_prediction(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+# this test failure shuts down the cluster and must be skipped instead of xfailed
+@pytest.mark.skipif(
+    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
+    reason="Can not run with external cluster",
+)
 def test_iterative_and_prediction(c, training_df):
     c.sql(
         """
@@ -241,7 +245,7 @@ def test_iterative_and_prediction(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_show_models(c, training_df):
     c.sql(
         """
@@ -473,7 +477,7 @@ def test_drop_model(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_describe_model(c, training_df):
     c.sql(
         """
@@ -510,7 +514,7 @@ def test_describe_model(c, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_export_model(c, training_df, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
@@ -575,7 +579,7 @@ def test_export_model(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_mlflow_export(c, training_df, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -633,7 +637,7 @@ def test_mlflow_export(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
@@ -697,14 +701,13 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_ml_experiment(c, client, training_df):
 
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'model_class' " "or 'automl_class' parameter.",
     ):
-
         c.sql(
             """
         CREATE EXPERIMENT my_exp WITH (
@@ -719,6 +722,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
         )
+
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'experiment_class' "
@@ -780,6 +784,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
         )
+
     with pytest.raises(
         ValueError,
         match="Can not import automl model that.is.not.a.python.class. "
@@ -806,6 +811,7 @@ def test_ml_experiment(c, client, training_df):
             )
             """
         )
+
     # happy flow
     c.sql(
         """
@@ -814,6 +820,7 @@ def test_ml_experiment(c, client, training_df):
         experiment_class = 'sklearn.model_selection.GridSearchCV',
         tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                            max_depth = ARRAY [3,4,5,10]),
+        experiment_kwargs = (n_jobs = -1),
         target_column = 'target'
     ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -822,9 +829,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
     )
-
     assert "my_exp" in c.schema[c.schema_name].models, "Best model was not registered"
-
     check_trained_model(c, "my_exp")
 
     with pytest.raises(RuntimeError):
@@ -844,6 +849,7 @@ def test_ml_experiment(c, client, training_df):
         )
             """
         )
+
     c.sql(
         """
         CREATE EXPERIMENT IF NOT EXISTS my_exp WITH (
@@ -851,15 +857,16 @@ def test_ml_experiment(c, client, training_df):
             experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
+            experiment_kwargs = (n_jobs = -1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
             FROM timeseries
             LIMIT 100
         )
-
         """
     )
+
     c.sql(
         """
         CREATE OR REPLACE EXPERIMENT my_exp WITH (
@@ -867,6 +874,7 @@ def test_ml_experiment(c, client, training_df):
             experiment_class = 'sklearn.model_selection.GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
+            experiment_kwargs = (n_jobs = -1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -898,7 +906,7 @@ def test_ml_experiment(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 @pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_classifier(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
@@ -924,7 +932,7 @@ def test_experiment_automl_classifier(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 @pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
 def test_experiment_automl_regressor(c, client, training_df):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
@@ -955,7 +963,7 @@ def test_experiment_automl_regressor(c, client, training_df):
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-@skip_if_external_scheduler
+@xfail_if_external_scheduler
 def test_predict_with_nullable_types(c):
     df = pd.DataFrame(
         {

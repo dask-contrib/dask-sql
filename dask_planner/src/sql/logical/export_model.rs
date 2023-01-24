@@ -13,6 +13,7 @@ use crate::{
 #[derive(Clone)]
 pub struct ExportModelPlanNode {
     pub schema: DFSchemaRef,
+    pub schema_name: Option<String>,
     pub model_name: String,
     pub with_options: Vec<(String, PySqlArg)>,
 }
@@ -55,6 +56,7 @@ impl UserDefinedLogicalNode for ExportModelPlanNode {
         assert_eq!(inputs.len(), 0, "input size inconsistent");
         Arc::new(ExportModelPlanNode {
             schema: Arc::new(DFSchema::empty()),
+            schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
             with_options: self.with_options.clone(),
         })
@@ -71,6 +73,11 @@ impl PyExportModel {
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.export_model.model_name.clone())
+    }
+
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.export_model.schema_name.clone())
     }
 
     #[pyo3(name = "getSQLWithOptions")]

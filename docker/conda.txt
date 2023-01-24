@@ -10,7 +10,8 @@ pytest-xdist
 mock>=4.0.3
 sphinx>=3.2.1
 tzlocal>=2.1
-fastapi>=0.69.0
+# FIXME: handling is needed for httpx-based fastapi>=0.87.0
+fastapi>=0.69.0,<0.87.0
 nest-asyncio>=1.4.3
 uvicorn>=0.13.4
 pyarrow>=6.0.1
