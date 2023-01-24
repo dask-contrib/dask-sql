@@ -8,6 +8,8 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
 
+import numpy as np
+
 import dask_cudf as ddf
 
 if TYPE_CHECKING:
@@ -96,9 +98,12 @@ class DaskTableScanPlugin(BaseRelPlugin):
                     if filter_tup[2].startswith("Int"):
                         num = filter_tup[2].split('(')[1].split(')')[0]
                         updated_filters.append((filter_tup[0], filter_tup[1], int(num)))
+                    elif filter_tup[2] == "np.nan":
+                        updated_filters.append((filter_tup[0], filter_tup[1], np.nan))
                     else:
                         updated_filters.append(filter_tup)
 
+                print(f"Invoking ddf.read_parquet with filters: {updated_filters}")
 
                 df = ddf.read_parquet(tbl_meta["input_path"], filters=updated_filters, columns=cols)
             else:
@@ -107,14 +112,15 @@ class DaskTableScanPlugin(BaseRelPlugin):
             dc = DataContainer(df.copy(), ColumnContainer(df.columns))
 
             # All partial filters here are applied in conjunction (&)
-            df_condition = reduce(
-                operator.and_,
-                [
-                    RexConverter.convert(rel, rex, dc, context=context)
-                    for rex in unfiltered
-                ],
-            )
-            df = filter_or_scalar(df, df_condition)
+            if len(unfiltered) > 0:
+                df_condition = reduce(
+                    operator.and_,
+                    [
+                        RexConverter.convert(rel, rex, dc, context=context)
+                        for rex in unfiltered
+                    ],
+                )
+                df = filter_or_scalar(df, df_condition)
         else:
             df = ddf.read_parquet(tbl_meta["input_path"], columns=cols)
 
