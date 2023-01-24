@@ -15,8 +15,8 @@ pub struct PyCreateMemoryTable {
 
 #[pymethods]
 impl PyCreateMemoryTable {
-    #[pyo3(name = "getName")]
-    pub fn get_name(&self) -> PyResult<String> {
+    #[pyo3(name = "getQualifiedName")]
+    pub fn get_table_name(&self) -> PyResult<String> {
         Ok(match &self.create_memory_table {
             Some(create_memory_table) => create_memory_table.name.to_string(),
             None => match &self.create_view {
