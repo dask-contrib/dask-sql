@@ -834,6 +834,7 @@ def test_ml_experiment(c, client, training_df):
         experiment_class = 'GridSearchCV',
         tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                            max_depth = ARRAY [3,4,5,10]),
+        experiment_kwargs = (n_jobs = -1),
         target_column = 'target'
     ) AS (
             SELECT x, y, x*y > 0 AS target
@@ -842,9 +843,7 @@ def test_ml_experiment(c, client, training_df):
         )
         """
     )
-
     assert "my_exp" in c.schema[c.schema_name].models, "Best model was not registered"
-
     check_trained_model(c, "my_exp")
 
     with pytest.raises(RuntimeError):
@@ -872,13 +871,13 @@ def test_ml_experiment(c, client, training_df):
             experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
+            experiment_kwargs = (n_jobs = -1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
             FROM timeseries
             LIMIT 100
         )
-
         """
     )
 
@@ -889,6 +888,7 @@ def test_ml_experiment(c, client, training_df):
             experiment_class = 'GridSearchCV',
             tune_parameters = (n_estimators = ARRAY [16, 32, 2],learning_rate = ARRAY [0.1,0.01,0.001],
                                max_depth = ARRAY [3,4,5,10]),
+            experiment_kwargs = (n_jobs = -1),
             target_column = 'target'
         ) AS (
             SELECT x, y, x*y > 0 AS target
