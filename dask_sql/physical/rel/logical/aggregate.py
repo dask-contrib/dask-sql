@@ -530,7 +530,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             tmp_df = tmp_df[filter_expression]
             logger.debug(f"Filtered by {filter_column} before aggregation.")
         if distinct_column:
-            tmp_df = tmp_df.drop_duplicates(subset=(group_columns + [distinct_column]))
+            tmp_df = tmp_df.drop_duplicates(
+                subset=(group_columns + [distinct_column]), **groupby_agg_options
+            )
             logger.debug(
                 f"Dropped duplicates from {distinct_column} before aggregation."
             )
@@ -538,11 +540,6 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # we might need a temporary column name if no groupby columns are specified
         if additional_column_name is None:
             additional_column_name = new_temporary_column(dc.df)
-
-        group_columns = [
-            dc.column_container.get_backend_by_frontend_name(group_name)
-            for group_name in group_columns
-        ]
 
         # perform groupby operation
         grouped_df = tmp_df.groupby(
