@@ -83,7 +83,10 @@ jobs:
         id: run_tests
         run: |
           pytest -x --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
-      - run: |
+      - if: |
+          failure()
+          && steps.run_tests.outcome == 'failure'
+        run: |
           cat test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
       - name: Upload pytest results for failure
         if: |
@@ -145,7 +148,10 @@ jobs:
         id: run_tests
         run: |
           DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest -x --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
-      - run: |
+      - if: |
+          failure()
+          && steps.run_tests.outcome == 'failure'
+        run: |
           cat test-cluster-results.jsonl
       - name: Upload pytest results for failure
         if: |
