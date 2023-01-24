@@ -9,6 +9,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 
 #[derive(Clone)]
 pub struct DropModelPlanNode {
+    pub schema_name: Option<String>,
     pub model_name: String,
     pub if_exists: bool,
     pub schema: DFSchemaRef,
@@ -51,6 +52,7 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 0, "input size inconsistent");
         Arc::new(DropModelPlanNode {
+            schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
             if_exists: self.if_exists,
             schema: Arc::new(DFSchema::empty()),
@@ -65,6 +67,11 @@ pub struct PyDropModel {
 
 #[pymethods]
 impl PyDropModel {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.drop_model.schema_name.clone())
+    }
+
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.drop_model.model_name.clone())
