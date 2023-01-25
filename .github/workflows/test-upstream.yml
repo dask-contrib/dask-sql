@@ -34,7 +34,6 @@ jobs:
   test-dev:
     name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
     runs-on: ${{ matrix.os }}
-    if: github.repository == 'dask-contrib/dask-sql'
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
     defaults:
@@ -76,9 +75,22 @@ jobs:
         if: env.which_upstream == 'Dask'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
-      - name: Test with pytest
+      - name: Install pytest-reportlog
         run: |
-          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
+          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
+          mamba install pytest-reportlog
+      - name: Test with pytest
+        id: run_tests
+        run: |
+          pytest --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+      - name: Upload pytest results for failure
+        if: |
+          always()
+          && steps.run_tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-${{ matrix.os }}-py${{ matrix.python }}-results
+          path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
   cluster-dev:
     name: "Test upstream dev in a dask cluster"
@@ -104,7 +116,8 @@ jobs:
           python setup.py build install
       - name: Install cluster dependencies
         run: |
-          mamba install python-blosc lz4 -c conda-forge
+          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
+          mamba install pytest-reportlog python-blosc lz4 -c conda-forge
 
           which python
           pip list
@@ -127,8 +140,17 @@ jobs:
           docker logs dask-scheduler
           docker logs dask-worker
       - name: Test with pytest while running an independent dask cluster
+        id: run_tests
         run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --junitxml=junit/test-cluster-results.xml --cov-report=xml -n auto tests --dist loadfile
+          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+      - name: Upload pytest results for failure
+        if: |
+          always()
+          && steps.run_tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-cluster-results
+          path: test-cluster-results.jsonl
 
   import-dev:
     name: "Test importing with bare requirements and upstream dev"
@@ -168,59 +190,33 @@ jobs:
 
   report-failures:
     name: Open issue for upstream dev failures
-    needs: [test-dev, cluster-dev]
+    needs: [test-dev, cluster-dev, import-dev]
     if: |
       always()
       && (
-        needs.test-dev.result == 'failure' || needs.cluster-dev.result == 'failure'
+        needs.test-dev.result == 'failure'
+        || needs.cluster-dev.result == 'failure'
+        || needs.import-dev.result == 'failure'
       )
+      && github.repository == 'dask-contrib/dask-sql'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Report failures
-        uses: actions/github-script@v6
+      - uses: actions/download-artifact@v3
+      - name: Prepare logs & issue label
+        run: |
+          # TODO: remove this if xarray-contrib/issue-from-pytest-log no longer needs a log-path
+          if [ -f test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl ]; then
+              cp test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl results.jsonl
+          else
+              touch results.jsonl
+          fi
+
+          # convert which_upstream to lowercase
+          echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
+      - name: Open or update issue on failure
+        uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const title = "⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️"
-            const workflow_url = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
-            const issue_body = `[Workflow Run URL](${workflow_url})`
-            // Run GraphQL query against GitHub API to find the most recent open issue used for reporting failures
-            const query = `query($owner:String!, $name:String!, $creator:String!, $label:String!){
-              repository(owner: $owner, name: $name) {
-                issues(first: 1, states: OPEN, filterBy: {createdBy: $creator, labels: [$label]}, orderBy: {field: CREATED_AT, direction: DESC}) {
-                  edges {
-                    node {
-                      body
-                      id
-                      number
-                    }
-                  }
-                }
-              }
-            }`;
-            const variables = {
-                owner: context.repo.owner,
-                name: context.repo.repo,
-                label: 'upstream',
-                creator: "github-actions[bot]"
-            }
-            const result = await github.graphql(query, variables)
-            // If no issue is open, create a new issue,
-            // else update the body of the existing issue.
-            if (result.repository.issues.edges.length === 0) {
-                github.issues.create({
-                    owner: variables.owner,
-                    repo: variables.name,
-                    body: issue_body,
-                    title: title,
-                    labels: [variables.label]
-                })
-            } else {
-                github.issues.update({
-                    owner: variables.owner,
-                    repo: variables.name,
-                    issue_number: result.repository.issues.edges[0].node.number,
-                    body: issue_body
-                })
-            }
+          log-path: results.jsonl
+          issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
+          issue-label: upstream-${{ env.which_upstream_lower }}
