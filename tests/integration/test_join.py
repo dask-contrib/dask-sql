@@ -187,19 +187,19 @@ def test_join_literal(c):
         }
     )
 
-    # assert_eq(return_df, expected_df, check_index=False)
+    assert_eq(return_df, expected_df, check_index=False)
 
-    # return_df = c.sql(
-    #     """
-    # SELECT lhs.user_id, lhs.b, rhs.user_id, rhs.c
-    # FROM user_table_1 AS lhs
-    # JOIN user_table_2 AS rhs
-    # ON False
-    # """
-    # )
-    # expected_df = pd.DataFrame({"lhs.user_id": [], "b": [], "rhs.user_id": [], "c": []})
+    return_df = c.sql(
+        """
+    SELECT lhs.user_id, lhs.b, rhs.user_id, rhs.c
+    FROM user_table_1 AS lhs
+    JOIN user_table_2 AS rhs
+    ON False
+    """
+    )
+    expected_df = pd.DataFrame({"lhs.user_id": [], "b": [], "rhs.user_id": [], "c": []})
 
-    # assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
+    assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
 
 def test_conditional_join(c):

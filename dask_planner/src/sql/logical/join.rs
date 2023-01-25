@@ -1,3 +1,4 @@
+use datafusion_common::Column;
 use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
@@ -28,6 +29,10 @@ impl PyJoin {
             .map(|(l, r)| match (l, r) {
                 (Expr::Column(l), Expr::Column(r)) => {
                     Ok(Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
+                }
+                (Expr::Column(l), Expr::Cast(cast)) => {
+                    let right = Column::from_qualified_name(cast.expr.to_string());
+                    Ok(Expr::Column(l.clone()).eq(Expr::Column(right)))
                 }
                 _ => Err(py_type_err(format!(
                     "unsupported join condition. Left: {:?} - Right: {:?}",
