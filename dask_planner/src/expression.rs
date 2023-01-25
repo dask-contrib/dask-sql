@@ -87,10 +87,10 @@ impl PyExpr {
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
-            Expr::Alias(..)
-            | Expr::Column(..)
-            | Expr::QualifiedWildcard { .. }
-            | Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::Alias(..) => RexType::Alias,
+            Expr::Column(..) | Expr::QualifiedWildcard { .. } | Expr::GetIndexedField { .. } => {
+                RexType::Reference
+            }
             Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
             Expr::BinaryExpr { .. }
             | Expr::Not(..)
@@ -122,7 +122,7 @@ impl PyExpr {
             | Expr::IsNotFalse(..)
             | Expr::Placeholder { .. }
             | Expr::IsNotUnknown(_) => RexType::Call,
-            Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
+            Expr::ScalarSubquery(..) => RexType::ScalarSubquery,
         }
     }
 }
