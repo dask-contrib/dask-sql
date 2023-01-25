@@ -40,22 +40,14 @@ use datafusion_expr::LogicalPlan;
 use pyo3::prelude::*;
 
 use self::{
-    alter_schema::AlterSchemaPlanNode,
-    alter_table::AlterTablePlanNode,
-    analyze_table::AnalyzeTablePlanNode,
-    create_catalog_schema::CreateCatalogSchemaPlanNode,
-    create_experiment::CreateExperimentPlanNode,
-    create_model::CreateModelPlanNode,
-    create_table::CreateTablePlanNode,
-    describe_model::DescribeModelPlanNode,
-    drop_model::DropModelPlanNode,
-    drop_schema::DropSchemaPlanNode,
-    export_model::ExportModelPlanNode,
-    predict_model::PredictModelPlanNode,
-    show_columns::ShowColumnsPlanNode,
-    show_models::ShowModelsPlanNode,
-    show_schema::ShowSchemasPlanNode,
-    show_tables::ShowTablesPlanNode,
+    alter_schema::AlterSchemaPlanNode, alter_table::AlterTablePlanNode,
+    analyze_table::AnalyzeTablePlanNode, create_catalog_schema::CreateCatalogSchemaPlanNode,
+    create_experiment::CreateExperimentPlanNode, create_model::CreateModelPlanNode,
+    create_table::CreateTablePlanNode, describe_model::DescribeModelPlanNode,
+    drop_model::DropModelPlanNode, drop_schema::DropSchemaPlanNode,
+    export_model::ExportModelPlanNode, predict_model::PredictModelPlanNode,
+    show_columns::ShowColumnsPlanNode, show_models::ShowModelsPlanNode,
+    show_schema::ShowSchemasPlanNode, show_tables::ShowTablesPlanNode,
     use_schema::UseSchemaPlanNode,
 };
 use crate::{error::Result, sql::exceptions::py_type_err};

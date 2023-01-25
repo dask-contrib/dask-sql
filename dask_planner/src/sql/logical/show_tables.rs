@@ -3,8 +3,7 @@ use std::{any::Any, fmt, sync::Arc};
 use datafusion_common::{DFSchema, DFSchemaRef};
 use datafusion_expr::{
     logical_plan::{Extension, UserDefinedLogicalNode},
-    Expr,
-    LogicalPlan,
+    Expr, LogicalPlan,
 };
 use fmt::Debug;
 use pyo3::prelude::*;

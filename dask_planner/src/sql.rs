@@ -14,31 +14,19 @@ use std::{collections::HashMap, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
-    logical_plan::Extension,
-    AccumulatorFunctionImplementation,
-    AggregateUDF,
-    LogicalPlan,
-    PlanVisitor,
-    ReturnTypeFunction,
-    ScalarFunctionImplementation,
-    ScalarUDF,
-    Signature,
-    StateTypeFunction,
-    TableSource,
-    TypeSignature,
-    Volatility,
+    logical_plan::Extension, AccumulatorFunctionImplementation, AggregateUDF, LogicalPlan,
+    PlanVisitor, ReturnTypeFunction, ScalarFunctionImplementation, ScalarUDF, Signature,
+    StateTypeFunction, TableSource, TypeSignature, Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
     planner::{ContextProvider, SqlToRel},
-    ResolvedTableReference,
-    TableReference,
+    ResolvedTableReference, TableReference,
 };
 use pyo3::prelude::*;
 
 use self::logical::{
-    create_catalog_schema::CreateCatalogSchemaPlanNode,
-    drop_schema::DropSchemaPlanNode,
+    create_catalog_schema::CreateCatalogSchemaPlanNode, drop_schema::DropSchemaPlanNode,
     use_schema::UseSchemaPlanNode,
 };
 use crate::{
@@ -47,21 +35,13 @@ use crate::{
     sql::{
         exceptions::{py_optimization_exp, py_parsing_exp, py_runtime_err},
         logical::{
-            alter_schema::AlterSchemaPlanNode,
-            alter_table::AlterTablePlanNode,
-            analyze_table::AnalyzeTablePlanNode,
-            create_experiment::CreateExperimentPlanNode,
-            create_model::CreateModelPlanNode,
-            create_table::CreateTablePlanNode,
-            describe_model::DescribeModelPlanNode,
-            drop_model::DropModelPlanNode,
-            export_model::ExportModelPlanNode,
-            predict_model::PredictModelPlanNode,
-            show_columns::ShowColumnsPlanNode,
-            show_models::ShowModelsPlanNode,
-            show_schema::ShowSchemasPlanNode,
-            show_tables::ShowTablesPlanNode,
-            PyLogicalPlan,
+            alter_schema::AlterSchemaPlanNode, alter_table::AlterTablePlanNode,
+            analyze_table::AnalyzeTablePlanNode, create_experiment::CreateExperimentPlanNode,
+            create_model::CreateModelPlanNode, create_table::CreateTablePlanNode,
+            describe_model::DescribeModelPlanNode, drop_model::DropModelPlanNode,
+            export_model::ExportModelPlanNode, predict_model::PredictModelPlanNode,
+            show_columns::ShowColumnsPlanNode, show_models::ShowModelsPlanNode,
+            show_schema::ShowSchemasPlanNode, show_tables::ShowTablesPlanNode, PyLogicalPlan,
         },
     },
 };

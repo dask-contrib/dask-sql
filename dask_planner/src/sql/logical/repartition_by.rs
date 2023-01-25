@@ -1,7 +1,6 @@
 use datafusion_expr::{
     logical_plan::{Partitioning, Repartition},
-    Expr,
-    LogicalPlan,
+    Expr, LogicalPlan,
 };
 use pyo3::prelude::*;
 

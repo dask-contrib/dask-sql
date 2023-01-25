@@ -73,13 +73,10 @@ use std::{
 
 use datafusion_common::{Column, Result};
 use datafusion_expr::{
-    aggregate_function,
-    col,
-    count,
+    aggregate_function, col, count,
     expr::AggregateFunction,
     logical_plan::{Aggregate, LogicalPlan, Projection},
-    Expr,
-    LogicalPlanBuilder,
+    Expr, LogicalPlanBuilder,
 };
 use datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule};
 use log::trace;
@@ -446,9 +443,7 @@ mod tests {
 
     use arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
-        col,
-        count,
-        count_distinct,
+        col, count, count_distinct,
         logical_plan::{builder::LogicalTableSource, LogicalPlanBuilder},
     };
     use datafusion_optimizer::OptimizerContext;
