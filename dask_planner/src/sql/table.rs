@@ -14,7 +14,9 @@ use crate::{
     sql::{
         logical,
         types::{
-            rel_data_type::RelDataType, rel_data_type_field::RelDataTypeField, DaskTypeMap,
+            rel_data_type::RelDataType,
+            rel_data_type_field::RelDataTypeField,
+            DaskTypeMap,
             SqlTypeName,
         },
     },

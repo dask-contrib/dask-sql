@@ -6,7 +6,14 @@ use datafusion_expr::{
     expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
     lit,
     utils::exprlist_to_fields,
-    Between, BuiltinScalarFunction, Case, Expr, GetIndexedField, Like, LogicalPlan, Operator,
+    Between,
+    BuiltinScalarFunction,
+    Case,
+    Expr,
+    GetIndexedField,
+    Like,
+    LogicalPlan,
+    Operator,
 };
 use pyo3::prelude::*;
 

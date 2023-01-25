@@ -1,7 +1,8 @@
 use datafusion_expr::{
     expr::AggregateFunction,
     logical_plan::{Aggregate, Distinct},
-    Expr, LogicalPlan,
+    Expr,
+    LogicalPlan,
 };
 use pyo3::prelude::*;
 

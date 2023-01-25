@@ -91,7 +91,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         # By not entering this body during that condition we ensure that later on in
         # processing we perform a cross join.
         if join_condition is not None:
-            lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+            lhs_on, rhs_on, filter_condition = self._split_join_condition(
+                join_condition
+            )
 
             # lhs_on and rhs_on are the indices of the columns to merge on.
             # The given column indices are for the full, merged table which consists
