@@ -964,7 +964,7 @@ class DatePartOperation(Operation):
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":
-            if "cudf" in str(df._meta):
+            if is_cudf_type(df):
                 return df.strftime("%Y-%m-%d")
             else:
                 return dd.to_datetime(df.strftime("%Y-%m-%d"))
