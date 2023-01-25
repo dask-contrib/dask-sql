@@ -101,7 +101,6 @@ def test_cuml_training_and_prediction(c, gpu_training_df):
 
 
 @pytest.mark.gpu
-@xfail_if_external_scheduler
 def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
     c.sql(
         """
@@ -117,7 +116,6 @@ def test_dask_cuml_training_and_prediction(c, gpu_training_df, gpu_client):
     check_trained_model(c)
 
 
-@xfail_if_external_scheduler
 @pytest.mark.gpu
 def test_dask_xgboost_training_prediction(c, gpu_training_df, gpu_client):
     c.sql(
@@ -1056,10 +1054,6 @@ def test_predict_with_nullable_types(c):
     )
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="Some newer sklearn classes are only available with Python version >= 3.9",
-)
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_ml_class_mappings(gpu):
     from dask_sql.physical.rel.custom.ml_classes import get_cpu_classes, get_gpu_classes
