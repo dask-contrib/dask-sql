@@ -1,6 +1,6 @@
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/dask-contrib/dask-sql/Test?logo=github)](https://github.com/dask-contrib/dask-sql/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dask-contrib/dask-sql/test.yml?branch=main)](https://github.com/dask-contrib/dask-sql/actions/workflows/test.yml?query=branch%3Amain)
 [![Read the Docs](https://img.shields.io/readthedocs/dask-sql)](https://dask-sql.readthedocs.io/en/latest/)
 [![Codecov](https://img.shields.io/codecov/c/github/dask-contrib/dask-sql?logo=codecov)](https://codecov.io/gh/dask-contrib/dask-sql)
 [![GitHub](https://img.shields.io/github/license/dask-contrib/dask-sql)](https://github.com/dask-contrib/dask-sql/blob/main/LICENSE.txt)

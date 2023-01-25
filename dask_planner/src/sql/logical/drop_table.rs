@@ -11,7 +11,7 @@ pub struct PyDropTable {
 
 #[pymethods]
 impl PyDropTable {
-    #[pyo3(name = "getName")]
+    #[pyo3(name = "getQualifiedName")]
     pub fn get_name(&self) -> PyResult<String> {
         Ok(self.drop_table.name.clone())
     }
