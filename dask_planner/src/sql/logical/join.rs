@@ -19,7 +19,7 @@ pub struct PyJoin {
 #[pymethods]
 impl PyJoin {
     #[pyo3(name = "getCondition")]
-    pub fn join_condition(&self) -> PyResult<PyExpr> {
+    pub fn join_condition(&self) -> PyResult<Option<PyExpr>> {
 
         // equi-join filters
         let mut filters: Vec<Expr> = self
@@ -39,21 +39,19 @@ impl PyJoin {
             filters.push(filter.clone());
         }
 
-        if filters.is_empty() {
-            panic!("Shit, no on conditions for the join. Join_Type: \
-            {:?}, Filter: {:?}, Join Constraint: {:?}",
-            self.join.join_type, self.join.filter, self.join.join_constraint);
+        if !filters.is_empty() {
+            let root_expr = filters[1..]
+                .iter()
+                .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
+
+            Ok(Some(PyExpr::from(
+                root_expr,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )))
+        } else {
+            Ok(None)
         }
-        assert!(!filters.is_empty());
 
-        let root_expr = filters[1..]
-            .iter()
-            .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
-
-        Ok(PyExpr::from(
-            root_expr,
-            Some(vec![self.join.left.clone(), self.join.right.clone()]),
-        ))
     }
 
     #[pyo3(name = "getJoinConditions")]
