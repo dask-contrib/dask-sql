@@ -6,7 +6,7 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.physical.rel.custom.ml_classes import get_cpu_classes, get_gpu_classes
+from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
 from dask_sql.utils import convert_sql_kwargs, import_class
 
 if TYPE_CHECKING:

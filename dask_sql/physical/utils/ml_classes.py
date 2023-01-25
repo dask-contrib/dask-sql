@@ -2,7 +2,9 @@ def get_cpu_classes():
     try:
         from sklearn.utils import all_estimators
 
-        cpu_classes = {k: v.__module__ + "." + v.__qualname__ for k,v in all_estimators()}
+        cpu_classes = {
+            k: v.__module__ + "." + v.__qualname__ for k,v in all_estimators()
+        }
     except ImportError:
         cpu_classes = {}
 

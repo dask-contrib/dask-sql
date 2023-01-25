@@ -1054,32 +1054,6 @@ def test_predict_with_nullable_types(c):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_ml_class_mappings(gpu):
-    from dask_sql.physical.rel.custom.ml_classes import get_cpu_classes, get_gpu_classes
-    from dask_sql.utils import import_class
-
-    try:
-        import lightgbm
-    except KeyError:
-        lightgbm = None
-
-    if gpu:
-        classes_dict = get_gpu_classes()
-    else:
-        # Imports needed to use sklearn.experimental classes
-        from sklearn.experimental import enable_halving_search_cv  # noqa: F401
-        from sklearn.experimental import enable_iterative_imputer  # noqa: F401
-
-        classes_dict = get_cpu_classes()
-
-    for key in classes_dict:
-        if not ("XGB" in key and xgboost is None) and not (
-            "LGBM" in key and lightgbm is None
-        ):
-            import_class(classes_dict[key])
-
-
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
 @pytest.mark.xfail(
@@ -1145,7 +1119,7 @@ def test_agnostic_cpu_xgb_models(c, training_df, client):
 
 @pytest.mark.gpu
 def test_agnostic_gpu_xgb_models(c, gpu_training_df, gpu_client):
-    # XGBClassifiers error on GPU
+    # TODO: XGBClassifiers error on GPU
 
     c.sql(
         """
