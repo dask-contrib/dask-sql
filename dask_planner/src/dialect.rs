@@ -198,13 +198,13 @@ impl Dialect for DaskDialect {
                     // EXTRACT(DATE FROM d)
                     parser.next_token(); // skip extract
                     parser.expect_token(&Token::LParen)?;
-                    if !parser.parse_keywords(&[Keyword::DATE, Keyword::FROM]) {
+                    if !parser.parse_keyword(Keyword::DATE) {
                         // Parse EXTRACT(x FROM d) as normal
-                        parser.prev_token();
                         parser.prev_token();
                         parser.prev_token();
                         return Ok(None);
                     }
+                    let _from = parser.parse_keyword(Keyword::FROM);
                     let expr = parser.parse_expr()?;
                     parser.expect_token(&Token::RParen)?;
 
