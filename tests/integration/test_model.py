@@ -1,6 +1,5 @@
 import os
 import pickle
-import sys
 
 import joblib
 import pandas as pd
