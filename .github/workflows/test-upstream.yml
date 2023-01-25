@@ -203,15 +203,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
-        with:
-          name: test-ubuntu-latest-py3.10-results
-      - name: Prepare issue label
+      - name: Prepare logs & issue label
         run: |
+          # TODO: remove this if xarray-contrib/issue-from-pytest-log no longer needs a log-path
+          if [ -f test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl ]; then
+              cp test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl results.jsonl
+          else
+              touch results.jsonl
+          fi
+
           # convert which_upstream to lowercase
           echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
       - name: Open or update issue on failure
         uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
-          log-path: test-ubuntu-latest-py3.10-results.jsonl
+          log-path: results.jsonl
           issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
           issue-label: upstream-${{ env.which_upstream_lower }}
