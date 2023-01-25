@@ -61,20 +61,23 @@ def training_df(c):
 @xfail_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_training_and_prediction(c, training_df, gpu_client, gpu):
-    c.sql(
+
+    # cuML does not have a GradientBoostingClassifier
+    if not gpu:
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'GradientBoostingClassifier',
+                wrap_predict = True,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+                LIMIT 100
+            )
         """
-        CREATE MODEL my_model WITH (
-            model_class = 'GradientBoostingClassifier',
-            wrap_predict = True,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
-            LIMIT 100
         )
-    """
-    )
-    check_trained_model(c)
+        check_trained_model(c)
 
     c.sql(
         """
@@ -91,7 +94,10 @@ def test_training_and_prediction(c, training_df, gpu_client, gpu):
     )
     check_trained_model(c)
 
-    # TODO: If gpu, check for Dask cuml.dask.linear_model.LinearRegression
+    # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
+    # instead of cuml.linear_model.LinearRegression.
+    # Is there any way to assert that we are using the cuML Dask estimator
+    # (and not just the cuML estimator)?
     c.sql(
         """
         CREATE OR REPLACE MODEL my_model WITH (
@@ -164,7 +170,7 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
         """
         )
         check_trained_model(c)
-    
+
     else:
         # For GPU tests, set tree_method = 'gpu_hist'
         c.sql(
