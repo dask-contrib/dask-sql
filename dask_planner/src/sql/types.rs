@@ -10,10 +10,11 @@ use crate::{dialect::DaskDialect, error::DaskPlannerError};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
 pub enum RexType {
+    Alias,
     Literal,
     Call,
     Reference,
-    SubqueryAlias,
+    ScalarSubquery,
     Other,
 }
 

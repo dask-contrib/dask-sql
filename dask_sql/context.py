@@ -135,10 +135,11 @@ class Context:
         RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
+        RexConverter.add_plugin_class(core.RexAliasPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexSubqueryAliasPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexScalarSubqueryPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
