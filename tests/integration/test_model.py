@@ -49,7 +49,7 @@ def training_df(c):
     df = timeseries(freq="1d").reset_index(drop=True)
     if dask_cudf:
         df = dask_cudf.from_dask_dataframe(df)
-        c.create_table("timeseries", input_table=df)
+        c.create_table("gpu_timeseries", input_table=df)
     else:
         c.create_table("timeseries", df, persist=True)
 
@@ -60,9 +60,8 @@ def training_df(c):
 @xfail_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_training_and_prediction(c, training_df, gpu_client, gpu):
-
-    # cuML does not have a GradientBoostingClassifier
     if not gpu:
+        # cuML does not have a GradientBoostingClassifier
         c.sql(
             """
             CREATE MODEL my_model WITH (
@@ -78,37 +77,66 @@ def test_training_and_prediction(c, training_df, gpu_client, gpu):
         )
         check_trained_model(c)
 
-    c.sql(
+        c.sql(
+            """
+            CREATE OR REPLACE MODEL my_model WITH (
+                model_class = 'LogisticRegression',
+                wrap_predict = True,
+                wrap_fit = False,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM timeseries
+            )
         """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LogisticRegression',
-            wrap_predict = True,
-            wrap_fit = False,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM timeseries
         )
-    """
-    )
-    check_trained_model(c)
+        check_trained_model(c)
 
-    # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
-    # instead of cuml.linear_model.LinearRegression.
-    # Is there any way to assert that we are using the cuML Dask estimator
-    # (and not just the cuML estimator)?
-    c.sql(
+        c.sql(
+            """
+            CREATE OR REPLACE MODEL my_model WITH (
+                model_class = 'LinearRegression',
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y AS target
+                FROM timeseries
+            )
         """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LinearRegression',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y AS target
-            FROM timeseries
         )
-    """
-    )
-    check_trained_model(c)
+        check_trained_model(c)
+
+    else:
+        c.sql(
+            """
+            CREATE OR REPLACE MODEL my_model WITH (
+                model_class = 'LogisticRegression',
+                wrap_predict = True,
+                wrap_fit = False,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM gpu_timeseries
+            )
+        """
+        )
+        check_trained_model(c)
+
+        # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
+        # instead of cuml.linear_model.LinearRegression.
+        # Is there any way to assert that we are using the cuML Dask estimator
+        # (and not just the cuML estimator)?
+        c.sql(
+            """
+            CREATE OR REPLACE MODEL my_model WITH (
+                model_class = 'LinearRegression',
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y AS target
+                FROM gpu_timeseries
+            )
+        """
+        )
+        check_trained_model(c)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -180,7 +208,7 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
             tree_method = 'gpu_hist'
         ) AS (
             SELECT x, y, x*y  AS target
-            FROM timeseries
+            FROM gpu_timeseries
         )
         """
         )
@@ -195,7 +223,7 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
             tree_method = 'gpu_hist'
         ) AS (
             SELECT x, y, x*y  AS target
-            FROM timeseries
+            FROM gpu_timeseries
         )
         """
         )
@@ -206,18 +234,32 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
 @xfail_if_external_scheduler
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_clustering_and_prediction(c, training_df, gpu_client, gpu):
-    c.sql(
+    if not gpu:
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'KMeans'
+            ) AS (
+                SELECT x, y
+                FROM timeseries
+                LIMIT 100
+            )
         """
-        CREATE MODEL my_model WITH (
-            model_class = 'KMeans'
-        ) AS (
-            SELECT x, y
-            FROM timeseries
-            LIMIT 100
         )
-    """
-    )
-    check_trained_model(c)
+        check_trained_model(c)
+    else:
+        c.sql(
+            """
+            CREATE MODEL my_model WITH (
+                model_class = 'KMeans'
+            ) AS (
+                SELECT x, y
+                FROM gpu_timeseries
+                LIMIT 100
+            )
+        """
+        )
+        check_trained_model(c)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
