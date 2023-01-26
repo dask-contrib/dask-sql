@@ -19,11 +19,11 @@ except ImportError:
     dask_cudf = None
 
 
-def check_trained_model(c, model_name=None):
-    if model_name is None:
-        sql = """
+def check_trained_model(c, model_name="my_model", gpu=False):
+    if not gpu:
+        sql = f"""
         SELECT * FROM PREDICT(
-            MODEL my_model,
+            MODEL {model_name},
             SELECT x, y FROM timeseries
         )
         """
@@ -31,7 +31,7 @@ def check_trained_model(c, model_name=None):
         sql = f"""
         SELECT * FROM PREDICT(
             MODEL {model_name},
-            SELECT x, y FROM timeseries
+            SELECT x, y FROM gpu_timeseries
         )
         """
 
@@ -119,7 +119,7 @@ def test_training_and_prediction(c, training_df, gpu_client, gpu):
             )
         """
         )
-        check_trained_model(c)
+        check_trained_model(c, gpu=gpu)
 
         # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
         # instead of cuml.linear_model.LinearRegression.
@@ -136,7 +136,7 @@ def test_training_and_prediction(c, training_df, gpu_client, gpu):
             )
         """
         )
-        check_trained_model(c)
+        check_trained_model(c, gpu=gpu)
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -212,7 +212,7 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
         )
         """
         )
-        check_trained_model(c)
+        check_trained_model(c, gpu=gpu)
 
         c.sql(
             """
@@ -227,7 +227,7 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
         )
         """
         )
-        check_trained_model(c)
+        check_trained_model(c, gpu=gpu)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
@@ -259,7 +259,7 @@ def test_clustering_and_prediction(c, training_df, gpu_client, gpu):
             )
         """
         )
-        check_trained_model(c)
+        check_trained_model(c, gpu=gpu)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
