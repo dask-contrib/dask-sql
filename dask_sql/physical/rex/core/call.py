@@ -593,47 +593,6 @@ class CoalesceOperation(Operation):
         return result
 
 
-class ExtractOperation(Operation):
-    def __init__(self):
-        super().__init__(self.extract)
-
-    def extract(self, what, df: SeriesOrScalar):
-        df = convert_to_datetime(df)
-
-        if what in {"CENTURY", "CENTURIES"}:
-            return da.trunc(df.year / 100)
-        elif what in {"DAY", "DAYS"}:
-            return df.day
-        elif what in {"DECADE", "DECADES"}:
-            return da.trunc(df.year / 10)
-        elif what == "DOW":
-            return (df.dayofweek + 1) % 7
-        elif what == "DOY":
-            return df.dayofyear
-        elif what in {"HOUR", "HOURS"}:
-            return df.hour
-        elif what in {"MICROSECOND", "MICROSECONDS"}:
-            return df.microsecond
-        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
-            return da.trunc(df.year / 1000)
-        elif what in {"MILLISECOND", "MILLISECONDS"}:
-            return da.trunc(1000 * df.microsecond)
-        elif what in {"MINUTE", "MINUTES"}:
-            return df.minute
-        elif what in {"MONTH", "MONTHS"}:
-            return df.month
-        elif what in {"QUARTER", "QUARTERS"}:
-            return df.quarter
-        elif what in {"SECOND", "SECONDS"}:
-            return df.second
-        elif what in {"WEEK", "WEEKS"}:
-            return df.week
-        elif what in {"YEAR", "YEARS"}:
-            return df.year
-        else:
-            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
-
-
 class ToTimestampOperation(Operation):
     def __init__(self):
         super().__init__(self.to_timestamp)
@@ -1099,7 +1058,6 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
-        "extract": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
