@@ -27,8 +27,6 @@ use datafusion_optimizer::{
 };
 use log::trace;
 
-mod eliminate_agg_distinct;
-use eliminate_agg_distinct::EliminateAggDistinct;
 mod filter_columns_post_join;
 use filter_columns_post_join::FilterColumnsPostJoin;
 
@@ -67,7 +65,6 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             Arc::new(LimitPushDown::new()),
             // Dask-SQL specific optimizations
-            Arc::new(EliminateAggDistinct::new()),
             Arc::new(FilterColumnsPostJoin::new()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
