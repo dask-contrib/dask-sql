@@ -1,14 +1,13 @@
 import logging
 from typing import TYPE_CHECKING
 
-import dask.dataframe as dd
 import numpy as np
 from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
-from dask_sql.utils import convert_sql_kwargs, import_class
+from dask_sql.utils import convert_sql_kwargs, import_class, is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
@@ -137,10 +136,10 @@ class CreateModelPlugin(BaseRelPlugin):
 
         training_df = context.sql(select)
 
-        if type(training_df) == dd.core.DataFrame:
-            model_class = cpu_classes.get(model_class, model_class)
-        elif "cudf" in str(training_df._partition_type):
+        if is_cudf_type(training_df):
             model_class = gpu_classes.get(model_class, model_class)
+        else:
+            model_class = cpu_classes.get(model_class, model_class)
 
         try:
             ModelClass = import_class(model_class)
