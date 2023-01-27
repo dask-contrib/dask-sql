@@ -3,54 +3,6 @@
 Best Practices and Performance Tips
 ===================================
 
-Optimize Partition Sizes
-------------------------
-File formats like Orc and Parquet are designed so that they can be pulled from disc and deserialized by CPUs quickly.
-However, loading data into GPUs has a substantial additional cost in the form of transfers from CPU to GPU memory.
-Minimizing that cost is often achieved by increasing partiton size.
-
-There's no single optimal size so choose a size that's tuned for your workflow.
-Operations like joins and concatenatations greatly increase GPU memory utilization, even if temporarilly, but if you're not performing many of these operations, the larger the partition size the better.
-Larger partition sizes increase disk to GPU throughput and keep GPU utilization higher for faster runtimes.
-
-We recommend a starting point of around 2gb uncompressed data per partition for GPUs and 128-256mb per partitions for CPUs.
-
-Avoid Unneccessay Parallelism
------------------------------
-
-Additionaly, more tasks added to the Dask DAG means more overhead added by the scheduler which can be
-a major performance inhibitor at large scales.
-
-For CPUs this isn't as much of an issue as CPUs tend to have allow for more workers and CPU tasks tend to take longer, so the additional overhead relatively less impactful.
-But, for GPUs there's typically only one worker per GPU and tasks tend to be shorter, so the overhead added by a large number of tasks can greatly affect performance.
-
-Improve performance by only creating tasks as necessary. For example, splitting row groups creates more tasks so avoid this if possible.
-
-.. code-block:: python
-    weather_dir = '/data/weather_pq_2GB/*.parquet'
-
-
-.. code-block:: sql
-    CREATE OR REPLACE TABLE weather_split WITH (
-        location = '{weather_dir}',
-        gpu=True,
-        split_row_groups=True
-    )
-
-.. code-block:: sql
-    SELECT COUNT(*) FROM weather_split WHERE type='PRCP'
-
-
-.. code-block:: sql
-    CREATE OR REPLACE TABLE weather_nosplit WITH (
-        location = '{weather_dir}',
-        gpu=True,
-        split_row_groups=False
-    )
-
-.. code-block:: sql
-    SELECT COUNT(*) FROM weather_nosplit WHERE type='PRCP'
-
 Sort and Use Read Filtering
 ---------------------------
 
@@ -120,8 +72,45 @@ This comes with a large corresponding boost in computation speed. For example,
 
 For a deeper dive into read filtering with Dask check out this article: https://medium.com/rapids-ai/filtered-reading-with-rapids-dask-to-optimize-etl-5f1624f4be55
 
-TODO: Predicate Pushdown
-------------------------
+Avoid Unneccessay Parallelism
+-----------------------------
+
+Additionaly, more tasks added to the Dask DAG means more overhead added by the scheduler which can be
+a major performance inhibitor at large scales.
+
+For CPUs this isn't as much of an issue as CPUs tend to have allow for more workers and CPU tasks tend to take longer, so the additional overhead relatively less impactful.
+But, for GPUs there's typically only one worker per GPU and tasks tend to be shorter, so the overhead added by a large number of tasks can greatly affect performance.
+
+Improve performance by only creating tasks as necessary. For example, splitting row groups creates more tasks so avoid this if possible.
+
+.. code-block:: python
+    weather_dir = '/data/weather_pq_2GB/*.parquet'
+
+
+.. code-block:: sql
+    CREATE OR REPLACE TABLE weather_split WITH (
+        location = '{weather_dir}',
+        gpu=True,
+        split_row_groups=True
+    )
+
+.. code-block:: sql
+    SELECT COUNT(*) FROM weather_split WHERE type='PRCP'
+
+
+.. code-block:: sql
+    CREATE OR REPLACE TABLE weather_nosplit WITH (
+        location = '{weather_dir}',
+        gpu=True,
+        split_row_groups=False
+    )
+
+.. code-block:: sql
+    SELECT COUNT(*) FROM weather_nosplit WHERE type='PRCP'
+
+
+Predicate Pushdown
+------------------
 
 In many cases Dask-SQL can automate sorting and read filtering with its predicate pushdown support.
 
@@ -216,3 +205,18 @@ However, if you were to repartition the smaller table to a single partition and 
     ORDER BY yr ASC
 
 Dask-SQL is able to recognize this as a broadcast join and the result is a significantly faster compute time.
+
+Optimize Partition Sizes for GPUs
+---------------------------------
+File formats like [Apache ORC](https://orc.apache.org/) and [Apache Parquet](https://parquet.apache.org/) are designed so that they can be pulled from disk and be deserialized by CPUs quickly.
+However, loading data into GPUs has a substantial additional cost in the form of transfers from CPU to GPU memory.
+Minimizing that cost is often achieved by increasing partiton size.
+Even when using Dask-SQL on GPUs, upstream CPU systems will likely produce small files resulting in small partitions.
+It's worth taking the time to repartition to larger partition sizes before querying the files on GPUs, especially when querying the same files multiple times.
+
+There's no single optimal size so choose a size that's tuned for your workflow.
+Operations like joins and concatenatations greatly increase GPU memory utilization, even if temporarilly, but if you're not performing many of these operations, the larger the partition size the better.
+Larger partition sizes increase disk to GPU throughput and keep GPU utilization higher for faster runtimes.
+
+We recommend a starting point of around 2gb uncompressed data per partition for GPUs.
+It's ususually not necessary to change from default settings when running Dask-SQL on CPUs, but if you want to manually set partition sizes, we've found 128-256mb per partition to be a good starting place.
