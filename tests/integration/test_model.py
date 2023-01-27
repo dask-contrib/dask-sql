@@ -4,7 +4,6 @@ import pickle
 import joblib
 import pandas as pd
 import pytest
-from dask.datasets import timeseries
 
 from tests.integration.fixtures import xfail_if_external_scheduler
 from tests.utils import assert_eq
@@ -19,21 +18,13 @@ except ImportError:
     dask_cudf = None
 
 
-def check_trained_model(c, model_name="my_model", gpu=False):
-    if not gpu:
-        sql = f"""
-        SELECT * FROM PREDICT(
-            MODEL {model_name},
-            SELECT x, y FROM timeseries
-        )
-        """
-    else:
-        sql = f"""
-        SELECT * FROM PREDICT(
-            MODEL {model_name},
-            SELECT x, y FROM gpu_timeseries
-        )
-        """
+def check_trained_model(c, model_name="my_model", df_name="timeseries"):
+    sql = f"""
+    SELECT * FROM PREDICT(
+        MODEL {model_name},
+        SELECT x, y FROM {df_name}
+    )
+    """
 
     tables_before = c.schema["root"].tables.keys()
     result_df = c.sql(sql).compute()
@@ -44,24 +35,17 @@ def check_trained_model(c, model_name="my_model", gpu=False):
     assert len(result_df["target"]) > 0
 
 
-@pytest.fixture()
-def training_df(c):
-    df = timeseries(freq="1d").reset_index(drop=True)
-    if dask_cudf:
-        df = dask_cudf.from_dask_dataframe(df)
-        c.create_table("gpu_timeseries", input_table=df)
-    else:
-        c.create_table("timeseries", df, persist=True)
-
-    return None
-
-
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_training_and_prediction(c, training_df, gpu_client, gpu):
+@pytest.mark.parametrize(
+    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+)
+def test_training_and_prediction(c, gpu_client):
+    gpu = "CUDA" in str(gpu_client.cluster)
+    timeseries = "gpu_timeseries" if gpu else "timeseries"
+
+    # cuML does not have a GradientBoostingClassifier
     if not gpu:
-        # cuML does not have a GradientBoostingClassifier
         c.sql(
             """
             CREATE MODEL my_model WITH (
@@ -77,70 +61,46 @@ def test_training_and_prediction(c, training_df, gpu_client, gpu):
         )
         check_trained_model(c)
 
-        c.sql(
-            """
-            CREATE OR REPLACE MODEL my_model WITH (
-                model_class = 'LogisticRegression',
-                wrap_predict = True,
-                wrap_fit = False,
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y > 0 AS target
-                FROM timeseries
-            )
-        """
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LogisticRegression',
+            wrap_predict = True,
+            wrap_fit = False,
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y > 0 AS target
+            FROM {timeseries}
         )
-        check_trained_model(c)
+    """
+    )
+    check_trained_model(c, df_name=timeseries)
 
-        c.sql(
-            """
-            CREATE OR REPLACE MODEL my_model WITH (
-                model_class = 'LinearRegression',
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y AS target
-                FROM timeseries
-            )
-        """
+    # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
+    # instead of cuml.linear_model.LinearRegression.
+    # Is there any way to assert that we are using the cuML Dask estimator
+    # (and not just the cuML estimator)?
+    c.sql(
+        f"""
+        CREATE OR REPLACE MODEL my_model WITH (
+            model_class = 'LinearRegression',
+            target_column = 'target'
+        ) AS (
+            SELECT x, y, x*y AS target
+            FROM {timeseries}
         )
-        check_trained_model(c)
-
-    else:
-        c.sql(
-            """
-            CREATE OR REPLACE MODEL my_model WITH (
-                model_class = 'LogisticRegression',
-                wrap_predict = True,
-                wrap_fit = False,
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y > 0 AS target
-                FROM gpu_timeseries
-            )
-        """
-        )
-        check_trained_model(c, gpu=gpu)
-
-        # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
-        # instead of cuml.linear_model.LinearRegression.
-        # Is there any way to assert that we are using the cuML Dask estimator
-        # (and not just the cuML estimator)?
-        c.sql(
-            """
-            CREATE OR REPLACE MODEL my_model WITH (
-                model_class = 'LinearRegression',
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y AS target
-                FROM gpu_timeseries
-            )
-        """
-        )
-        check_trained_model(c, gpu=gpu)
+    """
+    )
+    check_trained_model(c, df_name=timeseries)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
+@pytest.mark.parametrize(
+    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+)
+def test_xgboost_training_prediction(c, gpu_client):
+    gpu = "CUDA" in str(gpu_client.cluster)
+    timeseries = "gpu_timeseries" if gpu else "timeseries"
+
     # TODO: XGBClassifiers error on GPU
     if not gpu:
         c.sql(
@@ -171,100 +131,65 @@ def test_xgboost_training_prediction(c, training_df, gpu_client, gpu):
         )
         check_trained_model(c)
 
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'DaskXGBRegressor',
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y  AS target
-            FROM timeseries
-        )
-        """
-        )
-        check_trained_model(c)
+    # For GPU tests, set tree_method = 'gpu_hist'
+    tree_method = "gpu_hist" if gpu else "hist"
 
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'XGBRegressor',
-            wrap_predict = True,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y  AS target
-            FROM timeseries
-        )
-        """
-        )
-        check_trained_model(c)
+    c.sql(
+        f"""
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'DaskXGBRegressor',
+        target_column = 'target',
+        tree_method = '{tree_method}'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM {timeseries}
+    )
+    """
+    )
+    check_trained_model(c, df_name=timeseries)
 
-    else:
-        # For GPU tests, set tree_method = 'gpu_hist'
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'DaskXGBRegressor',
-            target_column = 'target',
-            tree_method = 'gpu_hist'
-        ) AS (
-            SELECT x, y, x*y  AS target
-            FROM gpu_timeseries
-        )
-        """
-        )
-        check_trained_model(c, gpu=gpu)
-
-        c.sql(
-            """
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'XGBRegressor',
-            wrap_predict = True,
-            target_column = 'target',
-            tree_method = 'gpu_hist'
-        ) AS (
-            SELECT x, y, x*y  AS target
-            FROM gpu_timeseries
-        )
-        """
-        )
-        check_trained_model(c, gpu=gpu)
+    c.sql(
+        f"""
+    CREATE OR REPLACE MODEL my_model WITH (
+        model_class = 'XGBRegressor',
+        wrap_predict = True,
+        target_column = 'target',
+        tree_method = '{tree_method}'
+    ) AS (
+        SELECT x, y, x*y  AS target
+        FROM {timeseries}
+    )
+    """
+    )
+    check_trained_model(c, df_name=timeseries)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_clustering_and_prediction(c, training_df, gpu_client, gpu):
-    if not gpu:
-        c.sql(
-            """
-            CREATE MODEL my_model WITH (
-                model_class = 'KMeans'
-            ) AS (
-                SELECT x, y
-                FROM timeseries
-                LIMIT 100
-            )
-        """
+@pytest.mark.parametrize(
+    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+)
+def test_clustering_and_prediction(c, gpu_client):
+    gpu = "CUDA" in str(gpu_client.cluster)
+    timeseries = "gpu_timeseries" if gpu else "timeseries"
+
+    c.sql(
+        f"""
+        CREATE MODEL my_model WITH (
+            model_class = 'KMeans'
+        ) AS (
+            SELECT x, y
+            FROM {timeseries}
+            LIMIT 100
         )
-        check_trained_model(c)
-    else:
-        c.sql(
-            """
-            CREATE MODEL my_model WITH (
-                model_class = 'KMeans'
-            ) AS (
-                SELECT x, y
-                FROM gpu_timeseries
-                LIMIT 100
-            )
-        """
-        )
-        check_trained_model(c, gpu=gpu)
+    """
+    )
+    check_trained_model(c, df_name=timeseries)
 
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_create_model_with_prediction(c, training_df):
+def test_create_model_with_prediction(c):
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
@@ -303,7 +228,7 @@ def test_create_model_with_prediction(c, training_df):
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
     reason="Can not run with external cluster",
 )
-def test_iterative_and_prediction(c, training_df):
+def test_iterative_and_prediction(c):
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -323,7 +248,7 @@ def test_iterative_and_prediction(c, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_show_models(c, training_df):
+def test_show_models(c):
     c.sql(
         """
         CREATE MODEL my_model1 WITH (
@@ -371,7 +296,7 @@ def test_show_models(c, training_df):
     assert_eq(result, expected)
 
 
-def test_wrong_training_or_prediction(c, training_df):
+def test_wrong_training_or_prediction(c):
     with pytest.raises(KeyError):
         c.sql(
             """
@@ -410,7 +335,7 @@ def test_wrong_training_or_prediction(c, training_df):
         )
 
 
-def test_correct_argument_passing(c, training_df):
+def test_correct_argument_passing(c):
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -453,7 +378,7 @@ def test_correct_argument_passing(c, training_df):
     )
 
 
-def test_replace_and_error(c, training_df):
+def test_replace_and_error(c):
     c.sql(
         """
         CREATE MODEL my_model WITH (
@@ -532,7 +457,7 @@ def test_replace_and_error(c, training_df):
     assert c.schema[c.schema_name].models["my_model"][0] != second_mock
 
 
-def test_drop_model(c, training_df):
+def test_drop_model(c):
     with pytest.raises(RuntimeError):
         c.sql("DROP MODEL my_model")
 
@@ -558,7 +483,7 @@ def test_drop_model(c, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_describe_model(c, training_df):
+def test_describe_model(c):
     c.sql(
         """
         CREATE MODEL ex_describe_model WITH (
@@ -595,7 +520,7 @@ def test_describe_model(c, training_df):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_export_model(c, training_df, tmpdir):
+def test_export_model(c, tmpdir):
     with pytest.raises(RuntimeError):
         c.sql(
             """EXPORT MODEL not_available_model with (
@@ -662,7 +587,7 @@ def test_export_model(c, training_df, tmpdir):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_mlflow_export(c, training_df, tmpdir):
+def test_mlflow_export(c, tmpdir):
     # Test only when mlflow was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
 
@@ -723,7 +648,7 @@ def test_mlflow_export(c, training_df, tmpdir):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
+def test_mlflow_export_xgboost(c, client, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     xgboost = pytest.importorskip("xgboost", reason="xgboost not installed")
@@ -757,7 +682,7 @@ def test_mlflow_export_xgboost(c, client, training_df, tmpdir):
     )
 
 
-def test_mlflow_export_lightgbm(c, training_df, tmpdir):
+def test_mlflow_export_lightgbm(c, tmpdir):
     # Test only when mlflow & lightgbm was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
     lightgbm = pytest.importorskip("lightgbm", reason="lightgbm not installed")
@@ -793,7 +718,7 @@ def test_mlflow_export_lightgbm(c, training_df, tmpdir):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_ml_experiment(c, client, training_df):
+def test_ml_experiment(c, client):
     with pytest.raises(
         ValueError,
         match="Parameters must include a 'model_class' " "or 'automl_class' parameter.",
@@ -998,7 +923,7 @@ def test_ml_experiment(c, client, training_df):
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
 @pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
-def test_experiment_automl_classifier(c, client, training_df):
+def test_experiment_automl_classifier(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 
     # currently tested with tpot==
@@ -1026,7 +951,7 @@ def test_experiment_automl_classifier(c, client, training_df):
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
 @pytest.mark.skip(reason="Waiting on https://github.com/EpistasisLab/tpot/pull/1280")
-def test_experiment_automl_regressor(c, client, training_df):
+def test_experiment_automl_regressor(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 
     # test regressor

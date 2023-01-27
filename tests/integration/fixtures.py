@@ -5,6 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from dask.datasets import timeseries as dd_timeseries
 from dask.distributed import Client
 
 from tests.utils import assert_eq
@@ -111,6 +112,11 @@ def datetime_table():
 
 
 @pytest.fixture()
+def timeseries():
+    return dd_timeseries(freq="1d").reset_index(drop=True)
+
+
+@pytest.fixture()
 def parquet_ddf(tmpdir):
 
     # Write simple parquet dataset
@@ -160,6 +166,11 @@ def gpu_datetime_table(datetime_table):
 
 
 @pytest.fixture()
+def gpu_timeseries(timeseries):
+    return dask_cudf.from_dask_dataframe(timeseries) if dask_cudf else None
+
+
+@pytest.fixture()
 def c(
     df_simple,
     df_wide,
@@ -172,12 +183,14 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    timeseries,
     parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
     gpu_string_table,
     gpu_datetime_table,
+    gpu_timeseries,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -191,12 +204,14 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "timeseries": timeseries,
         "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
         "gpu_string_table": gpu_string_table,
         "gpu_datetime_table": gpu_datetime_table,
+        "gpu_timeseries": gpu_timeseries,
     }
 
     # Lazy import, otherwise the pytest framework has problems
@@ -312,19 +327,14 @@ def assert_query_gives_same_result(engine):
 
 
 @pytest.fixture()
-def gpu_cluster():
-    if LocalCUDACluster is None:
-        pytest.skip("dask_cuda not installed")
-        return None
-
-    with LocalCUDACluster(protocol="tcp") as cluster:
-        yield cluster
-
-
-@pytest.fixture()
-def gpu_client(gpu_cluster):
-    if gpu_cluster:
-        with Client(gpu_cluster) as client:
+def gpu_client(request):
+    # allow gpu_client to be used directly as a fixture or parametrized
+    if not hasattr(request, "param") or request.param:
+        with LocalCUDACluster(protocol="tcp") as cluster:
+            with Client(cluster) as client:
+                yield client
+    else:
+        with Client(address=SCHEDULER_ADDR) as client:
             yield client
 
 
