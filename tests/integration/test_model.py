@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 
 import joblib
 import pandas as pd
@@ -94,6 +95,12 @@ def test_training_and_prediction(c, gpu_client):
     check_trained_model(c, df_name=timeseries)
 
 
+# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
+@xfail_if_external_scheduler
+@pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
+)
 @pytest.mark.parametrize(
     "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
 )
