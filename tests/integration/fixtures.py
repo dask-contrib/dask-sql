@@ -18,6 +18,7 @@ try:
     from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     cudf = None
+    dask_cudf = None
     LocalCUDACluster = None
 
 # check if we want to connect to an independent cluster
