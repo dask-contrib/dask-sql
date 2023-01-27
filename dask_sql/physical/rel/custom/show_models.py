@@ -24,10 +24,9 @@ class ShowModelsPlugin(BaseRelPlugin):
     class_name = "ShowModels"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        schema_name = rel.show_models().getSchemaName() or context.schema_name
 
-        df = pd.DataFrame(
-            {"Models": list(context.schema[context.schema_name].models.keys())}
-        )
+        df = pd.DataFrame({"Models": list(context.schema[schema_name].models.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

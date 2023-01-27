@@ -151,7 +151,7 @@ def test_group_by_filtered(c):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_group_by_case(c):
     return_df = c.sql(
         """
@@ -273,7 +273,21 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="stddev_pop is failing on GPU, see https://github.com/dask-contrib/dask-sql/issues/681"
+                ),
+            ),
+        ),
+    ],
+)
 def test_stddev(c, gpu):
     df = pd.DataFrame(
         {
@@ -308,11 +322,6 @@ def test_stddev(c, gpu):
     expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
 
     assert_eq(return_df, expected_df.reset_index(drop=True))
-
-    # Can be removed after addressing: https://github.com/dask-contrib/dask-sql/issues/681
-    if gpu:
-        c.drop_table("df")
-        pytest.skip()
 
     return_df = c.sql(
         """
@@ -351,13 +360,8 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.parametrize(
-    "gpu", [False, pytest.param(True, marks=(pytest.mark.gpu, pytest.mark.skip))]
-)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_regr_aggregation(c, timeseries_df, gpu):
-    if gpu:
-        pytest.skip()
-
     # test regr_count
     regr_count = c.sql(
         """
@@ -418,7 +422,7 @@ def test_regr_aggregation(c, timeseries_df, gpu):
     )
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
     reason="WIP DataFusion - https://github.com/dask-contrib/dask-sql/issues/753"
 )
 def test_covar_aggregation(c, timeseries_df):
