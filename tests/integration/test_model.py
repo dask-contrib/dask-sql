@@ -1059,11 +1059,11 @@ def test_predict_with_nullable_types(c):
 
 # TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 @xfail_if_external_scheduler
-def test_predict_with_limit_offset(c, training_df):
+def test_predict_with_limit_offset(c):
     c.sql(
         """
         CREATE MODEL my_model WITH (
-            model_class = 'sklearn.ensemble.GradientBoostingClassifier',
+            model_class = 'GradientBoostingClassifier',
             wrap_predict = True,
             target_column = 'target'
         ) AS (
