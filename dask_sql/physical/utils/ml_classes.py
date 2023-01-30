@@ -22,7 +22,7 @@ def get_gpu_classes():
         "TruncatedSVD": "cuml.dask.decomposition.tsvd.TruncatedSVD",
         "RandomForestClassifier": "cuml.dask.ensemble.randomforestclassifier.RandomForestClassifier",
         "RandomForestRegressor": "cuml.dask.ensemble.randomforestregressor.RandomForestRegressor",
-        # ImportError: dask-glm >= 0.2.1.dev was not found, please install it to use multi-GPU logistic regression.
+        # TODO: https://github.com/dask-contrib/dask-sql/issues/1015
         # "LogisticRegression": "cuml.dask.extended.linear_model.logistic_regression.LogisticRegression",
         "LogisticRegression": "cuml.linear_model.LogisticRegression",
         "TfidfTransformer": "cuml.dask.feature_extraction.text.tfidf_transformer.TfidfTransformer",
