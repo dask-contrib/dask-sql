@@ -376,3 +376,21 @@ def test_join_alias_w_projection(c, parquet_ddf):
     expected_df = parquet_ddf.merge(parquet_ddf, on=["a"], how="inner")
     expected_df = expected_df[expected_df["c_x"] == "A"][["c_y"]]
     assert_eq(result_df, expected_df, check_index=False)
+
+
+def test_filter_columns_post_join(c):
+    df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "c": [1, None, 2, 2, 2]})
+    df2 = pd.DataFrame({"b": [1, 1, 2, 2, 3], "c": [2, 2, 2, 2, 2]})
+    c.create_table("df", df)
+    c.create_table("df2", df2)
+
+    query = "SELECT SUM(df.a) as sum_a, df2.b FROM df INNER JOIN df2 ON df.c=df2.c GROUP BY df2.b"
+
+    explain_string = c.explain(query)
+    assert ("Projection: df.a, df2.b" in explain_string) or (
+        "Projection: df2.b, df.a" in explain_string
+    )
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"sum_a": [24, 24, 12], "b": [1, 2, 3]})
+    assert_eq(result_df, expected_df)
