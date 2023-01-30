@@ -6,9 +6,9 @@ Best Practices and Performance Tips
 Sort and Use Read Filtering
 ---------------------------
 
-If you often read by key ranges or perform lots of logic with groups of related records you should consider using Dask Dataframe's ``shuffle``.
-This operation ensures that all rows of a givin key will be within within a single partition.
-This is helpful for querying records on a specific key or keys such as customer IDs or sessions keys as it allows Dask to skip partitions based on the partition min and max values thus avoiding reading each record.
+If you often read by key ranges or perform lots of logic with groups of related records, you should consider using Dask Dataframe's ``shuffle``.
+This operation ensures that all rows of a given key will be within a single partition.
+This is helpful for querying records on a specific key or keys such as customer IDs or session keys, as it allows Dask to skip partitions based on the partition min and max values thus avoiding reading each record.
 This can save a large amount of IO time and is especially helpful when using a network file system.
 
 For example, querying a specific pickup time from a taxi dataset ends up returning a result with over 200 partitions as each of these partitions needs to be checked for that key.
@@ -20,7 +20,7 @@ For example, querying a specific pickup time from a taxi dataset ends up returni
 .. code-block::
     244
 
-But, if you were to instead sort by the pickup up time and use the ``DISTRIBUTE BY`` operation, which is equivalent to Dask Dataframe's shuffle, you can reduce the number of partitions in the result to 1.
+But, if you were to instead sort by the pickup time and use the ``DISTRIBUTE BY`` operation, which is equivalent to Dask Dataframe's shuffle, you can reduce the number of partitions in the result to 1.
 
 .. code-block:: python
     def intra_partition_sort(df, sort_keys):
@@ -70,15 +70,15 @@ This comes with a large corresponding boost in computation speed. For example,
     Wall time: 274 ms
 
 
-For a deeper dive into read filtering with Dask check out this article: https://medium.com/rapids-ai/filtered-reading-with-rapids-dask-to-optimize-etl-5f1624f4be55
+For a deeper dive into read filtering with Dask, check out `Filtered Reading with RAPIDS & Dask to Optimize ETL <https://medium.com/rapids-ai/filtered-reading-with-rapids-dask-to-optimize-etl-5f1624f4be55>`_.
 
-Avoid Unneccessay Parallelism
+Avoid Unnecessary Parallelism
 -----------------------------
 
-Additionaly, more tasks added to the Dask DAG means more overhead added by the scheduler which can be
+Additionally, more tasks added to the Dask graph means more overhead added by the scheduler which can be
 a major performance inhibitor at large scales.
 
-For CPUs this isn't as much of an issue as CPUs tend to have allow for more workers and CPU tasks tend to take longer, so the additional overhead relatively less impactful.
+For CPUs this isn't as much of an issue, as CPUs tend to have allowance for more workers and CPU tasks tend to take longer, so the additional overhead is relatively less impactful.
 But, for GPUs there's typically only one worker per GPU and tasks tend to be shorter, so the overhead added by a large number of tasks can greatly affect performance.
 
 Improve performance by only creating tasks as necessary. For example, splitting row groups creates more tasks so avoid this if possible.
@@ -132,7 +132,7 @@ Use broadcast joins when possible
 
 Joins and grouped aggregations typically require communication between workers, which can be expensive.
 Broadcast joins can help reduce this communication in the case of joining a small table to a large table by just sending the small table to each partition of the large table.
-However, in Dask-SQL this only works when the small table is a sinlge partition.
+However, in Dask-SQL this only works when the small table is a single partition.
 
 For example, if you read in some tables and concatenate them with a ``UNION ALL`` operation
 
@@ -183,7 +183,7 @@ you get a new table that has two partitions. Then if you use it in a join
     GROUP BY yr, city
     ORDER BY yr ASC
 
-Dask-SQL won't perform a broadcast join and will instead perform a traditional join with a corresponding slow computate time.
+Dask-SQL won't perform a broadcast join and will instead perform a traditional join with a corresponding slow compute time.
 However, if you were to repartition the smaller table to a single partition and rerun the operation
 
 .. code-block:: python
@@ -208,15 +208,15 @@ Dask-SQL is able to recognize this as a broadcast join and the result is a signi
 
 Optimize Partition Sizes for GPUs
 ---------------------------------
-File formats like [Apache ORC](https://orc.apache.org/) and [Apache Parquet](https://parquet.apache.org/) are designed so that they can be pulled from disk and be deserialized by CPUs quickly.
+File formats like `Apache ORC <https://orc.apache.org/>`_ and `Apache Parquet <https://parquet.apache.org/>`_ are designed so that they can be pulled from disk and be deserialized by CPUs quickly.
 However, loading data into GPUs has a substantial additional cost in the form of transfers from CPU to GPU memory.
-Minimizing that cost is often achieved by increasing partiton size.
+Minimizing that cost is often achieved by increasing partition size.
 Even when using Dask-SQL on GPUs, upstream CPU systems will likely produce small files resulting in small partitions.
 It's worth taking the time to repartition to larger partition sizes before querying the files on GPUs, especially when querying the same files multiple times.
 
 There's no single optimal size so choose a size that's tuned for your workflow.
-Operations like joins and concatenatations greatly increase GPU memory utilization, even if temporarilly, but if you're not performing many of these operations, the larger the partition size the better.
+Operations like joins and concatenations greatly increase GPU memory utilization, even if temporarily, but if you're not performing many of these operations, the larger the partition size the better.
 Larger partition sizes increase disk to GPU throughput and keep GPU utilization higher for faster runtimes.
 
 We recommend a starting point of around 2gb uncompressed data per partition for GPUs.
-It's ususually not necessary to change from default settings when running Dask-SQL on CPUs, but if you want to manually set partition sizes, we've found 128-256mb per partition to be a good starting place.
+It's usually not necessary to change from default settings when running Dask-SQL on CPUs, but if you want to manually set partition sizes, we've found 128-256mb per partition to be a good starting place.
