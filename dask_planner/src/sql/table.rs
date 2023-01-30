@@ -1,7 +1,7 @@
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
+use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 use datafusion_optimizer::utils::split_conjunction;

@@ -1,7 +1,7 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
 use pyo3::{prelude::*, types::PyDict};
 

@@ -1,6 +1,6 @@
 use std::{convert::From, sync::Arc};
 
-use arrow::datatypes::DataType;
+use datafusion::arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
 use datafusion_expr::{
     expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
