@@ -12,17 +12,21 @@ This is helpful for querying records on a specific key or keys such as customer 
 This can save a large amount of IO time and is especially helpful when using a network file system.
 
 For example, querying a specific pickup time from a taxi dataset ends up returning a result with over 200 partitions as each of these partitions needs to be checked for that key.
+
 .. code-block:: python
+
     ddf = dd.read_parquet('/data/taxi_pq_2GB', split_row_groups=False)
     c.create_table('taxi_unsorted', ddf)
     c.sql("select * from taxi_unsorted where DAYOFMONTH(pickup_datetime) = 15").npartitions
 
 .. code-block::
+
     244
 
 But, if you were to instead sort by the pickup time and use the ``DISTRIBUTE BY`` operation, which is equivalent to Dask Dataframe's shuffle, you can reduce the number of partitions in the result to 1.
 
 .. code-block:: python
+
     def intra_partition_sort(df, sort_keys):
         return df.sort_values(sort_keys)
 
@@ -37,6 +41,7 @@ But, if you were to instead sort by the pickup time and use the ``DISTRIBUTE BY`
     """).map_partitions(intra_partition_sort, ['dom', 'hr']).to_parquet('/data/taxi_sorted')
 
 .. code-block:: python
+
     sorted_ddf = dd.read_parquet(
         '/data/taxi_sorted',
         split_row_groups=False,
@@ -49,23 +54,28 @@ But, if you were to instead sort by the pickup time and use the ``DISTRIBUTE BY`
     .sql("SELECT * FROM taxi_sorted WHERE dom = 15").npartitions
 
 .. code-block::
+
     1
 
 This comes with a large corresponding boost in computation speed. For example,
 
 .. code-block:: python
+
     %%time
     c.sql("SELECT COUNT(*) FROM taxi_unsorted WHERE DAYOFMONTH(pickup_datetime) = 15").compute()
 
 .. code-block::
+
     CPU times: user 2.4 s, sys: 275 ms, total: 2.68 s
     Wall time: 2.58 s
 
 .. code-block:: python
+
     %%time
     c.sql("SELECT COUNT(*) FROM taxi_sorted WHERE dom = 15").compute()
 
 .. code-block::
+
     CPU times: user 318 ms, sys: 21.7 ms, total: 340 ms
     Wall time: 274 ms
 
@@ -84,10 +94,12 @@ But, for GPUs there's typically only one worker per GPU and tasks tend to be sho
 Improve performance by only creating tasks as necessary. For example, splitting row groups creates more tasks so avoid this if possible.
 
 .. code-block:: python
+
     weather_dir = '/data/weather_pq_2GB/*.parquet'
 
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE weather_split WITH (
         location = '{weather_dir}',
         gpu=True,
@@ -95,10 +107,12 @@ Improve performance by only creating tasks as necessary. For example, splitting 
     )
 
 .. code-block:: sql
+
     SELECT COUNT(*) FROM weather_split WHERE type='PRCP'
 
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE weather_nosplit WITH (
         location = '{weather_dir}',
         gpu=True,
@@ -106,6 +120,7 @@ Improve performance by only creating tasks as necessary. For example, splitting 
     )
 
 .. code-block:: sql
+
     SELECT COUNT(*) FROM weather_nosplit WHERE type='PRCP'
 
 
@@ -117,6 +132,7 @@ In many cases Dask-SQL can automate sorting and read filtering with its predicat
 For example, the query
 
 .. code-block:: sql
+
     SELECT
         COUNT(*)
     FROM
@@ -137,6 +153,7 @@ However, in Dask-SQL this only works when the small table is a single partition.
 For example, if you read in some tables and concatenate them with a ``UNION ALL`` operation
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE precip AS
     SELECT
         station_id,
@@ -148,12 +165,14 @@ For example, if you read in some tables and concatenate them with a ``UNION ALL`
     WHERE type='PRCP'
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE atlanta_stations WITH (
         location = '/data/atlanta_stations/*.parquet',
         gpu=True
     )
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE seattle_stations WITH (
         location = '/data/seattle_stations/*.parquet',
         gpu=True
@@ -161,6 +180,7 @@ For example, if you read in some tables and concatenate them with a ``UNION ALL`
 
 
 .. code-block:: sql
+
     CREATE OR REPLACE TABLE city_stations AS
     SELECT * FROM atlanta_stations
     UNION ALL
@@ -169,6 +189,7 @@ For example, if you read in some tables and concatenate them with a ``UNION ALL`
 you get a new table that has two partitions. Then if you use it in a join
 
 .. code-block:: sql
+
     SELECT
         yr,
         city,
@@ -187,9 +208,11 @@ Dask-SQL won't perform a broadcast join and will instead perform a traditional j
 However, if you were to repartition the smaller table to a single partition and rerun the operation
 
 .. code-block:: python
+
     c.create_table("city_stations", c.sql("select * from city_stations").repartition(npartitions=1))
 
 .. code-block:: sql
+
     SELECT
         yr,
         city,
