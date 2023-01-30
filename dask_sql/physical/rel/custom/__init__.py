@@ -1,29 +1,29 @@
 from .alter import AlterSchemaPlugin, AlterTablePlugin
-from .analyze import AnalyzeTablePlugin
-from .columns import ShowColumnsPlugin
+from .analyze_table import AnalyzeTablePlugin
+from .create_catalog_schema import CreateCatalogSchemaPlugin
 from .create_experiment import CreateExperimentPlugin
+from .create_memory_table import CreateMemoryTablePlugin
 from .create_model import CreateModelPlugin
-from .create_schema import CreateSchemaPlugin
 from .create_table import CreateTablePlugin
-from .create_table_as import CreateTableAsPlugin
-from .describe_model import ShowModelParamsPlugin
+from .describe_model import DescribeModelPlugin
 from .distributeby import DistributeByPlugin
 from .drop_model import DropModelPlugin
 from .drop_schema import DropSchemaPlugin
 from .drop_table import DropTablePlugin
 from .export_model import ExportModelPlugin
-from .predict import PredictModelPlugin
+from .predict_model import PredictModelPlugin
 from .schemas import ShowSchemasPlugin
+from .show_columns import ShowColumnsPlugin
 from .show_models import ShowModelsPlugin
-from .switch_schema import SwitchSchemaPlugin
-from .tables import ShowTablesPlugin
+from .show_tables import ShowTablesPlugin
+from .use_schema import UseSchemaPlugin
 
 __all__ = [
     AnalyzeTablePlugin,
     CreateExperimentPlugin,
     CreateModelPlugin,
-    CreateSchemaPlugin,
-    CreateTableAsPlugin,
+    CreateCatalogSchemaPlugin,
+    CreateMemoryTablePlugin,
     CreateTablePlugin,
     DropModelPlugin,
     DropSchemaPlugin,
@@ -31,11 +31,11 @@ __all__ = [
     ExportModelPlugin,
     PredictModelPlugin,
     ShowColumnsPlugin,
-    ShowModelParamsPlugin,
+    DescribeModelPlugin,
     ShowModelsPlugin,
     ShowSchemasPlugin,
     ShowTablesPlugin,
-    SwitchSchemaPlugin,
+    UseSchemaPlugin,
     AlterSchemaPlugin,
     AlterTablePlugin,
     DistributeByPlugin,

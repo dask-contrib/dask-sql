@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from dask_planner.rust import LogicalPlan
 
 
-class SwitchSchemaPlugin(BaseRelPlugin):
+class UseSchemaPlugin(BaseRelPlugin):
     """
     Show all MODELS currently registered/trained.
     The SQL is:
@@ -21,8 +21,8 @@ class SwitchSchemaPlugin(BaseRelPlugin):
     class_name = "UseSchema"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        use_schema = rel.use_schema()
-        schema_name = str(use_schema.getSchemaName())
+        schema_name = rel.use_schema().getSchemaName()
+
         if schema_name in context.schema:
             context.schema_name = schema_name
             # set the schema on the underlying DaskSQLContext as well

@@ -711,6 +711,25 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "isDistinctAgg")]
+    pub fn is_distinct_aggregation(&self) -> PyResult<bool> {
+        // TODO refactor to avoid duplication
+        match &self.expr {
+            Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+            Expr::AggregateUDF { .. } => Ok(false),
+            Expr::Alias(expr, _) => match expr.as_ref() {
+                Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+                Expr::AggregateUDF { .. } => Ok(false),
+                _ => Err(py_type_err(
+                    "isDistinctAgg() - Non-aggregate expression encountered",
+                )),
+            },
+            _ => Err(py_type_err(
+                "getFilterExpr() - Non-aggregate expression encountered",
+            )),
+        }
+    }
+
     /// Returns if a sort expressions is an ascending sort
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
