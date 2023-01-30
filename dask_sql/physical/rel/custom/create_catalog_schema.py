@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class CreateSchemaPlugin(BaseRelPlugin):
+class CreateCatalogSchemaPlugin(BaseRelPlugin):
     """
     Create a schema with the given name
     and register it at the context.
@@ -30,7 +30,7 @@ class CreateSchemaPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
         create_schema = rel.create_catalog_schema()
-        schema_name = str(create_schema.getSchemaName())
+        schema_name = create_schema.getSchemaName()
 
         if schema_name in context.schema:
             if create_schema.getIfNotExists():

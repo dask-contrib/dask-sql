@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -102,9 +103,10 @@ class CreateModelPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         create_model = rel.create_model()
-        select = create_model.getSelectQuery()
 
-        schema_name, model_name = context.schema_name, create_model.getModelName()
+        select = create_model.getSelectQuery()
+        schema_name = create_model.getSchemaName() or context.schema_name
+        model_name = create_model.getModelName()
         kwargs = convert_sql_kwargs(create_model.getSQLWithOptions())
 
         if model_name in context.schema[schema_name].models:
@@ -128,6 +130,12 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_predict = kwargs.pop("wrap_predict", None)
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
+
+        if wrap_predict is False and "dask" not in model_class.lower():
+            warnings.warn(
+                f"Consider using wrap_predict=True for non-Dask model {model_class}",
+                RuntimeWarning,
+            )
 
         try:
             ModelClass = import_class(model_class)

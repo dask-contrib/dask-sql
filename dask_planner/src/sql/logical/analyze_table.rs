@@ -80,13 +80,8 @@ impl PyAnalyzeTable {
     }
 
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
-        Ok(self
-            .analyze_table
-            .schema_name
-            .as_ref()
-            .cloned()
-            .unwrap_or_default())
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.analyze_table.schema_name.clone())
     }
 
     #[pyo3(name = "getColumns")]

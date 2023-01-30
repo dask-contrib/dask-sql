@@ -27,6 +27,7 @@ from dask_sql.physical.rex.core.literal import SargPythonImplementation
 from dask_sql.utils import (
     LoggableDataFrame,
     convert_to_datetime,
+    is_cudf_type,
     is_datetime,
     is_frame,
     make_pickable_without_dask_sql,
@@ -644,7 +645,7 @@ class ToTimestampOperation(Operation):
         format = format.replace("'", "")
 
         # TODO: format timestamps for GPU tests
-        if "cudf" in str(type(df)):
+        if is_cudf_type(df):
             if format != default_format:
                 raise RuntimeError("Non-default timestamp formats not supported on GPU")
             if df.dtype == "object":
@@ -688,7 +689,7 @@ class TimeStampAddOperation(Operation):
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
         df = df.astype("datetime64[ns]")
 
-        if "cudf" in str(type(df)):
+        if is_cudf_type(df):
             from cudf import DateOffset
         else:
             from pandas.tseries.offsets import DateOffset
