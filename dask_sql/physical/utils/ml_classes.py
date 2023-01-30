@@ -8,21 +8,7 @@ def get_cpu_classes():
     except ImportError:
         cpu_classes = {}
 
-    # Boosting libraries
-    cpu_classes["LGBMModel"] = "lightgbm.LGBMModel"
-    cpu_classes["LGBMClassifier"] = "lightgbm.LGBMClassifier"
-    cpu_classes["LGBMRegressor"] = "lightgbm.LGBMRegressor"
-    cpu_classes["LGBMRanker"] = "lightgbm.LGBMRanker"
-    cpu_classes["XGBRegressor"] = "xgboost.XGBRegressor"
-    cpu_classes["XGBClassifier"] = "xgboost.XGBClassifier"
-    cpu_classes["XGBRanker"] = "xgboost.XGBRanker"
-    cpu_classes["XGBRFRegressor"] = "xgboost.XGBRFRegressor"
-    cpu_classes["XGBRFClassifier"] = "xgboost.XGBRFClassifier"
-    cpu_classes["DaskXGBClassifier"] = "xgboost.dask.DaskXGBClassifier"
-    cpu_classes["DaskXGBRegressor"] = "xgboost.dask.DaskXGBRegressor"
-    cpu_classes["DaskXGBRanker"] = "xgboost.dask.DaskXGBRanker"
-    cpu_classes["DaskXGBRFRegressor"] = "xgboost.dask.DaskXGBRFRegressor"
-    cpu_classes["DaskXGBRFClassifier"] = "xgboost.dask.DaskXGBRFClassifier"
+    cpu_classes = add_boosting_classes(cpu_classes)
 
     return cpu_classes
 
@@ -110,21 +96,27 @@ def get_gpu_classes():
         "CategoricalNB": "cuml.naive_bayes.naive_bayes.CategoricalNB",
         "TargetEncoder": "cuml.preprocessing.TargetEncoder",
         "PorterStemmer": "cuml.preprocessing.text.stem.porter_stemmer.PorterStemmer",
-        # Boosting libaries
-        "LGBMModel": "lightgbm.LGBMModel",
-        "LGBMClassifier": "lightgbm.LGBMClassifier",
-        "LGBMRegressor": "lightgbm.LGBMRegressor",
-        "LGBMRanker": "lightgbm.LGBMRanker",
-        "XGBRegressor": "xgboost.XGBRegressor",
-        "XGBClassifier": "xgboost.XGBClassifier",
-        "XGBRanker": "xgboost.XGBRanker",
-        "XGBRFRegressor": "xgboost.XGBRFRegressor",
-        "XGBRFClassifier": "xgboost.XGBRFClassifier",
-        "DaskXGBClassifier": "xgboost.dask.DaskXGBClassifier",
-        "DaskXGBRegressor": "xgboost.dask.DaskXGBRegressor",
-        "DaskXGBRanker": "xgboost.dask.DaskXGBRanker",
-        "DaskXGBRFRegressor": "xgboost.dask.DaskXGBRFRegressor",
-        "DaskXGBRFClassifier": "xgboost.dask.DaskXGBRFClassifier",
     }
 
+    gpu_classes = add_boosting_classes(gpu_classes)
+
     return gpu_classes
+
+
+def add_boosting_classes(my_classes):
+    my_classes["LGBMModel"] = "lightgbm.LGBMModel"
+    my_classes["LGBMClassifier"] = "lightgbm.LGBMClassifier"
+    my_classes["LGBMRegressor"] = "lightgbm.LGBMRegressor"
+    my_classes["LGBMRanker"] = "lightgbm.LGBMRanker"
+    my_classes["XGBRegressor"] = "xgboost.XGBRegressor"
+    my_classes["XGBClassifier"] = "xgboost.XGBClassifier"
+    my_classes["XGBRanker"] = "xgboost.XGBRanker"
+    my_classes["XGBRFRegressor"] = "xgboost.XGBRFRegressor"
+    my_classes["XGBRFClassifier"] = "xgboost.XGBRFClassifier"
+    my_classes["DaskXGBClassifier"] = "xgboost.dask.DaskXGBClassifier"
+    my_classes["DaskXGBRegressor"] = "xgboost.dask.DaskXGBRegressor"
+    my_classes["DaskXGBRanker"] = "xgboost.dask.DaskXGBRanker"
+    my_classes["DaskXGBRFRegressor"] = "xgboost.dask.DaskXGBRFRegressor"
+    my_classes["DaskXGBRFClassifier"] = "xgboost.dask.DaskXGBRFClassifier"
+
+    return my_classes

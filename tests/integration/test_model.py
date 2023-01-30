@@ -77,10 +77,6 @@ def test_training_and_prediction(c, gpu_client):
     )
     check_trained_model(c, df_name=timeseries)
 
-    # TODO: In this query, we are using cuml.dask.linear_model.LinearRegression
-    # instead of cuml.linear_model.LinearRegression.
-    # Is there any way to assert that we are using the cuML Dask estimator
-    # (and not just the cuML estimator)?
     c.sql(
         f"""
         CREATE OR REPLACE MODEL my_model WITH (
