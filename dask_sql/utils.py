@@ -34,7 +34,11 @@ def is_datetime(obj):
     """
     Check if a scalar or a series is of datetime type
     """
-    return pd.api.types.is_datetime64_any_dtype(obj) or isinstance(obj, datetime)
+    return (
+        pd.api.types.is_datetime64_any_dtype(obj)
+        or isinstance(obj, datetime)
+        or isinstance(obj, np.timedelta64)
+    )
 
 
 def convert_to_datetime(df):

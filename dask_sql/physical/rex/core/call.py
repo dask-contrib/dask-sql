@@ -46,7 +46,7 @@ def as_timelike(op):
         return np.timedelta64(op, "D")
     elif isinstance(op, str):
         return np.datetime64(op)
-    elif pd.api.types.is_datetime64_dtype(op) or isinstance(op, np.timedelta64):
+    elif is_datetime(op):
         return op
     else:
         raise ValueError(f"Don't know how to make {type(op)} timelike")
@@ -133,7 +133,7 @@ class ReduceOperation(Operation):
         if len(operands) > 1:
             if any(
                 map(
-                    lambda op: is_frame(op) & pd.api.types.is_datetime64_dtype(op),
+                    lambda op: is_frame(op) & is_datetime(op),
                     operands,
                 )
             ):
@@ -687,7 +687,7 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[ns]")
+        df = as_timelike(df)
 
         if is_cudf_type(df):
             from cudf import DateOffset
