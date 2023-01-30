@@ -72,7 +72,7 @@ def parquet_statistics(
     # Be strict about columns argument
     if columns:
         if not isinstance(columns, list):
-            raise ValueError(f"Expected list, got columns={type(columns)}.")
+            raise ValueError(f"Expected columns to be a list, got {type(columns)}.")
         elif not set(columns).issubset(set(ddf.columns)):
             raise ValueError(f"columns={columns} must be a subset of {ddf.columns}")
 
@@ -97,7 +97,7 @@ def parquet_statistics(
     parts = layer.inputs
     fs = layer.io_func.fs
     engine = layer.io_func.engine
-    if not isinstance(engine(), ArrowDatasetEngine):
+    if not issubclass(engine, ArrowDatasetEngine):
         logger.warning(
             f"Could not extract Parquet statistics from {ddf}."
             f"\nUnsupported parquet engine: {engine}"

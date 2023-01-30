@@ -44,7 +44,7 @@ def test_parquet_statistics_bad_args(parquet_ddf):
 
     # Clear error should be raised when columns is not
     # a list containing a subset of columns from ddf
-    with pytest.raises(ValueError, match="Expected list"):
+    with pytest.raises(ValueError, match="Expected columns to be a list"):
         parquet_statistics(parquet_ddf, columns="bad")
 
     with pytest.raises(ValueError, match="must be a subset"):
