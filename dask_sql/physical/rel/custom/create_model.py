@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -129,6 +130,12 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_predict = kwargs.pop("wrap_predict", None)
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
+
+        if wrap_predict is False and "dask" not in model_class.lower():
+            warnings.warn(
+                f"Consider using wrap_predict=True for non-Dask model {model_class}",
+                RuntimeWarning,
+            )
 
         try:
             ModelClass = import_class(model_class)
