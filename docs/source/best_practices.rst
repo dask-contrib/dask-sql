@@ -141,7 +141,6 @@ For example, the query
         DAYOFMONTH(pickup_datetime) = 15
 
 would automatically perform the same sorting and read filtering logic as the previous section.
-TODO: which cases this does and doesn't work
 
 Use broadcast joins when possible
 ---------------------------------
