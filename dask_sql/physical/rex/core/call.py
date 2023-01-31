@@ -876,7 +876,7 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
-class DatePartOperation(Operation):
+class ExtractOperation(Operation):
     """
     Function for performing PostgreSQL like functions in a more convenient setting.
     """
@@ -1069,7 +1069,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
-        "datepart": DatePartOperation(),
+        "datepart": ExtractOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),
