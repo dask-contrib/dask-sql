@@ -160,7 +160,7 @@ impl PyWindowFrameBound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(val))
             | WindowFrameBound::Following(ScalarValue::UInt64(val)) => Ok(val),
             WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {x:?}"))
                     .into(),
             ),
             WindowFrameBound::CurrentRow => Ok(None),
@@ -173,7 +173,7 @@ impl PyWindowFrameBound {
             WindowFrameBound::Preceding(ScalarValue::UInt64(v))
             | WindowFrameBound::Following(ScalarValue::UInt64(v)) => Ok(v.is_none()),
             WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
+                DaskPlannerError::Internal(format!("Unexpected window frame bound: {x:?}"))
                     .into(),
             ),
             WindowFrameBound::CurrentRow => Ok(false),
