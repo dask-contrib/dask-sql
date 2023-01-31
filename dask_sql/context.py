@@ -457,6 +457,7 @@ class Context:
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
+        substrait: bool = False,
         config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
@@ -480,6 +481,9 @@ class Context:
                 to register before executing this query
             gpu (:obj:`bool`): Whether or not to load the additional Dask or pandas dataframes (if any) on GPU;
                 requires cuDF / dask-cuDF if enabled. Defaults to False.
+            substrait (:obj:`str`): If True the `sql` argument specifies a path to a Substrait plan file which is loaded
+                and ran as is without any optimizations. Otherwise it is treated as a standard SQL string and parsed by
+                the parsing engine.
             config_options (:obj:`Dict[str,Any]`): Specific configuration options to pass during
                 query execution
         Returns:
@@ -490,14 +494,19 @@ class Context:
                 for df_name, df in dataframes.items():
                     self.create_table(df_name, df, gpu=gpu)
 
-            if isinstance(sql, str):
-                rel, _ = self._get_ral(sql)
-            elif isinstance(sql, LogicalPlan):
-                rel = sql
+            if substrait:
+                logger.debug(f"Executing query using substrait plan: '{sql}'")
+                plan = self.context.plan_from_substrait(sql)
+                print(f"LogicalPlan from substrait: \n{plan}")
             else:
-                raise RuntimeError(
-                    f"Encountered unsupported `LogicalPlan` sql type: {type(sql)}"
-                )
+                if isinstance(sql, str):
+                    rel, _ = self._get_ral(sql)
+                elif isinstance(sql, LogicalPlan):
+                    rel = sql
+                else:
+                    raise RuntimeError(
+                        f"Encountered unsupported `LogicalPlan` sql type: {type(sql)}"
+                    )
 
             return self._compute_table_from_rel(rel, return_futures)
 

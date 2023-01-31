@@ -9,9 +9,9 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, future::Future};
 
-use datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion::{arrow::datatypes::{DataType, Field, Schema, TimeUnit}, prelude::SessionContext, datasource::DefaultTableSource};
 use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
@@ -34,7 +34,9 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
+use datafusion_substrait::{serializer, consumer};
 use pyo3::prelude::*;
+use tokio::runtime::Runtime;
 
 use self::logical::{
     create_catalog_schema::CreateCatalogSchemaPlanNode,
@@ -86,12 +88,13 @@ use crate::{
 /// # }
 /// ```
 #[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DaskSQLContext {
     current_catalog: String,
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
     options: ConfigOptions,
+    session_ctx: SessionContext,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -108,10 +111,12 @@ impl ContextProvider for DaskSQLContext {
                 reference.catalog
             )));
         }
+        println!("Entering get_table_provider");
         match self.schemas.get(reference.schema) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
+                    println!("Table: {:?}", table);
                     if table.table_name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
@@ -124,6 +129,7 @@ impl ContextProvider for DaskSQLContext {
                             ));
                         }
 
+                        println!("Found it and returning");
                         resp = Some(Schema::new(fields));
                     }
                 }
@@ -413,6 +419,7 @@ impl DaskSQLContext {
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
             options: ConfigOptions::new(),
+            session_ctx: SessionContext::new(),
         }
     }
 
@@ -447,7 +454,17 @@ impl DaskSQLContext {
     ) -> PyResult<bool> {
         match self.schemas.get_mut(&schema_name) {
             Some(schema) => {
-                schema.add_table(table);
+                schema.add_table(table.clone());
+
+                let tbl_ref = TableReference::Partial { schema: &self.current_schema, table: table.table_name.as_str() };
+                println!("DaskTable: {:?}", table);
+                println!("TableReference: {:?}", tbl_ref);
+                let tbl_src = self.get_table_provider(tbl_ref).unwrap();
+                println!("After tbl_src");
+                let provider = tbl_src.as_any().downcast_ref::<DefaultTableSource>().expect("Invalid DefaulTableSource instance");
+                println!("After provider");
+                self.session_ctx.register_table(tbl_ref, provider.table_provider.clone());
+
                 Ok(true)
             }
             None => Err(py_runtime_err(format!(
@@ -513,10 +530,33 @@ impl DaskSQLContext {
             Err(e) => Err(py_optimization_exp(e)),
         }
     }
+
+    /// Loads a `LogicalPlan` from a local Substrait protobuf file.
+    pub fn plan_from_substrait(
+        &self,
+        plan_path: String,
+        py: Python
+    ) -> PyResult<logical::PyLogicalPlan> {
+        let result = serializer::deserialize(plan_path.as_str());
+        let plan = Self::wait_for_future(py, result).map_err(DataFusionError::from).unwrap();
+        let result = Self::wait_for_future(py, consumer::from_substrait_plan(&mut self.session_ctx.clone(), &plan)).map_err(DataFusionError::from).unwrap();
+        Ok(PyLogicalPlan::from(result))
+    }
 }
 
 /// non-Python methods
 impl DaskSQLContext {
+
+    /// Utility to collect rust futures with GIL released
+    pub fn wait_for_future<F: Future>(py: Python, f: F) -> F::Output
+    where
+        F: Send,
+        F::Output: Send,
+    {
+        let rt = Runtime::new().unwrap();
+        py.allow_threads(|| rt.block_on(f))
+    }
+
     /// Creates a non-optimized Relational Algebra LogicalPlan from an AST Statement
     pub fn _logical_relational_algebra(
         &self,
@@ -717,7 +757,7 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use arrow::datatypes::DataType;
+    use datafusion::arrow::datatypes::DataType;
     use datafusion_expr::{Signature, TypeSignature, Volatility};
 
     use crate::sql::generate_signatures;
