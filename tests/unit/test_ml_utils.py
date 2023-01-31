@@ -44,7 +44,12 @@ def test_ml_class_mappings(gpu):
         if not ("XGB" in key and xgboost is None) and not (
             "LGBM" in key and lightgbm is None
         ):
-            import_class(classes_dict[key])
+            if gpu and key == "LogisticRegression":
+                # dask-glm >= 0.2.1.dev needed to use multi-GPU logistic regression
+                with pytest.raises(ImportError):
+                    import_class(classes_dict[key])
+            else:
+                import_class(classes_dict[key])
 
 
 def _check_axis_partitioning(chunks, n_features):

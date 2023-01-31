@@ -22,9 +22,7 @@ def get_gpu_classes():
         "TruncatedSVD": "cuml.dask.decomposition.tsvd.TruncatedSVD",
         "RandomForestClassifier": "cuml.dask.ensemble.randomforestclassifier.RandomForestClassifier",
         "RandomForestRegressor": "cuml.dask.ensemble.randomforestregressor.RandomForestRegressor",
-        # TODO: https://github.com/dask-contrib/dask-sql/issues/1015
-        # "LogisticRegression": "cuml.dask.extended.linear_model.logistic_regression.LogisticRegression",
-        "LogisticRegression": "cuml.linear_model.LogisticRegression",
+        "LogisticRegression": "cuml.dask.extended.linear_model.logistic_regression.LogisticRegression",
         "TfidfTransformer": "cuml.dask.feature_extraction.text.tfidf_transformer.TfidfTransformer",
         "LinearRegression": "cuml.dask.linear_model.linear_regression.LinearRegression",
         "Ridge": "cuml.dask.linear_model.ridge.Ridge",
