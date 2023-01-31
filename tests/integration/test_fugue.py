@@ -47,8 +47,7 @@ def test_fugue_fsql(client):
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
 @xfail_if_external_scheduler
 @pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="Intermittent AssertionError on Python 3.8 tests"
+    sys.version_info < (3, 9), reason="Intermittent AssertionError on Python 3.8 tests"
 )
 def test_dask_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
