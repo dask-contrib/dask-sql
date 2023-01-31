@@ -289,8 +289,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDF signature not found for input types {:?}",
-                                input_types
+                                "UDF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -381,8 +380,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDAF signature not found for input types {:?}",
-                                input_types
+                                "UDAF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -421,8 +419,7 @@ impl DaskSQLContext {
             Ok(())
         } else {
             Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
+                "Schema: {schema_name} not found in DaskSQLContext"
             )))
         }
     }
@@ -449,8 +446,7 @@ impl DaskSQLContext {
                 Ok(true)
             }
             None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
+                "Schema: {schema_name} not found in DaskSQLContext"
             ))),
         }
     }
