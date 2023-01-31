@@ -568,33 +568,6 @@ class Incremental(ParallelPostFit):
         return self._fit_for_estimator(estimator, X, y, **fit_kwargs)
 
 
-@make_pickable_without_dask_sql
-def _predict(part, estimator, output_meta=None):
-    if part.shape[0] == 0 and output_meta is not None:
-        empty_output = handle_empty_partitions(output_meta)
-        if empty_output is not None:
-            return empty_output
-    return estimator.predict(part)
-
-
-@make_pickable_without_dask_sql
-def _predict_proba(part, estimator, output_meta=None):
-    if part.shape[0] == 0 and output_meta is not None:
-        empty_output = handle_empty_partitions(output_meta)
-        if empty_output is not None:
-            return empty_output
-    return estimator.predict_proba(part)
-
-
-@make_pickable_without_dask_sql
-def _transform(part, estimator, output_meta=None):
-    if part.shape[0] == 0 and output_meta is not None:
-        empty_output = handle_empty_partitions(output_meta)
-        if empty_output is not None:
-            return empty_output
-    return estimator.transform(part)
-
-
 def handle_empty_partitions(output_meta):
     if hasattr(output_meta, "__array_function__"):
         if len(output_meta.shape) == 1:
@@ -622,6 +595,33 @@ def handle_empty_partitions(output_meta):
         return ar
     elif hasattr(output_meta, "iloc"):
         return output_meta.iloc[:0, :]
+
+
+@make_pickable_without_dask_sql
+def _predict(part, estimator, output_meta=None):
+    if part.shape[0] == 0 and output_meta is not None:
+        empty_output = handle_empty_partitions(output_meta)
+        if empty_output is not None:
+            return empty_output
+    return estimator.predict(part)
+
+
+@make_pickable_without_dask_sql
+def _predict_proba(part, estimator, output_meta=None):
+    if part.shape[0] == 0 and output_meta is not None:
+        empty_output = handle_empty_partitions(output_meta)
+        if empty_output is not None:
+            return empty_output
+    return estimator.predict_proba(part)
+
+
+@make_pickable_without_dask_sql
+def _transform(part, estimator, output_meta=None):
+    if part.shape[0] == 0 and output_meta is not None:
+        empty_output = handle_empty_partitions(output_meta)
+        if empty_output is not None:
+            return empty_output
+    return estimator.transform(part)
 
 
 def _get_output_dask_ar_meta_for_estimator(model_fn, estimator, input_dask_ar):

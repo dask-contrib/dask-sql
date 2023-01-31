@@ -53,7 +53,6 @@ use crate::{
             create_experiment::CreateExperimentPlanNode,
             create_model::CreateModelPlanNode,
             create_table::CreateTablePlanNode,
-            create_view::CreateViewPlanNode,
             describe_model::DescribeModelPlanNode,
             drop_model::DropModelPlanNode,
             export_model::ExportModelPlanNode,
@@ -112,7 +111,7 @@ impl ContextProvider for DaskSQLContext {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
-                    if table.name.eq(&name.table()) {
+                    if table.table_name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
                         // Iterate through the DaskTable instance and create a Schema instance
@@ -148,9 +147,23 @@ impl ContextProvider for DaskSQLContext {
         let fun: ScalarFunctionImplementation =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
 
+        let numeric_datatypes = vec![
+            DataType::Int8,
+            DataType::Int16,
+            DataType::Int32,
+            DataType::Int64,
+            DataType::UInt8,
+            DataType::UInt16,
+            DataType::UInt32,
+            DataType::UInt64,
+            DataType::Float16,
+            DataType::Float32,
+            DataType::Float64,
+        ];
+
         match name {
             "year" => {
-                let sig = generate_numeric_signatures(1);
+                let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -203,30 +216,28 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "dsql_totimestamp" => {
-                let sig = Signature::one_of(
-                    vec![
-                        TypeSignature::Exact(vec![DataType::Int8, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::Int16, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::Int32, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::Int64, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::UInt8, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::UInt16, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::UInt32, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::UInt64, DataType::Utf8]),
-                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
-                    ],
-                    Volatility::Immutable,
-                );
+                let first_datatypes = vec![
+                    DataType::Int8,
+                    DataType::Int16,
+                    DataType::Int32,
+                    DataType::Int64,
+                    DataType::UInt8,
+                    DataType::UInt16,
+                    DataType::UInt32,
+                    DataType::UInt64,
+                    DataType::Utf8,
+                ];
+                let sig = generate_signatures(vec![first_datatypes, vec![DataType::Utf8]]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "mod" => {
-                let sig = generate_numeric_signatures(2);
+                let sig = generate_signatures(vec![numeric_datatypes.clone(), numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "cbrt" | "cot" | "degrees" | "radians" | "sign" | "truncate" => {
-                let sig = generate_numeric_signatures(1);
+                let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -303,30 +314,44 @@ impl ContextProvider for DaskSQLContext {
         let st: StateTypeFunction =
             Arc::new(|_| Err(DataFusionError::NotImplemented("".to_string())));
 
+        let numeric_datatypes = vec![
+            DataType::Int8,
+            DataType::Int16,
+            DataType::Int32,
+            DataType::Int64,
+            DataType::UInt8,
+            DataType::UInt16,
+            DataType::UInt32,
+            DataType::UInt64,
+            DataType::Float16,
+            DataType::Float32,
+            DataType::Float64,
+        ];
+
         match name {
             "every" => {
-                let sig = generate_numeric_signatures(1);
+                let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "bit_and" | "bit_or" => {
-                let sig = generate_numeric_signatures(1);
+                let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "single_value" => {
-                let sig = generate_numeric_signatures(1);
+                let sig = generate_signatures(vec![numeric_datatypes]);
                 let rtf: ReturnTypeFunction =
                     Arc::new(|input_types| Ok(Arc::new(input_types[0].clone())));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_count" => {
-                let sig = generate_numeric_signatures(2);
+                let sig = generate_signatures(vec![numeric_datatypes.clone(), numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
             "regr_syy" | "regr_sxx" => {
-                let sig = generate_numeric_signatures(2);
+                let sig = generate_signatures(vec![numeric_datatypes.clone(), numeric_datatypes]);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Float64)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
@@ -502,7 +527,8 @@ impl DaskSQLContext {
             }
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
-                    model_name: create_model.name,
+                    schema_name: create_model.schema_name,
+                    model_name: create_model.model_name,
                     input: self._logical_relational_algebra(create_model.select)?,
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
@@ -512,7 +538,8 @@ impl DaskSQLContext {
             DaskStatement::CreateExperiment(create_experiment) => {
                 Ok(LogicalPlan::Extension(Extension {
                     node: Arc::new(CreateExperimentPlanNode {
-                        experiment_name: create_experiment.name,
+                        schema_name: create_experiment.schema_name,
+                        experiment_name: create_experiment.experiment_name,
                         input: self._logical_relational_algebra(create_experiment.select)?,
                         if_not_exists: create_experiment.if_not_exists,
                         or_replace: create_experiment.or_replace,
@@ -522,15 +549,16 @@ impl DaskSQLContext {
             }
             DaskStatement::PredictModel(predict_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(PredictModelPlanNode {
-                    model_schema: predict_model.schema_name,
-                    model_name: predict_model.name,
+                    schema_name: predict_model.schema_name,
+                    model_name: predict_model.model_name,
                     input: self._logical_relational_algebra(predict_model.select)?,
                 }),
             })),
             DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DescribeModelPlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    model_name: describe_model.name,
+                    schema_name: describe_model.schema_name,
+                    model_name: describe_model.model_name,
                 }),
             })),
             DaskStatement::CreateCatalogSchema(create_schema) => {
@@ -546,8 +574,8 @@ impl DaskSQLContext {
             DaskStatement::CreateTable(create_table) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateTablePlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    table_schema: create_table.table_schema,
-                    table_name: create_table.name,
+                    schema_name: create_table.schema_name,
+                    table_name: create_table.table_name,
                     if_not_exists: create_table.if_not_exists,
                     or_replace: create_table.or_replace,
                     with_options: create_table.with_options,
@@ -556,22 +584,15 @@ impl DaskSQLContext {
             DaskStatement::ExportModel(export_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ExportModelPlanNode {
                     schema: Arc::new(DFSchema::empty()),
-                    model_name: export_model.name,
+                    schema_name: export_model.schema_name,
+                    model_name: export_model.model_name,
                     with_options: export_model.with_options,
-                }),
-            })),
-            DaskStatement::CreateView(create_view) => Ok(LogicalPlan::Extension(Extension {
-                node: Arc::new(CreateViewPlanNode {
-                    schema: Arc::new(DFSchema::empty()),
-                    view_schema: create_view.view_schema,
-                    view_name: create_view.name,
-                    if_not_exists: create_view.if_not_exists,
-                    or_replace: create_view.or_replace,
                 }),
             })),
             DaskStatement::DropModel(drop_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(DropModelPlanNode {
-                    model_name: drop_model.name,
+                    schema_name: drop_model.schema_name,
+                    model_name: drop_model.model_name,
                     if_exists: drop_model.if_exists,
                     schema: Arc::new(DFSchema::empty()),
                 }),
@@ -595,9 +616,10 @@ impl DaskSQLContext {
                     schema_name: show_columns.schema_name,
                 }),
             })),
-            DaskStatement::ShowModels(_show_models) => Ok(LogicalPlan::Extension(Extension {
+            DaskStatement::ShowModels(show_models) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowModelsPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    schema_name: show_models.schema_name,
                 }),
             })),
             DaskStatement::DropSchema(drop_schema) => Ok(LogicalPlan::Extension(Extension {
@@ -660,59 +682,6 @@ impl PlanVisitor for OptimizablePlanVisitor {
     }
 }
 
-fn generate_numeric_signatures(n: i32) -> Signature {
-    // Generates all combinations of vectors of length n,
-    // i.e., the Cartesian product
-    let datatypes = vec![
-        DataType::Int8,
-        DataType::Int16,
-        DataType::Int32,
-        DataType::Int64,
-        DataType::UInt8,
-        DataType::UInt16,
-        DataType::UInt32,
-        DataType::UInt64,
-        DataType::Float16,
-        DataType::Float32,
-        DataType::Float64,
-    ];
-    let mut cartesian_setup = vec![];
-    // cartesian_setup = [datatypes, datatypes] when n == 2, etc.
-    for _ in 0..n {
-        cartesian_setup.push(datatypes.clone());
-    }
-
-    let mut exact_vector = vec![];
-    let mut datatypes_iter = cartesian_setup.iter();
-    // First pass
-    if let Some(first_iter) = datatypes_iter.next() {
-        for datatype in first_iter {
-            exact_vector.push(vec![datatype.clone()]);
-        }
-    }
-    // Generate list of lists with length n
-    for iter in datatypes_iter {
-        let mut outer_temp = vec![];
-        for outer_datatype in exact_vector {
-            for inner_datatype in iter {
-                let mut inner_temp = outer_datatype.clone();
-                inner_temp.push(inner_datatype.clone());
-                outer_temp.push(inner_temp);
-            }
-        }
-        exact_vector = outer_temp;
-    }
-
-    // Create vector of TypeSignatures
-    let mut one_of_vector = vec![];
-    for vector in exact_vector.iter() {
-        one_of_vector.push(TypeSignature::Exact(vector.clone()));
-    }
-
-    Signature::one_of(one_of_vector.clone(), Volatility::Immutable)
-}
-
-#[allow(dead_code)]
 fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
     let mut exact_vector = vec![];
     let mut datatypes_iter = cartesian_setup.iter();

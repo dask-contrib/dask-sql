@@ -33,7 +33,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         analyze_table = rel.analyze_table()
 
-        schema_name = analyze_table.getSchemaName() or context.DEFAULT_SCHEMA_NAME
+        schema_name = analyze_table.getSchemaName() or context.schema_name
         table_name = analyze_table.getTableName()
 
         dc = context.schema[schema_name].tables[table_name]
