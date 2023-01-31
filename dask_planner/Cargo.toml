@@ -10,7 +10,7 @@ rust-version = "1.62"
 
 [dependencies]
 arrow = { version = "28.0.0", features = ["prettyprint"] }
-async-trait = "0.1.63"
+async-trait = "0.1.64"
 datafusion-common = "15.0.0"
 datafusion-expr = "15.0.0"
 datafusion-optimizer = "15.0.0"
@@ -21,7 +21,7 @@ mimalloc = { version = "*", default-features = false }
 parking_lot = "0.12"
 pyo3 = { version = "0.18.0", features = ["extension-module", "abi3", "abi3-py38"] }
 rand = "0.8"
-tokio = { version = "1.24", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
+tokio = { version = "1.25", features = ["macros", "rt", "rt-multi-thread", "sync", "fs", "parking_lot"] }
 uuid = { version = "1.2", features = ["v4"] }
 
 [lib]
