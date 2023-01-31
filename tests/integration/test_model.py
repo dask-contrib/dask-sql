@@ -62,20 +62,20 @@ def test_training_and_prediction(c, gpu_client):
         )
         check_trained_model(c)
 
-    c.sql(
-        f"""
-        CREATE OR REPLACE MODEL my_model WITH (
-            model_class = 'LogisticRegression',
-            wrap_predict = True,
-            wrap_fit = False,
-            target_column = 'target'
-        ) AS (
-            SELECT x, y, x*y > 0 AS target
-            FROM {timeseries}
+        c.sql(
+            f"""
+            CREATE OR REPLACE MODEL my_model WITH (
+                model_class = 'LogisticRegression',
+                wrap_predict = True,
+                wrap_fit = False,
+                target_column = 'target'
+            ) AS (
+                SELECT x, y, x*y > 0 AS target
+                FROM {timeseries}
+            )
+        """
         )
-    """
-    )
-    check_trained_model(c, df_name=timeseries)
+        check_trained_model(c, df_name=timeseries)
 
     c.sql(
         f"""
