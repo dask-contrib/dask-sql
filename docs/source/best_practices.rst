@@ -6,7 +6,7 @@ Best Practices and Performance Tips
 Sort and Use Read Filtering
 ---------------------------
 
-If you often read by key ranges or perform lots of logic with groups of related records, you should consider using Dask Dataframe's ``shuffle``.
+If you often read by key ranges or perform lots of logic with groups of related records, you should consider using Dask Dataframe's `shuffle <https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.shuffle.html>`_.
 This operation ensures that all rows of a given key will be within a single partition.
 This is helpful for querying records on a specific key or keys such as customer IDs or session keys, as it allows Dask to skip partitions based on the partition min and max values thus avoiding reading each record.
 This can save a large amount of IO time and is especially helpful when using a network file system.
@@ -51,7 +51,7 @@ But, if you were to instead sort by the pickup time and use the ``DISTRIBUTE BY`
     )
 
     c.create_table("taxi_sorted", sorted_ddf)
-    .sql("SELECT * FROM taxi_sorted WHERE dom = 15").npartitions
+    c.sql("SELECT * FROM taxi_sorted WHERE dom = 15").npartitions
 
 .. code-block::
 
