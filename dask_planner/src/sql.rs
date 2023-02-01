@@ -9,9 +9,17 @@ pub mod statement;
 pub mod table;
 pub mod types;
 
-use std::{collections::HashMap, sync::Arc, future::Future};
+use std::{collections::HashMap, future::Future, sync::Arc};
 
-use datafusion::{arrow::datatypes::{DataType, Field, Schema, TimeUnit}, prelude::SessionContext, datasource::DefaultTableSource};
+use datafusion::{
+    arrow::datatypes::{DataType, Field, Schema, TimeUnit},
+    catalog::{
+        catalog::{CatalogProvider, MemoryCatalogProvider},
+        schema::{MemorySchemaProvider, SchemaProvider},
+    },
+    datasource::TableProvider,
+    prelude::SessionContext,
+};
 use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
@@ -34,7 +42,7 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
-use datafusion_substrait::{serializer, consumer};
+use datafusion_substrait::{consumer, serializer};
 use pyo3::prelude::*;
 use tokio::runtime::Runtime;
 
@@ -65,6 +73,7 @@ use crate::{
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
+        table::DaskTableSource,
     },
 };
 
@@ -442,7 +451,32 @@ impl DaskSQLContext {
         schema_name: String,
         schema: schema::DaskSchema,
     ) -> PyResult<bool> {
-        self.schemas.insert(schema_name, schema);
+        self.schemas.insert(schema_name.clone(), schema);
+
+        match self.session_ctx.catalog(&self.current_catalog) {
+            Some(catalog) => {
+                let schema_provider = MemorySchemaProvider::new();
+                catalog.register_schema(&schema_name, Arc::new(schema_provider));
+
+                self.session_ctx
+                    .register_catalog(self.current_catalog.clone(), catalog);
+            }
+            None => {
+                println!("Creating Catalog with name: {:?}", self.current_catalog);
+                let mem_catalog = MemoryCatalogProvider::new();
+                println!(
+                    "Inserting schema: {:?}, into Catalog: {:?}",
+                    &schema_name, &self.current_catalog
+                );
+                let schema_provider = MemorySchemaProvider::new();
+                mem_catalog.register_schema(&schema_name, Arc::new(schema_provider));
+
+                // Insert the new schema into this newly created catalog
+                self.session_ctx
+                    .register_catalog(self.current_catalog.clone(), Arc::new(mem_catalog));
+            }
+        }
+
         Ok(true)
     }
 
@@ -456,21 +490,39 @@ impl DaskSQLContext {
             Some(schema) => {
                 schema.add_table(table.clone());
 
-                let tbl_ref = TableReference::Partial { schema: &self.current_schema, table: table.table_name.as_str() };
-                println!("DaskTable: {:?}", table);
-                println!("TableReference: {:?}", tbl_ref);
+                let tbl_ref = TableReference::Partial {
+                    schema: &self.current_schema,
+                    table: table.table_name.as_str(),
+                };
                 let tbl_src = self.get_table_provider(tbl_ref).unwrap();
-                println!("After tbl_src");
-                let provider = tbl_src.as_any().downcast_ref::<DefaultTableSource>().expect("Invalid DefaulTableSource instance");
-                println!("After provider");
-                self.session_ctx.register_table(tbl_ref, provider.table_provider.clone());
+                let provider = tbl_src
+                    .as_any()
+                    .downcast_ref::<DaskTableSource>()
+                    .expect("Invalid DefaulTableSource instance");
+                let tbl_provider = provider.provider.clone() as Arc<dyn TableProvider>;
+
+                let catalog = self.session_ctx.catalog(&self.current_catalog).unwrap();
+                let schema = catalog.schema(&table.schema_name.unwrap()).unwrap();
+                let result = schema.register_table(table.table_name.clone(), tbl_provider.clone());
+
+                match result {
+                    Ok(tbl_provider) => println!(
+                        "Successfully registered table: {:?} to schema: {:?}",
+                        &table.table_name, self.current_schema
+                    ),
+                    Err(e) => panic!("Error registering table: {:?}", e),
+                }
+
+                let bare_tbl_ref = TableReference::Bare {
+                    table: table.table_name.as_str(),
+                };
+                let result = self
+                    .session_ctx
+                    .register_table(bare_tbl_ref, tbl_provider.clone());
 
                 Ok(true)
             }
-            None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
-            ))),
+            None => panic!("Schema: {} not found in DaskSQLContext", schema_name),
         }
     }
 
@@ -535,18 +587,47 @@ impl DaskSQLContext {
     pub fn plan_from_substrait(
         &self,
         plan_path: String,
-        py: Python
+        py: Python,
     ) -> PyResult<logical::PyLogicalPlan> {
+        println!("Catalogs: {:?}", self.session_ctx.catalog_names());
+
+        match self.session_ctx.catalog(&self.current_catalog) {
+            Some(catalog) => {
+                println!("Schemas in catalog: {:?}", catalog.schema_names());
+
+                match catalog.schema(&self.current_schema) {
+                    Some(schema) => {
+                        println!(
+                            "Tables in schema `{:?}`: {:?}",
+                            &self.current_schema,
+                            schema.table_names()
+                        );
+                    }
+                    None => panic!("Failed to find schema `public`"),
+                }
+            }
+            None => panic!("Failed to find catalog: {:?}", self.current_catalog),
+        }
+
         let result = serializer::deserialize(plan_path.as_str());
-        let plan = Self::wait_for_future(py, result).map_err(DataFusionError::from).unwrap();
-        let result = Self::wait_for_future(py, consumer::from_substrait_plan(&mut self.session_ctx.clone(), &plan)).map_err(DataFusionError::from).unwrap();
+        let plan = Self::wait_for_future(py, result)
+            .map_err(DataFusionError::from)
+            .unwrap();
+        // println!("{:?}", plan.to_owned().relations);
+        println!("Relation Len(): {:?}", plan.relations.len());
+
+        let result = Self::wait_for_future(
+            py,
+            consumer::from_substrait_plan(&mut self.session_ctx.clone(), &plan),
+        )
+        .map_err(DataFusionError::from)
+        .unwrap();
         Ok(PyLogicalPlan::from(result))
     }
 }
 
 /// non-Python methods
 impl DaskSQLContext {
-
     /// Utility to collect rust futures with GIL released
     pub fn wait_for_future<F: Future>(py: Python, f: F) -> F::Output
     where

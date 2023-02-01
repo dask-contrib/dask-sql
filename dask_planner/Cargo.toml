@@ -10,12 +10,12 @@ rust-version = "1.62"
 
 [dependencies]
 async-trait = "0.1.63"
-datafusion = "17.0.0"
-datafusion-common = "17.0.0"
-datafusion-expr = "17.0.0"
-datafusion-optimizer = "17.0.0"
-datafusion-sql = "17.0.0"
-datafusion-substrait = "17.0.0"
+datafusion = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
+datafusion-common = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
+datafusion-expr = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
+datafusion-optimizer = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
+datafusion-sql = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
+datafusion-substrait = { git = "https://github.com/jdye64/arrow-datafusion", branch="tbl_provider_err_message" }
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
