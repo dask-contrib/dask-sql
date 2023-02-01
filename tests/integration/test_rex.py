@@ -1015,3 +1015,38 @@ def test_totimestamp(c, gpu):
         }
     )
     assert_eq(df, expected_df, check_dtype=False)
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=(pytest.mark.gpu))])
+def test_scalar_timestamps(c, gpu):
+    df = pd.DataFrame({"d": [1203073300, 1503073700]})
+    c.create_table("df", df, gpu=gpu)
+
+    expected_df = pd.DataFrame({
+        "dt": [datetime(2008, 2, 20, 11, 1, 40), datetime(2017, 8, 23, 16, 28, 20)],
+    })
+
+    # df1 = c.sql("SELECT to_timestamp(d) + INTERVAL '5 days' AS dt FROM df")
+    # df2 = c.sql("SELECT d + INTERVAL '5 days' AS dt FROM df")
+    df3 = c.sql("SELECT CAST(d AS TIMESTAMP) + INTERVAL '5 days' AS dt FROM df")
+    # assert_eq(df1, expected_df)  # Errors
+    # assert_eq(df2, expected_df)  # Errors
+    assert_eq(df3, expected_df)
+
+    df1 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, to_timestamp(d)) AS dt FROM df")
+    df2 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, d) AS dt FROM df")
+    df3 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, CAST(d AS TIMESTAMP)) AS dt FROM df")
+    assert_eq(df1, expected_df)
+    assert_eq(df2, expected_df)
+    assert_eq(df3, expected_df)
+    
+    scalar1 = 1203073300
+    scalar2 = 1503073700
+    expected_df = pd.DataFrame({"dt": [3472]})
+
+    df1 = c.sql(f"SELECT TIMESTAMPDIFF(DAY, to_timestamp({scalar1}), to_timestamp({scalar2})) AS dt")
+    df2 = c.sql(f"SELECT TIMESTAMPDIFF(DAY, {scalar1}, {scalar2}) AS dt")
+    df3 = c.sql(f"SELECT TIMESTAMPDIFF(DAY, CAST({scalar1} AS TIMESTAMP), CAST({scalar2} AS TIMESTAMP)) AS dt")
+    # assert_eq(df1, expected_df)  # Incorrect
+    # assert_eq(df2, expected_df)  # Incorrect
+    assert_eq(df3, expected_df)

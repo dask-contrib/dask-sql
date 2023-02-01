@@ -246,6 +246,10 @@ class CastOperation(Operation):
         output_type = str(rex.getType())
         sql_type = SqlTypeName.fromString(output_type.upper())
 
+        if output_type == "TIMESTAMP":
+            seconds_to_nanoseconds = 10 ** 9
+            operand = operand * seconds_to_nanoseconds
+
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
 
@@ -607,11 +611,7 @@ class ToTimestampOperation(Operation):
         if is_cudf_type(df):
             if format != default_format:
                 raise RuntimeError("Non-default timestamp formats not supported on GPU")
-            if df.dtype == "object":
-                return df
-            else:
-                nanoseconds_to_seconds = 10**9
-                return df * nanoseconds_to_seconds
+            return df
         # String cases
         elif type(df) == str:
             return np.datetime64(datetime.strptime(df, format))
@@ -646,7 +646,10 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[ns]")
+        if type(df) == np.int64 or "int" in str(getattr(df, "dtype", "")):
+            df = df.astype("datetime64[s]")
+        else:
+            df = df.astype("datetime64[ns]")
 
         if is_cudf_type(df):
             from cudf import DateOffset
