@@ -1029,11 +1029,9 @@ def test_scalar_timestamps(c, gpu):
     )
 
     df1 = c.sql("SELECT to_timestamp(d) + INTERVAL '5 days' AS dt FROM df")
-    # df2 = c.sql("SELECT d + INTERVAL '5 days' AS dt FROM df")
-    df3 = c.sql("SELECT CAST(d AS TIMESTAMP) + INTERVAL '5 days' AS dt FROM df")
+    df2 = c.sql("SELECT CAST(d AS TIMESTAMP) + INTERVAL '5 days' AS dt FROM df")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     df1 = c.sql("SELECT TIMESTAMPADD(DAY, 5, to_timestamp(d)) AS dt FROM df")
     df2 = c.sql("SELECT TIMESTAMPADD(DAY, 5, d) AS dt FROM df")
@@ -1044,11 +1042,9 @@ def test_scalar_timestamps(c, gpu):
 
     expected_df = pd.DataFrame({"day": [15, 18]})
     df1 = c.sql("SELECT EXTRACT(DAY FROM to_timestamp(d)) AS day FROM df")
-    # df2 = c.sql("SELECT EXTRACT(DAY FROM d) AS day FROM df")
-    df3 = c.sql("SELECT EXTRACT(DAY FROM CAST(d AS TIMESTAMP)) AS day FROM df")
+    df2 = c.sql("SELECT EXTRACT(DAY FROM CAST(d AS TIMESTAMP)) AS day FROM df")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     expected_df = pd.DataFrame(
         {
@@ -1056,11 +1052,9 @@ def test_scalar_timestamps(c, gpu):
         }
     )
     df1 = c.sql("SELECT CEIL(to_timestamp(d) TO DAY) AS ceil_to_day FROM df")
-    # df2 = c.sql("SELECT CEIL(d TO DAY) AS ceil_to_day FROM df")
-    df3 = c.sql("SELECT CEIL(CAST(d AS TIMESTAMP) TO DAY) AS ceil_to_day FROM df")
+    df2 = c.sql("SELECT CEIL(CAST(d AS TIMESTAMP) TO DAY) AS ceil_to_day FROM df")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     expected_df = pd.DataFrame(
         {
@@ -1068,18 +1062,20 @@ def test_scalar_timestamps(c, gpu):
         }
     )
     df1 = c.sql("SELECT FLOOR(to_timestamp(d) TO DAY) AS floor_to_day FROM df")
-    # df2 = c.sql("SELECT FLOOR(d TO DAY) AS floor_to_day FROM df")
-    df3 = c.sql("SELECT FLOOR(CAST(d AS TIMESTAMP) TO DAY) AS floor_to_day FROM df")
+    df2 = c.sql("SELECT FLOOR(CAST(d AS TIMESTAMP) TO DAY) AS floor_to_day FROM df")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     df = pd.DataFrame({"d1": [1203073300], "d2": [1503073700]})
     c.create_table("df", df, gpu=gpu)
     expected_df = pd.DataFrame({"dt": [3472]})
-    df1 = c.sql("SELECT TIMESTAMPDIFF(DAY, to_timestamp(d1), to_timestamp(d2)) AS dt FROM df")
+    df1 = c.sql(
+        "SELECT TIMESTAMPDIFF(DAY, to_timestamp(d1), to_timestamp(d2)) AS dt FROM df"
+    )
     df2 = c.sql("SELECT TIMESTAMPDIFF(DAY, d1, d2) AS dt FROM df")
-    df3 = c.sql("SELECT TIMESTAMPDIFF(DAY, CAST(d1 AS TIMESTAMP), CAST(d2 AS TIMESTAMP)) AS dt FROM df")
+    df3 = c.sql(
+        "SELECT TIMESTAMPDIFF(DAY, CAST(d1 AS TIMESTAMP), CAST(d2 AS TIMESTAMP)) AS dt FROM df"
+    )
     assert_eq(df1, expected_df)
     assert_eq(df2, expected_df, check_dtype=False)
     assert_eq(df3, expected_df)
@@ -1090,11 +1086,9 @@ def test_scalar_timestamps(c, gpu):
     expected_df = pd.DataFrame({"dt": [datetime(2008, 2, 20, 11, 1, 40)]})
 
     df1 = c.sql(f"SELECT to_timestamp({scalar1}) + INTERVAL '5 days' AS dt")
-    # df2 = c.sql(f"SELECT {scalar1} + INTERVAL '5 days' AS dt")
-    # df3 = c.sql(f"SELECT CAST({scalar1} AS TIMESTAMP) + INTERVAL '5 days' AS dt")
+    # df2 = c.sql(f"SELECT CAST({scalar1} AS TIMESTAMP) + INTERVAL '5 days' AS dt")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    # assert_eq(df3, expected_df)  # TODO: Incorrect
+    # assert_eq(df2, expected_df)  # TODO: Incorrect
 
     df1 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, to_timestamp({scalar1})) AS dt")
     df2 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, {scalar1}) AS dt")
@@ -1105,27 +1099,21 @@ def test_scalar_timestamps(c, gpu):
 
     expected_df = pd.DataFrame({"day": [15]})
     df1 = c.sql(f"SELECT EXTRACT(DAY FROM to_timestamp({scalar1})) AS day")
-    # df2 = c.sql(f"SELECT EXTRACT(DAY FROM {scalar1}) AS day")
-    # df3 = c.sql(f"SELECT EXTRACT(DAY FROM CAST({scalar1} AS TIMESTAMP)) AS day")
+    # df2 = c.sql(f"SELECT EXTRACT(DAY FROM CAST({scalar1} AS TIMESTAMP)) AS day")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    # assert_eq(df3, expected_df)  # TODO: Incorrect
+    # assert_eq(df2, expected_df)  # TODO: Incorrect
 
     expected_df = pd.DataFrame({"ceil_to_day": [datetime(2008, 2, 16)]})
     df1 = c.sql(f"SELECT CEIL(to_timestamp({scalar1}) TO DAY) AS ceil_to_day")
-    # df2 = c.sql(f"SELECT CEIL({scalar1} TO DAY) AS ceil_to_day")
-    df3 = c.sql(f"SELECT CEIL(CAST({scalar1} AS TIMESTAMP) TO DAY) AS ceil_to_day")
+    df2 = c.sql(f"SELECT CEIL(CAST({scalar1} AS TIMESTAMP) TO DAY) AS ceil_to_day")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     expected_df = pd.DataFrame({"floor_to_day": [datetime(2008, 2, 15)]})
     df1 = c.sql(f"SELECT FLOOR(to_timestamp({scalar1}) TO DAY) AS floor_to_day")
-    # df2 = c.sql(f"SELECT FLOOR({scalar1} TO DAY) AS floor_to_day")
-    df3 = c.sql(f"SELECT FLOOR(CAST({scalar1} AS TIMESTAMP) TO DAY) AS floor_to_day")
+    df2 = c.sql(f"SELECT FLOOR(CAST({scalar1} AS TIMESTAMP) TO DAY) AS floor_to_day")
     assert_eq(df1, expected_df)
-    # assert_eq(df2, expected_df)  # TODO: Errors
-    assert_eq(df3, expected_df)
+    assert_eq(df2, expected_df)
 
     expected_df = pd.DataFrame({"dt": [3472]})
     df1 = c.sql(

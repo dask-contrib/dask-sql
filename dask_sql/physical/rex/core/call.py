@@ -52,6 +52,10 @@ def as_timelike(op):
         raise ValueError(f"Don't know how to make {type(op)} timelike")
 
 
+def is_timestamp_nano(obj):
+    return "int" in str(type(obj)) or "int" in str(getattr(obj, "dtype", ""))
+
+
 class Operation:
     """Helper wrapper around a function, which is used as operator"""
 
@@ -246,9 +250,8 @@ class CastOperation(Operation):
         output_type = str(rex.getType())
         sql_type = SqlTypeName.fromString(output_type.upper())
 
-        if output_type == "TIMESTAMP" and ("int" in str(type(operand)) or "int" in str(getattr(operand, "dtype", ""))):
-            seconds_to_nanoseconds = 10**9
-            operand = operand * seconds_to_nanoseconds
+        if output_type == "TIMESTAMP" and is_timestamp_nano(operand):
+            operand = operand * 10**9
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
@@ -646,7 +649,7 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        if type(df) == np.int64 or "int" in str(getattr(df, "dtype", "")):
+        if is_timestamp_nano(df):
             df = df.astype("datetime64[s]")
         else:
             df = df.astype("datetime64[ns]")
@@ -693,9 +696,9 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
-        if type(df1) == np.int64 or "int" in str(getattr(df1, "dtype", "")):
+        if is_timestamp_nano(df1):
             df1 = df1 * 10**9
-        if type(df2) == np.int64 or "int" in str(getattr(df2, "dtype", "")):
+        if is_timestamp_nano(df2):
             df2 = df2 * 10**9
         if "datetime64[s]" == str(getattr(df1, "dtype", "")):
             df1 = df1.astype("datetime64[ns]")
