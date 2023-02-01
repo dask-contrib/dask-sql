@@ -246,8 +246,8 @@ class CastOperation(Operation):
         output_type = str(rex.getType())
         sql_type = SqlTypeName.fromString(output_type.upper())
 
-        if output_type == "TIMESTAMP":
-            seconds_to_nanoseconds = 10 ** 9
+        if output_type == "TIMESTAMP" and ("int" in str(type(operand)) or "int" in str(getattr(operand, "dtype", ""))):
+            seconds_to_nanoseconds = 10**9
             operand = operand * seconds_to_nanoseconds
 
         if not is_frame(operand):  # pragma: no cover
@@ -693,6 +693,15 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
+        if type(df1) == np.int64 or "int" in str(getattr(df1, "dtype", "")):
+            df1 = df1 * 10**9
+        if type(df2) == np.int64 or "int" in str(getattr(df2, "dtype", "")):
+            df2 = df2 * 10**9
+        if "datetime64[s]" == str(getattr(df1, "dtype", "")):
+            df1 = df1.astype("datetime64[ns]")
+        if "datetime64[s]" == str(getattr(df2, "dtype", "")):
+            df2 = df2.astype("datetime64[ns]")
+
         subtraction_op = ReduceOperation(
             operation=operator.sub, unary_operation=lambda x: -x
         )
