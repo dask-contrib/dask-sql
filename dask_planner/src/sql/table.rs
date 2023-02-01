@@ -239,14 +239,12 @@ pub(crate) fn table_from_logical_plan(
                 }))
             } else {
                 Err(DaskPlannerError::Internal(format!(
-                    "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-                    plan
+                    "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
                 )))
             }
         }
         _ => Err(DaskPlannerError::Internal(format!(
-            "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-            plan
+            "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
         ))),
     }
 }

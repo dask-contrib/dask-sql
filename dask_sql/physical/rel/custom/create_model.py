@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -6,13 +7,17 @@ from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.utils import convert_sql_kwargs, import_class
+from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
+from dask_sql.utils import convert_sql_kwargs, import_class, is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
     from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
+
+cpu_classes = get_cpu_classes()
+gpu_classes = get_gpu_classes()
 
 
 class CreateModelPlugin(BaseRelPlugin):
@@ -130,6 +135,19 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
+        if wrap_predict is False and "dask" not in model_class.lower():
+            warnings.warn(
+                f"Consider using wrap_predict=True for non-Dask model {model_class}",
+                RuntimeWarning,
+            )
+
+        training_df = context.sql(select)
+
+        if is_cudf_type(training_df):
+            model_class = gpu_classes.get(model_class, model_class)
+        else:
+            model_class = cpu_classes.get(model_class, model_class)
+
         try:
             ModelClass = import_class(model_class)
         except ImportError:
@@ -154,8 +172,6 @@ class CreateModelPlugin(BaseRelPlugin):
                 wrap_fit = True
             else:
                 wrap_fit = False
-
-        training_df = context.sql(select)
 
         if target_column:
             non_target_columns = [

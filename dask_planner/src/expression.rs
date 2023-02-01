@@ -375,8 +375,8 @@ impl PyExpr {
                 left: _,
                 op,
                 right: _,
-            }) => format!("{}", op),
-            Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
+            }) => format!("{op}"),
+            Expr::ScalarFunction { fun, args: _ } => format!("{fun}"),
             Expr::ScalarUDF { fun, .. } => fun.name.clone(),
             Expr::Cast { .. } => "cast".to_string(),
             Expr::Between { .. } => "between".to_string(),
@@ -505,8 +505,7 @@ impl PyExpr {
                 BuiltinScalarFunction::DatePart => "DatePart",
                 _ => {
                     return Err(py_type_err(format!(
-                        "Catch all triggered for ScalarFunction in get_type; {:?}",
-                        fun
+                        "Catch all triggered for ScalarFunction in get_type; {fun:?}"
                     )))
                 }
             },
@@ -541,8 +540,7 @@ impl PyExpr {
                 DataType::Map(..) => "MAP",
                 _ => {
                     return Err(py_type_err(format!(
-                        "Catch all triggered for Cast in get_type; {:?}",
-                        data_type
+                        "Catch all triggered for Cast in get_type; {data_type:?}"
                     )))
                 }
             },
@@ -711,6 +709,25 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "isDistinctAgg")]
+    pub fn is_distinct_aggregation(&self) -> PyResult<bool> {
+        // TODO refactor to avoid duplication
+        match &self.expr {
+            Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+            Expr::AggregateUDF { .. } => Ok(false),
+            Expr::Alias(expr, _) => match expr.as_ref() {
+                Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+                Expr::AggregateUDF { .. } => Ok(false),
+                _ => Err(py_type_err(
+                    "isDistinctAgg() - Non-aggregate expression encountered",
+                )),
+            },
+            _ => Err(py_type_err(
+                "getFilterExpr() - Non-aggregate expression encountered",
+            )),
+        }
+    }
+
     /// Returns if a sort expressions is an ascending sort
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
@@ -764,7 +781,7 @@ impl PyExpr {
 }
 
 fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
-    DaskPlannerError::Internal(format!("getValue<T>() - Unexpected value: {}", value)).into()
+    DaskPlannerError::Internal(format!("getValue<T>() - Unexpected value: {value}")).into()
 }
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
