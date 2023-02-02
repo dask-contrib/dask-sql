@@ -2,7 +2,7 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
-use datafusion_common::DFField;
+use datafusion_common::{DFField, Statistics};
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 use datafusion_optimizer::utils::split_conjunction;
 use datafusion_sql::TableReference;
@@ -25,12 +25,26 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    statistics: Option<Statistics>,
 }
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema.
     pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+        Self {
+            schema,
+            statistics: None,
+        }
+    }
+
+    /// Initialize a new `EmptyTable` from a schema.
+    pub fn new_with_statistics(schema: SchemaRef, statistics: Option<Statistics>) -> Self {
+        Self { schema, statistics }
+    }
+
+    /// Access optional statistics associated with this table source
+    pub fn statistics(&self) -> Option<&Statistics> {
+        self.statistics.as_ref()
     }
 }
 
