@@ -610,13 +610,8 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        # TODO: format timestamps for GPU tests
-        if is_cudf_type(df):
-            if format != default_format:
-                raise RuntimeError("Non-default timestamp formats not supported on GPU")
-            return df
         # String cases
-        elif type(df) == str:
+        if type(df) == str:
             return np.datetime64(datetime.strptime(df, format))
         elif df.dtype == "object":
             return dd.to_datetime(df, format=format)
@@ -709,6 +704,9 @@ class DatetimeSubOperation(Operation):
             operation=operator.sub, unary_operation=lambda x: -x
         )
         result = subtraction_op(df2, df1)
+
+        if is_cudf_type(df1):
+            result = result.astype("int")
 
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
