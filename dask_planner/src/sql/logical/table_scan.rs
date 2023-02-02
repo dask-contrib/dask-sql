@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use datafusion_common::DFSchema;
-use datafusion_expr::{Expr, logical_plan::TableScan, LogicalPlan};
+use datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
@@ -67,17 +67,24 @@ impl PyTableScan {
                     let right = binary_expr.right.to_string();
                     let mut right_split = right.split('.');
                     let right = right_split.nth(0);
-                    filters.push((left.unwrap().to_string(), binary_expr.op.to_string(), right.unwrap().to_string()))
-                },
-                Expr::IsNotNull(inner_expr) => {
-                    println!("IS NOT NULL Expr: {:?}", inner_expr);
-                    let fqtn = inner_expr.to_string();
-                    let mut col_split = fqtn.split('.');
-                    let col = col_split.nth(1);
-                    filters.push((col.unwrap().to_string(), "!=".to_string(), "np.nan".to_string()))
-                },
+                    filters.push((
+                        left.unwrap().to_string(),
+                        binary_expr.op.to_string(),
+                        right.unwrap().to_string(),
+                    ))
+                }
+                // Expr::IsNotNull(inner_expr) => {
+                //     println!("IS NOT NULL Expr: {:?}", inner_expr);
+                //     let fqtn = inner_expr.to_string();
+                //     let mut col_split = fqtn.split('.');
+                //     let col = col_split.nth(1);
+                //     filters.push((col.unwrap().to_string(), "!=".to_string(), "np.nan".to_string()))
+                // },
                 _ => {
-                    println!("Unable to apply filter: `{}` to IO reader, using in Dask instead", filter);
+                    println!(
+                        "Unable to apply filter: `{}` to IO reader, using in Dask instead",
+                        filter
+                    );
                     let tbl_scan = LogicalPlan::TableScan(self.table_scan.clone());
                     unfiltered.push(PyExpr::from(filter.clone(), Some(vec![Arc::new(tbl_scan)])))
                 }
@@ -86,7 +93,7 @@ impl PyTableScan {
 
         Ok(PyFilteredResult {
             io_unfilterable_exprs: unfiltered,
-            filtered_exprs: filters
+            filtered_exprs: filters,
         })
     }
 }
