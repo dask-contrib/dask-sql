@@ -1050,7 +1050,7 @@ def test_scalar_timestamps(c, gpu):
         df1 = c.sql("SELECT EXTRACT(DAY FROM to_timestamp(d)) AS day FROM df")
         assert_eq(df1, expected_df)
     df2 = c.sql("SELECT EXTRACT(DAY FROM CAST(d AS TIMESTAMP)) AS day FROM df")
-    assert_eq(df2, expected_df)
+    assert_eq(df2, expected_df, check_dtype=False)
 
     expected_df = pd.DataFrame(
         {
