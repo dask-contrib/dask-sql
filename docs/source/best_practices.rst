@@ -82,6 +82,21 @@ This comes with a large corresponding boost in computation speed. For example,
 
 For a deeper dive into read filtering with Dask, check out `Filtered Reading with RAPIDS & Dask to Optimize ETL <https://medium.com/rapids-ai/filtered-reading-with-rapids-dask-to-optimize-etl-5f1624f4be55>`_.
 
+In many cases Dask-SQL can automate sorting and read filtering with its predicate pushdown support.
+
+For example, the query
+
+.. code-block:: sql
+
+    SELECT
+        COUNT(*)
+    FROM
+        taxi
+    WHERE
+        DAYOFMONTH(pickup_datetime) = 15
+
+would automatically perform the same sorting and read filtering logic as the previous section.
+
 Avoid Unnecessary Parallelism
 -----------------------------
 
@@ -122,25 +137,6 @@ Improve performance by only creating tasks as necessary. For example, splitting 
 .. code-block:: sql
 
     SELECT COUNT(*) FROM weather_nosplit WHERE type='PRCP'
-
-
-Predicate Pushdown
-------------------
-
-In many cases Dask-SQL can automate sorting and read filtering with its predicate pushdown support.
-
-For example, the query
-
-.. code-block:: sql
-
-    SELECT
-        COUNT(*)
-    FROM
-        taxi
-    WHERE
-        DAYOFMONTH(pickup_datetime) = 15
-
-would automatically perform the same sorting and read filtering logic as the previous section.
 
 Use broadcast joins when possible
 ---------------------------------
