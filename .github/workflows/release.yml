@@ -9,8 +9,8 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  build:
-    name: build py3.${{ matrix.python }} on ${{ matrix.os }}
+  wheels:
+    name: Build and publish py3.${{ matrix.python }} wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -74,6 +74,34 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: twine upload dist/*
+  sdist:
+    name: Build and publish source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2.2.0
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
+      - name: Build source distribution
+        run: |
+          mamba install setuptools-rust twine
+
+          python setup.py sdist
+      - name: Check dist files
+        run: |
+          twine check dist/*
+          ls -lh dist/
+      - name: Publish source distribution
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
