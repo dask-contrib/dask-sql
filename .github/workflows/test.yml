@@ -54,6 +54,10 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dask_planner
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
