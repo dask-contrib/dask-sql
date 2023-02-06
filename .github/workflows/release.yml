@@ -56,12 +56,6 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
-      - name: Build source distribution
-        if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
-        run: |
-          mamba install setuptools-rust
-
-          python setup.py sdist
       - name: Check dist files
         run: |
           mamba install twine
