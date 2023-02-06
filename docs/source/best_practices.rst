@@ -224,6 +224,24 @@ However, if you were to repartition the smaller table to a single partition and 
 
 Dask-SQL is able to recognize this as a broadcast join and the result is a significantly faster compute time.
 
+Dask-SQL also supports biasing the heuristic Dask uses to determine whether to use a broadcast join through the ``sql.join.broadcast`` config option.
+This option passes either a boolean or a float value to the ``broadcast`` argument in Dask's `merge <https://docs.dask.org/en/stable/generated/dask.dataframe.multi.DataFrame.merge.html?highlight=broadcast_join#dask.dataframe.multi.DataFrame.merge>`_ function.
+In the case of passing a float, a larger value makes Dask more likely to use a broadcast join.
+
+For example,
+
+.. code-block:: python
+
+    c.sql(query, config_options={"sql.join.broadcast": True})
+
+would instruct Dask to always use a broadcast join if supported for the query whereas
+
+.. code-block:: python
+
+    c.sql(query, config_options={"sql.join.broadcast": 0.7})
+
+would instruct Dask to use ``0.7`` as the ``broadcast_bias`` in its heuristic for deciding whether to use a broadcast join.
+
 Optimize Partition Sizes for GPUs
 ---------------------------------
 File formats like `Apache ORC <https://orc.apache.org/>`_ and `Apache Parquet <https://parquet.apache.org/>`_ are designed so that they can be pulled from disk and be deserialized by CPUs quickly.
