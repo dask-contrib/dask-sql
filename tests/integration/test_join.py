@@ -401,7 +401,7 @@ def test_filter_columns_post_join(c):
 
 @pytest.mark.xfail(
     not BROADCAST_JOIN_SUPPORT_WORKING,
-    reason="Broadcast Joins do not work as expected with dask<=2023.1.1",
+    reason="Broadcast Joins do not work as expected with dask<2023.1.1",
 )
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_broadcast_join(c, client, gpu):
