@@ -244,7 +244,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             or broadcast
         ):
             warnings.warn(
-                "Broadcast Joins may not work as expected with dask<2023.1.1"
+                "Broadcast Joins may not work as expected with dask<=2023.1.1"
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 "and https://github.com/dask/dask/issues/9870"
             )
