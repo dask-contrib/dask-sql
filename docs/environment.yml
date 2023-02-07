@@ -10,7 +10,6 @@ dependencies:
   - dask>=2022.3.0,<=2023.1.1
   - pandas>=1.4.0
   - fugue>=0.7.3
-  - jpype1>=1.0.2
   # FIXME: handling is needed for httpx-based fastapi>=0.87.0
   - fastapi>=0.69.0,<0.87.0
   - uvicorn>=0.13.4
@@ -20,4 +19,4 @@ dependencies:
   - tabulate
   - nest-asyncio
   - setuptools-rust>=1.4.1
-  - rust>=1.60.0
+    #  - rust>=1.60.0
