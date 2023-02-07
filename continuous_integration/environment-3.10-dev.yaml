@@ -25,6 +25,7 @@ dependencies:
 - pygments>=2.7.1
 - pyhive
 - pytest-cov
+- pytest-rerunfailures
 - pytest-xdist
 - pytest
 - python=3.10
