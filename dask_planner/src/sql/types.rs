@@ -222,8 +222,7 @@ impl SqlTypeName {
             SqlTypeName::DATE => Ok(DataType::Date64),
             SqlTypeName::VARCHAR => Ok(DataType::Utf8),
             _ => Err(DaskPlannerError::Internal(format!(
-                "Cannot determine Arrow type for Dask SQL type '{:?}'",
-                self
+                "Cannot determine Arrow type for Dask SQL type '{self:?}'"
             ))),
         }
     }
@@ -264,8 +263,7 @@ impl SqlTypeName {
             DataType::Decimal256(_precision, _scale) => Ok(SqlTypeName::DECIMAL),
             DataType::Map(_field, _bool) => Ok(SqlTypeName::MAP),
             _ => Err(DaskPlannerError::Internal(format!(
-                "Cannot determine Dask SQL type for Arrow type '{:?}'",
-                arrow_type
+                "Cannot determine Dask SQL type for Arrow type '{arrow_type:?}'"
             ))),
         }
     }
@@ -345,8 +343,7 @@ impl SqlTypeName {
                     SQLType::Varchar(_) | SQLType::Nvarchar(_) => Ok(SqlTypeName::VARCHAR),
                     SQLType::Char(_) => Ok(SqlTypeName::CHAR),
                     _ => Err(DaskPlannerError::Internal(format!(
-                        "Cannot determine Dask SQL type for '{}'",
-                        input_type
+                        "Cannot determine Dask SQL type for '{input_type}'"
                     ))),
                 }
             }

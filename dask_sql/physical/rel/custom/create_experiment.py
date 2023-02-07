@@ -6,13 +6,17 @@ import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.utils import convert_sql_kwargs, import_class
+from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
+from dask_sql.utils import convert_sql_kwargs, import_class, is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
     from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
+
+cpu_classes = get_cpu_classes()
+gpu_classes = get_gpu_classes()
 
 
 class CreateExperimentPlugin(BaseRelPlugin):
@@ -145,6 +149,13 @@ class CreateExperimentPlugin(BaseRelPlugin):
         y = training_df[target_column]
 
         if model_class and experiment_class:
+            if is_cudf_type(training_df):
+                model_class = gpu_classes.get(model_class, model_class)
+                experiment_class = gpu_classes.get(experiment_class, experiment_class)
+            else:
+                model_class = cpu_classes.get(model_class, model_class)
+                experiment_class = cpu_classes.get(experiment_class, experiment_class)
+
             try:
                 ModelClass = import_class(model_class)
             except ImportError:
