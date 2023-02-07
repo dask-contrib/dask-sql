@@ -59,6 +59,7 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+          run-post: ${{ matrix.os != 'windows-latest' && 'true' || 'false' }}
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
