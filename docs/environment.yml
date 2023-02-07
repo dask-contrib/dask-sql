@@ -19,4 +19,5 @@ dependencies:
   - tabulate
   - nest-asyncio
   - setuptools-rust>=1.4.1
+  - ucx-proc=*=cpu
     #  - rust>=1.60.0
