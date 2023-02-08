@@ -59,6 +59,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: dask_planner
+          shared-key: test
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -100,6 +101,11 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dask_planner
+          shared-key: test
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
