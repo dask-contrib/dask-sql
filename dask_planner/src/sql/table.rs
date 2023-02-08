@@ -38,6 +38,7 @@ impl DaskTableSource {
     }
 
     /// Initialize a new `EmptyTable` from a schema.
+    #[allow(dead_code)]
     pub fn new_with_statistics(schema: SchemaRef, statistics: Option<Statistics>) -> Self {
         Self { schema, statistics }
     }

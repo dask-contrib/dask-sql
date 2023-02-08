@@ -46,50 +46,68 @@ impl OptimizerRule for JoinReorder {
         // We want the equivalent of Spark's transformUp here
         let plan = utils::optimize_children(self, plan, _config)?;
 
-        println!("JoinReorder::try_optimize():\n{}", plan.display_indent());  // TODO: Remove
+        // TODO: Remove
+        println!("JoinReorder::try_optimize():\n{}", plan.display_indent());
     
         match &plan {
             LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
                 if !is_supported_join(join) {
-                    println!("Not a supported join!:\n{}", plan.display_indent());  // TODO: Remove
+                    // TODO: Remove
+                    println!("Not a supported join!:\n{}", plan.display_indent());
                     return Ok(Some(plan));
                 }
+                // TODO: Remove
                 println!(
                     "JoinReorder attempting to optimize join: {}",
                     plan.display_indent()
-                );  // TODO: Remove
+                );
 
                 // Extract the relations and join conditions
                 let (rels, conds) = extract_inner_joins(&plan);
 
                 // Split rels into facts and dims
-                let rels: Vec<Relation> = rels.into_iter().map(|rel| Relation::new(rel)).collect();
+                let rels: Vec<Relation> = rels.into_iter().map(Relation::new).collect();
                 let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
+                // Vectors for the fact and dimension tables, respectively
                 let mut facts = vec![];
                 let mut dims = vec![];
                 for rel in &rels {
-                    println!("rel size = {}", rel.size);  // TODO: Remove
+                    // TODO: Remove
+                    println!("rel size = {}", rel.size);
+                    // If the ratio is larger than the fact_dimension_ratio, it is a fact table
+                    // Else, it is a dimension table
                     if rel.size as f64 / largest_rel > self.fact_dimension_ratio {
                         facts.push(rel.clone());
                     } else {
                         dims.push(rel.clone());
                     }
                 }
-                println!("There are {} facts and {} dims", facts.len(), dims.len());  // TODO: Remove
+                // TODO: Remove
+                println!("There are {} facts and {} dims", facts.len(), dims.len());
                 if facts.is_empty() {
-                    println!("Too few fact tables");  // TODO: Remove
+                    // TODO: Remove
+                    println!("Too few fact tables");
                     return Ok(Some(plan));
                 }
                 if facts.len() > self.max_fact_tables {
-                    println!("Too many fact tables");  // TODO: Remove
+                    // TODO: Remove
+                    println!("Too many fact tables");
+                    return Ok(Some(plan));
+                }
+                // TODO: We shouldn't optimize if there are no dimension tables
+                if dims.is_empty() {
+                    // TODO: Remove
+                    println!("Too few dim tables");
                     return Ok(Some(plan));
                 }
 
+                // Get list of dimension tables without a selective predicate
                 let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
                 if !self.preserve_user_order {
                     unfiltered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
                 }
 
+                // Get list of dimension tables with a selective predicate and sort it
                 let filtered_dimensions = get_filtered_dimensions(&dims);
                 let mut filtered_dimensions: Vec<Relation> = filtered_dimensions
                     .iter()
@@ -98,14 +116,16 @@ impl OptimizerRule for JoinReorder {
                         size: (rel.size as f64 * self.filter_selectivity) as usize,
                     })
                     .collect();
-
                 filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+
                 for dim in &unfiltered_dimensions {
-                    println!("UNFILTERED: {} {}", dim.size, dim.plan.display_indent());  // TODO: Remove
+                    // TODO: Remove
+                    println!("UNFILTERED: {} {}", dim.size, dim.plan.display_indent());
                 }
 
                 for dim in &filtered_dimensions {
-                    println!("FILTERED: {} {}", dim.size, dim.plan.display_indent());  // TODO: Remove
+                    // TODO: Remove
+                    println!("FILTERED: {} {}", dim.size, dim.plan.display_indent());
                 }
 
                 // Merge both the lists of dimensions by giving user order
@@ -147,7 +167,8 @@ impl OptimizerRule for JoinReorder {
                             join_conds.insert((l.clone(), r.clone()));
                         }
                         _ => {
-                            println!("Only column expr are supported");  // TODO: Remove
+                            // TODO: Remove
+                            println!("Only column expr are supported");
                             return Ok(Some(plan));
                         }
                     }
@@ -166,15 +187,18 @@ impl OptimizerRule for JoinReorder {
                 };
 
                 if join_conds.is_empty() {
-                    println!("Optimized: {}", optimized.display_indent());  // TODO: Remove
-                    return Ok(Some(optimized));
+                    // TODO: Remove
+                    println!("Optimized: {}", optimized.display_indent());
+                    Ok(Some(optimized))
                 } else {
-                    println!("Did not use all join conditions: {:?}", join_conds);  // TODO: Remove
-                    return Ok(Some(plan));
+                    // TODO: Remove
+                    println!("ERROR? Did not use all join conditions: {:?}", join_conds);
+                    Ok(Some(plan))
                 }
             }
             _ => {
-                println!("not a join");  // TODO: Remove
+                // TODO: Remove
+                println!("Not a join");
                 Ok(Some(plan))
             }
         }
@@ -186,11 +210,11 @@ impl OptimizerRule for JoinReorder {
     }
 }
 
-/// Represents a Fact or Dimension table, possibly nested in a filter.
+/// Represents a Fact or Dimension table, possibly nested in a filter
 #[derive(Clone, Debug)]
 struct Relation {
-    /// Plan containing the table scan for the fact or dimension table. May also contain
-    /// Filter and SubqueryAlias.
+    /// Plan containing the table scan for the fact or dimension table
+    /// May also contain Filter and SubqueryAlias
     plan: LogicalPlan,
     /// Estimated size of the underlying table before any filtering is applied
     size: usize,
@@ -221,14 +245,56 @@ fn has_filter(plan: &LogicalPlan) -> bool {
     }
 
     match plan {
-        LogicalPlan::Filter(filter) => is_real_filter(&filter.predicate()),
+        LogicalPlan::Filter(filter) => is_real_filter(filter.predicate()),
         LogicalPlan::TableScan(scan) => scan.filters.iter().any(is_real_filter),
         _ => plan.inputs().iter().any(|child| has_filter(child)),
     }
 }
 
-/// Extracts items of consecutive inner joins and join conditions.
-/// This method works for bushy trees and left/right deep trees.
+/// Simple Join Constraint: Only INNER Joins are considered
+/// which can be composed of other Joins too. But apart
+/// from the Joins, none of the operator in both the left and
+/// right side of the join should be non-deterministic, or have
+/// output greater than the input to the operator. For instance,
+/// Filter would be allowed operator as it reduces the output
+/// over input, but a project adding extra column will not
+/// be allowed. It is difficult to reason about operators that
+/// add extra to output when dealing with just table sizes, so
+/// instead we only allowed operators from selected set of
+/// operators
+fn is_supported_join(join: &Join) -> bool {
+    // TODO: Check for deterministic filter expressions
+
+    fn is_supported_rel(plan: &LogicalPlan) -> bool {
+        // TODO: Remove
+        println!("is_simple_rel? {}", plan.display_indent());
+        match plan {
+            LogicalPlan::Join(join) => {
+                join.join_type == JoinType::Inner
+                    // TODO: Need to support join filters correctly... for now assume
+                    // they have already been pushed down to the underlying table scan
+                    // but we need to make sure we do not drop these filters when
+                    // rebuilding the joins later
+                    // && join.filter.is_none()
+                    && is_supported_rel(&join.left)
+                    && is_supported_rel(&join.right)
+            }
+            LogicalPlan::Filter(filter) => is_supported_rel(filter.input()),
+            LogicalPlan::SubqueryAlias(sq) => is_supported_rel(&sq.input),
+            LogicalPlan::TableScan(_) => true,
+            _ => {
+                // TODO: Remove
+                println!("Not a simple join: {}", plan.display_indent());
+                false
+            }
+        }
+    }
+
+    is_supported_rel(&LogicalPlan::Join(join.clone()))
+}
+
+/// Extracts items of consecutive inner joins and join conditions
+/// This method works for bushy trees and left/right deep trees
 fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, Expr)>) {
     fn _extract_inner_joins(
         plan: &LogicalPlan,
@@ -241,12 +307,12 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
             {
                 _extract_inner_joins(&join.left, rels, conds);
                 _extract_inner_joins(&join.right, rels, conds);
-                // TODO: Could also handle join conditions here?
 
                 for (l, r) in &join.on {
                     conds.insert((
-                        datafusion_expr::Expr::Column(l.clone()),  // TODO: Expr vs Column
-                        datafusion_expr::Expr::Column(r.clone()),  // TODO: Expr vs Column
+                        // TODO: Is this messing something up?
+                        datafusion_expr::Expr::Column(l.clone()),
+                        datafusion_expr::Expr::Column(r.clone()),
                     ));
                 }
             }
@@ -267,46 +333,6 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
     let mut conds = HashSet::new();
     _extract_inner_joins(plan, &mut rels, &mut conds);
     (rels, conds)
-}
-
-/// Simple Join Constraint: Only INNER Joins are consid-
-/// ered which can be composed of other Joins too. But apart
-/// from the Joins, none of the operator in both the left and
-/// right side of the join should be non-deterministic, or have
-/// output greater than the input to the operator. For instance,
-/// Filter would be allowed operator as it reduces the output
-/// over input, but a project adding extra column will not
-/// be allowed. It is difficult to reason about operators that
-/// add extra to output when dealing with just table sizes, so
-/// instead we only allowed operators from selected set of
-/// operators
-fn is_supported_join(join: &Join) -> bool {
-    // TODO: Check for deterministic filter expressions
-
-    fn is_supported_rel(plan: &LogicalPlan) -> bool {
-        println!("is_simple_rel? {}", plan.display_indent());  // TODO: Remove
-        match plan {
-            LogicalPlan::Join(join) => {
-                join.join_type == JoinType::Inner
-                    // TODO: Need to support join filters correctly .. for now assume
-                    // they have already been pushed down to the underlying table scan
-                    // but we need to make sure we do not drop these filters when
-                    // rebuilding the joins later
-                    // && join.filter.is_none()
-                    && is_supported_rel(&join.left)
-                    && is_supported_rel(&join.right)
-            }
-            LogicalPlan::Filter(filter) => is_supported_rel(&filter.input()),
-            LogicalPlan::SubqueryAlias(sq) => is_supported_rel(&sq.input),
-            LogicalPlan::TableScan(_) => true,
-            _ => {
-                println!("not a simple join: {}", plan.display_indent());  // TODO: Remove
-                false
-            }
-        }
-    }
-
-    is_supported_rel(&LogicalPlan::Join(join.clone()))
 }
 
 /// Find first (top-level) join in plan
@@ -347,8 +373,7 @@ fn build_join_tree(
         let mut join_keys = vec![];
         for (l, r) in conds.iter() {
             if (b.schema().index_of_column(l).is_ok() && dim.schema().index_of_column(r).is_ok())
-                || b.schema().index_of_column(r).is_ok()
-                    && dim.schema().index_of_column(l).is_ok()
+                || b.schema().index_of_column(r).is_ok() && dim.schema().index_of_column(l).is_ok()
             {
                 join_keys.push((l.clone(), r.clone()));
             }
@@ -361,8 +386,9 @@ fn build_join_tree(
                 conds.remove(&key);
             }
 
-            println!("Joining fact to dim on {:?} = {:?}", left_keys, right_keys);  // TODO: Remove
-            b = b.join(&dim, JoinType::Inner, (left_keys, right_keys), None)?;
+            // TODO: Remove
+            println!("Joining fact to dim on {:?} = {:?}", left_keys, right_keys);
+            b = b.join(dim, JoinType::Inner, (left_keys, right_keys), None)?;
         }
     }
     b.build()
@@ -418,7 +444,8 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                     "web_sales" => 72001237,
                     "web_site" => 24,
                     other => {
-                        println!("No row count available for table '{}'", other);  // TODO: Remove
+                        // TODO: Remove
+                        println!("No row count available for table '{}'", other);
                         100
                     }
                 };
@@ -426,7 +453,7 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                 Some(n)
             }
         }
-        _ => get_table_size(&plan.inputs()[0]),
+        _ => get_table_size(plan.inputs()[0]),
     }
 }
 
