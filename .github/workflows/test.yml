@@ -17,24 +17,38 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  detect-ci-trigger:
-    name: Check for upstream trigger phrase
+  detect-upstream-trigger:
+    name: Check for upstream trigger phrase to test with upstream dask
     runs-on: ubuntu-latest
     if: github.repository == 'dask-contrib/dask-sql'
     outputs:
-      triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
+      triggered: ${{ steps.detect-upstream-trigger.outputs.trigger-found }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - uses: xarray-contrib/ci-trigger@v1.2
-        id: detect-trigger
+        id: detect-upstream-trigger
         with:
           keyword: "[test-upstream]"
+  detect-datafusion-upstream-trigger:
+    name: Check for upstream trigger phrase to test with upstream datafusion
+    runs-on: ubuntu-latest
+    if: github.repository == 'dask-contrib/dask-sql'
+    outputs:
+      triggered: ${{ steps.detect-datafusion-upstream-trigger.outputs.trigger-found }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - uses: xarray-contrib/ci-trigger@v1.2
+        id: detect-datafusion-upstream-trigger
+        with:
+          keyword: "[test-df-upstream]"
 
   test:
     name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }})"
-    needs: [detect-ci-trigger]
+    needs: [detect-upstream-trigger, detect-datafusion-upstream-trigger]
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
@@ -54,6 +68,11 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+      - name: Optionally update upstream datafusion & cargo dependencies
+        if: needs.detect-datafusion-upstream-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -64,7 +83,7 @@ jobs:
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Optionally install upstream dev Dask
-        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        if: needs.detect-upstream-trigger.outputs.triggered == 'true'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
       - name: Test with pytest
@@ -82,7 +101,7 @@ jobs:
 
   cluster:
     name: "Test in a dask cluster"
-    needs: [detect-ci-trigger]
+    needs: [detect-upstream-trigger, detect-datafusion-upstream-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -95,6 +114,11 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: continuous_integration/environment-3.9-dev.yaml
+      - name: Optionally update upstream datafusion & cargo dependencies
+        if: needs.detect-datafusion-upstream-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -106,12 +130,12 @@ jobs:
           pip list
           mamba list
       - name: Optionally install upstream dev Dask
-        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        if: needs.detect-upstream-trigger.outputs.triggered == 'true'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
       - name: run a dask cluster
         env:
-          UPSTREAM: ${{ needs.detect-ci-trigger.outputs.triggered }}
+          UPSTREAM: ${{ needs.detect-upstream-trigger.outputs.triggered }}
         run: |
           if [[ $UPSTREAM == "true" ]]; then
             docker-compose -f .github/cluster-upstream.yml up -d
@@ -130,7 +154,7 @@ jobs:
 
   import:
     name: "Test importing with bare requirements"
-    needs: [detect-ci-trigger]
+    needs: [detect-upstream-trigger, detect-datafusion-upstream-trigger]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -141,6 +165,11 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      - name: Optionally update upstream datafusion & cargo dependencies
+        if: needs.detect-datafusion-upstream-trigger.outputs.triggered == 'true'
+        run: |
+          cd dask_planner
+          bash update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           mamba install setuptools-rust
@@ -150,7 +179,7 @@ jobs:
           pip list
           mamba list
       - name: Optionally install upstream dev Dask
-        if: needs.detect-ci-trigger.outputs.triggered == 'true'
+        if: needs.detect-upstream-trigger.outputs.triggered == 'true'
         run: |
           python -m pip install --no-deps git+https://github.com/dask/dask
           python -m pip install --no-deps git+https://github.com/dask/distributed
