@@ -87,10 +87,6 @@ def parquet_statistics(
     if not isinstance(layer, DataFrameIOLayer) or not isinstance(
         layer.io_func, ParquetFunctionWrapper
     ):
-        logger.warning(
-            f"Could not extract Parquet statistics from {ddf}."
-            f"\nAttempted IO layer: {layer}"
-        )
         return None
 
     # Collect statistics using layer information
@@ -98,10 +94,6 @@ def parquet_statistics(
     fs = layer.io_func.fs
     engine = layer.io_func.engine
     if not issubclass(engine, ArrowDatasetEngine):
-        logger.warning(
-            f"Could not extract Parquet statistics from {ddf}."
-            f"\nUnsupported parquet engine: {engine}"
-        )
         return None
 
     # Set default

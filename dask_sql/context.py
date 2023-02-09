@@ -19,6 +19,7 @@ from dask_planner.rust import (
     DFParsingException,
     LogicalPlan,
 )
+
 try:
     from dask_sql.physical.utils.statistics import parquet_statistics
 except ModuleNotFoundError:
@@ -159,6 +160,7 @@ class Context:
         format: str = None,
         persist: bool = False,
         schema_name: str = None,
+        statistics: Statistics = None,
         gpu: bool = False,
         **kwargs,
     ):
@@ -222,6 +224,8 @@ class Context:
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to true to turn on loading the file data directly into memory.
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
+                statistics are provided, we will just assume 100 rows.
             gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
                 Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
@@ -246,16 +250,21 @@ class Context:
         )
 
         self.schema[schema_name].tables[table_name.lower()] = dc
+        if statistics:
+            self.schema[schema_name].statistics[table_name.lower()] = statistics
 
-        dc_statistics = dc.statistics
-        if dc.statistics is None and parquet_statistics:
-            # TODO: Check logic here
-            stats = parquet_statistics(input_table)
-            row_count = 0
-            # List of dicts
-            for d in stats:
-                row_count += d["num-rows"]
-            dc_statistics = Statistics(row_count)
+        dc_statistics = None
+        if parquet_statistics and not statistics:
+            try:
+                stats = parquet_statistics(input_table)
+                row_count = 0
+                if stats:
+                    # List of dicts
+                    for d in stats:
+                        row_count += d["num-rows"]
+                    dc_statistics = Statistics(row_count)
+            except ValueError:
+                dc_statistics = None
 
         if dc_statistics:
             self.schema[schema_name].statistics[table_name.lower()] = dc_statistics
