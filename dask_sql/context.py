@@ -11,8 +11,6 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
-from dask_sql.physical.utils.statistics import parquet_statistics
-
 from dask_planner.rust import (
     DaskSchema,
     DaskSQLContext,
@@ -21,6 +19,10 @@ from dask_planner.rust import (
     DFParsingException,
     LogicalPlan,
 )
+try:
+    from dask_sql.physical.utils.statistics import parquet_statistics
+except ModuleNotFoundError:
+    parquet_statistics = None
 
 try:
     import dask_cuda  # noqa: F401
@@ -246,7 +248,7 @@ class Context:
         self.schema[schema_name].tables[table_name.lower()] = dc
 
         dc_statistics = dc.statistics
-        if dc.statistics is None:
+        if dc.statistics is None and parquet_statistics:
             # TODO: Check logic here
             stats = parquet_statistics(input_table)
             row_count = 0

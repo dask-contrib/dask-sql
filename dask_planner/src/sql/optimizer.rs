@@ -35,14 +35,14 @@ use filter_columns_post_join::FilterColumnsPostJoin;
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
     #[allow(dead_code)]
-    statistics: HashMap<String, f64>,
+    statistics: Option<HashMap<String, f64>>,
     optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(skip_failing_rules: bool, statistics: HashMap<String, f64>) -> Self {
+    pub fn new(skip_failing_rules: bool, statistics: Option<HashMap<String, f64>>) -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -150,7 +150,7 @@ mod tests {
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new(false);
+        let optimizer = DaskSqlOptimizer::new(false, None);
         optimizer.optimize(plan)
     }
 

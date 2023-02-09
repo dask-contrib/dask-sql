@@ -197,7 +197,12 @@ class DataContainer:
     and "backend" (what dask has).
     """
 
-    def __init__(self, df: dd.DataFrame, column_container: ColumnContainer, statistics: Statistics = None):
+    def __init__(
+        self,
+        df: dd.DataFrame,
+        column_container: ColumnContainer,
+        statistics: Statistics = None,
+    ):
         self.df = df
         self.column_container = column_container
         self.statistics = statistics

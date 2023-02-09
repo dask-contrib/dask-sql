@@ -7,7 +7,10 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.utils.statistics import parquet_statistics
+try:
+    from dask_sql.physical.utils.statistics import parquet_statistics
+except ModuleNotFoundError:
+    parquet_statistics = None
 
 if TYPE_CHECKING:
     import dask_sql
@@ -54,7 +57,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
 
         # TODO: Check if this actually helps anything?
-        dc_statistics = parquet_statistics(dc.df)
+        if parquet_statistics:
+            dc_statistics = parquet_statistics(dc.df)
+        else:
+            dc_statistics = None
 
         dc = DataContainer(dc.df, cc, dc_statistics)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())

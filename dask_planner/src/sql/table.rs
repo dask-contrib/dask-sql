@@ -94,7 +94,7 @@ impl DaskStatistics {
 
     #[pyo3(name = "getRowCount")]
     pub fn get_row_count(&self) -> PyResult<f64> {
-        Ok(self.row_count.clone())
+        Ok(self.row_count)
     }
 }
 
