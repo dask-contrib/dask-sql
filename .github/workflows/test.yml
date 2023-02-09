@@ -154,7 +154,7 @@ jobs:
           channel-priority: strict
       - name: Install dependencies and nothing else
         run: |
-          mamba install setuptools-rust
+          mamba install protobuf setuptools-rust
           pip install -e . -vv
 
           which python
