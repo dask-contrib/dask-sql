@@ -27,6 +27,9 @@ defaults:
   run:
     shell: bash -l {0}
 
+env:
+  RUST_BACKTRACE: 1
+
 jobs:
   conda:
     name: Build (and optionally upload) the conda nightly
