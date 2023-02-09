@@ -36,8 +36,6 @@ use filter_columns_post_join::FilterColumnsPostJoin;
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
-    #[allow(dead_code)]
-    statistics: Option<HashMap<String, DaskStatistics>>,
     optimizer: Optimizer,
 }
 
@@ -83,7 +81,6 @@ impl DaskSqlOptimizer {
 
         Self {
             skip_failing_rules,
-            statistics,
             optimizer: Optimizer::with_rules(rules),
         }
     }
