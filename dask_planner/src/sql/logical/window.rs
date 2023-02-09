@@ -172,8 +172,7 @@ impl PyWindowFrameBound {
                 // The cast below is only safe because window bounds cannot be negative
                 ScalarValue::Int64(v) => Ok(v.map(|n| n as u64)),
                 ref x => Err(DaskPlannerError::Internal(format!(
-                    "Unexpected window frame bound: {:?}",
-                    x
+                    "Unexpected window frame bound: {x}"
                 ))
                 .into()),
             },

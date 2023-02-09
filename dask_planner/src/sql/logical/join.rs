@@ -35,8 +35,7 @@ impl PyJoin {
                     Ok(Expr::Column(l.clone()).eq(Expr::Column(right)))
                 }
                 _ => Err(py_type_err(format!(
-                    "unsupported join condition. Left: {:?} - Right: {:?}",
-                    l, r
+                    "unsupported join condition. Left: {l} - Right: {r}"
                 ))),
             })
             .collect::<Result<Vec<_>, _>>()?;
