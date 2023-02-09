@@ -33,6 +33,7 @@ pub mod sort;
 pub mod subquery_alias;
 pub mod table_scan;
 pub mod use_schema;
+pub mod values;
 pub mod window;
 
 use datafusion_common::{DFSchemaRef, DataFusionError};
@@ -141,15 +142,22 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::TableScan as PyTableScan
+    pub fn table_scan(&self) -> PyResult<table_scan::PyTableScan> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
+    /// LogicalPlan::Values as PyValues
+    pub fn values(&self) -> PyResult<values::PyValues> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Window as PyWindow
     pub fn window(&self) -> PyResult<window::PyWindow> {
         to_py_plan(self.current_node.as_ref())
     }
 
-    /// LogicalPlan::TableScan as PyTableScan
-    pub fn table_scan(&self) -> PyResult<table_scan::PyTableScan> {
-        to_py_plan(self.current_node.as_ref())
-    }
+    // Custom LogicalPlan Nodes
 
     /// LogicalPlan::CreateMemoryTable as PyCreateMemoryTable
     pub fn create_memory_table(&self) -> PyResult<create_memory_table::PyCreateMemoryTable> {
