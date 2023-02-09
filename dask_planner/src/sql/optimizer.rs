@@ -27,6 +27,8 @@ use datafusion_optimizer::{
 };
 use log::trace;
 
+use crate::sql::table::DaskStatistics;
+
 mod filter_columns_post_join;
 use filter_columns_post_join::FilterColumnsPostJoin;
 
@@ -35,14 +37,14 @@ use filter_columns_post_join::FilterColumnsPostJoin;
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
     #[allow(dead_code)]
-    statistics: Option<HashMap<String, f64>>,
+    statistics: Option<HashMap<String, DaskStatistics>>,
     optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(skip_failing_rules: bool, statistics: Option<HashMap<String, f64>>) -> Self {
+    pub fn new(skip_failing_rules: bool, statistics: Option<HashMap<String, DaskStatistics>>) -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),

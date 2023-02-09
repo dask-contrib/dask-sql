@@ -63,6 +63,7 @@ use crate::{
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
+        table::DaskStatistics,
     },
 };
 
@@ -479,18 +480,27 @@ impl DaskSQLContext {
             .map_err(py_parsing_exp)
     }
 
-    pub fn get_table_statistics(&self) -> HashMap<String, f64> {
-        let mut table_statistics: HashMap<String, f64> = HashMap::new();
+    pub fn get_table_statistics(&self) -> Option<HashMap<String, DaskStatistics>> {
+        let mut table_statistics: HashMap<String, DaskStatistics> = HashMap::new();
+        // We use all_row_counts to ensure that we have statistics
+        // for at least one of the tables in the DaskSQLContext
+        let mut all_row_counts = 0.0;
+
         for schema in &self.schemas {
             for table in &schema.1.tables {
                 let dask_table = &table.1;
-                // TODO: Use qualified name
                 let table_name = &dask_table.table_name;
-                let statistics = dask_table.statistics.get_row_count().unwrap();
-                table_statistics.insert(table_name.to_string(), statistics);
+                let statistics = &dask_table.statistics;
+                table_statistics.insert(table_name.to_string(), statistics.clone());
+                all_row_counts += statistics.get_row_count().unwrap();
             }
         }
-        table_statistics
+
+        if all_row_counts > 0.0 {
+            Some(table_statistics)
+        } else {
+            None
+        }
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
@@ -507,7 +517,7 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true, Some(statistics))
+                    optimizer::DaskSqlOptimizer::new(true, statistics)
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
