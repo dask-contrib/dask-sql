@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
@@ -34,13 +34,15 @@ use filter_columns_post_join::FilterColumnsPostJoin;
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
     skip_failing_rules: bool,
+    #[allow(dead_code)]
+    statistics: HashMap<String, f64>,
     optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(skip_failing_rules: bool) -> Self {
+    pub fn new(skip_failing_rules: bool, statistics: HashMap<String, f64>) -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -76,6 +78,7 @@ impl DaskSqlOptimizer {
 
         Self {
             skip_failing_rules,
+            statistics,
             optimizer: Optimizer::with_rules(rules),
         }
     }

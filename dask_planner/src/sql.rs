@@ -479,6 +479,20 @@ impl DaskSQLContext {
             .map_err(py_parsing_exp)
     }
 
+    pub fn get_table_statistics(&self) -> HashMap<String, f64> {
+        let mut table_statistics: HashMap<String, f64> = HashMap::new();
+        for schema in &self.schemas {
+            for table in &schema.1.tables {
+                let dask_table = &table.1;
+                // TODO: Use qualified name
+                let table_name = &dask_table.table_name;
+                let statistics = dask_table.statistics.get_row_count().unwrap();
+                table_statistics.insert(table_name.to_string(), statistics);
+            }
+        }
+        table_statistics
+    }
+
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
     /// by applying a set of `optimizer` trait implementations against the
     /// `LogicalPlan`
@@ -488,11 +502,12 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
         let mut visitor = OptimizablePlanVisitor {};
+        let statistics = self.get_table_statistics();
 
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true)
+                    optimizer::DaskSqlOptimizer::new(true, statistics)
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,

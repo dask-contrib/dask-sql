@@ -11,6 +11,8 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.distributed import Client
 
+from dask_sql.physical.utils.statistics import parquet_statistics
+
 from dask_planner.rust import (
     DaskSchema,
     DaskSQLContext,
@@ -155,7 +157,6 @@ class Context:
         format: str = None,
         persist: bool = False,
         schema_name: str = None,
-        statistics: Statistics = None,
         gpu: bool = False,
         **kwargs,
     ):
@@ -219,8 +220,6 @@ class Context:
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to true to turn on loading the file data directly into memory.
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
-            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
-                statistics are provided, we will just assume 100 rows.
             gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
                 Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
@@ -245,12 +244,26 @@ class Context:
         )
 
         self.schema[schema_name].tables[table_name.lower()] = dc
-        if statistics:
-            self.schema[schema_name].statistics[table_name.lower()] = statistics
+
+        dc_statistics = dc.statistics
+        if dc.statistics is None:
+            # TODO: Check logic here
+            stats = parquet_statistics(input_table)
+            row_count = 0
+            # List of dicts
+            for d in stats:
+                row_count += d["num-rows"]
+            dc_statistics = Statistics(row_count)
+
+        if dc_statistics:
+            self.schema[schema_name].statistics[table_name.lower()] = dc_statistics
+        else:
+            # If no statistics are obtainable, we will just assume 100 rows
+            dc_statistics = Statistics(100)
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, 100)
+            schema_name, DaskTable(schema_name, table_name, dc_statistics.row_count)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
