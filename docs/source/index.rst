@@ -95,6 +95,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
    data_input
    custom
    machine_learning
+   best_practices
    api
    server
    cmd
