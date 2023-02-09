@@ -465,11 +465,14 @@ class Context:
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
         For more information, see :ref:`sql`.
+
         Example:
             In this example, a query is called
             using the registered tables and then
             executed using dask.
+
             .. code-block:: python
+
                 result = c.sql("SELECT a, b FROM my_table")
                 print(result.compute())
         Args:
