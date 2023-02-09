@@ -44,7 +44,7 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new(
         skip_failing_rules: bool,
-        statistics: Option<HashMap<String, DaskStatistics>>,
+        _statistics: Option<HashMap<String, DaskStatistics>>,
     ) -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
