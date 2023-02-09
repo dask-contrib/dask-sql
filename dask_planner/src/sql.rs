@@ -713,7 +713,7 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use arrow::datatypes::DataType;
+    use datafusion::arrow::datatypes::DataType;
     use datafusion_expr::{Signature, TypeSignature, Volatility};
 
     use crate::sql::generate_signatures;

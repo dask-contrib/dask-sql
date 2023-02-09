@@ -94,7 +94,7 @@ impl DaskSqlOptimizer {
 mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
-    use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+    use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
     use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{

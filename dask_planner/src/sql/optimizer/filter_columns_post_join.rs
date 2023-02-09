@@ -500,12 +500,13 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 mod tests {
     use std::sync::Arc;
 
-    use arrow::datatypes::{DataType, Field, Schema};
+    use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
         col,
         logical_plan::{builder::LogicalTableSource, JoinType, LogicalPlanBuilder},
         sum,
     };
+    use datafusion_optimizer::OptimizerContext;
 
     use super::*;
 
@@ -513,9 +514,9 @@ mod tests {
     fn optimized_plan_eq(plan: &LogicalPlan, expected1: &str, expected2: &str) -> bool {
         let rule = FilterColumnsPostJoin::new();
         let optimized_plan = rule
-            .optimize(plan, &mut OptimizerConfig::new())
+            .try_optimize(plan, &OptimizerContext::new())
             .expect("failed to optimize plan");
-        let formatted_plan = format!("{}", optimized_plan.display_indent());
+        let formatted_plan = format!("{}", optimized_plan.unwrap().display_indent());
 
         if formatted_plan == expected1 || formatted_plan == expected2 {
             true
@@ -533,7 +534,7 @@ mod tests {
         //       TableScan: df2
         let plan = LogicalPlanBuilder::from(test_table_scan("df", "a"))
             .join(
-                &LogicalPlanBuilder::from(test_table_scan("df2", "b")).build()?,
+                LogicalPlanBuilder::from(test_table_scan("df2", "b")).build()?,
                 JoinType::Inner,
                 (vec!["c"], vec!["c"]),
                 None,
