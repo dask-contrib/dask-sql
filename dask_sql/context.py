@@ -27,8 +27,9 @@ except ModuleNotFoundError:
 
 try:
     import dask_cuda  # noqa: F401
+    import dask_cudf
 except ImportError:  # pragma: no cover
-    pass
+    dask_cudf = None
 
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
@@ -257,14 +258,23 @@ class Context:
         if parquet_statistics and not statistics:
             try:
                 stats = parquet_statistics(input_table)
-                row_count = 0
                 if stats:
-                    # List of dicts
+                    row_count = 0
                     for d in stats:
                         row_count += d["num-rows"]
                     dc_statistics = Statistics(row_count)
             except ValueError:
-                dc_statistics = None
+                if str(format).lower() == "parquet":
+                    if dask_cudf:
+                        ddf = dask_cudf.read_parquet(input_table)
+                    else:
+                        ddf = dd.read_parquet(input_table)
+                    stats = parquet_statistics(ddf)
+                    if stats:
+                        row_count = 0
+                        for d in stats:
+                            row_count += d["num-rows"]
+                        dc_statistics = Statistics(row_count)
 
         if dc_statistics:
             self.schema[schema_name].statistics[table_name.lower()] = dc_statistics

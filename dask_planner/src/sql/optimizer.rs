@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
@@ -27,8 +27,6 @@ use datafusion_optimizer::{
 };
 use log::trace;
 
-use crate::sql::table::DaskStatistics;
-
 mod filter_columns_post_join;
 use filter_columns_post_join::FilterColumnsPostJoin;
 
@@ -42,10 +40,7 @@ pub struct DaskSqlOptimizer {
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(
-        skip_failing_rules: bool,
-        _statistics: Option<HashMap<String, DaskStatistics>>,
-    ) -> Self {
+    pub fn new(skip_failing_rules: bool) -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -152,7 +147,7 @@ mod tests {
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new(false, None);
+        let optimizer = DaskSqlOptimizer::new(false);
         optimizer.optimize(plan)
     }
 

@@ -25,12 +25,20 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    #[allow(dead_code)]
+    statistics: Option<DaskStatistics>,
 }
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema
-    pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics> ) -> Self {
+        Self { schema, statistics }
+    }
+
+    /// Access optional statistics associated with this table source
+    #[allow(dead_code)]
+    pub fn statistics(&self) -> Option<&DaskStatistics> {
+        self.statistics.as_ref()
     }
 }
 
@@ -82,8 +90,8 @@ impl DaskStatistics {
     }
 
     #[pyo3(name = "getRowCount")]
-    pub fn get_row_count(&self) -> PyResult<f64> {
-        Ok(self.row_count)
+    pub fn get_row_count(&self) -> f64 {
+        self.row_count
     }
 }
 

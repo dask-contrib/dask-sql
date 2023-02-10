@@ -63,7 +63,6 @@ use crate::{
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
-        table::DaskStatistics,
     },
 };
 
@@ -130,7 +129,14 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
+                    Some(e) => {
+                        let statistics = &self.schemas.get(reference.schema).unwrap().tables.get(reference.table).unwrap().statistics;
+                        if statistics.get_row_count() == 0.0 {
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                        } else {
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), Some(statistics.clone()))))
+                        }
+                    }
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
@@ -480,29 +486,6 @@ impl DaskSQLContext {
             .map_err(py_parsing_exp)
     }
 
-    pub fn get_table_statistics(&self) -> Option<HashMap<String, DaskStatistics>> {
-        let mut table_statistics: HashMap<String, DaskStatistics> = HashMap::new();
-        // We use all_row_counts to ensure that we have statistics
-        // for at least one of the tables in the DaskSQLContext
-        let mut all_row_counts = 0.0;
-
-        for schema in &self.schemas {
-            for table in &schema.1.tables {
-                let dask_table = &table.1;
-                let table_name = &dask_table.table_name;
-                let statistics = &dask_table.statistics;
-                table_statistics.insert(table_name.to_string(), statistics.clone());
-                all_row_counts += statistics.get_row_count().unwrap();
-            }
-        }
-
-        if all_row_counts > 0.0 {
-            Some(table_statistics)
-        } else {
-            None
-        }
-    }
-
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
     /// by applying a set of `optimizer` trait implementations against the
     /// `LogicalPlan`
@@ -512,12 +495,11 @@ impl DaskSQLContext {
     ) -> PyResult<logical::PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
         let mut visitor = OptimizablePlanVisitor {};
-        let statistics = self.get_table_statistics();
 
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true, statistics)
+                    optimizer::DaskSqlOptimizer::new(true)
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
