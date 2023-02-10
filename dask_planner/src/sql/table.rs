@@ -31,7 +31,7 @@ pub struct DaskTableSource {
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema
-    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics> ) -> Self {
+    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics>) -> Self {
         Self { schema, statistics }
     }
 
