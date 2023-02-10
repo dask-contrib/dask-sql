@@ -25,13 +25,11 @@ requirements:
     - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
     - protobuf
-    - rust =1.67.0
   host:
     - pip
     - protobuf
     - python
     - setuptools-rust >=1.5.2
-    - rust =1.67.0
   run:
     - python
     - dask >=2022.3.0
