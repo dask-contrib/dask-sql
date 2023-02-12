@@ -94,6 +94,7 @@ pub struct FilterColumnsPostJoin {}
 
 impl FilterColumnsPostJoin {
     #[allow(missing_docs)]
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {}
     }
@@ -207,14 +208,12 @@ fn optimize_top_down(
                         &j.left,
                         &j.left.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let right_join_plan = optimize_top_down(
                         &j.right,
                         &j.right.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let join_plan = LogicalPlan::Join(Join {
                         left: Arc::new(left_join_plan),
                         right: Arc::new(right_join_plan),
@@ -235,14 +234,12 @@ fn optimize_top_down(
                         &c.left,
                         &c.left.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let right_crossjoin_plan = optimize_top_down(
                         &c.right,
                         &c.right.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
                         left: Arc::new(left_crossjoin_plan),
                         right: Arc::new(right_crossjoin_plan),
@@ -334,10 +331,10 @@ fn optimize_top_down(
                     )?);
                 }
                 LogicalPlan::Filter(f) => {
-                    return_plan = LogicalPlan::Filter(
-                        Filter::try_new(f.predicate.clone(), Arc::new(previous_step.clone()))
-                            .unwrap(),
-                    );
+                    return_plan = LogicalPlan::Filter(Filter::try_new(
+                        f.predicate.clone(),
+                        Arc::new(previous_step.clone()),
+                    )?);
                 }
                 LogicalPlan::Window(w) => {
                     return_plan = LogicalPlan::Window(Window {
