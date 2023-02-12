@@ -86,7 +86,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         # known solution so far.
 
         join_condition = join.getCondition()
-        print(f"Join_Condition from DataFusion: {join_condition}")
         lhs_on, rhs_on, filter_condition = None, None, None
         # A user can write certain queries that really should be `cross join` queries
         # that will still enter this portion of the logic. IF the join_condition is
