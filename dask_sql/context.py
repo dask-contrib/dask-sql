@@ -251,6 +251,7 @@ class Context:
         )
 
         self.schema[schema_name].tables[table_name.lower()] = dc
+
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
         elif parquet_statistics:
@@ -261,8 +262,9 @@ class Context:
                     row_count += d["num-rows"]
                 statistics = Statistics(row_count)
                 self.schema[schema_name].statistics[table_name.lower()] = statistics
-        else:
-            # If no statistics are obtainable, we will just assume 100 rows
+
+        # If no statistics are obtainable, we will just assume 100 rows
+        if not statistics:
             statistics = Statistics(100)
 
         # Register the table with the Rust DaskSQLContext
