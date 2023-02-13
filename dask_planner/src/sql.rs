@@ -609,10 +609,10 @@ impl DaskSQLContext {
         }
 
         let result = serializer::deserialize(plan_path.as_str());
-        let plan = Self::wait_for_future(py, result)
-            .map_err(DataFusionError::from)
-            .unwrap();
-        // println!("{:?}", plan.to_owned().relations);
+        // let plan = Self::wait_for_future(py, result)
+        //     .map_err(datafusion_common::error::DataFusionError::from)
+        //     .unwrap();
+        let plan = Self::wait_for_future(py, result).unwrap();
         println!("Relation Len(): {:?}", plan.relations.len());
 
         let result = Self::wait_for_future(
@@ -621,6 +621,7 @@ impl DaskSQLContext {
         )
         .map_err(DataFusionError::from)
         .unwrap();
+
         Ok(PyLogicalPlan::from(result))
     }
 }
