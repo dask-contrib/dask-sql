@@ -4,7 +4,6 @@ channels:
   - nodefaults
 dependencies:
   - python=3.9
-  - libprotobuf=3
   - sphinx>=4.0.0
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3

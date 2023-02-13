@@ -24,11 +24,9 @@ requirements:
   build:
     - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
-    - libprotobuf=3
   host:
     - pip
     - python
-    - libprotobuf=3
     - setuptools-rust >=1.5.2
   run:
     - python
