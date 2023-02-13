@@ -120,12 +120,11 @@ impl ContextProvider for DaskSQLContext {
                 reference.catalog
             )));
         }
-        println!("Entering get_table_provider");
+
         match self.schemas.get(reference.schema) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
-                    println!("Table: {:?}", table);
                     if table.table_name.eq(&name.table()) {
                         // Build the Schema here
                         let mut fields: Vec<Field> = Vec::new();
@@ -138,7 +137,6 @@ impl ContextProvider for DaskSQLContext {
                             ));
                         }
 
-                        println!("Found it and returning");
                         resp = Some(Schema::new(fields));
                     }
                 }
@@ -459,12 +457,7 @@ impl DaskSQLContext {
                     .register_catalog(self.current_catalog.clone(), catalog);
             }
             None => {
-                println!("Creating Catalog with name: {:?}", self.current_catalog);
                 let mem_catalog = MemoryCatalogProvider::new();
-                println!(
-                    "Inserting schema: {:?}, into Catalog: {:?}",
-                    &schema_name, &self.current_catalog
-                );
                 let schema_provider = MemorySchemaProvider::new();
                 let _result = mem_catalog.register_schema(&schema_name, Arc::new(schema_provider));
 
@@ -500,15 +493,7 @@ impl DaskSQLContext {
 
                 let catalog = self.session_ctx.catalog(&self.current_catalog).unwrap();
                 let schema = catalog.schema(&table.schema_name.unwrap()).unwrap();
-                let result = schema.register_table(table.table_name.clone(), tbl_provider.clone());
-
-                match result {
-                    Ok(_tbl_provider) => println!(
-                        "Successfully registered table: {:?} to schema: {:?}",
-                        &table.table_name, self.current_schema
-                    ),
-                    Err(e) => panic!("Error registering table: {:?}", e),
-                }
+                let _result = schema.register_table(table.table_name.clone(), tbl_provider.clone());
 
                 let bare_tbl_ref = TableReference::Bare {
                     table: table.table_name.as_str(),
@@ -588,32 +573,8 @@ impl DaskSQLContext {
         plan_path: String,
         py: Python,
     ) -> PyResult<logical::PyLogicalPlan> {
-        println!("Catalogs: {:?}", self.session_ctx.catalog_names());
-
-        match self.session_ctx.catalog(&self.current_catalog) {
-            Some(catalog) => {
-                println!("Schemas in catalog: {:?}", catalog.schema_names());
-
-                match catalog.schema(&self.current_schema) {
-                    Some(schema) => {
-                        println!(
-                            "Tables in schema `{:?}`: {:?}",
-                            &self.current_schema,
-                            schema.table_names()
-                        );
-                    }
-                    None => panic!("Failed to find schema `public`"),
-                }
-            }
-            None => panic!("Failed to find catalog: {:?}", self.current_catalog),
-        }
-
         let result = serializer::deserialize(plan_path.as_str());
-        // let plan = Self::wait_for_future(py, result)
-        //     .map_err(datafusion_common::error::DataFusionError::from)
-        //     .unwrap();
         let plan = Self::wait_for_future(py, result).unwrap();
-        println!("Relation Len(): {:?}", plan.relations.len());
 
         let result = Self::wait_for_future(
             py,
