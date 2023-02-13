@@ -15,7 +15,7 @@ use datafusion::{
     arrow::datatypes::{DataType, Field, Schema, TimeUnit},
     catalog::{
         catalog::{CatalogProvider, MemoryCatalogProvider},
-        schema::{MemorySchemaProvider, SchemaProvider},
+        schema::MemorySchemaProvider,
     },
     datasource::TableProvider,
     prelude::SessionContext,
@@ -305,8 +305,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDF signature not found for input types {:?}",
-                                input_types
+                                "UDF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -397,8 +396,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDAF signature not found for input types {:?}",
-                                input_types
+                                "UDAF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -439,8 +437,7 @@ impl DaskSQLContext {
             Ok(())
         } else {
             Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
+                "Schema: {schema_name} not found in DaskSQLContext"
             )))
         }
     }
@@ -456,7 +453,7 @@ impl DaskSQLContext {
         match self.session_ctx.catalog(&self.current_catalog) {
             Some(catalog) => {
                 let schema_provider = MemorySchemaProvider::new();
-                catalog.register_schema(&schema_name, Arc::new(schema_provider));
+                let _result = catalog.register_schema(&schema_name, Arc::new(schema_provider));
 
                 self.session_ctx
                     .register_catalog(self.current_catalog.clone(), catalog);
@@ -469,7 +466,7 @@ impl DaskSQLContext {
                     &schema_name, &self.current_catalog
                 );
                 let schema_provider = MemorySchemaProvider::new();
-                mem_catalog.register_schema(&schema_name, Arc::new(schema_provider));
+                let _result = mem_catalog.register_schema(&schema_name, Arc::new(schema_provider));
 
                 // Insert the new schema into this newly created catalog
                 self.session_ctx
@@ -506,7 +503,7 @@ impl DaskSQLContext {
                 let result = schema.register_table(table.table_name.clone(), tbl_provider.clone());
 
                 match result {
-                    Ok(tbl_provider) => println!(
+                    Ok(_tbl_provider) => println!(
                         "Successfully registered table: {:?} to schema: {:?}",
                         &table.table_name, self.current_schema
                     ),
@@ -516,13 +513,15 @@ impl DaskSQLContext {
                 let bare_tbl_ref = TableReference::Bare {
                     table: table.table_name.as_str(),
                 };
-                let result = self
+                let _result = self
                     .session_ctx
                     .register_table(bare_tbl_ref, tbl_provider.clone());
 
                 Ok(true)
             }
-            None => panic!("Schema: {} not found in DaskSQLContext", schema_name),
+            None => Err(py_runtime_err(format!(
+                "Schema: {schema_name} not found in DaskSQLContext"
+            ))),
         }
     }
 

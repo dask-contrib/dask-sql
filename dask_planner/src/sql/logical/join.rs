@@ -2,7 +2,9 @@ use datafusion_common::Column;
 use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
+    BinaryExpr,
     Expr,
+    Operator,
 };
 use pyo3::prelude::*;
 
@@ -34,9 +36,15 @@ impl PyJoin {
                     let right = Column::from_qualified_name(cast.expr.to_string());
                     Ok(Expr::Column(l.clone()).eq(Expr::Column(right)))
                 }
+                (Expr::Column(l), Expr::BinaryExpr(bin_expr)) => {
+                    Ok(Expr::BinaryExpr(BinaryExpr::new(
+                        Box::new(Expr::Column(l.clone())),
+                        Operator::Eq,
+                        Box::new(Expr::BinaryExpr(bin_expr.clone())),
+                    )))
+                }
                 _ => Err(py_type_err(format!(
-                    "unsupported join condition. Left: {:?} - Right: {:?}",
-                    l, r
+                    "unsupported join condition. Left: {l} - Right: {r}"
                 ))),
             })
             .collect::<Result<Vec<_>, _>>()?;

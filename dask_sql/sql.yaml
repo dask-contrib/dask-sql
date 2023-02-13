@@ -6,6 +6,9 @@ sql:
   identifier:
     case_sensitive: True
 
+  join:
+    broadcast: null
+
   limit:
     check-first-partition: True
 

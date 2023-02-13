@@ -45,10 +45,10 @@ impl PySqlArg {
     fn expected<T>(&self, expected: &str) -> PyResult<T> {
         Err(match &self.custom {
             Some(custom_expr) => {
-                py_type_err(format!("Expected {}, found: {:?}", expected, custom_expr))
+                py_type_err(format!("Expected {expected}, found: {custom_expr:?}"))
             }
             None => match &self.expr {
-                Some(expr) => py_type_err(format!("Expected {}, found: {:?}", expected, expr)),
+                Some(expr) => py_type_err(format!("Expected {expected}, found: {expr:?}")),
                 None => py_type_err("PySqlArg must be either a standard or custom AST expression"),
             },
         })
@@ -151,7 +151,7 @@ impl PySqlArg {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
-                    Expr::Value(Value::Number(value, false)) => format!("-{}", value),
+                    Expr::Value(Value::Number(value, false)) => format!("-{value}"),
                     _ => return self.expected("Integer or float"),
                 },
                 _ => return self.expected("Array, identifier, or scalar"),
@@ -1280,15 +1280,13 @@ impl<'a> DaskParser<'a> {
                             Expr::Identifier(ident) => values.push(ident.value),
                             unexpected => {
                                 return parser_err!(format!(
-                                    "Expected Identifier, found: {}",
-                                    unexpected
+                                    "Expected Identifier, found: {unexpected}"
                                 ))
                             }
                         },
                         unexpected => {
                             return parser_err!(format!(
-                                "Expected UnnamedExpr, found: {}",
-                                unexpected
+                                "Expected UnnamedExpr, found: {unexpected}"
                             ))
                         }
                     }

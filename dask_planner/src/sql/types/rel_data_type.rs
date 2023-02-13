@@ -48,8 +48,7 @@ impl RelDataType {
 
             // TODO: Throw a proper error here
             Err(py_runtime_err(format!(
-                "Unable to find RelDataTypeField with name {:?} in the RelDataType field_list",
-                field_name,
+                "Unable to find RelDataTypeField with name {field_name:?} in the RelDataType field_list"
             )))
         }
     }

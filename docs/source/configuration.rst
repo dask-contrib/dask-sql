@@ -14,5 +14,5 @@ Configuration Reference
 
 .. dask-config-block::
     :location: sql
-    :config: https://gist.githubusercontent.com/ayushdg/1b0f7cacd0e9db20175669a17386a58d/raw/6ddb78a3b3c4ac5051aa17105e576211d0e32f6b/sql.yaml
-    :schema: https://gist.githubusercontent.com/ayushdg/1b0f7cacd0e9db20175669a17386a58d/raw/2d37f64c48c2b6ebdca6634b4c5e3c22a59e1cdf/sql-schema.yaml
+    :config: https://raw.githubusercontent.com/dask-contrib/dask-sql/main/dask_sql/sql.yaml
+    :schema: https://raw.githubusercontent.com/dask-contrib/dask-sql/main/dask_sql/sql-schema.yaml

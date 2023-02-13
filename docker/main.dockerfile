@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "setuptools-rust>=1.4.1" \
+    "setuptools-rust>=1.5.2" \
     # core dependencies
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \

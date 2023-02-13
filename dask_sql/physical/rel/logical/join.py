@@ -5,9 +5,11 @@ from functools import reduce
 from typing import TYPE_CHECKING, List, Tuple
 
 import dask.dataframe as dd
+from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
+from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -245,8 +247,23 @@ class DaskJoinPlugin(BaseRelPlugin):
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
+        broadcast = dask_config.get("sql.join.broadcast")
+        if (
+            not BROADCAST_JOIN_SUPPORT_WORKING
+            and isinstance(broadcast, float)
+            or broadcast
+        ):
+            warnings.warn(
+                "Broadcast Joins may not work as expected with dask<2023.1.1"
+                "For more information refer to https://github.com/dask/dask/issues/9851"
+                "and https://github.com/dask/dask/issues/9870"
+            )
         df = dd.merge(
-            df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type
+            df_lhs_with_tmp,
+            df_rhs_with_tmp,
+            on=added_columns,
+            how=join_type,
+            broadcast=broadcast,
         ).drop(columns=added_columns)
 
         return df

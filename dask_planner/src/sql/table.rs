@@ -3,7 +3,7 @@ use std::{any::Any, sync::Arc};
 use async_trait::async_trait;
 use datafusion::{
     arrow::datatypes::{DataType, Field, SchemaRef},
-    datasource::{empty::EmptyTable, TableProvider},
+    datasource::empty::EmptyTable,
 };
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
@@ -36,7 +36,7 @@ impl DaskTableSource {
     pub fn new(schema: SchemaRef) -> Self {
         Self {
             schema: schema.clone(),
-            provider: Arc::new(EmptyTable::new(schema.clone())),
+            provider: Arc::new(EmptyTable::new(schema)),
         }
     }
 }
@@ -246,14 +246,12 @@ pub(crate) fn table_from_logical_plan(
                 }))
             } else {
                 Err(DaskPlannerError::Internal(format!(
-                    "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-                    plan
+                    "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
                 )))
             }
         }
         _ => Err(DaskPlannerError::Internal(format!(
-            "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-            plan
+            "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
         ))),
     }
 }
