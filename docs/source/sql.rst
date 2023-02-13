@@ -57,10 +57,7 @@ String literals get single quotes:
 
     SELECT 'string literal'
 
-..
-    TODO - Incorrectly formatted
 .. note::
-
     ``dask-sql`` can only understand a single SQL query per call to ``Context.sql``.
     Therefore, there should also be no semicolons after the query.
 
@@ -205,10 +202,7 @@ Limitatons
 
 Not all operations and aggregations are implemented already.
 
-..
-    TODO - Incorrectly formatted
 .. note::
-
     Whenever you find a not already implemented operation, keyword
     or functionality, please raise an issue at our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_ with your use-case.
 
@@ -220,10 +214,7 @@ Normally, ``dask-sql`` calls create a ``dask`` data frame, which gets only compu
 Due to internal constraints, this is currently not the case for ``ORDER BY``.
 Including this operation will trigger a calculation of the full data frame already when calling ``Context.sql()``.
 
-..
-    TODO - Incorrectly formatted
 .. warning::
-
     There is a subtle but important difference between adding ``LIMIT 10`` to your SQL query and calling ``sql(...).head(10)``.
     The data inside ``dask`` is partitioned, to distribute it over the cluster.
     ``head`` will only return the first N elements from the first partition - even if N is larger than the partition size.

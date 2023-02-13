@@ -314,10 +314,7 @@ Example:
         )
     )
 
-..
-    TODO - Incorrectly formatted
 .. note::
-
     For ``dask-sql`` it does not matter how you load your data.
     In all shown cases you can then use the specified table name to query your data
     in a ``SELECT`` call.

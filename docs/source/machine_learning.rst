@@ -3,10 +3,7 @@
 Machine Learning
 ================
 
-..
-    TODO - Incorrectly formatted
 .. note::
-
     Machine Learning support is experimental in ``dask-sql``.
     We encourage you to try it out and report any issues on our
     `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.

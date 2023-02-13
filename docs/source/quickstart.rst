@@ -85,10 +85,7 @@ We do this by registering the data in an instance of a :class:`~dask_sql.Context
 From now on, the data is accessible as the ``timeseries`` table of this context.
 It is possible to register multiple data frames in the same context.
 
-..
-    TODO - Incorrectly formatted
 .. hint::
-
     If you plan to query the same data multiple times,
     it might make sense to persist the data before:
 
@@ -138,9 +135,6 @@ If you are using ``dask-sql`` from a Jupyter notebook, you might be interested i
     WHERE x > 0.5
     GROUP BY name
 
-..
-    TODO - Incorrectly formatted
 .. note::
-
     If you have found an SQL feature, which is currently not supported by ``dask-sql``,
     please raise an issue on our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.
