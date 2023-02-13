@@ -5,7 +5,7 @@ Quickstart
 
 After :ref:`installation`, you can start querying your data using SQL.
 
-Run the following code in an interactive python session, a python script or a jupyter notebook.
+Run the following code in an interactive Python session, a Python script or a Jupyter Notebook.
 
 0. Cluster Setup
 ----------------
@@ -14,6 +14,8 @@ If you just want to try out ``dask-sql`` quickly, this step can be skipped.
 However, the real magic of ``dask`` (and ``dask-sql``) comes from the ability to scale the computations over multiple cores and/or machines.
 For local development and testing, a Distributed ``LocalCluster`` (or, if using GPUs, a `Dask-CUDA <https://docs.rapids.ai/api/dask-cuda/nightly/index.html>`_ ``LocalCUDACluster``) can be deployed and a client connected to it like so:
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
     .. group-tab:: CPU
@@ -58,6 +60,8 @@ Read more on the data input part in :ref:`data_input`.
 If we want to work with the data in SQL, we need to give the data frame a unique name.
 We do this by registering the data in an instance of a :class:`~dask_sql.Context`:
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
     .. group-tab:: CPU
@@ -81,6 +85,8 @@ We do this by registering the data in an instance of a :class:`~dask_sql.Context
 From now on, the data is accessible as the ``timeseries`` table of this context.
 It is possible to register multiple data frames in the same context.
 
+..
+    TODO - Incorrectly formatted
 .. hint::
 
     If you plan to query the same data multiple times,
@@ -132,6 +138,8 @@ If you are using ``dask-sql`` from a Jupyter notebook, you might be interested i
     WHERE x > 0.5
     GROUP BY name
 
+..
+    TODO - Incorrectly formatted
 .. note::
 
     If you have found an SQL feature, which is currently not supported by ``dask-sql``,

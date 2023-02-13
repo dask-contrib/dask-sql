@@ -34,7 +34,10 @@ class CreateModelPlugin(BaseRelPlugin):
     as the training input.
 
     The options control, how and which model is trained:
-    * model_class: Full path to the class of the model to train.
+    * model_class: Class name or full path to the class of the model to train.
+      Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
+      without the full path. In this case, models trained on cuDF dataframes
+      are automatically mapped to cuML classes, and sklearn models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use

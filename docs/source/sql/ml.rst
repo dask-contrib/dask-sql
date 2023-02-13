@@ -3,6 +3,8 @@
 Machine Learning in SQL
 =======================
 
+..
+    TODO - Incorrectly formatted
 .. note::
 
     Machine Learning support is experimental in ``dask-sql``.
@@ -34,10 +36,10 @@ See :ref:`creation` for more information.
 ``CREATE MODEL``
 ----------------
 
-Create and train a model on the data from the given SELECT query
+Create and train a model on the data from the given ``SELECT`` query
 and register it at the context.
 
-The select query is a normal ``SELECT`` query (following the same syntax as described in :ref:`select`
+The select query is a normal ``SELECT`` query (following the same syntax as described in :ref:`select`)
 or even a call to ``PREDICT`` (which typically does not make sense however) and its
 result is used as the training data.
 
@@ -45,7 +47,10 @@ The key-value parameters control, how and which model is trained:
 
     * ``model_class``:
       This argument needs to be present.
-      It is the full python module path to the class of the model to train.
+      It is the class name or full python module path to the class of the model to train.
+      Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
+      without the full path. In this case, models trained on cuDF dataframes
+      are automatically mapped to cuML classes, and sklearn models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use
@@ -60,13 +65,13 @@ The key-value parameters control, how and which model is trained:
     * ``wrap_predict``:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if predicting on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if predicting on big data.
     * ``wrap_fit``:
       Boolean flag, whether to wrap the selected
       model with a :class:`dask_sql.physical.rel.custom.wrappers.Incremental`.
-      Defaults to false. Typically you set it to true for
-      sklearn models if training on big data.
+      Defaults to true for sklearn and single GPU cuML models and false otherwise.
+      Typically you set it to true for sklearn models if training on big data.
     * ``fit_kwargs``:
       keyword arguments sent to the call to ``fit()``.
 
@@ -78,7 +83,7 @@ Example:
 .. raw:: html
 
     <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE MODEL</span> <span class="n">my_model</span> <span class="k">WITH</span> <span class="p">(</span>
-        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'xgboost.XGBClassifier'</span><span class="p">,</span>
+        <span class="n">model_class</span> <span class="o">=</span> <span class="s1">'XGBClassifier'</span><span class="p">,</span>
         <span class="n">target_column</span> <span class="o">=</span> <span class="s1">'target'</span>
     <span class="p">)</span> <span class="k">AS</span> <span class="p">(</span>
         <span class="k">SELECT</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">target</span>
@@ -127,7 +132,7 @@ A model can be anything which has a ``predict`` function.
 Please note however, that it will need to act on Dask dataframes. If you
 are using a model not optimized for this, it might be that you run out of memory if
 your data is larger than the RAM of a single machine.
-To prevent this, have a look into the `dask_sql.physical.rel.custom.wrappers.ParallelPostFit`
+To prevent this, have a look into the :class:`dask_sql.physical.rel.custom.wrappers.ParallelPostFit`
 meta-estimator. If you are using a model trained with ``CREATE MODEL``
 and the ``wrap_predict`` flag set to true, this is done automatically.
 
@@ -141,5 +146,5 @@ Using this SQL statement is roughly equivalent to doing
     target = model.predict(df)
     return df.assign(target=target)
 
-The select query is a normal ``SELECT`` query (following the same syntax as described in :ref:`select`
+The select query is a normal ``SELECT`` query (following the same syntax as described in :ref:`select`)
 or even another a call to ``PREDICT``.

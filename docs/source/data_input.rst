@@ -3,17 +3,19 @@
 Data Loading and Input
 ======================
 
-Before data can be queried with ``dask-sql``, it needs to be loaded into the dask cluster (or local instance) and registered with the :class:`~dask_sql.Context`.
+Before data can be queried with ``dask-sql``, it needs to be loaded into the Dask cluster (or local instance) and registered with the :class:`~dask_sql.Context`.
 ``dask-sql`` supports all ``dask``-compatible `input formats  <https://docs.dask.org/en/latest/dataframe-create.html>`_, plus some additional formats only suitable for ``dask-sql``.
 
-1. Load it via python
+1. Load it via Python
 ---------------------
 
-You can either use already created dask dataframes or create one by using the :func:`~dask_sql.Context.create_table` function.
-Chances are high, there exists already a function to load your favorite format or location (e.g. s3 or hdfs).
+You can either use already created Dask DataFrames or create one by using the :func:`~dask_sql.Context.create_table` function.
+Chances are high, there exists already a function to load your favorite format or location (e.g. S3 or hdfs).
 See below for all formats understood by ``dask-sql``.
 Make sure to install required libraries both on the driver and worker machines:
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -42,6 +44,8 @@ Make sure to install required libraries both on the driver and worker machines:
 
 or in short (equivalent):
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -67,9 +71,11 @@ or in short (equivalent):
 2. Load it via SQL
 ------------------
 
-If you are connected to the SQL server implementation or you do not want to issue python command calls, you can also
+If you are connected to the SQL server implementation or you do not want to issue Python command calls, you can also
 achieve the data loading via SQL only.
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -91,7 +97,7 @@ achieve the data loading via SQL only.
             gpu = True
         )
 
-The parameters are the same as in the python function described above.
+The parameters are the same as in the Python function described above.
 You can find more information in :ref:`creation`.
 
 3. Persist and share data on the cluster
@@ -111,6 +117,8 @@ and then later register it in the :class:`~dask_sql.Context` via SQL:
 
 Later in SQL:
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -134,8 +142,10 @@ Later in SQL:
 
 Note, that the format is set to ``memory`` and the location is the name, which was chosen when publishing the dataset.
 
-To achieve the same thing from python, you can just use dask's methods to get the dataset
+To achieve the same thing from Python, you can just use Dask's methods to get the dataset
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -158,13 +168,15 @@ Input Formats
 
 ``dask-sql`` understands (thanks to the large Dask ecosystem) a wide verity of input formats and input locations.
 
-* All formats and locations mentioned in `the Dask docu  <https://docs.dask.org/en/latest/dataframe-create.html>`_, including csv, parquet, json.
+* All formats and locations mentioned in `the Dask docu  <https://docs.dask.org/en/latest/dataframe-create.html>`_, including CSV, Parquet, and JSON.
   Just pass in the location as string (and possibly the format, e.g. "csv" if it is not clear from the file extension).
   The data can be from local disc or many remote locations (S3, hdfs, Azure Filesystem, http, Google Filesystem, ...) - just prefix the path with the matching protocol.
   Additional arguments passed to :func:`~dask_sql.Context.create_table` or ``CREATE TABLE`` are given to the ``read_<format>`` calls.
 
 Example:
 
+..
+    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -302,6 +314,8 @@ Example:
         )
     )
 
+..
+    TODO - Incorrectly formatted
 .. note::
 
     For ``dask-sql`` it does not matter how you load your data.

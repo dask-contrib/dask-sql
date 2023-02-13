@@ -57,6 +57,8 @@ String literals get single quotes:
 
     SELECT 'string literal'
 
+..
+    TODO - Incorrectly formatted
 .. note::
 
     ``dask-sql`` can only understand a single SQL query per call to ``Context.sql``.
@@ -95,6 +97,8 @@ Please note that, in contrast to python, no comma is allowed after the last argu
 Query Types and Reference
 -------------------------
 
+..
+    TODO - Incorrectly formatted
 .. toctree::
    :maxdepth: 1
 
@@ -107,7 +111,7 @@ Query Types and Reference
 Implemented Types
 -----------------
 
-``dask-sql`` needs to map between SQL and ``dask`` (python) types.
+``dask-sql`` needs to map between SQL and ``dask`` (Python) types.
 For this, it uses the following mapping:
 
 +-----------------------+----------------+
@@ -201,19 +205,23 @@ Limitatons
 
 Not all operations and aggregations are implemented already.
 
+..
+    TODO - Incorrectly formatted
 .. note::
 
     Whenever you find a not already implemented operation, keyword
     or functionality, please raise an issue at our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_ with your use-case.
 
 Dask/pandas and SQL treat null-values (or nan) differently on sorting, grouping and joining.
-``dask-sql`` tries to follow the SQL standard as much as possible, so results might be different to what you expect from Dask/pandas.
+``dask-sql`` tries to follow the SQL standard as much as possible, so results might be different to what you expect from Dask/Pandas.
 
 Apart from those functional limitations, there is a operation which need special care: ``ORDER BY```.
 Normally, ``dask-sql`` calls create a ``dask`` data frame, which gets only computed when you call the ``.compute()`` member.
 Due to internal constraints, this is currently not the case for ``ORDER BY``.
 Including this operation will trigger a calculation of the full data frame already when calling ``Context.sql()``.
 
+..
+    TODO - Incorrectly formatted
 .. warning::
 
     There is a subtle but important difference between adding ``LIMIT 10`` to your SQL query and calling ``sql(...).head(10)``.
