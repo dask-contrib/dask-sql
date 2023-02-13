@@ -1,7 +1,10 @@
 use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
-use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
+use datafusion::{
+    arrow::datatypes::{DataType, Field, SchemaRef},
+    datasource::empty::EmptyTable,
+};
 use datafusion_common::DFField;
 use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
 use datafusion_optimizer::utils::split_conjunction;
@@ -25,12 +28,16 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    pub provider: Arc<EmptyTable>,
 }
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema.
     pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+        Self {
+            schema: schema.clone(),
+            provider: Arc::new(EmptyTable::new(schema)),
+        }
     }
 }
 

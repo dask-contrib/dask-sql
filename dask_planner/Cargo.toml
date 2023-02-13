@@ -15,6 +15,7 @@ datafusion-common = "17.0.0"
 datafusion-expr = "17.0.0"
 datafusion-optimizer = "17.0.0"
 datafusion-sql = "17.0.0"
+datafusion-substrait = "17.0.0"
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }
