@@ -27,9 +27,8 @@ except ModuleNotFoundError:
 
 try:
     import dask_cuda  # noqa: F401
-    import dask_cudf
 except ImportError:  # pragma: no cover
-    dask_cudf = None
+    pass
 
 from dask_sql import input_utils
 from dask_sql.datacontainer import (
