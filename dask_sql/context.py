@@ -257,25 +257,12 @@ class Context:
 
         dc_statistics = None
         if parquet_statistics and not statistics:
-            try:
-                stats = parquet_statistics(input_table)
-                if stats:
-                    row_count = 0
-                    for d in stats:
-                        row_count += d["num-rows"]
-                    dc_statistics = Statistics(row_count)
-            except ValueError:
-                if str(format).lower() == "parquet":
-                    if dask_cudf:
-                        ddf = dask_cudf.read_parquet(input_table)
-                    else:
-                        ddf = dd.read_parquet(input_table)
-                    stats = parquet_statistics(ddf)
-                    if stats:
-                        row_count = 0
-                        for d in stats:
-                            row_count += d["num-rows"]
-                        dc_statistics = Statistics(row_count)
+            stats = parquet_statistics(dc.df)
+            if stats:
+                row_count = 0
+                for d in stats:
+                    row_count += d["num-rows"]
+                dc_statistics = Statistics(row_count)
 
         if dc_statistics:
             self.schema[schema_name].statistics[table_name.lower()] = dc_statistics
