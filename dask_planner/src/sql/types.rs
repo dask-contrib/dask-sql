@@ -1,7 +1,7 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
 use pyo3::{prelude::*, types::PyDict};
 
@@ -10,10 +10,11 @@ use crate::{dialect::DaskDialect, error::DaskPlannerError};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
 pub enum RexType {
+    Alias,
     Literal,
     Call,
     Reference,
-    SubqueryAlias,
+    ScalarSubquery,
     Other,
 }
 
@@ -335,7 +336,7 @@ impl SqlTypeName {
                 let dialect = DaskDialect {};
                 let mut tokenizer = Tokenizer::new(&dialect, input_type);
                 let tokens = tokenizer.tokenize().map_err(DaskPlannerError::from)?;
-                let mut parser = Parser::new(tokens, &dialect);
+                let mut parser = Parser::new(&dialect).with_tokens(tokens);
                 match parser.parse_data_type().map_err(DaskPlannerError::from)? {
                     SQLType::Decimal(_) => Ok(SqlTypeName::DECIMAL),
                     SQLType::Binary(_) => Ok(SqlTypeName::BINARY),
