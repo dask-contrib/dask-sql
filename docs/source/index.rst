@@ -22,8 +22,6 @@ Example
 For this example, we use some data loaded from disk and query it with a SQL command.
 ``dask-sql`` accepts any pandas, cuDF, or dask dataframe as input and is able to read data directly from a variety of storage formats (CSV, Parquet, JSON) and file systems (S3, hdfs, gcs):
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
    .. group-tab:: CPU
@@ -87,8 +85,6 @@ For this example, we use some data loaded from disk and query it with a SQL comm
          result.sum.mean().compute()
 
 
-..
-    TODO - Incorrectly formatted
 .. toctree::
    :maxdepth: 1
    :caption: Contents:

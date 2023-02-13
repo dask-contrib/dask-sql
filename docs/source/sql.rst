@@ -94,8 +94,6 @@ Please note that, in contrast to python, no comma is allowed after the last argu
 Query Types and Reference
 -------------------------
 
-..
-    TODO - Incorrectly formatted
 .. toctree::
    :maxdepth: 1
 

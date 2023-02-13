@@ -14,8 +14,6 @@ If you just want to try out ``dask-sql`` quickly, this step can be skipped.
 However, the real magic of ``dask`` (and ``dask-sql``) comes from the ability to scale the computations over multiple cores and/or machines.
 For local development and testing, a Distributed ``LocalCluster`` (or, if using GPUs, a `Dask-CUDA <https://docs.rapids.ai/api/dask-cuda/nightly/index.html>`_ ``LocalCUDACluster``) can be deployed and a client connected to it like so:
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
     .. group-tab:: CPU
@@ -60,8 +58,6 @@ Read more on the data input part in :ref:`data_input`.
 If we want to work with the data in SQL, we need to give the data frame a unique name.
 We do this by registering the data in an instance of a :class:`~dask_sql.Context`:
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
     .. group-tab:: CPU

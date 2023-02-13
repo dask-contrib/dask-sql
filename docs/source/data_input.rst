@@ -14,8 +14,6 @@ Chances are high, there exists already a function to load your favorite format o
 See below for all formats understood by ``dask-sql``.
 Make sure to install required libraries both on the driver and worker machines:
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -44,8 +42,6 @@ Make sure to install required libraries both on the driver and worker machines:
 
 or in short (equivalent):
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -74,8 +70,6 @@ or in short (equivalent):
 If you are connected to the SQL server implementation or you do not want to issue Python command calls, you can also
 achieve the data loading via SQL only.
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -117,8 +111,6 @@ and then later register it in the :class:`~dask_sql.Context` via SQL:
 
 Later in SQL:
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -144,8 +136,6 @@ Note, that the format is set to ``memory`` and the location is the name, which w
 
 To achieve the same thing from Python, you can just use Dask's methods to get the dataset
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
@@ -175,8 +165,6 @@ Input Formats
 
 Example:
 
-..
-    TODO - Incorrectly formatted
 .. tabs::
 
   .. group-tab:: CPU
