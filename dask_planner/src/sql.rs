@@ -99,8 +99,9 @@ impl ContextProvider for DaskSQLContext {
         &self,
         name: TableReference,
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
-        let reference: ResolvedTableReference =
-            name.resolve(&self.current_catalog, &self.current_schema);
+        let reference: ResolvedTableReference = name
+            .clone()
+            .resolve(&self.current_catalog, &self.current_schema);
         if reference.catalog != self.current_catalog {
             // there is a single catalog in Dask SQL
             return Err(DataFusionError::Plan(format!(
@@ -108,7 +109,8 @@ impl ContextProvider for DaskSQLContext {
                 reference.catalog
             )));
         }
-        match self.schemas.get(reference.schema) {
+        let schema_name = reference.clone().schema.into_owned();
+        match self.schemas.get(&schema_name) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {

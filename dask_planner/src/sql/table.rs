@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, borrow::Cow, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
@@ -177,7 +177,7 @@ pub(crate) fn table_from_logical_plan(
 
             let table_ref: TableReference = table_scan.table_name.as_str().into();
             let (schema, tbl) = match table_ref {
-                TableReference::Bare { table } => ("", table),
+                TableReference::Bare { table } => (Cow::from(""), table),
                 TableReference::Partial { schema, table } => (schema, table),
                 TableReference::Full {
                     catalog: _,
