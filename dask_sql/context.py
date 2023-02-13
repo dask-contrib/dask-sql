@@ -253,25 +253,21 @@ class Context:
         self.schema[schema_name].tables[table_name.lower()] = dc
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-        dc_statistics = None
-        if parquet_statistics and not statistics:
-            stats = parquet_statistics(dc.df)
-            if stats:
+        elif parquet_statistics:
+            statistics = parquet_statistics(dc.df)
+            if statistics:
                 row_count = 0
-                for d in stats:
+                for d in statistics:
                     row_count += d["num-rows"]
-                dc_statistics = Statistics(row_count)
-
-        if dc_statistics:
-            self.schema[schema_name].statistics[table_name.lower()] = dc_statistics
+                statistics = Statistics(row_count)
+                self.schema[schema_name].statistics[table_name.lower()] = statistics
         else:
             # If no statistics are obtainable, we will just assume 100 rows
-            dc_statistics = Statistics(100)
+            statistics = Statistics(100)
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, dc_statistics.row_count)
+            schema_name, DaskTable(schema_name, table_name, statistics.row_count)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
