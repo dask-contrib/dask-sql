@@ -381,7 +381,7 @@ def test_join_alias_w_projection(c, parquet_ddf):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
     reason="The 'FilterColumnsPostJoin' has been temporarily disabled so this test has been as well"
 )
 def test_filter_columns_post_join(c):

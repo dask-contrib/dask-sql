@@ -24,7 +24,10 @@ requirements:
   build:
     - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
+<<<<<<< HEAD
     - protobuf
+=======
+>>>>>>> upstream/main
   host:
     - pip
     - protobuf
