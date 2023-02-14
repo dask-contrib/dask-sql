@@ -21,6 +21,11 @@ from dask_planner.rust import (
 )
 
 try:
+    from dask_sql.physical.utils.statistics import parquet_statistics
+except ModuleNotFoundError:
+    parquet_statistics = None
+
+try:
     import dask_cuda  # noqa: F401
 except ImportError:  # pragma: no cover
     pass
@@ -135,10 +140,11 @@ class Context:
         RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
+        RexConverter.add_plugin_class(core.RexAliasPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexSubqueryAliasPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexScalarSubqueryPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
@@ -245,12 +251,25 @@ class Context:
         )
 
         self.schema[schema_name].tables[table_name.lower()] = dc
+
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
+        elif parquet_statistics:
+            statistics = parquet_statistics(dc.df)
+            if statistics:
+                row_count = 0
+                for d in statistics:
+                    row_count += d["num-rows"]
+                statistics = Statistics(row_count)
+                self.schema[schema_name].statistics[table_name.lower()] = statistics
+
+        # If no statistics are obtainable, we will just assume 100 rows
+        if not statistics:
+            statistics = Statistics(100)
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, 100)
+            schema_name, DaskTable(schema_name, table_name, statistics.row_count)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
@@ -464,11 +483,14 @@ class Context:
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
         For more information, see :ref:`sql`.
+
         Example:
             In this example, a query is called
             using the registered tables and then
             executed using dask.
+
             .. code-block:: python
+
                 result = c.sql("SELECT a, b FROM my_table")
                 print(result.compute())
         Args:

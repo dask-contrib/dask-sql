@@ -7,28 +7,24 @@ use datafusion_optimizer::{
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
     eliminate_cross_join::EliminateCrossJoin,
-    // TODO: need to handle EmptyRelation for GPU cases
-    // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     eliminate_outer_join::EliminateOuterJoin,
     filter_null_join_keys::FilterNullJoinKeys,
     inline_table_scan::InlineTableScan,
-    limit_push_down::LimitPushDown,
     optimizer::{Optimizer, OptimizerRule},
-    projection_push_down::ProjectionPushDown,
     push_down_filter::PushDownFilter,
+    push_down_limit::PushDownLimit,
+    push_down_projection::PushDownProjection,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
     simplify_expressions::SimplifyExpressions,
-    subquery_filter_to_join::SubqueryFilterToJoin,
     type_coercion::TypeCoercion,
     unwrap_cast_in_comparison::UnwrapCastInComparison,
-    OptimizerConfig,
+    OptimizerContext,
 };
 use log::trace;
 
 mod filter_columns_post_join;
-use filter_columns_post_join::FilterColumnsPostJoin;
 
 mod join_reorder;
 use join_reorder::JoinReorder;
@@ -36,14 +32,13 @@ use join_reorder::JoinReorder;
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
-    skip_failing_rules: bool,
     optimizer: Optimizer,
 }
 
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new(skip_failing_rules: bool) -> Self {
+    pub fn new() -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -52,7 +47,6 @@ impl DaskSqlOptimizer {
             Arc::new(DecorrelateWhereExists::new()),
             Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
-            Arc::new(SubqueryFilterToJoin::new()),
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
@@ -66,20 +60,19 @@ impl DaskSqlOptimizer {
             Arc::new(FilterNullJoinKeys::default()),
             Arc::new(EliminateOuterJoin::new()),
             Arc::new(PushDownFilter::new()),
-            Arc::new(LimitPushDown::new()),
+            Arc::new(PushDownLimit::new()),
             // Dask-SQL specific optimizations
-            Arc::new(FilterColumnsPostJoin::new()),
+            // Arc::new(FilterColumnsPostJoin::new()),
             Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             Arc::new(CommonSubexprEliminate::new()),
-            Arc::new(ProjectionPushDown::new()),
+            Arc::new(PushDownProjection::new()),
         ];
 
         Self {
-            skip_failing_rules,
             optimizer: Optimizer::with_rules(rules),
         }
     }
@@ -87,9 +80,8 @@ impl DaskSqlOptimizer {
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
-        let mut config =
-            OptimizerConfig::default().with_skip_failing_rules(self.skip_failing_rules);
-        self.optimizer.optimize(&plan, &mut config, Self::observe)
+        let config = OptimizerContext::new();
+        self.optimizer.optimize(&plan, &config, Self::observe)
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
@@ -105,8 +97,8 @@ impl DaskSqlOptimizer {
 mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
-    use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{DataFusionError, Result, ScalarValue};
+    use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+    use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
     use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
     use datafusion_sql::{
         planner::{ContextProvider, SqlToRel},
@@ -127,10 +119,10 @@ mod tests {
     )";
         let plan = test_sql(sql)?;
         let expected = r#"Projection: test.col_int32
-  Filter: CAST(test.col_int32 AS Float64) > __sq_1.__value
+  Filter: CAST(test.col_int32 AS Float64) > __scalar_sq_1.__value
     CrossJoin:
       TableScan: test projection=[col_int32]
-      SubqueryAlias: __sq_1
+      SubqueryAlias: __scalar_sq_1
         Projection: AVG(test.col_int32) AS __value
           Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]
             Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
@@ -146,18 +138,32 @@ mod tests {
         let statement = &ast[0];
 
         // create a logical query plan
-        let schema_provider = MySchemaProvider {};
+        let schema_provider = MySchemaProvider::new();
         let sql_to_rel = SqlToRel::new(&schema_provider);
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new(false);
+        let optimizer = DaskSqlOptimizer::new();
         optimizer.optimize(plan)
     }
 
-    struct MySchemaProvider {}
+    struct MySchemaProvider {
+        options: ConfigOptions,
+    }
+
+    impl MySchemaProvider {
+        fn new() -> Self {
+            Self {
+                options: ConfigOptions::default(),
+            }
+        }
+    }
 
     impl ContextProvider for MySchemaProvider {
+        fn options(&self) -> &ConfigOptions {
+            &self.options
+        }
+
         fn get_table_provider(
             &self,
             name: TableReference,
@@ -192,10 +198,6 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
-            None
-        }
-
-        fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
             None
         }
     }
