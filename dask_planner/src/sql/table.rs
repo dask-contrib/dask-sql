@@ -25,12 +25,20 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    #[allow(dead_code)]
+    statistics: Option<DaskStatistics>,
 }
 
 impl DaskTableSource {
-    /// Initialize a new `EmptyTable` from a schema.
-    pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+    /// Initialize a new `EmptyTable` from a schema
+    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics>) -> Self {
+        Self { schema, statistics }
+    }
+
+    /// Access optional statistics associated with this table source
+    #[allow(dead_code)]
+    pub fn statistics(&self) -> Option<&DaskStatistics> {
+        self.statistics.as_ref()
     }
 }
 
@@ -71,7 +79,6 @@ fn is_supported_push_down_expr(_expr: &Expr) -> bool {
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {
-    #[allow(dead_code)]
     row_count: f64,
 }
 
@@ -81,6 +88,11 @@ impl DaskStatistics {
     pub fn new(row_count: f64) -> Self {
         Self { row_count }
     }
+
+    #[pyo3(name = "getRowCount")]
+    pub fn get_row_count(&self) -> f64 {
+        self.row_count
+    }
 }
 
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
@@ -88,7 +100,6 @@ impl DaskStatistics {
 pub struct DaskTable {
     pub(crate) schema_name: Option<String>,
     pub(crate) table_name: String,
-    #[allow(dead_code)]
     pub(crate) statistics: DaskStatistics,
     pub(crate) columns: Vec<(String, DaskTypeMap)>,
 }
@@ -194,7 +205,7 @@ pub(crate) fn table_from_logical_plan(
             }))
         }
         LogicalPlan::Join(join) => {
-            //TODO: Don't always hardcode the left
+            // TODO: Don't always hardcode the left
             table_from_logical_plan(&join.left)
         }
         LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
