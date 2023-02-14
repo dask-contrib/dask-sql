@@ -248,18 +248,12 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
-        input_column_count = len(dc.column_container.columns)
         for window in rel.window().getGroups():
-            dc = self._apply_window(
-                rel, window, input_column_count, dc, field_names, context
-            )
+            dc = self._apply_window(rel, window, dc, field_names, context)
 
         # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
-        cc = cc.limit_to(
-            cc.columns[input_column_count:] + cc.columns[0:input_column_count]
-        )
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
@@ -270,7 +264,6 @@ class DaskWindowPlugin(BaseRelPlugin):
         self,
         rel,
         window,
-        input_column_count: int,
         dc: DataContainer,
         field_names: List[str],
         context: "dask_sql.Context",
@@ -363,10 +356,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         dc = DataContainer(df, cc)
         df = dc.df
         cc = dc.column_container
-
         for c in newly_created_columns:
             # the fields are in the correct order by definition
-            field_name = field_names[len(cc.columns) - input_column_count]
+            field_name = field_names[len(cc.columns)]
             cc = cc.add(field_name, c)
         dc = DataContainer(df, cc)
         logger.debug(
