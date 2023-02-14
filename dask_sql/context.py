@@ -21,6 +21,11 @@ from dask_planner.rust import (
 )
 
 try:
+    from dask_sql.physical.utils.statistics import parquet_statistics
+except ModuleNotFoundError:
+    parquet_statistics = None
+
+try:
     import dask_cuda  # noqa: F401
 except ImportError:  # pragma: no cover
     pass
@@ -246,12 +251,25 @@ class Context:
         )
 
         self.schema[schema_name].tables[table_name.lower()] = dc
+
         if statistics:
             self.schema[schema_name].statistics[table_name.lower()] = statistics
+        elif parquet_statistics:
+            statistics = parquet_statistics(dc.df)
+            if statistics:
+                row_count = 0
+                for d in statistics:
+                    row_count += d["num-rows"]
+                statistics = Statistics(row_count)
+                self.schema[schema_name].statistics[table_name.lower()] = statistics
+
+        # If no statistics are obtainable, we will just assume 100 rows
+        if not statistics:
+            statistics = Statistics(100)
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, 100)
+            schema_name, DaskTable(schema_name, table_name, statistics.row_count)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):

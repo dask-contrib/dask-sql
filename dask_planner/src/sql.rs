@@ -132,7 +132,24 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
+                    Some(e) => {
+                        let statistics = &self
+                            .schemas
+                            .get(reference.schema)
+                            .unwrap()
+                            .tables
+                            .get(reference.table)
+                            .unwrap()
+                            .statistics;
+                        if statistics.get_row_count() == 0.0 {
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                        } else {
+                            Ok(Arc::new(table::DaskTableSource::new(
+                                Arc::new(e),
+                                Some(statistics.clone()),
+                            )))
+                        }
+                    }
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
