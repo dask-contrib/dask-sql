@@ -1,7 +1,7 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
 use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
 use pyo3::{prelude::*, types::PyDict};
 
@@ -10,10 +10,11 @@ use crate::{dialect::DaskDialect, error::DaskPlannerError};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
 pub enum RexType {
+    Alias,
     Literal,
     Call,
     Reference,
-    SubqueryAlias,
+    ScalarSubquery,
     Other,
 }
 
@@ -222,8 +223,7 @@ impl SqlTypeName {
             SqlTypeName::DATE => Ok(DataType::Date64),
             SqlTypeName::VARCHAR => Ok(DataType::Utf8),
             _ => Err(DaskPlannerError::Internal(format!(
-                "Cannot determine Arrow type for Dask SQL type '{:?}'",
-                self
+                "Cannot determine Arrow type for Dask SQL type '{self:?}'"
             ))),
         }
     }
@@ -264,8 +264,7 @@ impl SqlTypeName {
             DataType::Decimal256(_precision, _scale) => Ok(SqlTypeName::DECIMAL),
             DataType::Map(_field, _bool) => Ok(SqlTypeName::MAP),
             _ => Err(DaskPlannerError::Internal(format!(
-                "Cannot determine Dask SQL type for Arrow type '{:?}'",
-                arrow_type
+                "Cannot determine Dask SQL type for Arrow type '{arrow_type:?}'"
             ))),
         }
     }
@@ -337,7 +336,7 @@ impl SqlTypeName {
                 let dialect = DaskDialect {};
                 let mut tokenizer = Tokenizer::new(&dialect, input_type);
                 let tokens = tokenizer.tokenize().map_err(DaskPlannerError::from)?;
-                let mut parser = Parser::new(tokens, &dialect);
+                let mut parser = Parser::new(&dialect).with_tokens(tokens);
                 match parser.parse_data_type().map_err(DaskPlannerError::from)? {
                     SQLType::Decimal(_) => Ok(SqlTypeName::DECIMAL),
                     SQLType::Binary(_) => Ok(SqlTypeName::BINARY),
@@ -345,8 +344,7 @@ impl SqlTypeName {
                     SQLType::Varchar(_) | SQLType::Nvarchar(_) => Ok(SqlTypeName::VARCHAR),
                     SQLType::Char(_) => Ok(SqlTypeName::CHAR),
                     _ => Err(DaskPlannerError::Internal(format!(
-                        "Cannot determine Dask SQL type for '{}'",
-                        input_type
+                        "Cannot determine Dask SQL type for '{input_type}'"
                     ))),
                 }
             }

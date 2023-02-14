@@ -1,7 +1,10 @@
+use datafusion_common::Column;
 use datafusion_expr::{
     and,
     logical_plan::{Join, JoinType, LogicalPlan},
+    BinaryExpr,
     Expr,
+    Operator,
 };
 use pyo3::prelude::*;
 
@@ -19,30 +22,50 @@ pub struct PyJoin {
 #[pymethods]
 impl PyJoin {
     #[pyo3(name = "getCondition")]
-    pub fn join_condition(&self) -> PyExpr {
+    pub fn join_condition(&self) -> PyResult<Option<PyExpr>> {
         // equi-join filters
         let mut filters: Vec<Expr> = self
             .join
             .on
             .iter()
-            .map(|(l, r)| Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
-            .collect();
+            .map(|(l, r)| match (l, r) {
+                (Expr::Column(l), Expr::Column(r)) => {
+                    Ok(Expr::Column(l.clone()).eq(Expr::Column(r.clone())))
+                }
+                (Expr::Column(l), Expr::Cast(cast)) => {
+                    let right = Column::from_qualified_name(cast.expr.to_string());
+                    Ok(Expr::Column(l.clone()).eq(Expr::Column(right)))
+                }
+                (Expr::Column(l), Expr::BinaryExpr(bin_expr)) => {
+                    Ok(Expr::BinaryExpr(BinaryExpr::new(
+                        Box::new(Expr::Column(l.clone())),
+                        Operator::Eq,
+                        Box::new(Expr::BinaryExpr(bin_expr.clone())),
+                    )))
+                }
+                _ => Err(py_type_err(format!(
+                    "unsupported join condition. Left: {l} - Right: {r}"
+                ))),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         // other filter conditions
         if let Some(filter) = &self.join.filter {
             filters.push(filter.clone());
         }
 
-        assert!(!filters.is_empty());
+        if !filters.is_empty() {
+            let root_expr = filters[1..]
+                .iter()
+                .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
 
-        let root_expr = filters[1..]
-            .iter()
-            .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
-
-        PyExpr::from(
-            root_expr,
-            Some(vec![self.join.left.clone(), self.join.right.clone()]),
-        )
+            Ok(Some(PyExpr::from(
+                root_expr,
+                Some(vec![self.join.left.clone(), self.join.right.clone()]),
+            )))
+        } else {
+            Ok(None)
+        }
     }
 
     #[pyo3(name = "getJoinConditions")]
@@ -66,10 +89,15 @@ impl PyJoin {
         };
 
         let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
-        for (mut lhs, mut rhs) in self.join.on.clone() {
-            lhs.relation = Some(lhs_table_name.clone());
-            rhs.relation = Some(rhs_table_name.clone());
-            join_conditions.push((lhs.into(), rhs.into()));
+        for (lhs, rhs) in self.join.on.clone() {
+            match (lhs, rhs) {
+                (Expr::Column(mut lhs), Expr::Column(mut rhs)) => {
+                    lhs.relation = Some(lhs_table_name.clone());
+                    rhs.relation = Some(rhs_table_name.clone());
+                    join_conditions.push((lhs.into(), rhs.into()));
+                }
+                _ => return Err(py_type_err("unsupported join condition")),
+            }
         }
         Ok(join_conditions)
     }

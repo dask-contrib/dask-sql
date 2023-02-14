@@ -1,8 +1,11 @@
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pytest
+from dask.utils_test import hlg_layer
 
 from dask_sql import Context
+from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from tests.utils import assert_eq
 
 
@@ -378,6 +381,9 @@ def test_join_alias_w_projection(c, parquet_ddf):
     assert_eq(result_df, expected_df, check_index=False)
 
 
+@pytest.mark.xfail(
+    reason="The 'FilterColumnsPostJoin' has been temporarily disabled so this test has been as well"
+)
 def test_filter_columns_post_join(c):
     df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "c": [1, None, 2, 2, 2]})
     df2 = pd.DataFrame({"b": [1, 1, 2, 2, 3], "c": [2, 2, 2, 2, 2]})
@@ -394,3 +400,51 @@ def test_filter_columns_post_join(c):
     result_df = c.sql(query)
     expected_df = pd.DataFrame({"sum_a": [24, 24, 12], "b": [1, 2, 3]})
     assert_eq(result_df, expected_df)
+
+
+@pytest.mark.xfail(
+    not BROADCAST_JOIN_SUPPORT_WORKING,
+    reason="Broadcast Joins do not work as expected with dask<2023.1.1",
+)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_broadcast_join(c, client, gpu):
+    df1 = dd.from_pandas(
+        pd.DataFrame({"user_id": [1, 2, 3, 4], "b": [5, 6, 7, 8]}),
+        npartitions=2,
+    )
+    df2 = dd.from_pandas(
+        pd.DataFrame({"user_id": [1, 2, 3, 4] * 4, "c": [5, 6, 7, 8] * 4}),
+        npartitions=8,
+    )
+    c.create_table("df1", df1, gpu=gpu)
+    c.create_table("df2", df2, gpu=gpu)
+
+    query_string = """
+    SELECT df1.user_id as user_id, b, c
+    FROM df1, df2
+    WHERE df1.user_id = df2.user_id
+    """
+    expected_df = df1.merge(df2, on="user_id", how="inner")
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": True})
+    assert hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_divisions=False, check_index=False)
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": 1.0})
+    assert hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_divisions=False, check_index=False)
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": 0.5})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False)
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": False})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False)
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": None})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False)

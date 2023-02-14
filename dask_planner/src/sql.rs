@@ -11,8 +11,8 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{DFSchema, DataFusionError, ScalarValue};
+use datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -91,6 +91,7 @@ pub struct DaskSQLContext {
     current_catalog: String,
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
+    options: ConfigOptions,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -129,7 +130,24 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
+                    Some(e) => {
+                        let statistics = &self
+                            .schemas
+                            .get(reference.schema)
+                            .unwrap()
+                            .tables
+                            .get(reference.table)
+                            .unwrap()
+                            .statistics;
+                        if statistics.get_row_count() == 0.0 {
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                        } else {
+                            Ok(Arc::new(table::DaskTableSource::new(
+                                Arc::new(e),
+                                Some(statistics.clone()),
+                            )))
+                        }
+                    }
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
@@ -289,8 +307,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDF signature not found for input types {:?}",
-                                input_types
+                                "UDF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -381,8 +398,7 @@ impl ContextProvider for DaskSQLContext {
                         match function.return_types.get(&input_types.to_vec()) {
                             Some(return_type) => Ok(Arc::new(return_type.clone())),
                             None => Err(DataFusionError::Plan(format!(
-                                "UDAF signature not found for input types {:?}",
-                                input_types
+                                "UDAF signature not found for input types {input_types:?}"
                             ))),
                         }
                     });
@@ -398,8 +414,8 @@ impl ContextProvider for DaskSQLContext {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 
-    fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
-        None
+    fn options(&self) -> &ConfigOptions {
+        &self.options
     }
 }
 
@@ -411,6 +427,7 @@ impl DaskSQLContext {
             current_catalog: default_catalog_name.to_owned(),
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
+            options: ConfigOptions::new(),
         }
     }
 
@@ -421,8 +438,7 @@ impl DaskSQLContext {
             Ok(())
         } else {
             Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
+                "Schema: {schema_name} not found in DaskSQLContext"
             )))
         }
     }
@@ -449,8 +465,7 @@ impl DaskSQLContext {
                 Ok(true)
             }
             None => Err(py_runtime_err(format!(
-                "Schema: {} not found in DaskSQLContext",
-                schema_name
+                "Schema: {schema_name} not found in DaskSQLContext"
             ))),
         }
     }
@@ -496,7 +511,7 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true)
+                    optimizer::DaskSqlOptimizer::new()
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
@@ -715,7 +730,7 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use arrow::datatypes::DataType;
+    use datafusion::arrow::datatypes::DataType;
     use datafusion_expr::{Signature, TypeSignature, Volatility};
 
     use crate::sql::generate_signatures;

@@ -52,7 +52,12 @@ def is_cudf_type(obj):
     """
     Check if an object is a cuDF type
     """
-    return "cudf" in (str(type(obj)), str(getattr(obj, "_partition_type", "")))
+    types = [
+        str(type(obj)),
+        str(getattr(obj, "_partition_type", "")),
+        str(getattr(obj, "_meta", "")),
+    ]
+    return any("cudf" in obj_type for obj_type in types)
 
 
 class Pluggable:
