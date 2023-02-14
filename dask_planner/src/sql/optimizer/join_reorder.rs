@@ -44,16 +44,16 @@ impl OptimizerRule for JoinReorder {
     ) -> Result<Option<LogicalPlan>> {
         // Recurse down first
         // We want the equivalent of Spark's transformUp here
-        let plan = utils::optimize_children(self, plan, _config).unwrap().unwrap();
+        let plan = utils::optimize_children(self, plan, _config)?;
 
         match &plan {
-            LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
+            Some(LogicalPlan::Join(join)) if join.join_type == JoinType::Inner => {
                 if !is_supported_join(join) {
-                    return Ok(Some(plan));
+                    return Ok(plan);
                 }
 
                 // Extract the relations and join conditions
-                let (rels, conds) = extract_inner_joins(&plan);
+                let (rels, conds) = extract_inner_joins(plan.as_ref().unwrap());
 
                 // Split rels into facts and dims
                 let rels: Vec<Relation> = rels.into_iter().map(Relation::new).collect();
@@ -71,10 +71,10 @@ impl OptimizerRule for JoinReorder {
                     }
                 }
                 if facts.is_empty() || dims.is_empty() {
-                    return Ok(Some(plan));
+                    return Ok(plan);
                 }
                 if facts.len() > self.max_fact_tables {
-                    return Ok(Some(plan));
+                    return Ok(plan);
                 }
 
                 // Get list of dimension tables without a selective predicate
@@ -133,7 +133,7 @@ impl OptimizerRule for JoinReorder {
                             join_conds.insert((l.clone(), r.clone()));
                         }
                         _ => {
-                            return Ok(Some(plan));
+                            return Ok(plan);
                         }
                     }
                 }
@@ -153,11 +153,11 @@ impl OptimizerRule for JoinReorder {
                 if join_conds.is_empty() {
                     Ok(Some(optimized))
                 } else {
-                    Ok(Some(plan))
+                    Ok(plan)
                 }
             }
             _ => {
-                Ok(Some(plan))
+                Ok(plan)
             }
         }
     }
