@@ -135,10 +135,10 @@ impl ContextProvider for DaskSQLContext {
                     Some(e) => {
                         let statistics = &self
                             .schemas
-                            .get(reference.schema)
+                            .get(reference.schema.as_ref())
                             .unwrap()
                             .tables
-                            .get(reference.table)
+                            .get(reference.table.as_ref())
                             .unwrap()
                             .statistics;
                         if statistics.get_row_count() == 0.0 {
