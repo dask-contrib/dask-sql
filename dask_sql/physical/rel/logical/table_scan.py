@@ -85,7 +85,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
         filters = table_scan.getFilters()
         if filters:
             df = dc.df
-            
+
             # Generate the filters in DNF form for the cudf reader
             filtered_result = table_scan.getDNFFilters()
             filtered = filtered_result.filtered_exprs
@@ -111,11 +111,17 @@ class DaskTableScanPlugin(BaseRelPlugin):
                     f"Rebuilding Dask Task `read_parquet()` \n \
                     Path: {creation_path} \n \
                     Filters: {updated_filters} \n \
-                    Columns: {cols}"
+                    Columns: {cols} \n \
+                    split_row_groups: {layer.creation_info['kwargs']['split_row_groups']} \n \
+                    aggregate_files: {layer.creation_info['kwargs']['aggregate_files']}\n"
                 )
 
                 df = ddf.read_parquet(
-                    creation_path, filters=updated_filters, columns=cols
+                    creation_path,
+                    filters=updated_filters,
+                    columns=cols,
+                    split_row_groups=layer.creation_info["kwargs"]["split_row_groups"],
+                    aggregate_files=layer.creation_info["kwargs"]["aggregate_files"],
                 )
                 dc = DataContainer(df, ColumnContainer(df.columns))
 
