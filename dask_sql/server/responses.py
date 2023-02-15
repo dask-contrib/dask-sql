@@ -64,7 +64,9 @@ class QueryResults:
 class DataResults(QueryResults):
     @staticmethod
     def get_column_description(df):
-        sql_types = [str(python_to_sql_type(t)) for t in df.dtypes]
+        sql_types = [
+            str(python_to_sql_type(t).getSqlType()).partition(".")[2] for t in df.dtypes
+        ]
         column_names = df.columns
         return [
             {
@@ -131,10 +133,11 @@ class QueryError:
         self.errorName = str(type(error))
         self.errorType = "USER_ERROR"
 
-        try:
-            self.errorLocation = {
-                "lineNumber": error.from_line + 1,
-                "columnNumber": error.from_col + 1,
-            }
-        except AttributeError:  # pragma: no cover
-            pass
+        # FIXME: ParserErrors currently don't contain information on where the syntax error occurred
+        # try:
+        #     self.errorLocation = {
+        #         "lineNumber": error.from_line + 1,
+        #         "columnNumber": error.from_col + 1,
+        #     }
+        # except AttributeError:  # pragma: no cover
+        #     pass
