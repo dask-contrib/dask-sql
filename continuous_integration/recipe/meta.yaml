@@ -38,7 +38,6 @@ requirements:
     - tzlocal >=2.1
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
-    - nest-asyncio
     - tabulate
 
 test:

@@ -12,7 +12,6 @@ dependencies:
 - maturin=0.12.8
 - mlflow
 - mock
-- nest-asyncio
 - pandas=1.4.0
 - pre-commit
 - prompt_toolkit=3.0.8
