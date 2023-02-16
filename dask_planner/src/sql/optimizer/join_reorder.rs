@@ -42,124 +42,162 @@ impl OptimizerRule for JoinReorder {
         plan: &LogicalPlan,
         _config: &dyn OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
+        let original_plan = plan.clone();
         // Recurse down first
         // We want the equivalent of Spark's transformUp here
         let plan = utils::optimize_children(self, plan, _config)?;
 
         match &plan {
-            Some(LogicalPlan::Join(join)) if join.join_type == JoinType::Inner => {
-                if !is_supported_join(join) {
-                    return Ok(plan);
-                }
-
-                // Extract the relations and join conditions
-                let (rels, conds) = extract_inner_joins(plan.as_ref().unwrap());
-
-                // Split rels into facts and dims
-                let rels: Vec<Relation> = rels.into_iter().map(Relation::new).collect();
-                let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
-                // Vectors for the fact and dimension tables, respectively
-                let mut facts = vec![];
-                let mut dims = vec![];
-                for rel in &rels {
-                    // If the ratio is larger than the fact_dimension_ratio, it is a fact table
-                    // Else, it is a dimension table
-                    if rel.size as f64 / largest_rel > self.fact_dimension_ratio {
-                        facts.push(rel.clone());
-                    } else {
-                        dims.push(rel.clone());
-                    }
-                }
-                if facts.is_empty() || dims.is_empty() {
-                    return Ok(plan);
-                }
-                if facts.len() > self.max_fact_tables {
-                    return Ok(plan);
-                }
-
-                // Get list of dimension tables without a selective predicate
-                let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
-                if !self.preserve_user_order {
-                    unfiltered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
-                }
-
-                // Get list of dimension tables with a selective predicate and sort it
-                let filtered_dimensions = get_filtered_dimensions(&dims);
-                let mut filtered_dimensions: Vec<Relation> = filtered_dimensions
-                    .iter()
-                    .map(|rel| Relation {
-                        plan: rel.plan.clone(),
-                        size: (rel.size as f64 * self.filter_selectivity) as usize,
-                    })
-                    .collect();
-                filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
-
-                // Merge both the lists of dimensions by giving user order
-                // the preference for tables without a selective predicate,
-                // whereas for tables with selective predicates giving preference
-                // to smaller tables. When comparing the top of both
-                // the lists, if size of the top table in the selective predicate
-                // list is smaller than top of the other list, choose it otherwise
-                // vice-versa.
-                // This algorithm is a greedy approach where smaller
-                // joins with filtered dimension table are preferred for execution
-                // earlier than other Joins to improve Join performance. We try to keep
-                // the user order intact when unsure about reordering to make sure
-                // regressions are minimized.
-                let mut result = vec![];
-                while !filtered_dimensions.is_empty() || !unfiltered_dimensions.is_empty() {
-                    if !filtered_dimensions.is_empty() && !unfiltered_dimensions.is_empty() {
-                        if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
-                            result.push(filtered_dimensions.remove(0));
-                        } else {
-                            result.push(unfiltered_dimensions.remove(0));
-                        }
-                    } else if !filtered_dimensions.is_empty() {
-                        result.push(filtered_dimensions.remove(0));
-                    } else {
-                        result.push(unfiltered_dimensions.remove(0));
-                    }
-                }
-                assert!(filtered_dimensions.is_empty());
-                assert!(unfiltered_dimensions.is_empty());
-
-                let dim_plans: Vec<LogicalPlan> =
-                    result.iter().map(|rel| rel.plan.clone()).collect();
-
-                let mut join_conds = HashSet::new();
-                for cond in &conds {
-                    match cond {
-                        (Expr::Column(l), Expr::Column(r)) => {
-                            join_conds.insert((l.clone(), r.clone()));
-                        }
-                        _ => {
-                            return Ok(plan);
-                        }
-                    }
-                }
-
-                let optimized = if facts.len() == 1 {
-                    build_join_tree(&facts[0].plan, &dim_plans, &mut join_conds)?
-                } else {
-                    // Build one join tree for each fact table
-                    let fact_dim_joins = facts
-                        .iter()
-                        .map(|f| build_join_tree(&f.plan, &dim_plans, &mut join_conds))
-                        .collect::<Result<Vec<_>>>()?;
-                    // Join the trees together
-                    build_join_tree(&fact_dim_joins[0], &fact_dim_joins[1..], &mut join_conds)?
-                };
-
-                if join_conds.is_empty() {
-                    Ok(Some(optimized))
-                } else {
-                    Ok(plan)
-                }
+            Some(LogicalPlan::Join(join)) => {
+                // TODO: Remove
+                println!("OPTIMIZE JOIN WITH PLAN");
+                optimize_join(&self, &plan.as_ref().unwrap(), &join)
             }
-            _ => {
-                Ok(plan)
+            Some(plan) => Ok(Some(plan.clone())),
+            None => {
+                match &original_plan {
+                    LogicalPlan::Join(join) => {
+                        // TODO: Remove
+                        println!("OPTIMIZE JOIN WITH ORIGINAL");
+                        optimize_join(&self, &original_plan, join)
+                    }
+                    // TODO: Ok(None)? Ok(plan)?
+                    _ => Ok(None),
+                }
             }
         }
+    }
+}
+
+fn optimize_join(
+    rule: &JoinReorder,
+    plan: &LogicalPlan,
+    join: &Join,
+) -> Result<Option<LogicalPlan>> {
+    if !is_supported_join(join) {
+        // TODO: Remove
+        println!("Not supported join");
+        return Ok(Some(plan.clone()));
+    }
+
+    // Extract the relations and join conditions
+    let (rels, conds) = extract_inner_joins(plan);
+
+    // Split rels into facts and dims
+    let rels: Vec<Relation> = rels.into_iter().map(Relation::new).collect();
+    let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
+    // Vectors for the fact and dimension tables, respectively
+    let mut facts = vec![];
+    let mut dims = vec![];
+    for rel in &rels {
+        // If the ratio is larger than the fact_dimension_ratio, it is a fact table
+        // Else, it is a dimension table
+        if rel.size as f64 / largest_rel > rule.fact_dimension_ratio {
+            facts.push(rel.clone());
+        } else {
+            dims.push(rel.clone());
+        }
+    }
+    // TODO: Remove
+    println!("Fact tables:");
+    println!("{:?}", &facts);
+    println!("Dim tables:");
+    println!("{:?}", &dims);
+
+    if facts.is_empty() || dims.is_empty() {
+        // TODO: Remove
+        println!("No fact and/or dim tables");
+        return Ok(Some(plan.clone()));
+    }
+    if facts.len() > rule.max_fact_tables {
+        // TODO: Remove
+        println!("Too many fact tables");
+        return Ok(Some(plan.clone()));
+    }
+
+    // Get list of dimension tables without a selective predicate
+    let mut unfiltered_dimensions = get_unfiltered_dimensions(&dims);
+    if !rule.preserve_user_order {
+        unfiltered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+    }
+
+    // Get list of dimension tables with a selective predicate and sort it
+    let filtered_dimensions = get_filtered_dimensions(&dims);
+    let mut filtered_dimensions: Vec<Relation> = filtered_dimensions
+        .iter()
+        .map(|rel| Relation {
+            plan: rel.plan.clone(),
+            size: (rel.size as f64 * rule.filter_selectivity) as usize,
+        })
+        .collect();
+    filtered_dimensions.sort_by(|a, b| a.size.cmp(&b.size));
+
+    // Merge both the lists of dimensions by giving user order
+    // the preference for tables without a selective predicate,
+    // whereas for tables with selective predicates giving preference
+    // to smaller tables. When comparing the top of both
+    // the lists, if size of the top table in the selective predicate
+    // list is smaller than top of the other list, choose it otherwise
+    // vice-versa.
+    // This algorithm is a greedy approach where smaller
+    // joins with filtered dimension table are preferred for execution
+    // earlier than other Joins to improve Join performance. We try to keep
+    // the user order intact when unsure about reordering to make sure
+    // regressions are minimized.
+    let mut result = vec![];
+    while !filtered_dimensions.is_empty() || !unfiltered_dimensions.is_empty() {
+        if !filtered_dimensions.is_empty() && !unfiltered_dimensions.is_empty() {
+            if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
+                result.push(filtered_dimensions.remove(0));
+            } else {
+                result.push(unfiltered_dimensions.remove(0));
+            }
+        } else if !filtered_dimensions.is_empty() {
+            result.push(filtered_dimensions.remove(0));
+        } else {
+            result.push(unfiltered_dimensions.remove(0));
+        }
+    }
+    assert!(filtered_dimensions.is_empty());
+    assert!(unfiltered_dimensions.is_empty());
+
+    let dim_plans: Vec<LogicalPlan> =
+        result.iter().map(|rel| rel.plan.clone()).collect();
+
+    let mut join_conds = HashSet::new();
+    for cond in &conds {
+        match cond {
+            (Expr::Column(l), Expr::Column(r)) => {
+                join_conds.insert((l.clone(), r.clone()));
+            }
+            _ => {
+                // TODO: Remove
+                println!("Non-column join conditions");
+                return Ok(Some(plan.clone()));
+            }
+        }
+    }
+
+    let optimized = if facts.len() == 1 {
+        build_join_tree(&facts[0].plan, &dim_plans, &mut join_conds)?
+    } else {
+        // Build one join tree for each fact table
+        let fact_dim_joins = facts
+            .iter()
+            .map(|f| build_join_tree(&f.plan, &dim_plans, &mut join_conds))
+            .collect::<Result<Vec<_>>>()?;
+        // Join the trees together
+        build_join_tree(&fact_dim_joins[0], &fact_dim_joins[1..], &mut join_conds)?
+    };
+
+    if join_conds.is_empty() {
+        // TODO: Remove
+        println!("Returning optimized plan");
+        Ok(Some(optimized))
+    } else {
+        // TODO: Remove
+        println!("Join conditions are not empty");
+        Ok(Some(plan.clone()))
     }
 }
 
@@ -176,6 +214,8 @@ struct Relation {
 impl Relation {
     fn new(plan: LogicalPlan) -> Self {
         let size = get_table_size(&plan).unwrap_or(100);
+        // TODO: Remove
+        println!("{:?}", &size);
         Self { plan, size }
     }
 
@@ -343,11 +383,7 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                 .as_any()
                 .downcast_ref::<DaskTableSource>()
                 .expect("should be a DaskTableSource");
-            if let Some(stats) = source.statistics() {
-                Some(stats.get_row_count() as usize)
-            } else {
-                None
-            }
+            source.statistics().map(|stats| stats.get_row_count() as usize)
         }
         _ => get_table_size(plan.inputs()[0]),
     }
