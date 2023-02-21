@@ -368,7 +368,7 @@ impl PyLogicalPlan {
                     "Extension"
                 }
             }
-            LogicalPlan::Unnest(_unnest) => "UnNest",
+            LogicalPlan::Unnest(_unnest) => "Unnest",
         })
     }
 
