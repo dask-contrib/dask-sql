@@ -17,7 +17,6 @@ dependencies:
   - prompt_toolkit>=3.0.8
   - pygments>=2.7.1
   - tabulate
-  - nest-asyncio
   - setuptools-rust>=1.5.2
   - ucx-proc=*=cpu
     #  - rust>=1.60.0
