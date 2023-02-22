@@ -18,16 +18,16 @@ build:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
   string: py{{ python | replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
-  script: {{ PYTHON }} -m pip install . --no-deps -vv
+  script: RUST_BACKTRACE=full {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
   build:
     - {{ compiler('rust') }}
-    - setuptools-rust >=1.4.1
+    - setuptools-rust >=1.5.2
   host:
     - pip
     - python
-    - setuptools-rust >=1.4.1
+    - setuptools-rust >=1.5.2
   run:
     - python
     - dask >=2022.3.0
@@ -38,7 +38,6 @@ requirements:
     - tzlocal >=2.1
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
-    - nest-asyncio
     - tabulate
 
 test:

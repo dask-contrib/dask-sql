@@ -11,8 +11,8 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{DFSchema, DataFusionError, ScalarValue};
+use datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
 use datafusion_expr::{
     logical_plan::Extension,
     AccumulatorFunctionImplementation,
@@ -91,6 +91,7 @@ pub struct DaskSQLContext {
     current_catalog: String,
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
+    options: ConfigOptions,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -98,8 +99,9 @@ impl ContextProvider for DaskSQLContext {
         &self,
         name: TableReference,
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
-        let reference: ResolvedTableReference =
-            name.resolve(&self.current_catalog, &self.current_schema);
+        let reference: ResolvedTableReference = name
+            .clone()
+            .resolve(&self.current_catalog, &self.current_schema);
         if reference.catalog != self.current_catalog {
             // there is a single catalog in Dask SQL
             return Err(DataFusionError::Plan(format!(
@@ -107,7 +109,8 @@ impl ContextProvider for DaskSQLContext {
                 reference.catalog
             )));
         }
-        match self.schemas.get(reference.schema) {
+        let schema_name = reference.clone().schema.into_owned();
+        match self.schemas.get(&schema_name) {
             Some(schema) => {
                 let mut resp = None;
                 for table in schema.tables.values() {
@@ -129,7 +132,24 @@ impl ContextProvider for DaskSQLContext {
 
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
-                    Some(e) => Ok(Arc::new(table::DaskTableSource::new(Arc::new(e)))),
+                    Some(e) => {
+                        let statistics = &self
+                            .schemas
+                            .get(reference.schema.as_ref())
+                            .unwrap()
+                            .tables
+                            .get(reference.table.as_ref())
+                            .unwrap()
+                            .statistics;
+                        if statistics.get_row_count() == 0.0 {
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                        } else {
+                            Ok(Arc::new(table::DaskTableSource::new(
+                                Arc::new(e),
+                                Some(statistics.clone()),
+                            )))
+                        }
+                    }
                     None => Err(DataFusionError::Plan(format!(
                         "Table '{}.{}.{}' not found",
                         reference.catalog, reference.schema, reference.table
@@ -396,8 +416,8 @@ impl ContextProvider for DaskSQLContext {
         unimplemented!("RUST: get_variable_type is not yet implemented for DaskSQLContext")
     }
 
-    fn get_config_option(&self, _option: &str) -> Option<ScalarValue> {
-        None
+    fn options(&self) -> &ConfigOptions {
+        &self.options
     }
 }
 
@@ -409,6 +429,7 @@ impl DaskSQLContext {
             current_catalog: default_catalog_name.to_owned(),
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
+            options: ConfigOptions::new(),
         }
     }
 
@@ -492,7 +513,7 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new(true)
+                    optimizer::DaskSqlOptimizer::new()
                         .optimize(existing_plan.original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
@@ -711,7 +732,7 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use arrow::datatypes::DataType;
+    use datafusion::arrow::datatypes::DataType;
     use datafusion_expr::{Signature, TypeSignature, Volatility};
 
     use crate::sql::generate_signatures;

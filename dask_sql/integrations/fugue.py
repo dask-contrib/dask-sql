@@ -52,6 +52,10 @@ class DaskSQLEngine(fugue.execution.execution_engine.SQLEngine):
         """Create a new instance."""
         super().__init__(*args, **kwargs)
 
+    @property
+    def is_distributed(self) -> bool:
+        return True
+
     def select(
         self, dfs: fugue.dataframe.DataFrames, statement: str
     ) -> fugue.dataframe.DataFrame:

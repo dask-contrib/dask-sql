@@ -86,17 +86,27 @@ class DaskJoinPlugin(BaseRelPlugin):
         # known solution so far.
 
         join_condition = join.getCondition()
-        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+        lhs_on, rhs_on, filter_condition = None, None, None
+        # A user can write certain queries that really should be `cross join` queries
+        # that will still enter this portion of the logic. IF the join_condition is
+        # None that means there are no conditions to join on. This means a cross join.
+        # By not entering this body during that condition we ensure that later on in
+        # processing we perform a cross join.
+        if join_condition is not None:
+            lhs_on, rhs_on, filter_condition = self._split_join_condition(
+                join_condition
+            )
 
-        # lhs_on and rhs_on are the indices of the columns to merge on.
-        # The given column indices are for the full, merged table which consists
-        # of lhs and rhs put side-by-side (in this order)
-        # We therefore need to normalize the rhs indices relative to the rhs table.
-        rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
+            # lhs_on and rhs_on are the indices of the columns to merge on.
+            # The given column indices are for the full, merged table which consists
+            # of lhs and rhs put side-by-side (in this order)
+            # We therefore need to normalize the rhs indices relative to the rhs table.
+            rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
 
-        # 4. dask can only merge on the same column names.
-        # We therefore create new columns on purpose, which have a distinct name.
-        assert len(lhs_on) == len(rhs_on)
+            # 4. dask can only merge on the same column names.
+            # We therefore create new columns on purpose, which have a distinct name.
+            assert len(lhs_on) == len(rhs_on)
+
         if lhs_on:
             # 5. Now we can finally merge on these columns
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs

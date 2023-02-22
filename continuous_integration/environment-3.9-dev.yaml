@@ -13,7 +13,6 @@ dependencies:
 - maturin>=0.12.8
 - mlflow
 - mock
-- nest-asyncio
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
@@ -30,7 +29,7 @@ dependencies:
 - pytest
 - python=3.9
 - scikit-learn>=1.0.0
-- setuptools-rust>=1.4.1
+- setuptools-rust>=1.5.2
 - sphinx
 - tpot
 - tzlocal>=2.1
