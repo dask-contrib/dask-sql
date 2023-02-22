@@ -1,3 +1,4 @@
+import sys
 import warnings
 
 import dask.dataframe as dd
@@ -13,6 +14,9 @@ try:
 except ImportError:
     cudf = None
     dask_cudf = None
+
+# default integer type varies by platform
+DEFAULT_INT_TYPE = "INTEGER" if sys.platform == "win32" else "BIGINT"
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -177,12 +181,18 @@ def test_function_adding():
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
-    assert str(c.schema[c.schema_name].function_lists[0].parameters[0][1]) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[0].parameters[0][1])
+        == DEFAULT_INT_TYPE
+    )
     assert str(c.schema[c.schema_name].function_lists[0].return_type) == "DOUBLE"
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
-    assert str(c.schema[c.schema_name].function_lists[1].parameters[0][1]) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[1].parameters[0][1])
+        == DEFAULT_INT_TYPE
+    )
     assert str(c.schema[c.schema_name].function_lists[1].return_type) == "DOUBLE"
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
@@ -195,12 +205,16 @@ def test_function_adding():
     assert c.schema[c.schema_name].function_lists[2].name == "F"
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
     assert str(c.schema[c.schema_name].function_lists[2].parameters[0][1]) == "DOUBLE"
-    assert str(c.schema[c.schema_name].function_lists[2].return_type) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[2].return_type) == DEFAULT_INT_TYPE
+    )
     assert not c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
     assert str(c.schema[c.schema_name].function_lists[3].parameters[0][1]) == "DOUBLE"
-    assert str(c.schema[c.schema_name].function_lists[3].return_type) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[3].return_type) == DEFAULT_INT_TYPE
+    )
     assert not c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
@@ -236,12 +250,18 @@ def test_aggregation_adding():
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
-    assert str(c.schema[c.schema_name].function_lists[0].parameters[0][1]) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[0].parameters[0][1])
+        == DEFAULT_INT_TYPE
+    )
     assert str(c.schema[c.schema_name].function_lists[0].return_type) == "DOUBLE"
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
-    assert str(c.schema[c.schema_name].function_lists[1].parameters[0][1]) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[1].parameters[0][1])
+        == DEFAULT_INT_TYPE
+    )
     assert str(c.schema[c.schema_name].function_lists[1].return_type) == "DOUBLE"
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
@@ -254,12 +274,16 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[2].name == "F"
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
     assert str(c.schema[c.schema_name].function_lists[2].parameters[0][1]) == "DOUBLE"
-    assert str(c.schema[c.schema_name].function_lists[2].return_type) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[2].return_type) == DEFAULT_INT_TYPE
+    )
     assert c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
     assert str(c.schema[c.schema_name].function_lists[3].parameters[0][1]) == "DOUBLE"
-    assert str(c.schema[c.schema_name].function_lists[3].return_type) == "BIGINT"
+    assert (
+        str(c.schema[c.schema_name].function_lists[3].return_type) == DEFAULT_INT_TYPE
+    )
     assert c.schema[c.schema_name].function_lists[3].aggregation
 
     # With replacement
