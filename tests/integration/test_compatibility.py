@@ -1072,5 +1072,7 @@ def test_column_name_starting_with_number():
         SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
         """
     )
-    expected = pd.DataFrame({"x": [None, 0, None, None, None, None, None, None, None, None]})
+    expected = pd.DataFrame(
+        {"x": [None, 0, None, None, None, None, None, None, None, None]}
+    )
     assert_eq(result, expected)
