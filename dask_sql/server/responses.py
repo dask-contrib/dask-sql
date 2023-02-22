@@ -64,9 +64,7 @@ class QueryResults:
 class DataResults(QueryResults):
     @staticmethod
     def get_column_description(df):
-        sql_types = [
-            str(python_to_sql_type(t).getSqlType()).partition(".")[2] for t in df.dtypes
-        ]
+        sql_types = [str(python_to_sql_type(t)) for t in df.dtypes]
         column_names = df.columns
         return [
             {
