@@ -29,7 +29,10 @@ class RexInputRefPlugin(BaseRexPlugin):
         df = dc.df
         cc = dc.column_container
 
-        # The column is references by index
-        index = rex.getIndex()
-        backend_column_name = cc.get_backend_by_frontend_index(index)
+        try:
+            # The column is referenced by index
+            index = rex.getIndex()
+            backend_column_name = cc.get_backend_by_frontend_index(index)
+        except RuntimeError:
+            backend_column_name = rex.toString().split(".")[-1]
         return df[backend_column_name]
