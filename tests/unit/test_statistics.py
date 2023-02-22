@@ -2,6 +2,8 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 
+from dask_sql import Context
+from dask_sql.datacontainer import Statistics
 from dask_sql.physical.utils.statistics import parquet_statistics
 
 
@@ -49,3 +51,11 @@ def test_parquet_statistics_bad_args(parquet_ddf):
 
     with pytest.raises(ValueError, match="must be a subset"):
         parquet_statistics(parquet_ddf, columns=["bad"])
+
+
+def test_dc_statistics(parquet_ddf):
+    c = Context()
+    c.create_table("df", parquet_ddf)
+
+    assert c.schema["root"].tables["df"].statistics == Statistics(row_count=15)
+    assert c.schema["root"].statistics["df"] == Statistics(row_count=15)
