@@ -131,10 +131,11 @@ class QueryError:
         self.errorName = str(type(error))
         self.errorType = "USER_ERROR"
 
-        try:
-            self.errorLocation = {
-                "lineNumber": error.from_line + 1,
-                "columnNumber": error.from_col + 1,
-            }
-        except AttributeError:  # pragma: no cover
-            pass
+        # FIXME: ParserErrors currently don't contain information on where the syntax error occurred
+        # try:
+        #     self.errorLocation = {
+        #         "lineNumber": error.from_line + 1,
+        #         "columnNumber": error.from_col + 1,
+        #     }
+        # except AttributeError:  # pragma: no cover
+        #     pass
