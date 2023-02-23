@@ -180,9 +180,26 @@ impl PyExpr {
                     schema.merge(plan.schema().as_ref());
                 }
                 let name = get_expr_name(&self.expr).map_err(py_runtime_err)?;
-                schema
-                    .index_of_column(&Column::from_qualified_name(name))
-                    .map_err(py_runtime_err)
+                let index = schema
+                    .index_of_column(&Column::from_qualified_name(name.clone()))
+                    .map_err(py_runtime_err);
+                match index {
+                    Ok(i) => Ok(i),
+                    Err(_) => {
+                        // Handles cases when from_qualified_name doesn't format the Column correctly.
+                        // Here, we split the name string and grab the relation/table names
+                        let split_name: Vec<&str> = name.split(".").collect();
+                        let relation = &split_name.get(0);
+                        let table = &split_name.get(1);
+                        let col = Column {
+                            relation: Some(relation.unwrap().to_string()),
+                            name: table.unwrap().to_string(),
+                        };
+                        schema
+                            .index_of_column(&col)
+                            .map_err(py_runtime_err)
+                    }
+                }
             }
             _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
