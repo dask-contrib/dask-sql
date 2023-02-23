@@ -188,16 +188,14 @@ impl PyExpr {
                     Err(_) => {
                         // Handles cases when from_qualified_name doesn't format the Column correctly.
                         // Here, we split the name string and grab the relation/table names
-                        let split_name: Vec<&str> = name.split(".").collect();
-                        let relation = &split_name.get(0);
+                        let split_name: Vec<&str> = name.split('.').collect();
+                        let relation = &split_name.first();
                         let table = &split_name.get(1);
                         let col = Column {
                             relation: Some(relation.unwrap().to_string()),
                             name: table.unwrap().to_string(),
                         };
-                        schema
-                            .index_of_column(&col)
-                            .map_err(py_runtime_err)
+                        schema.index_of_column(&col).map_err(py_runtime_err)
                     }
                 }
             }
