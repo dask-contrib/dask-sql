@@ -2,6 +2,7 @@ import uuid
 
 import dask.dataframe as dd
 import numpy as np
+import pandas as pd
 from fastapi import Request
 
 from dask_sql.mappings import python_to_sql_type
@@ -87,7 +88,9 @@ class DataResults(QueryResults):
     @staticmethod
     def convert_cell(cell):
         try:
-            if np.isnan(cell):  # pragma: no cover
+            if pd.isna(cell):
+                return None
+            elif np.isnan(cell):  # pragma: no cover
                 return "NaN"
             elif np.isposinf(cell):
                 return "+Infinity"
