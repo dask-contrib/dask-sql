@@ -74,7 +74,6 @@ async def query(request: Request):
     """
     try:
         sql = (await request.body()).decode().strip()
-        breakpoint()
         # required for PrestoDB JDBC driver compatibility
         # replaces queries to unsupported `system` catalog with queries to `system_jdbc`
         # schema created by `create_meta_data(context)` when `jdbc_metadata=True`
