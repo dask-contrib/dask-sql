@@ -259,7 +259,9 @@ pub struct DescribeModel {
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowSchemas {
-    /// like
+    /// optional FROM identifier
+    pub from: Option<String>,
+    /// optional LIKE identifier
     pub like: Option<String>,
 }
 
@@ -1205,8 +1207,23 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL SHOW SCHEMAS statement
     fn parse_show_schemas(&mut self) -> Result<DaskStatement, ParserError> {
-        // Check for existence of `LIKE` clause
-        let like_val = match self.parser.peek_token().token {
+        // parse optional `FROM` clause
+        let from = match self.parser.peek_token().token {
+            Token::Word(w) => {
+                match w.keyword {
+                    Keyword::FROM => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        Some(self.parser.parse_identifier()?.value)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        // parse optional `LIKE` clause
+        let like = match self.parser.peek_token().token {
             Token::Word(w) => {
                 match w.keyword {
                     Keyword::LIKE => {
@@ -1222,7 +1239,8 @@ impl<'a> DaskParser<'a> {
         };
 
         Ok(DaskStatement::ShowSchemas(Box::new(ShowSchemas {
-            like: like_val,
+            from,
+            like,
         })))
     }
 
