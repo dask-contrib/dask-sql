@@ -35,6 +35,7 @@ class CreateExperimentPlugin(BaseRelPlugin):
       Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
       without the full path. In this case, models trained on cuDF dataframes
       are automatically mapped to cuML classes, and sklearn models otherwise.
+      We map to cuML-Dask based models when possible and single-GPU cuML models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use

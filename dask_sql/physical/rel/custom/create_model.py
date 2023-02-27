@@ -38,6 +38,7 @@ class CreateModelPlugin(BaseRelPlugin):
       Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
       without the full path. In this case, models trained on cuDF dataframes
       are automatically mapped to cuML classes, and sklearn models otherwise.
+      We map to cuML-Dask based models when possible and single-GPU cuML models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use
@@ -161,8 +162,10 @@ class CreateModelPlugin(BaseRelPlugin):
         model = ModelClass(**kwargs)
 
         if wrap_predict is None:
-            if "sklearn" in model_class or (
-                "cuml" in model_class and "cuml.dask" not in model_class
+            if (
+                "sklearn" in model_class
+                or ("cuml" in model_class and "cuml.dask" not in model_class)
+                or ("xgboost" in model_class and "xgboost.dask" not in model_class)
             ):
                 wrap_predict = True
             else:
@@ -171,6 +174,7 @@ class CreateModelPlugin(BaseRelPlugin):
             if (
                 "sklearn" in model_class
                 or ("cuml" in model_class and "cuml.dask" not in model_class)
+                or ("xgboost" in model_class and "xgboost.dask" not in model_class)
             ) and hasattr(model, "partial_fit"):
                 wrap_fit = True
             else:
