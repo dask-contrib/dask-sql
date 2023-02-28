@@ -10,7 +10,7 @@ rust-version = "1.62"
 
 [dependencies]
 async-trait = "0.1.64"
-datafusion = "18.0.0"
+datafusion = "19.0.0"
 datafusion-common = "18.0.0"
 datafusion-expr = "18.0.0"
 datafusion-optimizer = "18.0.0"
