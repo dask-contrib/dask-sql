@@ -120,6 +120,10 @@ impl DaskTypeMap {
         })
     }
 
+    fn __str__(&self) -> String {
+        format!("{:?}", self.sql_type)
+    }
+
     #[pyo3(name = "getSqlType")]
     pub fn sql_type(&self) -> SqlTypeName {
         self.sql_type.clone()

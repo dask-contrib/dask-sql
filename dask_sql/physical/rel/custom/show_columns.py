@@ -35,9 +35,7 @@ class ShowColumnsPlugin(BaseRelPlugin):
         cols = dc.column_container.columns
         dtypes = list(
             map(
-                lambda x: str(python_to_sql_type(x).getSqlType())
-                .rpartition(".")[2]
-                .lower(),
+                lambda x: str(python_to_sql_type(x)).lower(),
                 dc.df.dtypes,
             )
         )

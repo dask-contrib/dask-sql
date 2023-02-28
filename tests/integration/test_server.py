@@ -48,7 +48,6 @@ def test_sql_query_cancel(app_client):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_sql_query(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + 1")
     assert response.status_code == 200
@@ -62,15 +61,14 @@ def test_sql_query(app_client):
 
     assert result["columns"] == [
         {
-            "name": "1 + 1",
-            "type": "integer",
-            "typeSignature": {"rawType": "integer", "arguments": []},
+            "name": "Int64(1) + Int64(1)",
+            "type": "bigint",
+            "typeSignature": {"rawType": "bigint", "arguments": []},
         }
     ]
     assert result["data"] == [[2]]
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_wrong_sql_query(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + ")
     assert response.status_code == 200
@@ -81,14 +79,14 @@ def test_wrong_sql_query(app_client):
     assert "data" not in result
     assert "error" in result
     assert "message" in result["error"]
-    assert "errorLocation" in result["error"]
-    assert result["error"]["errorLocation"] == {
-        "lineNumber": 1,
-        "columnNumber": 10,
-    }
+    # FIXME: ParserErrors currently don't contain information on where the syntax error occurred
+    # assert "errorLocation" in result["error"]
+    # assert result["error"]["errorLocation"] == {
+    #     "lineNumber": 1,
+    #     "columnNumber": 10,
+    # }
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_add_and_query(app_client, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
@@ -131,7 +129,6 @@ def test_add_and_query(app_client, df, temporary_data_file):
     assert "error" not in result
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_register_and_query(app_client, df):
     df["a"] = df["a"].astype("UInt8")
     app_client.app.c.create_table("new_table", df)
@@ -160,7 +157,6 @@ def test_register_and_query(app_client, df):
     assert "error" not in result
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_inf_table(app_client, user_table_inf):
     app_client.app.c.create_table("new_table", user_table_inf)
 
@@ -184,7 +180,6 @@ def test_inf_table(app_client, user_table_inf):
     assert "error" not in result
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def get_result_or_error(app_client, response):
     result = response.json()
 
