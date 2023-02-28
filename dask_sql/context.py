@@ -257,7 +257,7 @@ class Context:
                     row_count += d["num-rows"]
                 statistics = Statistics(row_count)
         if not statistics:
-            statistics = Statistics(None)
+            statistics = Statistics(float('nan'))
         dc.statistics = statistics
 
         self.schema[schema_name].tables[table_name.lower()] = dc
