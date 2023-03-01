@@ -53,7 +53,7 @@ impl OptimizerRule for JoinReorder {
                 optimize_join(self, plan.as_ref().unwrap(), join)
             }
             Some(plan) => Ok(Some(plan.clone())),
-            None => { match &original_plan {
+            None => match &original_plan {
                 LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
                     optimize_join(self, &original_plan, join)
                 }
