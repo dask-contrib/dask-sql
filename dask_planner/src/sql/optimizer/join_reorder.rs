@@ -53,14 +53,12 @@ impl OptimizerRule for JoinReorder {
                 optimize_join(self, plan.as_ref().unwrap(), join)
             }
             Some(plan) => Ok(Some(plan.clone())),
-            None => {
-                match &original_plan {
-                    LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
-                        optimize_join(self, &original_plan, join)
-                    }
-                    _ => Ok(None),
+            None => { match &original_plan {
+                LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
+                    optimize_join(self, &original_plan, join)
                 }
-            }
+                _ => Ok(None),
+            },
         }
     }
 }
@@ -278,7 +276,7 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
             LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
                 _extract_inner_joins(&join.left, rels, conds);
                 _extract_inner_joins(&join.right, rels, conds);
-                
+
                 for (l, r) in &join.on {
                     conds.insert((l.clone(), r.clone()));
                 }
