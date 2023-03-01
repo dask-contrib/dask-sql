@@ -25,7 +25,8 @@ impl Default for JoinReorder {
     fn default() -> Self {
         Self {
             max_fact_tables: 2,
-            fact_dimension_ratio: 0.3,
+            // FIXME: fact_dimension_ratio should be 0.3
+            fact_dimension_ratio: 0.7,
             preserve_user_order: true,
             filter_selectivity: 1.0,
         }
@@ -48,20 +49,15 @@ impl OptimizerRule for JoinReorder {
         let plan = utils::optimize_children(self, plan, _config)?;
 
         match &plan {
-            Some(LogicalPlan::Join(join)) => {
-                // TODO: Remove
-                println!("OPTIMIZE JOIN WITH PLAN");
-                optimize_join(&self, &plan.as_ref().unwrap(), &join)
+            Some(LogicalPlan::Join(join)) if join.join_type == JoinType::Inner => {
+                optimize_join(self, plan.as_ref().unwrap(), join)
             }
             Some(plan) => Ok(Some(plan.clone())),
             None => {
                 match &original_plan {
-                    LogicalPlan::Join(join) => {
-                        // TODO: Remove
-                        println!("OPTIMIZE JOIN WITH ORIGINAL");
-                        optimize_join(&self, &original_plan, join)
+                    LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
+                        optimize_join(self, &original_plan, join)
                     }
-                    // TODO: Ok(None)? Ok(plan)?
                     _ => Ok(None),
                 }
             }
@@ -74,9 +70,9 @@ fn optimize_join(
     plan: &LogicalPlan,
     join: &Join,
 ) -> Result<Option<LogicalPlan>> {
+    // FIXME: Check fact/fact join logic
+
     if !is_supported_join(join) {
-        // TODO: Remove
-        println!("Not supported join");
         return Ok(Some(plan.clone()));
     }
 
@@ -98,20 +94,11 @@ fn optimize_join(
             dims.push(rel.clone());
         }
     }
-    // TODO: Remove
-    println!("Fact tables:");
-    println!("{:?}", &facts);
-    println!("Dim tables:");
-    println!("{:?}", &dims);
 
     if facts.is_empty() || dims.is_empty() {
-        // TODO: Remove
-        println!("No fact and/or dim tables");
         return Ok(Some(plan.clone()));
     }
     if facts.len() > rule.max_fact_tables {
-        // TODO: Remove
-        println!("Too many fact tables");
         return Ok(Some(plan.clone()));
     }
 
@@ -161,8 +148,7 @@ fn optimize_join(
     assert!(filtered_dimensions.is_empty());
     assert!(unfiltered_dimensions.is_empty());
 
-    let dim_plans: Vec<LogicalPlan> =
-        result.iter().map(|rel| rel.plan.clone()).collect();
+    let dim_plans: Vec<LogicalPlan> = result.iter().map(|rel| rel.plan.clone()).collect();
 
     let mut join_conds = HashSet::new();
     for cond in &conds {
@@ -171,8 +157,6 @@ fn optimize_join(
                 join_conds.insert((l.clone(), r.clone()));
             }
             _ => {
-                // TODO: Remove
-                println!("Non-column join conditions");
                 return Ok(Some(plan.clone()));
             }
         }
@@ -191,12 +175,8 @@ fn optimize_join(
     };
 
     if join_conds.is_empty() {
-        // TODO: Remove
-        println!("Returning optimized plan");
         Ok(Some(optimized))
     } else {
-        // TODO: Remove
-        println!("Join conditions are not empty");
         Ok(Some(plan.clone()))
     }
 }
@@ -214,8 +194,6 @@ struct Relation {
 impl Relation {
     fn new(plan: LogicalPlan) -> Self {
         let size = get_table_size(&plan).unwrap_or(100);
-        // TODO: Remove
-        println!("{:?}", &size);
         Self { plan, size }
     }
 
@@ -256,17 +234,14 @@ fn has_filter(plan: &LogicalPlan) -> bool {
 /// instead we only allowed operators from selected set of
 /// operators
 fn is_supported_join(join: &Join) -> bool {
-    // TODO: Check for deterministic filter expressions
+    // FIXME: Check for deterministic filter expressions
 
     fn is_supported_rel(plan: &LogicalPlan) -> bool {
         match plan {
             LogicalPlan::Join(join) => {
                 join.join_type == JoinType::Inner
-                    // TODO: Need to support join filters correctly... for now assume
-                    // they have already been pushed down to the underlying table scan
-                    // but we need to make sure we do not drop these filters when
-                    // rebuilding the joins later
-                    // && join.filter.is_none()
+                    // FIXME: Need to support join filters correctly
+                    && join.filter.is_none()
                     && is_supported_rel(&join.left)
                     && is_supported_rel(&join.right)
             }
@@ -290,7 +265,7 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
     ) {
         match plan {
             LogicalPlan::Join(join)
-                if join.join_type == JoinType::Inner /* TODO && join.filter.is_none()*/ =>
+                if join.join_type == JoinType::Inner && join.filter.is_none() =>
             {
                 _extract_inner_joins(&join.left, rels, conds);
                 _extract_inner_joins(&join.right, rels, conds);
@@ -299,6 +274,18 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
                     conds.insert((l.clone(), r.clone()));
                 }
             }
+            /* FIXME: Need to support join filters correctly
+            LogicalPlan::Join(join) if join.join_type == JoinType::Inner => {
+                _extract_inner_joins(&join.left, rels, conds);
+                _extract_inner_joins(&join.right, rels, conds);
+                
+                for (l, r) in &join.on {
+                    conds.insert((l.clone(), r.clone()));
+                }
+
+                // Need to save this info somewhere
+                let join_filter = join.filter.as_ref().unwrap();
+            } */
             _ => {
                 if find_join(plan).is_some() {
                     for x in plan.inputs() {
@@ -369,6 +356,13 @@ fn build_join_tree(
                 conds.remove(&key);
             }
 
+            /* FIXME: Build join with join_keys when needed
+            self.join(
+                right: LogicalPlan,
+                join_type: JoinType,
+                join_keys: (Vec<impl Into<Column>>, Vec<impl Into<Column>>),
+                filter: Option<Expr>,
+            ) */
             b = b.join(dim.clone(), JoinType::Inner, (left_keys, right_keys), None)?;
         }
     }
@@ -383,10 +377,11 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
                 .as_any()
                 .downcast_ref::<DaskTableSource>()
                 .expect("should be a DaskTableSource");
-            source.statistics().map(|stats| stats.get_row_count() as usize)
+
+            source
+                .statistics()
+                .map(|stats| stats.get_row_count() as usize)
         }
         _ => get_table_size(plan.inputs()[0]),
     }
 }
-
-// TODO: Add Rust tests
