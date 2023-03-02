@@ -118,8 +118,7 @@ impl PyTableScan {
         let mut filtered_exprs: Vec<(String, String, String)> = Vec::new();
         let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
         for filter in filters {
-            let dnf_filter = PyTableScan::_expand_dnf_filter(filter);
-            println!("DNF Filter: {:?}", dnf_filter);
+            filtered_exprs.append(&mut PyTableScan::_expand_dnf_filter(filter));
         }
 
         PyFilteredResult {
