@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{f32::consts::E, sync::Arc};
 
-use datafusion_common::DFSchema;
-use datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan};
+use datafusion_common::{DFSchema, ScalarValue};
+use datafusion_expr::{logical_plan::TableScan, BinaryExpr, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
@@ -24,6 +24,109 @@ pub struct PyFilteredResult {
     pub io_unfilterable_exprs: Vec<PyExpr>,
     #[pyo3(get)]
     pub filtered_exprs: Vec<(String, String, String)>,
+}
+
+impl PyTableScan {
+    /// Transform the singular Expr instance into its DNF form serialized in a Vec instance. Possibly recursively expanding
+    /// it as well if needed.
+    ///
+    /// Ex: BinaryExpr("column_name", Operator::Eq, "something") -> vec!["column_name", "=", "something"]
+    /// Ex: Expr::Column("column_name") -> vec!["column_name"]
+    /// Ex: Expr::Literal(Utf-8("something")) -> vec!["something"]
+    pub fn _expand_dnf_filter(filter: &Expr) -> Vec<(String, String, String)> {
+        let mut filter_tuple: Vec<(String, String, String)> = Vec::new();
+
+        match filter {
+            Expr::BinaryExpr(binary_expr) => {
+                println!(
+                    "!!!BinaryExpr -> Left: {:?}, Operator: {:?}, Right: {:?}",
+                    binary_expr.left, binary_expr.op, binary_expr.right
+                );
+
+                // Since Tuples are immutable in Rust we need a datastructure to temporaily hold the Tuples values until all have been parsed
+                let mut tmp_vals: Vec<String> = Vec::new();
+
+                // Push left Expr string value or combo of expanded left values
+                match &*binary_expr.left {
+                    Expr::BinaryExpr(binary_expr) => {
+                        filter_tuple.append(&mut PyTableScan::_expand_dnf_filter(
+                            &Expr::BinaryExpr(binary_expr.clone()),
+                        ));
+                    }
+                    _ => {
+                        let str = binary_expr.left.to_string();
+                        if str.contains(".") {
+                            tmp_vals.push(str.split('.').nth(1).unwrap().to_string());
+                        } else {
+                            tmp_vals.push(str);
+                        }
+                    }
+                };
+
+                // Handle the operator here. This controls if the format is conjunctive or disjuntive
+                tmp_vals.push(binary_expr.op.to_string());
+
+                match &*binary_expr.right {
+                    Expr::BinaryExpr(binary_expr) => {
+                        filter_tuple.append(&mut PyTableScan::_expand_dnf_filter(
+                            &Expr::BinaryExpr(binary_expr.clone()),
+                        ));
+                    }
+                    _ => match &*binary_expr.right {
+                        Expr::Literal(scalar_value) => match &scalar_value {
+                            ScalarValue::Utf8(value) => {
+                                let val = value.as_ref().unwrap();
+                                if val.contains(".") {
+                                    tmp_vals.push(val.split('.').nth(1).unwrap().to_string());
+                                } else {
+                                    tmp_vals.push(val.clone());
+                                }
+                            }
+                            _ => tmp_vals.push(scalar_value.to_string()),
+                        },
+                        _ => panic!("hit this!"),
+                    },
+                };
+
+                if tmp_vals.len() == 3 {
+                    filter_tuple.push((
+                        tmp_vals[0].clone(),
+                        tmp_vals[1].clone(),
+                        tmp_vals[2].clone(),
+                    ));
+                } else {
+                    println!(
+                        "Wonder why tmp_vals doesn't equal 3?? {:?}, Value: {:?}",
+                        tmp_vals.len(),
+                        tmp_vals[0]
+                    );
+                }
+            }
+            _ => {
+                println!(
+                    "Unable to apply filter: `{}` to IO reader, using in Dask instead",
+                    filter
+                );
+            }
+        }
+
+        filter_tuple
+    }
+
+    pub fn _expand_dnf_filters(filters: &Vec<Expr>) -> PyFilteredResult {
+        // 1. Loop through all of the TableScan filters (Expr(s))
+        let mut filtered_exprs: Vec<(String, String, String)> = Vec::new();
+        let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
+        for filter in filters {
+            let dnf_filter = PyTableScan::_expand_dnf_filter(filter);
+            println!("DNF Filter: {:?}", dnf_filter);
+        }
+
+        PyFilteredResult {
+            io_unfilterable_exprs: unfiltered_exprs,
+            filtered_exprs: filtered_exprs,
+        }
+    }
 }
 
 #[pymethods]
@@ -56,45 +159,8 @@ impl PyTableScan {
 
     #[pyo3(name = "getDNFFilters")]
     fn dnf_io_filters(&self) -> PyResult<PyFilteredResult> {
-        let mut filters: Vec<(String, String, String)> = Vec::new();
-        let mut unfiltered: Vec<PyExpr> = Vec::new();
-        for filter in &self.table_scan.filters {
-            match filter {
-                Expr::BinaryExpr(binary_expr) => {
-                    let left = binary_expr.left.to_string();
-                    let mut left_split = left.split('.');
-                    let left = left_split.nth(1);
-                    let right = binary_expr.right.to_string();
-                    let mut right_split = right.split('.');
-                    let right = right_split.nth(0);
-                    filters.push((
-                        left.unwrap().to_string(),
-                        binary_expr.op.to_string(),
-                        right.unwrap().to_string(),
-                    ))
-                }
-                // Expr::IsNotNull(inner_expr) => {
-                //     println!("IS NOT NULL Expr: {:?}", inner_expr);
-                //     let fqtn = inner_expr.to_string();
-                //     let mut col_split = fqtn.split('.');
-                //     let col = col_split.nth(1);
-                //     filters.push((col.unwrap().to_string(), "!=".to_string(), "np.nan".to_string()))
-                // },
-                _ => {
-                    println!(
-                        "Unable to apply filter: `{}` to IO reader, using in Dask instead",
-                        filter
-                    );
-                    let tbl_scan = LogicalPlan::TableScan(self.table_scan.clone());
-                    unfiltered.push(PyExpr::from(filter.clone(), Some(vec![Arc::new(tbl_scan)])))
-                }
-            }
-        }
-
-        Ok(PyFilteredResult {
-            io_unfilterable_exprs: unfiltered,
-            filtered_exprs: filters,
-        })
+        let results = PyTableScan::_expand_dnf_filters(&self.table_scan.filters);
+        Ok(results)
     }
 }
 
@@ -119,5 +185,42 @@ impl TryFrom<LogicalPlan> for PyTableScan {
             }
             _ => Err(py_type_err("unexpected plan")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use datafusion::logical_expr::expr_fn::{binary_expr, col};
+    use datafusion_common::ScalarValue;
+    use datafusion_expr::{Expr, Operator};
+
+    use crate::sql::logical::table_scan::PyTableScan;
+
+    #[test]
+    pub fn expand_binary_exprs_dnf_filters() {
+        let jewlery = binary_expr(
+            col("item.i_category"),
+            Operator::Eq,
+            Expr::Literal(ScalarValue::new_utf8("Jewelry")),
+        );
+        let women = binary_expr(
+            col("item.i_category"),
+            Operator::Eq,
+            Expr::Literal(ScalarValue::new_utf8("Women")),
+        );
+        let music = binary_expr(
+            col("item.i_category"),
+            Operator::Eq,
+            Expr::Literal(ScalarValue::new_utf8("Music")),
+        );
+
+        let full_expr = binary_expr(jewlery, Operator::Or, women);
+        let full_expr = binary_expr(full_expr, Operator::Or, music);
+        println!("BinaryExpr: {:?}", full_expr);
+
+        let filters = vec![full_expr];
+
+        let result = PyTableScan::_expand_dnf_filters(&filters);
+        println!("Result: {:?}", result);
     }
 }
