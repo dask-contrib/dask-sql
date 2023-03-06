@@ -1,7 +1,7 @@
-use std::{f32::consts::E, sync::Arc};
+use std::sync::Arc;
 
 use datafusion_common::{DFSchema, ScalarValue};
-use datafusion_expr::{logical_plan::TableScan, BinaryExpr, Expr, LogicalPlan};
+use datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
@@ -55,7 +55,7 @@ impl PyTableScan {
                     }
                     _ => {
                         let str = binary_expr.left.to_string();
-                        if str.contains(".") {
+                        if str.contains('.') {
                             tmp_vals.push(str.split('.').nth(1).unwrap().to_string());
                         } else {
                             tmp_vals.push(str);
@@ -76,11 +76,19 @@ impl PyTableScan {
                         Expr::Literal(scalar_value) => match &scalar_value {
                             ScalarValue::Utf8(value) => {
                                 let val = value.as_ref().unwrap();
-                                if val.contains(".") {
+                                if val.contains('.') {
                                     tmp_vals.push(val.split('.').nth(1).unwrap().to_string());
                                 } else {
                                     tmp_vals.push(val.clone());
                                 }
+                            }
+                            ScalarValue::TimestampNanosecond(val, _an_option) => {
+                                // Need to encode the value as a String to return to Python, Python side will then convert
+                                // value back to a integer
+                                let mut val_builder = "Int64(".to_string();
+                                val_builder.push_str(val.unwrap().to_string().as_str());
+                                val_builder.push(')');
+                                tmp_vals.push(val_builder);
                             }
                             _ => tmp_vals.push(scalar_value.to_string()),
                         },
@@ -116,14 +124,14 @@ impl PyTableScan {
     pub fn _expand_dnf_filters(filters: &Vec<Expr>) -> PyFilteredResult {
         // 1. Loop through all of the TableScan filters (Expr(s))
         let mut filtered_exprs: Vec<(String, String, String)> = Vec::new();
-        let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
+        let unfiltered_exprs: Vec<PyExpr> = Vec::new();
         for filter in filters {
             filtered_exprs.append(&mut PyTableScan::_expand_dnf_filter(filter));
         }
 
         PyFilteredResult {
             io_unfilterable_exprs: unfiltered_exprs,
-            filtered_exprs: filtered_exprs,
+            filtered_exprs,
         }
     }
 }
