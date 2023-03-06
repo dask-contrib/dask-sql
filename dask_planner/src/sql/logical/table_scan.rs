@@ -5,7 +5,7 @@ use datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
-    error::DaskPlannerError,
+    error::{DaskPlannerError, Result},
     expression::{py_expr_list, PyExpr},
     sql::exceptions::py_type_err,
 };
@@ -28,15 +28,35 @@ pub struct PyFilteredResult {
 }
 
 impl PyTableScan {
+    // pub fn _expand_expr(filter: &Expr) -> Result<String> {
+    //     // Push left Expr string value or combo of expanded left values
+    //     match filter {
+    //         Expr::BinaryExpr(binary_expr) => {
+    //             filter_tuple.append(
+    //                 &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
+    //                     binary_expr.clone(),
+    //                 ))
+    //                 .unwrap(),
+    //             );
+    //         }
+    //         _ => {
+    //             let str = filter.to_string();
+    //             if str.contains('.') {
+    //                 tmp_vals.push(str.split('.').nth(1).unwrap().to_string());
+    //             } else {
+    //                 tmp_vals.push(str);
+    //             }
+    //         }
+    //     }
+    // }
+
     /// Transform the singular Expr instance into its DNF form serialized in a Vec instance. Possibly recursively expanding
     /// it as well if needed.
     ///
     /// Ex: BinaryExpr("column_name", Operator::Eq, "something") -> vec!["column_name", "=", "something"]
     /// Ex: Expr::Column("column_name") -> vec!["column_name"]
     /// Ex: Expr::Literal(Utf-8("something")) -> vec!["something"]
-    pub fn _expand_dnf_filter(
-        filter: &Expr,
-    ) -> Result<Vec<(String, String, String)>, DaskPlannerError> {
+    pub fn _expand_dnf_filter(filter: &Expr) -> Result<Vec<(String, String, String)>> {
         let mut filter_tuple: Vec<(String, String, String)> = Vec::new();
 
         match filter {
@@ -67,7 +87,7 @@ impl PyTableScan {
                             tmp_vals.push(str);
                         }
                     }
-                };
+                }
 
                 // Handle the operator here. This controls if the format is conjunctive or disjuntive
                 tmp_vals.push(binary_expr.op.to_string());
@@ -91,19 +111,24 @@ impl PyTableScan {
                                     tmp_vals.push(val.clone());
                                 }
                             }
-                            ScalarValue::TimestampNanosecond(val, _an_option) => {
-                                // Need to encode the value as a String to return to Python, Python side will then convert
-                                // value back to a integer
-                                let mut val_builder = "TimestampNanosecond(".to_string();
-                                val_builder.push_str(val.unwrap().to_string().as_str());
-                                val_builder.push(')');
-                                tmp_vals.push(val_builder);
+                            ScalarValue::TimestampNanosecond(_val, _an_option) => {
+                                // // Need to encode the value as a String to return to Python, Python side will then convert
+                                // // value back to a integer
+                                // let mut val_builder = "TimestampNanosecond(".to_string();
+                                // val_builder.push_str(val.unwrap().to_string().as_str());
+                                // val_builder.push(')');
+                                // tmp_vals.push(val_builder);
+                                // let er =
+                                //     DaskPlannerError::InvalidIOFilter(scalar_value.to_string());
+                                // Err::<Vec<(String, String, String)>, DaskPlannerError>(er)
+
+                                // SIMPLY DO NOT PUSH THE VALUES HERE AND IT WILL CAUSE THE ERROR TO BE PROPAGATED
                             }
                             _ => tmp_vals.push(scalar_value.to_string()),
                         },
                         _ => panic!("hit this!"),
                     },
-                };
+                }
 
                 if tmp_vals.len() == 3 {
                     filter_tuple.push((
@@ -111,12 +136,20 @@ impl PyTableScan {
                         tmp_vals[1].clone(),
                         tmp_vals[2].clone(),
                     ));
+
+                    Ok(filter_tuple)
                 } else {
                     println!(
                         "Wonder why tmp_vals doesn't equal 3?? {:?}, Value: {:?}",
                         tmp_vals.len(),
                         tmp_vals[0]
                     );
+                    let er = DaskPlannerError::InvalidIOFilter(format!(
+                        "Wonder why tmp_vals doesn't equal 3?? {:?}, Value: {:?}",
+                        tmp_vals.len(),
+                        tmp_vals[0]
+                    ));
+                    Err::<Vec<(String, String, String)>, DaskPlannerError>(er)
                 }
             }
             _ => {
@@ -124,10 +157,15 @@ impl PyTableScan {
                     "Unable to apply filter: `{}` to IO reader, using in Dask instead",
                     filter
                 );
+                let er = DaskPlannerError::InvalidIOFilter(format!(
+                    "Unable to apply filter: `{}` to IO reader, using in Dask instead",
+                    filter
+                ));
+                Err::<Vec<(String, String, String)>, DaskPlannerError>(er)
             }
         }
 
-        Ok(filter_tuple)
+        // Ok(filter_tuple)
     }
 
     pub fn _expand_dnf_filters(filters: &Vec<Expr>) -> PyFilteredResult {
@@ -186,7 +224,7 @@ impl PyTableScan {
 impl TryFrom<LogicalPlan> for PyTableScan {
     type Error = PyErr;
 
-    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> std::result::Result<Self, Self::Error> {
         match logical_plan {
             LogicalPlan::TableScan(table_scan) => {
                 // Create an input logical plan that's identical to the table scan with schema from the table source
