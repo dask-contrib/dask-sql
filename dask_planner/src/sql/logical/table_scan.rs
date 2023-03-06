@@ -99,6 +99,10 @@ impl PyTableScan {
                                     tmp_vals.push(val.clone());
                                 }
                             }
+                            ScalarValue::Int8(v) => tmp_vals.push(format!("Int({})", v.unwrap())),
+                            ScalarValue::Int16(v) => tmp_vals.push(format!("Int({})", v.unwrap())),
+                            ScalarValue::Int32(v) => tmp_vals.push(format!("Int({})", v.unwrap())),
+                            ScalarValue::Int64(v) => tmp_vals.push(format!("Int({})", v.unwrap())),
                             ScalarValue::TimestampNanosecond(_val, _an_option) => {
                                 // // Need to encode the value as a String to return to Python, Python side will then convert
                                 // // value back to a integer
