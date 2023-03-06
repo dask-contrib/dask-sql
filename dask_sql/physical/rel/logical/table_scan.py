@@ -101,6 +101,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
                         updated_filters.append((filter_tup[0], filter_tup[1], int(num)))
                     elif filter_tup[2].startswith("TimestampNanosecond"):
                         ns_timestamp = filter_tup[2].split("(")[1].split(")")[0]
+                        print(f"Nanosecond Value from Rust: {ns_timestamp}")
                         val = pd.to_datetime(ns_timestamp, unit="ns")
                         updated_filters.append((filter_tup[0], filter_tup[1], val))
                     elif filter_tup[2] == "np.nan":

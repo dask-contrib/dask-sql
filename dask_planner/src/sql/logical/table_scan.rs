@@ -5,6 +5,7 @@ use datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
+    error::DaskPlannerError,
     expression::{py_expr_list, PyExpr},
     sql::exceptions::py_type_err,
 };
@@ -33,7 +34,9 @@ impl PyTableScan {
     /// Ex: BinaryExpr("column_name", Operator::Eq, "something") -> vec!["column_name", "=", "something"]
     /// Ex: Expr::Column("column_name") -> vec!["column_name"]
     /// Ex: Expr::Literal(Utf-8("something")) -> vec!["something"]
-    pub fn _expand_dnf_filter(filter: &Expr) -> Vec<(String, String, String)> {
+    pub fn _expand_dnf_filter(
+        filter: &Expr,
+    ) -> Result<Vec<(String, String, String)>, DaskPlannerError> {
         let mut filter_tuple: Vec<(String, String, String)> = Vec::new();
 
         match filter {
@@ -49,9 +52,12 @@ impl PyTableScan {
                 // Push left Expr string value or combo of expanded left values
                 match &*binary_expr.left {
                     Expr::BinaryExpr(binary_expr) => {
-                        filter_tuple.append(&mut PyTableScan::_expand_dnf_filter(
-                            &Expr::BinaryExpr(binary_expr.clone()),
-                        ));
+                        filter_tuple.append(
+                            &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
+                                binary_expr.clone(),
+                            ))
+                            .unwrap(),
+                        );
                     }
                     _ => {
                         let str = binary_expr.left.to_string();
@@ -68,9 +74,12 @@ impl PyTableScan {
 
                 match &*binary_expr.right {
                     Expr::BinaryExpr(binary_expr) => {
-                        filter_tuple.append(&mut PyTableScan::_expand_dnf_filter(
-                            &Expr::BinaryExpr(binary_expr.clone()),
-                        ));
+                        filter_tuple.append(
+                            &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
+                                binary_expr.clone(),
+                            ))
+                            .unwrap(),
+                        );
                     }
                     _ => match &*binary_expr.right {
                         Expr::Literal(scalar_value) => match &scalar_value {
@@ -118,15 +127,18 @@ impl PyTableScan {
             }
         }
 
-        filter_tuple
+        Ok(filter_tuple)
     }
 
     pub fn _expand_dnf_filters(filters: &Vec<Expr>) -> PyFilteredResult {
         // 1. Loop through all of the TableScan filters (Expr(s))
         let mut filtered_exprs: Vec<(String, String, String)> = Vec::new();
-        let unfiltered_exprs: Vec<PyExpr> = Vec::new();
+        let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
         for filter in filters {
-            filtered_exprs.append(&mut PyTableScan::_expand_dnf_filter(filter));
+            match PyTableScan::_expand_dnf_filter(filter) {
+                Ok(mut expanded_dnf_filter) => filtered_exprs.append(&mut expanded_dnf_filter),
+                Err(_e) => unfiltered_exprs.push(PyExpr::from(filter.clone(), None)),
+            }
         }
 
         PyFilteredResult {
