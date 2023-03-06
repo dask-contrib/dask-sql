@@ -110,6 +110,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
                 print(
                     f"Rebuilding Dask Task `read_parquet()` \n \
                     Original Dask read-parquet: {layer} \n \
+                    Original creation_info: {layer.creation_info} \n \
                     Path: {creation_path} \n \
                     Filters: {updated_filters} \n \
                     Columns: {cols} \n \
