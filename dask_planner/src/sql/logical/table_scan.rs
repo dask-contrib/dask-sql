@@ -28,28 +28,6 @@ pub struct PyFilteredResult {
 }
 
 impl PyTableScan {
-    // pub fn _expand_expr(filter: &Expr) -> Result<String> {
-    //     // Push left Expr string value or combo of expanded left values
-    //     match filter {
-    //         Expr::BinaryExpr(binary_expr) => {
-    //             filter_tuple.append(
-    //                 &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
-    //                     binary_expr.clone(),
-    //                 ))
-    //                 .unwrap(),
-    //             );
-    //         }
-    //         _ => {
-    //             let str = filter.to_string();
-    //             if str.contains('.') {
-    //                 tmp_vals.push(str.split('.').nth(1).unwrap().to_string());
-    //             } else {
-    //                 tmp_vals.push(str);
-    //             }
-    //         }
-    //     }
-    // }
-
     /// Transform the singular Expr instance into its DNF form serialized in a Vec instance. Possibly recursively expanding
     /// it as well if needed.
     ///
@@ -168,14 +146,16 @@ impl PyTableScan {
         // Ok(filter_tuple)
     }
 
-    pub fn _expand_dnf_filters(filters: &Vec<Expr>) -> PyFilteredResult {
+    pub fn _expand_dnf_filters(input: &Arc<LogicalPlan>, filters: &Vec<Expr>) -> PyFilteredResult {
         // 1. Loop through all of the TableScan filters (Expr(s))
         let mut filtered_exprs: Vec<(String, String, String)> = Vec::new();
         let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
         for filter in filters {
             match PyTableScan::_expand_dnf_filter(filter) {
                 Ok(mut expanded_dnf_filter) => filtered_exprs.append(&mut expanded_dnf_filter),
-                Err(_e) => unfiltered_exprs.push(PyExpr::from(filter.clone(), None)),
+                Err(_e) => {
+                    unfiltered_exprs.push(PyExpr::from(filter.clone(), Some(vec![input.clone()])))
+                }
             }
         }
 
@@ -216,7 +196,7 @@ impl PyTableScan {
 
     #[pyo3(name = "getDNFFilters")]
     fn dnf_io_filters(&self) -> PyResult<PyFilteredResult> {
-        let results = PyTableScan::_expand_dnf_filters(&self.table_scan.filters);
+        let results = PyTableScan::_expand_dnf_filters(&self.input, &self.table_scan.filters);
         Ok(results)
     }
 }
