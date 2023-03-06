@@ -50,12 +50,22 @@ impl PyTableScan {
                 // Push left Expr string value or combo of expanded left values
                 match &*binary_expr.left {
                     Expr::BinaryExpr(binary_expr) => {
-                        filter_tuple.append(
-                            &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
-                                binary_expr.clone(),
-                            ))
-                            .unwrap(),
-                        );
+                        // if let Ok(tup) = filter_tuple.append(
+                        //     &mut PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(
+                        //         binary_expr.clone(),
+                        //     ))
+                        //     .unwrap(),
+                        // );
+
+                        if let Ok(mut tup) =
+                            PyTableScan::_expand_dnf_filter(&Expr::BinaryExpr(binary_expr.clone()))
+                        {
+                            filter_tuple.append(&mut tup);
+                        } else {
+                            // Error so add to list of expressions that cannot be handled by PyArrow
+                            // SIMPLY DO NOT PUSH THE VALUES HERE AND IT WILL CAUSE THE ERROR TO BE PROPAGATED
+                            // REMOVE LATER BUT LEAVE FOR MORE TO MAKE INTENT MORE EXPLICIT. COMPILER OPTIMIZES THIS AWAY ANYWAY
+                        }
                     }
                     _ => {
                         let str = binary_expr.left.to_string();
