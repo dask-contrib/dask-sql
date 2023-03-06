@@ -109,6 +109,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
                 creation_path = layer.creation_info["args"][0]
                 print(
                     f"Rebuilding Dask Task `read_parquet()` \n \
+                    Original Dask read-parquet: {layer} \n \
                     Path: {creation_path} \n \
                     Filters: {updated_filters} \n \
                     Columns: {cols} \n \
