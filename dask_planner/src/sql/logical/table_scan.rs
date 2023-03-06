@@ -85,7 +85,7 @@ impl PyTableScan {
                             ScalarValue::TimestampNanosecond(val, _an_option) => {
                                 // Need to encode the value as a String to return to Python, Python side will then convert
                                 // value back to a integer
-                                let mut val_builder = "Int64(".to_string();
+                                let mut val_builder = "TimestampNanosecond(".to_string();
                                 val_builder.push_str(val.unwrap().to_string().as_str());
                                 val_builder.push(')');
                                 tmp_vals.push(val_builder);

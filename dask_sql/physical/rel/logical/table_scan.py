@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import dask_cudf as ddf
 import numpy as np
+import pandas as pd
 from dask.utils_test import hlg_layer
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
@@ -98,6 +99,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
                     if filter_tup[2].startswith("Int"):
                         num = filter_tup[2].split("(")[1].split(")")[0]
                         updated_filters.append((filter_tup[0], filter_tup[1], int(num)))
+                    elif filter_tup[2].startswith("TimestampNanosecond"):
+                        ns_timestamp = filter_tup[2].split("(")[1].split(")")[0]
+                        val = pd.to_datetime(ns_timestamp, unit="ns")
+                        updated_filters.append((filter_tup[0], filter_tup[1], val))
                     elif filter_tup[2] == "np.nan":
                         updated_filters.append((filter_tup[0], filter_tup[1], np.nan))
                     else:
