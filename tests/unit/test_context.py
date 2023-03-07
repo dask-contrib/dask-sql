@@ -1,3 +1,4 @@
+import os
 import sys
 import warnings
 
@@ -329,3 +330,11 @@ def test_alter_table(c, df_simple):
     c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
 
     del c.schema[c.schema_name].tables["physics"]
+
+
+def test_filepath(parquet_ddf, tmpdir):
+    c = Context()
+    c.create_table("df", parquet_ddf)
+
+    assert c.schema["root"].tables["df"].filepath == os.path.join(tmpdir, "parquet")
+    assert c.schema["root"].filepaths["df"] == os.path.join(tmpdir, "parquet")

@@ -250,6 +250,13 @@ class Context:
             **kwargs,
         )
 
+        if type(input_table) == str:
+            filepath = input_table
+            dc.filepath = input_table
+            self.schema[schema_name].filepaths[table_name.lower()] = input_table
+        else:
+            filepath = None
+
         self.schema[schema_name].tables[table_name.lower()] = dc
 
         if statistics:
@@ -269,7 +276,7 @@ class Context:
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, statistics.row_count)
+            schema_name, DaskTable(schema_name, table_name, statistics.row_count, filepath)
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
@@ -769,7 +776,13 @@ class Context:
                     else float(0)
                 )
 
-                table = DaskTable(schema_name, name, row_count)
+                filepath = (
+                    schema.filepaths[name]
+                    if name in schema.filepaths
+                    else None
+                )
+
+                table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
 
                 for column in df.columns:

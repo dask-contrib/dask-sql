@@ -202,10 +202,12 @@ class DataContainer:
         df: dd.DataFrame,
         column_container: ColumnContainer,
         statistics: Statistics = None,
+        filepath: str = None,
     ):
         self.df = df
         self.column_container = column_container
         self.statistics = statistics
+        self.filepath = filepath
 
     def assign(self) -> dd.DataFrame:
         """
@@ -280,3 +282,4 @@ class SchemaContainer:
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
+        self.filepaths: Dict[str, str] = {}

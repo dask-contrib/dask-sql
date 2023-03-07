@@ -141,12 +141,21 @@ impl ContextProvider for DaskSQLContext {
                             .get(reference.table.as_ref())
                             .unwrap()
                             .statistics;
+                        let filepath = &self
+                            .schemas
+                            .get(reference.schema.as_ref())
+                            .unwrap()
+                            .tables
+                            .get(reference.table.as_ref())
+                            .unwrap()
+                            .filepath;
                         if statistics.get_row_count() == 0.0 {
-                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None, filepath.clone())))
                         } else {
                             Ok(Arc::new(table::DaskTableSource::new(
                                 Arc::new(e),
                                 Some(statistics.clone()),
+                                filepath.clone(),
                             )))
                         }
                     }
