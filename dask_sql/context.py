@@ -276,7 +276,8 @@ class Context:
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, statistics.row_count, filepath)
+            schema_name,
+            DaskTable(schema_name, table_name, statistics.row_count, filepath),
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
@@ -776,11 +777,7 @@ class Context:
                     else float(0)
                 )
 
-                filepath = (
-                    schema.filepaths[name]
-                    if name in schema.filepaths
-                    else None
-                )
+                filepath = schema.filepaths[name] if name in schema.filepaths else None
 
                 table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df

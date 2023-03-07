@@ -150,7 +150,10 @@ impl ContextProvider for DaskSQLContext {
                             .unwrap()
                             .filepath;
                         if statistics.get_row_count() == 0.0 {
-                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None, filepath.clone())))
+                            Ok(Arc::new(table::DaskTableSource::new(
+                                Arc::new(e),
+                                None, filepath.clone(),
+                            )))
                         } else {
                             Ok(Arc::new(table::DaskTableSource::new(
                                 Arc::new(e),

@@ -32,8 +32,16 @@ pub struct DaskTableSource {
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema
-    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics>, filepath: Option<String>) -> Self {
-        Self { schema, statistics, filepath }
+    pub fn new(
+        schema: SchemaRef,
+        statistics: Option<DaskStatistics>,
+        filepath: Option<String>,
+    ) -> Self {
+        Self {
+            schema,
+            statistics,
+            filepath,
+        }
     }
 
     /// Access optional statistics associated with this table source
