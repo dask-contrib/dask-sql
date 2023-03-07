@@ -111,6 +111,29 @@ impl DaskTypeMap {
                 };
                 DataType::Timestamp(unit, tz)
             }
+            SqlTypeName::DECIMAL => {
+                let (precision, scale) = match py_kwargs {
+                    Some(dict) => {
+                        let precision: u8 = match dict.get_item("precision") {
+                            Some(e) => {
+                                let res: PyResult<u8> = e.extract();
+                                res.unwrap()
+                            }
+                            None => 38,
+                        };
+                        let scale: i8 = match dict.get_item("scale") {
+                            Some(e) => {
+                                let res: PyResult<i8> = e.extract();
+                                res.unwrap()
+                            }
+                            None => 0,
+                        };
+                        (precision, scale)
+                    }
+                    None => (38, 0),
+                };
+                DataType::Decimal128(precision, scale)
+            }
             _ => sql_type.to_arrow()?,
         };
 

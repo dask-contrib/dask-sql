@@ -9,6 +9,8 @@ import pandas as pd
 from dask_planner.rust import DaskTypeMap, SqlTypeName
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
+import cudf
+
 logger = logging.getLogger(__name__)
 
 # Default mapping between python types and SQL types
@@ -106,6 +108,17 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
             unit=str(python_type.unit),
             tz=str(python_type.tz),
         )
+    try:
+        from cudf.api.types import is_decimal_dtype
+
+        if is_decimal_dtype(python_type):
+            return DaskTypeMap(
+                SqlTypeName.DECIMAL,
+                precision=python_type.precision,
+                scale=python_type.scale,
+            )
+    except ImportError:
+        pass
 
     try:
         return DaskTypeMap(_PYTHON_TO_SQL[python_type])
@@ -183,6 +196,7 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # We use np.float64 always, even though we might
         # be able to use a smaller type
         python_type = np.float64
+        # TODO
     else:
         try:
             python_type = _SQL_TO_PYTHON_SCALARS[str(sql_type)]
@@ -279,6 +293,14 @@ def cast_column_type(
 def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype
+
+    try:
+        from cudf.api.types import is_decimal_dtype
+
+        if is_decimal_dtype(current_type):
+            return col
+    except ImportError:
+        pass
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
