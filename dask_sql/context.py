@@ -255,7 +255,7 @@ class Context:
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
         else:
-            filepath = None
+            filepath = ""
 
         self.schema[schema_name].tables[table_name.lower()] = dc
 
@@ -777,7 +777,7 @@ class Context:
                     else float(0)
                 )
 
-                filepath = schema.filepaths[name] if name in schema.filepaths else None
+                filepath = schema.filepaths[name] if name in schema.filepaths else ""
 
                 table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
