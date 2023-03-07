@@ -332,9 +332,27 @@ def test_alter_table(c, df_simple):
     del c.schema[c.schema_name].tables["physics"]
 
 
-def test_filepath(parquet_ddf, tmpdir):
+def test_filepath(tmpdir):
     c = Context()
-    c.create_table("df", parquet_ddf)
 
-    assert c.schema["root"].tables["df"].filepath == os.path.join(tmpdir, "parquet")
-    assert c.schema["root"].filepaths["df"] == os.path.join(tmpdir, "parquet")
+    parquet_path = os.path.join(tmpdir, "parquet")
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(parquet_path)
+
+    c.create_table("df", parquet_path, format="parquet")
+
+    assert c.schema["root"].tables["df"].filepath == parquet_path
+    assert c.schema["root"].filepaths["df"] == parquet_path
