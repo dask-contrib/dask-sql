@@ -102,32 +102,11 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
         return DaskTypeMap(
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(python_type):
-            return DaskTypeMap(
-                SqlTypeName.DECIMAL,
-                precision=python_type.precision,
-                scale=python_type.scale,
-            )
-    except ImportError:
-        pass
             SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
             unit=str(python_type.unit),
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(python_type):
-            return DaskTypeMap(
-                SqlTypeName.DECIMAL,
-                precision=python_type.precision,
-                scale=python_type.scale,
-            )
-    except ImportError:
-        pass
             tz=str(python_type.tz),
         )
+
     try:
         from cudf.api.types import is_decimal_dtype
 
@@ -190,7 +169,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
             pass
         except TypeError:  # pragma: no cover
             # interval type is not recognized, fall back to default case
-        # TODO
             pass
 
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
@@ -204,7 +182,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         sql_type == SqlTypeName.TIMESTAMP
         or sql_type == SqlTypeName.TIME
         or sql_type == SqlTypeName.DATE
-        # TODO
     ):
         if isinstance(literal_value, str):
             literal_value = np.datetime64(literal_value)
@@ -288,14 +265,6 @@ def similar_type(lhs: type, rhs: type) -> bool:
 
     return False
 
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(current_type):
-            return col
-    except ImportError:
-        pass
-
 
 def cast_column_type(
     df: dd.DataFrame, column_name: str, expected_type: type
@@ -310,14 +279,6 @@ def cast_column_type(
 
     logger.debug(
         f"Column {column_name} has type {current_type}, expecting {expected_type}..."
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(current_type):
-            return col
-    except ImportError:
-        pass
-
     )
 
     casted_column = cast_column_to_type(df[column_name], expected_type)
