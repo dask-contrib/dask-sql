@@ -158,7 +158,7 @@ Input Formats
 
 ``dask-sql`` understands (thanks to the large Dask ecosystem) a wide verity of input formats and input locations.
 
-* All formats and locations mentioned in `the Dask docu  <https://docs.dask.org/en/latest/dataframe-create.html>`_, including CSV, Parquet, and JSON.
+* All formats and locations mentioned in `the Dask documentation  <https://docs.dask.org/en/latest/dataframe-create.html>`_, including CSV, Parquet, and JSON.
   Just pass in the location as string (and possibly the format, e.g. "csv" if it is not clear from the file extension).
   The data can be from local disc or many remote locations (S3, hdfs, Azure Filesystem, http, Google Filesystem, ...) - just prefix the path with the matching protocol.
   Additional arguments passed to :func:`~dask_sql.Context.create_table` or ``CREATE TABLE`` are given to the ``read_<format>`` calls.
