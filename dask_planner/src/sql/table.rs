@@ -123,13 +123,18 @@ pub struct DaskTable {
 #[pymethods]
 impl DaskTable {
     #[new]
-    pub fn new(schema_name: &str, table_name: &str, row_count: f64, filepath: &str) -> Self {
+    pub fn new(
+        schema_name: &str,
+        table_name: &str,
+        row_count: f64,
+        filepath: Option<String>,
+    ) -> Self {
         Self {
             schema_name: Some(schema_name.to_owned()),
             table_name: table_name.to_owned(),
             statistics: DaskStatistics::new(row_count),
             columns: Vec::new(),
-            filepath: Some(filepath.to_owned()),
+            filepath,
         }
     }
 

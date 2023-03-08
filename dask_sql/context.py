@@ -255,7 +255,7 @@ class Context:
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
         else:
-            filepath = ""
+            filepath = None
 
         self.schema[schema_name].tables[table_name.lower()] = dc
 
