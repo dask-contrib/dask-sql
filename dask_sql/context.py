@@ -19,6 +19,7 @@ from dask_planner.rust import (
     DFParsingException,
     LogicalPlan,
 )
+from dask_sql._compat import DASK_P2P_SHUFFLE_DEFAULT
 
 try:
     from dask_sql.physical.utils.statistics import parquet_statistics
@@ -514,6 +515,20 @@ class Context:
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
         """
+        # FIXME: Remove once p2p issues are fixed
+        # https://github.com/dask-contrib/dask-sql/pull/1067
+        shuffle_algorithm = dask_config.get("dataframe.shuffle.algorithm", default=None)
+        if (
+            DASK_P2P_SHUFFLE_DEFAULT and shuffle_algorithm is None
+        ) or shuffle_algorithm == "p2p":
+            warnings.warn(
+                "Dask's p2p shuffle algorithm is not yet supported by dask-sql; "
+                "setting shuffle algorithm to `tasks` (see https://github.com/dask-contrib/dask-sql/pull/1067)"
+            )
+            if config_options is None:
+                config_options = {"dataframe.shuffle.algorithm": "tasks"}
+            else:
+                config_options["dataframe.shuffle.algorithm"] = "tasks"
         with dask_config.set(config_options):
             if dataframes is not None:
                 for df_name, df in dataframes.items():

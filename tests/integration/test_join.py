@@ -424,27 +424,40 @@ def test_broadcast_join(c, client, gpu):
     FROM df1, df2
     WHERE df1.user_id = df2.user_id
     """
+
     expected_df = df1.merge(df2, on="user_id", how="inner")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": True})
     assert hlg_layer(res_df.dask, "bcast-join")
-    assert_eq(res_df, expected_df, check_divisions=False, check_index=False)
+    assert_eq(
+        res_df,
+        expected_df,
+        check_divisions=False,
+        check_index=False,
+        scheduler="distributed",
+    )
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": 1.0})
     assert hlg_layer(res_df.dask, "bcast-join")
-    assert_eq(res_df, expected_df, check_divisions=False, check_index=False)
+    assert_eq(
+        res_df,
+        expected_df,
+        check_divisions=False,
+        check_index=False,
+        scheduler="distributed",
+    )
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": 0.5})
     with pytest.raises(KeyError):
         hlg_layer(res_df.dask, "bcast-join")
-    assert_eq(res_df, expected_df, check_index=False)
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": False})
     with pytest.raises(KeyError):
         hlg_layer(res_df.dask, "bcast-join")
-    assert_eq(res_df, expected_df, check_index=False)
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": None})
     with pytest.raises(KeyError):
         hlg_layer(res_df.dask, "bcast-join")
-    assert_eq(res_df, expected_df, check_index=False)
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
