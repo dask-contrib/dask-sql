@@ -186,17 +186,17 @@ pub(crate) fn table_from_logical_plan(
 
             let table_ref: TableReference = table_scan.table_name.as_str().into();
             let (schema, tbl) = match table_ref {
-                TableReference::Bare { table } => ("", table),
-                TableReference::Partial { schema, table } => (schema, table),
+                TableReference::Bare { table } => ("".to_string(), table),
+                TableReference::Partial { schema, table } => (schema.to_string(), table),
                 TableReference::Full {
                     catalog: _,
                     schema,
                     table,
-                } => (schema, table),
+                } => (schema.to_string(), table),
             };
 
             Ok(Some(DaskTable {
-                schema_name: Some(String::from(schema)),
+                schema_name: Some(schema),
                 table_name: String::from(tbl),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,

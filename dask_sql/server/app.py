@@ -6,7 +6,6 @@ from uuid import uuid4
 import dask.distributed
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from nest_asyncio import apply
 from uvicorn import Config, Server
 
 from dask_sql.context import Context
@@ -188,6 +187,8 @@ def run_server(
             Doing so will deadlock infinitely.
 
     """
+    if context is None:
+        context = Context()
     _init_app(app, context=context, client=client)
     if jdbc_metadata:
         create_meta_data(context)
@@ -198,17 +199,10 @@ def run_server(
     config = Config(app, host=host, port=port, log_level=log_level)
     server = Server(config=config)
 
-    loop = asyncio.get_event_loop()
     if blocking:
-        if loop and loop.is_running():
-            apply(loop=loop)
-
         server.run()
     else:
-        if not loop or not loop.is_running():
-            raise AttributeError(
-                "blocking=True needs a running event loop (e.g. in a jupyter notebook)"
-            )
+        loop = asyncio.get_event_loop()
         loop.create_task(server.serve())
         context.sql_server = server
 
@@ -276,7 +270,7 @@ def _init_app(
     context: Context = None,
     client: dask.distributed.Client = None,
 ):
-    app.c = context or Context()
+    app.c = context
     app.future_list = {}
 
     try:

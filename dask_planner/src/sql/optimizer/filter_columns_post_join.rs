@@ -371,6 +371,7 @@ fn optimize_top_down(
                         plan: Arc::new(previous_step.clone()),
                         stringified_plans: e.stringified_plans.clone(),
                         schema: e.schema.clone(),
+                        logical_optimization_succeeded: false, // While Dask-SQL does not use the DataFusion Physical Planner we should set this value to False to guard any 3rd party dependency using Dask-SQL from assuming the plan is safe to use at this point.
                     });
                 }
                 LogicalPlan::Analyze(a) => {

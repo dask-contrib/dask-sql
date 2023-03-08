@@ -25,7 +25,6 @@ RUN mamba install -y \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     tabulate \
-    nest-asyncio \
     # additional dependencies
     "pyarrow>=6.0.1" \
     "scikit-learn>=1.0.0" \
