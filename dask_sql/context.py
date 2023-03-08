@@ -509,11 +509,12 @@ class Context:
         """
         # FIXME: Remove once p2p issues are fixed
         # https://github.com/dask-contrib/dask-sql/pull/1067
-        if DASK_P2P_SHUFFLE_DEFAULT and dask_config.get(
-            "dataframe.shuffle.algorithm", default=None
-        ) in (None, "p2p"):
+        shuffle_algorithm = dask_config.get("dataframe.shuffle.algorithm", default=None)
+        if (
+            DASK_P2P_SHUFFLE_DEFAULT and shuffle_algorithm is None
+        ) or shuffle_algorithm == "p2p":
             warnings.warn(
-                "dask>=2023.2.1 defaults to using a p2p shuffle algorithm which is not fully supported by dask-sql; "
+                "Dask's p2p shuffle algorithm is not yet supported by dask-sql; "
                 "setting shuffle algorithm to `tasks` (see https://github.com/dask-contrib/dask-sql/pull/1067)"
             )
             if config_options is None:
