@@ -792,7 +792,7 @@ class Context:
                     else float(0)
                 )
 
-                filepath = schema.filepaths[name] if name in schema.filepaths else ""
+                filepath = schema.filepaths[name] if name in schema.filepaths else None
 
                 table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
