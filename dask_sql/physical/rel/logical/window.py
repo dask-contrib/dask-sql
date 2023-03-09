@@ -384,7 +384,8 @@ class DaskWindowPlugin(BaseRelPlugin):
         else:
             temp_col = new_temporary_column(df)
             df = df.assign(**{temp_col: 1})
-            group_columns = temporary_columns = [temp_col]
+            group_columns = [temp_col]
+            temporary_columns = [temp_col]
 
         return df, group_columns, temporary_columns
 
