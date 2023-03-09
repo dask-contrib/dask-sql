@@ -1052,3 +1052,27 @@ def test_query_case_sensitivity():
         )
     except ParsingException as pe:
         assert False, f"Queries should be case insensitve but raised exception {pe}"
+
+
+def test_column_name_starting_with_number():
+    c = Context()
+    df = pd.DataFrame({"a": range(10), "1b": range(10)})
+    c.create_table("df", df)
+
+    result = c.sql(
+        """
+        SELECT "1b" AS x FROM df
+        """
+    )
+    expected = pd.DataFrame({"x": range(10)})
+    assert_eq(result, expected)
+
+    result = c.sql(
+        """
+        SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
+        """
+    )
+    expected = pd.DataFrame(
+        {"x": [None, 0, None, None, None, None, None, None, None, None]}
+    )
+    assert_eq(result, expected)
