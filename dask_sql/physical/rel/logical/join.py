@@ -256,8 +256,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 " and https://github.com/dask/dask/issues/9870"
             )
-        df = dd.merge(
-            df_lhs_with_tmp,
+        df = df_lhs_with_tmp.merge(
             df_rhs_with_tmp,
             on=added_columns,
             how=join_type,
