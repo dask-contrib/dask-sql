@@ -359,6 +359,6 @@ def test_filepath(tmpdir):
     df = pd.DataFrame({"a": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
     c.create_table("df", df)
 
-    assert c.schema["root"].tables["df"].filepath == None
+    assert c.schema["root"].tables["df"].filepath is None
     with pytest.raises(KeyError):
         c.schema["root"].filepaths["df"]
