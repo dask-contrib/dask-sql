@@ -351,8 +351,14 @@ def test_filepath(tmpdir):
         },
     )
     dd.from_pandas(df, npartitions=3).to_parquet(parquet_path)
-
     c.create_table("df", parquet_path, format="parquet")
 
     assert c.schema["root"].tables["df"].filepath == parquet_path
     assert c.schema["root"].filepaths["df"] == parquet_path
+
+    df = pd.DataFrame({"a": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
+    c.create_table("df", df)
+
+    assert c.schema["root"].tables["df"].filepath == None
+    with pytest.raises(KeyError):
+        c.schema["root"].filepaths["df"]
