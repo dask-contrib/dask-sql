@@ -16,4 +16,3 @@ PIPE_INPUT_CONTEXT_MANAGER = _prompt_toolkit_version >= parseVersion("3.0.29")
 
 # TODO: remove when dask min version gets bumped
 BROADCAST_JOIN_SUPPORT_WORKING = _dask_version > parseVersion("2023.1.0")
-DASK_P2P_SHUFFLE_DEFAULT = _dask_version >= parseVersion("2023.2.1")
