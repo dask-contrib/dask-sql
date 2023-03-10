@@ -336,7 +336,7 @@ def test_filepath(tmpdir):
     c = Context()
 
     parquet_path = os.path.join(tmpdir, "parquet")
-    df = pd.DataFrame(
+    parquet_df = pd.DataFrame(
         {
             "a": [1, 2, 3] * 5,
             "b": range(15),
@@ -350,11 +350,11 @@ def test_filepath(tmpdir):
             "index": range(15),
         },
     )
-    dd.from_pandas(df, npartitions=3).to_parquet(parquet_path)
-    c.create_table("df", parquet_path, format="parquet")
+    dd.from_pandas(parquet_df, npartitions=3).to_parquet(parquet_path)
+    c.create_table("parquet_df", parquet_path, format="parquet")
 
-    assert c.schema["root"].tables["df"].filepath == parquet_path
-    assert c.schema["root"].filepaths["df"] == parquet_path
+    assert c.schema["root"].tables["parquet_df"].filepath == parquet_path
+    assert c.schema["root"].filepaths["parquet_df"] == parquet_path
 
     df = pd.DataFrame({"a": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
     c.create_table("df", df)
