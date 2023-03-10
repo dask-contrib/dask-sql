@@ -21,4 +21,3 @@ updates:
       # ignore cibw patch updates
       - dependency-name: "pypa/cibuildwheel"
         update-types: ["version-update:semver-patch"]
-      
