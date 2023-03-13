@@ -1,11 +1,14 @@
 use std::fmt;
 
-use datafusion_common::{DFField, DFSchema};
+use datafusion_python::datafusion_common::{DFField, DFSchema};
 use pyo3::prelude::*;
 
 use crate::{
     error::Result,
-    sql::types::{DaskTypeMap, SqlTypeName},
+    sql::{
+        exceptions::py_runtime_err,
+        types::{DaskTypeMap, SqlTypeName},
+    },
 };
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
@@ -32,7 +35,13 @@ impl RelDataTypeField {
                 sql_type: SqlTypeName::from_arrow(field.data_type())?,
                 data_type: field.data_type().clone().into(),
             },
-            index: schema.index_of_column_by_name(qualifier, field.name())?,
+            index: schema
+                .index_of_column_by_name(qualifier, field.name())?
+                .ok_or(py_runtime_err(format!(
+                    "Unable to find index of column: `{}` by name",
+                    field.name()
+                )))
+                .unwrap(),
         })
     }
 }

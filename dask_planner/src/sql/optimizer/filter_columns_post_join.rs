@@ -67,25 +67,27 @@ use std::{
     sync::Arc,
 };
 
-use datafusion_common::{Column, DFSchema, Result};
-use datafusion_expr::{
-    logical_plan::{Analyze, CrossJoin, Join, LogicalPlan, Projection, Union},
-    Aggregate,
-    CreateMemoryTable,
-    CreateView,
-    Distinct,
-    Explain,
-    Expr,
-    Filter,
-    JoinType,
-    Limit,
-    Repartition,
-    Sort,
-    Subquery,
-    SubqueryAlias,
-    Window,
+use datafusion_python::{
+    datafusion_common::{Column, DFSchema, Result},
+    datafusion_expr::{
+        logical_plan::{Analyze, CrossJoin, Join, LogicalPlan, Projection, Union},
+        Aggregate,
+        CreateMemoryTable,
+        CreateView,
+        Distinct,
+        Explain,
+        Expr,
+        Filter,
+        JoinType,
+        Limit,
+        Repartition,
+        Sort,
+        Subquery,
+        SubqueryAlias,
+        Window,
+    },
+    datafusion_optimizer::{OptimizerConfig, OptimizerRule},
 };
-use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
 use log::warn;
 
 /// Optimizer rule dropping join key columns post join
@@ -498,13 +500,15 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 mod tests {
     use std::sync::Arc;
 
-    use datafusion::arrow::datatypes::{DataType, Field, Schema};
-    use datafusion_expr::{
-        col,
-        logical_plan::{builder::LogicalTableSource, JoinType, LogicalPlanBuilder},
-        sum,
+    use datafusion_python::{
+        datafusion::arrow::datatypes::{DataType, Field, Schema},
+        datafusion_expr::{
+            col,
+            logical_plan::{builder::LogicalTableSource, JoinType, LogicalPlanBuilder},
+            sum,
+        },
+        datafusion_optimizer::OptimizerContext,
     };
-    use datafusion_optimizer::OptimizerContext;
 
     use super::*;
 

@@ -1,13 +1,20 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::{DFSchema, DFSchemaRef},
+    datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+};
 use fmt::Debug;
 use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct DropModelPlanNode {
     pub schema_name: Option<String>,
     pub model_name: String,
@@ -18,6 +25,12 @@ pub struct DropModelPlanNode {
 impl Debug for DropModelPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for DropModelPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
     }
 }
 
@@ -57,6 +70,22 @@ impl UserDefinedLogicalNode for DropModelPlanNode {
             if_exists: self.if_exists,
             schema: Arc::new(DFSchema::empty()),
         })
+    }
+
+    fn name(&self) -> &str {
+        "DropModel"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

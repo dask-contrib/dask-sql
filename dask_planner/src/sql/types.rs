@@ -1,8 +1,10 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
+    datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
+};
 use pyo3::{prelude::*, types::PyDict};
 
 use crate::{dialect::DaskDialect, error::DaskPlannerError};

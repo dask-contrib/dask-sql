@@ -1,4 +1,4 @@
-use datafusion_common::Column;
+use datafusion_python::datafusion_common::Column;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Column", module = "dask_planner", subclass)]

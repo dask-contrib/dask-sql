@@ -4,7 +4,7 @@
 
 use std::collections::VecDeque;
 
-use datafusion_sql::sqlparser::{
+use datafusion_python::datafusion_sql::sqlparser::{
     ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
@@ -1092,7 +1092,8 @@ impl<'a> DaskParser<'a> {
                         // True if TABLE and False if VIEW
                         if is_table {
                             Ok(DaskStatement::Statement(Box::from(
-                                self.parser.parse_create_table(or_replace, false, None)?,
+                                self.parser
+                                    .parse_create_table(or_replace, false, None, true)?,
                             )))
                         } else {
                             self.parser.prev_token();
@@ -1139,7 +1140,8 @@ impl<'a> DaskParser<'a> {
                 }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
-                    self.parser.parse_create_table(or_replace, false, None)?,
+                    self.parser
+                        .parse_create_table(or_replace, false, None, true)?,
                 )))
             }
         }

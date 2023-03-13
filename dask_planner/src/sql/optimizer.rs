@@ -1,26 +1,28 @@
 use std::sync::Arc;
 
-use datafusion_common::DataFusionError;
-use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate,
-    decorrelate_where_exists::DecorrelateWhereExists,
-    decorrelate_where_in::DecorrelateWhereIn,
-    eliminate_cross_join::EliminateCrossJoin,
-    eliminate_limit::EliminateLimit,
-    eliminate_outer_join::EliminateOuterJoin,
-    filter_null_join_keys::FilterNullJoinKeys,
-    inline_table_scan::InlineTableScan,
-    optimizer::{Optimizer, OptimizerRule},
-    push_down_filter::PushDownFilter,
-    push_down_limit::PushDownLimit,
-    push_down_projection::PushDownProjection,
-    rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
-    scalar_subquery_to_join::ScalarSubqueryToJoin,
-    simplify_expressions::SimplifyExpressions,
-    type_coercion::TypeCoercion,
-    unwrap_cast_in_comparison::UnwrapCastInComparison,
-    OptimizerContext,
+use datafusion_python::{
+    datafusion_common::DataFusionError,
+    datafusion_expr::LogicalPlan,
+    datafusion_optimizer::{
+        common_subexpr_eliminate::CommonSubexprEliminate,
+        decorrelate_where_exists::DecorrelateWhereExists,
+        decorrelate_where_in::DecorrelateWhereIn,
+        eliminate_cross_join::EliminateCrossJoin,
+        eliminate_limit::EliminateLimit,
+        eliminate_outer_join::EliminateOuterJoin,
+        filter_null_join_keys::FilterNullJoinKeys,
+        inline_table_scan::InlineTableScan,
+        optimizer::{Optimizer, OptimizerRule},
+        push_down_filter::PushDownFilter,
+        push_down_limit::PushDownLimit,
+        push_down_projection::PushDownProjection,
+        rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
+        scalar_subquery_to_join::ScalarSubqueryToJoin,
+        simplify_expressions::SimplifyExpressions,
+        type_coercion::TypeCoercion,
+        unwrap_cast_in_comparison::UnwrapCastInComparison,
+        OptimizerContext,
+    },
 };
 use log::trace;
 
@@ -93,13 +95,15 @@ impl DaskSqlOptimizer {
 mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
-    use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
-    use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
-    use datafusion_sql::{
-        planner::{ContextProvider, SqlToRel},
-        sqlparser::{ast::Statement, parser::Parser},
-        TableReference,
+    use datafusion_python::{
+        datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef},
+        datafusion_common::{config::ConfigOptions, DataFusionError, Result},
+        datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource},
+        datafusion_sql::{
+            planner::{ContextProvider, SqlToRel},
+            sqlparser::{ast::Statement, parser::Parser},
+            TableReference,
+        },
     };
 
     use crate::{dialect::DaskDialect, sql::optimizer::DaskSqlOptimizer};

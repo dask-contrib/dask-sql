@@ -1,11 +1,13 @@
-use datafusion_common::ScalarValue;
-use datafusion_expr::{
-    expr::WindowFunction,
-    logical_plan::Window,
-    Expr,
-    LogicalPlan,
-    WindowFrame,
-    WindowFrameBound,
+use datafusion_python::{
+    datafusion_common::ScalarValue,
+    datafusion_expr::{
+        expr::WindowFunction,
+        logical_plan::Window,
+        Expr,
+        LogicalPlan,
+        WindowFrame,
+        WindowFrameBound,
+    },
 };
 use pyo3::prelude::*;
 

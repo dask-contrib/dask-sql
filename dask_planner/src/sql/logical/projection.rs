@@ -1,4 +1,4 @@
-use datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
+use datafusion_python::datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};

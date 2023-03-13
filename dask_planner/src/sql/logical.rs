@@ -35,8 +35,10 @@ pub mod table_scan;
 pub mod use_schema;
 pub mod window;
 
-use datafusion_common::{DFSchemaRef, DataFusionError};
-use datafusion_expr::LogicalPlan;
+use datafusion_python::{
+    datafusion_common::{DFSchemaRef, DataFusionError},
+    datafusion_expr::LogicalPlan,
+};
 use pyo3::prelude::*;
 
 use self::{

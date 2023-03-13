@@ -1,10 +1,12 @@
-use datafusion_common::Column;
-use datafusion_expr::{
-    and,
-    logical_plan::{Join, JoinType, LogicalPlan},
-    BinaryExpr,
-    Expr,
-    Operator,
+use datafusion_python::{
+    datafusion_common::Column,
+    datafusion_expr::{
+        and,
+        logical_plan::{Join, JoinType, LogicalPlan},
+        BinaryExpr,
+        Expr,
+        Operator,
+    },
 };
 use pyo3::prelude::*;
 

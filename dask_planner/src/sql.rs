@@ -11,28 +11,30 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
-use datafusion_expr::{
-    logical_plan::Extension,
-    AccumulatorFunctionImplementation,
-    AggregateUDF,
-    LogicalPlan,
-    PlanVisitor,
-    ReturnTypeFunction,
-    ScalarFunctionImplementation,
-    ScalarUDF,
-    Signature,
-    StateTypeFunction,
-    TableSource,
-    TypeSignature,
-    Volatility,
-};
-use datafusion_sql::{
-    parser::Statement as DFStatement,
-    planner::{ContextProvider, SqlToRel},
-    ResolvedTableReference,
-    TableReference,
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit},
+    datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError},
+    datafusion_expr::{
+        logical_plan::Extension,
+        AccumulatorFunctionImplementation,
+        AggregateUDF,
+        LogicalPlan,
+        PlanVisitor,
+        ReturnTypeFunction,
+        ScalarFunctionImplementation,
+        ScalarUDF,
+        Signature,
+        StateTypeFunction,
+        TableSource,
+        TypeSignature,
+        Volatility,
+    },
+    datafusion_sql::{
+        parser::Statement as DFStatement,
+        planner::{ContextProvider, SqlToRel},
+        ResolvedTableReference,
+        TableReference,
+    },
 };
 use pyo3::prelude::*;
 
@@ -73,9 +75,9 @@ use crate::{
 /// from SQL using DaskSQLContext.
 ///
 /// ```
-/// use datafusion::prelude::*;
+/// use datafusion_python::datafusion::prelude::*;
 ///
-/// # use datafusion_common::Result;
+/// # use datafusion_python::datafusion_common::Result;
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
 /// let mut ctx = DaskSQLContext::new();
@@ -738,8 +740,10 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use datafusion::arrow::datatypes::DataType;
-    use datafusion_expr::{Signature, TypeSignature, Volatility};
+    use datafusion_python::{
+        datafusion::arrow::datatypes::DataType,
+        datafusion_expr::{Signature, TypeSignature, Volatility},
+    };
 
     use crate::sql::generate_signatures;
 
