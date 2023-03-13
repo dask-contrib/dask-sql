@@ -259,8 +259,8 @@ pub struct DescribeModel {
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowSchemas {
-    /// optional FROM identifier
-    pub from: Option<String>,
+    /// optional catalog name
+    pub catalog_name: Option<String>,
     /// optional LIKE identifier
     pub like: Option<String>,
 }
@@ -268,7 +268,8 @@ pub struct ShowSchemas {
 /// Dask-SQL extension DDL for `SHOW TABLES FROM`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowTables {
-    /// schema name
+    /// catalog and schema name, i.e. 'catalog_name.schema_name'
+    pub catalog_name: Option<String>,
     pub schema_name: Option<String>,
 }
 
@@ -1208,7 +1209,7 @@ impl<'a> DaskParser<'a> {
     /// Parse Dask-SQL SHOW SCHEMAS statement
     fn parse_show_schemas(&mut self) -> Result<DaskStatement, ParserError> {
         // parse optional `FROM` clause
-        let from = match self.parser.peek_token().token {
+        let catalog_name = match self.parser.peek_token().token {
             Token::Word(w) => {
                 match w.keyword {
                     Keyword::FROM => {
@@ -1239,18 +1240,23 @@ impl<'a> DaskParser<'a> {
         };
 
         Ok(DaskStatement::ShowSchemas(Box::new(ShowSchemas {
-            from,
+            catalog_name,
             like,
         })))
     }
 
     /// Parse Dask-SQL SHOW TABLES [FROM] statement
     fn parse_show_tables(&mut self) -> Result<DaskStatement, ParserError> {
+        let mut catalog_name = None;
         let mut schema_name = None;
         if !self.parser.consume_token(&Token::EOF) {
-            schema_name = Some(self.parser.parse_identifier()?.value);
+            let (obj_catalog_name, obj_schema_name) =
+                DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
+            catalog_name = obj_catalog_name;
+            schema_name = Some(obj_schema_name);
         }
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
+            catalog_name,
             schema_name,
         })))
     }

@@ -14,7 +14,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 #[derive(Clone)]
 pub struct ShowSchemasPlanNode {
     pub schema: DFSchemaRef,
-    pub from: Option<String>,
+    pub catalog_name: Option<String>,
     pub like: Option<String>,
 }
 
@@ -45,7 +45,7 @@ impl UserDefinedLogicalNode for ShowSchemasPlanNode {
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ShowSchema")
+        write!(f, "ShowSchema: catalog_name: {:?}", self.catalog_name)
     }
 
     fn from_template(
@@ -55,7 +55,7 @@ impl UserDefinedLogicalNode for ShowSchemasPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(ShowSchemasPlanNode {
             schema: Arc::new(DFSchema::empty()),
-            from: self.from.clone(),
+            catalog_name: self.catalog_name.clone(),
             like: self.like.clone(),
         })
     }
@@ -68,9 +68,9 @@ pub struct PyShowSchema {
 
 #[pymethods]
 impl PyShowSchema {
-    #[pyo3(name = "getFrom")]
+    #[pyo3(name = "getCatalogName")]
     fn get_from(&self) -> PyResult<Option<String>> {
-        Ok(self.show_schema.from.clone())
+        Ok(self.show_schema.catalog_name.clone())
     }
 
     #[pyo3(name = "getLike")]

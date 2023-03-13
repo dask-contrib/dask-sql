@@ -32,7 +32,7 @@ class ShowSchemasPlugin(BaseRelPlugin):
         df = pd.DataFrame({"Schema": schemas})
 
         # currently catalogs other than the default `dask_sql` are not supported
-        catalog_name = show_schemas.getFrom() or context.catalog_name
+        catalog_name = show_schemas.getCatalogName() or context.catalog_name
         if catalog_name != context.catalog_name:
             raise RuntimeError(
                 f"A catalog with the name {catalog_name} is not present."

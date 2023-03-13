@@ -59,14 +59,23 @@ def test_wrong_input(c):
         c.sql(f'SHOW COLUMNS FROM "{c.schema_name}"."table"')
     with pytest.raises(AttributeError):
         c.sql('SHOW TABLES FROM "wrong"')
+    with pytest.raises(RuntimeError):
+        c.sql(f'SHOW TABLES FROM "wrong"."{c.schema_name}"')
 
 
-def test_show_tables_no_schema(c):
+def test_show_tables(c):
     c = Context()
 
     df = pd.DataFrame({"id": [0, 1]})
     c.create_table("test", df)
 
-    actual_df = c.sql("show tables").compute()
     expected_df = pd.DataFrame({"Table": ["test"]})
-    assert_eq(actual_df, expected_df)
+
+    # no schema specified
+    assert_eq(c.sql("show tables"), expected_df)
+
+    # unqualified schema
+    assert_eq(c.sql("show tables from root"), expected_df)
+
+    # qualified schema
+    assert_eq(c.sql("show tables from dask_sql.root"), expected_df)
