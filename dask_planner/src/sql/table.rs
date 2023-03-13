@@ -27,18 +27,33 @@ pub struct DaskTableSource {
     schema: SchemaRef,
     #[allow(dead_code)]
     statistics: Option<DaskStatistics>,
+    filepath: Option<String>,
 }
 
 impl DaskTableSource {
     /// Initialize a new `EmptyTable` from a schema
-    pub fn new(schema: SchemaRef, statistics: Option<DaskStatistics>) -> Self {
-        Self { schema, statistics }
+    pub fn new(
+        schema: SchemaRef,
+        statistics: Option<DaskStatistics>,
+        filepath: Option<String>,
+    ) -> Self {
+        Self {
+            schema,
+            statistics,
+            filepath,
+        }
     }
 
     /// Access optional statistics associated with this table source
     #[allow(dead_code)]
     pub fn statistics(&self) -> Option<&DaskStatistics> {
         self.statistics.as_ref()
+    }
+
+    /// Access optional filepath associated with this table source
+    #[allow(dead_code)]
+    pub fn filepath(&self) -> Option<&String> {
+        self.filepath.as_ref()
     }
 }
 
@@ -102,17 +117,24 @@ pub struct DaskTable {
     pub(crate) table_name: String,
     pub(crate) statistics: DaskStatistics,
     pub(crate) columns: Vec<(String, DaskTypeMap)>,
+    pub(crate) filepath: Option<String>,
 }
 
 #[pymethods]
 impl DaskTable {
     #[new]
-    pub fn new(schema_name: &str, table_name: &str, row_count: f64) -> Self {
+    pub fn new(
+        schema_name: &str,
+        table_name: &str,
+        row_count: f64,
+        filepath: Option<String>,
+    ) -> Self {
         Self {
             schema_name: Some(schema_name.to_owned()),
             table_name: table_name.to_owned(),
             statistics: DaskStatistics::new(row_count),
             columns: Vec::new(),
+            filepath,
         }
     }
 
@@ -202,6 +224,7 @@ pub(crate) fn table_from_logical_plan(
                 table_name: String::from(tbl),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
+                filepath: None,
             }))
         }
         LogicalPlan::Join(join) => {
@@ -230,6 +253,7 @@ pub(crate) fn table_from_logical_plan(
                 table_name: String::from("EmptyRelation"),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
+                filepath: None,
             }))
         }
         LogicalPlan::Extension(ex) => {
@@ -240,6 +264,7 @@ pub(crate) fn table_from_logical_plan(
                     table_name: e.table_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
+                    filepath: None,
                 }))
             } else if let Some(e) = node.downcast_ref::<PredictModelPlanNode>() {
                 Ok(Some(DaskTable {
@@ -247,6 +272,7 @@ pub(crate) fn table_from_logical_plan(
                     table_name: e.model_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
+                    filepath: None,
                 }))
             } else {
                 Err(DaskPlannerError::Internal(format!(
