@@ -19,7 +19,6 @@ from dask_planner.rust import (
     DFParsingException,
     LogicalPlan,
 )
-from dask_sql._compat import DASK_P2P_SHUFFLE_DEFAULT
 
 try:
     from dask_sql.physical.utils.statistics import parquet_statistics
@@ -250,6 +249,13 @@ class Context:
             **kwargs,
         )
 
+        if type(input_table) == str:
+            filepath = input_table
+            dc.filepath = input_table
+            self.schema[schema_name].filepaths[table_name.lower()] = input_table
+        else:
+            filepath = None
+
         if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
             if statistics:
@@ -266,7 +272,8 @@ class Context:
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, statistics.row_count)
+            schema_name,
+            DaskTable(schema_name, table_name, statistics.row_count, filepath),
         )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
@@ -503,20 +510,6 @@ class Context:
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
         """
-        # FIXME: Remove once p2p issues are fixed
-        # https://github.com/dask-contrib/dask-sql/pull/1067
-        shuffle_algorithm = dask_config.get("dataframe.shuffle.algorithm", default=None)
-        if (
-            DASK_P2P_SHUFFLE_DEFAULT and shuffle_algorithm is None
-        ) or shuffle_algorithm == "p2p":
-            warnings.warn(
-                "Dask's p2p shuffle algorithm is not yet supported by dask-sql; "
-                "setting shuffle algorithm to `tasks` (see https://github.com/dask-contrib/dask-sql/pull/1067)"
-            )
-            if config_options is None:
-                config_options = {"dataframe.shuffle.algorithm": "tasks"}
-            else:
-                config_options["dataframe.shuffle.algorithm"] = "tasks"
         with dask_config.set(config_options):
             if dataframes is not None:
                 for df_name, df in dataframes.items():
@@ -780,7 +773,9 @@ class Context:
                     else float(0)
                 )
 
-                table = DaskTable(schema_name, name, row_count)
+                filepath = schema.filepaths[name] if name in schema.filepaths else None
+
+                table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
 
                 for column in df.columns:
