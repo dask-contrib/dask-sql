@@ -116,8 +116,9 @@ def parquet_statistics(
         # all be in the same footer)
         groups = defaultdict(list)
         for part in parts:
-            path = part.get("piece")[0]
-            groups[path].append(part)
+            for p in [part] if isinstance(part, dict) else part:
+                path = p.get("piece")[0]
+                groups[path].append(p)
         group_keys = list(groups.keys())
 
         # Compute and return flattened result
