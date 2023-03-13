@@ -51,7 +51,6 @@ setup(
         "prompt_toolkit>=3.0.8",
         "pygments>=2.7.1",
         "tabulate",
-        "nest-asyncio",
     ],
     extras_require={
         "dev": [

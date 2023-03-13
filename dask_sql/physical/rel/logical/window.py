@@ -12,7 +12,6 @@ from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
-from dask_sql.physical.utils.groupby import get_groupby_with_nulls_cols
 from dask_sql.physical.utils.sort import sort_partition_func
 from dask_sql.utils import (
     LoggableDataFrame,
@@ -281,12 +280,12 @@ class DaskWindowPlugin(BaseRelPlugin):
             f"Before applying the function, sorting according to {sort_columns}."
         )
 
-        df, group_columns = self._extract_groupby(df, rel, window, dc, context)
+        df, group_columns, temporary_columns = self._extract_groupby(
+            df, rel, window, dc, context
+        )
         logger.debug(
             f"Before applying the function, partitioning according to {group_columns}."
         )
-        # TODO: optimize by re-using already present columns
-        temporary_columns += group_columns
 
         operations, df = self._extract_operations(rel, window, df, dc, context)
         for _, _, cols in operations:
@@ -345,7 +344,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         # TODO: That is a bit of a hack. We should really use the real column dtype
         meta = df._meta.assign(**{col: 0.0 for col in newly_created_columns})
 
-        df = df.groupby(group_columns).apply(
+        df = df.groupby(group_columns, dropna=False).apply(
             make_pickable_without_dask_sql(filled_map), meta=meta
         )
         logger.debug(
@@ -375,23 +374,20 @@ class DaskWindowPlugin(BaseRelPlugin):
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
-        partition_keys = list(rel.window().getPartitionExprs(window))
+        partition_keys = rel.window().getPartitionExprs(window)
         if partition_keys:
             group_columns = [
-                df[dc.column_container.get_backend_by_frontend_name(o.column_name(rel))]
+                dc.column_container.get_backend_by_frontend_name(o.column_name(rel))
                 for o in partition_keys
             ]
-            group_columns = get_groupby_with_nulls_cols(df, group_columns)
-            group_columns = {
-                new_temporary_column(df): group_col for group_col in group_columns
-            }
+            temporary_columns = []
         else:
-            group_columns = {new_temporary_column(df): 1}
+            temp_col = new_temporary_column(df)
+            df = df.assign(**{temp_col: 1})
+            group_columns = [temp_col]
+            temporary_columns = [temp_col]
 
-        df = df.assign(**group_columns)
-        group_columns = list(group_columns.keys())
-
-        return df, group_columns
+        return df, group_columns, temporary_columns
 
     def _extract_ordering(
         self, rel, window, cc: ColumnContainer
