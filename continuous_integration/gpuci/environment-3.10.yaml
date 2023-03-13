@@ -34,6 +34,7 @@ dependencies:
 - scikit-learn>=1.0.0
 - setuptools-rust>=1.5.2
 - sphinx
+- sqlalchemy<2
 - tpot
 - tzlocal>=2.1
 - uvicorn>=0.13.4
