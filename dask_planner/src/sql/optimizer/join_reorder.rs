@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use datafusion_common::{Column, Result};
 use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
 use datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule};
+use log::warn;
 
 use crate::sql::table::DaskTableSource;
 
@@ -191,8 +192,14 @@ struct Relation {
 
 impl Relation {
     fn new(plan: LogicalPlan) -> Self {
-        let size = get_table_size(&plan).unwrap_or(100);
-        Self { plan, size }
+        let size = get_table_size(&plan);
+        match size {
+            Some(s) => Self { plan, size: s },
+            None => {
+                warn!("Table statistics couldn't be obtained; assuming 100 rows");
+                Self { plan, size: 100 }
+            }
+        }
     }
 
     /// Determine if this plan contains any filters
