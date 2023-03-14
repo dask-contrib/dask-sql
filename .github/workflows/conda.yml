@@ -63,6 +63,8 @@ jobs:
         with:
           rust-version: stable
       - name: Build conda package
+        env:
+          RUSTFMT: ~/.cargo/bin/rustfmt
         run: |
           # suffix for nightly package versions
           export VERSION_SUFFIX=a`date +%y%m%d`
