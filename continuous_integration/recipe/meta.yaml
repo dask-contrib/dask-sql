@@ -19,6 +19,8 @@ build:
     - dask-sql = dask_sql.cmd:main
   string: py{{ python | replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: RUST_BACKTRACE=full {{ PYTHON }} -m pip install . --no-deps -vv
+  script_env:
+    - RUSTFMT
 
 requirements:
   build:
