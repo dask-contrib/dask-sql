@@ -181,6 +181,11 @@ class Statistics:
     def __init__(self, row_count: int) -> None:
         self.row_count = row_count
 
+    def __eq__(self, other):
+        if isinstance(other, Statistics):
+            return self.row_count == other.row_count
+        return False
+
 
 class DataContainer:
     """

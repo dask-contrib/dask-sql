@@ -5,7 +5,7 @@ Quickstart
 
 After :ref:`installation`, you can start querying your data using SQL.
 
-Run the following code in an interactive python session, a python script or a jupyter notebook.
+Run the following code in an interactive Python session, a Python script or a Jupyter Notebook.
 
 0. Cluster Setup
 ----------------
@@ -82,7 +82,6 @@ From now on, the data is accessible as the ``timeseries`` table of this context.
 It is possible to register multiple data frames in the same context.
 
 .. hint::
-
     If you plan to query the same data multiple times,
     it might make sense to persist the data before:
 
@@ -133,6 +132,5 @@ If you are using ``dask-sql`` from a Jupyter notebook, you might be interested i
     GROUP BY name
 
 .. note::
-
     If you have found an SQL feature, which is currently not supported by ``dask-sql``,
     please raise an issue on our `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.
