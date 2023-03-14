@@ -23,15 +23,15 @@ build:
 requirements:
   build:
     - {{ compiler('rust') }}
-    - setuptools-rust >=1.5.2
+    - setuptools-rust >=1.5.1
   host:
     - {{ compiler('rust') }}
     - pip
     - python
-    - setuptools-rust >=1.5.2
+    - setuptools-rust >=1.5.1
   run:
     - {{ compiler('rust') }}
-    - setuptools-rust >=1.5.2
+    - setuptools-rust >=1.5.1
     - python
     - dask >=2022.3.0
     - pandas >=1.4.0
