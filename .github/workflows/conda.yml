@@ -51,10 +51,13 @@ jobs:
           which python
           pip list
           mamba list
-      - name: Cache Cargosetup-builder
-        # and thus do not depend on the OS, arch nor rust version.
-        path: /github/home/.cargo
-        key: cargo-cache-
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          # these represent dependencies downloaded by cargo
+          # and thus do not depend on the OS, arch nor rust version.
+          path: /github/home/.cargo
+          key: cargo-cache-
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-builder
         with:
