@@ -64,10 +64,14 @@ jobs:
           rust-version: stable
       - name: Build conda package
         env:
-          RUSTFMT: ~/.cargo/bin/rustfmt
+          RUSTFMT: /usr/local/cargo/bin/rustfmt
         run: |
           # suffix for nightly package versions
           export VERSION_SUFFIX=a`date +%y%m%d`
+
+          echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo $RUSTFMT
+          echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
           conda mambabuild continuous_integration/recipe \
                            --no-anaconda-upload \
