@@ -1,6 +1,7 @@
 import os
 from time import sleep
 
+import pandas as pd
 import pytest
 
 from dask_sql import Context
@@ -24,6 +25,35 @@ def app_client():
     # don't disconnect the client if using an independent cluster
     if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
         app.client.close()
+
+
+def get_result_or_error(app_client, response):
+    result = response.json()
+
+    assert "nextUri" in result
+    assert "error" not in result
+
+    status_url = result["nextUri"]
+    next_url = status_url
+
+    counter = 0
+    while True:
+        response = app_client.get(next_url)
+        assert response.status_code == 200
+
+        result = response.json()
+
+        if "nextUri" not in result:
+            break
+
+        next_url = result["nextUri"]
+
+        counter += 1
+        assert counter <= 100
+
+        sleep(0.1)
+
+    return result
 
 
 def test_routes(app_client):
@@ -180,30 +210,26 @@ def test_inf_table(app_client, user_table_inf):
     assert "error" not in result
 
 
-def get_result_or_error(app_client, response):
-    result = response.json()
+def test_nullable_int_table(app_client):
+    app_client.app.c.create_table(
+        "null_table", pd.DataFrame({"a": [None]}, dtype="Int64")
+    )
 
-    assert "nextUri" in result
+    response = app_client.post("/v1/statement", data="SELECT * FROM null_table")
+    assert response.status_code == 200
+
+    result = get_result_or_error(app_client, response)
+
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "a",
+            "type": "bigint",
+            "typeSignature": {"rawType": "bigint", "arguments": []},
+        }
+    ]
+
+    assert len(result["data"]) == 1
+    assert result["data"][0] == [None]
     assert "error" not in result
-
-    status_url = result["nextUri"]
-    next_url = status_url
-
-    counter = 0
-    while True:
-        response = app_client.get(next_url)
-        assert response.status_code == 200
-
-        result = response.json()
-
-        if "nextUri" not in result:
-            break
-
-        next_url = result["nextUri"]
-
-        counter += 1
-        assert counter <= 100
-
-        sleep(0.1)
-
-    return result
