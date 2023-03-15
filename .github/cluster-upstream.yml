@@ -8,7 +8,7 @@ services:
         environment:
             USE_MAMBA: "true"
             # TODO: remove pandas constraint once Dask images are updated
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pandas>=1.5.0 pyarrow>=7.0.0"
+            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pandas>=1.5.0"
         ports:
             - "8786:8786"
     dask-worker:
