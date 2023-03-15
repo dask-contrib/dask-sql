@@ -73,6 +73,8 @@ jobs:
           echo $RUSTFMT
           echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
+          rustup default stable
+
           conda mambabuild continuous_integration/recipe \
                            --no-anaconda-upload \
                            --output-folder .
