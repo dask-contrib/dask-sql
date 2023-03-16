@@ -5,10 +5,7 @@ use pyo3::prelude::*;
 
 use crate::{
     error::Result,
-    sql::{
-        exceptions::py_runtime_err,
-        types::{DaskTypeMap, SqlTypeName},
-    },
+    sql::types::{DaskTypeMap, SqlTypeName},
 };
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
@@ -25,9 +22,10 @@ pub struct RelDataTypeField {
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
         let qualifier: Option<&str> = match field.qualifier() {
-            Some(qualifier) => Some(qualifier),
+            Some(qualifier) => Some(qualifier.table()),
             None => None,
         };
+
         Ok(RelDataTypeField {
             qualifier: qualifier.map(|qualifier| qualifier.to_string()),
             name: field.name().clone(),
@@ -35,13 +33,7 @@ impl RelDataTypeField {
                 sql_type: SqlTypeName::from_arrow(field.data_type())?,
                 data_type: field.data_type().clone().into(),
             },
-            index: schema
-                .index_of_column_by_name(qualifier, field.name())?
-                .ok_or(py_runtime_err(format!(
-                    "Unable to find index of column: `{}` by name",
-                    field.name()
-                )))
-                .unwrap(),
+            index: schema.index_of_column(&field.qualified_column())?,
         })
     }
 }

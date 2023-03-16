@@ -72,30 +72,10 @@ impl PyJoin {
 
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
-        let lhs_table_name: String = match &*self.join.left {
-            LogicalPlan::TableScan(scan) => scan.table_name.clone(),
-            _ => {
-                return Err(py_type_err(
-                    "lhs Expected TableScan but something else was received!",
-                ))
-            }
-        };
-
-        let rhs_table_name: String = match &*self.join.right {
-            LogicalPlan::TableScan(scan) => scan.table_name.clone(),
-            _ => {
-                return Err(py_type_err(
-                    "rhs Expected TableScan but something else was received!",
-                ))
-            }
-        };
-
         let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
         for (lhs, rhs) in self.join.on.clone() {
             match (lhs, rhs) {
-                (Expr::Column(mut lhs), Expr::Column(mut rhs)) => {
-                    lhs.relation = Some(lhs_table_name.clone());
-                    rhs.relation = Some(rhs_table_name.clone());
+                (Expr::Column(lhs), Expr::Column(rhs)) => {
                     join_conditions.push((lhs.into(), rhs.into()));
                 }
                 _ => return Err(py_type_err("unsupported join condition")),
