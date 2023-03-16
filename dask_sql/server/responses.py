@@ -65,13 +65,18 @@ class QueryResults:
 class DataResults(QueryResults):
     @staticmethod
     def get_column_description(df):
-        sql_types = [str(python_to_sql_type(t)) for t in df.dtypes]
+        sql_types = [str(python_to_sql_type(t)).lower() for t in df.dtypes]
         column_names = df.columns
         return [
             {
                 "name": column_name,
-                "type": sql_type.lower(),
-                "typeSignature": {"rawType": sql_type.lower(), "arguments": []},
+                "type": sql_type,
+                "typeSignature": {
+                    "rawType": sql_type,
+                    "arguments": []
+                    if sql_type not in ("char", "varchar")
+                    else [{"type": "LONG", "value": 10}],
+                },
             }
             for column_name, sql_type in zip(column_names, sql_types)
         ]
