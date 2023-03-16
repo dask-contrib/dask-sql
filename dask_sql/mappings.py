@@ -195,7 +195,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # We use np.float64 always, even though we might
         # be able to use a smaller type
         python_type = np.float64
-        # TODO
     else:
         try:
             python_type = _SQL_TO_PYTHON_SCALARS[str(sql_type)]
