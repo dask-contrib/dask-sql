@@ -250,11 +250,8 @@ class Context:
         )
 
         if type(input_table) == str:
-            filepath = input_table
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
-        else:
-            filepath = None
 
         if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
@@ -269,12 +266,6 @@ class Context:
 
         self.schema[schema_name].tables[table_name.lower()] = dc
         self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-        # Register the table with the Rust DaskSQLContext
-        self.context.register_table(
-            schema_name,
-            DaskTable(schema_name, table_name, statistics.row_count, filepath),
-        )
 
     def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
         """
@@ -774,14 +765,19 @@ class Context:
                 )
 
                 filepath = schema.filepaths[name] if name in schema.filepaths else None
-
-                table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
-
-                for column in df.columns:
-                    data_type = df[column].dtype
-                    sql_data_type = python_to_sql_type(data_type)
-                    table.add_column(column, sql_data_type)
+                columns = df.columns
+                cc = dc.column_container
+                if not dask_config.get("sql.identifier.case_sensitive"):
+                    columns = [col.lower() for col in columns]
+                    cc = cc.rename_handle_duplicates(df.columns, columns)
+                    dc.column_container = cc
+                column_type_mapping = list(
+                    zip(columns, map(python_to_sql_type, df.dtypes))
+                )
+                table = DaskTable(
+                    schema_name, name, row_count, column_type_mapping, filepath
+                )
 
                 rust_schema.add_table(table)
 
