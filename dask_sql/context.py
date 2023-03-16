@@ -225,8 +225,7 @@ class Context:
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to true to turn on loading the file data directly into memory.
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
-            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
-                statistics are provided, we will just assume 100 rows.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization.
             gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
                 Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
@@ -257,22 +256,19 @@ class Context:
         else:
             filepath = None
 
-        self.schema[schema_name].tables[table_name.lower()] = dc
-
-        if statistics:
-            self.schema[schema_name].statistics[table_name.lower()] = statistics
-        elif parquet_statistics:
+        if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
             if statistics:
                 row_count = 0
                 for d in statistics:
                     row_count += d["num-rows"]
                 statistics = Statistics(row_count)
-                self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-        # If no statistics are obtainable, we will just assume 100 rows
         if not statistics:
-            statistics = Statistics(100)
+            statistics = Statistics(float("nan"))
+        dc.statistics = statistics
+
+        self.schema[schema_name].tables[table_name.lower()] = dc
+        self.schema[schema_name].statistics[table_name.lower()] = statistics
 
         # Register the table with the Rust DaskSQLContext
         self.context.register_table(
