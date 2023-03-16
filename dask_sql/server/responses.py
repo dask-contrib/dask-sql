@@ -75,7 +75,7 @@ class DataResults(QueryResults):
                     "rawType": sql_type,
                     "arguments": []
                     if sql_type not in ("char", "varchar")
-                    else [{"type": "LONG", "value": 10}],
+                    else [{"kind": "LONG", "value": 10}],
                 },
             }
             for column_name, sql_type in zip(column_names, sql_types)
