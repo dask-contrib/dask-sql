@@ -678,7 +678,7 @@ dependencies = [
 [[package]]
 name = "datafusion"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "ahash",
  "apache-avro",
@@ -709,6 +709,7 @@ dependencies = [
  "object_store",
  "parking_lot",
  "parquet",
+ "paste",
  "percent-encoding",
  "pin-project-lite",
  "rand",
@@ -727,7 +728,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "apache-avro",
  "arrow",
@@ -742,7 +743,7 @@ dependencies = [
 [[package]]
 name = "datafusion-execution"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "dashmap",
  "datafusion-common",
@@ -759,18 +760,19 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "ahash",
  "arrow",
  "datafusion-common",
+ "log",
  "sqlparser",
 ]
 
 [[package]]
 name = "datafusion-optimizer"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "arrow",
  "async-trait",
@@ -787,7 +789,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "ahash",
  "arrow",
@@ -805,6 +807,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "md-5",
+ "num-traits",
  "paste",
  "petgraph",
  "rand",
@@ -817,7 +820,7 @@ dependencies = [
 [[package]]
 name = "datafusion-python"
 version = "0.8.0"
-source = "git+https://github.com/jdye64/arrow-datafusion-python.git?branch=substrait_build_updates#0e51698572d91f285ee03be6476ccd2071b665f9"
+source = "git+https://github.com/jdye64/arrow-datafusion-python.git?branch=dask-sql-refactor#567352fcfc6eb1abc559e9ff8ff542549fcaa9a8"
 dependencies = [
  "async-trait",
  "datafusion",
@@ -840,7 +843,7 @@ dependencies = [
 [[package]]
 name = "datafusion-row"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -851,7 +854,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "arrow-schema",
  "datafusion-common",
@@ -863,7 +866,7 @@ dependencies = [
 [[package]]
 name = "datafusion-substrait"
 version = "20.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion.git?branch=substrait_proto_build_updates#7b8d8062c84d0b264c1abc362c29f9e87dcbe9dd"
+source = "git+https://github.com/apache/arrow-datafusion.git?rev=dd98aab#dd98aabdaebcfc30ec4c370be93f6663de50e02f"
 dependencies = [
  "async-recursion",
  "chrono",
@@ -872,6 +875,7 @@ dependencies = [
  "object_store",
  "prost 0.11.8",
  "prost-build 0.9.0",
+ "prost-types 0.11.8",
  "substrait",
  "tokio",
 ]
@@ -1341,10 +1345,11 @@ checksum = "8bb03732005da905c88227371639bf1ad885cc712789c011c31c5fb3ab3ccf02"
 
 [[package]]
 name = "io-lifetimes"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfa919a82ea574332e2de6e74b4c36e74d41982b335080fa59d4ef31be20fdf3"
+checksum = "76e86b86ae312accbf05ade23ce76b625e0e47a255712b7414037385a1c05380"
 dependencies = [
+ "hermit-abi 0.3.1",
  "libc",
  "windows-sys 0.45.0",
 ]
@@ -2568,7 +2573,8 @@ dependencies = [
 [[package]]
 name = "substrait"
 version = "0.4.2"
-source = "git+https://github.com/jdye64/substrait-rs.git?branch=typify_build_issues#22146fc9af2cc66b45dde3ee2f2b9b866b2f4b3c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e977fc98d1e03cf99220bb6bb96f8838ffa5c1306a8c83c1b25aa20817eb6d0"
 dependencies = [
  "heck 0.4.1",
  "prost 0.11.8",
@@ -2983,12 +2989,11 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "walkdir"
-version = "2.3.2"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "808cf2735cd4b6866113f648b791c6adc5714537bc222d9347bb203386ffda56"
+checksum = "36df944cda56c7d8d8b7496af378e6b16de9284591917d307c9b4d313c44e698"
 dependencies = [
  "same-file",
- "winapi",
  "winapi-util",
 ]
 
