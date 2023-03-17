@@ -12,6 +12,7 @@ dask-sql does not enforce a specific order after groupby
 import sqlite3
 from datetime import datetime, timedelta
 
+import dask.config
 import numpy as np
 import pandas as pd
 import pytest
@@ -1039,19 +1040,44 @@ def test_integration_1():
     )
 
 
-def test_query_case_sensitivity():
+@pytest.mark.parametrize(
+    "case_sensitive",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=pytest.mark.xfail(
+                "https://github.com/dask-contrib/dask-sql/issues/1092"
+            ),
+        ),
+    ],
+)
+def test_query_case_sensitivity(case_sensitive):
     c = Context()
-    df = pd.DataFrame({"id": [0, 1]})
+    df = pd.DataFrame({"id": [0, 1], "VAL": [1, 2]})
 
     c.create_table("test", df)
-
-    try:
-        c.sql(
-            "select ID from test",
-            config_options={"sql.identifier.case_sensitive": False},
-        )
-    except ParsingException as pe:
-        assert False, f"Queries should be case insensitve but raised exception {pe}"
+    q1 = "select ID from test"
+    q2 = "select val from test"
+    q3 = "select Id, VAl from test"
+    with dask.config.set({"sql.identifier.case_sensitive": case_sensitive}):
+        if case_sensitive:
+            with pytest.raises(ParsingException):
+                c.sql(q1)
+            with pytest.raises(ParsingException):
+                c.sql(q2)
+            with pytest.raises(ParsingException):
+                c.sql(q3)
+            result = c.sql("SELECT VAL from test")
+            assert_eq(result, df[["VAL"]])
+        else:
+            df.columns = df.columns.str.lower()
+            result = c.sql(q1)
+            assert_eq(result, df[["id"]])
+            result = c.sql(q2)
+            assert_eq(result, df[["val"]])
+            result = c.sql(q3)
+            assert_eq(result, df[["id", "val"]])
 
 
 def test_column_name_starting_with_number():
