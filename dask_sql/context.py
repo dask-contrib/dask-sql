@@ -9,7 +9,6 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
-from dask.distributed import Client
 
 from dask_planner.rust import (
     DaskSchema,
@@ -690,14 +689,7 @@ class Context:
             self, auto_include=auto_include, disable_highlighting=disable_highlighting
         )
 
-    def run_server(
-        self,
-        client: Client = None,
-        host: str = "0.0.0.0",
-        port: int = 8080,
-        log_level=None,
-        blocking: bool = True,
-    ):  # pragma: no cover
+    def run_server(self, **kwargs):  # pragma: no cover
         """
         Run a HTTP server for answering SQL queries using ``dask-sql``.
 
@@ -712,14 +704,7 @@ class Context:
         from dask_sql.server.app import run_server
 
         self.stop_server()
-        self.server = run_server(
-            context=self,
-            client=client,
-            host=host,
-            port=port,
-            log_level=log_level,
-            blocking=blocking,
-        )
+        self.server = run_server(**kwargs)
 
     def stop_server(self):  # pragma: no cover
         """
