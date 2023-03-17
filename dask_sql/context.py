@@ -249,6 +249,14 @@ class Context:
             **kwargs,
         )
 
+        # Temporary for testing
+        self.schema[schema_name].tables_meta[table_name.lower()] = {
+            "input_path": input_table,
+            "table_name": table_name,
+            "format": format,
+            "gpu": gpu,
+        }
+
         if type(input_table) == str:
             filepath = input_table
             dc.filepath = input_table
