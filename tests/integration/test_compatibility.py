@@ -1047,7 +1047,7 @@ def test_integration_1():
         pytest.param(
             True,
             marks=pytest.mark.xfail(
-                "https://github.com/dask-contrib/dask-sql/issues/1092"
+                reason="https://github.com/dask-contrib/dask-sql/issues/1092"
             ),
         ),
     ],
