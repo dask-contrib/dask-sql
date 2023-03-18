@@ -43,6 +43,10 @@ jobs:
         with:
           path: /home/runner/.cargo
           key: cargo-cache
+      - name: Setup Rust toolchain
+        uses: ./.github/actions/setup-builder
+        with:
+          rust-version: stable
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
@@ -71,6 +75,10 @@ jobs:
         with:
           path: /home/runner/.cargo
           key: cargo-cache
+      - name: Setup Rust toolchain
+        uses: ./.github/actions/setup-builder
+        with:
+          rust-version: stable
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
