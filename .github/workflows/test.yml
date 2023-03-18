@@ -60,10 +60,11 @@ jobs:
         with:
           workspaces: dask_planner
           shared-key: test
-      - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-builder
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
         with:
-          rust-version: stable
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
