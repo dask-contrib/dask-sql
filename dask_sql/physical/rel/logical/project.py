@@ -66,6 +66,7 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         # and the new mappings
         for key, backend_column_name in new_mappings.items():
+            print(f"Key: {key}, backend_column_name: {backend_column_name}")
             cc = cc.add(key, backend_column_name)
 
         # Make sure the order is correct
