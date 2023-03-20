@@ -1,4 +1,9 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
 use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
@@ -7,7 +12,7 @@ use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct DescribeModelPlanNode {
     pub schema: DFSchemaRef,
     pub schema_name: Option<String>,
@@ -17,6 +22,12 @@ pub struct DescribeModelPlanNode {
 impl Debug for DescribeModelPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for DescribeModelPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
     }
 }
 
@@ -55,6 +66,22 @@ impl UserDefinedLogicalNode for DescribeModelPlanNode {
             schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "DescribeModel"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

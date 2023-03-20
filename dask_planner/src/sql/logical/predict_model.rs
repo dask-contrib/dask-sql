@@ -1,4 +1,9 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use datafusion_common::DFSchemaRef;
 use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
@@ -8,7 +13,7 @@ use pyo3::prelude::*;
 use super::PyLogicalPlan;
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PredictModelPlanNode {
     pub schema_name: Option<String>, // "something" in `something.model_name`
     pub model_name: String,
@@ -18,6 +23,12 @@ pub struct PredictModelPlanNode {
 impl Debug for PredictModelPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for PredictModelPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
     }
 }
 
@@ -55,6 +66,22 @@ impl UserDefinedLogicalNode for PredictModelPlanNode {
             model_name: self.model_name.clone(),
             input: inputs[0].clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "PredictModel"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

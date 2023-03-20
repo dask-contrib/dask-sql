@@ -1,4 +1,9 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
 use datafusion_expr::{
@@ -11,7 +16,7 @@ use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShowTablesPlanNode {
     pub schema: DFSchemaRef,
     pub schema_name: Option<String>,
@@ -20,6 +25,12 @@ pub struct ShowTablesPlanNode {
 impl Debug for ShowTablesPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for ShowTablesPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
     }
 }
 
@@ -56,6 +67,22 @@ impl UserDefinedLogicalNode for ShowTablesPlanNode {
             schema: Arc::new(DFSchema::empty()),
             schema_name: self.schema_name.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "ShowTables"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

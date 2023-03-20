@@ -1,4 +1,9 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use datafusion_common::DFSchemaRef;
 use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
@@ -10,7 +15,7 @@ use crate::{
     sql::{exceptions::py_type_err, logical},
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct CreateExperimentPlanNode {
     pub schema_name: Option<String>,
     pub experiment_name: String,
@@ -23,6 +28,12 @@ pub struct CreateExperimentPlanNode {
 impl Debug for CreateExperimentPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for CreateExperimentPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
     }
 }
 
@@ -68,6 +79,22 @@ impl UserDefinedLogicalNode for CreateExperimentPlanNode {
             or_replace: self.or_replace,
             with_options: self.with_options.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "CreateExperiment"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 
