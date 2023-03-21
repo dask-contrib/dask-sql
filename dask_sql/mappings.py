@@ -107,17 +107,12 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
             tz=str(python_type.tz),
         )
 
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(python_type):
-            return DaskTypeMap(
-                SqlTypeName.DECIMAL,
-                precision=python_type.precision,
-                scale=python_type.scale,
-            )
-    except ImportError:
-        pass
+    if is_decimal_type(python_type):
+        return DaskTypeMap(
+            SqlTypeName.DECIMAL,
+            precision=python_type.precision,
+            scale=python_type.scale,
+        )
 
     try:
         return DaskTypeMap(_PYTHON_TO_SQL[python_type])
@@ -292,13 +287,8 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype
 
-    try:
-        from cudf.api.types import is_decimal_dtype
-
-        if is_decimal_dtype(current_type):
-            return col
-    except ImportError:
-        pass
+    if is_decimal_type(current_type):
+        return None
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
@@ -318,3 +308,10 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)
+
+
+def is_decimal_type(dtype):
+    """
+    Check if dtype is a decimal type
+    """
+    return "decimal" in str(dtype).lower()
