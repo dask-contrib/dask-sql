@@ -163,8 +163,8 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install git+https://github.com/dask/dask
-          python -m pip install git+https://github.com/dask/distributed
+          python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack
+          python -m pip install git+https://github.com/fjetter/distributed@hlg_pickle
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"
