@@ -11,6 +11,20 @@ from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 logger = logging.getLogger(__name__)
 
+
+def decimal_or_float():
+    """
+    Return a decimal type if available otherwise fallback to float
+    """
+    try:
+        from cudf import Decimal64Dtype
+
+        return Decimal64Dtype(1)
+
+    except ImportError:
+        return np.float64
+
+
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
@@ -68,7 +82,7 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
+    "SqlTypeName.DECIMAL": decimal_or_float(),  # We use np.float64 always, even though we might be able to use a smaller type
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
@@ -107,7 +121,7 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
             tz=str(python_type.tz),
         )
 
-    if is_decimal_type(python_type):
+    if is_decimal(python_type):
         return DaskTypeMap(
             SqlTypeName.DECIMAL,
             precision=python_type.precision,
@@ -251,6 +265,7 @@ def similar_type(lhs: type, rhs: type) -> bool:
         is_dt_ntz,
         is_td_ns,
         is_bool,
+        is_decimal,
     ]
 
     for check in checks:
@@ -287,9 +302,6 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype
 
-    if is_decimal_type(current_type):
-        return None
-
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
         return None
@@ -310,7 +322,7 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     return col.astype(expected_type)
 
 
-def is_decimal_type(dtype):
+def is_decimal(dtype):
     """
     Check if dtype is a decimal type
     """
