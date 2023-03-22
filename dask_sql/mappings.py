@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import Any
 
 import dask.array as da
@@ -9,20 +10,12 @@ import pandas as pd
 from dask_planner.rust import DaskTypeMap, SqlTypeName
 from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 logger = logging.getLogger(__name__)
-
-
-def decimal_or_float():
-    """
-    Return a decimal type if available otherwise fallback to float
-    """
-    try:
-        from cudf import Decimal64Dtype
-
-        return Decimal64Dtype(1)
-
-    except ImportError:
-        return np.float64
 
 
 # Default mapping between python types and SQL types
@@ -65,7 +58,7 @@ if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
 _SQL_TO_PYTHON_SCALARS = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float32,
+    "SqlTypeName.DECIMAL": Decimal,
     "SqlTypeName.BIGINT": np.int64,
     "SqlTypeName.INTEGER": np.int32,
     "SqlTypeName.SMALLINT": np.int16,
@@ -82,7 +75,8 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": decimal_or_float(),  # We use np.float64 always, even though we might be able to use a smaller type
+    # a column of Decimals in panda is `object`, but cuDF has a dedicated dtype
+    "SqlTypeName.DECIMAL": object if not cudf else cudf.Decimal128Dtype(38, 10),
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
@@ -200,10 +194,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         if sql_type == SqlTypeName.DATE:
             return literal_value.astype("<M8[D]")
         return literal_value.astype("<M8[ns]")
-    elif sql_type == SqlTypeName.DECIMAL:
-        # We use np.float64 always, even though we might
-        # be able to use a smaller type
-        python_type = np.float64
     else:
         try:
             python_type = _SQL_TO_PYTHON_SCALARS[str(sql_type)]

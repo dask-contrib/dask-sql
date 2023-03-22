@@ -130,7 +130,7 @@ impl DaskTypeMap {
                         };
                         (precision, scale)
                     }
-                    None => (38, 0),
+                    None => (38, 10),
                 };
                 DataType::Decimal128(precision, scale)
             }
