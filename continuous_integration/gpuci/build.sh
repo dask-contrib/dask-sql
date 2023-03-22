@@ -46,11 +46,8 @@ gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb/" t
 gpuci_logger "Download query files"
 gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
 
-gpuci_logger "Install dask"
-python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack
-
-gpuci_logger "Install distributed"
-python -m pip install git+https://github.com/fjetter/distributed@hlg_pickle
+gpuci_logger "Install dask & distributed"
+python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
 
 gpuci_logger "Install latest dask-cuda"
 gpuci_mamba_retry update -y -c rapidsai-nightly dask-cuda
