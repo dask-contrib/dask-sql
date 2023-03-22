@@ -72,7 +72,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
+          python -m python -m pip --no-deps install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
       - name: Test with pytest
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
@@ -119,7 +119,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
+          python -m python -m pip --no-deps install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
       - name: run a dask cluster
         env:
           UPSTREAM: ${{ needs.detect-ci-trigger.outputs.triggered }}
@@ -163,7 +163,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
+          python -m python -m pip --no-deps install git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"
