@@ -8,7 +8,8 @@ services:
         environment:
             USE_MAMBA: "true"
             # TODO: remove pandas constraint once Dask images are updated
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pandas>=1.5.0"
+            EXTRA_CONDA_PACKAGES: "cloudpickle>=2.1.0 pandas>=1.5.0"
+            EXTRA_PIP_PACKAGES: "git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle"
         ports:
             - "8786:8786"
     dask-worker:
@@ -18,6 +19,7 @@ services:
         environment:
             USE_MAMBA: "true"
             # TODO: remove pandas constraint once Dask images are updated
-            EXTRA_CONDA_PACKAGES: "dask/label/dev::dask cloudpickle>=2.1.0 pyarrow>=6.0.1 libstdcxx-ng>=12.1.0 pandas>=1.5.0"
+            EXTRA_CONDA_PACKAGES: "cloudpickle>=2.1.0 pyarrow>=6.0.1 libstdcxx-ng>=12.1.0 pandas>=1.5.0"
+            EXTRA_PIP_PACKAGES: "git+https://github.com/fjetter/dask@drop_distributed_pack git+https://github.com/fjetter/distributed@hlg_pickle"
         volumes:
             - /tmp:/tmp
