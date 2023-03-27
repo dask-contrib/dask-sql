@@ -10,7 +10,7 @@ use datafusion_optimizer::{
     eliminate_limit::EliminateLimit,
     eliminate_outer_join::EliminateOuterJoin,
     filter_null_join_keys::FilterNullJoinKeys,
-    inline_table_scan::InlineTableScan,
+    // inline_table_scan::InlineTableScan,
     optimizer::{Optimizer, OptimizerRule},
     push_down_filter::PushDownFilter,
     push_down_limit::PushDownLimit,
@@ -24,7 +24,7 @@ use datafusion_optimizer::{
 };
 use log::trace;
 
-mod filter_columns_post_join;
+// mod filter_columns_post_join;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -37,7 +37,7 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            Arc::new(InlineTableScan::new()),
+            // Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),

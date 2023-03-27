@@ -1,6 +1,7 @@
 use std::fmt;
 
 use datafusion_common::{DFField, DFSchema};
+use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
 use crate::{
@@ -21,10 +22,8 @@ pub struct RelDataTypeField {
 // Functions that should not be presented to Python are placed here
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
-        let qualifier: Option<&str> = match field.qualifier() {
-            Some(qualifier) => Some(qualifier),
-            None => None,
-        };
+        let qualifier: Option<&TableReference> = field.qualifier();
+
         Ok(RelDataTypeField {
             qualifier: qualifier.map(|qualifier| qualifier.to_string()),
             name: field.name().clone(),

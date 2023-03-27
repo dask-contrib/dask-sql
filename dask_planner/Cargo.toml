@@ -10,11 +10,11 @@ rust-version = "1.62"
 
 [dependencies]
 async-trait = "0.1.66"
-datafusion = "20.0.0"
-datafusion-common = "20.0.0"
-datafusion-expr = "20.0.0"
-datafusion-optimizer = "20.0.0"
-datafusion-sql = "20.0.0"
+datafusion = "21.0.0"
+datafusion-common = "21.0.0"
+datafusion-expr = "21.0.0"
+datafusion-optimizer = "21.0.0"
+datafusion-sql = "21.0.0"
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }

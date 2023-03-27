@@ -1,7 +1,7 @@
 use std::{convert::From, sync::Arc};
 
 use datafusion::arrow::datatypes::DataType;
-use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
+use datafusion_common::{Column, DFField, DFSchema, OwnedTableReference, ScalarValue};
 use datafusion_expr::{
     expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
     lit,
@@ -121,6 +121,7 @@ impl PyExpr {
             | Expr::IsNotTrue(..)
             | Expr::IsNotFalse(..)
             | Expr::Placeholder { .. }
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::ScalarSubquery,
         }
@@ -184,13 +185,10 @@ impl PyExpr {
                     .index_of_column(&Column::from_qualified_name(name.clone()))
                     .or_else(|_| {
                         // Handles cases when from_qualified_name doesn't format the Column correctly.
-                        // Here, we split the name string and grab the relation/table names
-                        let split_name: Vec<&str> = name.split('.').collect();
-                        let relation = &split_name.first();
-                        let table = &split_name.get(1);
+                        let tbl_reference = OwnedTableReference::from(name);
                         let col = Column {
-                            relation: Some(relation.unwrap().to_string()),
-                            name: table.unwrap().to_string(),
+                            relation: Some(tbl_reference.clone()),
+                            name: tbl_reference.table().to_string(),
                         };
                         schema.index_of_column(&col).map_err(py_runtime_err)
                     })
@@ -225,6 +223,7 @@ impl PyExpr {
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
             | Expr::Not(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::GroupingSet(..) => self.expr.variant_name(),
             Expr::ScalarVariable(..)
             | Expr::IsNotNull(..)
@@ -371,6 +370,7 @@ impl PyExpr {
 
             // Currently un-support/implemented Expr types for Rex Call operations
             Expr::GroupingSet(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)

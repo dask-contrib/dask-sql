@@ -107,6 +107,7 @@ impl OptimizerRule for FilterColumnsPostJoin {
         _optimizer_config: &dyn OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
         // Store info about all columns in all schemas
+        #[allow(deprecated)]
         let all_schemas = &plan.all_schemas();
         Ok(Some(optimize_top_down(plan, all_schemas, HashSet::new())?))
     }
@@ -206,11 +207,13 @@ fn optimize_top_down(
                     // Recurse on left and right inputs of Join
                     let left_join_plan = optimize_top_down(
                         &j.left,
+                        #[allow(deprecated)]
                         &j.left.all_schemas(),
                         post_join_columns.clone(),
                     )?;
                     let right_join_plan = optimize_top_down(
                         &j.right,
+                        #[allow(deprecated)]
                         &j.right.all_schemas(),
                         post_join_columns.clone(),
                     )?;
@@ -232,11 +235,13 @@ fn optimize_top_down(
                     // Recurse on left and right inputs of CrossJoin
                     let left_crossjoin_plan = optimize_top_down(
                         &c.left,
+                        #[allow(deprecated)]
                         &c.left.all_schemas(),
                         post_join_columns.clone(),
                     )?;
                     let right_crossjoin_plan = optimize_top_down(
                         &c.right,
+                        #[allow(deprecated)]
                         &c.right.all_schemas(),
                         post_join_columns.clone(),
                     )?;
@@ -255,6 +260,7 @@ fn optimize_top_down(
                     for input in &u.inputs {
                         let new_input = optimize_top_down(
                             input,
+                            #[allow(deprecated)]
                             &input.all_schemas(),
                             post_join_columns.clone(),
                         );
@@ -411,6 +417,7 @@ fn optimize_top_down(
                 LogicalPlan::Subquery(_) => {
                     return_plan = LogicalPlan::Subquery(Subquery {
                         subquery: Arc::new(previous_step.clone()),
+                        outer_ref_columns: vec![],
                     });
                 }
                 _ => {
@@ -439,7 +446,7 @@ fn filter_post_join_columns(
     for field in dfschema_fields {
         let qualifier = field.qualifier();
         if let Some(q) = qualifier {
-            valid_qualifiers.push(q);
+            valid_qualifiers.push(q.to_string().as_str());
         }
     }
 
@@ -448,7 +455,7 @@ fn filter_post_join_columns(
         if let Expr::Column(c) = column {
             let column_qualifier = &c.relation;
             if let Some(q) = column_qualifier {
-                if valid_qualifiers.contains(&q.as_str()) {
+                if valid_qualifiers.contains(&q.to_string().as_str()) {
                     result.insert(column.clone());
                 }
             } else {
@@ -475,15 +482,9 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
     let mut result = vec![];
     for col in hs {
-        let mut column_relation = col.relation.unwrap_or_default();
-        if !column_relation.is_empty() {
-            column_relation += ".";
-        }
         // Grab the column name and check that it's not a function
-        let column_string = col.name;
-        if !column_string.contains(')') {
-            let column_result = column_relation + &column_string;
-            result.push(Expr::Column(Column::from_qualified_name(&column_result)));
+        if col.relation.is_some() && !col.relation.unwrap().to_string().contains(')') {
+            result.push(Expr::Column(col));
         }
     }
 
