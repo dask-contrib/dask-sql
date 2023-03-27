@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.62"
 
 [dependencies]
-async-trait = "0.1.66"
+async-trait = "0.1.68"
 datafusion = "21.0.0"
 datafusion-common = "21.0.0"
 datafusion-expr = "21.0.0"
