@@ -33,7 +33,11 @@ impl Debug for AlterTablePlanNode {
 
 impl Hash for AlterTablePlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.old_table_name.hash(state);
+        self.new_table_name.hash(state);
+        self.schema_name.hash(state);
+        self.if_exists.hash(state);
     }
 }
 

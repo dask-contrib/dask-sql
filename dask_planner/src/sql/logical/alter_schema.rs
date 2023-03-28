@@ -31,7 +31,9 @@ impl Debug for AlterSchemaPlanNode {
 
 impl Hash for AlterSchemaPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.old_schema_name.hash(state);
+        self.new_schema_name.hash(state);
     }
 }
 

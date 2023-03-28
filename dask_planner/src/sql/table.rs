@@ -127,13 +127,14 @@ impl DaskTable {
         schema_name: &str,
         table_name: &str,
         row_count: f64,
+        columns: Option<Vec<(String, DaskTypeMap)>>,
         filepath: Option<String>,
     ) -> Self {
         Self {
             schema_name: Some(schema_name.to_owned()),
             table_name: table_name.to_owned(),
             statistics: DaskStatistics::new(row_count),
-            columns: Vec::new(),
+            columns: columns.unwrap_or_default(),
             filepath,
         }
     }

@@ -32,7 +32,10 @@ impl Debug for AnalyzeTablePlanNode {
 
 impl Hash for AnalyzeTablePlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.table_name.hash(state);
+        self.schema_name.hash(state);
+        self.columns.hash(state);
     }
 }
 

@@ -33,7 +33,12 @@ impl Debug for CreateModelPlanNode {
 
 impl Hash for CreateModelPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
+        self.input.hash(state);
+        self.if_not_exists.hash(state);
+        self.or_replace.hash(state);
+        // self.with_options.hash(state);
     }
 }
 

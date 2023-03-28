@@ -34,7 +34,7 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
-use log::{debug, info};
+use log::debug;
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -432,7 +432,6 @@ impl ContextProvider for DaskSQLContext {
 impl DaskSQLContext {
     #[new]
     pub fn new(default_catalog_name: &str, default_schema_name: &str) -> Self {
-        info!("Creating new DaskSQLContext");
         Self {
             current_catalog: default_catalog_name.to_owned(),
             current_schema: default_schema_name.to_owned(),
@@ -516,46 +515,13 @@ impl DaskSQLContext {
         &self,
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
-        println!("Why is this not showing up!?!?");
-        info!("Entering optimize_relational_algebra rust code");
-        // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
-        // let mut visitor = OptimizablePlanVisitor {};
-        // info!("Visitor created");
-        // println!("Visitor created");
-
         optimizer::DaskSqlOptimizer::new()
             .optimize(existing_plan.original_plan)
-            .map(|k| {
-                println!("Inside valid map closure");
-                info!("Inside valid map closure");
-                PyLogicalPlan {
-                    original_plan: k,
-                    current_node: None,
-                }
+            .map(|k| PyLogicalPlan {
+                original_plan: k,
+                current_node: None,
             })
             .map_err(py_optimization_exp)
-
-        // match existing_plan.original_plan.accept(&mut visitor) {
-        //     Ok(valid) => {
-        //         if valid {
-        //             optimizer::DaskSqlOptimizer::new()
-        //                 .optimize(existing_plan.original_plan)
-        //                 .map(|k| {
-        //                 println!("Inside valid map closure");
-        //                 info!("Inside valid map closure");
-        //                 PyLogicalPlan {
-        //                     original_plan: k,
-        //                     current_node: None,
-        //                 }})
-        //                 .map_err(py_optimization_exp)
-        //         } else {
-        //             // This LogicalPlan does not support Optimization. Return original
-        //             info!("This LogicalPlan does not support Optimization. Returning original");
-        //             Ok(existing_plan)
-        //         }
-        //     }
-        //     Err(e) => Err(py_optimization_exp(e)),
-        // }
     }
 }
 
@@ -708,25 +674,6 @@ impl DaskSQLContext {
         }
     }
 }
-
-/// Visits each AST node to determine if the plan is valid for optimization or not
-// pub struct OptimizablePlanVisitor;
-
-// impl PlanVisitor for OptimizablePlanVisitor {
-//     type Error = DataFusionError;
-
-//     fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-//         // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
-//         match plan {
-//             LogicalPlan::Explain(..) => Ok(false),
-//             _ => Ok(true),
-//         }
-//     }
-
-//     fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-//         Ok(true)
-//     }
-// }
 
 fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
     let mut exact_vector = vec![];

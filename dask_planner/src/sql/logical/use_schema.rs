@@ -26,7 +26,8 @@ impl Debug for UseSchemaPlanNode {
 
 impl Hash for UseSchemaPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
     }
 }
 

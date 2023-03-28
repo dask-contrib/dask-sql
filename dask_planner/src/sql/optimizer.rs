@@ -22,7 +22,7 @@ use datafusion_optimizer::{
     unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerContext,
 };
-// use log::{debug, info, trace};
+use log::debug;
 
 // mod filter_columns_post_join;
 
@@ -36,7 +36,7 @@ impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
-        println!("Creating new instance of DaskSqlOptimizer");
+        debug!("Creating new instance of DaskSqlOptimizer");
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             // Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),

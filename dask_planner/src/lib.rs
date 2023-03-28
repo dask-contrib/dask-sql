@@ -1,4 +1,4 @@
-use log::info;
+use log::debug;
 use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
@@ -45,7 +45,7 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
         py.get_type::<sql::exceptions::OptimizationException>(),
     )?;
 
-    info!("dask_planner Python module loaded");
+    debug!("dask_planner Python module loaded");
 
     Ok(())
 }

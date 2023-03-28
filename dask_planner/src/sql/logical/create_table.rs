@@ -33,7 +33,12 @@ impl Debug for CreateTablePlanNode {
 
 impl Hash for CreateTablePlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
+        self.table_name.hash(state);
+        self.if_not_exists.hash(state);
+        self.or_replace.hash(state);
+        // self.with_options.hash(state);
     }
 }
 

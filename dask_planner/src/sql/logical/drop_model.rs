@@ -28,7 +28,10 @@ impl Debug for DropModelPlanNode {
 
 impl Hash for DropModelPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
+        self.if_exists.hash(state);
+        self.schema.hash(state);
     }
 }
 

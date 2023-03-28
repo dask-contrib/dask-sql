@@ -28,7 +28,9 @@ impl Debug for PredictModelPlanNode {
 
 impl Hash for PredictModelPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
+        self.input.hash(state);
     }
 }
 

@@ -30,7 +30,8 @@ impl Debug for ShowTablesPlanNode {
 
 impl Hash for ShowTablesPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
     }
 }
 

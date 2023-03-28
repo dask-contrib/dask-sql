@@ -27,7 +27,9 @@ impl Debug for DropSchemaPlanNode {
 
 impl Hash for DropSchemaPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
+        self.if_exists.hash(state);
     }
 }
 
