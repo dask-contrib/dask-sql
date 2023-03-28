@@ -22,7 +22,7 @@ use datafusion_optimizer::{
     unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerContext,
 };
-use log::trace;
+// use log::{debug, info, trace};
 
 // mod filter_columns_post_join;
 
@@ -36,6 +36,7 @@ impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
+        println!("Creating new instance of DaskSqlOptimizer");
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             // Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
@@ -76,12 +77,16 @@ impl DaskSqlOptimizer {
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+        println!("Creating OptimizerContext");
         let config = OptimizerContext::new();
-        self.optimizer.optimize(&plan, &config, Self::observe)
+        println!("Invoking Optimize");
+        let result = self.optimizer.optimize(&plan, &config, Self::observe);
+        println!("After invoking optimizer");
+        result
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
-        trace!(
+        println!(
             "== AFTER APPLYING RULE {} ==\n{}\n",
             optimization.name(),
             optimized_plan.display_indent()

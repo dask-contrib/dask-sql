@@ -823,14 +823,19 @@ class Context:
             )
 
         try:
+            print("!!! Invoking logical_relational_algebra")
             nonOptimizedRel = self.context.logical_relational_algebra(sqlTree[0])
+            print("!!! Non optimized relational algebra received")
         except DFParsingException as pe:
             raise ParsingException(sql, str(pe)) from None
 
         # Optimize the `LogicalPlan` or skip if configured
         if dask_config.get("sql.optimize"):
             try:
+                print("!!! Invoking optimize relational algebra")
+                print("~~~~ Ok going for it")
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
+                print("!!! Algebra optimized")
             except DFOptimizationException as oe:
                 rel = nonOptimizedRel
                 raise OptimizationException(str(oe)) from None
