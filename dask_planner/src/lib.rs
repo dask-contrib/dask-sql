@@ -1,3 +1,4 @@
+use log::debug;
 use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
@@ -17,6 +18,9 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pymodule]
 #[pyo3(name = "rust")]
 fn rust(py: Python, m: &PyModule) -> PyResult<()> {
+    // Initialize the global Python logger instance
+    pyo3_log::init();
+
     // Register the python classes
     m.add_class::<expression::PyExpr>()?;
     m.add_class::<sql::DaskSQLContext>()?;
@@ -40,6 +44,8 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
         "DFOptimizationException",
         py.get_type::<sql::exceptions::OptimizationException>(),
     )?;
+
+    debug!("dask_planner Python module loaded");
 
     Ok(())
 }
