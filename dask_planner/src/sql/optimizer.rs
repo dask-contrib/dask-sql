@@ -24,7 +24,9 @@ use datafusion_optimizer::{
 };
 use log::{debug, trace};
 
-// mod filter_columns_post_join;
+use crate::sql::optimizer::filter_columns_post_join::FilterColumnsPostJoin;
+
+mod filter_columns_post_join;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -60,7 +62,7 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             Arc::new(PushDownLimit::new()),
             // Dask-SQL specific optimizations
-            // Arc::new(FilterColumnsPostJoin::new()),
+            Arc::new(FilterColumnsPostJoin::new()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),

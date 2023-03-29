@@ -441,12 +441,12 @@ fn filter_post_join_columns(
     let mut result = HashSet::new();
 
     // Check which tables/aliases are needed at this point in the plan
-    let mut valid_qualifiers: Vec<&str> = vec![];
+    let mut valid_qualifiers: Vec<String> = vec![];
     let dfschema_fields = dfschema.fields();
     for field in dfschema_fields {
         let qualifier = field.qualifier();
         if let Some(q) = qualifier {
-            valid_qualifiers.push(q.to_string().as_str());
+            valid_qualifiers.push(q.to_string());
         }
     }
 
@@ -455,7 +455,7 @@ fn filter_post_join_columns(
         if let Expr::Column(c) = column {
             let column_qualifier = &c.relation;
             if let Some(q) = column_qualifier {
-                if valid_qualifiers.contains(&q.to_string().as_str()) {
+                if valid_qualifiers.contains(&q.to_string()) {
                     result.insert(column.clone());
                 }
             } else {
@@ -483,7 +483,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
     let mut result = vec![];
     for col in hs {
         // Grab the column name and check that it's not a function
-        if col.relation.is_some() && !col.relation.unwrap().to_string().contains(')') {
+        if col.relation.is_some() && !col.relation.clone().unwrap().to_string().contains(')') {
             result.push(Expr::Column(col));
         }
     }
