@@ -1,7 +1,6 @@
 use std::fmt;
 
 use datafusion_common::{DFField, DFSchema};
-use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
 use crate::{
@@ -23,33 +22,30 @@ pub struct RelDataTypeField {
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
         match field.qualifier() {
-            Some(qualifier) => {
-                println!("TableReference.to_string(): {:?}", qualifier.to_string());
-                match qualifier.schema() {
-                    Some(qual_str) => Ok(RelDataTypeField {
-                        qualifier: Some(qual_str.to_string()),
-                        name: qualifier.table().to_string(),
-                        data_type: DaskTypeMap {
-                            sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                            data_type: field.data_type().clone().into(),
-                        },
-                        index: schema
-                            .index_of_column_by_name(Some(qualifier), field.name())?
-                            .unwrap(),
-                    }),
-                    None => Ok(RelDataTypeField {
-                        qualifier: None,
-                        name: qualifier.table().to_string(),
-                        data_type: DaskTypeMap {
-                            sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                            data_type: field.data_type().clone().into(),
-                        },
-                        index: schema
-                            .index_of_column_by_name(Some(qualifier), field.name())?
-                            .unwrap(),
-                    }),
-                }
-            }
+            Some(qualifier) => match qualifier.schema() {
+                Some(qual_str) => Ok(RelDataTypeField {
+                    qualifier: Some(qual_str.to_string()),
+                    name: qualifier.table().to_string(),
+                    data_type: DaskTypeMap {
+                        sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                        data_type: field.data_type().clone().into(),
+                    },
+                    index: schema
+                        .index_of_column_by_name(Some(qualifier), field.name())?
+                        .unwrap(),
+                }),
+                None => Ok(RelDataTypeField {
+                    qualifier: None,
+                    name: qualifier.table().to_string(),
+                    data_type: DaskTypeMap {
+                        sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                        data_type: field.data_type().clone().into(),
+                    },
+                    index: schema
+                        .index_of_column_by_name(Some(qualifier), field.name())?
+                        .unwrap(),
+                }),
+            },
             None => {
                 // This is the super old school path of processing this long before the TableReference existed
                 Ok(RelDataTypeField {
@@ -70,7 +66,6 @@ impl RelDataTypeField {
 impl RelDataTypeField {
     #[new]
     pub fn new(name: &str, type_map: DaskTypeMap, index: usize) -> Self {
-        panic!("NEW RelDataTypeField with: {:?}", name);
         Self {
             qualifier: None,
             name: name.to_owned(),
@@ -92,14 +87,8 @@ impl RelDataTypeField {
     #[pyo3(name = "getQualifiedName")]
     pub fn qualified_name(&self) -> String {
         match &self.qualifier() {
-            Some(qualifier) => {
-                println!("Qualifier: {}, Name: {}", &qualifier, self.name);
-                format!("{}.{}", &qualifier, self.name())
-            }
-            None => {
-                println!("Nope, returning: {:?}", self.name().to_string());
-                self.name().to_string()
-            }
+            Some(qualifier) => format!("{}.{}", &qualifier, self.name()),
+            None => self.name().to_string(),
         }
     }
 

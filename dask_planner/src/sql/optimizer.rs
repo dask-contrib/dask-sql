@@ -3,7 +3,7 @@ use std::sync::Arc;
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate,
+    // common_subexpr_eliminate::CommonSubexprEliminate,
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
     eliminate_cross_join::EliminateCrossJoin,
@@ -52,7 +52,7 @@ impl DaskSqlOptimizer {
             // TODO: need to handle EmptyRelation for GPU cases
             // Arc::new(EliminateFilter::new()),
             Arc::new(EliminateCrossJoin::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()), Causing issues with windowing and complicated concatenated exprs
             Arc::new(EliminateLimit::new()),
             Arc::new(RewriteDisjunctivePredicate::new()),
             Arc::new(FilterNullJoinKeys::default()),
@@ -65,7 +65,7 @@ impl DaskSqlOptimizer {
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()), Causing issues with windowing and complicated concatenated exprs
             Arc::new(PushDownProjection::new()),
         ];
 

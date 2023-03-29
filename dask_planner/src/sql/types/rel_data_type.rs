@@ -20,7 +20,6 @@ pub struct RelDataType {
 impl RelDataType {
     #[new]
     pub fn new(nullable: bool, fields: Vec<RelDataTypeField>) -> Self {
-        println!("This is invoked. Number of fields: {}", fields.len());
         Self {
             nullable,
             field_list: fields,
@@ -79,7 +78,6 @@ impl RelDataType {
     pub fn field_names(&self) -> Vec<String> {
         let mut field_names: Vec<String> = Vec::new();
         for field in &self.field_list {
-            println!("Field: {:?}", field);
             field_names.push(field.qualified_name());
         }
         field_names
