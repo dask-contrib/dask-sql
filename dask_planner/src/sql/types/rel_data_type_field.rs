@@ -1,6 +1,7 @@
 use std::fmt;
 
 use datafusion_common::{DFField, DFSchema};
+use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
 use crate::{
@@ -21,44 +22,18 @@ pub struct RelDataTypeField {
 // Functions that should not be presented to Python are placed here
 impl RelDataTypeField {
     pub fn from(field: &DFField, schema: &DFSchema) -> Result<RelDataTypeField> {
-        match field.qualifier() {
-            Some(qualifier) => match qualifier.schema() {
-                Some(qual_str) => Ok(RelDataTypeField {
-                    qualifier: Some(qual_str.to_string()),
-                    name: qualifier.table().to_string(),
-                    data_type: DaskTypeMap {
-                        sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                        data_type: field.data_type().clone().into(),
-                    },
-                    index: schema
-                        .index_of_column_by_name(Some(qualifier), field.name())?
-                        .unwrap(),
-                }),
-                None => Ok(RelDataTypeField {
-                    qualifier: None,
-                    name: qualifier.table().to_string(),
-                    data_type: DaskTypeMap {
-                        sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                        data_type: field.data_type().clone().into(),
-                    },
-                    index: schema
-                        .index_of_column_by_name(Some(qualifier), field.name())?
-                        .unwrap(),
-                }),
+        let qualifier: Option<&TableReference> = field.qualifier();
+        Ok(RelDataTypeField {
+            qualifier: qualifier.map(|qualifier| qualifier.to_string()),
+            name: field.name().clone(),
+            data_type: DaskTypeMap {
+                sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                data_type: field.data_type().clone().into(),
             },
-            None => {
-                // This is the super old school path of processing this long before the TableReference existed
-                Ok(RelDataTypeField {
-                    qualifier: None,
-                    name: field.name().to_string(),
-                    data_type: DaskTypeMap {
-                        sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                        data_type: field.data_type().clone().into(),
-                    },
-                    index: schema.index_of_column_by_name(None, field.name())?.unwrap(),
-                })
-            }
-        }
+            index: schema
+                .index_of_column_by_name(qualifier, field.name())?
+                .unwrap(),
+        })
     }
 }
 

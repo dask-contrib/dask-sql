@@ -418,12 +418,11 @@ impl PyLogicalPlan {
                 Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
-                let tmp = self.current_node.clone().unwrap();
-                let val = tmp.schema();
-                let rel_fields: Vec<RelDataTypeField> = val
+                let schema = self.original_plan.schema();
+                let rel_fields: Vec<RelDataTypeField> = schema
                     .fields()
                     .iter()
-                    .map(|f| RelDataTypeField::from(f, val.as_ref()))
+                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
 
