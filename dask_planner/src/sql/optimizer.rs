@@ -24,7 +24,6 @@ use datafusion_optimizer::{
 };
 use log::{debug, trace};
 
-mod filter_columns_post_join;
 mod dynamic_partition_pruning;
 use dynamic_partition_pruning::DynamicPartitionPruning;
 
