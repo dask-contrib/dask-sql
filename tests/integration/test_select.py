@@ -79,11 +79,6 @@ def test_select_of_select(c, df):
     assert_eq(result_df, expected_df)
 
 
-def test_problem(c):
-    result = c.sql("select * from df")
-    print(f"Result Received: {result}")
-
-
 def test_select_of_select_with_casing(c, df):
     result_df = c.sql(
         """

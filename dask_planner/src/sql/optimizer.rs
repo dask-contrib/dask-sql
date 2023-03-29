@@ -22,7 +22,7 @@ use datafusion_optimizer::{
     unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerContext,
 };
-use log::debug;
+use log::{debug, trace};
 
 // mod filter_columns_post_join;
 
@@ -77,16 +77,12 @@ impl DaskSqlOptimizer {
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
-        println!("Creating OptimizerContext");
         let config = OptimizerContext::new();
-        println!("Invoking Optimize");
-        let result = self.optimizer.optimize(&plan, &config, Self::observe);
-        println!("After invoking optimizer");
-        result
+        self.optimizer.optimize(&plan, &config, Self::observe)
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
-        println!(
+        trace!(
             "== AFTER APPLYING RULE {} ==\n{}\n",
             optimization.name(),
             optimized_plan.display_indent()

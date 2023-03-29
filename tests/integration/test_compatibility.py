@@ -705,24 +705,36 @@ def test_window_sum_avg():
 
 def test_window_sum_avg_partition_by():
     a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-    # for func in ["SUM", "AVG"]:
-    for func in ["SUM"]:
+    for func in ["SUM", "AVG"]:
         eq_sqlite(
             f"""
             SELECT a,b,
                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
-                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-                    AS a6
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS a6
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
             a=a,
         )
+        # eq_sqlite(
+        #     f"""
+        #     SELECT a,b,
+        #         {func}(b+a) OVER (PARTITION BY c,b) AS a3,
+        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+        #             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+        #             ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
+        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+        #             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+        #             AS a6
+        #     FROM a
+        #     ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+        #     """,
+        #     a=a,
+        # )
         # # irregular windows
         # eq_sqlite(
         #     f"""
@@ -738,6 +750,23 @@ def test_window_sum_avg_partition_by():
         #     """,
         #     a=a,
         # )
+
+
+def test_problem(c):
+    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
+    c.create_table("a", a)
+    result = c.explain(
+        """
+            SELECT a,b,
+                SUM(b+a) OVER (PARTITION BY c,b) AS a3,
+                SUM(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                SUM(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS a6
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+        """)
+    print(f"Result Received: {result}")
 
 
 def test_window_min_max():

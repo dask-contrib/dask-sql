@@ -18,7 +18,6 @@ use datafusion_expr::{
     AccumulatorFunctionImplementation,
     AggregateUDF,
     LogicalPlan,
-    // PlanVisitor,
     ReturnTypeFunction,
     ScalarFunctionImplementation,
     ScalarUDF,
@@ -26,7 +25,7 @@ use datafusion_expr::{
     StateTypeFunction,
     TableSource,
     TypeSignature,
-    Volatility,
+    Volatility, PlanVisitor,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,
@@ -34,7 +33,7 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
-use log::debug;
+use log::{debug, warn};
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -515,13 +514,27 @@ impl DaskSQLContext {
         &self,
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
-        optimizer::DaskSqlOptimizer::new()
-            .optimize(existing_plan.original_plan)
-            .map(|k| PyLogicalPlan {
-                original_plan: k,
-                current_node: None,
-            })
-            .map_err(py_optimization_exp)
+        // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
+        let mut visitor = OptimizablePlanVisitor {};
+
+        match existing_plan.original_plan.accept(&mut visitor) {
+            Ok(valid) => {
+                if valid {
+                    optimizer::DaskSqlOptimizer::new()
+                        .optimize(existing_plan.original_plan)
+                        .map(|k| PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(py_optimization_exp)
+                } else {
+                    // This LogicalPlan does not support Optimization. Return original
+                    warn!("This LogicalPlan does not support Optimization. Returning original");
+                    Ok(existing_plan)
+                }
+            }
+            Err(e) => Err(py_optimization_exp(e)),
+        }
     }
 }
 
@@ -672,6 +685,25 @@ impl DaskSQLContext {
                 }),
             })),
         }
+    }
+}
+
+/// Visits each AST node to determine if the plan is valid for optimization or not
+pub struct OptimizablePlanVisitor;
+
+impl PlanVisitor for OptimizablePlanVisitor {
+    type Error = DataFusionError;
+
+    fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
+        match plan {
+            LogicalPlan::Explain(..) => Ok(false),
+            _ => Ok(true),
+        }
+    }
+
+    fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+        Ok(true)
     }
 }
 

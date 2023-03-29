@@ -10,11 +10,11 @@ rust-version = "1.62"
 
 [dependencies]
 async-trait = "0.1.68"
-datafusion = { path = "../../arrow-datafusion/datafusion/core" }
-datafusion-common = { path = "../../arrow-datafusion/datafusion/common" }
-datafusion-expr = { path = "../../arrow-datafusion/datafusion/expr" }
-datafusion-optimizer = { path = "../../arrow-datafusion/datafusion/optimizer" }
-datafusion-sql = { path = "../../arrow-datafusion/datafusion/sql" }
+datafusion = "21.0.0"
+datafusion-common = "21.0.0"
+datafusion-expr = "21.0.0"
+datafusion-optimizer = "21.0.0"
+datafusion-sql = "21.0.0"
 env_logger = "0.10"
 log = "^0.4"
 mimalloc = { version = "*", default-features = false }

@@ -418,13 +418,22 @@ impl PyLogicalPlan {
                 Ok(RelDataType::new(false, rel_fields))
             }
             _ => {
-                let schema = self.original_plan.schema();
-                let rel_fields: Vec<RelDataTypeField> = schema
+                println!("This _ was invoked");
+                let tmp = self.current_node.clone().unwrap();
+                let val = tmp.schema();
+                println!("Schema: {:?}", val);
+                if val.fields().len() == 4 {
+                    println!("\n4 fields present ......");
+                }
+                println!("\nOriginal Plan: {:?}\n", self.original_plan);
+                let rel_fields: Vec<RelDataTypeField> = val
                     .fields()
                     .iter()
-                    .map(|f| RelDataTypeField::from(f, schema.as_ref()))
+                    .map(|f| RelDataTypeField::from(f, val.as_ref()))
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
+
+                println!("Invoking RelDataType::new() with fields: {:?}\n\n", rel_fields);
                 Ok(RelDataType::new(false, rel_fields))
             }
         }
