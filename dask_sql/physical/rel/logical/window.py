@@ -271,7 +271,6 @@ class DaskWindowPlugin(BaseRelPlugin):
     ):
         temporary_columns = []
 
-
         df = dc.df
         cc = dc.column_container
 

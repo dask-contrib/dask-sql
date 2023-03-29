@@ -765,7 +765,8 @@ def test_problem(c):
                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS a6
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
-        """)
+        """
+    )
     print(f"Result Received: {result}")
 
 

@@ -18,6 +18,7 @@ use datafusion_expr::{
     AccumulatorFunctionImplementation,
     AggregateUDF,
     LogicalPlan,
+    PlanVisitor,
     ReturnTypeFunction,
     ScalarFunctionImplementation,
     ScalarUDF,
@@ -25,7 +26,7 @@ use datafusion_expr::{
     StateTypeFunction,
     TableSource,
     TypeSignature,
-    Volatility, PlanVisitor,
+    Volatility,
 };
 use datafusion_sql::{
     parser::Statement as DFStatement,

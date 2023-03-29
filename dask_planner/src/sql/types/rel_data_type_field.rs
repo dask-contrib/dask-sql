@@ -26,50 +26,43 @@ impl RelDataTypeField {
             Some(qualifier) => {
                 println!("TableReference.to_string(): {:?}", qualifier.to_string());
                 match qualifier.schema() {
-                    Some(qual_str) => {
-                        Ok(RelDataTypeField {
-                            qualifier: Some(qual_str.to_string()),
-                            name: qualifier.table().to_string(),
-                            data_type: DaskTypeMap {
-                                sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                                data_type: field.data_type().clone().into(),
-                            },
-                            index: schema
-                                .index_of_column_by_name(Some(qualifier), field.name())?
-                                .unwrap(),
-                        })
-                    },
-                    None => { 
-                        Ok(RelDataTypeField { 
-                            qualifier: None, 
-                            name: qualifier.table().to_string(),
-                            data_type: DaskTypeMap {
-                                sql_type: SqlTypeName::from_arrow(field.data_type())?,
-                                data_type: field.data_type().clone().into(),
-                            },
-                            index: schema
-                                .index_of_column_by_name(Some(qualifier), field.name())?
-                                .unwrap()
-                        })
-                    }
+                    Some(qual_str) => Ok(RelDataTypeField {
+                        qualifier: Some(qual_str.to_string()),
+                        name: qualifier.table().to_string(),
+                        data_type: DaskTypeMap {
+                            sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                            data_type: field.data_type().clone().into(),
+                        },
+                        index: schema
+                            .index_of_column_by_name(Some(qualifier), field.name())?
+                            .unwrap(),
+                    }),
+                    None => Ok(RelDataTypeField {
+                        qualifier: None,
+                        name: qualifier.table().to_string(),
+                        data_type: DaskTypeMap {
+                            sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                            data_type: field.data_type().clone().into(),
+                        },
+                        index: schema
+                            .index_of_column_by_name(Some(qualifier), field.name())?
+                            .unwrap(),
+                    }),
                 }
-            },
+            }
             None => {
                 // This is the super old school path of processing this long before the TableReference existed
-                Ok(RelDataTypeField { 
-                    qualifier: None, 
+                Ok(RelDataTypeField {
+                    qualifier: None,
                     name: field.name().to_string(),
                     data_type: DaskTypeMap {
                         sql_type: SqlTypeName::from_arrow(field.data_type())?,
                         data_type: field.data_type().clone().into(),
                     },
-                    index: schema
-                        .index_of_column_by_name(None, field.name())?
-                        .unwrap()
+                    index: schema.index_of_column_by_name(None, field.name())?.unwrap(),
                 })
-            },
+            }
         }
-
     }
 }
 
@@ -102,11 +95,11 @@ impl RelDataTypeField {
             Some(qualifier) => {
                 println!("Qualifier: {}, Name: {}", &qualifier, self.name);
                 format!("{}.{}", &qualifier, self.name())
-            },
+            }
             None => {
                 println!("Nope, returning: {:?}", self.name().to_string());
                 self.name().to_string()
-            },
+            }
         }
     }
 

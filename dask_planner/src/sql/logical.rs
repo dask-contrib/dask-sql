@@ -433,7 +433,10 @@ impl PyLogicalPlan {
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
 
-                println!("Invoking RelDataType::new() with fields: {:?}\n\n", rel_fields);
+                println!(
+                    "Invoking RelDataType::new() with fields: {:?}\n\n",
+                    rel_fields
+                );
                 Ok(RelDataType::new(false, rel_fields))
             }
         }

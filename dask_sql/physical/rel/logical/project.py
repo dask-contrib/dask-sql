@@ -70,7 +70,7 @@ class DaskProjectPlugin(BaseRelPlugin):
 
         # Make sure the order is correct
         cc = cc.limit_to(column_names)
-        
+
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
         dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
