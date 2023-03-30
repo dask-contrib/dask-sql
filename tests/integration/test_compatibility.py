@@ -1111,12 +1111,12 @@ def test_column_name_starting_with_number():
     expected = pd.DataFrame({"x": range(10)})
     assert_eq(result, expected)
 
-    # result = c.sql(
-    #     """
-    #     SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
-    #     """
-    # )
-    # expected = pd.DataFrame(
-    #     {"x": [None, 0, None, None, None, None, None, None, None, None]}
-    # )
-    # assert_eq(result, expected)
+    result = c.sql(
+        """
+        SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
+        """
+    )
+    expected = pd.DataFrame(
+        {"x": [None, 0, None, None, None, None, None, None, None, None]}
+    )
+    assert_eq(result, expected)
