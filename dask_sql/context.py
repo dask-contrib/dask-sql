@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import logging
-import warnings
 from collections import Counter
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -233,9 +232,6 @@ class Context:
         logger.debug(
             f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
         )
-        if "file_format" in kwargs:  # pragma: no cover
-            warnings.warn("file_format is renamed to format", DeprecationWarning)
-            format = kwargs.pop("file_format")
 
         schema_name = schema_name or self.schema_name
 
@@ -265,16 +261,6 @@ class Context:
 
         self.schema[schema_name].tables[table_name.lower()] = dc
         self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
-        """
-        Outdated version of :func:`create_table()`.
-        """
-        warnings.warn(
-            "register_dask_table is deprecated, use the more general create_table instead.",
-            DeprecationWarning,
-        )
-        return self.create_table(name, df, *args, **kwargs)
 
     def drop_table(self, table_name: str, schema_name: str = None):
         """
