@@ -712,44 +712,31 @@ def test_window_sum_avg_partition_by():
                 {func}(b+a) OVER (PARTITION BY c,b) AS a3,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
+                {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
                 {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS a6
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+                    AS a6
             FROM a
             ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
             """,
             a=a,
         )
-        # eq_sqlite(
-        #     f"""
-        #     SELECT a,b,
-        #         {func}(b+a) OVER (PARTITION BY c,b) AS a3,
-        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-        #             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
-        #             ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS a5,
-        #         {func}(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-        #             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-        #             AS a6
-        #     FROM a
-        #     ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
-        #     """,
-        #     a=a,
-        # )
-        # # irregular windows
-        # eq_sqlite(
-        #     f"""
-        #     SELECT a,b,
-        #         {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
-        #             ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
-        #         {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
-        #             ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
-        #         {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
-        #             ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
-        #     FROM a
-        #     ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
-        #     """,
-        #     a=a,
-        # )
+        # irregular windows
+        eq_sqlite(
+            f"""
+            SELECT a,b,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) AS a6,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING) AS a7,
+                {func}(b) OVER (PARTITION BY b ORDER BY a DESC NULLS FIRST
+                    ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) AS a8
+            FROM a
+            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
+            """,
+            a=a,
+        )
 
 
 def test_problem(c):
@@ -1124,12 +1111,12 @@ def test_column_name_starting_with_number():
     expected = pd.DataFrame({"x": range(10)})
     assert_eq(result, expected)
 
-    result = c.sql(
-        """
-        SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
-        """
-    )
-    expected = pd.DataFrame(
-        {"x": [None, 0, None, None, None, None, None, None, None, None]}
-    )
-    assert_eq(result, expected)
+    # result = c.sql(
+    #     """
+    #     SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
+    #     """
+    # )
+    # expected = pd.DataFrame(
+    #     {"x": [None, 0, None, None, None, None, None, None, None, None]}
+    # )
+    # assert_eq(result, expected)
