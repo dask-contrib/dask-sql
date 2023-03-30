@@ -92,7 +92,16 @@ def user_table_nan():
 
 @pytest.fixture()
 def string_table():
-    return pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
+    return pd.DataFrame(
+        {
+            "a": [
+                "a normal string",
+                "%_%",
+                "^|()-*[]$",
+                "^|()-*[]$\n%_%\na normal string",
+            ]
+        }
+    )
 
 
 @pytest.fixture()

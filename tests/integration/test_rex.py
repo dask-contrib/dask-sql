@@ -259,7 +259,7 @@ def test_like(c, input_table, gpu, request):
     """
     )
 
-    assert_eq(df, string_table.iloc[[0]])
+    assert_eq(df, string_table.iloc[[0, 3]])
 
     df = c.sql(
         f"""
@@ -270,6 +270,21 @@ def test_like(c, input_table, gpu, request):
 
     assert len(df) == 0
 
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a LIKE '%a Normal String%'
+    """
+    )
+    assert len(df) == 0
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[0, 3]])
     # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
     # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
@@ -288,7 +303,7 @@ def test_like(c, input_table, gpu, request):
         """
     )
 
-    assert_eq(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2, 3]])
 
     df = c.sql(
         f"""
@@ -345,10 +360,10 @@ def test_null(c):
     """
     )
 
-    expected_df = pd.DataFrame(index=[0, 1, 2])
-    expected_df["nn"] = [True, True, True]
+    expected_df = pd.DataFrame(index=[0, 1, 2, 3])
+    expected_df["nn"] = [True, True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
-    expected_df["n"] = [False, False, False]
+    expected_df["n"] = [False, False, False, False]
     assert_eq(df, expected_df)
 
 
