@@ -79,7 +79,6 @@ fn optimize_join(
     let (rels, conds) = extract_inner_joins(plan);
 
     // Split rels into facts and dims
-    let rels: Vec<Relation> = rels.into_iter().map(Relation::new).collect();
     let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
     // Vectors for the fact and dimension tables, respectively
     let mut facts = vec![];
@@ -262,7 +261,7 @@ fn is_supported_join(join: &Join) -> bool {
 
 /// Extracts items of consecutive inner joins and join conditions
 /// This method works for bushy trees and left/right deep trees
-fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, Expr)>) {
+fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<Relation>, HashSet<(Expr, Expr)>) {
     fn _extract_inner_joins(
         plan: &LogicalPlan,
         rels: &mut Vec<LogicalPlan>,
@@ -307,6 +306,7 @@ fn extract_inner_joins(plan: &LogicalPlan) -> (Vec<LogicalPlan>, HashSet<(Expr, 
     let mut rels = vec![];
     let mut conds = HashSet::new();
     _extract_inner_joins(plan, &mut rels, &mut conds);
+    let rels = rels.into_iter().map(Relation::new).collect();
     (rels, conds)
 }
 
