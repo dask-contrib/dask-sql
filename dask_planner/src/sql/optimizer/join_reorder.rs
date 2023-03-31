@@ -78,15 +78,27 @@ fn optimize_join(
     // Extract the relations and join conditions
     let (rels, conds) = extract_inner_joins(plan);
 
+    let mut join_conds = HashSet::new();
+    for cond in &conds {
+        match cond {
+            (Expr::Column(l), Expr::Column(r)) => {
+                join_conds.insert((l.clone(), r.clone()));
+            }
+            _ => {
+                return Ok(Some(plan.clone()));
+            }
+        }
+    }
+
     // Split rels into facts and dims
-    let largest_rel = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
+    let largest_rel_size = rels.iter().map(|rel| rel.size).max().unwrap() as f64;
     // Vectors for the fact and dimension tables, respectively
     let mut facts = vec![];
     let mut dims = vec![];
     for rel in &rels {
         // If the ratio is larger than the fact_dimension_ratio, it is a fact table
         // Else, it is a dimension table
-        if rel.size as f64 / largest_rel > rule.fact_dimension_ratio {
+        if rel.size as f64 / largest_rel_size > rule.fact_dimension_ratio {
             facts.push(rel.clone());
         } else {
             dims.push(rel.clone());
@@ -145,22 +157,8 @@ fn optimize_join(
             result.push(unfiltered_dimensions.remove(0));
         }
     }
-    assert!(filtered_dimensions.is_empty());
-    assert!(unfiltered_dimensions.is_empty());
 
     let dim_plans: Vec<LogicalPlan> = result.iter().map(|rel| rel.plan.clone()).collect();
-
-    let mut join_conds = HashSet::new();
-    for cond in &conds {
-        match cond {
-            (Expr::Column(l), Expr::Column(r)) => {
-                join_conds.insert((l.clone(), r.clone()));
-            }
-            _ => {
-                return Ok(Some(plan.clone()));
-            }
-        }
-    }
 
     let optimized = if facts.len() == 1 {
         build_join_tree(&facts[0].plan, &dim_plans, &mut join_conds)?
@@ -378,15 +376,13 @@ fn build_join_tree(
 
 fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
     match plan {
-        LogicalPlan::TableScan(scan) => {
-            scan
-                .source
-                .as_any()
-                .downcast_ref::<DaskTableSource>()
-                .expect("should be a DaskTableSource")
-                .statistics()
-                .map(|stats| stats.get_row_count() as usize)
-        }
+        LogicalPlan::TableScan(scan) => scan
+            .source
+            .as_any()
+            .downcast_ref::<DaskTableSource>()
+            .expect("should be a DaskTableSource")
+            .statistics()
+            .map(|stats| stats.get_row_count() as usize),
         _ => get_table_size(plan.inputs()[0]),
     }
 }

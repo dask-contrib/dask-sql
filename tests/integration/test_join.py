@@ -411,6 +411,7 @@ def test_join_reorder(c):
     c.create_table("b", df2, statistics=Statistics(50000))
     c.create_table("c", df3, statistics=Statistics(5))
 
+    # Basic join reorder test
     query = """
         SELECT a1, b2, c3
         FROM a, b, c
@@ -423,7 +424,7 @@ def test_join_reorder(c):
     first_join = "Inner Join: b.b2 = c.c2"
     second_join = "Inner Join: b.b1 = a.a1"
     """
-    # LogicalPlan is expected to look something like:
+    LogicalPlan is expected to look something like:
 
     Limit: skip=0, fetch=10
     Projection: a.a1, b.b2, c.c3
@@ -437,13 +438,32 @@ def test_join_reorder(c):
         Projection: a.a1
             TableScan: a projection=[a1], full_filters=[a.a1 < Int64(3), a.a1 IS NOT NULL]
 
-    # So the a-b join is expected to appear earlier in the string than the b-c join
+    So the a-b join is expected to appear earlier in the string than the b-c join
     """
     assert first_join in explain_string and second_join in explain_string
     assert explain_string.index(second_join) < explain_string.index(first_join)
 
     result_df = c.sql(query)
     expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4] * 10})
+    assert_eq(result_df, expected_df)
+
+    # By default, join reordering should NOT reorder unfiltered dimension tables
+    query = """
+        SELECT a1, b2, c3
+        FROM a, b, c
+        WHERE a1 = b1 AND b2 = c2
+        LIMIT 10
+    """
+
+    explain_string = c.explain(query)
+
+    first_join = "Inner Join: b.b1 = a.a1"
+    second_join = "Inner Join: b.b2 = c.c2"
+    assert first_join in explain_string and second_join in explain_string
+    assert explain_string.index(second_join) < explain_string.index(first_join)
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4, 5] * 5})
     assert_eq(result_df, expected_df)
 
 
