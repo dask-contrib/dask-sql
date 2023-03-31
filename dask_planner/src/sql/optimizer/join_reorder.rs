@@ -131,14 +131,16 @@ fn optimize_join(
     // regressions are minimized.
     let mut result = vec![];
     while !filtered_dimensions.is_empty() || !unfiltered_dimensions.is_empty() {
-        if !filtered_dimensions.is_empty() && !unfiltered_dimensions.is_empty() {
-            if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
-                result.push(filtered_dimensions.remove(0));
+        if !filtered_dimensions.is_empty() {
+            if !unfiltered_dimensions.is_empty() {
+                if filtered_dimensions[0].size < unfiltered_dimensions[0].size {
+                    result.push(filtered_dimensions.remove(0));
+                } else {
+                    result.push(unfiltered_dimensions.remove(0));
+                }
             } else {
-                result.push(unfiltered_dimensions.remove(0));
+                result.push(filtered_dimensions.remove(0));
             }
-        } else if !filtered_dimensions.is_empty() {
-            result.push(filtered_dimensions.remove(0));
         } else {
             result.push(unfiltered_dimensions.remove(0));
         }
@@ -377,13 +379,11 @@ fn build_join_tree(
 fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
     match plan {
         LogicalPlan::TableScan(scan) => {
-            let source = scan
+            scan
                 .source
                 .as_any()
                 .downcast_ref::<DaskTableSource>()
-                .expect("should be a DaskTableSource");
-
-            source
+                .expect("should be a DaskTableSource")
                 .statistics()
                 .map(|stats| stats.get_row_count() as usize)
         }
