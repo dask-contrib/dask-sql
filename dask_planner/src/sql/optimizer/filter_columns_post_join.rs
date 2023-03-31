@@ -497,7 +497,7 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{borrow::Cow, sync::Arc};
 
     use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
@@ -506,6 +506,7 @@ mod tests {
         sum,
     };
     use datafusion_optimizer::OptimizerContext;
+    use datafusion_sql::TableReference;
 
     use super::*;
 
@@ -570,7 +571,11 @@ mod tests {
     ) -> Result<LogicalPlanBuilder> {
         let tbl_schema = Arc::new(table_schema.clone());
         let table_source = Arc::new(LogicalTableSource::new(tbl_schema));
-        LogicalPlanBuilder::scan(name.unwrap_or("test"), table_source, projection)
+        let tbl_reference = TableReference::Bare {
+            table: Cow::Borrowed(name.unwrap_or("test")),
+        }
+        .to_owned_reference();
+        LogicalPlanBuilder::scan(tbl_reference, table_source, projection)
     }
 
     fn test_table_scan(table_name: &str, column_name: &str) -> LogicalPlan {
