@@ -25,7 +25,6 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
-    #[allow(dead_code)]
     statistics: Option<DaskStatistics>,
     filepath: Option<String>,
 }
@@ -45,7 +44,6 @@ impl DaskTableSource {
     }
 
     /// Access optional statistics associated with this table source
-    #[allow(dead_code)]
     pub fn statistics(&self) -> Option<&DaskStatistics> {
         self.statistics.as_ref()
     }
