@@ -11,14 +11,14 @@ if TYPE_CHECKING:
     from dask_planner.rust import Expression, LogicalPlan
 
 
-class RexSubqueryAliasPlugin(BaseRexPlugin):
+class RexScalarSubqueryPlugin(BaseRexPlugin):
     """
-    A RexSubqueryAliasPlugin is an expression, which references a Subquery.
+    A RexScalarSubqueryPlugin is an expression, which references a Subquery.
     This plugin is thin on logic, however keeping with previous patterns
     we use the plugin approach instead of placing the logic inline
     """
 
-    class_name = "SubqueryAlias"
+    class_name = "ScalarSubquery"
 
     def convert(
         self,

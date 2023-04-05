@@ -17,7 +17,8 @@ _REX_TYPE_TO_PLUGIN = {
     "RexType.Reference": "InputRef",
     "RexType.Call": "RexCall",
     "RexType.Literal": "RexLiteral",
-    "RexType.SubqueryAlias": "SubqueryAlias",
+    "RexType.Alias": "RexAlias",
+    "RexType.ScalarSubquery": "ScalarSubquery",
 }
 
 

@@ -7,6 +7,10 @@ services:
         command: dask-scheduler
         ports:
             - "8786:8786"
+        environment:
+            USE_MAMBA: "true"
+            # p2p shuffling requires pyarrow>=7.0.0
+            EXTRA_CONDA_PACKAGES: "pyarrow>=7.0.0"
     dask-worker:
         container_name: dask-worker
         image: daskdev/dask:dev-py3.9

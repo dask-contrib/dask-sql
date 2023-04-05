@@ -14,9 +14,7 @@ def test_analyze(c, df):
         .append(
             pd.Series(
                 {
-                    col: str(python_to_sql_type(df[col].dtype).getSqlType())
-                    .rpartition(".")[2]
-                    .lower()
+                    col: str(python_to_sql_type(df[col].dtype)).lower()
                     for col in df.columns
                 },
                 name="data_type",

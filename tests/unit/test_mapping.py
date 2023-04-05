@@ -8,12 +8,11 @@ from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_va
 
 
 def test_python_to_sql():
-    assert python_to_sql_type(np.dtype("int32")).getSqlType() == SqlTypeName.INTEGER
-    assert python_to_sql_type(np.dtype(">M8[ns]")).getSqlType() == SqlTypeName.TIMESTAMP
-    thing = python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
+    assert str(python_to_sql_type(np.dtype("int32"))) == "INTEGER"
+    assert str(python_to_sql_type(np.dtype(">M8[ns]"))) == "TIMESTAMP"
     assert (
-        python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
-        == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+        str(python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")))
+        == "TIMESTAMP_WITH_LOCAL_TIME_ZONE"
     )
 
 

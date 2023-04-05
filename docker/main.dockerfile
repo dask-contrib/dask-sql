@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "setuptools-rust>=1.4.1" \
+    "setuptools-rust>=1.5.2" \
     # core dependencies
     "dask>=2022.3.0,<=2023.1.1" \
     "pandas>=1.4.0" \
@@ -25,7 +25,6 @@ RUN mamba install -y \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     tabulate \
-    nest-asyncio \
     # additional dependencies
     "pyarrow>=6.0.1" \
     "scikit-learn>=1.0.0" \

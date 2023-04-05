@@ -56,9 +56,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         statistics = statistics.append(
             pd.Series(
                 {
-                    col: str(python_to_sql_type(df[mapping(col)].dtype).getSqlType())
-                    .rpartition(".")[2]
-                    .lower()
+                    col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
                     for col in columns
                 },
                 name="data_type",

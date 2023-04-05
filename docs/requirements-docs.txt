@@ -11,5 +11,4 @@ tzlocal>=2.1
 prompt_toolkit>=3.0.8
 pygments>=2.7.1
 tabulate
-nest-asyncio
-setuptools-rust>=1.4.1
+setuptools-rust>=1.5.2

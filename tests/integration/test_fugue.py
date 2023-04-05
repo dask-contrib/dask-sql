@@ -44,6 +44,7 @@ def test_fugue_fsql(client):
 # TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
 # discussion in https://github.com/dask-contrib/dask-sql/issues/407
 @xfail_if_external_scheduler
+@pytest.mark.flaky(reruns=4, condition="sys.version_info < (3, 9)")
 def test_dask_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
         assert_eq(df, pd.DataFrame({"a": [1]}))
