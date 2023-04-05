@@ -60,7 +60,7 @@ use crate::{
             predict_model::PredictModelPlanNode,
             show_columns::ShowColumnsPlanNode,
             show_models::ShowModelsPlanNode,
-            show_schema::ShowSchemasPlanNode,
+            show_schemas::ShowSchemasPlanNode,
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
@@ -626,12 +626,14 @@ impl DaskSQLContext {
             DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowSchemasPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_schemas.catalog_name,
                     like: show_schemas.like,
                 }),
             })),
             DaskStatement::ShowTables(show_tables) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowTablesPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_tables.catalog_name,
                     schema_name: show_tables.schema_name,
                 }),
             })),
