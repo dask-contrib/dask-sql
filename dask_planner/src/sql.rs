@@ -34,6 +34,7 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
+use log::{debug, warn};
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -480,6 +481,7 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
+        debug!("parse_sql - '{}'", sql);
         let dd: DaskDialect = DaskDialect {};
         match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
@@ -528,6 +530,7 @@ impl DaskSQLContext {
                         .map_err(py_optimization_exp)
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
+                    warn!("This LogicalPlan does not support Optimization. Returning original");
                     Ok(existing_plan)
                 }
             }
