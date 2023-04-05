@@ -1247,17 +1247,16 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL SHOW TABLES [FROM] statement
     fn parse_show_tables(&mut self) -> Result<DaskStatement, ParserError> {
-        let mut catalog_name = None;
-        let mut schema_name = None;
-        if !self.parser.consume_token(&Token::EOF) {
-            let (obj_catalog_name, obj_schema_name) =
-                DaskParserUtils::elements_from_object_name(&self.parser.parse_object_name()?)?;
-            catalog_name = obj_catalog_name;
-            schema_name = Some(obj_schema_name);
+        if let Ok(obj_name) = &self.parser.parse_object_name() {
+            let (catalog_name, schema_name) = DaskParserUtils::elements_from_object_name(obj_name)?;
+            return Ok(DaskStatement::ShowTables(Box::new(ShowTables {
+                catalog_name,
+                schema_name: Some(schema_name),
+            })));
         }
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
-            catalog_name,
-            schema_name,
+            catalog_name: None,
+            schema_name: None,
         })))
     }
 
