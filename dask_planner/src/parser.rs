@@ -259,14 +259,17 @@ pub struct DescribeModel {
 /// Dask-SQL extension DDL for `SHOW SCHEMAS`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowSchemas {
-    /// like
+    /// optional catalog name
+    pub catalog_name: Option<String>,
+    /// optional LIKE identifier
     pub like: Option<String>,
 }
 
 /// Dask-SQL extension DDL for `SHOW TABLES FROM`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowTables {
-    /// schema name
+    /// catalog and schema name, i.e. 'catalog_name.schema_name'
+    pub catalog_name: Option<String>,
     pub schema_name: Option<String>,
 }
 
@@ -1205,8 +1208,23 @@ impl<'a> DaskParser<'a> {
 
     /// Parse Dask-SQL SHOW SCHEMAS statement
     fn parse_show_schemas(&mut self) -> Result<DaskStatement, ParserError> {
-        // Check for existence of `LIKE` clause
-        let like_val = match self.parser.peek_token().token {
+        // parse optional `FROM` clause
+        let catalog_name = match self.parser.peek_token().token {
+            Token::Word(w) => {
+                match w.keyword {
+                    Keyword::FROM => {
+                        // move one token forward
+                        self.parser.next_token();
+                        // use custom parsing
+                        Some(self.parser.parse_identifier()?.value)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        // parse optional `LIKE` clause
+        let like = match self.parser.peek_token().token {
             Token::Word(w) => {
                 match w.keyword {
                     Keyword::LIKE => {
@@ -1222,18 +1240,23 @@ impl<'a> DaskParser<'a> {
         };
 
         Ok(DaskStatement::ShowSchemas(Box::new(ShowSchemas {
-            like: like_val,
+            catalog_name,
+            like,
         })))
     }
 
     /// Parse Dask-SQL SHOW TABLES [FROM] statement
     fn parse_show_tables(&mut self) -> Result<DaskStatement, ParserError> {
-        let mut schema_name = None;
-        if !self.parser.consume_token(&Token::EOF) {
-            schema_name = Some(self.parser.parse_identifier()?.value);
+        if let Ok(obj_name) = &self.parser.parse_object_name() {
+            let (catalog_name, schema_name) = DaskParserUtils::elements_from_object_name(obj_name)?;
+            return Ok(DaskStatement::ShowTables(Box::new(ShowTables {
+                catalog_name,
+                schema_name: Some(schema_name),
+            })));
         }
         Ok(DaskStatement::ShowTables(Box::new(ShowTables {
-            schema_name,
+            catalog_name: None,
+            schema_name: None,
         })))
     }
 
