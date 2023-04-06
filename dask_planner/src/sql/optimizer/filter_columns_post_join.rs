@@ -94,20 +94,21 @@ pub struct FilterColumnsPostJoin {}
 
 impl FilterColumnsPostJoin {
     #[allow(missing_docs)]
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {}
     }
 }
 
 impl OptimizerRule for FilterColumnsPostJoin {
-    fn optimize(
+    fn try_optimize(
         &self,
         plan: &LogicalPlan,
-        _optimizer_config: &mut OptimizerConfig,
-    ) -> Result<LogicalPlan> {
+        _optimizer_config: &dyn OptimizerConfig,
+    ) -> Result<Option<LogicalPlan>> {
         // Store info about all columns in all schemas
         let all_schemas = &plan.all_schemas();
-        optimize_top_down(plan, all_schemas, HashSet::new())
+        Ok(Some(optimize_top_down(plan, all_schemas, HashSet::new())?))
     }
 
     fn name(&self) -> &str {
@@ -188,11 +189,12 @@ fn optimize_top_down(
                             DFSchema::new_with_metadata(projection_schema_fields, HashMap::new());
 
                         // Create a Projection with the columns from the HashSet
-                        let projection_plan = LogicalPlan::Projection(Projection {
-                            expr: projection_columns,
-                            input: Arc::new(current_plan.clone()),
-                            schema: Arc::new(projection_schema.unwrap()),
-                        });
+                        let projection_plan =
+                            LogicalPlan::Projection(Projection::try_new_with_schema(
+                                projection_columns,
+                                Arc::new(current_plan.clone()),
+                                Arc::new(projection_schema?),
+                            )?);
 
                         // Add Projection to HashMap
                         new_plan.insert(counter, projection_plan);
@@ -206,14 +208,12 @@ fn optimize_top_down(
                         &j.left,
                         &j.left.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let right_join_plan = optimize_top_down(
                         &j.right,
                         &j.right.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let join_plan = LogicalPlan::Join(Join {
                         left: Arc::new(left_join_plan),
                         right: Arc::new(right_join_plan),
@@ -234,14 +234,12 @@ fn optimize_top_down(
                         &c.left,
                         &c.left.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let right_crossjoin_plan = optimize_top_down(
                         &c.right,
                         &c.right.all_schemas(),
                         post_join_columns.clone(),
-                    )
-                    .unwrap();
+                    )?;
                     let crossjoin_plan = LogicalPlan::CrossJoin(CrossJoin {
                         left: Arc::new(left_crossjoin_plan),
                         right: Arc::new(right_crossjoin_plan),
@@ -320,24 +318,23 @@ fn optimize_top_down(
             next_step = new_plan.get(&key).unwrap();
             match next_step {
                 LogicalPlan::Projection(p) => {
-                    return_plan = LogicalPlan::Projection(Projection {
-                        expr: p.expr.clone(),
-                        input: Arc::new(previous_step.clone()),
-                        schema: p.schema.clone(),
-                    });
+                    return_plan = LogicalPlan::Projection(Projection::try_new_with_schema(
+                        p.expr.clone(),
+                        Arc::new(previous_step.clone()),
+                        p.schema.clone(),
+                    )?);
                 }
                 LogicalPlan::SubqueryAlias(s) => {
-                    return_plan = LogicalPlan::SubqueryAlias(SubqueryAlias {
-                        input: Arc::new(previous_step.clone()),
-                        alias: s.alias.clone(),
-                        schema: s.schema.clone(),
-                    });
+                    return_plan = LogicalPlan::SubqueryAlias(SubqueryAlias::try_new(
+                        previous_step.clone(),
+                        s.alias.clone(),
+                    )?);
                 }
                 LogicalPlan::Filter(f) => {
-                    return_plan = LogicalPlan::Filter(
-                        Filter::try_new(f.predicate().clone(), Arc::new(previous_step.clone()))
-                            .unwrap(),
-                    );
+                    return_plan = LogicalPlan::Filter(Filter::try_new(
+                        f.predicate.clone(),
+                        Arc::new(previous_step.clone()),
+                    )?);
                 }
                 LogicalPlan::Window(w) => {
                     return_plan = LogicalPlan::Window(Window {
@@ -374,6 +371,7 @@ fn optimize_top_down(
                         plan: Arc::new(previous_step.clone()),
                         stringified_plans: e.stringified_plans.clone(),
                         schema: e.schema.clone(),
+                        logical_optimization_succeeded: false, // While Dask-SQL does not use the DataFusion Physical Planner we should set this value to False to guard any 3rd party dependency using Dask-SQL from assuming the plan is safe to use at this point.
                     });
                 }
                 LogicalPlan::Analyze(a) => {
@@ -396,12 +394,12 @@ fn optimize_top_down(
                     });
                 }
                 LogicalPlan::Aggregate(a) => {
-                    return_plan = LogicalPlan::Aggregate(Aggregate {
-                        input: Arc::new(previous_step.clone()),
-                        group_expr: a.group_expr.clone(),
-                        aggr_expr: a.aggr_expr.clone(),
-                        schema: a.schema.clone(),
-                    });
+                    return_plan = LogicalPlan::Aggregate(Aggregate::try_new_with_schema(
+                        Arc::new(previous_step.clone()),
+                        a.group_expr.clone(),
+                        a.aggr_expr.clone(),
+                        a.schema.clone(),
+                    )?);
                 }
                 LogicalPlan::Sort(s) => {
                     return_plan = LogicalPlan::Sort(Sort {
@@ -500,12 +498,13 @@ fn get_column_name(column: &Expr) -> Option<Vec<Expr>> {
 mod tests {
     use std::sync::Arc;
 
-    use arrow::datatypes::{DataType, Field, Schema};
+    use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion_expr::{
         col,
         logical_plan::{builder::LogicalTableSource, JoinType, LogicalPlanBuilder},
         sum,
     };
+    use datafusion_optimizer::OptimizerContext;
 
     use super::*;
 
@@ -513,9 +512,9 @@ mod tests {
     fn optimized_plan_eq(plan: &LogicalPlan, expected1: &str, expected2: &str) -> bool {
         let rule = FilterColumnsPostJoin::new();
         let optimized_plan = rule
-            .optimize(plan, &mut OptimizerConfig::new())
+            .try_optimize(plan, &OptimizerContext::new())
             .expect("failed to optimize plan");
-        let formatted_plan = format!("{}", optimized_plan.display_indent());
+        let formatted_plan = format!("{}", optimized_plan.unwrap().display_indent());
 
         if formatted_plan == expected1 || formatted_plan == expected2 {
             true
@@ -533,7 +532,7 @@ mod tests {
         //       TableScan: df2
         let plan = LogicalPlanBuilder::from(test_table_scan("df", "a"))
             .join(
-                &LogicalPlanBuilder::from(test_table_scan("df2", "b")).build()?,
+                LogicalPlanBuilder::from(test_table_scan("df2", "b")).build()?,
                 JoinType::Inner,
                 (vec!["c"], vec!["c"]),
                 None,

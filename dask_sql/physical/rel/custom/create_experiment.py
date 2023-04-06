@@ -31,12 +31,19 @@ class CreateExperimentPlugin(BaseRelPlugin):
             AS <some select query>
 
     OPTIONS:
-    * model_class: Full path to the class of the model which has to be tuned.
+    * model_class: Class name or full path to the class of the model to train.
+      Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
+      without the full path. In this case, models trained on cuDF dataframes
+      are automatically mapped to cuML classes, and sklearn models otherwise.
+      We map to cuML-Dask based models when possible and single-GPU cuML models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use
       the models.
-    * experiment_class : Full path of the Hyperparameter tuner
+    * experiment_class : Class name or full path of the Hyperparameter tuner.
+      Any sklearn or cuML classes can be inferred
+      without the full path. In this case, models trained on cuDF dataframes
+      are automatically mapped to cuML classes, and sklearn models otherwise.
     * tune_parameters:
       Key-value of pairs of Hyperparameters to tune, i.e Search Space for
       particular model to tune

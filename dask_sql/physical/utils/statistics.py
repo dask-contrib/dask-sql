@@ -87,7 +87,7 @@ def parquet_statistics(
     if not isinstance(layer, DataFrameIOLayer) or not isinstance(
         layer.io_func, ParquetFunctionWrapper
     ):
-        logger.warning(
+        logger.debug(
             f"Could not extract Parquet statistics from {ddf}."
             f"\nAttempted IO layer: {layer}"
         )
@@ -98,7 +98,7 @@ def parquet_statistics(
     fs = layer.io_func.fs
     engine = layer.io_func.engine
     if not issubclass(engine, ArrowDatasetEngine):
-        logger.warning(
+        logger.debug(
             f"Could not extract Parquet statistics from {ddf}."
             f"\nUnsupported parquet engine: {engine}"
         )
@@ -116,8 +116,9 @@ def parquet_statistics(
         # all be in the same footer)
         groups = defaultdict(list)
         for part in parts:
-            path = part.get("piece")[0]
-            groups[path].append(part)
+            for p in [part] if isinstance(part, dict) else part:
+                path = p.get("piece")[0]
+                groups[path].append(p)
         group_keys = list(groups.keys())
 
         # Compute and return flattened result

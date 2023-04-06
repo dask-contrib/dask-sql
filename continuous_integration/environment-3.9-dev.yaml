@@ -3,7 +3,7 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
-- dask>=2022.3.0
+- dask>=2022.3.0,<=2023.3.2
 # FIXME: handling is needed for httpx-based fastapi>=0.87.0
 - fastapi>=0.69.0,<0.87.0
 - fugue>=0.7.3
@@ -13,7 +13,6 @@ dependencies:
 - maturin>=0.12.8
 - mlflow
 - mock
-- nest-asyncio
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
@@ -25,12 +24,14 @@ dependencies:
 - pygments>=2.7.1
 - pyhive
 - pytest-cov
+- pytest-rerunfailures
 - pytest-xdist
 - pytest
 - python=3.9
 - scikit-learn>=1.0.0
-- setuptools-rust>=1.4.1
+- setuptools-rust>=1.5.2
 - sphinx
+- sqlalchemy<2
 - tpot
 - tzlocal>=2.1
 - uvicorn>=0.13.4

@@ -157,12 +157,7 @@ def test_filter_year(c):
         (
             "SELECT * FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
-            [
-                [("a", "==", 1), ("b", "<", 10)],
-                [("a", "==", 1), ("b", ">", 5)],
-                [("b", ">", 5), ("b", "<", 10)],
-                [("a", "==", 1)],
-            ],
+            [[("b", ">", 5), ("b", "<", 10)], [("a", "==", 1)]],
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
@@ -180,12 +175,7 @@ def test_filter_year(c):
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
-            [
-                [("a", "==", 1), ("b", "<", 10)],
-                [("a", "==", 1), ("b", ">", 5)],
-                [("b", ">", 5), ("b", "<", 10)],
-                [("a", "==", 1)],
-            ],
+            [[("b", ">", 5), ("b", "<", 10)], [("a", "==", 1)]],
         ),
         (
             # Original filters NOT in disjunctive normal form

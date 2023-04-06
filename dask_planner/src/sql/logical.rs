@@ -27,7 +27,7 @@ pub mod projection;
 pub mod repartition_by;
 pub mod show_columns;
 pub mod show_models;
-pub mod show_schema;
+pub mod show_schemas;
 pub mod show_tables;
 pub mod sort;
 pub mod subquery_alias;
@@ -54,7 +54,7 @@ use self::{
     predict_model::PredictModelPlanNode,
     show_columns::ShowColumnsPlanNode,
     show_models::ShowModelsPlanNode,
-    show_schema::ShowSchemasPlanNode,
+    show_schemas::ShowSchemasPlanNode,
     show_tables::ShowTablesPlanNode,
     use_schema::UseSchemaPlanNode,
 };
@@ -177,7 +177,7 @@ impl PyLogicalPlan {
     }
 
     /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
-    pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+    pub fn show_schemas(&self) -> PyResult<show_schemas::PyShowSchema> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -297,6 +297,9 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
+            LogicalPlan::Dml(_) => "DataManipulationLanguage",
+            LogicalPlan::DescribeTable(_) => "DescribeTable",
+            LogicalPlan::Prepare(_) => "Prepare",
             LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",
@@ -365,6 +368,7 @@ impl PyLogicalPlan {
                     "Extension"
                 }
             }
+            LogicalPlan::Unnest(_unnest) => "Unnest",
         })
     }
 

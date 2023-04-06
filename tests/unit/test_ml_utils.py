@@ -31,14 +31,7 @@ def test_ml_class_mappings(gpu):
         lightgbm = None
         xgboost = None
 
-    if gpu:
-        classes_dict = get_gpu_classes()
-    else:
-        # Imports needed to use sklearn.experimental classes
-        from sklearn.experimental import enable_halving_search_cv  # noqa: F401
-        from sklearn.experimental import enable_iterative_imputer  # noqa: F401
-
-        classes_dict = get_cpu_classes()
+    classes_dict = get_gpu_classes() if gpu else get_cpu_classes()
 
     for key in classes_dict:
         if not ("XGB" in key and xgboost is None) and not (

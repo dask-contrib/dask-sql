@@ -12,6 +12,7 @@ dask-sql does not enforce a specific order after groupby
 import sqlite3
 from datetime import datetime, timedelta
 
+import dask.config
 import numpy as np
 import pandas as pd
 import pytest
@@ -1039,16 +1040,65 @@ def test_integration_1():
     )
 
 
-def test_query_case_sensitivity():
+@pytest.mark.parametrize(
+    "case_sensitive",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=pytest.mark.xfail(
+                reason="https://github.com/dask-contrib/dask-sql/issues/1092"
+            ),
+        ),
+    ],
+)
+def test_query_case_sensitivity(case_sensitive):
     c = Context()
-    df = pd.DataFrame({"id": [0, 1]})
+    df = pd.DataFrame({"id": [0, 1], "VAL": [1, 2]})
 
     c.create_table("test", df)
+    q1 = "select ID from test"
+    q2 = "select val from test"
+    q3 = "select Id, VAl from test"
+    with dask.config.set({"sql.identifier.case_sensitive": case_sensitive}):
+        if case_sensitive:
+            with pytest.raises(ParsingException):
+                c.sql(q1)
+            with pytest.raises(ParsingException):
+                c.sql(q2)
+            with pytest.raises(ParsingException):
+                c.sql(q3)
+            result = c.sql("SELECT VAL from test")
+            assert_eq(result, df[["VAL"]])
+        else:
+            df.columns = df.columns.str.lower()
+            result = c.sql(q1)
+            assert_eq(result, df[["id"]])
+            result = c.sql(q2)
+            assert_eq(result, df[["val"]])
+            result = c.sql(q3)
+            assert_eq(result, df[["id", "val"]])
 
-    try:
-        c.sql(
-            "select ID from test",
-            config_options={"sql.identifier.case_sensitive": False},
-        )
-    except ParsingException as pe:
-        assert False, f"Queries should be case insensitve but raised exception {pe}"
+
+def test_column_name_starting_with_number():
+    c = Context()
+    df = pd.DataFrame({"a": range(10), "1b": range(10)})
+    c.create_table("df", df)
+
+    result = c.sql(
+        """
+        SELECT "1b" AS x FROM df
+        """
+    )
+    expected = pd.DataFrame({"x": range(10)})
+    assert_eq(result, expected)
+
+    result = c.sql(
+        """
+        SELECT (CASE WHEN "1b"=1 THEN 0 END) AS x FROM df
+        """
+    )
+    expected = pd.DataFrame(
+        {"x": [None, 0, None, None, None, None, None, None, None, None]}
+    )
+    assert_eq(result, expected)

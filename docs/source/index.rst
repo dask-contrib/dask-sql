@@ -20,7 +20,7 @@ Example
 -------
 
 For this example, we use some data loaded from disk and query it with a SQL command.
-``dask-sql`` accepts any pandas, cuDF, or dask dataframe as input and is able to read data directly from a variety of storage formats (csv, parquet, json) and file systems (s3, hdfs, gcs):
+``dask-sql`` accepts any pandas, cuDF, or dask dataframe as input and is able to read data directly from a variety of storage formats (CSV, Parquet, JSON) and file systems (S3, hdfs, gcs):
 
 .. tabs::
 
@@ -95,6 +95,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
    data_input
    custom
    machine_learning
+   best_practices
    api
    server
    cmd
