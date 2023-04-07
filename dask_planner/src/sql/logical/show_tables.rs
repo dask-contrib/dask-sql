@@ -19,6 +19,7 @@ use crate::sql::{exceptions::py_type_err, logical};
 #[derive(Clone, PartialEq)]
 pub struct ShowTablesPlanNode {
     pub schema: DFSchemaRef,
+    pub catalog_name: Option<String>,
     pub schema_name: Option<String>,
 }
 
@@ -56,7 +57,11 @@ impl UserDefinedLogicalNode for ShowTablesPlanNode {
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ShowTables: schema_name: {:?}", self.schema_name)
+        write!(
+            f,
+            "ShowTables: catalog_name: {:?}, schema_name: {:?}",
+            self.catalog_name, self.schema_name
+        )
     }
 
     fn from_template(
@@ -66,6 +71,7 @@ impl UserDefinedLogicalNode for ShowTablesPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(ShowTablesPlanNode {
             schema: Arc::new(DFSchema::empty()),
+            catalog_name: self.catalog_name.clone(),
             schema_name: self.schema_name.clone(),
         })
     }
@@ -94,6 +100,11 @@ pub struct PyShowTables {
 
 #[pymethods]
 impl PyShowTables {
+    #[pyo3(name = "getCatalogName")]
+    fn get_catalog_name(&self) -> PyResult<Option<String>> {
+        Ok(self.show_tables.catalog_name.clone())
+    }
+
     #[pyo3(name = "getSchemaName")]
     fn get_schema_name(&self) -> PyResult<Option<String>> {
         Ok(self.show_tables.schema_name.clone())

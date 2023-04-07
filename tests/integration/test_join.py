@@ -6,6 +6,7 @@ from dask.utils_test import hlg_layer
 
 from dask_sql import Context
 from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
+from dask_sql.datacontainer import Statistics
 from tests.utils import assert_eq
 
 
@@ -396,6 +397,70 @@ def test_filter_columns_post_join(c):
 
     result_df = c.sql(query)
     expected_df = pd.DataFrame({"sum_a": [24, 24, 12], "b": [1, 2, 3]})
+    assert_eq(result_df, expected_df)
+
+
+def test_join_reorder(c):
+    df = pd.DataFrame({"a1": [1, 2, 3, 4, 5] * 2, "a2": [1, 1, 2, 2, 2] * 2})
+    df2 = pd.DataFrame({"b1": [1, 1, 2, 2, 3] * 10000, "b2": [2, 2, 2, 2, 2] * 10000})
+    df3 = pd.DataFrame({"c2": [1, 1, 2, 2, 3], "c3": [2, 3, 4, 5, 6]})
+    c.create_table("a", df, statistics=Statistics(10))
+    c.create_table("b", df2, statistics=Statistics(50000))
+    c.create_table("c", df3, statistics=Statistics(5))
+
+    # Basic join reorder test
+    query = """
+        SELECT a1, b2, c3
+        FROM a, b, c
+        WHERE b1 < 3 AND c3 < 5 AND a1 = b1 AND b2 = c2
+        LIMIT 10
+    """
+
+    explain_string = c.explain(query)
+
+    first_join = "Inner Join: b.b2 = c.c2"
+    second_join = "Inner Join: b.b1 = a.a1"
+    """
+    LogicalPlan is expected to look something like:
+
+    Limit: skip=0, fetch=10
+    Projection: a.a1, b.b2, c.c3
+        Inner Join: b.b1 = a.a1
+        Projection: b.b1, b.b2, c.c3
+            Inner Join: b.b2 = c.c2
+            Projection: b.b1, b.b2
+                TableScan: b projection=[b1, b2], full_filters=[b.b1 < Int64(3), b.b2 IS NOT NULL, b.b1 IS NOT NULL]
+            Projection: c.c2, c.c3
+                TableScan: c projection=[c2, c3], full_filters=[c.c3 < Int64(5), c.c2 IS NOT NULL]
+        Projection: a.a1
+            TableScan: a projection=[a1], full_filters=[a.a1 < Int64(3), a.a1 IS NOT NULL]
+
+    So the a-b join is expected to appear earlier in the string than the b-c join
+    """
+    assert first_join in explain_string and second_join in explain_string
+    assert explain_string.index(second_join) < explain_string.index(first_join)
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4] * 10})
+    assert_eq(result_df, expected_df)
+
+    # By default, join reordering should NOT reorder unfiltered dimension tables
+    query = """
+        SELECT a1, b2, c3
+        FROM a, b, c
+        WHERE a1 = b1 AND b2 = c2
+        LIMIT 10
+    """
+
+    explain_string = c.explain(query)
+
+    first_join = "Inner Join: b.b1 = a.a1"
+    second_join = "Inner Join: b.b2 = c.c2"
+    assert first_join in explain_string and second_join in explain_string
+    assert explain_string.index(second_join) < explain_string.index(first_join)
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4, 5] * 5})
     assert_eq(result_df, expected_df)
 
 
