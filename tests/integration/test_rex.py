@@ -258,8 +258,15 @@ def test_like(c, input_table, gpu, request):
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     )
-
     assert_eq(df, string_table.iloc[[0, 3]])
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT SIMILAR TO '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
 
     df = c.sql(
         f"""
@@ -267,8 +274,15 @@ def test_like(c, input_table, gpu, request):
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
     )
-
     assert len(df) == 0
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT LIKE '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table)
 
     df = c.sql(
         f"""
@@ -285,6 +299,14 @@ def test_like(c, input_table, gpu, request):
     """
     )
     assert_eq(df, string_table.iloc[[0, 3]])
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
     # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
     # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
