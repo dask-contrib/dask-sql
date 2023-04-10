@@ -24,10 +24,6 @@ use datafusion_optimizer::{
 };
 use log::{debug, trace};
 
-// use crate::sql::optimizer::filter_columns_post_join::FilterColumnsPostJoin;
-
-mod filter_columns_post_join;
-
 mod join_reorder;
 use join_reorder::JoinReorder;
 
@@ -65,7 +61,6 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             Arc::new(PushDownLimit::new()),
             // Dask-SQL specific optimizations
-            // Arc::new(FilterColumnsPostJoin::new()),
             Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
