@@ -16,7 +16,7 @@ class ShowSchemasPlugin(BaseRelPlugin):
     Show all schemas.
     The SQL is:
 
-        SHOW SCHEMAS
+        SHOW SCHEMAS [FROM <catalog-name>] [LIKE <>]
 
     The result is also a table, although it is created on the fly.
     """
@@ -24,7 +24,6 @@ class ShowSchemasPlugin(BaseRelPlugin):
     class_name = "ShowSchemas"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-
         show_schemas = rel.show_schemas()
 
         # "information_schema" is a schema which is found in every presto database
@@ -32,7 +31,14 @@ class ShowSchemasPlugin(BaseRelPlugin):
         schemas.append("information_schema")
         df = pd.DataFrame({"Schema": schemas})
 
-        # We currently do not use the passed additional parameter FROM.
+        # currently catalogs other than the default `dask_sql` are not supported
+        catalog_name = show_schemas.getCatalogName() or context.catalog_name
+        if catalog_name != context.catalog_name:
+            raise RuntimeError(
+                f"A catalog with the name {catalog_name} is not present."
+            )
+
+        # filter by LIKE value
         like = str(show_schemas.getLike()).strip("'")
         if like and like != "None":
             df = df[df.Schema == like]

@@ -27,6 +27,9 @@ use log::{debug, trace};
 mod dynamic_partition_pruning;
 use dynamic_partition_pruning::DynamicPartitionPruning;
 
+mod join_reorder;
+use join_reorder::JoinReorder;
+
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
@@ -61,8 +64,8 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             Arc::new(PushDownLimit::new()),
             // Dask-SQL specific optimizations
-            // Arc::new(FilterColumnsPostJoin::new()),
             Arc::new(DynamicPartitionPruning::new()),
+            Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
