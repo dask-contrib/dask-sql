@@ -36,9 +36,11 @@ use crate::sql::table::DaskTableSource;
 // Optimizer rule for dynamic partition pruning
 // General TODOs:
 // - Depends on DataFusion 21.0.0
+// - Add more explanatory comments
 // - Replace repeating code with functions
 // - Remove unnecessary `clone()`s and consider using references instead
 // - Remove unncessary `Option`s and `Result`s
+
 pub struct DynamicPartitionPruning {}
 
 impl DynamicPartitionPruning {
@@ -77,6 +79,10 @@ impl OptimizerRule for DynamicPartitionPruning {
                     largest_size = table_size;
                 }
             }
+
+            let mut join_values = vec![];
+            let mut join_tables = vec![];
+            let mut join_fields = vec![];
 
             // Iterate through all inner joins in the query
             for join_cond in &join_conds {
@@ -136,29 +142,21 @@ impl OptimizerRule for DynamicPartitionPruning {
                         < fact_dimension_ratio
                     {
                         right_filtered_table =
-                            read_table(right_table.clone(), right_field.clone(), tables);
+                            read_table(right_table.clone(), right_field.clone(), tables.clone());
                     }
 
-                    // We should only call parse_and_optimize if we were able to read in
-                    // at least one of the tables
-                    if left_filtered_table.is_some() || right_filtered_table.is_some() {
-                        return parse_and_optimize(
-                            plan,
-                            left_filtered_table,
-                            right_filtered_table,
-                            left_table,
-                            left_field,
-                            right_table,
-                            right_field,
-                        );
-                    } else {
-                        return Ok(None);
-                    }
+                    join_values.push((left_filtered_table, right_filtered_table));
+                    join_tables.push((left_table, right_table));
+                    join_fields.push((left_field, right_field));
                 } else {
                     // TODO: Need to reason about more than one join condition
                 }
             }
-            Ok(None)
+            // Creates HashMap of all tables and fields
+            // with their unique values to be set in the TableScan
+            let filter_values = combine_sets(join_values, join_tables, join_fields);
+            // Optimize and return the plan
+            parse_and_optimize(plan, filter_values)
         }
     }
 }
@@ -197,7 +195,7 @@ fn gather_joins(plan: &LogicalPlan) -> HashSet<JoinInfo> {
                         join_info.extend(left_joins);
                         join_info.extend(right_joins);
                     } else {
-                        // TODO: Decide what to do here
+                        // We don't run the rule if there are non-inner joins in the query
                         return HashSet::new();
                     }
                 }
@@ -317,29 +315,25 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
 
 fn get_filepath(plan: &LogicalPlan) -> Option<&String> {
     match plan {
-        LogicalPlan::TableScan(scan) => {
-            scan
-                .source
-                .as_any()
-                .downcast_ref::<DaskTableSource>()
-                .expect("should be a DaskTableSource")
-                .filepath()
-        }
+        LogicalPlan::TableScan(scan) => scan
+            .source
+            .as_any()
+            .downcast_ref::<DaskTableSource>()
+            .expect("should be a DaskTableSource")
+            .filepath(),
         _ => None,
     }
 }
 
 fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
     match plan {
-        LogicalPlan::TableScan(scan) => {
-            scan
-                .source
-                .as_any()
-                .downcast_ref::<DaskTableSource>()
-                .expect("should be a DaskTableSource")
-                .statistics()
-                .map(|stats| stats.get_row_count() as usize)
-        }
+        LogicalPlan::TableScan(scan) => scan
+            .source
+            .as_any()
+            .downcast_ref::<DaskTableSource>()
+            .expect("should be a DaskTableSource")
+            .statistics()
+            .map(|stats| stats.get_row_count() as usize),
         _ => None,
     }
 }
@@ -386,8 +380,16 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
             break;
         } else {
             if let LogicalPlan::SubqueryAlias(ref s) = current_plan {
-                if let LogicalPlan::TableScan(ref t) = *s.input {
-                    aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
+                match *s.input {
+                    LogicalPlan::TableScan(ref t) => {
+                        aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
+                    }
+                    LogicalPlan::Projection(ref p) => {
+                        if let LogicalPlan::TableScan(ref t) = *p.input {
+                            aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
+                        }
+                    }
+                    _ => (),
                 }
             }
             // Move on to next step
@@ -510,11 +512,11 @@ fn read_table(
                 }
                 "INT64" => {
                     let r = row.get_long(row_index).unwrap();
-                    value_set.insert(RowValue::Long(r));
+                    value_set.insert(RowValue::Int64(r));
                 }
                 "INT32" => {
-                    let r = row.get_int(row_index).unwrap() as i64; // TODO: Create Int Enum for i32?
-                    value_set.insert(RowValue::Long(r));
+                    let r = row.get_int(row_index).unwrap();
+                    value_set.insert(RowValue::Int32(r));
                 }
                 _ => panic!("Unknown PhysicalType"),
             }
@@ -524,10 +526,7 @@ fn read_table(
     Some(value_set)
 }
 
-fn get_physical_type(
-    schema: &Type,
-    field: String,
-) -> Option<BasicType> {
+fn get_physical_type(schema: &Type, field: String) -> Option<BasicType> {
     match schema {
         Type::GroupType {
             basic_info: _,
@@ -643,7 +642,8 @@ fn get_filtered_fields(
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum RowValue {
     String(String),
-    Long(i64),
+    Int64(i64),
+    Int32(i32),
 }
 
 fn satisfies_string(string_value: &String, filter: Expr) -> bool {
@@ -651,22 +651,18 @@ fn satisfies_string(string_value: &String, filter: Expr) -> bool {
         Expr::BinaryExpr(b) => {
             match b.op {
                 Operator::Eq => {
-                    Expr::Literal(ScalarValue::Utf8(Some(
-                        string_value.to_string(),
-                    ))) == *b.right
+                    Expr::Literal(ScalarValue::Utf8(Some(string_value.to_string()))) == *b.right
                 }
                 Operator::NotEq => {
-                    Expr::Literal(ScalarValue::Utf8(Some(
-                        string_value.to_string(),
-                    ))) != *b.right
+                    Expr::Literal(ScalarValue::Utf8(Some(string_value.to_string()))) != *b.right
                 }
                 _ => {
-                    panic!("Unknown satisfies_string operator"); // TODO
+                    panic!("Unknown satisfies_string operator");
                 }
             }
         }
         _ => {
-            panic!("Unknown satisfies_string Expr"); // TODO
+            panic!("Unknown satisfies_string Expr");
         }
     }
 }
@@ -675,253 +671,193 @@ fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => {
             match b.op {
-                Operator::Eq => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        == *b.right
-                }
-                Operator::NotEq => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        != *b.right
-                }
-                Operator::Gt => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        > *b.right
-                }
-                Operator::Lt => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        < *b.right
-                }
-                Operator::GtEq => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        >= *b.right
-                }
-                Operator::LtEq => {
-                    Expr::Literal(ScalarValue::Int64(Some(long_value)))
-                        <= *b.right
-                }
+                Operator::Eq => Expr::Literal(ScalarValue::Int64(Some(long_value))) == *b.right,
+                Operator::NotEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) != *b.right,
+                Operator::Gt => Expr::Literal(ScalarValue::Int64(Some(long_value))) > *b.right,
+                Operator::Lt => Expr::Literal(ScalarValue::Int64(Some(long_value))) < *b.right,
+                Operator::GtEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) >= *b.right,
+                Operator::LtEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) <= *b.right,
                 _ => {
-                    panic!("Unknown satisfies_long operator"); // TODO
+                    panic!("Unknown satisfies_long operator");
                 }
             }
         }
         _ => {
-            panic!("Unknown satisfies_long Expr"); // TODO
+            panic!("Unknown satisfies_long Expr");
+        }
+    }
+}
+
+fn combine_sets(
+    join_values: Vec<(Option<HashSet<RowValue>>, Option<HashSet<RowValue>>)>,
+    join_tables: Vec<(Option<String>, Option<String>)>,
+    join_fields: Vec<(Option<String>, Option<String>)>,
+) -> HashMap<(String, String), HashSet<RowValue>> {
+    let mut sets: HashMap<(String, String), HashSet<RowValue>> = HashMap::new();
+    for i in 0..join_values.len() {
+        if let (Some(set1), Some(set2)) = (&join_values[i].0, &join_values[i].1) {
+            let set_intersection = set1.intersection(&set2);
+            let mut values = HashSet::new();
+            for value in set_intersection {
+                values.insert(value.clone());
+            }
+
+            let current_table = join_tables[i].0.clone().unwrap();
+            let current_field = join_fields[i].0.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+
+            let current_table = join_tables[i].1.clone().unwrap();
+            let current_field = join_fields[i].1.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+        } else if let Some(values) = &join_values[i].0 {
+            let current_table = join_tables[i].0.clone().unwrap();
+            let current_field = join_fields[i].0.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+
+            let current_table = join_tables[i].1.clone().unwrap();
+            let current_field = join_fields[i].1.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+        } else if let Some(values) = &join_values[i].1 {
+            let current_table = join_tables[i].0.clone().unwrap();
+            let current_field = join_fields[i].0.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+
+            let current_table = join_tables[i].1.clone().unwrap();
+            let current_field = join_fields[i].1.clone().unwrap();
+            add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
+        }
+    }
+    sets
+}
+
+fn add_to_existing_set(
+    sets: &mut HashMap<(String, String), HashSet<RowValue>>,
+    values: HashSet<RowValue>,
+    current_table: String,
+    current_field: String,
+) {
+    let existing_set = sets.get(&(current_table.clone(), current_field.clone()));
+    match existing_set {
+        Some(s) => {
+            let mut s = s.clone();
+            // TODO: intersect instead of extend
+            s.extend(values.iter().cloned().collect::<HashSet<RowValue>>());
+            sets.insert((current_table, current_field), s.clone());
+        }
+        None => {
+            sets.insert((current_table, current_field), values.clone());
         }
     }
 }
 
 fn parse_and_optimize(
     plan: &LogicalPlan,
-    left_set: Option<HashSet<RowValue>>,
-    right_set: Option<HashSet<RowValue>>,
-    left_table: Option<String>,
-    left_field: Option<String>,
-    right_table: Option<String>,
-    right_field: Option<String>,
-) -> Result<Option<LogicalPlan>> {
-    // Use HashSet to set filters for the relevant TableScan
-    if let (Some(set1), Some(set2)) = (left_set.clone(), right_set.clone()) {
-        // Create a HashSet of the unique values shared by both of the columns being joined upon
-        let set_intersection = set1.intersection(&set2);
-        let mut set = HashSet::new();
-        for value in set_intersection {
-            set.insert(value.clone());
-        }
-        let binary_exprs = format_binary_exprs(
-            set,
-            left_table.clone(),
-            left_field,
-            right_table.clone(),
-            right_field,
-        );
-        build_plan(plan, binary_exprs, left_table, right_table)
-    } else if let Some(set) = left_set {
-        let binary_exprs = format_binary_exprs(
-            set,
-            left_table.clone(),
-            left_field,
-            right_table.clone(),
-            right_field,
-        );
-        return build_plan(plan, binary_exprs, left_table, right_table);
-    } else if let Some(set) = right_set {
-        let binary_exprs = format_binary_exprs(
-            set,
-            left_table.clone(),
-            left_field,
-            right_table.clone(),
-            right_field,
-        );
-        return build_plan(plan, binary_exprs, left_table, right_table);
-    } else {
-        return Ok(None);
-    }
-}
-
-fn format_binary_exprs(
-    value_set: HashSet<RowValue>,
-    left_table: Option<String>,
-    left_field: Option<String>,
-    right_table: Option<String>,
-    right_field: Option<String>,
-) -> (Expr, Expr) {
-    // Formats join_column == x || join_column == y || ...
-    // binary expressions for both sides of the join
-    let mut left_exprs: Vec<Expr> = vec![];
-    let mut right_exprs: Vec<Expr> = vec![];
-
-    let left_field = left_field.unwrap();
-    let right_field = right_field.unwrap();
-    for value in value_set {
-        if let RowValue::String(s) = value {
-            let right = Box::new(Expr::Literal(ScalarValue::Utf8(Some(
-                s.to_string(),
-            ))));
-
-            // Left table in join
-            let left = Box::new(Expr::Column(Column::new(
-                left_table.clone(),
-                left_field.clone(),
-            )));
-            let expr = Expr::BinaryExpr(BinaryExpr {
-                left,
-                op: Operator::Eq,
-                right: right.clone(),
-            });
-            left_exprs.push(expr);
-
-            // Right table in join
-            let left = Box::new(Expr::Column(Column::new(
-                right_table.clone(),
-                right_field.clone(),
-            )));
-            let expr = Expr::BinaryExpr(BinaryExpr {
-                left,
-                op: Operator::Eq,
-                right,
-            });
-            right_exprs.push(expr);
-        } else if let RowValue::Long(l) = value {
-            let right = Box::new(Expr::Literal(ScalarValue::Int64(Some(
-                l,
-            ))));
-
-            // Left table in join
-            let left = Box::new(Expr::Column(Column::new(
-                left_table.clone(),
-                left_field.clone(),
-            )));
-            let expr = Expr::BinaryExpr(BinaryExpr {
-                left,
-                op: Operator::Eq,
-                right: right.clone(),
-            });
-            left_exprs.push(expr);
-
-            // Right table in join
-            let left = Box::new(Expr::Column(Column::new(
-                right_table.clone(),
-                right_field.clone(),
-            )));
-            let expr = Expr::BinaryExpr(BinaryExpr {
-                left,
-                op: Operator::Eq,
-                right,
-            });
-            right_exprs.push(expr);
-        }
-    }
-
-    // TODO: Handle case when exprs.len() < 2 or 3
-    let mut left_binary_expr = Expr::BinaryExpr(BinaryExpr {
-        left: Box::new(left_exprs[0].clone()),
-        op: Operator::Or,
-        right: Box::new(left_exprs[1].clone()),
-    });
-    for left_expr in left_exprs.iter().skip(2) {
-        left_binary_expr = Expr::BinaryExpr(BinaryExpr {
-            left: Box::new(left_binary_expr),
-            op: Operator::Or,
-            right: Box::new(left_expr.clone()),
-        });
-    }
-
-    let mut right_binary_expr = Expr::BinaryExpr(BinaryExpr {
-        left: Box::new(right_exprs[0].clone()),
-        op: Operator::Or,
-        right: Box::new(right_exprs[1].clone()),
-    });
-    for right_expr in right_exprs.iter().skip(2) {
-        right_binary_expr = Expr::BinaryExpr(BinaryExpr {
-            left: Box::new(right_binary_expr),
-            op: Operator::Or,
-            right: Box::new(right_expr.clone()),
-        });
-    }
-
-    (left_binary_expr, right_binary_expr)
-}
-
-fn build_plan(
-    plan: &LogicalPlan,
-    binary_exprs: (Expr, Expr),
-    left_table: Option<String>,
-    right_table: Option<String>,
+    filter_values: HashMap<(String, String), HashSet<RowValue>>,
 ) -> Result<Option<LogicalPlan>> {
     // Replaces existing TableScan with a new TableScan which includes
     // the new binary expression filter created from reading in the join columns
     match plan {
         LogicalPlan::TableScan(t) => {
-            if t.table_name.to_string() == left_table.unwrap() {
-                let mut new_filters = t.filters.clone();
-                new_filters.push(binary_exprs.0);
-                let scan = LogicalPlan::TableScan(TableScan {
-                    table_name: t.table_name.clone(),
-                    source: t.source.clone(),
-                    projection: t.projection.clone(),
-                    projected_schema: t.projected_schema.clone(),
-                    filters: new_filters,
-                    fetch: t.fetch,
-                });
-                Ok(Some(scan))
-            } else if t.table_name.to_string() == right_table.unwrap() {
-                let mut new_filters = t.filters.clone();
-                new_filters.push(binary_exprs.1);
-                let scan = LogicalPlan::TableScan(TableScan {
-                    table_name: t.table_name.clone(),
-                    source: t.source.clone(),
-                    projection: t.projection.clone(),
-                    projected_schema: t.projected_schema.clone(),
-                    filters: new_filters,
-                    fetch: t.fetch,
-                });
-                Ok(Some(scan))
-            } else {
-                Ok(None)
+            let table_name = t.table_name.to_string();
+            let table_filters: HashMap<(String, String), HashSet<RowValue>> =
+                filter_values.iter()
+                    .filter(|(key, _value)| key.0 == table_name)
+                    .map(|(key, value)| ((key.0.to_owned(), key.1.to_owned()), value.clone()))
+                    .collect();
+            let mut updated_filters = t.filters.clone();
+            for (key, value) in table_filters.iter() {
+                // TODO: Use a ratio instead of setting a hard value here
+                if value.len() < 1_000 {
+                    let current_expr = format_binary_exprs(value.clone(), key.0.to_owned(), key.1.to_owned());
+                    updated_filters.push(current_expr);
+                }
             }
+            let scan = LogicalPlan::TableScan(TableScan {
+                table_name: t.table_name.clone(),
+                source: t.source.clone(),
+                projection: t.projection.clone(),
+                projected_schema: t.projected_schema.clone(),
+                filters: updated_filters,
+                fetch: t.fetch,
+            });
+            Ok(Some(scan))
         }
-        _ => optimize_children(plan, binary_exprs, left_table, right_table),
+        _ => optimize_children(plan, filter_values),
     }
+}
+
+fn format_binary_exprs(
+    value_set: HashSet<RowValue>,
+    join_table: String,
+    join_field: String,
+) -> Expr {
+    // Formats join_column == x || join_column == y || ... expressions
+    let mut exprs: Vec<Expr> = vec![];
+
+    for value in value_set {
+        let left = Box::new(Expr::Column(Column::new(
+            Some(join_table.clone()),
+            join_field.clone(),
+        )));
+
+        if let RowValue::String(s) = value {
+            let right = Box::new(Expr::Literal(ScalarValue::Utf8(Some(s.to_string()))));
+
+            let expr = Expr::BinaryExpr(BinaryExpr {
+                left,
+                op: Operator::Eq,
+                right: right,
+            });
+            exprs.push(expr);
+        } else if let RowValue::Int64(l) = value {
+            let right = Box::new(Expr::Literal(ScalarValue::Int64(Some(l))));
+
+            let expr = Expr::BinaryExpr(BinaryExpr {
+                left,
+                op: Operator::Eq,
+                right: right.clone(),
+            });
+            exprs.push(expr);
+        } else if let RowValue::Int32(i) = value {
+            let right = Box::new(Expr::Literal(ScalarValue::Int32(Some(i))));
+
+            let expr = Expr::BinaryExpr(BinaryExpr {
+                left,
+                op: Operator::Eq,
+                right: right.clone(),
+            });
+            exprs.push(expr);
+        }
+    }
+
+    // TODO: Handle case when exprs.len() < 2 or 3
+    let mut binary_expr = Expr::BinaryExpr(BinaryExpr {
+        left: Box::new(exprs[0].clone()),
+        op: Operator::Or,
+        right: Box::new(exprs[1].clone()),
+    });
+    for expr in exprs.iter().skip(2) {
+        binary_expr = Expr::BinaryExpr(BinaryExpr {
+            left: Box::new(binary_expr),
+            op: Operator::Or,
+            right: Box::new(expr.clone()),
+        });
+    }
+
+    binary_expr
 }
 
 fn optimize_children(
     plan: &LogicalPlan,
-    binary_exprs: (Expr, Expr),
-    left_table: Option<String>,
-    right_table: Option<String>,
+    filter_values: HashMap<(String, String), HashSet<RowValue>>,
 ) -> Result<Option<LogicalPlan>> {
     // Similar to DataFusion's `optimize_children` function,
-    // but recurses on the `build_plan` function instead
+    // but recurses on the `parse_and_optimize` function instead
     let new_exprs = plan.expressions();
     let mut new_inputs = Vec::with_capacity(plan.inputs().len());
     let mut plan_is_changed = false;
     for input in plan.inputs() {
-        let new_input = build_plan(
-            input,
-            binary_exprs.clone(),
-            left_table.clone(),
-            right_table.clone(),
-        )?;
+        let new_input = parse_and_optimize(input, filter_values.clone())?;
         plan_is_changed = plan_is_changed || new_input.is_some();
         new_inputs.push(new_input.unwrap_or_else(|| input.clone()))
     }
