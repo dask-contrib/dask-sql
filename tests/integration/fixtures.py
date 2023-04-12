@@ -11,14 +11,8 @@ from dask.distributed import Client
 from tests.utils import assert_eq
 
 try:
-    import cudf
-
-    # importing to check for JVM segfault
-    import dask_cudf  # noqa: F401
-    from dask_cuda import LocalCUDACluster  # noqa: F401
+    from dask_cuda import LocalCUDACluster
 except ImportError:
-    cudf = None
-    dask_cudf = None
     LocalCUDACluster = None
 
 # check if we want to connect to an independent cluster
@@ -141,43 +135,9 @@ def parquet_ddf(tmpdir):
     return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
 
 
-@pytest.fixture()
-def gpu_user_table_1(user_table_1):
-    return cudf.from_pandas(user_table_1) if cudf else None
-
-
-@pytest.fixture()
-def gpu_df(df):
-    return cudf.from_pandas(df) if cudf else None
-
-
-@pytest.fixture()
-def gpu_long_table(long_table):
-    return cudf.from_pandas(long_table) if cudf else None
-
-
-@pytest.fixture()
-def gpu_string_table(string_table):
-    return cudf.from_pandas(string_table) if cudf else None
-
-
-@pytest.fixture()
-def gpu_datetime_table(datetime_table):
-    # cudf doesn't have support for timezoned datetime data
-    datetime_table["timezone"] = datetime_table["timezone"].astype("datetime64[ns]")
-    datetime_table["utc_timezone"] = datetime_table["utc_timezone"].astype(
-        "datetime64[ns]"
-    )
-    return cudf.from_pandas(datetime_table) if cudf else None
-
-
-@pytest.fixture()
-def gpu_timeseries(timeseries):
-    return dask_cudf.from_dask_dataframe(timeseries) if dask_cudf else None
-
-
-@pytest.fixture()
+@pytest.fixture(params=[False, pytest.param(True, marks=pytest.mark.gpu)])
 def c(
+    request,
     df_simple,
     df_wide,
     df,
@@ -191,12 +151,6 @@ def c(
     datetime_table,
     timeseries,
     parquet_ddf,
-    gpu_user_table_1,
-    gpu_df,
-    gpu_long_table,
-    gpu_string_table,
-    gpu_datetime_table,
-    gpu_timeseries,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -212,27 +166,20 @@ def c(
         "datetime_table": datetime_table,
         "timeseries": timeseries,
         "parquet_ddf": parquet_ddf,
-        "gpu_user_table_1": gpu_user_table_1,
-        "gpu_df": gpu_df,
-        "gpu_long_table": gpu_long_table,
-        "gpu_string_table": gpu_string_table,
-        "gpu_datetime_table": gpu_datetime_table,
-        "gpu_timeseries": gpu_timeseries,
     }
 
     # Lazy import, otherwise the pytest framework has problems
     from dask_sql.context import Context
 
-    c = Context()
+    gpu = request.param
+
+    c = Context(gpu=gpu)
     for df_name, df in dfs.items():
-        if df is None:
-            continue
-        if hasattr(df, "npartitions"):
-            # df is already a dask collection
-            dask_df = df
-        else:
-            dask_df = dd.from_pandas(df, npartitions=3)
-        c.create_table(df_name, dask_df)
+        if gpu and df_name == "datetime_table":
+            # cudf doesn't have support for timezoned datetime data
+            df["timezone"] = df["timezone"].astype("datetime64[ns]")
+            df["utc_timezone"] = df["utc_timezone"].astype("datetime64[ns]")
+        c.create_table(df_name, df)
 
     yield c
 
