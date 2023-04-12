@@ -4,7 +4,7 @@ build:
   os: ubuntu-20.04
   tools:
     python: "mambaforge-4.10"
-    rust: "1.64"
+    rust: "1.67"
 
 sphinx:
   configuration: docs/source/conf.py
