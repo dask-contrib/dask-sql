@@ -19,4 +19,4 @@ dependencies:
   - tabulate
   - setuptools-rust>=1.5.2
   - ucx-proc=*=cpu
-  - rust>=1.67.0
+  - rust>=1.65.0
