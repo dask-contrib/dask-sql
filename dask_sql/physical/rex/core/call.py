@@ -434,8 +434,7 @@ class RegexOperation(Operation):
         transformed_regex = "^" + transformed_regex + "$"
 
         # Finally, apply the string
-        flags = re.DOTALL
-        flags = flags | re.IGNORECASE if not self.case_sensitive else flags
+        flags = re.DOTALL | re.IGNORECASE if not self.case_sensitive else re.DOTALL
         if is_frame(test):
             return test.str.match(transformed_regex, flags=flags).astype("boolean")
         else:
