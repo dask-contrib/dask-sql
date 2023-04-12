@@ -246,9 +246,8 @@ class DaskWindowPlugin(BaseRelPlugin):
         (dc,) = self.assert_inputs(rel, 1, context)
 
         # Output to the right field names right away
-        field_names = rel.getRowType()
+        field_names = rel.getRowType().getFieldNames()
 
-        field_names = field_names.getFieldNames()
         for window in rel.window().getGroups():
             dc = self._apply_window(rel, window, dc, field_names, context)
 
