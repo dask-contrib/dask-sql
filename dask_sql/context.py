@@ -480,7 +480,7 @@ class Context:
         sql: Any,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        gpu: bool = False,
+        gpu: bool = None,
         config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
@@ -512,10 +512,16 @@ class Context:
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
         """
+        if gpu is not None:
+            warnings.warn(
+                "The `gpu` word is deprecated and will be removed in a future version. "
+                f"To explicitly specify whether to create tables on CPU or GPU, create a context with `Context(gpu={gpu})`",
+                FutureWarning,
+            )
         with dask_config.set(config_options):
             if dataframes is not None:
                 for df_name, df in dataframes.items():
-                    self.create_table(df_name, df, gpu=gpu)
+                    self.create_table(df_name, df)
 
             if isinstance(sql, str):
                 rel, _ = self._get_ral(sql)
@@ -532,7 +538,7 @@ class Context:
         self,
         sql: str,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        gpu: bool = False,
+        gpu: bool = None,
     ) -> str:
         """
         Return the stringified relational algebra that this query will produce
@@ -554,9 +560,15 @@ class Context:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        if gpu is not None:
+            warnings.warn(
+                "The `gpu` word is deprecated and will be removed in a future version. "
+                f"To explicitly specify whether to create tables on CPU or GPU, create a context with `Context(gpu={gpu})`",
+                FutureWarning,
+            )
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df, gpu=gpu)
+                self.create_table(df_name, df)
 
         _, rel_string = self._get_ral(sql)
         return rel_string

@@ -19,100 +19,57 @@ except ImportError:
 SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
 
 
-@pytest.fixture()
-def df_simple():
-    return pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
-
-
-@pytest.fixture()
-def df_wide():
-    return pd.DataFrame(
-        {
-            "a": [0, 1, 2],
-            "b": [3, 4, 5],
-            "c": [6, 7, 8],
-            "d": [9, 10, 11],
-            "e": [12, 13, 14],
-        }
-    )
-
-
-@pytest.fixture()
-def df():
-    np.random.seed(42)
-    return pd.DataFrame(
-        {
-            "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
-            "b": 10 * np.random.rand(700),
-        }
-    )
-
-
-@pytest.fixture()
-def department_table():
-    return pd.DataFrame({"department_name": ["English", "Math", "Science"]})
-
-
-@pytest.fixture()
-def user_table_1():
-    return pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
-
-
-@pytest.fixture()
-def user_table_2():
-    return pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]})
-
-
-@pytest.fixture()
-def long_table():
-    return pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103})
-
-
-@pytest.fixture()
-def user_table_inf():
-    return pd.DataFrame({"c": [3, float("inf"), 1]})
-
-
-@pytest.fixture()
-def user_table_nan():
-    # Lazy import, otherwise pytest segfaults
+@pytest.fixture(params=[False, pytest.param(True, marks=pytest.mark.gpu)])
+def c(request, tmpdir):
+    # Lazy import, otherwise the pytest framework has problems
     from dask_sql._compat import INT_NAN_IMPLEMENTED
+    from dask_sql.context import Context
 
-    if INT_NAN_IMPLEMENTED:
-        return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
-    else:
-        return pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float")
+    np.random.seed(42)
 
-
-@pytest.fixture()
-def string_table():
-    return pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
-
-
-@pytest.fixture()
-def datetime_table():
-    return pd.DataFrame(
-        {
-            "timezone": pd.date_range(
-                start="2014-08-01 09:00", freq="8H", periods=6, tz="Europe/Berlin"
-            ),
-            "no_timezone": pd.date_range(
-                start="2014-08-01 09:00", freq="8H", periods=6
-            ),
-            "utc_timezone": pd.date_range(
-                start="2014-08-01 09:00", freq="8H", periods=6, tz="UTC"
-            ),
-        }
-    )
-
-
-@pytest.fixture()
-def timeseries():
-    return dd_timeseries(freq="1d").reset_index(drop=True)
-
-
-@pytest.fixture()
-def parquet_ddf(tmpdir):
+    dfs = {
+        "df_simple": pd.DataFrame({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]}),
+        "df_wide": pd.DataFrame(
+            {
+                "a": [0, 1, 2],
+                "b": [3, 4, 5],
+                "c": [6, 7, 8],
+                "d": [9, 10, 11],
+                "e": [12, 13, 14],
+            }
+        ),
+        "df": pd.DataFrame(
+            {
+                "a": [1.0] * 100 + [2.0] * 200 + [3.0] * 400,
+                "b": 10 * np.random.rand(700),
+            }
+        ),
+        "department_table": pd.DataFrame(
+            {"department_name": ["English", "Math", "Science"]}
+        ),
+        "user_table_1": pd.DataFrame({"user_id": [2, 1, 2, 3], "b": [3, 3, 1, 3]}),
+        "user_table_2": pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]}),
+        "long_table": pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103}),
+        "user_table_inf": pd.DataFrame({"c": [3, float("inf"), 1]}),
+        "user_table_nan": pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
+        if INT_NAN_IMPLEMENTED
+        else pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float"),
+        "string_table": pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]}),
+        "datetime_table": pd.DataFrame(
+            {
+                "timezone": pd.date_range(
+                    start="2014-08-01 09:00", freq="8H", periods=6, tz="Europe/Berlin"
+                ),
+                "no_timezone": pd.date_range(
+                    start="2014-08-01 09:00", freq="8H", periods=6
+                ),
+                "utc_timezone": pd.date_range(
+                    start="2014-08-01 09:00", freq="8H", periods=6, tz="UTC"
+                ),
+            }
+        ),
+        "timeseries": dd_timeseries(freq="1d").reset_index(drop=True),
+    }
 
     # Write simple parquet dataset
     df = pd.DataFrame(
@@ -131,45 +88,8 @@ def parquet_ddf(tmpdir):
     )
     dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
 
-    # Read back with dask and apply WHERE query
-    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
-
-
-@pytest.fixture(params=[False, pytest.param(True, marks=pytest.mark.gpu)])
-def c(
-    request,
-    df_simple,
-    df_wide,
-    df,
-    department_table,
-    user_table_1,
-    user_table_2,
-    long_table,
-    user_table_inf,
-    user_table_nan,
-    string_table,
-    datetime_table,
-    timeseries,
-    parquet_ddf,
-):
-    dfs = {
-        "df_simple": df_simple,
-        "df_wide": df_wide,
-        "df": df,
-        "department_table": department_table,
-        "user_table_1": user_table_1,
-        "user_table_2": user_table_2,
-        "long_table": long_table,
-        "user_table_inf": user_table_inf,
-        "user_table_nan": user_table_nan,
-        "string_table": string_table,
-        "datetime_table": datetime_table,
-        "timeseries": timeseries,
-        "parquet_ddf": parquet_ddf,
-    }
-
-    # Lazy import, otherwise the pytest framework has problems
-    from dask_sql.context import Context
+    # read back with dask and apply WHERE query
+    dfs["parquet_ddf"] = dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
 
     gpu = request.param
 
@@ -182,6 +102,71 @@ def c(
         c.create_table(df_name, df)
 
     yield c
+
+
+@pytest.fixture()
+def df_simple(c):
+    return c.sql("select * from df_simple").compute()
+
+
+@pytest.fixture()
+def df_wide(c):
+    return c.sql("select * from df_wide").compute()
+
+
+@pytest.fixture()
+def df(c):
+    return c.sql("select * from df").compute()
+
+
+@pytest.fixture()
+def department_table(c):
+    return c.sql("select * from department_table").compute()
+
+
+@pytest.fixture()
+def user_table_1(c):
+    return c.sql("select * from user_table_1").compute()
+
+
+@pytest.fixture()
+def user_table_2(c):
+    return c.sql("select * from user_table_2").compute()
+
+
+@pytest.fixture()
+def long_table(c):
+    return c.sql("select * from long_table").compute()
+
+
+@pytest.fixture()
+def user_table_inf(c):
+    return c.sql("select * from user_table_inf").compute()
+
+
+@pytest.fixture()
+def user_table_nan(c):
+    return c.sql("select * from user_table_nan").compute()
+
+
+@pytest.fixture()
+def string_table(c):
+    return c.sql("select * from string_table").compute()
+
+
+@pytest.fixture()
+def datetime_table(c):
+    return c.sql("select * from datetime_table").compute()
+
+
+@pytest.fixture()
+def timeseries(c):
+    return c.sql("select * from timeseries").compute()
+
+
+@pytest.fixture()
+def parquet_ddf(c):
+    return c.sql("select * from parquet_ddf").compute()
 
 
 @pytest.fixture()

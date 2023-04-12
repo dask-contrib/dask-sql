@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -50,13 +49,10 @@ def test_filter_complicated(c, df):
     )
 
 
-def test_filter_with_nan(c):
+def test_filter_with_nan(c, user_table_nan):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
+    expected_df = user_table_nan[user_table_nan.c == 3]
 
-    if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
-    else:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_eq(
         return_df,
         expected_df,
@@ -77,21 +73,10 @@ def test_string_filter(c, string_table):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param(
-            "gpu_datetime_table",
-            marks=(pytest.mark.gpu),
-        ),
-    ],
-)
-def test_filter_cast_date(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_filter_cast_date(c, datetime_table):
     return_df = c.sql(
-        f"""
-        SELECT * FROM {input_table} WHERE
+        """
+        SELECT * FROM datetime_table WHERE
             CAST(timezone AS DATE) > DATE '2014-08-01'
         """
     )
@@ -103,21 +88,10 @@ def test_filter_cast_date(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param(
-            "gpu_datetime_table",
-            marks=(pytest.mark.gpu),
-        ),
-    ],
-)
-def test_filter_cast_timestamp(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_filter_cast_timestamp(c, datetime_table):
     return_df = c.sql(
-        f"""
-        SELECT * FROM {input_table} WHERE
+        """
+        SELECT * FROM datetime_table WHERE
             CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00+00'
         """
     )

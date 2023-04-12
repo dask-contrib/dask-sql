@@ -11,9 +11,7 @@ def pytest_addoption(parser):
 
 def pytest_runtest_setup(item):
     if "gpu" in item.keywords:
-        if not item.config.getoption("--rungpu"):
-            pytest.skip("need --rungpu option to run")
-        # FIXME: P2P shuffle isn't fully supported on GPU, so we must explicitly disable it
+        pytest.importorskip("dask_cudf")
         dask.config.set({"dataframe.shuffle.algorithm": "tasks"})
     else:
         dask.config.set({"dataframe.shuffle.algorithm": None})

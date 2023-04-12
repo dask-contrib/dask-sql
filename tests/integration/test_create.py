@@ -6,8 +6,7 @@ import dask_sql
 from tests.utils import assert_eq
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_create_from_csv(c, df, temporary_data_file, gpu):
+def test_create_from_csv(c, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
     c.sql(
@@ -16,8 +15,7 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
             new_table
         WITH (
             location = '{temporary_data_file}',
-            format = 'csv',
-            gpu = {gpu}
+            format = 'csv'
         )
     """
     )
@@ -31,24 +29,16 @@ def test_create_from_csv(c, df, temporary_data_file, gpu):
     assert_eq(result_df, df)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(True, marks=pytest.mark.gpu),
-    ],
-)
-def test_cluster_memory(client, c, df, gpu):
+def test_cluster_memory(client, c, df):
     client.publish_dataset(df=dd.from_pandas(df, npartitions=1))
 
     c.sql(
-        f"""
+        """
         CREATE TABLE
             new_table
         WITH (
             location = 'df',
-            format = 'memory',
-            gpu = {gpu}
+            format = 'memory'
         )
     """
     )
@@ -64,8 +54,7 @@ def test_cluster_memory(client, c, df, gpu):
     client.unpublish_dataset("df")
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
+def test_create_from_csv_persist(c, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
     c.sql(
@@ -75,8 +64,7 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
         WITH (
             location = '{temporary_data_file}',
             format = 'csv',
-            persist = True,
-            gpu = {gpu}
+            persist = True
         )
     """
     )
@@ -175,17 +163,7 @@ def test_create_from_query(c, df):
     assert_eq(df, return_df)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=pytest.mark.gpu,
-        ),
-    ],
-)
-def test_view_table_persist(c, temporary_data_file, df, gpu):
+def test_view_table_persist(c, temporary_data_file, df):
     df.to_csv(temporary_data_file, index=False)
     c.sql(
         f"""
@@ -193,8 +171,7 @@ def test_view_table_persist(c, temporary_data_file, df, gpu):
             new_table
         WITH (
             location = '{temporary_data_file}',
-            format = 'csv',
-            gpu = {gpu}
+            format = 'csv'
         )
     """
     )
