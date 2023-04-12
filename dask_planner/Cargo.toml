@@ -6,7 +6,7 @@ description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.62"
+rust-version = "1.67"
 
 [dependencies]
 async-trait = "0.1.68"

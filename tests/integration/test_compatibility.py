@@ -739,24 +739,6 @@ def test_window_sum_avg_partition_by():
         )
 
 
-def test_problem(c):
-    a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
-    c.create_table("a", a)
-    result = c.explain(
-        """
-            SELECT a,b,
-                SUM(b+a) OVER (PARTITION BY c,b) AS a3,
-                SUM(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a4,
-                SUM(b+a) OVER (PARTITION BY b ORDER BY a NULLS FIRST
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS a6
-            FROM a
-            ORDER BY a NULLS FIRST, b NULLS FIRST, c NULLS FIRST
-        """
-    )
-    print(f"Result Received: {result}")
-
-
 def test_window_min_max():
     for func in ["MIN", "MAX"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))

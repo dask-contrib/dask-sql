@@ -92,7 +92,6 @@ def test_create_from_csv_persist(c, df, temporary_data_file, gpu):
 
 def test_wrong_create(c):
     with pytest.raises(AttributeError):
-        print("Invoking c.sql()")
         c.sql(
             """
             CREATE TABLE
