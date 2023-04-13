@@ -517,8 +517,6 @@ impl DaskSQLContext {
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
-        // let mut visitor = OptimizablePlanVisitor {};
-
         optimizer::DaskSqlOptimizer::new()
             .optimize(existing_plan.original_plan)
             .map(|k| PyLogicalPlan {
@@ -526,27 +524,6 @@ impl DaskSQLContext {
                 current_node: None,
             })
             .map_err(py_optimization_exp)
-
-        // let resp = existing_plan.original_plan.visit(&mut visitor);
-
-        // match existing_plan.original_plan.visit(&mut visitor) {
-        //     Ok(valid) => {
-        //         if valid {
-        //             optimizer::DaskSqlOptimizer::new()
-        //                 .optimize(existing_plan.original_plan)
-        //                 .map(|k| PyLogicalPlan {
-        //                     original_plan: k,
-        //                     current_node: None,
-        //                 })
-        //                 .map_err(py_optimization_exp)
-        //         } else {
-        //             // This LogicalPlan does not support Optimization. Return original
-        //             warn!("This LogicalPlan does not support Optimization. Returning original");
-        //             Ok(existing_plan)
-        //         }
-        //     }
-        //     Err(e) => Err(py_optimization_exp(e)),
-        // }
     }
 }
 
