@@ -54,7 +54,16 @@ def c(request, tmpdir):
         "user_table_nan": pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
         if INT_NAN_IMPLEMENTED
         else pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float"),
-        "string_table": pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]}),
+        "string_table": pd.DataFrame(
+            {
+                "a": [
+                    "a normal string",
+                    "%_%",
+                    "^|()-*[]$",
+                    "^|()-*[]$\n%_%\na normal string",
+                ]
+            }
+        ),
         "datetime_table": pd.DataFrame(
             {
                 "timezone": pd.date_range(
