@@ -31,44 +31,40 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     class_name = "AnalyzeTable"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        if context.gpu:
+            # can't have mixed dtype columns in cuDF dataframes
+            raise NotImplementedError("ANALYZE TABLE not implemented for GPU tables")
+
         analyze_table = rel.analyze_table()
 
         schema_name = analyze_table.getSchemaName() or context.schema_name
-        table_name = analyze_table.getTableName()
 
-        dc = context.schema[schema_name].tables[table_name]
-        columns = analyze_table.getColumns()
-
-        if not columns:
-            columns = dc.column_container.columns
-
-        # Define some useful shortcuts
-        mapping = dc.column_container.get_backend_by_frontend_name
+        dc = context.schema[schema_name].tables[analyze_table.getTableName()]
         df = dc.df
 
-        # Calculate statistics
-        statistics = dd.from_pandas(
-            pd.DataFrame({col: [] for col in columns}), npartitions=1
-        )
-        statistics = statistics.append(df[[mapping(col) for col in columns]].describe())
+        columns = [
+            col for col in analyze_table.getColumns() or dc.column_container.columns
+        ]
+        mapping = dc.column_container.get_backend_by_frontend_name
 
-        # Add additional information
-        statistics = statistics.append(
-            pd.Series(
-                {
-                    col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
-                    for col in columns
-                },
-                name="data_type",
-            )
-        )
-        statistics = statistics.append(
-            pd.Series(
-                {col: col for col in columns},
-                name="col_name",
-            )
+        stats = dd.concat(
+            [
+                df[[mapping(col) for col in columns]].describe(),
+                pd.DataFrame(
+                    {
+                        mapping(col): str(
+                            python_to_sql_type(df[mapping(col)].dtype)
+                        ).lower()
+                        for col in columns
+                    },
+                    index=["data_type"],
+                ),
+                pd.DataFrame(
+                    {mapping(col): col for col in columns}, index=["col_name"]
+                ),
+            ]
         )
 
-        cc = ColumnContainer(statistics.columns)
-        dc = DataContainer(statistics, cc)
+        cc = ColumnContainer(stats.columns)
+        dc = DataContainer(stats, cc)
         return dc
