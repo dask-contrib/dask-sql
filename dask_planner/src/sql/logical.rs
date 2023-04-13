@@ -425,6 +425,7 @@ impl PyLogicalPlan {
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
+
                 Ok(RelDataType::new(false, rel_fields))
             }
         }

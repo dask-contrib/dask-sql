@@ -382,9 +382,6 @@ def test_join_alias_w_projection(c, parquet_ddf):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.xfail(
-    reason="The 'FilterColumnsPostJoin' has been temporarily disabled so this test has been as well"
-)
 def test_filter_columns_post_join(c):
     df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "c": [1, None, 2, 2, 2]})
     df2 = pd.DataFrame({"b": [1, 1, 2, 2, 3], "c": [2, 2, 2, 2, 2]})

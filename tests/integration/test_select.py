@@ -79,6 +79,10 @@ def test_select_of_select(c, df):
     assert_eq(result_df, expected_df)
 
 
+@pytest.mark.xfail(
+    reason="Column casing doesn't work as expected with datafusion>21, "
+    "https://github.com/apache/arrow-datafusion/issues/5626"
+)
 def test_select_of_select_with_casing(c, df):
     result_df = c.sql(
         """

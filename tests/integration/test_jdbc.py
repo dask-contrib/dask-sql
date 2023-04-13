@@ -75,7 +75,6 @@ def test_jdbc_has_schema(app_client, c):
     ]
 
 
-@pytest.mark.xfail(reason="WIP DataFusion")
 def test_jdbc_has_table(app_client, c):
     create_meta_data(c)
     check_data(app_client)
