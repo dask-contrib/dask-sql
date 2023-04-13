@@ -185,7 +185,7 @@ mod tests {
         fn get_table_provider(
             &self,
             name: TableReference,
-        ) -> datafusion_common::Result<Arc<dyn TableSource>> {
+        ) -> datafusion_python::datafusion_common::Result<Arc<dyn TableSource>> {
             let table_name = name.table();
             if table_name.starts_with("test") {
                 let schema = Schema::new_with_metadata(
