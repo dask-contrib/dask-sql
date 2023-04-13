@@ -1,4 +1,9 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use datafusion_common::{DFSchema, DFSchemaRef};
 use datafusion_expr::{
@@ -11,7 +16,7 @@ use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct AlterTablePlanNode {
     pub schema: DFSchemaRef,
     pub old_table_name: String,
@@ -23,6 +28,16 @@ pub struct AlterTablePlanNode {
 impl Debug for AlterTablePlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for AlterTablePlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema.hash(state);
+        self.old_table_name.hash(state);
+        self.new_table_name.hash(state);
+        self.schema_name.hash(state);
+        self.if_exists.hash(state);
     }
 }
 
@@ -66,6 +81,22 @@ impl UserDefinedLogicalNode for AlterTablePlanNode {
             schema_name: self.schema_name.clone(),
             if_exists: self.if_exists,
         })
+    }
+
+    fn name(&self) -> &str {
+        "AlterTable"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

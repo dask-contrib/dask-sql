@@ -162,7 +162,7 @@ impl DaskTable {
 
         match plan.original_plan {
             LogicalPlan::TableScan(table_scan) => {
-                qualified_name.push(table_scan.table_name);
+                qualified_name.push(table_scan.table_name.to_string());
             }
             _ => {
                 qualified_name.push(self.table_name.clone());
@@ -207,7 +207,7 @@ pub(crate) fn table_from_logical_plan(
                 ));
             }
 
-            let table_ref: TableReference = table_scan.table_name.as_str().into();
+            let table_ref: TableReference = table_scan.table_name.clone();
             let (schema, tbl) = match table_ref {
                 TableReference::Bare { table } => ("".to_string(), table),
                 TableReference::Partial { schema, table } => (schema.to_string(), table),
