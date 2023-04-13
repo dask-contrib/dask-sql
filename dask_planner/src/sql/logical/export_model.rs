@@ -33,7 +33,10 @@ impl Debug for ExportModelPlanNode {
 
 impl Hash for ExportModelPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
+        // self.with_options.hash(state);
     }
 }
 

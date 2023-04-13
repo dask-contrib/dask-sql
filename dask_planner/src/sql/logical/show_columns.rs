@@ -33,7 +33,9 @@ impl Debug for ShowColumnsPlanNode {
 
 impl Hash for ShowColumnsPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.table_name.hash(state);
+        self.schema_name.hash(state);
     }
 }
 

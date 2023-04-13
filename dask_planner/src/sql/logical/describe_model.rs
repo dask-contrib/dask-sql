@@ -29,7 +29,9 @@ impl Debug for DescribeModelPlanNode {
 
 impl Hash for DescribeModelPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
     }
 }
 

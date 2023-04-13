@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import logging
-import warnings
 from collections import Counter
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -9,7 +8,6 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
-from dask.distributed import Client
 
 from dask_planner.rust import (
     DaskSchema,
@@ -234,9 +232,6 @@ class Context:
         logger.debug(
             f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
         )
-        if "file_format" in kwargs:  # pragma: no cover
-            warnings.warn("file_format is renamed to format", DeprecationWarning)
-            format = kwargs.pop("file_format")
 
         schema_name = schema_name or self.schema_name
 
@@ -250,11 +245,8 @@ class Context:
         )
 
         if type(input_table) == str:
-            filepath = input_table
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
-        else:
-            filepath = None
 
         if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
@@ -269,22 +261,6 @@ class Context:
 
         self.schema[schema_name].tables[table_name.lower()] = dc
         self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-        # Register the table with the Rust DaskSQLContext
-        self.context.register_table(
-            schema_name,
-            DaskTable(schema_name, table_name, statistics.row_count, filepath),
-        )
-
-    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
-        """
-        Outdated version of :func:`create_table()`.
-        """
-        warnings.warn(
-            "register_dask_table is deprecated, use the more general create_table instead.",
-            DeprecationWarning,
-        )
-        return self.create_table(name, df, *args, **kwargs)
 
     def drop_table(self, table_name: str, schema_name: str = None):
         """
@@ -690,14 +666,7 @@ class Context:
             self, auto_include=auto_include, disable_highlighting=disable_highlighting
         )
 
-    def run_server(
-        self,
-        client: Client = None,
-        host: str = "0.0.0.0",
-        port: int = 8080,
-        log_level=None,
-        blocking: bool = True,
-    ):  # pragma: no cover
+    def run_server(self, **kwargs):  # pragma: no cover
         """
         Run a HTTP server for answering SQL queries using ``dask-sql``.
 
@@ -712,14 +681,7 @@ class Context:
         from dask_sql.server.app import run_server
 
         self.stop_server()
-        self.server = run_server(
-            context=self,
-            client=client,
-            host=host,
-            port=port,
-            log_level=log_level,
-            blocking=blocking,
-        )
+        self.server = run_server(**kwargs)
 
     def stop_server(self):  # pragma: no cover
         """
@@ -774,14 +736,19 @@ class Context:
                 )
 
                 filepath = schema.filepaths[name] if name in schema.filepaths else None
-
-                table = DaskTable(schema_name, name, row_count, filepath)
                 df = dc.df
-
-                for column in df.columns:
-                    data_type = df[column].dtype
-                    sql_data_type = python_to_sql_type(data_type)
-                    table.add_column(column, sql_data_type)
+                columns = df.columns
+                cc = dc.column_container
+                if not dask_config.get("sql.identifier.case_sensitive"):
+                    columns = [col.lower() for col in columns]
+                    cc = cc.rename_handle_duplicates(df.columns, columns)
+                    dc.column_container = cc
+                column_type_mapping = list(
+                    zip(columns, map(python_to_sql_type, df.dtypes))
+                )
+                table = DaskTable(
+                    schema_name, name, row_count, column_type_mapping, filepath
+                )
 
                 rust_schema.add_table(table)
 

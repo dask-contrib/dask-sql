@@ -72,6 +72,24 @@ impl PyJoin {
 
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
+        // let lhs_table_name = match &*self.join.left {
+        //     LogicalPlan::TableScan(scan) => scan.table_name.clone(),
+        //     _ => {
+        //         return Err(py_type_err(
+        //             "lhs Expected TableScan but something else was received!",
+        //         ))
+        //     }
+        // };
+
+        // let rhs_table_name = match &*self.join.right {
+        //     LogicalPlan::TableScan(scan) => scan.table_name.clone(),
+        //     _ => {
+        //         return Err(py_type_err(
+        //             "rhs Expected TableScan but something else was received!",
+        //         ))
+        //     }
+        // };
+
         let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
         for (lhs, rhs) in self.join.on.clone() {
             match (lhs, rhs) {

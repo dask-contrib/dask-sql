@@ -16,7 +16,7 @@ class ShowTablesPlugin(BaseRelPlugin):
     Show all tables currently defined for a given schema.
     The SQL is:
 
-        SHOW TABLES FROM <schema>
+        SHOW TABLES FROM [<catalog>.]<schema>
 
     Please note that dask-sql currently
     only allows for a single schema (called "schema").
@@ -27,7 +27,16 @@ class ShowTablesPlugin(BaseRelPlugin):
     class_name = "ShowTables"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        schema_name = rel.show_tables().getSchemaName() or context.schema_name
+        show_tables = rel.show_tables()
+
+        # currently catalogs other than the default `dask_sql` are not supported
+        catalog_name = show_tables.getCatalogName() or context.catalog_name
+        if catalog_name != context.catalog_name:
+            raise RuntimeError(
+                f"A catalog with the name {catalog_name} is not present."
+            )
+
+        schema_name = show_tables.getSchemaName() or context.schema_name
 
         if schema_name not in context.schema:
             raise AttributeError(f"Schema {schema_name} is not defined.")

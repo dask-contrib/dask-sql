@@ -27,7 +27,6 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
-    #[allow(dead_code)]
     statistics: Option<DaskStatistics>,
     filepath: Option<String>,
 }
@@ -47,7 +46,6 @@ impl DaskTableSource {
     }
 
     /// Access optional statistics associated with this table source
-    #[allow(dead_code)]
     pub fn statistics(&self) -> Option<&DaskStatistics> {
         self.statistics.as_ref()
     }
@@ -129,13 +127,14 @@ impl DaskTable {
         schema_name: &str,
         table_name: &str,
         row_count: f64,
+        columns: Option<Vec<(String, DaskTypeMap)>>,
         filepath: Option<String>,
     ) -> Self {
         Self {
             schema_name: Some(schema_name.to_owned()),
             table_name: table_name.to_owned(),
             statistics: DaskStatistics::new(row_count),
-            columns: Vec::new(),
+            columns: columns.unwrap_or_default(),
             filepath,
         }
     }
@@ -165,7 +164,7 @@ impl DaskTable {
 
         match plan.original_plan {
             LogicalPlan::TableScan(table_scan) => {
-                qualified_name.push(table_scan.table_name);
+                qualified_name.push(table_scan.table_name.to_string());
             }
             _ => {
                 qualified_name.push(self.table_name.clone());
@@ -210,7 +209,7 @@ pub(crate) fn table_from_logical_plan(
                 ));
             }
 
-            let table_ref: TableReference = table_scan.table_name.as_str().into();
+            let table_ref: TableReference = table_scan.table_name.clone();
             let (schema, tbl) = match table_ref {
                 TableReference::Bare { table } => ("".to_string(), table),
                 TableReference::Partial { schema, table } => (schema.to_string(), table),

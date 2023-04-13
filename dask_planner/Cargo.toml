@@ -6,14 +6,15 @@ description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 
 [dependencies]
-async-trait = "0.1.66"
-datafusion-python = { git = "https://github.com/jdye64/arrow-datafusion-python.git", branch = "dask-sql-refactor" }
+async-trait = "0.1.68"
+datafusion-python = { git = "https://github.com/apache/arrow-datafusion-python.git", rev = "5c90187" }
 env_logger = "0.10"
 log = "^0.4"
 pyo3 = { version = "0.18.1", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3-log = "0.8.1"
 
 [lib]
 crate-type = ["cdylib"]

@@ -19,7 +19,6 @@ use datafusion_python::{
         AccumulatorFunctionImplementation,
         AggregateUDF,
         LogicalPlan,
-        PlanVisitor,
         ReturnTypeFunction,
         ScalarFunctionImplementation,
         ScalarUDF,
@@ -36,6 +35,7 @@ use datafusion_python::{
         TableReference,
     },
 };
+use log::debug;
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -61,7 +61,7 @@ use crate::{
             predict_model::PredictModelPlanNode,
             show_columns::ShowColumnsPlanNode,
             show_models::ShowModelsPlanNode,
-            show_schema::ShowSchemasPlanNode,
+            show_schemas::ShowSchemasPlanNode,
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
@@ -482,6 +482,7 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
+        debug!("parse_sql - '{}'", sql);
         let dd: DaskDialect = DaskDialect {};
         match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
@@ -516,25 +517,36 @@ impl DaskSQLContext {
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
-        let mut visitor = OptimizablePlanVisitor {};
+        // let mut visitor = OptimizablePlanVisitor {};
 
-        match existing_plan.original_plan.accept(&mut visitor) {
-            Ok(valid) => {
-                if valid {
-                    optimizer::DaskSqlOptimizer::new()
-                        .optimize(existing_plan.original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
-                        .map_err(py_optimization_exp)
-                } else {
-                    // This LogicalPlan does not support Optimization. Return original
-                    Ok(existing_plan)
-                }
-            }
-            Err(e) => Err(py_optimization_exp(e)),
-        }
+        optimizer::DaskSqlOptimizer::new()
+            .optimize(existing_plan.original_plan)
+            .map(|k| PyLogicalPlan {
+                original_plan: k,
+                current_node: None,
+            })
+            .map_err(py_optimization_exp)
+
+        // let resp = existing_plan.original_plan.visit(&mut visitor);
+
+        // match existing_plan.original_plan.visit(&mut visitor) {
+        //     Ok(valid) => {
+        //         if valid {
+        //             optimizer::DaskSqlOptimizer::new()
+        //                 .optimize(existing_plan.original_plan)
+        //                 .map(|k| PyLogicalPlan {
+        //                     original_plan: k,
+        //                     current_node: None,
+        //                 })
+        //                 .map_err(py_optimization_exp)
+        //         } else {
+        //             // This LogicalPlan does not support Optimization. Return original
+        //             warn!("This LogicalPlan does not support Optimization. Returning original");
+        //             Ok(existing_plan)
+        //         }
+        //     }
+        //     Err(e) => Err(py_optimization_exp(e)),
+        // }
     }
 }
 
@@ -625,12 +637,14 @@ impl DaskSQLContext {
             DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowSchemasPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_schemas.catalog_name,
                     like: show_schemas.like,
                 }),
             })),
             DaskStatement::ShowTables(show_tables) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowTablesPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_tables.catalog_name,
                     schema_name: show_tables.schema_name,
                 }),
             })),
@@ -688,24 +702,24 @@ impl DaskSQLContext {
     }
 }
 
-/// Visits each AST node to determine if the plan is valid for optimization or not
-pub struct OptimizablePlanVisitor;
+// /// Visits each AST node to determine if the plan is valid for optimization or not
+// pub struct OptimizablePlanVisitor;
 
-impl PlanVisitor for OptimizablePlanVisitor {
-    type Error = DataFusionError;
+// impl TreeNodeVisitor for OptimizablePlanVisitor {
+//     type N;
 
-    fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-        // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
-        match plan {
-            LogicalPlan::Explain(..) => Ok(false),
-            _ => Ok(true),
-        }
-    }
+//     fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+//         // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
+//         match plan {
+//             LogicalPlan::Explain(..) => Ok(false),
+//             _ => Ok(true),
+//         }
+//     }
 
-    fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-        Ok(true)
-    }
-}
+//     fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+//         Ok(true)
+//     }
+// }
 
 fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
     let mut exact_vector = vec![];

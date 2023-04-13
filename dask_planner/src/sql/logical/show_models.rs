@@ -28,7 +28,8 @@ impl Debug for ShowModelsPlanNode {
 
 impl Hash for ShowModelsPlanNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
+        self.schema.hash(state);
+        self.schema_name.hash(state);
     }
 }
 

@@ -62,9 +62,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
         if table_scan.containsProjections():
-            field_specifications = (
-                table_scan.getTableScanProjects()
+            field_specifications = list(
+                map(cc.get_backend_by_frontend_name, table_scan.getTableScanProjects())
             )  # Assumes these are column projections only and field names match table column names
+
             df = df[field_specifications]
         else:
             field_specifications = [

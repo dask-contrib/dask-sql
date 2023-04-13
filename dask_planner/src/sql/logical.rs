@@ -27,7 +27,7 @@ pub mod projection;
 pub mod repartition_by;
 pub mod show_columns;
 pub mod show_models;
-pub mod show_schema;
+pub mod show_schemas;
 pub mod show_tables;
 pub mod sort;
 pub mod subquery_alias;
@@ -56,7 +56,7 @@ use self::{
     predict_model::PredictModelPlanNode,
     show_columns::ShowColumnsPlanNode,
     show_models::ShowModelsPlanNode,
-    show_schema::ShowSchemasPlanNode,
+    show_schemas::ShowSchemasPlanNode,
     show_tables::ShowTablesPlanNode,
     use_schema::UseSchemaPlanNode,
 };
@@ -179,7 +179,7 @@ impl PyLogicalPlan {
     }
 
     /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
-    pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+    pub fn show_schemas(&self) -> PyResult<show_schemas::PyShowSchema> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -327,7 +327,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
-            LogicalPlan::SetVariable(_) => "SetVariable",
+            LogicalPlan::Statement(_) => "Statement",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
                 let node = extension.node.as_any();
@@ -427,6 +427,7 @@ impl PyLogicalPlan {
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
+
                 Ok(RelDataType::new(false, rel_fields))
             }
         }
