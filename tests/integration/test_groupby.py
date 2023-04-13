@@ -36,10 +36,9 @@ def test_group_by(c):
     assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_group_by_multi(c, gpu):
+def test_group_by_multi(c):
     df = pd.DataFrame({"a": [1, 2, 3], "b": [1, 1, 2]})
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     result_df = c.sql(
         """
@@ -273,22 +272,7 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="stddev_pop is failing on GPU, see https://github.com/dask-contrib/dask-sql/issues/681"
-                ),
-            ),
-        ),
-    ],
-)
-def test_stddev(c, gpu):
+def test_stddev(c):
     df = pd.DataFrame(
         {
             "a": [1, 1, 2, 1, 2],
@@ -296,7 +280,7 @@ def test_stddev(c, gpu):
         }
     )
 
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     return_df = c.sql(
         """
@@ -360,8 +344,7 @@ def test_stddev(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_regr_aggregation(c, timeseries_df, gpu):
+def test_regr_aggregation(c):
     # test regr_count
     regr_count = c.sql(
         """
@@ -481,28 +464,19 @@ def test_covar_aggregation(c, timeseries_df):
     )
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "user_table_1",
-        pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),
-    ],
-)
 @pytest.mark.parametrize("split_out", [None, 2, 4])
-def test_groupby_split_out(c, input_table, split_out, request):
-    user_table = request.getfixturevalue(input_table)
-
+def test_groupby_split_out(c, user_table_1, split_out):
     return_df = c.sql(
-        f"""
+        """
         SELECT
         user_id, SUM(b) AS "S"
-        FROM {input_table}
+        FROM user_table_1
         GROUP BY user_id
         """,
         config_options={"sql.aggregate.split_out": split_out} if split_out else {},
     )
     expected_df = (
-        user_table.groupby(by="user_id")
+        user_table_1.groupby(by="user_id")
         .agg({"b": "sum"})
         .reset_index(drop=False)
         .rename(columns={"b": "S"})
@@ -513,24 +487,23 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
     return_df = c.sql(
-        f"""
-        SELECT DISTINCT(user_id) FROM {input_table}
+        """
+        SELECT DISTINCT(user_id) FROM user_table_1
         """,
         config_options={"sql.aggregate.split_out": split_out},
     )
-    expected_df = user_table[["user_id"]].drop_duplicates()
+    expected_df = user_table_1[["user_id"]].drop_duplicates()
     assert return_df.npartitions == split_out if split_out else 1
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_groupby_split_every(c, gpu):
+def test_groupby_split_every(c):
     input_ddf = dd.from_pandas(
         pd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
         npartitions=16,
     )  # Need an input with multiple partitions to demonstrate split_every
 
-    c.create_table("split_every_input", input_ddf, gpu=gpu)
+    c.create_table("split_every_input", input_ddf)
 
     query_string = """
     SELECT

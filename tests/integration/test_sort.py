@@ -6,22 +6,12 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 
-@pytest.mark.parametrize(
-    "input_table_1,input_df",
-    [
-        ("user_table_1", "df"),
-        pytest.param("gpu_user_table_1", "gpu_df", marks=pytest.mark.gpu),
-    ],
-)
-def test_sort(c, input_table_1, input_df, request):
-    user_table_1 = request.getfixturevalue(input_table_1)
-    df = request.getfixturevalue(input_df)
-
+def test_sort(c, user_table_1, df):
     df_result = c.sql(
-        f"""
+        """
     SELECT
         *
-    FROM {input_table_1}
+    FROM user_table_1
     ORDER BY b, user_id DESC
     """
     )
@@ -30,10 +20,10 @@ def test_sort(c, input_table_1, input_df, request):
     assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        f"""
+        """
     SELECT
         *
-    FROM {input_df}
+    FROM df
     ORDER BY b DESC, a DESC
     """
     )
@@ -42,10 +32,10 @@ def test_sort(c, input_table_1, input_df, request):
     assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        f"""
+        """
     SELECT
         *
-    FROM {input_df}
+    FROM df
     ORDER BY a DESC, b
     """
     )
@@ -54,10 +44,10 @@ def test_sort(c, input_table_1, input_df, request):
     assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        f"""
+        """
     SELECT
         *
-    FROM {input_df}
+    FROM df
     ORDER BY b, a
     """
     )
@@ -66,18 +56,12 @@ def test_sort(c, input_table_1, input_df, request):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-@pytest.mark.parametrize(
-    "input_table_1",
-    ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],
-)
-def test_sort_by_alias(c, input_table_1, request):
-    user_table_1 = request.getfixturevalue(input_table_1)
-
+def test_sort_by_alias(c, user_table_1):
     df_result = c.sql(
-        f"""
+        """
     SELECT
         b AS my_column
-    FROM {input_table_1}
+    FROM user_table_1
     ORDER BY my_column, user_id DESC
     """
     ).rename(columns={"my_column": "b"})
@@ -88,13 +72,11 @@ def test_sort_by_alias(c, input_table_1, request):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_with_nan(gpu):
-    c = Context()
+def test_sort_with_nan(c):
     df = pd.DataFrame(
         {"a": [1, 2, float("nan"), 2], "b": [4, float("nan"), 5, float("inf")]}
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df_result = c.sql("SELECT * FROM df ORDER BY a")
     assert_eq(
@@ -178,9 +160,7 @@ def test_sort_with_nan(gpu):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_with_nan_more_columns(gpu):
-    c = Context()
+def test_sort_with_nan_more_columns(c):
     df = pd.DataFrame(
         {
             "a": [1, 1, 2, 2, float("nan"), float("nan")],
@@ -188,7 +168,7 @@ def test_sort_with_nan_more_columns(gpu):
             "c": [1, float("nan"), 3, 4, 5, 6],
         }
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df_result = c.sql(
         "SELECT * FROM df ORDER BY a ASC NULLS FIRST, b DESC NULLS LAST, c ASC NULLS FIRST"
@@ -236,8 +216,7 @@ def test_sort_with_nan_more_columns(gpu):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_with_nan_many_partitions(gpu):
+def test_sort_with_nan_many_partitions(c):
     c = Context()
     df = pd.DataFrame(
         {
@@ -245,7 +224,7 @@ def test_sort_with_nan_many_partitions(gpu):
             "b": [1, 2, 3] * 20,
         }
     )
-    c.create_table("df", dd.from_pandas(df, npartitions=10), gpu=gpu)
+    c.create_table("df", dd.from_pandas(df, npartitions=10))
 
     df_result = c.sql("SELECT * FROM df ORDER BY a NULLS FIRST, b ASC NULLS FIRST")
 
@@ -276,11 +255,7 @@ def test_sort_with_nan_many_partitions(gpu):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_strings(c, gpu):
-    string_table = pd.DataFrame({"a": ["zzhsd", "öfjdf", "baba"]})
-    c.create_table("string_table", string_table, gpu=gpu)
-
+def test_sort_strings(c, string_table):
     df_result = c.sql(
         """
     SELECT
@@ -295,27 +270,18 @@ def test_sort_strings(c, gpu):
     assert_eq(df_result, df_expected, check_index=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_not_allowed(c, gpu):
-    table_name = "gpu_user_table_1" if gpu else "user_table_1"
-
+def test_sort_not_allowed(c):
     # Wrong column
     with pytest.raises(Exception):
-        c.sql(f"SELECT * FROM {table_name} ORDER BY 42")
+        c.sql("SELECT * FROM user_table_1 ORDER BY 42")
 
 
-@pytest.mark.parametrize(
-    "input_table_1",
-    ["user_table_1", pytest.param("gpu_user_table_1", marks=pytest.mark.gpu)],
-)
-def test_sort_by_old_alias(c, input_table_1, request):
-    user_table_1 = request.getfixturevalue(input_table_1)
-
+def test_sort_by_old_alias(c, user_table_1):
     df_result = c.sql(
-        f"""
+        """
     SELECT
         b AS my_column
-    FROM {input_table_1}
+    FROM user_table_1
     ORDER BY b, user_id DESC
     """
     ).rename(columns={"my_column": "b"})
@@ -326,10 +292,10 @@ def test_sort_by_old_alias(c, input_table_1, request):
     assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        f"""
+        """
     SELECT
         b*-1 AS my_column
-    FROM {input_table_1}
+    FROM user_table_1
     ORDER BY b, user_id DESC
     """
     ).rename(columns={"my_column": "b"})
@@ -340,10 +306,10 @@ def test_sort_by_old_alias(c, input_table_1, request):
     assert_eq(df_result, df_expected, check_index=False)
 
     df_result = c.sql(
-        f"""
+        """
     SELECT
         b*-1 AS my_column
-    FROM {input_table_1}
+    FROM user_table_1
     ORDER BY my_column, user_id DESC
     """
     ).rename(columns={"my_column": "b"})
@@ -353,9 +319,7 @@ def test_sort_by_old_alias(c, input_table_1, request):
     ]
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_sort_topk(gpu):
-    c = Context()
+def test_sort_topk(c):
     df = pd.DataFrame(
         {
             "a": [float("nan"), 1] * 30,
@@ -363,7 +327,7 @@ def test_sort_topk(gpu):
             "c": ["a", "b", "c"] * 20,
         }
     )
-    c.create_table("df", dd.from_pandas(df, npartitions=10), gpu=gpu)
+    c.create_table("df", dd.from_pandas(df, npartitions=10))
 
     df_result = c.sql("""SELECT * FROM df ORDER BY a LIMIT 10""")
     assert any(["nsmallest" in key for key in df_result.dask.layers.keys()])
@@ -399,7 +363,7 @@ def test_sort_topk(gpu):
 
     # String column nlargest/smallest not supported for pandas
     df_result = c.sql("""SELECT * FROM df ORDER BY c LIMIT 10""")
-    if not gpu:
+    if not c.gpu:
         assert all(["nlargest" not in key for key in df_result.dask.layers.keys()])
         assert all(["nsmallest" not in key for key in df_result.dask.layers.keys()])
     else:

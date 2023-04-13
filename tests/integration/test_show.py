@@ -24,10 +24,8 @@ def test_schemas(c):
     )
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_tables(gpu):
-    c = Context()
-    c.create_table("table", pd.DataFrame(), gpu=gpu)
+def test_tables(c):
+    c.create_table("table", pd.DataFrame())
 
     expected_df = pd.DataFrame({"Table": ["table"]})
 
