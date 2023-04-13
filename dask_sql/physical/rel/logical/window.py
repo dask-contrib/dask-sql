@@ -247,6 +247,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
+
         for window in rel.window().getGroups():
             dc = self._apply_window(rel, window, dc, field_names, context)
 
@@ -356,7 +357,6 @@ class DaskWindowPlugin(BaseRelPlugin):
         df = dc.df
         cc = dc.column_container
         for c in newly_created_columns:
-            # the fields are in the correct order by definition
             field_name = field_names[len(cc.columns)]
             cc = cc.add(field_name, c)
         dc = DataContainer(df, cc)
