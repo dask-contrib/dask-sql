@@ -328,8 +328,7 @@ fn get_filepath(plan: &LogicalPlan) -> Option<&String> {
         LogicalPlan::TableScan(scan) => scan
             .source
             .as_any()
-            .downcast_ref::<DaskTableSource>()
-            .expect("should be a DaskTableSource")
+            .downcast_ref::<DaskTableSource>()?
             .filepath(),
         _ => None,
     }
@@ -340,8 +339,7 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
         LogicalPlan::TableScan(scan) => scan
             .source
             .as_any()
-            .downcast_ref::<DaskTableSource>()
-            .expect("should be a DaskTableSource")
+            .downcast_ref::<DaskTableSource>()?
             .statistics()
             .map(|stats| stats.get_row_count() as usize),
         _ => None,
@@ -416,14 +414,7 @@ fn read_table(
 ) -> Option<HashSet<RowValue>> {
     // Obtain filepaths to all relevant Parquet files
     // e.g., in a directory of Parquet files
-    let paths = fs::read_dir(
-        tables
-            .get(&table_string.clone())
-            .unwrap()
-            .filepath
-            .clone(),
-    )
-    .unwrap();
+    let paths = fs::read_dir(tables.get(&table_string).unwrap().filepath.clone()).unwrap();
     let mut files = vec![];
     for path in paths {
         files.push(path.unwrap().path().display().to_string())
@@ -789,7 +780,8 @@ fn parse_and_optimize(
                 .collect();
             let mut updated_filters = t.filters.clone();
             for (key, value) in table_filters.iter() {
-                let current_expr = format_inlist_expr(value.clone(), key.0.to_owned(), key.1.to_owned());
+                let current_expr =
+                    format_inlist_expr(value.clone(), key.0.to_owned(), key.1.to_owned());
                 updated_filters.push(current_expr);
             }
             let scan = LogicalPlan::TableScan(TableScan {
@@ -812,8 +804,8 @@ fn format_inlist_expr(
     join_field: String,
 ) -> Expr {
     let expr = Box::new(Expr::Column(Column::new(
-        Some(join_table.clone()),
-        join_field.clone(),
+        Some(join_table),
+        join_field,
     )));
     let mut list: Vec<Expr> = vec![];
 
@@ -830,7 +822,11 @@ fn format_inlist_expr(
         }
     }
 
-    Expr::InList{expr, list, negated: false}
+    Expr::InList {
+        expr,
+        list,
+        negated: false,
+    }
 }
 
 fn optimize_children(
