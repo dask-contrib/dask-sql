@@ -106,6 +106,11 @@ impl OptimizerRule for DynamicPartitionPruning {
                         right_field = Some(c.name.clone());
                     }
 
+                    // If it is not a join between columns, then we skip the rule
+                    if left_table.is_none() || right_table.is_none() {
+                        continue;
+                    }
+
                     let mut left_table = left_table.unwrap();
                     let left_field = left_field.unwrap();
                     let mut right_table = right_table.unwrap();
@@ -124,6 +129,12 @@ impl OptimizerRule for DynamicPartitionPruning {
                     let right_alias = aliases.get(&right_table.clone());
                     if let Some(t) = right_alias {
                         right_table = t.to_string()
+                    }
+
+                    // A more complicated alias, e.g. an alias for a nested select,
+                    // means it's not obvious which file(s) should be read
+                    if !tables.contains_key(&left_table) || !tables.contains_key(&right_table) {
+                        continue;
                     }
 
                     // Determine whether a table is a fact or dimension table
@@ -659,12 +670,14 @@ fn satisfies_string(string_value: &String, filter: Expr) -> bool {
                 panic!("Unknown satisfies_string operator");
             }
         },
+        Expr::IsNotNull(_) => true,
         _ => {
             panic!("Unknown satisfies_string Expr");
         }
     }
 }
 
+// TODO: Satisfies Int32
 fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
@@ -678,6 +691,7 @@ fn satisfies_long(long_value: i64, filter: Expr) -> bool {
                 panic!("Unknown satisfies_long operator");
             }
         },
+        Expr::IsNotNull(_) => true,
         _ => {
             panic!("Unknown satisfies_long Expr");
         }
@@ -803,10 +817,7 @@ fn format_inlist_expr(
     join_table: String,
     join_field: String,
 ) -> Expr {
-    let expr = Box::new(Expr::Column(Column::new(
-        Some(join_table),
-        join_field,
-    )));
+    let expr = Box::new(Expr::Column(Column::new(Some(join_table), join_field)));
     let mut list: Vec<Expr> = vec![];
 
     for value in value_set {
