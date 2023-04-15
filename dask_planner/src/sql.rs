@@ -13,7 +13,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit},
-    datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError},
+    datafusion_common::{
+        config::ConfigOptions,
+        tree_node::{TreeNode, TreeNodeVisitor, VisitRecursion},
+        DFSchema,
+        DataFusionError,
+    },
     datafusion_expr::{
         logical_plan::Extension,
         AccumulatorFunctionImplementation,
@@ -35,7 +40,7 @@ use datafusion_python::{
         TableReference,
     },
 };
-use log::debug;
+use log::{debug, warn};
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -517,13 +522,27 @@ impl DaskSQLContext {
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
-        optimizer::DaskSqlOptimizer::new()
-            .optimize(existing_plan.original_plan)
-            .map(|k| PyLogicalPlan {
-                original_plan: k,
-                current_node: None,
-            })
-            .map_err(py_optimization_exp)
+        let mut visitor = OptimizablePlanVisitor {};
+
+        match existing_plan.original_plan.visit(&mut visitor) {
+            Ok(valid) => {
+                match valid {
+                    VisitRecursion::Stop => {
+                        // This LogicalPlan does not support Optimization. Return original
+                        warn!("This LogicalPlan does not support Optimization. Returning original");
+                        Ok(existing_plan)
+                    }
+                    _ => optimizer::DaskSqlOptimizer::new()
+                        .optimize(existing_plan.original_plan)
+                        .map(|k| PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(py_optimization_exp),
+                }
+            }
+            Err(e) => Err(py_optimization_exp(e)),
+        }
     }
 }
 
@@ -679,24 +698,24 @@ impl DaskSQLContext {
     }
 }
 
-// /// Visits each AST node to determine if the plan is valid for optimization or not
-// pub struct OptimizablePlanVisitor;
+/// Visits each AST node to determine if the plan is valid for optimization or not
+pub struct OptimizablePlanVisitor;
 
-// impl TreeNodeVisitor for OptimizablePlanVisitor {
-//     type N;
+impl TreeNodeVisitor for OptimizablePlanVisitor {
+    type N = LogicalPlan;
 
-//     fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-//         // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
-//         match plan {
-//             LogicalPlan::Explain(..) => Ok(false),
-//             _ => Ok(true),
-//         }
-//     }
+    fn pre_visit(&mut self, plan: &LogicalPlan) -> Result<VisitRecursion, DataFusionError> {
+        // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
+        match plan {
+            LogicalPlan::Explain(..) => Ok(VisitRecursion::Stop),
+            _ => Ok(VisitRecursion::Continue),
+        }
+    }
 
-//     fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-//         Ok(true)
-//     }
-// }
+    fn post_visit(&mut self, _plan: &LogicalPlan) -> Result<VisitRecursion, DataFusionError> {
+        Ok(VisitRecursion::Continue)
+    }
+}
 
 fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
     let mut exact_vector = vec![];

@@ -327,7 +327,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
-            LogicalPlan::Statement(_) => "Statement",
+            LogicalPlan::SetVariable(_) => "SetVariable",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
                 let node = extension.node.as_any();

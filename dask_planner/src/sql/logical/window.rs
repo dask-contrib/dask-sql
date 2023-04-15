@@ -173,6 +173,16 @@ impl PyWindowFrameBound {
                 ScalarValue::UInt64(v) => Ok(*v),
                 // The cast below is only safe because window bounds cannot be negative
                 ScalarValue::Int64(v) => Ok(v.map(|n| n as u64)),
+                ScalarValue::Utf8(v) => {
+                    let s = v.clone().unwrap();
+                    match s.parse::<u64>() {
+                        Ok(s) => Ok(Some(s)),
+                        Err(_e) => Err(DaskPlannerError::Internal(format!(
+                            "Unable to parse u64 from Utf8 value '{s}'"
+                        ))
+                        .into()),
+                    }
+                }
                 ref x => Err(DaskPlannerError::Internal(format!(
                     "Unexpected window frame bound: {x}"
                 ))
