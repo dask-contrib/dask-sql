@@ -162,6 +162,11 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies and nothing else
         run: |
           mamba install "setuptools-rust>=1.5.2"
