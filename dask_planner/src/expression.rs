@@ -85,7 +85,7 @@ impl PyExpr {
     /// Determines the name of the `Expr` instance by examining the LogicalPlan
     pub fn _column_name(&self, plan: &LogicalPlan) -> Result<String> {
         let field = expr_to_field(&self.expr, plan)?;
-        Ok(field.qualified_column().name)
+        Ok(field.qualified_column().flat_name())
     }
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
