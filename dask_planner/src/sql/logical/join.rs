@@ -70,7 +70,7 @@ impl PyJoin {
 
     #[pyo3(name = "getJoinConditions")]
     pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
-        let lhs_table_name: String = match &*self.join.left {
+        let lhs_table_name = match &*self.join.left {
             LogicalPlan::TableScan(scan) => scan.table_name.clone(),
             _ => {
                 return Err(py_type_err(
@@ -79,7 +79,7 @@ impl PyJoin {
             }
         };
 
-        let rhs_table_name: String = match &*self.join.right {
+        let rhs_table_name = match &*self.join.right {
             LogicalPlan::TableScan(scan) => scan.table_name.clone(),
             _ => {
                 return Err(py_type_err(

@@ -1,4 +1,4 @@
-use std::{convert::From, sync::Arc};
+use std::{borrow::Cow, convert::From, sync::Arc};
 
 use datafusion::arrow::datatypes::DataType;
 use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
@@ -15,6 +15,7 @@ use datafusion_expr::{
     LogicalPlan,
     Operator,
 };
+use datafusion_sql::TableReference;
 use pyo3::prelude::*;
 
 use crate::{
@@ -121,6 +122,7 @@ impl PyExpr {
             | Expr::IsNotTrue(..)
             | Expr::IsNotFalse(..)
             | Expr::Placeholder { .. }
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::IsNotUnknown(_) => RexType::Call,
             Expr::ScalarSubquery(..) => RexType::ScalarSubquery,
         }
@@ -184,13 +186,42 @@ impl PyExpr {
                     .index_of_column(&Column::from_qualified_name(name.clone()))
                     .or_else(|_| {
                         // Handles cases when from_qualified_name doesn't format the Column correctly.
-                        // Here, we split the name string and grab the relation/table names
-                        let split_name: Vec<&str> = name.split('.').collect();
-                        let relation = &split_name.first();
-                        let table = &split_name.get(1);
+                        // "name" will always contain the name of the column. Anything in addition to
+                        // that will be separated by a '.' and should be further referenced.
+                        let parts = name.split('.').collect::<Vec<&str>>();
+                        let tbl_reference = match parts.len() {
+                            // Single element means name contains just the column name so no TableReference
+                            1 => None,
+                            // Tablename.column_name
+                            2 => Some(
+                                TableReference::Bare {
+                                    table: Cow::Borrowed(parts[0]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            // Schema_name.table_name.column_name
+                            3 => Some(
+                                TableReference::Partial {
+                                    schema: Cow::Borrowed(parts[0]),
+                                    table: Cow::Borrowed(parts[1]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            // catalog_name.schema_name.table_name.column_name
+                            4 => Some(
+                                TableReference::Full {
+                                    catalog: Cow::Borrowed(parts[0]),
+                                    schema: Cow::Borrowed(parts[1]),
+                                    table: Cow::Borrowed(parts[2]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            _ => None,
+                        };
+
                         let col = Column {
-                            relation: Some(relation.unwrap().to_string()),
-                            name: table.unwrap().to_string(),
+                            relation: tbl_reference.clone(),
+                            name: parts[parts.len() - 1].to_string(),
                         };
                         schema.index_of_column(&col).map_err(py_runtime_err)
                     })
@@ -225,6 +256,7 @@ impl PyExpr {
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
             | Expr::Not(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::GroupingSet(..) => self.expr.variant_name(),
             Expr::ScalarVariable(..)
             | Expr::IsNotNull(..)
@@ -371,6 +403,7 @@ impl PyExpr {
 
             // Currently un-support/implemented Expr types for Rex Call operations
             Expr::GroupingSet(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
