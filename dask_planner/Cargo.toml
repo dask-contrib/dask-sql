@@ -13,8 +13,11 @@ async-trait = "0.1.68"
 datafusion-python = { git = "https://github.com/apache/arrow-datafusion-python.git", tag = "21.0.0" }
 env_logger = "0.10"
 log = "^0.4"
-pyo3 = { version = "0.18.1", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3 = { version = "0.18.3", features = ["extension-module", "abi3", "abi3-py38"] }
 pyo3-log = "0.8.1"
+
+[build-dependencies]
+pyo3-build-config = "0.18.3"
 
 [lib]
 crate-type = ["cdylib"]
