@@ -284,4 +284,20 @@ def test_filter_decimal(c):
     expected_df = df.loc[df.a < df.b][["c"]]
 
     assert_eq(result_df, expected_df)
+
+    result_df = c.sql(
+        """
+        SELECT
+            b
+        FROM
+            df
+        WHERE
+            a < decimal '100.2'
+        """
+    )
+
+    expected_df = cudf.DataFrame({"b": [82.4, 42, 54.4]})
+    expected_df["b"] = expected_df["b"].astype(cudf.Decimal64Dtype(7, 1))
+
+    assert_eq(result_df.reset_index(drop=True), expected_df)
     c.drop_table("df")
