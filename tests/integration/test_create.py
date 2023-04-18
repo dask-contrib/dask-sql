@@ -364,20 +364,16 @@ def test_drop(c):
         c.sql("SELECT a FROM new_table")
 
 
-def test_create_gpu_error(c, df, temporary_data_file):
-    try:
-        import cudf
-    except ImportError:
-        cudf = None
-
-    if cudf is not None:
-        pytest.skip("GPU-related import errors only need to be checked on CPU")
+@pytest.mark.cpu
+def test_create_gpu_error(temporary_data_file):
+    c = dask_sql.Context(gpu=True)
+    df = pd.DataFrame({"a": [1, 2, 3]})
 
     with pytest.raises(ModuleNotFoundError):
-        c.create_table("new_table", df, gpu=True)
+        c.create_table("new_table", df)
 
     with pytest.raises(ModuleNotFoundError):
-        c.create_table("new_table", dd.from_pandas(df, npartitions=2), gpu=True)
+        c.create_table("new_table", dd.from_pandas(df, npartitions=1))
 
     df.to_csv(temporary_data_file, index=False)
 

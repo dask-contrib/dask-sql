@@ -1,10 +1,12 @@
 import pandas as pd
 
 from dask_sql.mappings import python_to_sql_type
-from tests.utils import assert_eq
+from tests.utils import assert_eq, xfail_on_gpu
 
 
-def test_analyze(c, df):
+def test_analyze(request, c, df):
+    xfail_on_gpu(request, c, "Can't create mixed datatype columns on cuDF")
+
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
 
     # extract table and compute stats with Dask manually

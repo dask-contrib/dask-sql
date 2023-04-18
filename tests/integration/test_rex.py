@@ -437,7 +437,7 @@ def test_boolean_operations(c):
             b IS NOT FALSE AS nf,
             b IS UNKNOWN AS u,
             b IS NOT UNKNOWN AS nu
-        FROM d"""
+        FROM df"""
     )
 
     expected_df = pd.DataFrame(

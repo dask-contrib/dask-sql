@@ -25,15 +25,14 @@ def test_schemas(c):
 
 
 def test_tables(c):
-    c.create_table("table", pd.DataFrame())
+    c.create_schema("test_schema")
+    c.create_table("table", pd.DataFrame(), schema_name="test_schema")
 
     expected_df = pd.DataFrame({"Table": ["table"]})
 
+    assert_eq(c.sql('SHOW TABLES FROM "test_schema"'), expected_df, check_index=False)
     assert_eq(
-        c.sql(f'SHOW TABLES FROM "{c.schema_name}"'), expected_df, check_index=False
-    )
-    assert_eq(
-        c.sql(f'SHOW TABLES FROM "{c.catalog_name}"."{c.schema_name}"'),
+        c.sql(f'SHOW TABLES FROM "{c.catalog_name}"."test_schema"'),
         expected_df,
         check_index=False,
     )
