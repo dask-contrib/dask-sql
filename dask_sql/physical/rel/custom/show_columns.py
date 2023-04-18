@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import get_serial_library
 
 if TYPE_CHECKING:
     import dask_sql
@@ -39,7 +39,9 @@ class ShowColumnsPlugin(BaseRelPlugin):
                 dc.df.dtypes,
             )
         )
-        df = pd.DataFrame(
+
+        xd = get_serial_library(context.gpu)
+        df = xd.DataFrame(
             {
                 "Column": cols,
                 "Type": dtypes,

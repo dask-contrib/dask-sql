@@ -2,10 +2,10 @@ import logging
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import get_serial_library
 
 if TYPE_CHECKING:
     import dask_sql
@@ -29,7 +29,9 @@ class DaskEmptyRelationPlugin(BaseRelPlugin):
             else ["_empty"]
         )
         data = None if len(rel.empty_relation().emptyColumnNames()) > 0 else [0]
+
+        xd = get_serial_library(context.gpu)
         return DataContainer(
-            dd.from_pandas(pd.DataFrame(data, columns=col_names), npartitions=1),
+            dd.from_pandas(xd.DataFrame(data, columns=col_names), npartitions=1),
             ColumnContainer(col_names),
         )

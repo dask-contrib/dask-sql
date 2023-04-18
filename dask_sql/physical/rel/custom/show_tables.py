@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import get_serial_library
 
 if TYPE_CHECKING:
     import dask_sql
@@ -41,7 +41,8 @@ class ShowTablesPlugin(BaseRelPlugin):
         if schema_name not in context.schema:
             raise AttributeError(f"Schema {schema_name} is not defined.")
 
-        df = pd.DataFrame({"Table": list(context.schema[schema_name].tables.keys())})
+        xd = get_serial_library(context.gpu)
+        df = xd.DataFrame({"Table": list(context.schema[schema_name].tables.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
-import pandas as pd
 
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel.base import BaseRelPlugin
+from dask_sql.utils import get_serial_library
 
 if TYPE_CHECKING:
     import dask_sql
@@ -31,10 +31,6 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     class_name = "AnalyzeTable"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        if context.gpu:
-            # can't have mixed dtype columns in cuDF dataframes
-            raise NotImplementedError("ANALYZE TABLE not implemented for GPU tables")
-
         analyze_table = rel.analyze_table()
 
         schema_name = analyze_table.getSchemaName() or context.schema_name
@@ -47,10 +43,11 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         ]
         mapping = dc.column_container.get_backend_by_frontend_name
 
+        xd = get_serial_library(context.gpu)
         stats = dd.concat(
             [
                 df[[mapping(col) for col in columns]].describe(),
-                pd.DataFrame(
+                xd.DataFrame(
                     {
                         mapping(col): str(
                             python_to_sql_type(df[mapping(col)].dtype)
@@ -59,7 +56,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
                     },
                     index=["data_type"],
                 ),
-                pd.DataFrame(
+                xd.DataFrame(
                     {mapping(col): col for col in columns}, index=["col_name"]
                 ),
             ]
