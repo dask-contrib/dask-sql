@@ -80,6 +80,26 @@ def c(request, tmpdir):
         "timeseries": dd_timeseries(freq="1d").reset_index(drop=True),
     }
 
+    # Write simple parquet dataset
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
+
+    # Read back with dask and apply WHERE query
+    dfs["parquet_ddf"] = dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
+
     gpu = request.param
 
     c = Context(gpu=gpu)
@@ -154,27 +174,8 @@ def timeseries(c):
 
 
 @pytest.fixture()
-def parquet_ddf(tmpdir):
-
-    # Write simple parquet dataset
-    df = pd.DataFrame(
-        {
-            "a": [1, 2, 3] * 5,
-            "b": range(15),
-            "c": ["A"] * 15,
-            "d": [
-                pd.Timestamp("2013-08-01 23:00:00"),
-                pd.Timestamp("2014-09-01 23:00:00"),
-                pd.Timestamp("2015-10-01 23:00:00"),
-            ]
-            * 5,
-            "index": range(15),
-        },
-    )
-    dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
-
-    # Read back with dask and apply WHERE query
-    return dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
+def parquet_ddf(c):
+    return c.sql("select * from parquet_ddf")
 
 
 @pytest.fixture()
