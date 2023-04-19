@@ -214,9 +214,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     return python_type(literal_value)
 
 
-def sql_to_python_type(sql_type: "SqlTypeName") -> type:
+def sql_to_python_type(sql_type: "SqlTypeName", *args) -> type:
     """Turn an SQL type into a dataframe dtype"""
     try:
+        if str(sql_type) == "SqlTypeName.DECIMAL":
+            return cudf.Decimal128Dtype(*args)
         return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
     except KeyError:  # pragma: no cover
         raise NotImplementedError(
@@ -250,7 +252,8 @@ def similar_type(lhs: type, rhs: type) -> bool:
         is_sint,
         is_float,
         is_object,
-        is_string,
+        # is_string_dtype considers decimal columns to be string columns
+        lambda x: is_string(x) and not is_decimal(x),
         is_dt_tz,
         is_dt_ntz,
         is_td_ns,
@@ -260,6 +263,9 @@ def similar_type(lhs: type, rhs: type) -> bool:
 
     for check in checks:
         if check(lhs) and check(rhs):
+            # check that decimal columns have equal precision/scale
+            if check is is_decimal:
+                return lhs.precision == rhs.precision and lhs.scale == rhs.scale
             return True
 
     return False
