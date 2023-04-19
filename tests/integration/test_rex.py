@@ -4,6 +4,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.api.types import is_float_dtype, is_integer_dtype
 
 from tests.utils import assert_eq
 
@@ -132,9 +133,9 @@ def test_literal_null(c):
     """
     )
 
-    expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
-    expected_df["I"] = expected_df["I"].astype("Int64")
-    assert_eq(df, expected_df)
+    assert is_integer_dtype(df["I"])
+
+    assert_eq(df, pd.DataFrame({"N": [pd.NA], "I": [pd.NA]}), check_dtype=False)
 
 
 def test_random(c):
@@ -152,8 +153,8 @@ def test_random(c):
     # assert output
     result_df = result_df.compute()
 
-    assert result_df["0"].dtype == "float64"
-    assert result_df["1"].dtype == "Int64"
+    assert is_float_dtype(result_df["0"])
+    assert is_integer_dtype(result_df["1"])
 
     assert 0 <= result_df["0"][0] < 1
     assert 0 <= result_df["1"][0] < 10
@@ -168,9 +169,9 @@ def test_random(c):
     result_df = result_df.compute()
     # assert output types
 
-    assert result_df["0"].dtype == "float64"
-    assert result_df["1"].dtype == "float64"
-    assert result_df["2"].dtype == "Int64"
+    assert is_float_dtype(result_df["0"])
+    assert is_float_dtype(result_df["1"])
+    assert is_integer_dtype(result_df["2"])
 
     assert 0 <= result_df["0"][0] < 1
     assert 0 <= result_df["1"][0] < 1

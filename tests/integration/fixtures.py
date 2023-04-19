@@ -97,9 +97,6 @@ def c(request, tmpdir):
     )
     dd.from_pandas(df, npartitions=3).to_parquet(os.path.join(tmpdir, "parquet"))
 
-    # Read back with dask and apply WHERE query
-    dfs["parquet_ddf"] = dd.read_parquet(os.path.join(tmpdir, "parquet"), index="index")
-
     gpu = request.param
 
     c = Context(gpu=gpu)
@@ -109,6 +106,9 @@ def c(request, tmpdir):
             df["timezone"] = df["timezone"].astype("datetime64[ns]")
             df["utc_timezone"] = df["utc_timezone"].astype("datetime64[ns]")
         c.create_table(df_name, df)
+
+    # read back in parquet dataset
+    c.create_table("parquet_ddf", str(tmpdir), format="parquet")
 
     yield c
 
