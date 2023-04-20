@@ -87,11 +87,11 @@ impl OptimizerRule for DynamicPartitionPruning {
 
             // Iterate through all inner joins in the query
             for join_cond in &join_conds {
-                let on = &join_cond.on;
-                for i in 0..on.len() {
+                let join_on = &join_cond.on;
+                for on_i in join_on {
                     // Obtain tables and columns (fields) involved in join
-                    let left_on = &on[i].0;
-                    let right_on = &on[i].1;
+                    let left_on = &on_i.0;
+                    let right_on = &on_i.1;
                     let mut left_table: Option<String> = None;
                     let mut left_field: Option<String> = None;
                     let mut right_table: Option<String> = None;
@@ -445,6 +445,11 @@ fn read_table(
     let filtered_string = filtered_fields.0;
     let filtered_types = filtered_fields.1;
     let filtered_names = filtered_fields.2;
+
+    if filters.len() != filtered_names.len() {
+        warn!("Unable to check existing filters for optimizer rule 'DynamicPartitionPruning'");
+        return None;
+    }
 
     // Specify which column to include in the reader, then read in the rows
     let repetition = get_repetition(schema, field_string.clone());
