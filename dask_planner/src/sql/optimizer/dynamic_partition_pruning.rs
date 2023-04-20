@@ -34,12 +34,12 @@ use crate::sql::table::DaskTableSource;
 
 // Optimizer rule for dynamic partition pruning
 // General TODOs:
-// - Should only run the rule once
 // - Add more explanatory comments
 // - Replace repeating code with functions
 // - Remove unnecessary `clone()`s and consider using references instead
 // - Remove unncessary `Option`s and `Result`s
 // - Check against all queries
+// - BE CAREFUL if there's more than 1 scan of the same table
 
 pub struct DynamicPartitionPruning {}
 
@@ -88,10 +88,10 @@ impl OptimizerRule for DynamicPartitionPruning {
             // Iterate through all inner joins in the query
             for join_cond in &join_conds {
                 let on = &join_cond.on;
-                if on.len() == 1 {
+                for i in 0..on.len() {
                     // Obtain tables and columns (fields) involved in join
-                    let left_on = &on[0].0;
-                    let right_on = &on[0].1;
+                    let left_on = &on[i].0;
+                    let right_on = &on[i].1;
                     let mut left_table: Option<String> = None;
                     let mut left_field: Option<String> = None;
                     let mut right_table: Option<String> = None;
@@ -169,8 +169,6 @@ impl OptimizerRule for DynamicPartitionPruning {
                     join_values.push((left_filtered_table, right_filtered_table));
                     join_tables.push((left_table, right_table));
                     join_fields.push((left_field, right_field));
-                } else {
-                    // TODO: Need to reason about more than one join condition
                 }
             }
             // Creates HashMap of all tables and fields
@@ -447,10 +445,6 @@ fn read_table(
     let filtered_string = filtered_fields.0;
     let filtered_types = filtered_fields.1;
     let filtered_names = filtered_fields.2;
-    // TODO: Add more logic so that this check isn't necessary
-    if filters.len() != filtered_names.len() {
-        return None;
-    }
 
     // Specify which column to include in the reader, then read in the rows
     let repetition = get_repetition(schema, field_string.clone());
@@ -486,7 +480,6 @@ fn read_table(
                 match current_type.as_str() {
                     "BYTE_ARRAY" => {
                         let string_value = row.get_string(row_index);
-                        // TODO: Handle Err(_) and/or Null case?
                         if let Ok(s) = string_value {
                             if !satisfies_string(s, filters[index].clone()) {
                                 satisfies_filters = false;
@@ -495,7 +488,6 @@ fn read_table(
                     }
                     "INT64" => {
                         let long_value = row.get_long(row_index);
-                        // TODO: Handle Err(_) case?
                         if let Ok(l) = long_value {
                             if !satisfies_long(l, filters[index].clone()) {
                                 satisfies_filters = false;
@@ -602,7 +594,6 @@ fn get_filtered_fields(
     for filter in filters {
         match filter {
             Expr::BinaryExpr(b) => {
-                // TODO: Handle nested BinaryExprs
                 if let Expr::Column(c) = &*b.left {
                     let current_field = c.name.clone();
                     let physical_type = get_physical_type(schema, c.name.clone())
@@ -677,7 +668,7 @@ fn satisfies_string(string_value: &String, filter: Expr) -> bool {
     }
 }
 
-// TODO: Satisfies Int32
+// TODO: Should we have a separate satisfies_int32 function?
 fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
@@ -767,10 +758,14 @@ fn add_to_existing_set(
     let existing_set = sets.get(&(current_table.clone(), current_field.clone()));
     match existing_set {
         Some(s) => {
-            let mut s = s.clone();
-            // TODO: intersect instead of extend
-            s.extend(values.iter().cloned().collect::<HashSet<RowValue>>());
-            sets.insert((current_table, current_field), s.clone());
+            let s = s.clone();
+            let v = values.iter().cloned().collect::<HashSet<RowValue>>();
+            let s = s.intersection(&v);
+            let mut set_intersection = HashSet::new();
+            for i in s {
+                set_intersection.insert(i.clone());
+            }
+            sets.insert((current_table, current_field), set_intersection.clone());
         }
         None => {
             sets.insert((current_table, current_field), values);
