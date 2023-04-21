@@ -521,8 +521,15 @@ impl DaskSQLContext {
         match existing_plan.original_plan.accept(&mut visitor) {
             Ok(valid) => {
                 if valid {
-                    optimizer::DaskSqlOptimizer::new()
+                    let optimized_plan = optimizer::DaskSqlOptimizer::new()
                         .optimize(existing_plan.original_plan)
+                        .map(|k| PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(py_optimization_exp);
+                    optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                        .optimize_once(optimized_plan.unwrap().original_plan)
                         .map(|k| PyLogicalPlan {
                             original_plan: k,
                             current_node: None,

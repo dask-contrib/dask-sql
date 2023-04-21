@@ -79,7 +79,6 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             // Arc::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
-            Arc::new(DynamicPartitionPruning::new()),
             Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
@@ -97,9 +96,28 @@ impl DaskSqlOptimizer {
         }
     }
 
+    // Create a separate instance of this optimization rule, since we want to ensure that it only
+    // runs one time
+    pub fn dynamic_partition_pruner() -> Self {
+        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
+            Arc::new(DynamicPartitionPruning::new()),
+        ];
+
+        Self {
+            optimizer: Optimizer::with_rules(rule),
+        }
+    }
+
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+        let config = OptimizerContext::new();
+        self.optimizer.optimize(&plan, &config, Self::observe)
+    }
+
+    /// Iterates once through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
+    /// to its final optimized form
+    pub(crate) fn optimize_once(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
         let mut config = OptimizerContext::new();
         config = OptimizerContext::with_max_passes(config, 1);
         self.optimizer.optimize(&plan, &config, Self::observe)

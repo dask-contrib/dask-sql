@@ -34,10 +34,7 @@ use crate::sql::table::DaskTableSource;
 
 // Optimizer rule for dynamic partition pruning
 // General TODOs:
-// - Add more explanatory comments
-// - Replace repeating code with functions
 // - Remove unnecessary `clone()`s and consider using references instead
-// - Remove unncessary `Option`s and `Result`s
 // - Check against all queries
 // - BE CAREFUL if there's more than 1 scan of the same table
 
@@ -61,8 +58,8 @@ impl OptimizerRule for DynamicPartitionPruning {
         plan: &LogicalPlan,
         _config: &dyn OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
-        // Parse the LogicalPlan and store tables and columns being (inner) joined upon.
-        // We do this by creating a HashSet of all InnerJoins' join.on and join.filters
+        // Parse the LogicalPlan and store tables and columns being (inner) joined upon. We do this
+        // by creating a HashSet of all InnerJoins' join.on and join.filters
         let join_conds = gather_joins(plan);
         let tables = gather_tables(plan);
         let aliases = gather_aliases(plan);
@@ -106,7 +103,8 @@ impl OptimizerRule for DynamicPartitionPruning {
                         right_field = Some(c.name.clone());
                     }
 
-                    // If it is not a join between columns, then we skip the rule
+                    // For now, if it is not a join between columns then we skip the rule
+                    // TODO: https://github.com/dask-contrib/dask-sql/issues/1121
                     if left_table.is_none() || right_table.is_none() {
                         continue;
                     }
@@ -116,12 +114,14 @@ impl OptimizerRule for DynamicPartitionPruning {
                     let mut right_table = right_table.unwrap();
                     let right_field = right_field.unwrap();
 
+                    // TODO: Consider allowing the fact_dimension_ratio to be configured by the
+                    // user. See issue: https://github.com/dask-contrib/dask-sql/issues/1121
                     let fact_dimension_ratio = 0.3;
                     let mut left_filtered_table = None;
                     let mut right_filtered_table = None;
 
-                    // Check if join uses an alias instead of the table name itself.
-                    // Need to use the actual table name to obtain its filepath
+                    // Check if join uses an alias instead of the table name itself. Need to use
+                    // the actual table name to obtain its filepath
                     let left_alias = aliases.get(&left_table.clone());
                     if let Some(t) = left_alias {
                         left_table = t.to_string()
@@ -131,14 +131,14 @@ impl OptimizerRule for DynamicPartitionPruning {
                         right_table = t.to_string()
                     }
 
-                    // A more complicated alias, e.g. an alias for a nested select,
-                    // means it's not obvious which file(s) should be read
+                    // A more complicated alias, e.g. an alias for a nested select, means it's not
+                    // obvious which file(s) should be read
                     if !tables.contains_key(&left_table) || !tables.contains_key(&right_table) {
                         continue;
                     }
 
-                    // Determine whether a table is a fact or dimension table
-                    // If it's a dimension table, we should read it in and use the rule
+                    // Determine whether a table is a fact or dimension table. If it's a dimension
+                    // table, we should read it in and use the rule
                     if tables
                         .get(&left_table.clone())
                         .unwrap()
@@ -171,8 +171,8 @@ impl OptimizerRule for DynamicPartitionPruning {
                     join_fields.push((left_field, right_field));
                 }
             }
-            // Creates HashMap of all tables and fields
-            // with their unique values to be set in the TableScan
+            // Creates HashMap of all tables and field with their unique values to be set in the
+            // TableScan
             let filter_values = combine_sets(join_values, join_tables, join_fields, fact_tables);
             // Optimize and return the plan
             parse_and_optimize(plan, filter_values)
@@ -186,9 +186,12 @@ struct JoinInfo {
     /// Equijoin clause expressed as pairs of (left, right) join expressions
     on: Vec<(Expr, Expr)>,
     /// Filters applied during join (non-equi conditions)
+    /// TODO: https://github.com/dask-contrib/dask-sql/issues/1121
     filter: Option<Expr>,
 }
 
+// This function parses through the LogicalPlan, grabs relevant information from an InnerJoin, and
+// adds them to a HashSet
 fn gather_joins(plan: &LogicalPlan) -> HashSet<JoinInfo> {
     let mut current_plan = plan.clone();
     let mut join_info = HashSet::new();
@@ -263,6 +266,8 @@ struct TableInfo {
     filters: Vec<Expr>,
 }
 
+// This function parses through the LogicalPlan, grabs relevant information from a TableScan, and
+// adds them to a HashMap where the key is the table name
 fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
     let mut current_plan = plan.clone();
     let mut tables = HashMap::new();
@@ -355,6 +360,8 @@ fn get_table_size(plan: &LogicalPlan) -> Option<usize> {
     }
 }
 
+// This function parses through the LogicalPlan, grabs any aliases, and adds them to a HashMap
+// where the key is the alias name and the value is the table name
 fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
     let mut current_plan = plan.clone();
     let mut aliases = HashMap::new();
@@ -401,6 +408,8 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
                     LogicalPlan::TableScan(ref t) => {
                         aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
                     }
+                    // Sometimes a TableScan is immediately followed by a Projection, so we can
+                    // still use the alias for the table
                     LogicalPlan::Projection(ref p) => {
                         if let LogicalPlan::TableScan(ref t) = *p.input {
                             aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
@@ -416,13 +425,15 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
     aliases
 }
 
+// This function uses the table name, column name, and filters to read in the relevant columns,
+// filter out row values, and construct a HashSet of relevant row values for the specified column,
+// i.e., the column involved in the join
 fn read_table(
     table_string: String,
     field_string: String,
     tables: HashMap<String, TableInfo>,
 ) -> Option<HashSet<RowValue>> {
-    // Obtain filepaths to all relevant Parquet files
-    // e.g., in a directory of Parquet files
+    // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
     let paths = fs::read_dir(tables.get(&table_string).unwrap().filepath.clone()).unwrap();
     let mut files = vec![];
     for path in paths {
@@ -440,6 +451,8 @@ fn read_table(
     // Use the schemas of the relevant tables to obtain the physical type of the relevant columns
     let physical_type = get_physical_type(schema, field_string.clone());
 
+    // A TableScan may include existing filters. These conditions should be used to filter the data
+    // after being read. Therefore, the columns involved in these filters should be read in as well
     let filters = tables.get(&table_string).unwrap().filters.clone();
     let filtered_fields = get_filtered_fields(&filters, schema, field_string.clone());
     let filtered_string = filtered_fields.0;
@@ -451,7 +464,7 @@ fn read_table(
         return None;
     }
 
-    // Specify which column to include in the reader, then read in the rows
+    // Specify which columns to include in the reader, then read in the rows
     let repetition = get_repetition(schema, field_string.clone());
     let physical_type = physical_type.unwrap().to_string();
     let projection_schema = "message schema { ".to_owned()
@@ -475,8 +488,8 @@ fn read_table(
     // Create HashSets for the join column values
     let mut value_set: HashSet<RowValue> = HashSet::new();
     for row in rows {
-        // Since a TableScan may have its own filters, we want to ensure that
-        // the values in value_set satisfy the TableScan filters
+        // Since a TableScan may have its own filters, we want to ensure that the values in
+        // value_set satisfy the TableScan filters
         let mut satisfies_filters = true;
         let mut row_index = 0;
         for index in 0..filters.len() {
@@ -512,6 +525,8 @@ fn read_table(
                 row_index += 1;
             }
         }
+        // After verifying that the row satisfies all existing filters, we add the column value to
+        // the HashSet
         if satisfies_filters {
             match physical_type.as_str() {
                 "BYTE_ARRAY" => {
@@ -534,6 +549,8 @@ fn read_table(
     Some(value_set)
 }
 
+// A column has a physical_type (INT64, etc.) that needs to be included when specifying which
+// columns to read in. To get the physical_type, we grab it from the schema
 fn get_physical_type(schema: &Type, field: String) -> Option<BasicType> {
     match schema {
         Type::GroupType {
@@ -561,6 +578,8 @@ fn get_physical_type(schema: &Type, field: String) -> Option<BasicType> {
     }
 }
 
+// A column has a repetition (i.e., REQUIRED or OPTIONAL) that needs to be included when specifying
+// which columns to read in. To get the repetition, we grab it from the schema
 fn get_repetition(schema: &Type, field: String) -> Option<String> {
     match schema {
         Type::GroupType {
@@ -584,6 +603,11 @@ fn get_repetition(schema: &Type, field: String) -> Option<String> {
     }
 }
 
+// This is a helper function to deal with TableScan filters for reading in the data. The first
+// value returned is a string representation of the projection used to read in the relevant
+// columns. The second value returned is a vector of the physical_type of each column that has has
+// a filter, in the order that they are being read. The third value returned is a vector of the
+// column names, in the order that they are being read.
 fn get_filtered_fields(
     filters: &Vec<Expr>,
     schema: &Type,
@@ -592,52 +616,34 @@ fn get_filtered_fields(
     // Used to create a string representation of the projection
     // for the TableScan filters to be read
     let mut filtered_fields = vec![];
-    // All columns involved in TableScan filters
-    let mut filtered_columns = vec![];
     // All physical types involved in TableScan filters
     let mut filtered_types = vec![];
+    // All columns involved in TableScan filters
+    let mut filtered_columns = vec![];
     for filter in filters {
         match filter {
             Expr::BinaryExpr(b) => {
-                if let Expr::Column(c) = &*b.left {
-                    let current_field = c.name.clone();
-                    let physical_type = get_physical_type(schema, c.name.clone())
-                        .unwrap()
-                        .to_string();
-                    if current_field != field {
-                        let repetition = get_repetition(schema, c.name.clone());
-                        filtered_fields.push(repetition.unwrap());
-                        filtered_fields.push(" ".to_string());
-
-                        filtered_fields.push(physical_type.clone());
-                        filtered_fields.push(" ".to_string());
-
-                        filtered_fields.push(current_field.clone());
-                        filtered_fields.push("; ".to_string());
-                    }
-                    filtered_columns.push(current_field);
-                    filtered_types.push(physical_type);
+                if let Expr::Column(column) = &*b.left {
+                    push_filtered_fields(
+                        column,
+                        schema,
+                        field.clone(),
+                        &mut filtered_fields,
+                        &mut filtered_columns,
+                        &mut filtered_types,
+                    );
                 }
             }
             Expr::IsNotNull(e) => {
-                if let Expr::Column(c) = &**e {
-                    let current_field = c.name.clone();
-                    let physical_type = get_physical_type(schema, c.name.clone())
-                        .unwrap()
-                        .to_string();
-                    if current_field != field {
-                        let repetition = get_repetition(schema, c.name.clone());
-                        filtered_fields.push(repetition.unwrap());
-                        filtered_fields.push(" ".to_string());
-
-                        filtered_fields.push(physical_type.clone());
-                        filtered_fields.push(" ".to_string());
-
-                        filtered_fields.push(current_field.clone());
-                        filtered_fields.push("; ".to_string());
-                    }
-                    filtered_columns.push(current_field);
-                    filtered_types.push(physical_type);
+                if let Expr::Column(column) = &**e {
+                    push_filtered_fields(
+                        column,
+                        schema,
+                        field.clone(),
+                        &mut filtered_fields,
+                        &mut filtered_columns,
+                        &mut filtered_types,
+                    );
                 }
             }
             _ => (),
@@ -646,6 +652,35 @@ fn get_filtered_fields(
     (filtered_fields.join(""), filtered_types, filtered_columns)
 }
 
+// Helper function for get_filtered_fields
+fn push_filtered_fields(
+    column: &Column,
+    schema: &Type,
+    field: String,
+    filtered_fields: &mut Vec<String>,
+    filtered_columns: &mut Vec<String>,
+    filtered_types: &mut Vec<String>,
+) {
+    let current_field = column.name.clone();
+    let physical_type = get_physical_type(schema, current_field.clone())
+        .unwrap()
+        .to_string();
+    if current_field != field {
+        let repetition = get_repetition(schema, current_field.clone());
+        filtered_fields.push(repetition.unwrap());
+        filtered_fields.push(" ".to_string());
+
+        filtered_fields.push(physical_type.clone());
+        filtered_fields.push(" ".to_string());
+
+        filtered_fields.push(current_field.clone());
+        filtered_fields.push("; ".to_string());
+    }
+    filtered_types.push(physical_type);
+    filtered_columns.push(current_field);
+}
+
+// Wrapper for possible row value types
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum RowValue {
     String(String),
@@ -653,6 +688,7 @@ enum RowValue {
     Int32(i32),
 }
 
+// Returns a boolean representing whether a string satisfies a given filter
 fn satisfies_string(string_value: &String, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
@@ -674,6 +710,7 @@ fn satisfies_string(string_value: &String, filter: Expr) -> bool {
 }
 
 // TODO: Should we have a separate satisfies_int32 function?
+// Returns a boolean representing whether a long satisfies a given filter
 fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
@@ -694,11 +731,13 @@ fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     }
 }
 
+// Used to simplify the signature of combine_sets
 type RowHashSet = HashSet<RowValue>;
 type RowOptionHashSet = Option<RowHashSet>;
 type RowTuple = (RowOptionHashSet, RowOptionHashSet);
 type RowVec = Vec<RowTuple>;
 
+// TODO: Add comments
 fn combine_sets(
     join_values: RowVec,
     join_tables: Vec<(String, String)>,
@@ -754,6 +793,7 @@ fn combine_sets(
     sets
 }
 
+// TODO: Add comments
 fn add_to_existing_set(
     sets: &mut HashMap<(String, String), HashSet<RowValue>>,
     values: HashSet<RowValue>,
@@ -778,6 +818,7 @@ fn add_to_existing_set(
     }
 }
 
+// TODO: Add comments
 fn parse_and_optimize(
     plan: &LogicalPlan,
     filter_values: HashMap<(String, String), HashSet<RowValue>>,
@@ -812,6 +853,7 @@ fn parse_and_optimize(
     }
 }
 
+// TODO: Add comments
 fn format_inlist_expr(
     value_set: HashSet<RowValue>,
     join_table: String,
@@ -840,6 +882,7 @@ fn format_inlist_expr(
     }
 }
 
+// TODO: Add comments
 fn optimize_children(
     plan: &LogicalPlan,
     filter_values: HashMap<(String, String), HashSet<RowValue>>,
