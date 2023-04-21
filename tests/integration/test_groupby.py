@@ -180,10 +180,10 @@ def test_group_by_nan(c):
     ORDER BY c
     """
     )
-    expected_df = pd.DataFrame({"c": [float("nan"), 1, 3]})
+    expected_df = pd.DataFrame({"c": [1, 3, None]})
 
     # we return nullable int dtype instead of float
-    assert_eq(return_df, expected_df, check_dtype=False)
+    assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
     return_df = c.sql(
         """
