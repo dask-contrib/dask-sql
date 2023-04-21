@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from tests.utils import assert_eq
+from tests.utils import assert_eq, xfail_on_gpu
 
 
 @pytest.fixture()
@@ -177,9 +177,10 @@ def test_group_by_nan(c):
         c
     FROM user_table_nan
     GROUP BY c
+    ORDER BY c
     """
     )
-    expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
+    expected_df = pd.DataFrame({"c": [float("nan"), 1, 3]})
 
     # we return nullable int dtype instead of float
     assert_eq(return_df, expected_df, check_dtype=False)
@@ -201,14 +202,96 @@ def test_group_by_nan(c):
     )
 
 
+def test_every(request, c):
+    xfail_on_gpu(request, c, "Need to implement `all` for cuDF groupbys")
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        EVERY(b = 3) AS e
+    FROM user_table_1
+    GROUP BY user_id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 3],
+            "e": [True, False, True],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        EVERY(c = 3) AS e
+    FROM user_table_2
+    GROUP BY user_id
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 4],
+            "e": [False, True, False],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+
+def test_bit_and_or(request, c):
+    xfail_on_gpu(request, c, "Can't iterate over cuDF frame objects")
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        BIT_AND(b) AS b,
+        BIT_OR(b) AS bb
+    FROM user_table_1
+    GROUP BY user_id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 3],
+            "b": [3, 1, 3],
+            "bb": [3, 3, 3],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        BIT_AND(c) AS b,
+        BIT_OR(c) AS bb
+    FROM user_table_2
+    GROUP BY user_id
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 4],
+            "b": [0, 3, 4],
+            "bb": [3, 3, 4],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+
 def test_aggregations(c):
     return_df = c.sql(
         """
     SELECT
         user_id,
-        EVERY(b = 3) AS e,
-        BIT_AND(b) AS b,
-        BIT_OR(b) AS bb,
+        --EVERY(b = 3) AS e,
+        --BIT_AND(b) AS b,
+        --BIT_OR(b) AS bb,
         MIN(b) AS m,
         SINGLE_VALUE(b) AS s,
         AVG(b) AS a
@@ -219,9 +302,9 @@ def test_aggregations(c):
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 3],
-            "e": [True, False, True],
-            "b": [3, 1, 3],
-            "bb": [3, 3, 3],
+            # "e": [True, False, True],
+            # "b": [3, 1, 3],
+            # "bb": [3, 3, 3],
             "m": [3, 1, 3],
             "s": [3, 3, 3],
             "a": [3, 2, 3],
@@ -235,9 +318,9 @@ def test_aggregations(c):
         """
     SELECT
         user_id,
-        EVERY(c = 3) AS e,
-        BIT_AND(c) AS b,
-        BIT_OR(c) AS bb,
+        --EVERY(c = 3) AS e,
+        --BIT_AND(c) AS b,
+        --BIT_OR(c) AS bb,
         MIN(c) AS m,
         SINGLE_VALUE(c) AS s,
         AVG(c) AS a
@@ -249,9 +332,9 @@ def test_aggregations(c):
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 4],
-            "e": [False, True, False],
-            "b": [0, 3, 4],
-            "bb": [3, 3, 4],
+            # "e": [False, True, False],
+            # "b": [0, 3, 4],
+            # "bb": [3, 3, 4],
             "m": [1, 3, 4],
             "s": [1, 3, 4],
             "a": [1.5, 3, 4],
@@ -287,7 +370,7 @@ def test_stddev(c):
         SELECT
             STDDEV(b) AS s
         FROM df
-        GROUP BY df.a
+        GROUP BY a
         """
     )
 
@@ -305,20 +388,20 @@ def test_stddev(c):
 
     expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
         SELECT
             STDDEV_POP(b) AS sp
         FROM df
-        GROUP BY df.a
+        GROUP BY a
         """
     )
 
     expected_df = pd.DataFrame({"sp": df.groupby("a").std(ddof=0)["b"]})
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
@@ -339,7 +422,7 @@ def test_stddev(c):
         }
     )
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     c.drop_table("df")
 

@@ -201,6 +201,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+        # cuDF has a specialized agg method to handle sum of squares
+        if context.gpu:
+            chunk = lambda s: (s.count(), s.sum(), s.agg(lambda x: x.sum_of_squares()))
+            self.AGGREGATION_MAPPING["stddevpop"].custom_aggregation.chunk = chunk
+            self.AGGREGATION_MAPPING["variancepop"].custom_aggregation.chunk = chunk
+            self.AGGREGATION_MAPPING["regr_syy"].custom_aggregation.chunk = chunk
+            self.AGGREGATION_MAPPING["regr_sxx"].custom_aggregation.chunk = chunk
+
         (dc,) = self.assert_inputs(rel, 1, context)
 
         agg = rel.aggregate()
