@@ -1,7 +1,0 @@
-name: base
-channels:
-- conda-forge
-- nodefaults
-dependencies:
-# dask serialization needs core libraries to be consistent on client/cluster
-- pandas>=1.4.0,<2
