@@ -129,9 +129,9 @@ jobs:
       - name: run a dask cluster
         run: |
           if [[ $which_upstream == "Dask" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
+            docker-compose -f continuous_integration/cluster/upstream.yml up -d
           else
-            docker-compose -f .github/cluster.yml up -d
+            docker-compose -f continuous_integration/cluster/stable.yml up -d
           fi
 
           # periodically ping logs until a connection has been established; assume failure after 2 minutes

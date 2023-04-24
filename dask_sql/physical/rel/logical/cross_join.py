@@ -37,5 +37,17 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
         result = df_lhs.merge(df_rhs, on=cross_join_key, suffixes=("", "0")).drop(
             cross_join_key, 1
         )
+        cc = ColumnContainer(result.columns)
 
-        return DataContainer(result, ColumnContainer(result.columns))
+        # Rename columns like the rel specifies
+        row_type = rel.getRowType()
+        field_specifications = [str(f) for f in row_type.getFieldNames()]
+
+        cc = cc.rename(
+            {
+                from_col: to_col
+                for from_col, to_col in zip(cc.columns, field_specifications)
+            }
+        )
+        cc = self.fix_column_to_row_type(cc, row_type)
+        return DataContainer(result, cc)

@@ -1095,7 +1095,8 @@ impl<'a> DaskParser<'a> {
                         // True if TABLE and False if VIEW
                         if is_table {
                             Ok(DaskStatement::Statement(Box::from(
-                                self.parser.parse_create_table(or_replace, false, None)?,
+                                self.parser
+                                    .parse_create_table(or_replace, false, None, false)?,
                             )))
                         } else {
                             self.parser.prev_token();
@@ -1142,7 +1143,8 @@ impl<'a> DaskParser<'a> {
                 }
                 // use the native parser
                 Ok(DaskStatement::Statement(Box::from(
-                    self.parser.parse_create_table(or_replace, false, None)?,
+                    self.parser
+                        .parse_create_table(or_replace, false, None, false)?,
                 )))
             }
         }
