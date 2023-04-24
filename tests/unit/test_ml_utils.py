@@ -145,7 +145,6 @@ def assert_estimator_equal(left, right, exclude=None, **kwargs):
         _assert_eq(l, r, name=attr, **kwargs)
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 # this test failure shuts down the cluster and must be skipped instead of xfailed
 @pytest.mark.skipif(
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
@@ -222,7 +221,6 @@ def test_transform(kind):
     assert_eq_ar(result, expected)
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
 # this test failure shuts down the cluster and must be skipped instead of xfailed
 @pytest.mark.skipif(
     os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,

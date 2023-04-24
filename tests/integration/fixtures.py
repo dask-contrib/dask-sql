@@ -21,9 +21,6 @@ except ImportError:
     dask_cudf = None
     LocalCUDACluster = None
 
-# check if we want to connect to an independent cluster
-SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-
 
 @pytest.fixture()
 def df_simple():
@@ -349,7 +346,7 @@ def gpu_client(request):
             with Client(cluster) as client:
                 yield client
     else:
-        with Client(address=SCHEDULER_ADDR) as client:
+        with Client() as client:
             yield client
 
 
@@ -358,14 +355,7 @@ def gpu_client(request):
 # when specified.
 @pytest.fixture(
     scope="function",
-    autouse=False if SCHEDULER_ADDR is None else True,
 )
 def client():
-    with Client(address=SCHEDULER_ADDR) as client:
+    with Client() as client:
         yield client
-
-
-xfail_if_external_scheduler = pytest.mark.xfail(
-    condition=os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
