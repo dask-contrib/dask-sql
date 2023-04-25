@@ -21,6 +21,12 @@ except ImportError:
     dask_cudf = None
     LocalCUDACluster = None
 
+# check if we want to run tests on a distributed client
+DISTRIBUTED_TESTS = os.getenv("DASK_SQL_DISTRIBUTED_TESTS", "False").lower() in (
+    "true",
+    "1",
+)
+
 
 @pytest.fixture()
 def df_simple():
@@ -353,9 +359,7 @@ def gpu_client(request):
 # if connecting to an independent cluster, use a session-wide
 # client for all computations. otherwise, only connect to a client
 # when specified.
-@pytest.fixture(
-    scope="function",
-)
+@pytest.fixture(scope="function", autouse=DISTRIBUTED_TESTS)
 def client():
     with Client() as client:
         yield client

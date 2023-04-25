@@ -38,11 +38,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
+        distributed: [false]
+        include:
+          # run tests on a distributed client
+          - os: "ubuntu-latest"
+            python: "3.8"
+            distributed: true
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python

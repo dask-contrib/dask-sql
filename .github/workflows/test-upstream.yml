@@ -13,6 +13,7 @@ on:
         options:
           - Dask
           - DataFusion
+
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
@@ -36,14 +37,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
-    defaults:
-      run:
-        shell: bash -l {0}
+      DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
+        distributed: [false]
+        include:
+          # run tests on a distributed client
+          - os: "ubuntu-latest"
+            python: "3.8"
+            distributed: true
     steps:
       - uses: actions/checkout@v3
         with:
