@@ -356,9 +356,6 @@ def gpu_client(request):
             yield client
 
 
-# if connecting to an independent cluster, use a session-wide
-# client for all computations. otherwise, only connect to a client
-# when specified.
 @pytest.fixture(scope="function", autouse=DISTRIBUTED_TESTS)
 def client():
     with Client() as client:

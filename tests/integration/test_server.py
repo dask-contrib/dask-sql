@@ -1,4 +1,3 @@
-import os
 from time import sleep
 
 import pandas as pd
@@ -21,10 +20,6 @@ def app_client():
     from fastapi.testclient import TestClient
 
     yield TestClient(app)
-
-    # don't disconnect the client if using an independent cluster
-    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
-        app.client.close()
 
 
 def get_result_or_error(app_client, response):
