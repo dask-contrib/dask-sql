@@ -21,6 +21,8 @@ def app_client():
 
     yield TestClient(app)
 
+    app.client.close()
+
 
 def get_result_or_error(app_client, response):
     result = response.json()
