@@ -75,7 +75,7 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    # a column of Decimals in panda is `object`, but cuDF has a dedicated dtype
+    # a column of Decimals in pandas is `object`, but cuDF has a dedicated dtype
     "SqlTypeName.DECIMAL": object if not cudf else cudf.Decimal128Dtype(38, 10),
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
