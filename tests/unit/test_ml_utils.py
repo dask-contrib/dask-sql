@@ -1,6 +1,5 @@
 # Copyright 2017, Dask developers
 # Dask-ML project - https://github.com/dask/dask-ml
-import os
 from collections.abc import Sequence
 
 import dask
@@ -145,11 +144,6 @@ def assert_estimator_equal(left, right, exclude=None, **kwargs):
         _assert_eq(l, r, name=attr, **kwargs)
 
 
-# this test failure shuts down the cluster and must be skipped instead of xfailed
-@pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
 def test_parallelpostfit_basic():
     clf = ParallelPostFit(GradientBoostingClassifier())
 
@@ -221,11 +215,6 @@ def test_transform(kind):
     assert_eq_ar(result, expected)
 
 
-# this test failure shuts down the cluster and must be skipped instead of xfailed
-@pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
 @pytest.mark.parametrize("dataframes", [False, True])
 def test_incremental_basic(dataframes):
     # Create observations that we know linear models can recover

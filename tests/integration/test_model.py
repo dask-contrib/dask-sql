@@ -216,11 +216,6 @@ def test_create_model_with_prediction(c):
     check_trained_model(c, "my_model2")
 
 
-# this test failure shuts down the cluster and must be skipped instead of xfailed
-@pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
 def test_iterative_and_prediction(c):
     c.sql(
         """
