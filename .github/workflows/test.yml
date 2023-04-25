@@ -33,7 +33,7 @@ jobs:
           keyword: "[test-upstream]"
 
   test:
-    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }})"
+    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:

@@ -33,7 +33,7 @@ env:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
