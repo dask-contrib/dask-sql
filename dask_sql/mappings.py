@@ -305,9 +305,6 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype
 
-    if expected_type == "timedelta64[ns]":
-        breakpoint()
-
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
         return None
