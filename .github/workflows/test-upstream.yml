@@ -129,9 +129,9 @@ jobs:
       - name: run a dask cluster
         run: |
           if [[ $which_upstream == "Dask" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
+            docker-compose -f continuous_integration/cluster/upstream.yml up -d
           else
-            docker-compose -f .github/cluster.yml up -d
+            docker-compose -f continuous_integration/cluster/stable.yml up -d
           fi
 
           # periodically ping logs until a connection has been established; assume failure after 2 minutes
@@ -182,8 +182,8 @@ jobs:
       - name: Install upstream dev Dask
         if: env.which_upstream == 'Dask'
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install git+https://github.com/dask/dask
+          python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"

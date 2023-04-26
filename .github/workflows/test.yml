@@ -78,7 +78,7 @@ jobs:
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
         if: always()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: pytest-results
           path: junit/test-results.xml
@@ -125,9 +125,9 @@ jobs:
           UPSTREAM: ${{ needs.detect-ci-trigger.outputs.triggered }}
         run: |
           if [[ $UPSTREAM == "true" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
+            docker-compose -f continuous_integration/cluster/upstream.yml up -d
           else
-            docker-compose -f .github/cluster.yml up -d
+            docker-compose -f continuous_integration/cluster/stable.yml up -d
           fi
 
           # periodically ping logs until a connection has been established; assume failure after 2 minutes
@@ -163,8 +163,8 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install git+https://github.com/dask/dask
+          python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"

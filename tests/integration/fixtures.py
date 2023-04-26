@@ -92,7 +92,16 @@ def user_table_nan():
 
 @pytest.fixture()
 def string_table():
-    return pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
+    return pd.DataFrame(
+        {
+            "a": [
+                "a normal string",
+                "%_%",
+                "^|()-*[]$",
+                "^|()-*[]$\n%_%\na normal string",
+            ]
+        }
+    )
 
 
 @pytest.fixture()
@@ -163,6 +172,11 @@ def gpu_string_table(string_table):
 
 @pytest.fixture()
 def gpu_datetime_table(datetime_table):
+    # cudf doesn't have support for timezoned datetime data
+    datetime_table["timezone"] = datetime_table["timezone"].astype("datetime64[ns]")
+    datetime_table["utc_timezone"] = datetime_table["utc_timezone"].astype(
+        "datetime64[ns]"
+    )
     return cudf.from_pandas(datetime_table) if cudf else None
 
 

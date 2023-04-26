@@ -1,11 +1,11 @@
-import warnings
+import os
+import sys
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 
 from dask_sql import Context
-from dask_sql.mappings import python_to_sql_type
 from tests.utils import assert_eq
 
 try:
@@ -14,6 +14,9 @@ try:
 except ImportError:
     cudf = None
     dask_cudf = None
+
+# default integer type varies by platform
+DEFAULT_INT_TYPE = "INTEGER" if sys.platform == "win32" else "BIGINT"
 
 
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
@@ -33,25 +36,6 @@ def test_add_remove_tables(gpu):
 
     c.create_table("table", [data_frame], gpu=gpu)
     assert "table" in c.schema[c.schema_name].tables
-
-
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_deprecation_warning(gpu):
-    c = Context()
-    data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-
-        c.register_dask_table(data_frame, "table", gpu=gpu)
-
-        assert len(w) == 1
-        assert issubclass(w[-1].category, DeprecationWarning)
-
-    assert "table" in c.schema[c.schema_name].tables
-
-    c.drop_table("table")
-    assert "table" not in c.schema[c.schema_name].tables
 
 
 @pytest.mark.parametrize(
@@ -164,11 +148,6 @@ def test_tables_from_stack(gpu):
     g(gpu=gpu)
 
 
-int_sql_type = python_to_sql_type(int).getSqlType()
-float_sql_type = python_to_sql_type(float).getSqlType()
-str_sql_type = python_to_sql_type(str).getSqlType()
-
-
 def test_function_adding():
     c = Context()
 
@@ -184,24 +163,18 @@ def test_function_adding():
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
-        c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[0].parameters[0][1])
+        == DEFAULT_INT_TYPE
     )
-    assert (
-        c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == float_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[0].return_type) == "DOUBLE"
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
-        c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[1].parameters[0][1])
+        == DEFAULT_INT_TYPE
     )
-    assert (
-        c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == float_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[1].return_type) == "DOUBLE"
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
@@ -212,24 +185,16 @@ def test_function_adding():
     assert len(c.schema[c.schema_name].function_lists) == 4
     assert c.schema[c.schema_name].function_lists[2].name == "F"
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
+    assert str(c.schema[c.schema_name].function_lists[2].parameters[0][1]) == "DOUBLE"
     assert (
-        c.schema[c.schema_name].function_lists[2].parameters[0][1].getSqlType()
-        == float_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[2].return_type.getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[2].return_type) == DEFAULT_INT_TYPE
     )
     assert not c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
+    assert str(c.schema[c.schema_name].function_lists[3].parameters[0][1]) == "DOUBLE"
     assert (
-        c.schema[c.schema_name].function_lists[3].parameters[0][1].getSqlType()
-        == float_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[3].return_type.getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[3].return_type) == DEFAULT_INT_TYPE
     )
     assert not c.schema[c.schema_name].function_lists[3].aggregation
 
@@ -242,25 +207,13 @@ def test_function_adding():
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
-    assert (
-        c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == str_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == str_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[0].parameters[0][1]) == "VARCHAR"
+    assert str(c.schema[c.schema_name].function_lists[0].return_type) == "VARCHAR"
     assert not c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
-    assert (
-        c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == str_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == str_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[1].parameters[0][1]) == "VARCHAR"
+    assert str(c.schema[c.schema_name].function_lists[1].return_type) == "VARCHAR"
     assert not c.schema[c.schema_name].function_lists[1].aggregation
 
 
@@ -279,24 +232,18 @@ def test_aggregation_adding():
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
     assert (
-        c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[0].parameters[0][1])
+        == DEFAULT_INT_TYPE
     )
-    assert (
-        c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == float_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[0].return_type) == "DOUBLE"
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
     assert (
-        c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[1].parameters[0][1])
+        == DEFAULT_INT_TYPE
     )
-    assert (
-        c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == float_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[1].return_type) == "DOUBLE"
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
     # Without replacement
@@ -307,24 +254,16 @@ def test_aggregation_adding():
     assert len(c.schema[c.schema_name].function_lists) == 4
     assert c.schema[c.schema_name].function_lists[2].name == "F"
     assert c.schema[c.schema_name].function_lists[2].parameters[0][0] == "x"
+    assert str(c.schema[c.schema_name].function_lists[2].parameters[0][1]) == "DOUBLE"
     assert (
-        c.schema[c.schema_name].function_lists[2].parameters[0][1].getSqlType()
-        == float_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[2].return_type.getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[2].return_type) == DEFAULT_INT_TYPE
     )
     assert c.schema[c.schema_name].function_lists[2].aggregation
     assert c.schema[c.schema_name].function_lists[3].name == "f"
     assert c.schema[c.schema_name].function_lists[3].parameters[0][0] == "x"
+    assert str(c.schema[c.schema_name].function_lists[3].parameters[0][1]) == "DOUBLE"
     assert (
-        c.schema[c.schema_name].function_lists[3].parameters[0][1].getSqlType()
-        == float_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[3].return_type.getSqlType()
-        == int_sql_type
+        str(c.schema[c.schema_name].function_lists[3].return_type) == DEFAULT_INT_TYPE
     )
     assert c.schema[c.schema_name].function_lists[3].aggregation
 
@@ -337,25 +276,13 @@ def test_aggregation_adding():
     assert len(c.schema[c.schema_name].function_lists) == 2
     assert c.schema[c.schema_name].function_lists[0].name == "F"
     assert c.schema[c.schema_name].function_lists[0].parameters[0][0] == "x"
-    assert (
-        c.schema[c.schema_name].function_lists[0].parameters[0][1].getSqlType()
-        == str_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[0].return_type.getSqlType()
-        == str_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[0].parameters[0][1]) == "VARCHAR"
+    assert str(c.schema[c.schema_name].function_lists[0].return_type) == "VARCHAR"
     assert c.schema[c.schema_name].function_lists[0].aggregation
     assert c.schema[c.schema_name].function_lists[1].name == "f"
     assert c.schema[c.schema_name].function_lists[1].parameters[0][0] == "x"
-    assert (
-        c.schema[c.schema_name].function_lists[1].parameters[0][1].getSqlType()
-        == str_sql_type
-    )
-    assert (
-        c.schema[c.schema_name].function_lists[1].return_type.getSqlType()
-        == str_sql_type
-    )
+    assert str(c.schema[c.schema_name].function_lists[1].parameters[0][1]) == "VARCHAR"
+    assert str(c.schema[c.schema_name].function_lists[1].return_type) == "VARCHAR"
     assert c.schema[c.schema_name].function_lists[1].aggregation
 
 
@@ -383,3 +310,35 @@ def test_alter_table(c, df_simple):
     c.sql("ALTER TABLE IF EXISTS alien RENAME TO humans")
 
     del c.schema[c.schema_name].tables["physics"]
+
+
+def test_filepath(tmpdir):
+    c = Context()
+
+    parquet_path = os.path.join(tmpdir, "parquet")
+    parquet_df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(parquet_df, npartitions=3).to_parquet(parquet_path)
+    c.create_table("parquet_df", parquet_path, format="parquet")
+
+    assert c.schema["root"].tables["parquet_df"].filepath == parquet_path
+    assert c.schema["root"].filepaths["parquet_df"] == parquet_path
+
+    df = pd.DataFrame({"a": [2, 1, 2, 3], "b": [3, 3, 1, 3]})
+    c.create_table("df", df)
+
+    assert c.schema["root"].tables["df"].filepath is None
+    with pytest.raises(KeyError):
+        c.schema["root"].filepaths["df"]

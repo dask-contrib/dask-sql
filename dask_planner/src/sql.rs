@@ -34,6 +34,7 @@ use datafusion_sql::{
     ResolvedTableReference,
     TableReference,
 };
+use log::{debug, warn};
 use pyo3::prelude::*;
 
 use self::logical::{
@@ -59,7 +60,7 @@ use crate::{
             predict_model::PredictModelPlanNode,
             show_columns::ShowColumnsPlanNode,
             show_models::ShowModelsPlanNode,
-            show_schema::ShowSchemasPlanNode,
+            show_schemas::ShowSchemasPlanNode,
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
@@ -133,20 +134,26 @@ impl ContextProvider for DaskSQLContext {
                 // If the Table is not found return None. DataFusion will handle the error propagation
                 match resp {
                     Some(e) => {
-                        let statistics = &self
+                        let table_ref = &self
                             .schemas
                             .get(reference.schema.as_ref())
                             .unwrap()
                             .tables
                             .get(reference.table.as_ref())
-                            .unwrap()
-                            .statistics;
+                            .unwrap();
+                        let statistics = &table_ref.statistics;
+                        let filepath = &table_ref.filepath;
                         if statistics.get_row_count() == 0.0 {
-                            Ok(Arc::new(table::DaskTableSource::new(Arc::new(e), None)))
+                            Ok(Arc::new(table::DaskTableSource::new(
+                                Arc::new(e),
+                                None,
+                                filepath.clone(),
+                            )))
                         } else {
                             Ok(Arc::new(table::DaskTableSource::new(
                                 Arc::new(e),
                                 Some(statistics.clone()),
+                                filepath.clone(),
                             )))
                         }
                     }
@@ -474,6 +481,7 @@ impl DaskSQLContext {
 
     /// Parses a SQL string into an AST presented as a Vec of Statements
     pub fn parse_sql(&self, sql: &str) -> PyResult<Vec<statement::PyStatement>> {
+        debug!("parse_sql - '{}'", sql);
         let dd: DaskDialect = DaskDialect {};
         match DaskParser::parse_sql_with_dialect(sql, &dd) {
             Ok(k) => {
@@ -522,6 +530,7 @@ impl DaskSQLContext {
                         .map_err(py_optimization_exp)
                 } else {
                     // This LogicalPlan does not support Optimization. Return original
+                    warn!("This LogicalPlan does not support Optimization. Returning original");
                     Ok(existing_plan)
                 }
             }
@@ -617,12 +626,14 @@ impl DaskSQLContext {
             DaskStatement::ShowSchemas(show_schemas) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowSchemasPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_schemas.catalog_name,
                     like: show_schemas.like,
                 }),
             })),
             DaskStatement::ShowTables(show_tables) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(ShowTablesPlanNode {
                     schema: Arc::new(DFSchema::empty()),
+                    catalog_name: show_tables.catalog_name,
                     schema_name: show_tables.schema_name,
                 }),
             })),

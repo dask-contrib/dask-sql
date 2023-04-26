@@ -3,28 +3,36 @@ use std::sync::Arc;
 use datafusion_common::DataFusionError;
 use datafusion_expr::LogicalPlan;
 use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate,
+    // common_subexpr_eliminate::CommonSubexprEliminate,
     decorrelate_where_exists::DecorrelateWhereExists,
     decorrelate_where_in::DecorrelateWhereIn,
     eliminate_cross_join::EliminateCrossJoin,
+    // eliminate_duplicated_expr::EliminateDuplicatedExpr,
+    // eliminate_filter::EliminateFilter,
     eliminate_limit::EliminateLimit,
     eliminate_outer_join::EliminateOuterJoin,
+    eliminate_project::EliminateProjection,
+    // extract_equijoin_predicate::ExtractEquijoinPredicate,
     filter_null_join_keys::FilterNullJoinKeys,
-    inline_table_scan::InlineTableScan,
+    // merge_projection::MergeProjection,
     optimizer::{Optimizer, OptimizerRule},
+    // propagate_empty_relation::PropagateEmptyRelation,
     push_down_filter::PushDownFilter,
     push_down_limit::PushDownLimit,
     push_down_projection::PushDownProjection,
+    // replace_distinct_aggregate::ReplaceDistinctWithAggregate,
     rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
     scalar_subquery_to_join::ScalarSubqueryToJoin,
     simplify_expressions::SimplifyExpressions,
+    // single_distinct_to_groupby::SingleDistinctToGroupBy,
     type_coercion::TypeCoercion,
     unwrap_cast_in_comparison::UnwrapCastInComparison,
     OptimizerContext,
 };
-use log::trace;
+use log::{debug, trace};
 
-mod filter_columns_post_join;
+mod join_reorder;
+use join_reorder::JoinReorder;
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -36,36 +44,48 @@ impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
+        debug!("Creating new instance of DaskSqlOptimizer");
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            Arc::new(InlineTableScan::new()),
             Arc::new(TypeCoercion::new()),
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
+            // Arc::new(ReplaceDistinctWithAggregate::new()),
             Arc::new(DecorrelateWhereExists::new()),
             Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
+            //Arc::new(ExtractEquijoinPredicate::new()),
+
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
             Arc::new(SimplifyExpressions::new()),
+            // Arc::new(MergeProjection::new()),
+            Arc::new(RewriteDisjunctivePredicate::new()),
+            // Arc::new(EliminateDuplicatedExpr::new()),
+
             // TODO: need to handle EmptyRelation for GPU cases
             // Arc::new(EliminateFilter::new()),
             Arc::new(EliminateCrossJoin::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()),
             Arc::new(EliminateLimit::new()),
-            Arc::new(RewriteDisjunctivePredicate::new()),
+            // Arc::new(PropagateEmptyRelation::new()),
             Arc::new(FilterNullJoinKeys::default()),
             Arc::new(EliminateOuterJoin::new()),
-            Arc::new(PushDownFilter::new()),
+            // Filters can't be pushed down past Limits, we should do PushDownFilter after PushDownLimit
             Arc::new(PushDownLimit::new()),
+            Arc::new(PushDownFilter::new()),
+            // Arc::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
-            // Arc::new(FilterColumnsPostJoin::new()),
+            Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()),
             Arc::new(PushDownProjection::new()),
+            Arc::new(EliminateProjection::new()),
+            // PushDownProjection can pushdown Projections through Limits, do PushDownLimit again.
+            Arc::new(PushDownLimit::new()),
         ];
 
         Self {
@@ -121,8 +141,9 @@ mod tests {
       SubqueryAlias: __scalar_sq_1
         Projection: AVG(test.col_int32) AS __value
           Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]
-            Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
-              TableScan: test projection=[col_int32, col_utf8]"#;
+            Projection: test.col_int32
+              Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
+                TableScan: test projection=[col_int32, col_utf8]"#;
         assert_eq!(expected, format!("{:?}", plan));
         Ok(())
     }

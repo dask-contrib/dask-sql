@@ -66,7 +66,7 @@ def test_intervals(c):
     date1 = datetime(2021, 10, 3, 15, 53, 42, 47)
     date2 = datetime(2021, 2, 28, 15, 53, 42, 47)
     dates = dd.from_pandas(pd.DataFrame({"d": [date1, date2]}), npartitions=1)
-    c.register_dask_table(dates, "dates")
+    c.create_table("dates", dates)
     df = c.sql(
         """SELECT d + INTERVAL '5 days' AS "Plus_5_days" FROM dates
         """
@@ -258,8 +258,15 @@ def test_like(c, input_table, gpu, request):
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     )
+    assert_eq(df, string_table.iloc[[0, 3]])
 
-    assert_eq(df, string_table.iloc[[0]])
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT SIMILAR TO '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
 
     df = c.sql(
         f"""
@@ -267,9 +274,39 @@ def test_like(c, input_table, gpu, request):
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
     )
-
     assert len(df) == 0
 
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT LIKE '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table)
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a LIKE '%a Normal String%'
+    """
+    )
+    assert len(df) == 0
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[0, 3]])
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
     # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
     # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
@@ -288,7 +325,7 @@ def test_like(c, input_table, gpu, request):
         """
     )
 
-    assert_eq(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2, 3]])
 
     df = c.sql(
         f"""
@@ -345,10 +382,10 @@ def test_null(c):
     """
     )
 
-    expected_df = pd.DataFrame(index=[0, 1, 2])
-    expected_df["nn"] = [True, True, True]
+    expected_df = pd.DataFrame(index=[0, 1, 2, 3])
+    expected_df["nn"] = [True, True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
-    expected_df["n"] = [False, False, False]
+    expected_df["n"] = [False, False, False, False]
     assert_eq(df, expected_df)
 
 
@@ -700,7 +737,7 @@ def test_date_functions(c):
     date = datetime(2021, 10, 3, 15, 53, 42, 47)
 
     df = dd.from_pandas(pd.DataFrame({"d": [date]}), npartitions=1)
-    c.register_dask_table(df, "df")
+    c.create_table("df", df)
 
     df = c.sql(
         """
@@ -811,7 +848,7 @@ def test_timestampdiff(c):
         pd.DataFrame({"ts_literal1": [ts_literal1], "ts_literal2": [ts_literal2]}),
         npartitions=1,
     )
-    c.register_dask_table(df, "df")
+    c.create_table("df", df)
 
     query = """
         SELECT timestampdiff(NANOSECOND, ts_literal1, ts_literal2) as res0,

@@ -24,7 +24,7 @@ impl From<Column> for PyColumn {
 impl PyColumn {
     #[pyo3(name = "getRelation")]
     pub fn relation(&self) -> String {
-        self.column.relation.clone().unwrap()
+        self.column.relation.clone().unwrap().to_string()
     }
 
     #[pyo3(name = "getName")]
