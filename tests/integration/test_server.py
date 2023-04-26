@@ -5,6 +5,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
+from tests.integration.fixtures import DISTRIBUTED_TESTS
 
 # needed for the testclient
 pytest.importorskip("requests")
@@ -21,7 +22,9 @@ def app_client():
 
     yield TestClient(app)
 
-    app.client.close()
+    # avoid closing client it's session-wide
+    if not DISTRIBUTED_TESTS:
+        app.client.close()
 
 
 def get_result_or_error(app_client, response):

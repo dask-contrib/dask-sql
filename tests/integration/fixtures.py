@@ -356,7 +356,10 @@ def gpu_client(request):
             yield client
 
 
-@pytest.fixture(scope="function", autouse=DISTRIBUTED_TESTS)
+# use session-wide distributed client if specified otherwise default to standard fixture
+@pytest.fixture(
+    scope="session" if DISTRIBUTED_TESTS else "function", autouse=DISTRIBUTED_TESTS
+)
 def client():
     with Client() as client:
         yield client

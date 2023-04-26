@@ -6,6 +6,7 @@ import pytest
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
 from dask_sql.server.presto_jdbc import create_meta_data
+from tests.integration.fixtures import DISTRIBUTED_TESTS
 
 # needed for the testclient
 pytest.importorskip("requests")
@@ -37,7 +38,9 @@ def app_client(c):
 
     yield TestClient(app)
 
-    app.client.close()
+    # avoid closing client it's session-wide
+    if not DISTRIBUTED_TESTS:
+        app.client.close()
 
 
 @pytest.mark.xfail(reason="WIP DataFusion")
