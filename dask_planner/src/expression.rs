@@ -761,6 +761,21 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getIntervalMonthDayNanoValue")]
+    pub fn interval_month_day_nano_value(&self) -> PyResult<Option<(i32, i32, i64)>> {
+        match self.get_scalar_value()? {
+            ScalarValue::IntervalMonthDayNano(Some(iv)) => {
+                let interval = *iv as u128;
+                let months = (interval >> 32) as i32;
+                let days = (interval >> 64) as i32;
+                let ns = interval as i64;
+                Ok(Some((months, days, ns)))
+            }
+            ScalarValue::IntervalMonthDayNano(None) => Ok(None),
+            other => Err(unexpected_literal_value(other)),
+        }
+    }
+
     #[pyo3(name = "isNegated")]
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {

@@ -177,6 +177,12 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
+    elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
+        offset = pd.tseries.offsets.DateOffset(
+            months=literal_value[0], days=literal_value[1], nanoseconds=literal_value[2]
+        )
+        td = np.timedelta64(int(offset.delta / np.timedelta64(1, "ns")), "ns")
+        return td
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)

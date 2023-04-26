@@ -196,7 +196,10 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "year" => {
-                let sig = generate_signatures(vec![numeric_datatypes]);
+                let sig = Signature::exact(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -210,8 +213,18 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampceil" | "timestampfloor" => {
-                let sig = Signature::exact(
-                    vec![DataType::Date64, DataType::Utf8],
+                // let sig = Signature::exact(
+                //     vec![DataType::Timestamp(TimeUnit::Nanosecond, None), DataType::Date64, DataType::Utf8],
+                //     Volatility::Immutable,
+                // );
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Date64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                            DataType::Utf8,
+                        ]),
+                    ],
                     Volatility::Immutable,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
@@ -362,7 +375,8 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "every" => {
-                let sig = generate_signatures(vec![numeric_datatypes]);
+                // let sig = generate_signatures(vec![DataType::Boolean]);
+                let sig = Signature::exact(vec![DataType::Boolean], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }

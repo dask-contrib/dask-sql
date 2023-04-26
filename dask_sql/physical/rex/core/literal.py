@@ -161,6 +161,9 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "IntervalDayTime":
             literal_type = SqlTypeName.INTERVAL_DAY
             literal_value = rex.getIntervalDayTimeValue()
+        elif literal_type == "IntervalMonthDayNano":
+            literal_type = SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND
+            literal_value = rex.getIntervalMonthDayNanoValue()
         elif literal_type in {
             "TimestampSecond",
             "TimestampMillisecond",
@@ -183,6 +186,7 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_type = SqlTypeName.TIMESTAMP
             literal_value = np.datetime64(literal_value, numpy_unit)
         else:
+            breakpoint()
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
             )
