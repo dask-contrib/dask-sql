@@ -104,7 +104,13 @@ class BaseRelPlugin:
         }
 
         for field_name, field_type in field_types.items():
-            expected_type = sql_to_python_type(field_type.getSqlType())
+            sql_type = field_type.getSqlType()
+            sql_type_args = tuple()
+
+            if str(sql_type) == "SqlTypeName.DECIMAL":
+                sql_type_args = field_type.getDataType().getPrecisionScale()
+
+            expected_type = sql_to_python_type(sql_type, *sql_type_args)
             df_field_name = cc.get_backend_by_frontend_name(field_name)
             df = cast_column_type(df, df_field_name, expected_type)
 
