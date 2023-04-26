@@ -598,6 +598,29 @@ impl PyExpr {
         }))
     }
 
+    /// Gets the precision/scale represented by the Expression's decimal datatype
+    #[pyo3(name = "getPrecisionScale")]
+    pub fn get_precision_scale(&self) -> PyResult<(u8, i8)> {
+        Ok(match &self.expr {
+            Expr::Cast(Cast { expr: _, data_type }) => match data_type {
+                DataType::Decimal128(precision, scale) | DataType::Decimal256(precision, scale) => {
+                    (*precision, *scale)
+                }
+                _ => {
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for Cast in get_precision_scale; {data_type:?}"
+                    )))
+                }
+            },
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_precision_scale; {:?}",
+                    &self.expr
+                )))
+            }
+        })
+    }
+
     #[pyo3(name = "getFilterExpr")]
     pub fn get_filter_expr(&self) -> PyResult<Option<PyExpr>> {
         // TODO refactor to avoid duplication
