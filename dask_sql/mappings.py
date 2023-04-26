@@ -180,10 +180,9 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         return np.timedelta64(literal_value, "ms")
     elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
         # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
-        return pd.Timedelta(
-            np.timedelta64((literal_value[0] * 30) + literal_value[1], "D")
-            + np.timedelta64(literal_value[2], "ns")
-        )
+        return np.timedelta64(
+            (literal_value[0] * 30) + literal_value[1], "D"
+        ) + np.timedelta64(literal_value[2], "ns")
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)
