@@ -93,6 +93,7 @@ _SQL_TO_PYTHON_FRAMES = {
         unit="ns", tz="UTC"
     ),  # Everything is converted to UTC. So far, this did not break
     "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
+    "SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND": np.dtype("<m8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
@@ -178,11 +179,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
     elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
-        offset = pd.tseries.offsets.DateOffset(
-            months=literal_value[0], days=literal_value[1], nanoseconds=literal_value[2]
+        # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
+        return pd.Timedelta(
+            np.timedelta64((literal_value[0] * 30) + literal_value[1], "D")
+            + np.timedelta64(literal_value[2], "ns")
         )
-        td = np.timedelta64(int(offset.delta / np.timedelta64(1, "ns")), "ns")
-        return td
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)
@@ -303,6 +304,9 @@ def cast_column_type(
 def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
     current_type = col.dtype
+
+    if expected_type == "timedelta64[ns]":
+        breakpoint()
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")

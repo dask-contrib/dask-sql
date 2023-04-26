@@ -72,5 +72,6 @@ class RexConverter(Pluggable):
         )
 
         df = plugin_instance.convert(rel, rex, dc, context=context)
+        breakpoint()
         logger.debug(f"Processed REX {rex} into {LoggableDataFrame(df)}")
         return df

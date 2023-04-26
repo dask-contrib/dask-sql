@@ -186,7 +186,6 @@ class RexLiteralPlugin(BaseRexPlugin):
             literal_type = SqlTypeName.TIMESTAMP
             literal_value = np.datetime64(literal_value, numpy_unit)
         else:
-            breakpoint()
             raise RuntimeError(
                 f"Failed to map literal type {literal_type} to python type in literal.py"
             )

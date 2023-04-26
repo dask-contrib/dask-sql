@@ -302,7 +302,7 @@ impl SqlTypeName {
             DataType::Interval(unit) => match unit {
                 IntervalUnit::DayTime => Ok(SqlTypeName::INTERVAL_DAY),
                 IntervalUnit::YearMonth => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
-                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH),
+                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH_DAY_NANOSECOND),
             },
             DataType::Binary => Ok(SqlTypeName::BINARY),
             DataType::FixedSizeBinary(_size) => Ok(SqlTypeName::VARBINARY),
