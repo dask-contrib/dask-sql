@@ -35,3 +35,4 @@ dependencies:
 - tpot
 - tzlocal>=2.1
 - uvicorn>=0.13.4
+- libprotobuf=3

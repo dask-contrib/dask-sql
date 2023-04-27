@@ -217,7 +217,6 @@ def test_aggregations(c):
     GROUP BY user_id
     """
     )
-
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 3],

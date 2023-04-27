@@ -40,7 +40,6 @@ impl DaskSqlOptimizer {
         debug!("Creating new instance of DaskSqlOptimizer");
 
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            // Arc::new(TypeCoercion::new()),
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),

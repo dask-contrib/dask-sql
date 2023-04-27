@@ -60,11 +60,6 @@ jobs:
         with:
           workspaces: dask_planner
           shared-key: test
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -111,11 +106,6 @@ jobs:
         with:
           workspaces: dask_planner
           shared-key: test
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
