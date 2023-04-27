@@ -53,6 +53,11 @@ jobs:
         run: |
           cd dask_planner
           bash update-dependencies.sh
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check workspace in debug mode
         run: |
           cd dask_planner
