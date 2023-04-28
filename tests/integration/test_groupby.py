@@ -652,3 +652,61 @@ def test_groupby_split_every(c):
     assert_eq(split_every_4_df, expected_df, check_index=False)
 
     c.drop_table("split_every_input")
+
+
+@pytest.mark.gpu
+def test_agg_decimal(c):
+    import cudf
+
+    df = cudf.DataFrame(
+        {
+            "a": [1.23, 12.65, 134.64, -34.3, 945.19],
+            "b": [1, 1, 2, 2, 3],
+        }
+    )
+    df["a"] = df["a"].astype(cudf.Decimal64Dtype(10, 2))
+
+    c.create_table("df", df, gpu=True)
+
+    result_df = c.sql(
+        """
+        SELECT
+            SUM(a) as s,
+            COUNT(a) as c,
+            SUM(a+a) as s2
+        FROM
+            df
+        GROUP BY
+            b
+        """
+    )
+
+    expected_df = cudf.DataFrame(
+        {
+            "s": df.groupby("b").sum()["a"],
+            "c": df.groupby("b").count()["a"].astype("int64"),
+            "s2": df.groupby("b").sum()["a"] + df.groupby("b").sum()["a"],
+        }
+    )
+
+    assert_eq(result_df, expected_df.reset_index(drop=True))
+
+    result_df = c.sql(
+        """
+        SELECT
+            MIN(a) as min,
+            MAX(a) as max
+        FROM
+            df
+        """
+    )
+
+    expected_df = cudf.DataFrame(
+        {
+            "min": [df.a.min()],
+            "max": [df.a.max()],
+        }
+    )
+
+    assert_eq(result_df, expected_df)
+    c.drop_table("df")

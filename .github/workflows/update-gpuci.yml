@@ -72,7 +72,7 @@ jobs:
           regex: true
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v5
         # make sure ucx-py nightlies are available and that cuDF/cuML nightly versions match up
         if: |
           env.UCX_PY_VER != env.NEW_UCX_PY_VER &&
