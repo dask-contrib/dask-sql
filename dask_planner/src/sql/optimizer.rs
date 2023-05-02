@@ -99,9 +99,8 @@ impl DaskSqlOptimizer {
     // Create a separate instance of this optimization rule, since we want to ensure that it only
     // runs one time
     pub fn dynamic_partition_pruner() -> Self {
-        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            Arc::new(DynamicPartitionPruning::new()),
-        ];
+        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> =
+            vec![Arc::new(DynamicPartitionPruning::new())];
 
         Self {
             optimizer: Optimizer::with_rules(rule),

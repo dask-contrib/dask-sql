@@ -430,7 +430,7 @@ impl Eq for FloatWrapper {}
 impl Hash for FloatWrapper {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Convert the f64 to a u64 using transmute
-        let bits: u64 = unsafe { std::mem::transmute(self.0) };
+        let bits: u64 = self.0.to_bits();
         // Use the u64's hash implementation
         bits.hash(state);
     }
@@ -571,8 +571,8 @@ fn read_table(
                 }
                 "DOUBLE" => {
                     let r = row.get_double(row_index).ok();
-                    if r.is_some() {
-                        value_set.insert(RowValue::Double(Some(FloatWrapper(r.unwrap()))));
+                    if let Some(f) = r {
+                        value_set.insert(RowValue::Double(Some(FloatWrapper(f))));
                     } else {
                         value_set.insert(RowValue::Double(None));
                     }
@@ -931,8 +931,8 @@ fn format_inlist_expr(
                 list.push(v);
             }
         } else if let RowValue::Double(d) = value {
-            if d.is_some() {
-                let v = Expr::Literal(ScalarValue::Float64(Some(d.unwrap().0)));
+            if let Some(f) = d {
+                let v = Expr::Literal(ScalarValue::Float64(Some(f.0)));
                 list.push(v);
             }
         }
