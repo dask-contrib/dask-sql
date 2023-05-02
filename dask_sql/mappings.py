@@ -1,5 +1,4 @@
 import logging
-from decimal import Decimal
 from typing import Any
 
 import dask.array as da
@@ -153,6 +152,8 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         sql_type == SqlTypeName.DECIMAL
         and dask_config.get("sql.mappings.decimal_support") == "cudf"
     ):
+        from decimal import Decimal
+
         python_type = Decimal
 
     elif sql_type == SqlTypeName.INTERVAL_DAY:
