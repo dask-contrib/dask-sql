@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from dask_planner.rust import DaskTypeMap, SqlTypeName
-from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 try:
     import cudf
@@ -21,8 +20,10 @@ logger = logging.getLogger(__name__)
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
+    pd.Float64Dtype(): SqlTypeName.DOUBLE,
     float: SqlTypeName.FLOAT,
     np.float32: SqlTypeName.FLOAT,
+    pd.Float32Dtype(): SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
     pd.Int64Dtype(): SqlTypeName.BIGINT,
     int: SqlTypeName.INTEGER,
@@ -47,11 +48,6 @@ _PYTHON_TO_SQL = {
     pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
-
-if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-    _PYTHON_TO_SQL.update(
-        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.DOUBLE}
-    )
 
 # Default mapping between SQL types and python types
 # for values
