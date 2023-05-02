@@ -704,9 +704,7 @@ class DatetimeSubOperation(Operation):
         )
         result = subtraction_op(df2, df1)
 
-        # Leaving previous avg_days_in_month for reference. We now assume 30 like DataFusion
-        # avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
-        avg_days_in_month = 30
+        avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
 
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
