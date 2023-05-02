@@ -33,6 +33,12 @@ pub struct PyFilteredResult {
 }
 
 impl PyTableScan {
+    /// Ensures that a valid Expr variant type is present
+    fn _valid_expr_type(expr: &[Expr]) -> bool {
+        expr.iter()
+            .all(|f| matches!(f, Expr::Column(_) | Expr::Literal(_)))
+    }
+
     /// Transform the singular Expr instance into its DNF form serialized in a Vec instance. Possibly recursively expanding
     /// it as well if needed.
     pub fn _expand_dnf_filter(
@@ -46,15 +52,24 @@ impl PyTableScan {
                 list,
                 negated,
             } => {
-                let il: Vec<String> = list.iter().map(|f| f.canonical_name()).collect();
-                let op = if *negated { "not in" } else { "in" };
+                // Only handle simple Expr(s) for InList operations for now
+                if PyTableScan::_valid_expr_type(list) {
+                    let il: Vec<String> = list.iter().map(|f| f.canonical_name()).collect();
+                    let op = if *negated { "not in" } else { "in" };
 
-                // While ANSI SQL would not allow for anything other than a Column or Literal
-                // value in this "identifying" `expr` we explicitly check that here just to be sure.
-                // IF it is something else it is returned to Dask to handle
-                if let Expr::Column(_) | Expr::Literal(_) = **expr {
-                    filter_tuple.push((expr.canonical_name(), op.to_string(), il));
-                    Ok(filter_tuple)
+                    // While ANSI SQL would not allow for anything other than a Column or Literal
+                    // value in this "identifying" `expr` we explicitly check that here just to be sure.
+                    // IF it is something else it is returned to Dask to handle
+                    if let Expr::Column(_) | Expr::Literal(_) = **expr {
+                        filter_tuple.push((expr.canonical_name(), op.to_string(), il));
+                        Ok(filter_tuple)
+                    } else {
+                        let er = DaskPlannerError::InvalidIOFilter(format!(
+                            "Invalid InList Expr type `{}`. using in Dask instead",
+                            filter
+                        ));
+                        Err::<Vec<(String, String, Vec<String>)>, DaskPlannerError>(er)
+                    }
                 } else {
                     let er = DaskPlannerError::InvalidIOFilter(format!(
                         "Invalid identifying column Expr instance `{}`. using in Dask instead",
