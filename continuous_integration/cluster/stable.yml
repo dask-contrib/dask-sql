@@ -1,0 +1,22 @@
+# Docker-compose setup used during tests
+version: '3'
+services:
+    dask-scheduler:
+        container_name: dask-scheduler
+        image: daskdev/dask:dev-py3.9
+        command: dask scheduler
+        ports:
+            - "8786:8786"
+        environment:
+            USE_MAMBA: "true"
+        volumes:
+            - ./environment.yml:/opt/app/environment.yml
+    dask-worker:
+        container_name: dask-worker
+        image: daskdev/dask:dev-py3.9
+        command: dask worker dask-scheduler:8786
+        environment:
+            USE_MAMBA: "true"
+        volumes:
+            - ./environment.yml:/opt/app/environment.yml
+            - /tmp:/tmp
