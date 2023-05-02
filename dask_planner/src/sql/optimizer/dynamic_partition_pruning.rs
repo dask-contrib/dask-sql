@@ -10,6 +10,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    hash::{Hash, Hasher},
 };
 
 use datafusion::parquet::{
@@ -33,11 +34,6 @@ use log::warn;
 use crate::sql::table::DaskTableSource;
 
 // Optimizer rule for dynamic partition pruning
-// General TODOs:
-// - Remove unnecessary `clone()`s and consider using references instead
-// - Check against all queries
-// - BE CAREFUL if there's more than 1 scan of the same table
-
 pub struct DynamicPartitionPruning {}
 
 impl DynamicPartitionPruning {
@@ -175,7 +171,7 @@ impl OptimizerRule for DynamicPartitionPruning {
             // TableScan
             let filter_values = combine_sets(join_values, join_tables, join_fields, fact_tables);
             // Optimize and return the plan
-            parse_and_optimize(plan, filter_values)
+            optimize_table_scans(plan, filter_values)
         }
     }
 }
@@ -425,6 +421,30 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
     aliases
 }
 
+// Wrapper for floats, since they are not hashable
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+struct FloatWrapper(f64);
+
+impl Eq for FloatWrapper {}
+
+impl Hash for FloatWrapper {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Convert the f64 to a u64 using transmute
+        let bits: u64 = unsafe { std::mem::transmute(self.0) };
+        // Use the u64's hash implementation
+        bits.hash(state);
+    }
+}
+
+// Wrapper for possible row value types
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+enum RowValue {
+    String(Option<String>),
+    Int64(Option<i64>),
+    Int32(Option<i32>),
+    Double(Option<FloatWrapper>),
+}
+
 // This function uses the table name, column name, and filters to read in the relevant columns,
 // filter out row values, and construct a HashSet of relevant row values for the specified column,
 // i.e., the column involved in the join
@@ -520,7 +540,15 @@ fn read_table(
                             }
                         }
                     }
-                    _ => panic!("Unknown PhysicalType"),
+                    "DOUBLE" => {
+                        let double_value = row.get_double(row_index);
+                        if let Ok(d) = double_value {
+                            if !satisfies_long(d as i64, filters[index].clone()) {
+                                satisfies_filters = false;
+                            }
+                        }
+                    }
+                    u => panic!("Unknown PhysicalType {u}"),
                 }
                 row_index += 1;
             }
@@ -530,16 +558,24 @@ fn read_table(
         if satisfies_filters {
             match physical_type.as_str() {
                 "BYTE_ARRAY" => {
-                    let r = row.get_string(row_index).unwrap();
-                    value_set.insert(RowValue::String(r.to_string()));
+                    let r = row.get_string(row_index).ok();
+                    value_set.insert(RowValue::String(r.cloned()));
                 }
                 "INT64" => {
-                    let r = row.get_long(row_index).unwrap();
+                    let r = row.get_long(row_index).ok();
                     value_set.insert(RowValue::Int64(r));
                 }
                 "INT32" => {
-                    let r = row.get_int(row_index).unwrap();
+                    let r = row.get_int(row_index).ok();
                     value_set.insert(RowValue::Int32(r));
+                }
+                "DOUBLE" => {
+                    let r = row.get_double(row_index).ok();
+                    if r.is_some() {
+                        value_set.insert(RowValue::Double(Some(FloatWrapper(r.unwrap()))));
+                    } else {
+                        value_set.insert(RowValue::Double(None));
+                    }
                 }
                 _ => panic!("Unknown PhysicalType"),
             }
@@ -680,14 +716,6 @@ fn push_filtered_fields(
     filtered_columns.push(current_field);
 }
 
-// Wrapper for possible row value types
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-enum RowValue {
-    String(String),
-    Int64(i64),
-    Int32(i32),
-}
-
 // Returns a boolean representing whether a string satisfies a given filter
 fn satisfies_string(string_value: &String, filter: Expr) -> bool {
     match filter {
@@ -709,7 +737,7 @@ fn satisfies_string(string_value: &String, filter: Expr) -> bool {
     }
 }
 
-// TODO: Should we have a separate satisfies_int32 function?
+// TODO: Should we have separate satisfies_int32 and satisfies_double functions?
 // Returns a boolean representing whether a long satisfies a given filter
 fn satisfies_long(long_value: i64, filter: Expr) -> bool {
     match filter {
@@ -737,7 +765,11 @@ type RowOptionHashSet = Option<RowHashSet>;
 type RowTuple = (RowOptionHashSet, RowOptionHashSet);
 type RowVec = Vec<RowTuple>;
 
-// TODO: Add comments
+// Given a vector of hashsets to be set as TableScan filters, a vector of tuples representing the
+// tables involved in a join, a vector of tuples representing the columns involved in a join, and
+// a hashset of fact tables in the query; return a hashmap where the key is a tuple of the table
+// and column names, and the value is the hashset representing the INLIST filter specified in the
+// TableScan.
 fn combine_sets(
     join_values: RowVec,
     join_tables: Vec<(String, String)>,
@@ -746,7 +778,9 @@ fn combine_sets(
 ) -> HashMap<(String, String), HashSet<RowValue>> {
     let mut sets: HashMap<(String, String), HashSet<RowValue>> = HashMap::new();
     for i in 0..join_values.len() {
+        // Case when we were able to read in both tables involved in the join
         if let (Some(set1), Some(set2)) = (&join_values[i].0, &join_values[i].1) {
+            // The INLIST vector will be the intersection of both hashsets
             let set_intersection = set1.intersection(set2);
             let mut values = HashSet::new();
             for value in set_intersection {
@@ -754,36 +788,44 @@ fn combine_sets(
             }
 
             let current_table = join_tables[i].0.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].0.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
             }
 
             let current_table = join_tables[i].1.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].1.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
             }
+        // Case when we were only able to read in the left table of the join
         } else if let Some(values) = &join_values[i].0 {
             let current_table = join_tables[i].0.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].0.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
             }
 
             let current_table = join_tables[i].1.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].1.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
             }
+        // Case when we were only able to read in the right table of the join
         } else if let Some(values) = &join_values[i].1 {
             let current_table = join_tables[i].0.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].0.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
             }
 
             let current_table = join_tables[i].1.clone();
+            // We only create INLIST filters for fact tables
             if fact_tables.contains(&current_table) {
                 let current_field = join_fields[i].1.clone();
                 add_to_existing_set(&mut sets, values.clone(), current_table, current_field);
@@ -793,7 +835,9 @@ fn combine_sets(
     sets
 }
 
-// TODO: Add comments
+// Given a mutable hashmap (the hashmap which will eventually be returned by the `combine_sets`
+// function), a hashset of values, a table name, and a column name; insert the hashset of values
+// into the hashmap, where the key is a tuple of the table and column names.
 fn add_to_existing_set(
     sets: &mut HashMap<(String, String), HashSet<RowValue>>,
     values: HashSet<RowValue>,
@@ -802,6 +846,9 @@ fn add_to_existing_set(
 ) {
     let existing_set = sets.get(&(current_table.clone(), current_field.clone()));
     match existing_set {
+        // If the tuple for (current_table, current_field) already exists, then we want to combine
+        // the existing set with the new hashset being inserted; to do this, we take the
+        // intersection of both sets.
         Some(s) => {
             let s = s.clone();
             let v = values.iter().cloned().collect::<HashSet<RowValue>>();
@@ -812,14 +859,18 @@ fn add_to_existing_set(
             }
             sets.insert((current_table, current_field), set_intersection.clone());
         }
+        // If the tuple for (current_table, current_field) does not already exist as a key in the
+        // hashmap, then simply create it and set the hashset as the value
         None => {
             sets.insert((current_table, current_field), values);
         }
     }
 }
 
-// TODO: Add comments
-fn parse_and_optimize(
+// Given a LogicalPlan and a hashmap where the key is a tuple containing a table name and column
+// and the value is a hashset of unique row values, parse the LogicalPlan and insert INLIST filters
+// at the TableScan level.
+fn optimize_table_scans(
     plan: &LogicalPlan,
     filter_values: HashMap<(String, String), HashSet<RowValue>>,
 ) -> Result<Option<LogicalPlan>> {
@@ -853,7 +904,7 @@ fn parse_and_optimize(
     }
 }
 
-// TODO: Add comments
+// Given a hashset of values, a table name, and a column name, return a DataFusion INLIST Expr
 fn format_inlist_expr(
     value_set: HashSet<RowValue>,
     join_table: String,
@@ -862,16 +913,28 @@ fn format_inlist_expr(
     let expr = Box::new(Expr::Column(Column::new(Some(join_table), join_field)));
     let mut list: Vec<Expr> = vec![];
 
+    // Need to correctly format the ScalarValue type
     for value in value_set {
         if let RowValue::String(s) = value {
-            let v = Expr::Literal(ScalarValue::Utf8(Some(s.to_string())));
-            list.push(v);
+            if s.is_some() {
+                let v = Expr::Literal(ScalarValue::Utf8(s));
+                list.push(v);
+            }
         } else if let RowValue::Int64(l) = value {
-            let v = Expr::Literal(ScalarValue::Int64(Some(l)));
-            list.push(v);
+            if l.is_some() {
+                let v = Expr::Literal(ScalarValue::Int64(l));
+                list.push(v);
+            }
         } else if let RowValue::Int32(i) = value {
-            let v = Expr::Literal(ScalarValue::Int32(Some(i)));
-            list.push(v);
+            if i.is_some() {
+                let v = Expr::Literal(ScalarValue::Int32(i));
+                list.push(v);
+            }
+        } else if let RowValue::Double(d) = value {
+            if d.is_some() {
+                let v = Expr::Literal(ScalarValue::Float64(Some(d.unwrap().0)));
+                list.push(v);
+            }
         }
     }
 
@@ -882,18 +945,18 @@ fn format_inlist_expr(
     }
 }
 
-// TODO: Add comments
+// Given a LogicalPlan and the same hashmap as the `optimize_table_scans` function, correctly
+// iterate through the LogicalPlan nodes. Similar to DataFusion's `optimize_children` function, but
+// recurses on the `optimize_table_scans` function instead.
 fn optimize_children(
     plan: &LogicalPlan,
     filter_values: HashMap<(String, String), HashSet<RowValue>>,
 ) -> Result<Option<LogicalPlan>> {
-    // Similar to DataFusion's `optimize_children` function,
-    // but recurses on the `parse_and_optimize` function instead
     let new_exprs = plan.expressions();
     let mut new_inputs = Vec::with_capacity(plan.inputs().len());
     let mut plan_is_changed = false;
     for input in plan.inputs() {
-        let new_input = parse_and_optimize(input, filter_values.clone())?;
+        let new_input = optimize_table_scans(input, filter_values.clone())?;
         plan_is_changed = plan_is_changed || new_input.is_some();
         new_inputs.push(new_input.unwrap_or_else(|| input.clone()))
     }
@@ -903,5 +966,3 @@ fn optimize_children(
         Ok(None)
     }
 }
-
-// TODO: Add Rust tests
