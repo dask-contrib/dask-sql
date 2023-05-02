@@ -177,7 +177,7 @@ mod tests {
 
     use datafusion::arrow::datatypes::{DataType, Field, Schema};
     use datafusion_common::{Result, TableReference};
-    use datafusion_expr::{col, in_list, lit, logical_plan::table_scan, Expr};
+    use datafusion_expr::{col, in_list, lit, logical_plan::table_scan};
 
     use super::PyTableScan;
 
@@ -185,21 +185,19 @@ mod tests {
     fn dnf_inlist() -> Result<()> {
         let schema = Schema::new(vec![Field::new("id", DataType::Int32, false)]);
 
+        let il = in_list(col("id"), vec![lit(1), lit(2), lit(3)], false);
+
         // Dummy logical plan
         let plan = Arc::new(
             table_scan(TableReference::none(), &schema, None)
                 .unwrap()
-                .filter(col("id").eq(Expr::Placeholder {
-                    id: "".into(),
-                    data_type: Some(DataType::Int32),
-                }))
+                .filter(il.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
         );
 
-        let il = in_list(col("id"), vec![lit(1), lit(2), lit(3)], false);
-        let results = PyTableScan::_expand_dnf_filters(&plan, &vec![il]);
+        let results = PyTableScan::_expand_dnf_filters(&plan, &vec![il.clone()]);
 
         assert_eq!(results.io_unfilterable_exprs.len(), 0);
         assert_eq!(results.filtered_exprs.len(), 1);
