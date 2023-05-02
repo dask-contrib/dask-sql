@@ -930,11 +930,9 @@ fn format_inlist_expr(
                 let v = Expr::Literal(ScalarValue::Int32(i));
                 list.push(v);
             }
-        } else if let RowValue::Double(d) = value {
-            if let Some(f) = d {
-                let v = Expr::Literal(ScalarValue::Float64(Some(f.0)));
-                list.push(v);
-            }
+        } else if let RowValue::Double(Some(f)) = value {
+            let v = Expr::Literal(ScalarValue::Float64(Some(f.0)));
+            list.push(v);
         }
     }
 
