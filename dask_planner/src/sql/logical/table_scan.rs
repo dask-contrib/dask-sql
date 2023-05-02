@@ -44,11 +44,24 @@ impl PyTableScan {
             Expr::InList {
                 expr,
                 list,
-                negated: _,
+                negated,
             } => {
                 let il: Vec<String> = list.iter().map(|f| f.canonical_name()).collect();
-                filter_tuple.push((expr.canonical_name(), "in".to_string(), il));
-                Ok(filter_tuple)
+                let op = if *negated { "not in" } else { "in" };
+
+                // While ANSI SQL would not allow for anything other than a Column or Literal
+                // value in this "identifying" `expr` we explicitly check that here just to be sure.
+                // IF it is something else it is returned to Dask to handle
+                if let Expr::Column(_) | Expr::Literal(_) = **expr {
+                    filter_tuple.push((expr.canonical_name(), op.to_string(), il));
+                    Ok(filter_tuple)
+                } else {
+                    let er = DaskPlannerError::InvalidIOFilter(format!(
+                        "Invalid identifying column Expr instance `{}`. using in Dask instead",
+                        filter
+                    ));
+                    Err::<Vec<(String, String, Vec<String>)>, DaskPlannerError>(er)
+                }
             }
             _ => {
                 let er = DaskPlannerError::InvalidIOFilter(format!(
