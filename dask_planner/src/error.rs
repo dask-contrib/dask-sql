@@ -12,6 +12,7 @@ pub enum DaskPlannerError {
     ParserError(ParserError),
     TokenizerError(TokenizerError),
     Internal(String),
+    InvalidIOFilter(String),
 }
 
 impl Display for DaskPlannerError {
@@ -21,6 +22,7 @@ impl Display for DaskPlannerError {
             Self::ParserError(e) => write!(f, "SQL Parser Error: {e}"),
             Self::TokenizerError(e) => write!(f, "SQL Tokenizer Error: {e}"),
             Self::Internal(e) => write!(f, "Internal Error: {e}"),
+            Self::InvalidIOFilter(e) => write!(f, "Invalid pyarrow filter: {e} encountered. Defaulting to Dask CPU/GPU bound task operation"),
         }
     }
 }
