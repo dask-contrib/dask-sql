@@ -1,4 +1,3 @@
-import os
 from time import sleep
 
 import pandas as pd
@@ -6,6 +5,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
+from tests.integration.fixtures import DISTRIBUTED_TESTS
 
 # needed for the testclient
 pytest.importorskip("requests")
@@ -22,8 +22,8 @@ def app_client():
 
     yield TestClient(app)
 
-    # don't disconnect the client if using an independent cluster
-    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
+    # avoid closing client it's session-wide
+    if not DISTRIBUTED_TESTS:
         app.client.close()
 
 
