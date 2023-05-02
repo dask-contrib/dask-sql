@@ -84,13 +84,7 @@ def user_table_inf():
 
 @pytest.fixture()
 def user_table_nan():
-    # Lazy import, otherwise pytest segfaults
-    from dask_sql._compat import INT_NAN_IMPLEMENTED
-
-    if INT_NAN_IMPLEMENTED:
-        return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
-    else:
-        return pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float")
+    return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
 
 
 @pytest.fixture()
