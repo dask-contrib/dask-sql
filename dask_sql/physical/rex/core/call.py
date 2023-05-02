@@ -30,7 +30,6 @@ from dask_sql.utils import (
     is_cudf_type,
     is_datetime,
     is_frame,
-    make_pickable_without_dask_sql,
 )
 
 if TYPE_CHECKING:
@@ -812,7 +811,7 @@ class BaseRandomOperation(Operation):
         state_data = random_state_data(df.npartitions, random_state)
         dsk = {
             (name, i): (
-                make_pickable_without_dask_sql(self.random_function),
+                self.random_function,
                 (df._name, i),
                 np.random.RandomState(state),
                 kwargs,

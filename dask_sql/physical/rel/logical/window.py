@@ -13,11 +13,7 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.utils.sort import sort_partition_func
-from dask_sql.utils import (
-    LoggableDataFrame,
-    make_pickable_without_dask_sql,
-    new_temporary_column,
-)
+from dask_sql.utils import LoggableDataFrame, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
@@ -345,9 +341,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         # TODO: That is a bit of a hack. We should really use the real column dtype
         meta = df._meta.assign(**{col: 0.0 for col in newly_created_columns})
 
-        df = df.groupby(group_columns, dropna=False).apply(
-            make_pickable_without_dask_sql(filled_map), meta=meta
-        )
+        df = df.groupby(group_columns, dropna=False).apply(filled_map, meta=meta)
         logger.debug(
             f"Having created a dataframe {LoggableDataFrame(df)} after windowing. Will now drop {temporary_columns}."
         )
