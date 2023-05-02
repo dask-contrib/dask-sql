@@ -705,6 +705,10 @@ class DatetimeSubOperation(Operation):
         )
         result = subtraction_op(df2, df1)
 
+        # Leaving previous avg_days_in_month for reference. We now assume 30 like DataFusion
+        # avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+        avg_days_in_month = 30
+
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
@@ -721,11 +725,10 @@ class DatetimeSubOperation(Operation):
             return (((result / 1_000_000_000) / 3600) / 24) // 7
         elif unit in {"MONTH", "MONTHS"}:
             day_result = ((result / 1_000_000_000) / 3600) // 24
-            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
             return day_result / avg_days_in_month
         elif unit in {"QUARTER", "QUARTERS"}:
             day_result = ((result / 1_000_000_000) / 3600) // 24
-            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            avg_days_in_quarter = 3 * avg_days_in_month
             return day_result / avg_days_in_quarter
         elif unit in {"YEAR", "YEARS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 365
