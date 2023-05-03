@@ -704,10 +704,6 @@ class DatetimeSubOperation(Operation):
         )
         result = subtraction_op(df2, df1)
 
-        # Leaving for historical context. Previously we computed the avg_days_in_month like this
-        # avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
-        avg_days_in_month = 30
-
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
         elif unit in {"MICROSECOND", "MICROSECONDS"}:
@@ -723,12 +719,9 @@ class DatetimeSubOperation(Operation):
         elif unit in {"WEEK", "WEEKS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 7
         elif unit in {"MONTH", "MONTHS"}:
-            day_result = ((result / 1_000_000_000) / 3600) // 24
-            return day_result / avg_days_in_month
+            return (((result / 1_000_000_000) / 3600) / 24) // 30
         elif unit in {"QUARTER", "QUARTERS"}:
-            day_result = ((result / 1_000_000_000) / 3600) // 24
-            avg_days_in_quarter = 3 * avg_days_in_month
-            return day_result / avg_days_in_quarter
+            return (((result / 1_000_000_000) / 3600) / 24) // 90
         elif unit in {"YEAR", "YEARS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 365
         else:
