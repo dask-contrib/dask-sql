@@ -926,8 +926,8 @@ def test_timestampdiff(c):
             "hours": [46, 6648, 591744],
             "days": [1, 277, 24656],
             "weeks": [0, 39, 3522],
-            "months": [0, 9, 810],
-            "quarters": [0, 3, 270],
+            "months": [0, 9, 821],
+            "quarters": [0, 3, 273],
             "years": [0, 0, 67],
         }
     )
