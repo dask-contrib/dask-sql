@@ -719,9 +719,13 @@ class DatetimeSubOperation(Operation):
         elif unit in {"WEEK", "WEEKS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 7
         elif unit in {"MONTH", "MONTHS"}:
-            return (((result / 1_000_000_000) / 3600) / 24) // 30
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_month = ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_month
         elif unit in {"QUARTER", "QUARTERS"}:
-            return (((result / 1_000_000_000) / 3600) / 24) // 90
+            day_result = ((result / 1_000_000_000) / 3600) // 24
+            avg_days_in_quarter = 3 * ((30 * 4) + 28 + (31 * 7)) / 12
+            return day_result / avg_days_in_quarter
         elif unit in {"YEAR", "YEARS"}:
             return (((result / 1_000_000_000) / 3600) / 24) // 365
         else:
