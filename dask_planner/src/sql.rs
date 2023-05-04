@@ -11,28 +11,34 @@ pub mod types;
 
 use std::{collections::HashMap, sync::Arc};
 
-use datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion_common::{config::ConfigOptions, DFSchema, DataFusionError};
-use datafusion_expr::{
-    logical_plan::Extension,
-    AccumulatorFunctionImplementation,
-    AggregateUDF,
-    LogicalPlan,
-    PlanVisitor,
-    ReturnTypeFunction,
-    ScalarFunctionImplementation,
-    ScalarUDF,
-    Signature,
-    StateTypeFunction,
-    TableSource,
-    TypeSignature,
-    Volatility,
-};
-use datafusion_sql::{
-    parser::Statement as DFStatement,
-    planner::{ContextProvider, SqlToRel},
-    ResolvedTableReference,
-    TableReference,
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, Field, Schema, TimeUnit},
+    datafusion_common::{
+        config::ConfigOptions,
+        tree_node::{TreeNode, TreeNodeVisitor, VisitRecursion},
+        DFSchema,
+        DataFusionError,
+    },
+    datafusion_expr::{
+        logical_plan::Extension,
+        AccumulatorFunctionImplementation,
+        AggregateUDF,
+        LogicalPlan,
+        ReturnTypeFunction,
+        ScalarFunctionImplementation,
+        ScalarUDF,
+        Signature,
+        StateTypeFunction,
+        TableSource,
+        TypeSignature,
+        Volatility,
+    },
+    datafusion_sql::{
+        parser::Statement as DFStatement,
+        planner::{ContextProvider, SqlToRel},
+        ResolvedTableReference,
+        TableReference,
+    },
 };
 use log::{debug, warn};
 use pyo3::prelude::*;
@@ -74,9 +80,9 @@ use crate::{
 /// from SQL using DaskSQLContext.
 ///
 /// ```
-/// use datafusion::prelude::*;
+/// use datafusion_python::datafusion::prelude::*;
 ///
-/// # use datafusion_common::Result;
+/// # use datafusion_python::datafusion_common::Result;
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
 /// let mut ctx = DaskSQLContext::new();
@@ -190,7 +196,10 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "year" => {
-                let sig = generate_signatures(vec![numeric_datatypes]);
+                let sig = Signature::exact(
+                    vec![DataType::Timestamp(TimeUnit::Nanosecond, None)],
+                    Volatility::Immutable,
+                );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
@@ -204,8 +213,18 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampceil" | "timestampfloor" => {
-                let sig = Signature::exact(
-                    vec![DataType::Date64, DataType::Utf8],
+                // let sig = Signature::exact(
+                //     vec![DataType::Timestamp(TimeUnit::Nanosecond, None), DataType::Date64, DataType::Utf8],
+                //     Volatility::Immutable,
+                // );
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Date64, DataType::Utf8]),
+                        TypeSignature::Exact(vec![
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                            DataType::Utf8,
+                        ]),
+                    ],
                     Volatility::Immutable,
                 );
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
@@ -356,7 +375,8 @@ impl ContextProvider for DaskSQLContext {
 
         match name {
             "every" => {
-                let sig = generate_signatures(vec![numeric_datatypes]);
+                // let sig = generate_signatures(vec![DataType::Boolean]);
+                let sig = Signature::exact(vec![DataType::Boolean], Volatility::Immutable);
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Boolean)));
                 return Some(Arc::new(AggregateUDF::new(name, &sig, &rtf, &acc, &st)));
             }
@@ -518,27 +538,30 @@ impl DaskSQLContext {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
         let mut visitor = OptimizablePlanVisitor {};
 
-        match existing_plan.original_plan.accept(&mut visitor) {
+        match existing_plan.original_plan.visit(&mut visitor) {
             Ok(valid) => {
-                if valid {
-                    let optimized_plan = optimizer::DaskSqlOptimizer::new()
-                        .optimize(existing_plan.original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
-                        .map_err(py_optimization_exp);
-                    optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
-                        .optimize_once(optimized_plan.unwrap().original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
-                        .map_err(py_optimization_exp)
-                } else {
-                    // This LogicalPlan does not support Optimization. Return original
-                    warn!("This LogicalPlan does not support Optimization. Returning original");
-                    Ok(existing_plan)
+                match valid {
+                    VisitRecursion::Stop => {
+                        // This LogicalPlan does not support Optimization. Return original
+                        warn!("This LogicalPlan does not support Optimization. Returning original");
+                        Ok(existing_plan)
+                    }
+                    _ => {
+                        let optimized_plan = optimizer::DaskSqlOptimizer::new()
+                            .optimize(existing_plan.original_plan)
+                            .map(|k| PyLogicalPlan {
+                                original_plan: k,
+                                current_node: None,
+                            })
+                            .map_err(py_optimization_exp);
+                        optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                            .optimize_once(optimized_plan.unwrap().original_plan)
+                            .map(|k| PyLogicalPlan {
+                                original_plan: k,
+                                current_node: None,
+                            })
+                            .map_err(py_optimization_exp)
+                    }
                 }
             }
             Err(e) => Err(py_optimization_exp(e)),
@@ -701,19 +724,19 @@ impl DaskSQLContext {
 /// Visits each AST node to determine if the plan is valid for optimization or not
 pub struct OptimizablePlanVisitor;
 
-impl PlanVisitor for OptimizablePlanVisitor {
-    type Error = DataFusionError;
+impl TreeNodeVisitor for OptimizablePlanVisitor {
+    type N = LogicalPlan;
 
-    fn pre_visit(&mut self, plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
+    fn pre_visit(&mut self, plan: &LogicalPlan) -> Result<VisitRecursion, DataFusionError> {
         // If the plan contains an unsupported Node type we flag the plan as un-optimizable here
         match plan {
-            LogicalPlan::Explain(..) => Ok(false),
-            _ => Ok(true),
+            LogicalPlan::Explain(..) => Ok(VisitRecursion::Stop),
+            _ => Ok(VisitRecursion::Continue),
         }
     }
 
-    fn post_visit(&mut self, _plan: &LogicalPlan) -> std::result::Result<bool, DataFusionError> {
-        Ok(true)
+    fn post_visit(&mut self, _plan: &LogicalPlan) -> Result<VisitRecursion, DataFusionError> {
+        Ok(VisitRecursion::Continue)
     }
 }
 
@@ -750,8 +773,10 @@ fn generate_signatures(cartesian_setup: Vec<Vec<DataType>>) -> Signature {
 
 #[cfg(test)]
 mod test {
-    use datafusion::arrow::datatypes::DataType;
-    use datafusion_expr::{Signature, TypeSignature, Volatility};
+    use datafusion_python::{
+        datafusion::arrow::datatypes::DataType,
+        datafusion_expr::{Signature, TypeSignature, Volatility},
+    };
 
     use crate::sql::generate_signatures;
 

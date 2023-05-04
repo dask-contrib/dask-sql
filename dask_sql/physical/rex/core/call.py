@@ -30,7 +30,6 @@ from dask_sql.utils import (
     is_cudf_type,
     is_datetime,
     is_frame,
-    make_pickable_without_dask_sql,
 )
 
 if TYPE_CHECKING:
@@ -243,13 +242,18 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        output_type = str(rex.getType())
-        sql_type = SqlTypeName.fromString(output_type.upper())
+        output_type = rex.getType()
+        sql_type = SqlTypeName.fromString(output_type)
+        sql_type_args = ()
+
+        # decimal datatypes require precision and scale
+        if output_type == "DECIMAL":
+            sql_type_args = rex.getPrecisionScale()
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
 
-        python_type = sql_to_python_type(sql_type)
+        python_type = sql_to_python_type(sql_type, *sql_type_args)
 
         return_column = cast_column_to_type(operand, python_type)
 
@@ -804,7 +808,7 @@ class BaseRandomOperation(Operation):
         state_data = random_state_data(df.npartitions, random_state)
         dsk = {
             (name, i): (
-                make_pickable_without_dask_sql(self.random_function),
+                self.random_function,
                 (df._name, i),
                 np.random.RandomState(state),
                 kwargs,

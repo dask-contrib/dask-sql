@@ -1,33 +1,26 @@
 use std::sync::Arc;
 
-use datafusion_common::DataFusionError;
-use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::{
-    // common_subexpr_eliminate::CommonSubexprEliminate,
-    decorrelate_where_exists::DecorrelateWhereExists,
-    decorrelate_where_in::DecorrelateWhereIn,
-    eliminate_cross_join::EliminateCrossJoin,
-    // eliminate_duplicated_expr::EliminateDuplicatedExpr,
-    // eliminate_filter::EliminateFilter,
-    eliminate_limit::EliminateLimit,
-    eliminate_outer_join::EliminateOuterJoin,
-    eliminate_project::EliminateProjection,
-    // extract_equijoin_predicate::ExtractEquijoinPredicate,
-    filter_null_join_keys::FilterNullJoinKeys,
-    // merge_projection::MergeProjection,
-    optimizer::{Optimizer, OptimizerRule},
-    // propagate_empty_relation::PropagateEmptyRelation,
-    push_down_filter::PushDownFilter,
-    push_down_limit::PushDownLimit,
-    push_down_projection::PushDownProjection,
-    // replace_distinct_aggregate::ReplaceDistinctWithAggregate,
-    rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
-    scalar_subquery_to_join::ScalarSubqueryToJoin,
-    simplify_expressions::SimplifyExpressions,
-    // single_distinct_to_groupby::SingleDistinctToGroupBy,
-    type_coercion::TypeCoercion,
-    unwrap_cast_in_comparison::UnwrapCastInComparison,
-    OptimizerContext,
+use datafusion_python::{
+    datafusion_common::DataFusionError,
+    datafusion_expr::LogicalPlan,
+    datafusion_optimizer::{
+        decorrelate_where_exists::DecorrelateWhereExists,
+        decorrelate_where_in::DecorrelateWhereIn,
+        eliminate_cross_join::EliminateCrossJoin,
+        eliminate_limit::EliminateLimit,
+        eliminate_outer_join::EliminateOuterJoin,
+        eliminate_project::EliminateProjection,
+        filter_null_join_keys::FilterNullJoinKeys,
+        optimizer::{Optimizer, OptimizerRule},
+        push_down_filter::PushDownFilter,
+        push_down_limit::PushDownLimit,
+        push_down_projection::PushDownProjection,
+        rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
+        scalar_subquery_to_join::ScalarSubqueryToJoin,
+        simplify_expressions::SimplifyExpressions,
+        unwrap_cast_in_comparison::UnwrapCastInComparison,
+        OptimizerContext,
+    },
 };
 use log::{debug, trace};
 
@@ -48,8 +41,8 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         debug!("Creating new instance of DaskSqlOptimizer");
+
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            Arc::new(TypeCoercion::new()),
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
@@ -135,13 +128,15 @@ impl DaskSqlOptimizer {
 mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
-    use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
-    use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
-    use datafusion_sql::{
-        planner::{ContextProvider, SqlToRel},
-        sqlparser::{ast::Statement, parser::Parser},
-        TableReference,
+    use datafusion_python::{
+        datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef},
+        datafusion_common::{config::ConfigOptions, DataFusionError, Result},
+        datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource},
+        datafusion_sql::{
+            planner::{ContextProvider, SqlToRel},
+            sqlparser::{ast::Statement, parser::Parser},
+            TableReference,
+        },
     };
 
     use crate::{dialect::DaskDialect, sql::optimizer::DaskSqlOptimizer};
@@ -206,7 +201,7 @@ mod tests {
         fn get_table_provider(
             &self,
             name: TableReference,
-        ) -> datafusion_common::Result<Arc<dyn TableSource>> {
+        ) -> datafusion_python::datafusion_common::Result<Arc<dyn TableSource>> {
             let table_name = name.table();
             if table_name.starts_with("test") {
                 let schema = Schema::new_with_metadata(

@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
-use datafusion_common::DFSchema;
-use datafusion_expr::{logical_plan::TableScan, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::DFSchema,
+    datafusion_expr::{logical_plan::TableScan, LogicalPlan},
+};
 use pyo3::prelude::*;
 
 use crate::{

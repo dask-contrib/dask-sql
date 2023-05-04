@@ -16,9 +16,6 @@ dependencies:
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
-# TODO: remove once py is added to pytest downstream libraries
-# https://github.com/pytest-dev/pytest-xdist/issues/832
-- py
 - psycopg2
 - pyarrow>=6.0.1
 - pygments>=2.7.1
@@ -35,3 +32,4 @@ dependencies:
 - tpot
 - tzlocal>=2.1
 - uvicorn>=0.13.4
+- libprotobuf=3

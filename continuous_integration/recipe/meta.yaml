@@ -28,6 +28,7 @@ requirements:
     - pip
     - python
     - setuptools-rust >=1.5.2
+    - libprotobuf =3
   run:
     - python
     - dask >=2022.3.0

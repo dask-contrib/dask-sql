@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import Any
 
 import dask.array as da
@@ -7,15 +8,22 @@ import numpy as np
 import pandas as pd
 
 from dask_planner.rust import DaskTypeMap, SqlTypeName
-from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 
 logger = logging.getLogger(__name__)
+
 
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
+    pd.Float64Dtype(): SqlTypeName.DOUBLE,
     float: SqlTypeName.FLOAT,
     np.float32: SqlTypeName.FLOAT,
+    pd.Float32Dtype(): SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
     pd.Int64Dtype(): SqlTypeName.BIGINT,
     int: SqlTypeName.INTEGER,
@@ -41,17 +49,12 @@ _PYTHON_TO_SQL = {
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
-if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-    _PYTHON_TO_SQL.update(
-        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.DOUBLE}
-    )
-
 # Default mapping between SQL types and python types
 # for values
 _SQL_TO_PYTHON_SCALARS = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float32,
+    "SqlTypeName.DECIMAL": Decimal,
     "SqlTypeName.BIGINT": np.int64,
     "SqlTypeName.INTEGER": np.int32,
     "SqlTypeName.SMALLINT": np.int16,
@@ -68,7 +71,8 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
+    # a column of Decimals in pandas is `object`, but cuDF has a dedicated dtype
+    "SqlTypeName.DECIMAL": object if not cudf else cudf.Decimal128Dtype(38, 10),
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
@@ -85,6 +89,7 @@ _SQL_TO_PYTHON_FRAMES = {
         unit="ns", tz="UTC"
     ),  # Everything is converted to UTC. So far, this did not break
     "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
+    "SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND": np.dtype("<m8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
@@ -105,6 +110,13 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
             SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
             unit=str(python_type.unit),
             tz=str(python_type.tz),
+        )
+
+    if is_decimal(python_type):
+        return DaskTypeMap(
+            SqlTypeName.DECIMAL,
+            precision=python_type.precision,
+            scale=python_type.scale,
         )
 
     try:
@@ -162,6 +174,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
+    elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
+        # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
+        return np.timedelta64(
+            (literal_value[0] * 30) + literal_value[1], "D"
+        ) + np.timedelta64(literal_value[2], "ns")
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)
@@ -179,10 +196,6 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         if sql_type == SqlTypeName.DATE:
             return literal_value.astype("<M8[D]")
         return literal_value.astype("<M8[ns]")
-    elif sql_type == SqlTypeName.DECIMAL:
-        # We use np.float64 always, even though we might
-        # be able to use a smaller type
-        python_type = np.float64
     else:
         try:
             python_type = _SQL_TO_PYTHON_SCALARS[str(sql_type)]
@@ -203,9 +216,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     return python_type(literal_value)
 
 
-def sql_to_python_type(sql_type: "SqlTypeName") -> type:
+def sql_to_python_type(sql_type: "SqlTypeName", *args) -> type:
     """Turn an SQL type into a dataframe dtype"""
     try:
+        if str(sql_type) == "SqlTypeName.DECIMAL":
+            return cudf.Decimal128Dtype(*args)
         return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
     except KeyError:  # pragma: no cover
         raise NotImplementedError(
@@ -239,15 +254,20 @@ def similar_type(lhs: type, rhs: type) -> bool:
         is_sint,
         is_float,
         is_object,
-        is_string,
+        # is_string_dtype considers decimal columns to be string columns
+        lambda x: is_string(x) and not is_decimal(x),
         is_dt_tz,
         is_dt_ntz,
         is_td_ns,
         is_bool,
+        is_decimal,
     ]
 
     for check in checks:
         if check(lhs) and check(rhs):
+            # check that decimal columns have equal precision/scale
+            if check is is_decimal:
+                return lhs.precision == rhs.precision and lhs.scale == rhs.scale
             return True
 
     return False
@@ -298,3 +318,10 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)
+
+
+def is_decimal(dtype):
+    """
+    Check if dtype is a decimal type
+    """
+    return "decimal" in str(dtype).lower()

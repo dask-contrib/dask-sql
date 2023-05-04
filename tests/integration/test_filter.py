@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -52,11 +51,8 @@ def test_filter_complicated(c, df):
 
 def test_filter_with_nan(c):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
+    expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
 
-    if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
-    else:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_eq(
         return_df,
         expected_df,
@@ -253,3 +249,51 @@ def test_filtered_csv(tmpdir, c):
     expected_df = df[df["b"] < 10]
 
     assert_eq(return_df, expected_df)
+
+
+@pytest.mark.gpu
+def test_filter_decimal(c):
+    import cudf
+
+    df = cudf.DataFrame(
+        {
+            "a": [304.5, 35.305, 9.043, 102.424, 53.34],
+            "b": [2.2, 82.4, 42, 76.9, 54.4],
+            "c": [1, 2, 2, 5, 9],
+        }
+    )
+    df["a"] = df["a"].astype(cudf.Decimal64Dtype(12, 3))
+    df["b"] = df["b"].astype(cudf.Decimal64Dtype(7, 1))
+    c.create_table("df", df)
+
+    result_df = c.sql(
+        """
+        SELECT
+            c
+        FROM
+            df
+        WHERE
+            a < b
+        """
+    )
+
+    expected_df = df.loc[df.a < df.b][["c"]]
+
+    assert_eq(result_df, expected_df)
+
+    result_df = c.sql(
+        """
+        SELECT
+            b
+        FROM
+            df
+        WHERE
+            a < decimal '100.2'
+        """
+    )
+
+    expected_df = cudf.DataFrame({"b": [82.4, 42, 54.4]})
+    expected_df["b"] = expected_df["b"].astype(cudf.Decimal64Dtype(7, 1))
+
+    assert_eq(result_df.reset_index(drop=True), expected_df)
+    c.drop_table("df")

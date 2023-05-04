@@ -21,8 +21,11 @@ except ImportError:
     dask_cudf = None
     LocalCUDACluster = None
 
-# check if we want to connect to an independent cluster
-SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
+# check if we want to run tests on a distributed client
+DISTRIBUTED_TESTS = os.getenv("DASK_SQL_DISTRIBUTED_TESTS", "False").lower() in (
+    "true",
+    "1",
+)
 
 
 @pytest.fixture()
@@ -81,13 +84,7 @@ def user_table_inf():
 
 @pytest.fixture()
 def user_table_nan():
-    # Lazy import, otherwise pytest segfaults
-    from dask_sql._compat import INT_NAN_IMPLEMENTED
-
-    if INT_NAN_IMPLEMENTED:
-        return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
-    else:
-        return pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float")
+    return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
 
 
 @pytest.fixture()
@@ -349,23 +346,14 @@ def gpu_client(request):
             with Client(cluster) as client:
                 yield client
     else:
-        with Client(address=SCHEDULER_ADDR) as client:
+        with Client() as client:
             yield client
 
 
-# if connecting to an independent cluster, use a session-wide
-# client for all computations. otherwise, only connect to a client
-# when specified.
+# use session-wide distributed client if specified otherwise default to standard fixture
 @pytest.fixture(
-    scope="function",
-    autouse=False if SCHEDULER_ADDR is None else True,
+    scope="session" if DISTRIBUTED_TESTS else "function", autouse=DISTRIBUTED_TESTS
 )
 def client():
-    with Client(address=SCHEDULER_ADDR) as client:
+    with Client() as client:
         yield client
-
-
-xfail_if_external_scheduler = pytest.mark.xfail(
-    condition=os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)

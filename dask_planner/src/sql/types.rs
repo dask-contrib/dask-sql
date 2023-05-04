@@ -1,11 +1,13 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
+    datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
+};
 use pyo3::{prelude::*, types::PyDict};
 
-use crate::{dialect::DaskDialect, error::DaskPlannerError};
+use crate::{dialect::DaskDialect, error::DaskPlannerError, sql::exceptions::py_type_err};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[pyclass(name = "RexType", module = "datafusion")]
@@ -111,6 +113,29 @@ impl DaskTypeMap {
                 };
                 DataType::Timestamp(unit, tz)
             }
+            SqlTypeName::DECIMAL => {
+                let (precision, scale) = match py_kwargs {
+                    Some(dict) => {
+                        let precision: u8 = match dict.get_item("precision") {
+                            Some(e) => {
+                                let res: PyResult<u8> = e.extract();
+                                res.unwrap()
+                            }
+                            None => 38,
+                        };
+                        let scale: i8 = match dict.get_item("scale") {
+                            Some(e) => {
+                                let res: PyResult<i8> = e.extract();
+                                res.unwrap()
+                            }
+                            None => 0,
+                        };
+                        (precision, scale)
+                    }
+                    None => (38, 10),
+                };
+                DataType::Decimal128(precision, scale)
+            }
             _ => sql_type.to_arrow()?,
         };
 
@@ -139,6 +164,25 @@ impl DaskTypeMap {
 #[pyclass(name = "PyDataType", module = "datafusion", subclass)]
 pub struct PyDataType {
     data_type: DataType,
+}
+
+#[pymethods]
+impl PyDataType {
+    /// Gets the precision/scale represented by the PyDataType's decimal datatype
+    #[pyo3(name = "getPrecisionScale")]
+    pub fn get_precision_scale(&self) -> PyResult<(u8, i8)> {
+        Ok(match &self.data_type {
+            DataType::Decimal128(precision, scale) | DataType::Decimal256(precision, scale) => {
+                (*precision, *scale)
+            }
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_precision_scale, {:?}",
+                    &self.data_type
+                )))
+            }
+        })
+    }
 }
 
 impl From<PyDataType> for DataType {
@@ -189,6 +233,7 @@ pub enum SqlTypeName {
     INTERVAL_MINUTE,
     INTERVAL_MINUTE_SECOND,
     INTERVAL_MONTH,
+    INTERVAL_MONTH_DAY_NANOSECOND,
     INTERVAL_SECOND,
     INTERVAL_YEAR,
     INTERVAL_YEAR_MONTH,
@@ -257,7 +302,7 @@ impl SqlTypeName {
             DataType::Interval(unit) => match unit {
                 IntervalUnit::DayTime => Ok(SqlTypeName::INTERVAL_DAY),
                 IntervalUnit::YearMonth => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
-                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH),
+                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH_DAY_NANOSECOND),
             },
             DataType::Binary => Ok(SqlTypeName::BINARY),
             DataType::FixedSizeBinary(_size) => Ok(SqlTypeName::VARBINARY),
