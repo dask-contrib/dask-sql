@@ -1,4 +1,4 @@
-use datafusion_expr::logical_plan::{EmptyRelation, LogicalPlan};
+use datafusion_python::datafusion_expr::logical_plan::{EmptyRelation, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;

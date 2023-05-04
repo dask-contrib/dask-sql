@@ -1,4 +1,4 @@
-use datafusion_expr::{
+use datafusion_python::datafusion_expr::{
     expr::AggregateFunction,
     logical_plan::{Aggregate, Distinct},
     Expr,
