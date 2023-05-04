@@ -15,14 +15,16 @@ try:
 except ImportError:
     LocalCUDACluster = None
 
-# check if we want to connect to an independent cluster
-SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
+# check if we want to run tests on a distributed client
+DISTRIBUTED_TESTS = os.getenv("DASK_SQL_DISTRIBUTED_TESTS", "False").lower() in (
+    "true",
+    "1",
+)
 
 
 @pytest.fixture(params=[False, pytest.param(True, marks=pytest.mark.gpu)])
 def c(request, tmpdir):
     # Lazy import, otherwise the pytest framework has problems
-    from dask_sql._compat import INT_NAN_IMPLEMENTED
     from dask_sql.context import Context
 
     np.random.seed(42)
@@ -51,9 +53,7 @@ def c(request, tmpdir):
         "user_table_2": pd.DataFrame({"user_id": [1, 1, 2, 4], "c": [1, 2, 3, 4]}),
         "long_table": pd.DataFrame({"a": [0] * 100 + [1] * 101 + [2] * 103}),
         "user_table_inf": pd.DataFrame({"c": [3, float("inf"), 1]}),
-        "user_table_nan": pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
-        if INT_NAN_IMPLEMENTED
-        else pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float"),
+        "user_table_nan": pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8"),
         "string_table": pd.DataFrame(
             {
                 "a": [
@@ -281,23 +281,14 @@ def gpu_client(request):
             with Client(cluster) as client:
                 yield client
     else:
-        with Client(address=SCHEDULER_ADDR) as client:
+        with Client() as client:
             yield client
 
 
-# if connecting to an independent cluster, use a session-wide
-# client for all computations. otherwise, only connect to a client
-# when specified.
+# use session-wide distributed client if specified otherwise default to standard fixture
 @pytest.fixture(
-    scope="function",
-    autouse=False if SCHEDULER_ADDR is None else True,
+    scope="session" if DISTRIBUTED_TESTS else "function", autouse=DISTRIBUTED_TESTS
 )
 def client():
-    with Client(address=SCHEDULER_ADDR) as client:
+    with Client() as client:
         yield client
-
-
-xfail_if_external_scheduler = pytest.mark.xfail(
-    condition=os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)

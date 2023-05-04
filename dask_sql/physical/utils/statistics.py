@@ -16,8 +16,6 @@ from dask.delayed import delayed
 from dask.layers import DataFrameIOLayer
 from dask.utils_test import hlg_layer
 
-from dask_sql.utils import make_pickable_without_dask_sql
-
 logger = logging.getLogger(__name__)
 
 
@@ -145,7 +143,6 @@ def parquet_statistics(
         return _read_partition_stats_group(parts, fs, engine, columns=columns)
 
 
-@make_pickable_without_dask_sql
 def _read_partition_stats_group(parts, fs, engine, columns=None):
     def _read_partition_stats(part, fs, columns=None):
         # Helper function to read Parquet-metadata
