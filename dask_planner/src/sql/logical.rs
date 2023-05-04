@@ -36,8 +36,10 @@ pub mod use_schema;
 pub mod values;
 pub mod window;
 
-use datafusion_common::{DFSchemaRef, DataFusionError};
-use datafusion_expr::LogicalPlan;
+use datafusion_python::{
+    datafusion_common::{DFSchemaRef, DataFusionError},
+    datafusion_expr::LogicalPlan,
+};
 use pyo3::prelude::*;
 
 use self::{
@@ -333,7 +335,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
-            LogicalPlan::SetVariable(_) => "SetVariable",
+            LogicalPlan::Statement(_) => "Statement",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
                 let node = extension.node.as_any();

@@ -1,7 +1,9 @@
 use std::fmt;
 
-use datafusion_common::{DFField, DFSchema};
-use datafusion_sql::TableReference;
+use datafusion_python::{
+    datafusion_common::{DFField, DFSchema},
+    datafusion_sql::TableReference,
+};
 use pyo3::prelude::*;
 
 use crate::{

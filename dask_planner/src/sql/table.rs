@@ -1,11 +1,13 @@
 use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
-use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-use datafusion_common::DFField;
-use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
-use datafusion_optimizer::utils::split_conjunction;
-use datafusion_sql::TableReference;
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, Field, SchemaRef},
+    datafusion_common::DFField,
+    datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
+    datafusion_optimizer::utils::split_conjunction,
+    datafusion_sql::TableReference,
+};
 use pyo3::prelude::*;
 
 use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
@@ -69,7 +71,7 @@ impl TableSource for DaskTableSource {
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
-    ) -> datafusion_common::Result<TableProviderFilterPushDown> {
+    ) -> datafusion_python::datafusion_common::Result<TableProviderFilterPushDown> {
         let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
             // Push down filters to the tablescan operation if all are supported
