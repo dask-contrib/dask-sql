@@ -5,11 +5,13 @@ use std::{
     sync::Arc,
 };
 
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{
-    logical_plan::{Extension, UserDefinedLogicalNode},
-    Expr,
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_common::{DFSchema, DFSchemaRef},
+    datafusion_expr::{
+        logical_plan::{Extension, UserDefinedLogicalNode},
+        Expr,
+        LogicalPlan,
+    },
 };
 use fmt::Debug;
 use pyo3::prelude::*;

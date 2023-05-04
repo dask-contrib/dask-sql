@@ -1,8 +1,10 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
-use datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer};
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
+    datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
+};
 use pyo3::{prelude::*, types::PyDict};
 
 use crate::{dialect::DaskDialect, error::DaskPlannerError, sql::exceptions::py_type_err};
@@ -231,6 +233,7 @@ pub enum SqlTypeName {
     INTERVAL_MINUTE,
     INTERVAL_MINUTE_SECOND,
     INTERVAL_MONTH,
+    INTERVAL_MONTH_DAY_NANOSECOND,
     INTERVAL_SECOND,
     INTERVAL_YEAR,
     INTERVAL_YEAR_MONTH,
@@ -299,7 +302,7 @@ impl SqlTypeName {
             DataType::Interval(unit) => match unit {
                 IntervalUnit::DayTime => Ok(SqlTypeName::INTERVAL_DAY),
                 IntervalUnit::YearMonth => Ok(SqlTypeName::INTERVAL_YEAR_MONTH),
-                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH),
+                IntervalUnit::MonthDayNano => Ok(SqlTypeName::INTERVAL_MONTH_DAY_NANOSECOND),
             },
             DataType::Binary => Ok(SqlTypeName::BINARY),
             DataType::FixedSizeBinary(_size) => Ok(SqlTypeName::VARBINARY),

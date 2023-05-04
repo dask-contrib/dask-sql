@@ -1,4 +1,4 @@
-use datafusion_expr::{logical_plan::Sort, LogicalPlan};
+use datafusion_python::datafusion_expr::{logical_plan::Sort, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{

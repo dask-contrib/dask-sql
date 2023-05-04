@@ -1,4 +1,4 @@
-use datafusion_expr::{
+use datafusion_python::datafusion_expr::{
     logical_plan::{CreateMemoryTable, CreateView},
     LogicalPlan,
 };

@@ -4,7 +4,7 @@
 
 use std::collections::VecDeque;
 
-use datafusion_sql::sqlparser::{
+use datafusion_python::datafusion_sql::sqlparser::{
     ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
     dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
