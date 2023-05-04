@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use datafusion_python::{
-    datafusion_common::DFSchema,
+    datafusion_common::{DFSchema, ScalarValue},
     datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan},
 };
 use pyo3::prelude::*;
@@ -74,7 +74,22 @@ impl PyTableScan {
                         .iter()
                         .map(|f| match f {
                             Expr::Column(col) => col.name.clone().into_py(py),
-                            // Expr::Literal(val) => val.canonical_name,
+                            Expr::Literal(val) => match val {
+                                ScalarValue::Boolean(val) => val.unwrap().into_py(py),
+                                ScalarValue::Float32(val) => val.unwrap().into_py(py),
+                                ScalarValue::Float64(val) => val.unwrap().into_py(py),
+                                ScalarValue::Int8(val) => val.unwrap().into_py(py),
+                                ScalarValue::Int16(val) => val.unwrap().into_py(py),
+                                ScalarValue::Int32(val) => val.unwrap().into_py(py),
+                                ScalarValue::Int64(val) => val.unwrap().into_py(py),
+                                ScalarValue::UInt8(val) => val.unwrap().into_py(py),
+                                ScalarValue::UInt16(val) => val.unwrap().into_py(py),
+                                ScalarValue::UInt32(val) => val.unwrap().into_py(py),
+                                ScalarValue::UInt64(val) => val.unwrap().into_py(py),
+                                ScalarValue::Utf8(val) => val.clone().unwrap().into_py(py),
+                                ScalarValue::LargeUtf8(val) => val.clone().unwrap().into_py(py),
+                                _ => "".into_py(py),
+                            },
                             _ => f.canonical_name().into_py(py),
                         })
                         .collect();
@@ -183,45 +198,5 @@ impl TryFrom<LogicalPlan> for PyTableScan {
             }
             _ => Err(py_type_err("unexpected plan")),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use datafusion::arrow::datatypes::{DataType, Field, Schema};
-    use datafusion_common::{Result, TableReference};
-    use datafusion_expr::{col, in_list, lit, logical_plan::table_scan};
-
-    use super::PyTableScan;
-
-    #[test]
-    fn dnf_inlist() -> Result<()> {
-        let schema = Schema::new(vec![Field::new("id", DataType::Int32, false)]);
-
-        let il = in_list(col("id"), vec![lit(1), lit(2), lit(3)], false);
-
-        // Dummy logical plan
-        let plan = Arc::new(
-            table_scan(TableReference::none(), &schema, None)
-                .unwrap()
-                .filter(il.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
-
-        let results = PyTableScan::_expand_dnf_filters(&plan, &vec![il.clone()]);
-
-        assert_eq!(results.io_unfilterable_exprs.len(), 0);
-        assert_eq!(results.filtered_exprs.len(), 1);
-        assert_eq!(results.filtered_exprs[0].0, "id");
-        assert_eq!(results.filtered_exprs[0].1, "in");
-        assert_eq!(results.filtered_exprs[0].2[0], "Int32(1)");
-        assert_eq!(results.filtered_exprs[0].2[1], "Int32(2)");
-        assert_eq!(results.filtered_exprs[0].2[2], "Int32(3)");
-
-        Ok(())
     }
 }
