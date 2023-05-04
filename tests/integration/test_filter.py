@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -52,11 +51,8 @@ def test_filter_complicated(c, df):
 
 def test_filter_with_nan(c):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
+    expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
 
-    if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
-    else:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_eq(
         return_df,
         expected_df,

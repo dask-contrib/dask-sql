@@ -3,7 +3,6 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from tests.integration.fixtures import xfail_if_external_scheduler
 from tests.utils import assert_eq
 
 fugue_sql = pytest.importorskip("fugue_sql")
@@ -41,9 +40,6 @@ def test_fugue_fsql(client):
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
 
-# TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
-# discussion in https://github.com/dask-contrib/dask-sql/issues/407
-@xfail_if_external_scheduler
 @pytest.mark.flaky(reruns=4, condition="sys.version_info < (3, 9)")
 def test_dask_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:

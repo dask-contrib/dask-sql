@@ -17,8 +17,6 @@ from sklearn.metrics import check_scoring as sklearn_check_scoring
 from sklearn.metrics import make_scorer
 from sklearn.utils.validation import check_is_fitted
 
-from dask_sql.utils import make_pickable_without_dask_sql
-
 try:
     import sklearn.base
     import sklearn.metrics
@@ -597,7 +595,6 @@ def handle_empty_partitions(output_meta):
         return output_meta.iloc[:0, :]
 
 
-@make_pickable_without_dask_sql
 def _predict(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
@@ -606,7 +603,6 @@ def _predict(part, estimator, output_meta=None):
     return estimator.predict(part)
 
 
-@make_pickable_without_dask_sql
 def _predict_proba(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
@@ -615,7 +611,6 @@ def _predict_proba(part, estimator, output_meta=None):
     return estimator.predict_proba(part)
 
 
-@make_pickable_without_dask_sql
 def _transform(part, estimator, output_meta=None):
     if part.shape[0] == 0 and output_meta is not None:
         empty_output = handle_empty_partitions(output_meta)
