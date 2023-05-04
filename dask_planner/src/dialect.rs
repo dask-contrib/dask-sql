@@ -1,6 +1,6 @@
 use core::{iter::Peekable, str::Chars};
 
-use datafusion_sql::sqlparser::{
+use datafusion_python::datafusion_sql::sqlparser::{
     ast::{Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value},
     dialect::Dialect,
     keywords::Keyword,
