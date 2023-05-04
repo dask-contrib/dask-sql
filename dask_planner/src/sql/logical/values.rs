@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use datafusion_expr::{logical_plan::Values, LogicalPlan};
+use datafusion_python::datafusion_expr::{logical_plan::Values, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{
