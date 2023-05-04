@@ -13,22 +13,24 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use datafusion::parquet::{
-    basic::Type as BasicType,
-    file::reader::{FileReader, SerializedFileReader},
-    record::{reader::RowIter, RowAccessor},
-    schema::{parser::parse_message_type, types::Type},
+use datafusion_python::{
+    datafusion::parquet::{
+        basic::Type as BasicType,
+        file::reader::{FileReader, SerializedFileReader},
+        record::{reader::RowIter, RowAccessor},
+        schema::{parser::parse_message_type, types::Type},
+    },
+    datafusion_common::{Column, Result, ScalarValue},
+    datafusion_expr::{
+        logical_plan::LogicalPlan,
+        utils::from_plan,
+        Expr,
+        JoinType,
+        Operator,
+        TableScan,
+    },
+    datafusion_optimizer::{OptimizerConfig, OptimizerRule},
 };
-use datafusion_common::{Column, Result, ScalarValue};
-use datafusion_expr::{
-    logical_plan::LogicalPlan,
-    utils::from_plan,
-    Expr,
-    JoinType,
-    Operator,
-    TableScan,
-};
-use datafusion_optimizer::{OptimizerConfig, OptimizerRule};
 use log::warn;
 
 use crate::sql::table::DaskTableSource;
