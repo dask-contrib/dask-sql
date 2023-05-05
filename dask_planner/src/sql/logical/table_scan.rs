@@ -62,6 +62,7 @@ impl PyTableScan {
                     // IF it is something else it is returned to Dask to handle
                     let ident = match *expr.clone() {
                         Expr::Column(col) => Ok(col.name),
+                        Expr::Alias(_, name) => Ok(name),
                         Expr::Literal(val) => Ok(format!("{}", val)),
                         _ => Err(DaskPlannerError::InvalidIOFilter(format!(
                             "Invalid InList Expr type `{}`. using in Dask instead",
@@ -70,31 +71,39 @@ impl PyTableScan {
                     };
 
                     let op = if *negated { "not in" } else { "in" };
-                    let il: Vec<PyObject> = list
+                    let il: Result<Vec<PyObject>, DaskPlannerError> = list
                         .iter()
                         .map(|f| match f {
-                            Expr::Column(col) => col.name.clone().into_py(py),
+                            Expr::Column(col) => Ok(col.name.clone().into_py(py)),
+                            Expr::Alias(_, name) => Ok(name.clone().into_py(py)),
                             Expr::Literal(val) => match val {
-                                ScalarValue::Boolean(val) => val.unwrap().into_py(py),
-                                ScalarValue::Float32(val) => val.unwrap().into_py(py),
-                                ScalarValue::Float64(val) => val.unwrap().into_py(py),
-                                ScalarValue::Int8(val) => val.unwrap().into_py(py),
-                                ScalarValue::Int16(val) => val.unwrap().into_py(py),
-                                ScalarValue::Int32(val) => val.unwrap().into_py(py),
-                                ScalarValue::Int64(val) => val.unwrap().into_py(py),
-                                ScalarValue::UInt8(val) => val.unwrap().into_py(py),
-                                ScalarValue::UInt16(val) => val.unwrap().into_py(py),
-                                ScalarValue::UInt32(val) => val.unwrap().into_py(py),
-                                ScalarValue::UInt64(val) => val.unwrap().into_py(py),
-                                ScalarValue::Utf8(val) => val.clone().unwrap().into_py(py),
-                                ScalarValue::LargeUtf8(val) => val.clone().unwrap().into_py(py),
-                                _ => "".into_py(py),
+                                ScalarValue::Boolean(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Float32(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Float64(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Int8(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Int16(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Int32(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Int64(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::UInt8(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::UInt16(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::UInt32(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::UInt64(val) => Ok(val.unwrap().into_py(py)),
+                                ScalarValue::Utf8(val) => Ok(val.clone().unwrap().into_py(py)),
+                                ScalarValue::LargeUtf8(val) => Ok(val.clone().unwrap().into_py(py)),
+                                _ => Err(DaskPlannerError::InvalidIOFilter(format!(
+                                    "Unsupported ScalarValue `{}` encountered. using in Dask instead",
+                                    filter
+                                ))),
                             },
-                            _ => f.canonical_name().into_py(py),
+                            _ => Ok(f.canonical_name().into_py(py)),
                         })
                         .collect();
 
-                    filter_tuple.push((ident.unwrap_or(expr.canonical_name()), op.to_string(), il));
+                    filter_tuple.push((
+                        ident.unwrap_or(expr.canonical_name()),
+                        op.to_string(),
+                        il?,
+                    ));
                     Ok(filter_tuple)
                 } else {
                     let er = DaskPlannerError::InvalidIOFilter(format!(
