@@ -13,7 +13,6 @@ on:
         options:
           - Dask
           - DataFusion
-  pull_request:
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
