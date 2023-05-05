@@ -13,6 +13,7 @@ on:
         options:
           - Dask
           - DataFusion
+  pull_request:
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -138,12 +139,11 @@ jobs:
 
   report-failures:
     name: Open issue for upstream dev failures
-    needs: [test-dev, cluster-dev, import-dev]
+    needs: [test-dev, import-dev]
     if: |
       always()
       && (
         needs.test-dev.result == 'failure'
-        || needs.cluster-dev.result == 'failure'
         || needs.import-dev.result == 'failure'
       )
       && github.repository == 'dask-contrib/dask-sql'
