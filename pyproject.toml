@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-rust"]
+
+[tool.isort]
+profile = "black"
+
+[tool.maturin]
+include = [
+    { path = "Cargo.lock", format = "sdist" }
+]
+exclude = [".github/**", "ci/**", ".asf.yaml"]
+# Require Cargo.lock is up to date
+locked = true

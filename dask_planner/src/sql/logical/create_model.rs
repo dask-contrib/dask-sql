@@ -5,8 +5,10 @@ use std::{
     sync::Arc,
 };
 
-use datafusion_common::DFSchemaRef;
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::DFSchemaRef,
+    datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+};
 use fmt::Debug;
 use pyo3::prelude::*;
 

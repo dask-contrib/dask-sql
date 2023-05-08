@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from dask_planner.rust import DaskTypeMap, SqlTypeName
-from dask_sql._compat import FLOAT_NAN_IMPLEMENTED
 
 try:
     import cudf
@@ -21,8 +20,10 @@ logger = logging.getLogger(__name__)
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
     np.float64: SqlTypeName.DOUBLE,
+    pd.Float64Dtype(): SqlTypeName.DOUBLE,
     float: SqlTypeName.FLOAT,
     np.float32: SqlTypeName.FLOAT,
+    pd.Float32Dtype(): SqlTypeName.FLOAT,
     np.int64: SqlTypeName.BIGINT,
     pd.Int64Dtype(): SqlTypeName.BIGINT,
     int: SqlTypeName.INTEGER,
@@ -47,11 +48,6 @@ _PYTHON_TO_SQL = {
     pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
-
-if FLOAT_NAN_IMPLEMENTED:  # pragma: no cover
-    _PYTHON_TO_SQL.update(
-        {pd.Float32Dtype(): SqlTypeName.FLOAT, pd.Float64Dtype(): SqlTypeName.DOUBLE}
-    )
 
 # Default mapping between SQL types and python types
 # for values
@@ -93,6 +89,7 @@ _SQL_TO_PYTHON_FRAMES = {
         unit="ns", tz="UTC"
     ),  # Everything is converted to UTC. So far, this did not break
     "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
+    "SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND": np.dtype("<m8[ns]"),
     "SqlTypeName.NULL": type(None),
 }
 
@@ -177,6 +174,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
+    elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
+        # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
+        return np.timedelta64(
+            (literal_value[0] * 30) + literal_value[1], "D"
+        ) + np.timedelta64(literal_value[2], "ns")
 
     elif sql_type == SqlTypeName.BOOLEAN:
         return bool(literal_value)

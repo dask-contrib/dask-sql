@@ -3,9 +3,11 @@
 
 use std::collections::HashSet;
 
-use datafusion_common::{Column, Result};
-use datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder};
-use datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule};
+use datafusion_python::{
+    datafusion_common::{Column, Result},
+    datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder},
+    datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule},
+};
 use log::warn;
 
 use crate::sql::table::DaskTableSource;
