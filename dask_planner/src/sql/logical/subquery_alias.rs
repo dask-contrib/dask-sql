@@ -14,7 +14,7 @@ impl PySubqueryAlias {
     /// Returns a Vec of the sort expressions
     #[pyo3(name = "getAlias")]
     pub fn alias(&self) -> PyResult<String> {
-        Ok(self.subquery_alias.alias.clone())
+        Ok(self.subquery_alias.alias.clone().to_string())
     }
 }
 

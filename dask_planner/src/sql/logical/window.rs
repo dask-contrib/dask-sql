@@ -8,14 +8,12 @@ use datafusion_python::{
         WindowFrame,
         WindowFrameBound,
     },
+    expr::PyExpr,
 };
 use pyo3::prelude::*;
 
-use crate::{
-    error::DaskPlannerError,
-    expression::{py_expr_list, PyExpr},
-    sql::exceptions::py_type_err,
-};
+use super::utils::py_expr_list;
+use crate::{error::DaskPlannerError, sql::exceptions::py_type_err};
 
 #[pyclass(name = "Window", module = "dask_planner", subclass)]
 #[derive(Clone)]

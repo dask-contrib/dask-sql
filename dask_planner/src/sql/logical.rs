@@ -33,6 +33,7 @@ pub mod sort;
 pub mod subquery_alias;
 pub mod table_scan;
 pub mod use_schema;
+pub mod utils;
 pub mod window;
 
 use datafusion_python::{

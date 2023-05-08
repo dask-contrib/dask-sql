@@ -1,15 +1,15 @@
-use datafusion_python::datafusion_expr::{
-    expr::AggregateFunction,
-    logical_plan::{Aggregate, Distinct},
-    Expr,
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_expr::{
+        expr::AggregateFunction,
+        logical_plan::{Aggregate, Distinct},
+        Expr,
+        LogicalPlan,
+    },
+    expr::PyExpr,
 };
 use pyo3::prelude::*;
 
-use crate::{
-    expression::{py_expr_list, PyExpr},
-    sql::exceptions::py_type_err,
-};
+use crate::sql::{exceptions::py_type_err, logical::utils::py_expr_list};
 
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
 #[derive(Clone)]

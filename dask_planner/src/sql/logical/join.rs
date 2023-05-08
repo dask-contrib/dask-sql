@@ -7,13 +7,11 @@ use datafusion_python::{
         Expr,
         Operator,
     },
+    expr::PyExpr,
 };
 use pyo3::prelude::*;
 
-use crate::{
-    expression::PyExpr,
-    sql::{column, exceptions::py_type_err},
-};
+use crate::sql::{column, exceptions::py_type_err};
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -61,10 +59,7 @@ impl PyJoin {
                 .iter()
                 .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
 
-            Ok(Some(PyExpr::from(
-                root_expr,
-                Some(vec![self.join.left.clone(), self.join.right.clone()]),
-            )))
+            Ok(Some(PyExpr::from(root_expr)))
         } else {
             Ok(None)
         }

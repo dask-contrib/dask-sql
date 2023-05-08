@@ -3,7 +3,6 @@ use pyo3::prelude::*;
 
 mod dialect;
 mod error;
-mod expression;
 mod parser;
 mod sql;
 
@@ -18,7 +17,6 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
 
     // Register the python classes
-    m.add_class::<expression::PyExpr>()?;
     m.add_class::<sql::DaskSQLContext>()?;
     m.add_class::<sql::types::SqlTypeName>()?;
     m.add_class::<sql::types::RexType>()?;

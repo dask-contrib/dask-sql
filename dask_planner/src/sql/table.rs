@@ -2,7 +2,7 @@ use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion_python::{
-    datafusion::arrow::datatypes::{DataType, Field, SchemaRef},
+    datafusion::arrow::datatypes::{DataType, SchemaRef},
     datafusion_common::DFField,
     datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
     datafusion_optimizer::utils::split_conjunction,
@@ -185,9 +185,7 @@ impl DaskTable {
 }
 
 /// Traverses the logical plan to locate the Table associated with the query
-pub(crate) fn table_from_logical_plan(
-    plan: &LogicalPlan,
-) -> Result<Option<DaskTable>, DaskPlannerError> {
+pub fn table_from_logical_plan(plan: &LogicalPlan) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
         LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
@@ -195,7 +193,7 @@ pub(crate) fn table_from_logical_plan(
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
             let tbl_schema: SchemaRef = tbl_provider.schema();
-            let fields: &Vec<Field> = tbl_schema.fields();
+            let fields = tbl_schema.fields();
 
             let mut cols: Vec<(String, DaskTypeMap)> = Vec::new();
             for field in fields {

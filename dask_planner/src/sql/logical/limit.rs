@@ -1,10 +1,11 @@
 use datafusion_python::{
     datafusion_common::ScalarValue,
     datafusion_expr::{logical_plan::Limit, Expr, LogicalPlan},
+    expr::PyExpr,
 };
 use pyo3::prelude::*;
 
-use crate::{expression::PyExpr, sql::exceptions::py_type_err};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "Limit", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -17,21 +18,17 @@ impl PyLimit {
     /// `OFFSET` specified in the query
     #[pyo3(name = "getSkip")]
     pub fn skip(&self) -> PyResult<PyExpr> {
-        Ok(PyExpr::from(
-            Expr::Literal(ScalarValue::UInt64(Some(self.limit.skip as u64))),
-            Some(vec![self.limit.input.clone()]),
-        ))
+        Ok(PyExpr::from(Expr::Literal(ScalarValue::UInt64(Some(
+            self.limit.skip as u64,
+        )))))
     }
 
     /// `LIMIT` specified in the query
     #[pyo3(name = "getFetch")]
     pub fn fetch(&self) -> PyResult<PyExpr> {
-        Ok(PyExpr::from(
-            Expr::Literal(ScalarValue::UInt64(Some(
-                self.limit.fetch.unwrap_or(0) as u64
-            ))),
-            Some(vec![self.limit.input.clone()]),
-        ))
+        Ok(PyExpr::from(Expr::Literal(ScalarValue::UInt64(Some(
+            self.limit.fetch.unwrap_or(0) as u64,
+        )))))
     }
 }
 
