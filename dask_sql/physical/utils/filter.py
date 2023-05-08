@@ -1,6 +1,7 @@
 import itertools
 import logging
 import operator
+from typing import List
 
 import dask.dataframe as dd
 import numpy as np
@@ -14,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 def attempt_predicate_pushdown(
     ddf: dd.DataFrame,
-    conjunctive_filters: list[tuple] = None,
-    disjunctive_filters: list[tuple] = None,
+    conjunctive_filters: List[tuple] = None,
+    disjunctive_filters: List[tuple] = None,
 ) -> dd.DataFrame:
     """Use graph information to update IO-level filters
 
