@@ -1,7 +1,9 @@
 import pandas as pd
 import pytest
 from dask import dataframe as dd
+from dask.utils_test import hlg_layer
 
+from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 from dask_sql.utils import Pluggable, is_frame
 
 
@@ -52,3 +54,96 @@ def test_overwrite():
 
     assert PluginTest1.get_plugin("some_key") == "value_2"
     assert PluginTest1().get_plugin("some_key") == "value_2"
+
+
+def test_predicate_pushdown(parquet_ddf):
+    filtered_df = parquet_ddf[parquet_ddf["a"] > 1]
+    pushdown_df = attempt_predicate_pushdown(filtered_df)
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [[("a", ">", 1)]]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+    filtered_df = parquet_ddf[
+        (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2) | (parquet_ddf["a"] == -1)
+    ]
+
+    pushdown_df = attempt_predicate_pushdown(filtered_df)
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [[("a", ">", 1), ("b", "<", 2)], [("a", "==", -1)]]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+    disjunctive_filters = [("c", "in", ("A", "B", "C"))]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df, disjunctive_filters=disjunctive_filters
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [
+        [("b", "<", 2), ("a", ">", 1)],
+        [("a", "==", -1)],
+        [("c", "in", ("A", "B", "C"))],
+    ]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+    disjunctive_filters = [("c", "in", ("A", "B", "C")), ("b", "in", (5, 6, 7))]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df, disjunctive_filters=disjunctive_filters
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [
+        [("b", "<", 2), ("a", ">", 1)],
+        [("a", "==", -1)],
+        [("c", "in", ("A", "B", "C"))],
+        [("b", "in", (5, 6, 7))],
+    ]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+    conjunctive_filters = [("c", "in", ("A", "B", "C"))]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df, conjunctive_filters=conjunctive_filters
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [
+        [("b", "<", 2), ("a", ">", 1), ("c", "in", ("A", "B", "C"))],
+        [("a", "==", -1), ("c", "in", ("A", "B", "C"))],
+    ]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+    conjunctive_filters = [("c", "in", ("A", "B", "C")), ("a", "<=", 100)]
+    disjunctive_filters = [("b", "in", (5, 6, 7)), ("a", ">=", 100)]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df,
+        conjunctive_filters=conjunctive_filters,
+        disjunctive_filters=disjunctive_filters,
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [
+        [("b", "<", 2), ("a", ">", 1), ("c", "in", ("A", "B", "C")), ("a", "<=", 100)],
+        [("a", "==", -1), ("c", "in", ("A", "B", "C")), ("a", "<=", 100)],
+        [("b", "in", (5, 6, 7)), ("c", "in", ("A", "B", "C")), ("a", "<=", 100)],
+        [("a", ">=", 100), ("c", "in", ("A", "B", "C")), ("a", "<=", 100)],
+    ]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
