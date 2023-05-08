@@ -12,7 +12,11 @@ from dask.utils import M, apply, is_arraylike
 logger = logging.getLogger(__name__)
 
 
-def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
+def attempt_predicate_pushdown(
+    ddf: dd.DataFrame,
+    conjunctive_filters: list[tuple] = None,
+    disjunctive_filters: list[tuple] = None,
+) -> dd.DataFrame:
     """Use graph information to update IO-level filters
 
     The original `ddf` will be returned if/when the
@@ -24,6 +28,9 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     is due to the fact that `npartitions` and `divisions`
     may change when this optimization is applied (invalidating
     npartition/divisions-specific logic in following Layers).
+
+    Additonally applies provided conjunctive and disjunctive filters
+    if applicable.
     """
 
     # Check that we have a supported `ddf` object
@@ -87,6 +94,11 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         )
         return ddf
 
+    # Expand the filter set with provided conjunctive and disjunctive filters
+    filters.extend([f] for f in disjunctive_filters or [])
+    # Add conjunctive filters to each disjunctive filter
+    for f in filters:
+        f.extend(conjunctive_filters or [])
     # Regenerate collection with filtered IO layer
     try:
         return dsk.layers[name]._regenerate_collection(
