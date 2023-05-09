@@ -16,6 +16,8 @@ from dask_planner.rust import (
     DFOptimizationException,
     DFParsingException,
     LogicalPlan,
+    get_current_node_type,
+    row_type,
 )
 
 try:
@@ -819,7 +821,7 @@ class Context:
         else:
             rel = nonOptimizedRel
 
-        rel_string = rel.explain_original()
+        rel_string = rel.display_indent()
         logger.debug(f"_get_ral -> LogicalPlan: {rel}")
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
 
@@ -829,9 +831,9 @@ class Context:
         dc = RelConverter.convert(rel, context=self)
 
         # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [field for field in rel.getRowType().getFieldList()]
+        select_names = [field for field in row_type(rel).getFieldList()]
 
-        if rel.get_current_node_type() == "Explain":
+        if get_current_node_type(rel) == "Explain":
             return dc
         if dc is None:
             return

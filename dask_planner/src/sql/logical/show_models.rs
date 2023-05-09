@@ -8,11 +8,10 @@ use std::{
 use datafusion_python::{
     datafusion_common::{DFSchema, DFSchemaRef},
     datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+    errors::py_type_err,
 };
 use fmt::Debug;
 use pyo3::prelude::*;
-
-use crate::sql::logical::py_type_err;
 
 #[derive(Clone, PartialEq)]
 pub struct ShowModelsPlanNode {

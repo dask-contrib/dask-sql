@@ -12,7 +12,7 @@ use datafusion_python::{
 use fmt::Debug;
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical};
+use crate::sql::exceptions::py_type_err;
 
 #[derive(Clone, PartialEq)]
 pub struct DropSchemaPlanNode {
@@ -106,12 +106,12 @@ impl PyDropSchema {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyDropSchema {
+impl TryFrom<LogicalPlan> for PyDropSchema {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::Extension(extension) => {
+            LogicalPlan::Extension(extension) => {
                 if let Some(ext) = extension.node.as_any().downcast_ref::<DropSchemaPlanNode>() {
                     Ok(PyDropSchema {
                         drop_schema: ext.clone(),

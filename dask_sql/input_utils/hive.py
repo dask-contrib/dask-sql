@@ -6,7 +6,7 @@ from typing import Any, Union
 
 import dask.dataframe as dd
 
-from dask_planner.rust import SqlTypeName
+from dask_planner.rust import SqlType
 
 try:
     from pyhive import hive
@@ -67,7 +67,7 @@ class HiveInputPlugin(BaseInputPlugin):
 
         # Convert column information
         column_information = {
-            col: sql_to_python_type(SqlTypeName.fromString(col_type.upper()))
+            col: sql_to_python_type(SqlType.fromString(col_type.upper()))
             for col, col_type in column_information.items()
         }
 

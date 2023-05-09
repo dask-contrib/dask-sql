@@ -74,7 +74,7 @@ class BaseRelPlugin:
         input tables as expected and returns them already
         converted into a dask dataframe.
         """
-        input_rels = rel.get_inputs()
+        input_rels = rel.inputs()
 
         assert len(input_rels) == n
 
@@ -107,7 +107,7 @@ class BaseRelPlugin:
             sql_type = field_type.getSqlType()
             sql_type_args = tuple()
 
-            if str(sql_type) == "SqlTypeName.DECIMAL":
+            if str(sql_type) == "SqlType.DECIMAL":
                 sql_type_args = field_type.getDataType().getPrecisionScale()
 
             expected_type = sql_to_python_type(sql_type, *sql_type_args)

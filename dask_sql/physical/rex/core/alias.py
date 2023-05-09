@@ -28,7 +28,7 @@ class RexAliasPlugin(BaseRexPlugin):
         context: "dask_sql.Context",
     ) -> Union[dd.Series, Any]:
         # extract the operands; there should only be a single underlying Expression
-        operands = rex.getOperands()
+        operands = rex.operands()
         assert len(operands) == 1
 
         sub_rex = operands[0]

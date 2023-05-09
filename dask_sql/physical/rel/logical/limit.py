@@ -6,9 +6,9 @@ from dask.blockwise import Blockwise
 from dask.highlevelgraph import MaterializedLayer
 from dask.layers import DataFrameIOLayer
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
@@ -31,8 +31,8 @@ class DaskLimitPlugin(BaseRelPlugin):
         # Retrieve the RexType::Literal values from the `LogicalPlan` Limit
         # Fetch -> LIMIT
         # Skip -> OFFSET
-        limit = RexConverter.convert(rel, rel.limit().getFetch(), df, context=context)
-        offset = RexConverter.convert(rel, rel.limit().getSkip(), df, context=context)
+        limit = rel.to_variant().fetch()
+        offset = rel.to_variant().skip()
 
         # apply offset to limit if specified
         if limit and offset:
@@ -40,7 +40,7 @@ class DaskLimitPlugin(BaseRelPlugin):
 
         # apply limit and/or offset to DataFrame
         df = self._apply_limit(df, limit, offset)
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
 
         # No column type has changed, so no need to cast again
         return DataContainer(df, cc)

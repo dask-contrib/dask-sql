@@ -14,7 +14,7 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import SqlTypeName
+from dask_planner.rust import PythonType, SqlType
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
@@ -23,7 +23,6 @@ from dask_sql.mappings import (
 )
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
-from dask_sql.physical.rex.core.literal import SargPythonImplementation
 from dask_sql.utils import (
     LoggableDataFrame,
     convert_to_datetime,
@@ -159,8 +158,12 @@ class SQLDivisionOperator(Operation):
     def div(self, lhs, rhs, rex=None):
         result = lhs / rhs
 
-        output_type = str(rex.getType())
-        output_type = sql_to_python_type(SqlTypeName.fromString(output_type.upper()))
+        data_type_map = rex.types()
+        # output_type = str(rex.getType())
+        # output_type = sql_to_python_type(SqlType.fromString(output_type.upper()))
+        breakpoint()
+        output_type = sql_to_python_type(str(data_type_map.sql_type))
+        breakpoint()
 
         is_float = pd.api.types.is_float_dtype(output_type)
         if not is_float:
@@ -242,12 +245,12 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        output_type = rex.getType()
-        sql_type = SqlTypeName.fromString(output_type)
+        data_type_map = rex.types()
+        sql_type = data_type_map.sql_type
         sql_type_args = ()
 
         # decimal datatypes require precision and scale
-        if output_type == "DECIMAL":
+        if data_type_map.python_type == PythonType.Float:
             sql_type_args = rex.getPrecisionScale()
 
         if not is_frame(operand):  # pragma: no cover
@@ -263,7 +266,7 @@ class CastOperation(Operation):
         # TODO: ideally we don't want to directly access the datetimes,
         # but Pandas can't truncate timezone datetimes and cuDF can't
         # truncate datetimes
-        if output_type == "DATE":
+        if data_type_map.sql_type == SqlType.DATE:
             return return_column.dt.floor("D").astype(python_type)
 
         return return_column
@@ -860,31 +863,6 @@ class RandIntegerOperation(BaseRandomOperation):
         return random_state.randint(size=len(partition), low=0, **kwargs)
 
 
-class SearchOperation(Operation):
-    """
-    Search is a special operation in SQL, which allows to write "range-like"
-    conditions, such like
-
-        (1 < a AND a < 2) OR (4 < a AND a < 6)
-
-    in a more convenient setting.
-    """
-
-    def __init__(self):
-        super().__init__(self.search)
-
-    def search(self, series: dd.Series, sarg: SargPythonImplementation):
-        conditions = [r.filter_on(series) for r in sarg.ranges]
-
-        assert len(conditions) > 0
-
-        if len(conditions) > 1:
-            or_operation = ReduceOperation(operation=operator.or_)
-            return or_operation(*conditions)
-        else:
-            return conditions[0]
-
-
 class ExtractOperation(Operation):
     """
     Function for performing PostgreSQL like functions in a more convenient setting.
@@ -1026,7 +1004,6 @@ class RexCallPlugin(BaseRexPlugin):
         "rand": RandOperation(),
         "random": RandOperation(),
         "rand_integer": RandIntegerOperation(),
-        "search": SearchOperation(),
         # Unary math functions
         "abs": TensorScalarOperation(lambda x: x.abs(), np.abs),
         "acos": Operation(da.arccos),
@@ -1100,12 +1077,12 @@ class RexCallPlugin(BaseRexPlugin):
         # Prepare the operands by turning the RexNodes into python expressions
         operands = [
             RexConverter.convert(rel, o, dc, context=context)
-            for o in expr.getOperands()
+            for o in expr.rex_call_operands()
         ]
 
         # Now use the operator name in the mapping
         schema_name = context.schema_name
-        operator_name = expr.getOperatorName().lower()
+        operator_name = expr.rex_call_operator().lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]

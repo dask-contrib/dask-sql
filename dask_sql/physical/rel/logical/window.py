@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
+from dask_planner.rust import row_type
 from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -242,7 +243,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         (dc,) = self.assert_inputs(rel, 1, context)
 
         # Output to the right field names right away
-        field_names = rel.getRowType().getFieldNames()
+        field_names = row_type(rel).getFieldNames()
 
         for window in rel.window().getGroups():
             dc = self._apply_window(rel, window, dc, field_names, context)
@@ -250,9 +251,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         # Finally, fix the output schema if needed
         df = dc.df
         cc = dc.column_container
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
 
         return dc
 

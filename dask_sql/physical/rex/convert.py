@@ -58,7 +58,7 @@ class RexConverter(Pluggable):
         using the stored plugins and the dictionary of
         registered dask tables.
         """
-        expr_type = _REX_TYPE_TO_PLUGIN[str(rex.getRexType())]
+        expr_type = _REX_TYPE_TO_PLUGIN[str(rex.rex_type())]
 
         try:
             plugin_instance = cls.get_plugin(expr_type)

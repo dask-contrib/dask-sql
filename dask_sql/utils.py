@@ -9,7 +9,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-from dask_planner.rust import SqlTypeName
+from dask_planner.rust import SqlType
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 
@@ -151,10 +151,10 @@ def convert_sql_kwargs(
     def convert_literal(value):
         if value.isCollection():
             operator_mapping = {
-                "SqlTypeName.ARRAY": list,
-                "SqlTypeName.MAP": lambda x: dict(zip(x[::2], x[1::2])),
-                "SqlTypeName.MULTISET": set,
-                "SqlTypeName.ROW": tuple,
+                "SqlType.ARRAY": list,
+                "SqlType.MAP": lambda x: dict(zip(x[::2], x[1::2])),
+                "SqlType.MULTISET": set,
+                "SqlType.ROW": tuple,
             }
 
             operator = operator_mapping[str(value.getSqlType())]
@@ -167,10 +167,10 @@ def convert_sql_kwargs(
             literal_type = value.getSqlType()
             literal_value = value.getSqlValue()
 
-            if literal_type == SqlTypeName.VARCHAR:
+            if literal_type == SqlType.VARCHAR:
                 return value.getSqlValue()
-            elif literal_type == SqlTypeName.BIGINT and "." in literal_value:
-                literal_type = SqlTypeName.DOUBLE
+            elif literal_type == SqlType.BIGINT and "." in literal_value:
+                literal_type = SqlType.DOUBLE
 
             python_value = sql_to_python_value(literal_type, literal_value)
             return python_value

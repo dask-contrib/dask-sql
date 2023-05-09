@@ -10,7 +10,7 @@ rust-version = "1.65"
 
 [dependencies]
 async-trait = "0.1.68"
-datafusion-python = { git = "https://github.com/jdye64/arrow-datafusion-python.git", branch = "expr_mods" }
+datafusion-python = { git = "https://github.com/jdye64/arrow-datafusion-python.git", branch = "expr_datatypemap" }
 env_logger = "0.10"
 log = "^0.4"
 pyo3 = { version = "0.18.3", features = ["extension-module", "abi3", "abi3-py38"] }

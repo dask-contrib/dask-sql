@@ -1,10 +1,13 @@
-use datafusion_python::datafusion_expr::{
-    logical_plan::{CreateMemoryTable, CreateView},
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_expr::{
+        logical_plan::{CreateMemoryTable, CreateView},
+        LogicalPlan,
+    },
+    sql::logical::PyLogicalPlan,
 };
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical::PyLogicalPlan};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "CreateMemoryTable", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -33,15 +36,9 @@ impl PyCreateMemoryTable {
     #[pyo3(name = "getInput")]
     pub fn get_input(&self) -> PyResult<PyLogicalPlan> {
         Ok(match &self.create_memory_table {
-            Some(create_memory_table) => PyLogicalPlan {
-                original_plan: (*create_memory_table.input).clone(),
-                current_node: None,
-            },
+            Some(create_memory_table) => PyLogicalPlan::new((*create_memory_table.input).clone()),
             None => match &self.create_view {
-                Some(create_view) => PyLogicalPlan {
-                    original_plan: (*create_view.input).clone(),
-                    current_node: None,
-                },
+                Some(create_view) => PyLogicalPlan::new((*create_view.input).clone()),
                 None => {
                     return Err(py_type_err(
                         "Encountered a non CreateMemoryTable/CreateView type in get_input",

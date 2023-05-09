@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.utils.sort import apply_sort
@@ -34,6 +35,6 @@ class DaskSortPlugin(BaseRelPlugin):
             df, sort_columns, sort_ascending, sort_null_first, sort_num_rows
         )
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         # No column type has changed, so no need to cast again
         return DataContainer(df, cc)

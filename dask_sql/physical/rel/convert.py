@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
+from dask_planner.rust import get_current_node_type
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
@@ -47,7 +48,7 @@ class RelConverter(Pluggable):
         what "type" of Relational operator it represents to build the execution chain.
         """
 
-        node_type = rel.get_current_node_type()
+        node_type = get_current_node_type(rel)
 
         try:
             plugin_instance = cls.get_plugin(node_type)

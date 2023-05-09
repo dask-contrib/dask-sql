@@ -39,6 +39,7 @@ use datafusion_python::{
         ResolvedTableReference,
         TableReference,
     },
+    sql::logical::PyLogicalPlan,
 };
 use log::{debug, warn};
 use pyo3::prelude::*;
@@ -68,7 +69,6 @@ use crate::{
             show_models::ShowModelsPlanNode,
             show_schemas::ShowSchemasPlanNode,
             show_tables::ShowTablesPlanNode,
-            PyLogicalPlan,
         },
     },
 };
@@ -519,12 +519,9 @@ impl DaskSQLContext {
     pub fn logical_relational_algebra(
         &self,
         statement: statement::PyStatement,
-    ) -> PyResult<logical::PyLogicalPlan> {
+    ) -> PyResult<PyLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
-            .map(|e| PyLogicalPlan {
-                original_plan: e,
-                current_node: None,
-            })
+            .map(PyLogicalPlan::new)
             .map_err(py_parsing_exp)
     }
 
@@ -533,12 +530,12 @@ impl DaskSQLContext {
     /// `LogicalPlan`
     pub fn optimize_relational_algebra(
         &self,
-        existing_plan: logical::PyLogicalPlan,
-    ) -> PyResult<logical::PyLogicalPlan> {
+        existing_plan: PyLogicalPlan,
+    ) -> PyResult<PyLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
         let mut visitor = OptimizablePlanVisitor {};
 
-        match existing_plan.original_plan.visit(&mut visitor) {
+        match existing_plan.plan().visit(&mut visitor) {
             Ok(valid) => {
                 match valid {
                     VisitRecursion::Stop => {
@@ -547,11 +544,8 @@ impl DaskSQLContext {
                         Ok(existing_plan)
                     }
                     _ => optimizer::DaskSqlOptimizer::new()
-                        .optimize(existing_plan.original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
+                        .optimize((*existing_plan.plan()).clone())
+                        .map(PyLogicalPlan::new)
                         .map_err(py_optimization_exp),
                 }
             }

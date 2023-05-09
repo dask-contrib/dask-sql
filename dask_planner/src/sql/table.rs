@@ -2,26 +2,20 @@ use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion_python::{
+    common::data_type::DataTypeMap,
     datafusion::arrow::datatypes::{DataType, SchemaRef},
     datafusion_common::DFField,
     datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
     datafusion_optimizer::utils::split_conjunction,
     datafusion_sql::TableReference,
+    sql::logical::PyLogicalPlan,
 };
 use pyo3::prelude::*;
 
 use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
 use crate::{
     error::DaskPlannerError,
-    sql::{
-        logical,
-        types::{
-            rel_data_type::RelDataType,
-            rel_data_type_field::RelDataTypeField,
-            DaskTypeMap,
-            SqlTypeName,
-        },
-    },
+    sql::types::{rel_data_type::RelDataType, rel_data_type_field::RelDataTypeField, DaskTypeMap},
 };
 
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
@@ -156,13 +150,13 @@ impl DaskTable {
     }
 
     #[pyo3(name = "getQualifiedName")]
-    pub fn qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
+    pub fn qualified_name(&self, plan: PyLogicalPlan) -> Vec<String> {
         let mut qualified_name = match &self.schema_name {
             Some(schema_name) => vec![schema_name.clone()],
             None => vec![],
         };
 
-        match plan.original_plan {
+        match &*plan.plan() {
             LogicalPlan::TableScan(table_scan) => {
                 qualified_name.push(table_scan.table_name.to_string());
             }
@@ -201,7 +195,9 @@ pub fn table_from_logical_plan(plan: &LogicalPlan) -> Result<Option<DaskTable>, 
                 cols.push((
                     String::from(field.name()),
                     DaskTypeMap::from(
-                        SqlTypeName::from_arrow(data_type)?,
+                        DataTypeMap::map_from_arrow_type(data_type)
+                            .unwrap()
+                            .sql_type,
                         data_type.clone().into(),
                     ),
                 ));
@@ -241,7 +237,9 @@ pub fn table_from_logical_plan(plan: &LogicalPlan) -> Result<Option<DaskTable>, 
                 cols.push((
                     String::from(field.name()),
                     DaskTypeMap::from(
-                        SqlTypeName::from_arrow(data_type)?,
+                        DataTypeMap::map_from_arrow_type(data_type)
+                            .unwrap()
+                            .sql_type,
                         data_type.clone().into(),
                     ),
                 ));

@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -203,7 +204,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        agg = rel.aggregate()
+        agg = rel.to_variant()
 
         df = dc.df
         cc = dc.column_container
@@ -211,7 +212,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # We make our life easier with having unique column names
         cc = cc.make_unique()
 
-        group_exprs = agg.getGroupSets()
+        group_exprs = agg.group_by_exprs()
         group_columns = (
             agg.getDistinctColumns()
             if agg.isDistinctNode()
@@ -250,9 +251,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df_agg, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         return dc
 
     def _do_aggregations(

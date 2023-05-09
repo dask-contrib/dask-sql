@@ -3,12 +3,13 @@ use std::sync::Arc;
 use datafusion_python::{
     datafusion_common::{DFSchema, ScalarValue},
     datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan},
+    errors::py_type_err,
     expr::PyExpr,
 };
 use pyo3::prelude::*;
 
 use super::utils::py_expr_list;
-use crate::{error::DaskPlannerError, sql::exceptions::py_type_err};
+use crate::error::DaskPlannerError;
 
 #[pyclass(name = "TableScan", module = "dask_planner", subclass)]
 #[derive(Clone)]

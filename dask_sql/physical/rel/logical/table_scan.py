@@ -3,6 +3,7 @@ import operator
 from functools import reduce
 from typing import TYPE_CHECKING
 
+from dask_planner.rust import plan_to_table, row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -37,10 +38,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         self.assert_inputs(rel, 0)
 
         # Rust table_scan instance handle
-        table_scan = rel.table_scan()
+        table_scan = rel.to_variant()
 
         # The table(s) we need to return
-        dask_table = rel.getTable()
+        dask_table = plan_to_table(rel)
         schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
 
         dc = context.schema[schema_name].tables[table_name]
@@ -50,9 +51,9 @@ class DaskTableScanPlugin(BaseRelPlugin):
         dc = self._apply_projections(table_scan, dask_table, dc)
 
         cc = dc.column_container
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(dc.df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         return dc
 
     def _apply_projections(self, table_scan, dask_table, dc):
@@ -61,9 +62,10 @@ class DaskTableScanPlugin(BaseRelPlugin):
         # in the 'RelDataType' instance, aka 'row_type'
         df = dc.df
         cc = dc.column_container
-        if table_scan.containsProjections():
+        if len(table_scan.projection()) > 0:
+            project_names = [name[1] for name in table_scan.projection()]
             field_specifications = list(
-                map(cc.get_backend_by_frontend_name, table_scan.getTableScanProjects())
+                map(cc.get_backend_by_frontend_name, project_names)
             )  # Assumes these are column projections only and field names match table column names
 
             df = df[field_specifications]
@@ -77,7 +79,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
     def _apply_filters(self, table_scan, rel, dc, context):
         df = dc.df
         cc = dc.column_container
-        filters = table_scan.getFilters()
+        filters = table_scan.filters()
         # All partial filters here are applied in conjunction (&)
         if filters:
             df_condition = reduce(

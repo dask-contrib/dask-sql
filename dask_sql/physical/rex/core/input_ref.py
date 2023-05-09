@@ -29,7 +29,6 @@ class RexInputRefPlugin(BaseRexPlugin):
         df = dc.df
         cc = dc.column_container
 
-        # The column is references by index
-        index = rex.getIndex()
-        backend_column_name = cc.get_backend_by_frontend_index(index)
+        column_name = rex.display_name()
+        backend_column_name = cc.get_backend_by_frontend_name(column_name)
         return df[backend_column_name]

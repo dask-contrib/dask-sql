@@ -5,11 +5,12 @@ use datafusion_python::{
         Expr,
         LogicalPlan,
     },
+    errors::py_type_err,
     expr::PyExpr,
 };
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical::utils::py_expr_list};
+use super::utils::py_expr_list;
 
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
 #[derive(Clone)]

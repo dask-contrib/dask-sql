@@ -9,6 +9,7 @@ from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
+from dask_planner.rust import row_type
 from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -176,8 +177,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         cc = ColumnContainer(df.columns).limit_to(correct_column_order)
 
         # and to rename them like the rel specifies
-        row_type = rel.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
+        rt = row_type(rel)
+        field_specifications = [str(f) for f in rt.getFieldNames()]
 
         cc = cc.rename(
             {
@@ -185,7 +186,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-        cc = self.fix_column_to_row_type(cc, row_type)
+        cc = self.fix_column_to_row_type(cc, rt)
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
@@ -202,7 +203,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         # # Rename underlying DataFrame column names back to their original values before returning
         # df = dc.assign()
         # dc = DataContainer(df, ColumnContainer(cc.columns))

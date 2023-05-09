@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -36,13 +37,13 @@ class DaskUnionPlugin(BaseRelPlugin):
         from dask_sql.physical.rel.convert import RelConverter
 
         objs_dc = [
-            RelConverter.convert(input_rel, context) for input_rel in rel.get_inputs()
+            RelConverter.convert(input_rel, context) for input_rel in rel.inputs()
         ]
 
         objs_df = [obj.df for obj in objs_dc]
         objs_cc = [obj.column_container for obj in objs_dc]
 
-        output_field_names = [str(x) for x in rel.getRowType().getFieldNames()]
+        output_field_names = [str(x) for x in row_type(rel).getFieldNames()]
         obj_dfs = []
         for i, obj_df in enumerate(objs_df):
             obj_dfs.append(
@@ -53,12 +54,12 @@ class DaskUnionPlugin(BaseRelPlugin):
                 )
             )
 
-        _ = [self.check_columns_from_row_type(df, rel.getRowType()) for df in obj_dfs]
+        _ = [self.check_columns_from_row_type(df, row_type(rel)) for df in obj_dfs]
 
         df = dd.concat(obj_dfs)
 
         cc = ColumnContainer(df.columns)
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         return dc

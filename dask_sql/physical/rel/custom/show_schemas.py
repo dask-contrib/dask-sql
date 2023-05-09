@@ -24,7 +24,7 @@ class ShowSchemasPlugin(BaseRelPlugin):
     class_name = "ShowSchemas"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        show_schemas = rel.show_schemas()
+        show_schemas = rel.to_variant()
 
         # "information_schema" is a schema which is found in every presto database
         schemas = list(context.schema.keys())

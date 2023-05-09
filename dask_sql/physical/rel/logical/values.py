@@ -3,13 +3,14 @@ from typing import TYPE_CHECKING
 import dask.dataframe as dd
 import pandas as pd
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class DaskValuesPlugin(BaseRelPlugin):
@@ -28,9 +29,7 @@ class DaskValuesPlugin(BaseRelPlugin):
 
     class_name = "com.dask.sql.nodes.DaskValues"
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
 
@@ -54,13 +53,13 @@ class DaskValuesPlugin(BaseRelPlugin):
         if rows:
             df = pd.DataFrame(rows)
         else:
-            field_names = [str(x) for x in rel.getRowType().getFieldNames()]
+            field_names = [str(x) for x in row_type(rel).getFieldNames()]
             df = pd.DataFrame(columns=field_names)
 
         df = dd.from_pandas(df, npartitions=1)
         cc = ColumnContainer(df.columns)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         return dc

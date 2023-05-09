@@ -5,6 +5,7 @@ import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
@@ -65,5 +66,5 @@ class DaskFilterPlugin(BaseRelPlugin):
         df_condition = RexConverter.convert(rel, condition, dc, context=context)
         df = filter_or_scalar(df, df_condition)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         return DataContainer(df, cc)

@@ -1,15 +1,13 @@
 use std::fmt;
 
 use datafusion_python::{
+    common::data_type::DataTypeMap,
     datafusion_common::{DFField, DFSchema},
     datafusion_sql::TableReference,
 };
 use pyo3::prelude::*;
 
-use crate::{
-    error::Result,
-    sql::types::{DaskTypeMap, SqlTypeName},
-};
+use crate::{error::Result, sql::types::DaskTypeMap};
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
 #[pyclass(name = "RelDataTypeField", module = "dask_planner", subclass)]
@@ -29,7 +27,9 @@ impl RelDataTypeField {
             qualifier: qualifier.map(|qualifier| qualifier.to_string()),
             name: field.name().clone(),
             data_type: DaskTypeMap {
-                sql_type: SqlTypeName::from_arrow(field.data_type())?,
+                sql_type: DataTypeMap::map_from_arrow_type(field.data_type())
+                    .unwrap()
+                    .sql_type,
                 data_type: field.data_type().clone().into(),
             },
             index: schema
