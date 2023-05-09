@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use datafusion_python::{
     datafusion_common::{DFSchema, ScalarValue},
-    datafusion_expr::{logical_plan::TableScan, LogicalPlan},
+    datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan},
     expr::PyExpr,
 };
 use pyo3::prelude::*;
 
 use super::utils::py_expr_list;
-use crate::sql::exceptions::py_type_err;
+use crate::{error::DaskPlannerError, sql::exceptions::py_type_err};
 
 #[pyclass(name = "TableScan", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -126,7 +126,7 @@ impl PyTableScan {
     /// that cannot be converted to correlating PyArrow IO calls will be returned as is and can be
     /// used in the Python logic to form Dask tasks for the graph to do computational filtering.
     pub fn _expand_dnf_filters(
-        input: &Arc<LogicalPlan>,
+        _input: &Arc<LogicalPlan>,
         filters: &[Expr],
         py: Python,
     ) -> PyFilteredResult {
@@ -137,9 +137,7 @@ impl PyTableScan {
             .iter()
             .for_each(|f| match PyTableScan::_expand_dnf_filter(f, py) {
                 Ok(mut expanded_dnf_filter) => filtered_exprs.append(&mut expanded_dnf_filter),
-                Err(_e) => {
-                    unfiltered_exprs.push(PyExpr::from(f.clone(), Some(vec![input.clone()])))
-                }
+                Err(_e) => unfiltered_exprs.push(PyExpr::from(f.clone())),
             });
 
         PyFilteredResult {
