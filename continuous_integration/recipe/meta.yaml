@@ -22,8 +22,8 @@ build:
 
 requirements:
   build:
-    - {{ compiler('c') }} =11
-    - {{ compiler('rust') }} >=1.65.0
+    - {{ compiler('c') }}
+    - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
   host:
     - pip
