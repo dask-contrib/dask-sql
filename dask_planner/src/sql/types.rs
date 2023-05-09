@@ -1,8 +1,10 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
+use std::sync::Arc;
+
 use datafusion_python::{
-    datafusion::arrow::datatypes::{DataType, IntervalUnit},
+    datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
     datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
 };
 use pyo3::{prelude::*, types::PyDict};
@@ -51,68 +53,68 @@ impl DaskTypeMap {
     #[pyo3(signature = (sql_type, **py_kwargs))]
     fn new(sql_type: SqlTypeName, py_kwargs: Option<&PyDict>) -> PyResult<Self> {
         let d_type: DataType = match sql_type {
-            // SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
-            //     let (unit, tz) = match py_kwargs {
-            //         Some(dict) => {
-            //             let tz = match dict.get_item("tz") {
-            //                 Some(e) => {
-            //                     let res = e.extract().unwrap();
-            //                     Some(Arc::new(res.to_owned()))
-            //                 }
-            //                 None => None,
-            //             };
-            //             let unit: TimeUnit = match dict.get_item("unit") {
-            //                 Some(e) => {
-            //                     let res: PyResult<&str> = e.extract();
-            //                     match res.unwrap() {
-            //                         "Second" => TimeUnit::Second,
-            //                         "Millisecond" => TimeUnit::Millisecond,
-            //                         "Microsecond" => TimeUnit::Microsecond,
-            //                         "Nanosecond" => TimeUnit::Nanosecond,
-            //                         _ => TimeUnit::Nanosecond,
-            //                     }
-            //                 }
-            //                 // Default to Nanosecond which is common if not present
-            //                 None => TimeUnit::Nanosecond,
-            //             };
-            //             (unit, tz)
-            //         }
-            //         // Default to Nanosecond and None for tz which is common if not present
-            //         None => (TimeUnit::Nanosecond, None),
-            //     };
-            //     DataType::Timestamp(unit, tz)
-            // }
-            // SqlTypeName::TIMESTAMP => {
-            //     let (unit, tz) = match py_kwargs {
-            //         Some(dict) => {
-            //             let tz = match dict.get_item("tz") {
-            //                 Some(e) => {
-            //                     let res: String = e.extract::<String>().unwrap().to_owned();
-            //                     Some(Arc::new(*res.as_str()))
-            //                 }
-            //                 None => None,
-            //             };
-            //             let unit: TimeUnit = match dict.get_item("unit") {
-            //                 Some(e) => {
-            //                     let res: PyResult<&str> = e.extract();
-            //                     match res.unwrap() {
-            //                         "Second" => TimeUnit::Second,
-            //                         "Millisecond" => TimeUnit::Millisecond,
-            //                         "Microsecond" => TimeUnit::Microsecond,
-            //                         "Nanosecond" => TimeUnit::Nanosecond,
-            //                         _ => TimeUnit::Nanosecond,
-            //                     }
-            //                 }
-            //                 // Default to Nanosecond which is common if not present
-            //                 None => TimeUnit::Nanosecond,
-            //             };
-            //             (unit, tz)
-            //         }
-            //         // Default to Nanosecond and None for tz which is common if not present
-            //         None => (TimeUnit::Nanosecond, None),
-            //     };
-            //     DataType::Timestamp(unit, tz)
-            // }
+            SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
+                let (unit, tz) = match py_kwargs {
+                    Some(dict) => {
+                        let tz = match dict.get_item("tz") {
+                            Some(e) => {
+                                let res: Option<String> = e.extract().unwrap();
+                                Some(Arc::new(res.to_owned()))
+                            }
+                            None => None,
+                        };
+                        let unit: TimeUnit = match dict.get_item("unit") {
+                            Some(e) => {
+                                let res: PyResult<&str> = e.extract();
+                                match res.unwrap() {
+                                    "Second" => TimeUnit::Second,
+                                    "Millisecond" => TimeUnit::Millisecond,
+                                    "Microsecond" => TimeUnit::Microsecond,
+                                    "Nanosecond" => TimeUnit::Nanosecond,
+                                    _ => TimeUnit::Nanosecond,
+                                }
+                            }
+                            // Default to Nanosecond which is common if not present
+                            None => TimeUnit::Nanosecond,
+                        };
+                        (unit, tz)
+                    }
+                    // Default to Nanosecond and None for tz which is common if not present
+                    None => (TimeUnit::Nanosecond, None),
+                };
+                DataType::Timestamp(unit, tz)
+            }
+            SqlTypeName::TIMESTAMP => {
+                let (unit, tz) = match py_kwargs {
+                    Some(dict) => {
+                        let tz = match dict.get_item("tz") {
+                            Some(e) => {
+                                let res: Option<String> = e.extract().unwrap();
+                                Some(Arc::new(res.to_owned()))
+                            }
+                            None => None,
+                        };
+                        let unit: TimeUnit = match dict.get_item("unit") {
+                            Some(e) => {
+                                let res: PyResult<&str> = e.extract();
+                                match res.unwrap() {
+                                    "Second" => TimeUnit::Second,
+                                    "Millisecond" => TimeUnit::Millisecond,
+                                    "Microsecond" => TimeUnit::Microsecond,
+                                    "Nanosecond" => TimeUnit::Nanosecond,
+                                    _ => TimeUnit::Nanosecond,
+                                }
+                            }
+                            // Default to Nanosecond which is common if not present
+                            None => TimeUnit::Nanosecond,
+                        };
+                        (unit, tz)
+                    }
+                    // Default to Nanosecond and None for tz which is common if not present
+                    None => (TimeUnit::Nanosecond, None),
+                };
+                DataType::Timestamp(unit, tz)
+            }
             SqlTypeName::DECIMAL => {
                 let (precision, scale) = match py_kwargs {
                     Some(dict) => {
