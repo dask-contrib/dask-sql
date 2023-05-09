@@ -15,6 +15,8 @@ def pytest_runtest_setup(item):
             pytest.skip("need --rungpu option to run")
         # FIXME: P2P shuffle isn't fully supported on GPU, so we must explicitly disable it
         dask.config.set({"dataframe.shuffle.algorithm": "tasks"})
+        # manually enable cudf decimal support
+        dask.config.set({"sql.mappings.decimal_support": "cudf"})
     else:
         dask.config.set({"dataframe.shuffle.algorithm": None})
     if "queries" in item.keywords and not item.config.getoption("--runqueries"):
