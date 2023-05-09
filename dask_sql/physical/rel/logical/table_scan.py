@@ -77,16 +77,20 @@ class DaskTableScanPlugin(BaseRelPlugin):
     def _apply_filters(self, table_scan, rel, dc, context):
         df = dc.df
         cc = dc.column_container
-        filters = table_scan.getFilters()
-        # All partial filters here are applied in conjunction (&)
-        if filters:
+        # all_filters = table_scan.getFilters()
+        conjunctive_dnf_filters = table_scan.getDNFFilters().filtered_exprs
+        non_dnf_filters = table_scan.getDNFFilters().io_unfilterable_exprs
+        # All filters here are applied in conjunction (&)
+        if non_dnf_filters or conjunctive_dnf_filters:
             df_condition = reduce(
                 operator.and_,
                 [
                     RexConverter.convert(rel, rex, dc, context=context)
-                    for rex in filters
+                    for rex in non_dnf_filters
                 ],
             )
-            df = filter_or_scalar(df, df_condition)
+            df = filter_or_scalar(
+                df, df_condition, conjunctive_filters=conjunctive_dnf_filters
+            )
 
         return DataContainer(df, cc)
