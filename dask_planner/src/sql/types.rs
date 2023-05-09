@@ -1,8 +1,6 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
-use std::sync::Arc;
-
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
     datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
@@ -58,11 +56,8 @@ impl DaskTypeMap {
                     Some(dict) => {
                         let tz = match dict.get_item("tz") {
                             Some(e) => {
-                                let f: String = e.extract().unwrap();
-                                unsafe {
-                                    let res: Option<Arc<str>> = Some(Arc::from_raw(f.as_ref()));
-                                    res
-                                }
+                                let res: &str = e.extract().unwrap();
+                                Some(res.into())
                             }
                             None => None,
                         };
@@ -92,11 +87,8 @@ impl DaskTypeMap {
                     Some(dict) => {
                         let tz = match dict.get_item("tz") {
                             Some(e) => {
-                                let f: String = e.extract().unwrap();
-                                unsafe {
-                                    let res: Option<Arc<str>> = Some(Arc::from_raw(f.as_ref()));
-                                    res
-                                }
+                                let res: &str = e.extract().unwrap();
+                                Some(res.into())
                             }
                             None => None,
                         };
