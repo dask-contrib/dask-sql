@@ -58,8 +58,11 @@ impl DaskTypeMap {
                     Some(dict) => {
                         let tz = match dict.get_item("tz") {
                             Some(e) => {
-                                let res: Option<String> = e.extract().unwrap();
-                                Some(Arc::new(res.to_owned()))
+                                let f: String = e.extract().unwrap();
+                                unsafe {
+                                    let res: Option<Arc<str>> = Some(Arc::from_raw(f.as_ref()));
+                                    res
+                                }
                             }
                             None => None,
                         };
@@ -89,8 +92,11 @@ impl DaskTypeMap {
                     Some(dict) => {
                         let tz = match dict.get_item("tz") {
                             Some(e) => {
-                                let res: Option<String> = e.extract().unwrap();
-                                Some(Arc::new(res.to_owned()))
+                                let f: String = e.extract().unwrap();
+                                unsafe {
+                                    let res: Option<Arc<str>> = Some(Arc::from_raw(f.as_ref()));
+                                    res
+                                }
                             }
                             None => None,
                         };
