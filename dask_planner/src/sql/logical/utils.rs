@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use datafusion_python::{
     datafusion_common::DFField,
-    datafusion_expr::{expr::Sort, utils::exprlist_to_fields, Expr, LogicalPlan},
+    datafusion_expr::{expr::Sort, utils::exprlist_to_fields, DdlStatement, Expr, LogicalPlan},
     expr::{projection::PyProjection, PyExpr},
     sql::logical::PyLogicalPlan,
 };
@@ -82,20 +82,21 @@ pub fn get_current_node_type(plan: PyLogicalPlan) -> Result<String> {
         LogicalPlan::TableScan(_table_scan) => "TableScan".to_string(),
         LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation".to_string(),
         LogicalPlan::Limit(_limit) => "Limit".to_string(),
-        LogicalPlan::CreateExternalTable(_create_external_table) => {
-            "CreateExternalTable".to_string()
-        }
-        LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable".to_string(),
-        LogicalPlan::DropTable(_drop_table) => "DropTable".to_string(),
-        LogicalPlan::DropView(_drop_view) => "DropView".to_string(),
+        LogicalPlan::Ddl(ddl) => match ddl {
+            DdlStatement::CreateExternalTable(_) => "CreateExternalTable".to_string(),
+            DdlStatement::CreateCatalog(_) => "CreateCatalog".to_string(),
+            DdlStatement::CreateCatalogSchema(_) => "CreateCatalogSchema".to_string(),
+            DdlStatement::CreateMemoryTable(_) => "CreateMemoryTable".to_string(),
+            DdlStatement::CreateView(_) => "CreateView".to_string(),
+            DdlStatement::DropCatalogSchema(_) => "DropCatalogSchema".to_string(),
+            DdlStatement::DropTable(_) => "DropTable".to_string(),
+            DdlStatement::DropView(_) => "DropView".to_string(),
+        },
         LogicalPlan::Values(_values) => "Values".to_string(),
         LogicalPlan::Explain(_explain) => "Explain".to_string(),
         LogicalPlan::Analyze(_analyze) => "Analyze".to_string(),
         LogicalPlan::Subquery(_sub_query) => "Subquery".to_string(),
         LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias".to_string(),
-        LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema".to_string(),
-        LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog".to_string(),
-        LogicalPlan::CreateView(_create_view) => "CreateView".to_string(),
         LogicalPlan::Statement(_) => "Statement".to_string(),
         // Further examine and return the name that is a possible Dask-SQL Extension type
         LogicalPlan::Extension(extension) => {
