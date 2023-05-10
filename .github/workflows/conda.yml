@@ -40,7 +40,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
       - name: Install dependencies
         run: |

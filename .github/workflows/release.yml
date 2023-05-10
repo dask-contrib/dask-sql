@@ -54,7 +54,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
       - name: Check dist files
         run: |
@@ -84,7 +84,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
       - name: Build source distribution
         run: |

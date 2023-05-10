@@ -43,15 +43,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.8", "3.9", "3.10"]
+        python: ["3.9", "3.10", "3.11"]
         distributed: [false]
         include:
           # run tests on a distributed client
           - os: "ubuntu-latest"
-            python: "3.8"
+            python: "3.9"
             distributed: true
           - os: "ubuntu-latest"
-            python: "3.10"
+            python: "3.11"
             distributed: true
     steps:
       - uses: actions/checkout@v3
@@ -107,7 +107,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          python-version: "3.9"
           channel-priority: strict
       - name: Install Protoc
         uses: arduino/setup-protoc@v1

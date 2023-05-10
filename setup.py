@@ -39,7 +39,7 @@ setup(
             debug=debug_build,
         )
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     setup_requires=sphinx_requirements,
     install_requires=[
         "dask[dataframe]>=2022.3.0",
