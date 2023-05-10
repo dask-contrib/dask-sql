@@ -5,4 +5,4 @@ python:
 c_compiler_version:
     - 11
 rust_compiler_version:
-    - '>=1.65'
+    - 1.69
