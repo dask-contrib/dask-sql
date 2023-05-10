@@ -11,6 +11,7 @@ dependencies:
 - fugue=0.7.3
 - intake=0.6.0
 - jsonschema
+- libprotobuf=3
 - lightgbm
 - maturin=0.12.8
 - mlflow
