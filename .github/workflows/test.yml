@@ -61,7 +61,6 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: ${{ matrix.python }}
-          channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
           run-post: ${{ matrix.os != 'windows-latest' && 'true' || 'false' }}
@@ -82,7 +81,7 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          mamba install --no-channel-priority dask/label/dev::dask
+          mamba install dask/label/dev::dask
       - name: Test with pytest
         run: |
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
@@ -108,7 +107,6 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: "3.9"
-          channel-priority: strict
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:

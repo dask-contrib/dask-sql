@@ -1,7 +1,6 @@
-name: dask-sql
+name: dask-sql-py311
 channels:
 - conda-forge
-- nodefaults
 dependencies:
 - c-compiler
 - dask>=2022.3.0
