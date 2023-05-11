@@ -722,17 +722,35 @@ fn satisfies_string(string_value: Option<&String>, filter: Expr) -> bool {
 // Returns a boolean representing whether an Int64 satisfies a given filter
 fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
     match filter {
-        Expr::BinaryExpr(b) => match b.op {
-            Operator::Eq => Expr::Literal(ScalarValue::Int64(long_value)) == *b.right,
-            Operator::NotEq => Expr::Literal(ScalarValue::Int64(long_value)) != *b.right,
-            Operator::Gt => Expr::Literal(ScalarValue::Int64(long_value)) > *b.right,
-            Operator::Lt => Expr::Literal(ScalarValue::Int64(long_value)) < *b.right,
-            Operator::GtEq => Expr::Literal(ScalarValue::Int64(long_value)) >= *b.right,
-            Operator::LtEq => Expr::Literal(ScalarValue::Int64(long_value)) <= *b.right,
-            _ => {
-                panic!("Unknown satisfies_int64 operator");
+        Expr::BinaryExpr(b) => {
+            let filter_value = *b.right;
+            let int_value: i64 = match filter_value {
+                Expr::Literal(ScalarValue::Int64(i)) => {
+                    i.unwrap()
+                }
+                Expr::Literal(ScalarValue::Int32(i)) => {
+                    i64::from(i.unwrap())
+                }
+                Expr::Literal(ScalarValue::Float64(i)) => {
+                    i.unwrap() as i64
+                }
+                _ => {
+                    panic!("Unknown ScalarValue type");
+                }
+            };
+            let filter_value = Expr::Literal(ScalarValue::Int64(Some(int_value)));
+            match b.op {
+                Operator::Eq => Expr::Literal(ScalarValue::Int64(long_value)) == filter_value,
+                Operator::NotEq => Expr::Literal(ScalarValue::Int64(long_value)) != filter_value,
+                Operator::Gt => Expr::Literal(ScalarValue::Int64(long_value)) > filter_value,
+                Operator::Lt => Expr::Literal(ScalarValue::Int64(long_value)) < filter_value,
+                Operator::GtEq => Expr::Literal(ScalarValue::Int64(long_value)) >= filter_value,
+                Operator::LtEq => Expr::Literal(ScalarValue::Int64(long_value)) <= filter_value,
+                _ => {
+                    panic!("Unknown satisfies_int64 operator");
+                }
             }
-        },
+        }
         Expr::IsNotNull(_) => long_value.is_some(),
         _ => {
             panic!("Unknown satisfies_int64 Expr");
@@ -743,17 +761,35 @@ fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
 // Returns a boolean representing whether an Int32 satisfies a given filter
 fn satisfies_int32(long_value: Option<i32>, filter: Expr) -> bool {
     match filter {
-        Expr::BinaryExpr(b) => match b.op {
-            Operator::Eq => Expr::Literal(ScalarValue::Int32(long_value)) == *b.right,
-            Operator::NotEq => Expr::Literal(ScalarValue::Int32(long_value)) != *b.right,
-            Operator::Gt => Expr::Literal(ScalarValue::Int32(long_value)) > *b.right,
-            Operator::Lt => Expr::Literal(ScalarValue::Int32(long_value)) < *b.right,
-            Operator::GtEq => Expr::Literal(ScalarValue::Int32(long_value)) >= *b.right,
-            Operator::LtEq => Expr::Literal(ScalarValue::Int32(long_value)) <= *b.right,
-            _ => {
-                panic!("Unknown satisfies_int32 operator");
+        Expr::BinaryExpr(b) => {
+            let filter_value = *b.right;
+            let int_value: i32 = match filter_value {
+                Expr::Literal(ScalarValue::Int64(i)) => {
+                    i.unwrap() as i32
+                }
+                Expr::Literal(ScalarValue::Int32(i)) => {
+                    i.unwrap()
+                }
+                Expr::Literal(ScalarValue::Float64(i)) => {
+                    i.unwrap() as i32
+                }
+                _ => {
+                    panic!("Unknown ScalarValue type");
+                }
+            };
+            let filter_value = Expr::Literal(ScalarValue::Int32(Some(int_value)));
+            match b.op {
+                Operator::Eq => Expr::Literal(ScalarValue::Int32(long_value)) == filter_value,
+                Operator::NotEq => Expr::Literal(ScalarValue::Int32(long_value)) != filter_value,
+                Operator::Gt => Expr::Literal(ScalarValue::Int32(long_value)) > filter_value,
+                Operator::Lt => Expr::Literal(ScalarValue::Int32(long_value)) < filter_value,
+                Operator::GtEq => Expr::Literal(ScalarValue::Int32(long_value)) >= filter_value,
+                Operator::LtEq => Expr::Literal(ScalarValue::Int32(long_value)) <= filter_value,
+                _ => {
+                    panic!("Unknown satisfies_int32 operator");
+                }
             }
-        },
+        }
         Expr::IsNotNull(_) => long_value.is_some(),
         _ => {
             panic!("Unknown satisfies_int32 Expr");
@@ -764,17 +800,35 @@ fn satisfies_int32(long_value: Option<i32>, filter: Expr) -> bool {
 // Returns a boolean representing whether an Float64 satisfies a given filter
 fn satisfies_float(long_value: Option<f64>, filter: Expr) -> bool {
     match filter {
-        Expr::BinaryExpr(b) => match b.op {
-            Operator::Eq => Expr::Literal(ScalarValue::Float64(long_value)) == *b.right,
-            Operator::NotEq => Expr::Literal(ScalarValue::Float64(long_value)) != *b.right,
-            Operator::Gt => Expr::Literal(ScalarValue::Float64(long_value)) > *b.right,
-            Operator::Lt => Expr::Literal(ScalarValue::Float64(long_value)) < *b.right,
-            Operator::GtEq => Expr::Literal(ScalarValue::Float64(long_value)) >= *b.right,
-            Operator::LtEq => Expr::Literal(ScalarValue::Float64(long_value)) <= *b.right,
-            _ => {
-                panic!("Unknown satisfies_float operator");
+        Expr::BinaryExpr(b) => {
+            let filter_value = *b.right;
+            let float_value: f64 = match filter_value {
+                Expr::Literal(ScalarValue::Int64(i)) => {
+                    i.unwrap() as f64
+                }
+                Expr::Literal(ScalarValue::Int32(i)) => {
+                    i.unwrap() as f64
+                }
+                Expr::Literal(ScalarValue::Float64(i)) => {
+                    i.unwrap()
+                }
+                _ => {
+                    panic!("Unknown ScalarValue type");
+                }
+            };
+            let filter_value = Expr::Literal(ScalarValue::Float64(Some(float_value)));
+            match b.op {
+                Operator::Eq => Expr::Literal(ScalarValue::Float64(long_value)) == filter_value,
+                Operator::NotEq => Expr::Literal(ScalarValue::Float64(long_value)) != filter_value,
+                Operator::Gt => Expr::Literal(ScalarValue::Float64(long_value)) > filter_value,
+                Operator::Lt => Expr::Literal(ScalarValue::Float64(long_value)) < filter_value,
+                Operator::GtEq => Expr::Literal(ScalarValue::Float64(long_value)) >= filter_value,
+                Operator::LtEq => Expr::Literal(ScalarValue::Float64(long_value)) <= filter_value,
+                _ => {
+                    panic!("Unknown satisfies_float operator");
+                }
             }
-        },
+        }
         Expr::IsNotNull(_) => long_value.is_some(),
         _ => {
             panic!("Unknown satisfies_float Expr");
