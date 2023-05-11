@@ -5,7 +5,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ class CreateCatalogSchemaPlugin(BaseRelPlugin):
 
     class_name = "CreateCatalogSchema"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
-        create_schema = rel.create_catalog_schema()
+    def convert(self, rel: "DaskLogicalPlan", context: "dask_sql.Context"):
+        create_schema = rel.to_variant()
         schema_name = create_schema.getSchemaName()
 
         if schema_name in context.schema:

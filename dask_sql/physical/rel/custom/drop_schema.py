@@ -21,7 +21,7 @@ class DropSchemaPlugin(BaseRelPlugin):
     class_name = "DropSchema"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
-        drop_schema = rel.drop_schema()
+        drop_schema = rel.to_variant()
         schema_name = drop_schema.getSchemaName()
 
         if schema_name not in context.schema:
