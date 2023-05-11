@@ -39,8 +39,6 @@ use crate::sql::table::DaskTableSource;
 pub struct DynamicPartitionPruning {}
 
 impl DynamicPartitionPruning {
-    #[allow(missing_docs)]
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {}
     }
@@ -85,12 +83,9 @@ impl OptimizerRule for DynamicPartitionPruning {
                 let join_on = &join_cond.on;
                 for on_i in join_on {
                     // Obtain tables and columns (fields) involved in join
-                    let left_on = &on_i.0;
-                    let right_on = &on_i.1;
-                    let mut left_table: Option<String> = None;
-                    let mut left_field: Option<String> = None;
-                    let mut right_table: Option<String> = None;
-                    let mut right_field: Option<String> = None;
+                    let (left_on, right_on) = (&on_i.0, &on_i.1);
+                    let (mut left_table, mut right_table) = (None, None);
+                    let (mut left_field, mut right_field) = (None, None);
 
                     if let Expr::Column(c) = left_on {
                         left_table = Some(c.relation.clone().unwrap().to_string().clone());
@@ -107,16 +102,13 @@ impl OptimizerRule for DynamicPartitionPruning {
                         continue;
                     }
 
-                    let mut left_table = left_table.unwrap();
-                    let left_field = left_field.unwrap();
-                    let mut right_table = right_table.unwrap();
-                    let right_field = right_field.unwrap();
+                    let (mut left_table, mut right_table) = (left_table.unwrap(), right_table.unwrap());
+                    let (left_field, right_field) = (left_field.unwrap(), right_field.unwrap());
 
                     // TODO: Consider allowing the fact_dimension_ratio to be configured by the
                     // user. See issue: https://github.com/dask-contrib/dask-sql/issues/1121
                     let fact_dimension_ratio = 0.3;
-                    let mut left_filtered_table = None;
-                    let mut right_filtered_table = None;
+                    let (mut left_filtered_table, mut right_filtered_table) = (None, None);
 
                     // Check if join uses an alias instead of the table name itself. Need to use
                     // the actual table name to obtain its filepath
@@ -208,8 +200,7 @@ fn gather_joins(plan: &LogicalPlan) -> HashSet<JoinInfo> {
                         join_info.insert(info);
 
                         // Recurse on left and right inputs of Join
-                        let left_joins = gather_joins(&j.left);
-                        let right_joins = gather_joins(&j.right);
+                        let (left_joins, right_joins) = (gather_joins(&j.left), gather_joins(&j.right));
 
                         // Add left_joins and right_joins to HashSet
                         join_info.extend(left_joins);
@@ -221,8 +212,7 @@ fn gather_joins(plan: &LogicalPlan) -> HashSet<JoinInfo> {
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_joins = gather_joins(&c.left);
-                    let right_joins = gather_joins(&c.right);
+                    let (left_joins, right_joins) = (gather_joins(&c.left), gather_joins(&c.right));
 
                     // Add left_joins and right_joins to HashSet
                     join_info.extend(left_joins);
@@ -296,8 +286,7 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
             match current_plan {
                 LogicalPlan::Join(ref j) => {
                     // Recurse on left and right inputs of Join
-                    let left_tables = gather_tables(&j.left);
-                    let right_tables = gather_tables(&j.right);
+                    let (left_tables, right_tables) = (gather_tables(&j.left), gather_tables(&j.right));
 
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
@@ -305,8 +294,7 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_tables = gather_tables(&c.left);
-                    let right_tables = gather_tables(&c.right);
+                    let (left_tables, right_tables) = (gather_tables(&c.left), gather_tables(&c.right));
 
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
@@ -370,8 +358,7 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
             match current_plan {
                 LogicalPlan::Join(ref j) => {
                     // Recurse on left and right inputs of Join
-                    let left_aliases = gather_aliases(&j.left);
-                    let right_aliases = gather_aliases(&j.right);
+                    let (left_aliases, right_aliases) = (gather_aliases(&j.left), gather_aliases(&j.right));
 
                     // Add left_aliases and right_aliases to HashMap
                     aliases.extend(left_aliases);
@@ -379,8 +366,7 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let left_aliases = gather_aliases(&c.left);
-                    let right_aliases = gather_aliases(&c.right);
+                    let (left_aliases, right_aliases) = (gather_aliases(&c.left), gather_aliases(&c.right));
 
                     // Add left_aliases and right_aliases to HashMap
                     aliases.extend(left_aliases);
@@ -519,35 +505,27 @@ fn read_table(
                 let current_type = &filtered_types[index];
                 match current_type.as_str() {
                     "BYTE_ARRAY" => {
-                        let string_value = row.get_string(row_index);
-                        if let Ok(s) = string_value {
-                            if !satisfies_string(s, filters[index].clone()) {
-                                satisfies_filters = false;
-                            }
+                        let string_value = row.get_string(row_index).ok();
+                        if !satisfies_string(string_value, filters[index].clone()) {
+                            satisfies_filters = false;
                         }
                     }
                     "INT64" => {
-                        let long_value = row.get_long(row_index);
-                        if let Ok(l) = long_value {
-                            if !satisfies_long(l, filters[index].clone()) {
-                                satisfies_filters = false;
-                            }
+                        let long_value = row.get_long(row_index).ok();
+                        if !satisfies_int64(long_value, filters[index].clone()) {
+                            satisfies_filters = false;
                         }
                     }
                     "INT32" => {
-                        let int_value = row.get_int(row_index);
-                        if let Ok(i) = int_value {
-                            if !satisfies_long(i as i64, filters[index].clone()) {
-                                satisfies_filters = false;
-                            }
+                        let int_value = row.get_int(row_index).ok();
+                        if !satisfies_int32(int_value, filters[index].clone()) {
+                            satisfies_filters = false;
                         }
                     }
                     "DOUBLE" => {
-                        let double_value = row.get_double(row_index);
-                        if let Ok(d) = double_value {
-                            if !satisfies_long(d as i64, filters[index].clone()) {
-                                satisfies_filters = false;
-                            }
+                        let double_value = row.get_double(row_index).ok();
+                        if !satisfies_float(double_value, filters[index].clone()) {
+                            satisfies_filters = false;
                         }
                     }
                     u => panic!("Unknown PhysicalType {u}"),
@@ -719,44 +697,85 @@ fn push_filtered_fields(
 }
 
 // Returns a boolean representing whether a string satisfies a given filter
-fn satisfies_string(string_value: &String, filter: Expr) -> bool {
+fn satisfies_string(string_value: Option<&String>, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
             Operator::Eq => {
-                Expr::Literal(ScalarValue::Utf8(Some(string_value.to_string()))) == *b.right
+                Expr::Literal(ScalarValue::Utf8(string_value.cloned())) == *b.right
             }
             Operator::NotEq => {
-                Expr::Literal(ScalarValue::Utf8(Some(string_value.to_string()))) != *b.right
+                Expr::Literal(ScalarValue::Utf8(string_value.cloned())) != *b.right
             }
             _ => {
                 panic!("Unknown satisfies_string operator");
             }
         },
-        Expr::IsNotNull(_) => true,
+        Expr::IsNotNull(_) => string_value.is_some(),
         _ => {
             panic!("Unknown satisfies_string Expr");
         }
     }
 }
 
-// TODO: Should we have separate satisfies_int32 and satisfies_double functions?
-// Returns a boolean representing whether a long satisfies a given filter
-fn satisfies_long(long_value: i64, filter: Expr) -> bool {
+// Returns a boolean representing whether an Int64 satisfies a given filter
+fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
-            Operator::Eq => Expr::Literal(ScalarValue::Int64(Some(long_value))) == *b.right,
-            Operator::NotEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) != *b.right,
-            Operator::Gt => Expr::Literal(ScalarValue::Int64(Some(long_value))) > *b.right,
-            Operator::Lt => Expr::Literal(ScalarValue::Int64(Some(long_value))) < *b.right,
-            Operator::GtEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) >= *b.right,
-            Operator::LtEq => Expr::Literal(ScalarValue::Int64(Some(long_value))) <= *b.right,
+            Operator::Eq => Expr::Literal(ScalarValue::Int64(long_value)) == *b.right,
+            Operator::NotEq => Expr::Literal(ScalarValue::Int64(long_value)) != *b.right,
+            Operator::Gt => Expr::Literal(ScalarValue::Int64(long_value)) > *b.right,
+            Operator::Lt => Expr::Literal(ScalarValue::Int64(long_value)) < *b.right,
+            Operator::GtEq => Expr::Literal(ScalarValue::Int64(long_value)) >= *b.right,
+            Operator::LtEq => Expr::Literal(ScalarValue::Int64(long_value)) <= *b.right,
             _ => {
-                panic!("Unknown satisfies_long operator");
+                panic!("Unknown satisfies_int64 operator");
             }
         },
-        Expr::IsNotNull(_) => true,
+        Expr::IsNotNull(_) => long_value.is_some(),
         _ => {
-            panic!("Unknown satisfies_long Expr");
+            panic!("Unknown satisfies_int64 Expr");
+        }
+    }
+}
+
+// Returns a boolean representing whether an Int32 satisfies a given filter
+fn satisfies_int32(long_value: Option<i32>, filter: Expr) -> bool {
+    match filter {
+        Expr::BinaryExpr(b) => match b.op {
+            Operator::Eq => Expr::Literal(ScalarValue::Int32(long_value)) == *b.right,
+            Operator::NotEq => Expr::Literal(ScalarValue::Int32(long_value)) != *b.right,
+            Operator::Gt => Expr::Literal(ScalarValue::Int32(long_value)) > *b.right,
+            Operator::Lt => Expr::Literal(ScalarValue::Int32(long_value)) < *b.right,
+            Operator::GtEq => Expr::Literal(ScalarValue::Int32(long_value)) >= *b.right,
+            Operator::LtEq => Expr::Literal(ScalarValue::Int32(long_value)) <= *b.right,
+            _ => {
+                panic!("Unknown satisfies_int32 operator");
+            }
+        },
+        Expr::IsNotNull(_) => long_value.is_some(),
+        _ => {
+            panic!("Unknown satisfies_int32 Expr");
+        }
+    }
+}
+
+// Returns a boolean representing whether an Float64 satisfies a given filter
+fn satisfies_float(long_value: Option<f64>, filter: Expr) -> bool {
+    match filter {
+        Expr::BinaryExpr(b) => match b.op {
+            Operator::Eq => Expr::Literal(ScalarValue::Float64(long_value)) == *b.right,
+            Operator::NotEq => Expr::Literal(ScalarValue::Float64(long_value)) != *b.right,
+            Operator::Gt => Expr::Literal(ScalarValue::Float64(long_value)) > *b.right,
+            Operator::Lt => Expr::Literal(ScalarValue::Float64(long_value)) < *b.right,
+            Operator::GtEq => Expr::Literal(ScalarValue::Float64(long_value)) >= *b.right,
+            Operator::LtEq => Expr::Literal(ScalarValue::Float64(long_value)) <= *b.right,
+            _ => {
+                panic!("Unknown satisfies_float operator");
+            }
+        },
+        Expr::IsNotNull(_) => long_value.is_some(),
+        _ => {
+            panic!("Unknown satisfies_float Expr");
         }
     }
 }
