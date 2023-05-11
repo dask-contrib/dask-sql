@@ -725,15 +725,9 @@ fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
         Expr::BinaryExpr(b) => {
             let filter_value = *b.right;
             let int_value: i64 = match filter_value {
-                Expr::Literal(ScalarValue::Int64(i)) => {
-                    i.unwrap()
-                }
-                Expr::Literal(ScalarValue::Int32(i)) => {
-                    i64::from(i.unwrap())
-                }
-                Expr::Literal(ScalarValue::Float64(i)) => {
-                    i.unwrap() as i64
-                }
+                Expr::Literal(ScalarValue::Int64(i)) => i.unwrap(),
+                Expr::Literal(ScalarValue::Int32(i)) => i64::from(i.unwrap()),
+                Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i64,
                 _ => {
                     panic!("Unknown ScalarValue type");
                 }
@@ -764,15 +758,9 @@ fn satisfies_int32(long_value: Option<i32>, filter: Expr) -> bool {
         Expr::BinaryExpr(b) => {
             let filter_value = *b.right;
             let int_value: i32 = match filter_value {
-                Expr::Literal(ScalarValue::Int64(i)) => {
-                    i.unwrap() as i32
-                }
-                Expr::Literal(ScalarValue::Int32(i)) => {
-                    i.unwrap()
-                }
-                Expr::Literal(ScalarValue::Float64(i)) => {
-                    i.unwrap() as i32
-                }
+                Expr::Literal(ScalarValue::Int64(i)) => i.unwrap() as i32,
+                Expr::Literal(ScalarValue::Int32(i)) => i.unwrap(),
+                Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i32,
                 _ => {
                     panic!("Unknown ScalarValue type");
                 }
@@ -803,15 +791,9 @@ fn satisfies_float(long_value: Option<f64>, filter: Expr) -> bool {
         Expr::BinaryExpr(b) => {
             let filter_value = *b.right;
             let float_value: f64 = match filter_value {
-                Expr::Literal(ScalarValue::Int64(i)) => {
-                    i.unwrap() as f64
-                }
-                Expr::Literal(ScalarValue::Int32(i)) => {
-                    i.unwrap() as f64
-                }
-                Expr::Literal(ScalarValue::Float64(i)) => {
-                    i.unwrap()
-                }
+                Expr::Literal(ScalarValue::Int64(i)) => i.unwrap() as f64,
+                Expr::Literal(ScalarValue::Int32(i)) => i.unwrap() as f64,
+                Expr::Literal(ScalarValue::Float64(i)) => i.unwrap(),
                 _ => {
                     panic!("Unknown ScalarValue type");
                 }
