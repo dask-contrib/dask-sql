@@ -4,7 +4,6 @@ channels:
 - rapidsai-nightly
 - nvidia
 - conda-forge
-- nodefaults
 dependencies:
 - c-compiler
 - dask>=2022.3.0
