@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
-from dask_planner.rust import row_type
+from dask_planner.rust import row_type, sort_ascending, sort_nulls_first
 from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -245,7 +245,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         # Output to the right field names right away
         field_names = row_type(rel).getFieldNames()
 
-        for window in rel.window().getGroups():
+        for window in rel.to_variant().getGroups():
             dc = self._apply_window(rel, window, dc, field_names, context)
 
         # Finally, fix the output schema if needed
@@ -295,7 +295,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # Default window bounds when not specified as unbound preceding and current row (if no order by)
         # unbounded preceding and unbounded following if there's an order by
-        if not rel.window().getWindowFrame(window):
+        if not rel.to_variant().getWindowFrame(window):
             lower_bound = BoundDescription(
                 is_unbounded=True,
                 is_preceding=True,
@@ -322,10 +322,10 @@ class DaskWindowPlugin(BaseRelPlugin):
             )
         else:
             lower_bound = to_bound_description(
-                rel.window().getWindowFrame(window).getLowerBound(),
+                rel.to_variant().getWindowFrame(window).getLowerBound(),
             )
             upper_bound = to_bound_description(
-                rel.window().getWindowFrame(window).getUpperBound(),
+                rel.to_variant().getWindowFrame(window).getUpperBound(),
             )
 
         # Apply the windowing operation
@@ -369,10 +369,12 @@ class DaskWindowPlugin(BaseRelPlugin):
         context: "dask_sql.Context",
     ) -> Tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
-        partition_keys = rel.window().getPartitionExprs(window)
+        partition_keys = rel.to_variant().getPartitionExprs(window)
         if partition_keys:
             group_columns = [
-                dc.column_container.get_backend_by_frontend_name(o.column_name(rel))
+                dc.column_container.get_backend_by_frontend_name(
+                    o.column_name(rel.datafusion_plan())
+                )
                 for o in partition_keys
             ]
             temporary_columns = []
@@ -392,14 +394,14 @@ class DaskWindowPlugin(BaseRelPlugin):
             "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
         )
         # TODO: This was commented out for flake8 CI passing and needs to be handled
-        sort_expressions = rel.window().getSortExprs(window)
+        sort_expressions = rel.to_variant().getSortExprs(window)
         sort_columns = [
-            cc.get_backend_by_frontend_name(expr.column_name(rel))
+            cc.get_backend_by_frontend_name(expr.column_name(rel.datafusion_plan()))
             for expr in sort_expressions
         ]
-        sort_ascending = [expr.isSortAscending() for expr in sort_expressions]
-        sort_null_first = [expr.isSortNullsFirst() for expr in sort_expressions]
-        return sort_columns, sort_ascending, sort_null_first
+        py_sort_ascending = [sort_ascending(expr) for expr in sort_expressions]
+        sort_null_first = [sort_nulls_first(expr) for expr in sort_expressions]
+        return sort_columns, py_sort_ascending, sort_null_first
 
     def _extract_operations(
         self,
@@ -414,7 +416,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
         # TODO: datafusion returns only window func expression per window
         # This can be optimized in the physical plan to collect all aggs for a given window
-        operator_name = rel.window().getWindowFuncName(window).lower()
+        operator_name = rel.to_variant().getWindowFuncName(window).lower()
 
         try:
             operation = self.OPERATION_MAPPING[operator_name]
@@ -429,7 +431,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         # TODO: can be optimized by re-using already present columns
         temporary_operand_columns = {
             new_temporary_column(df): RexConverter.convert(rel, o, dc, context=context)
-            for o in rel.window().getArgs(window)
+            for o in rel.to_variant().getArgs(window)
         }
         df = df.assign(**temporary_operand_columns)
         temporary_operand_columns = list(temporary_operand_columns.keys())

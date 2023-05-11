@@ -32,6 +32,7 @@ use self::{
     show_tables::{PyShowTables, ShowTablesPlanNode},
     sort::PySort,
     use_schema::{PyUseSchema, UseSchemaPlanNode},
+    window::PyWindow,
 };
 
 pub mod aggregate;
@@ -197,6 +198,9 @@ impl DaskLogicalPlan {
             LogicalPlan::Repartition(_) => {
                 Ok(PyRepartitionBy::try_from((*self.plan).clone())?.into_py(py))
             }
+
+            // Window logic
+            LogicalPlan::Window(_) => Ok(PyWindow::try_from((*self.plan).clone())?.into_py(py)),
 
             // Drop Table logic
             LogicalPlan::Ddl(DdlStatement::DropTable(_)) => {
