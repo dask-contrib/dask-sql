@@ -102,7 +102,8 @@ impl OptimizerRule for DynamicPartitionPruning {
                         continue;
                     }
 
-                    let (mut left_table, mut right_table) = (left_table.unwrap(), right_table.unwrap());
+                    let (mut left_table, mut right_table) =
+                        (left_table.unwrap(), right_table.unwrap());
                     let (left_field, right_field) = (left_field.unwrap(), right_field.unwrap());
 
                     // TODO: Consider allowing the fact_dimension_ratio to be configured by the
@@ -200,7 +201,8 @@ fn gather_joins(plan: &LogicalPlan) -> HashSet<JoinInfo> {
                         join_info.insert(info);
 
                         // Recurse on left and right inputs of Join
-                        let (left_joins, right_joins) = (gather_joins(&j.left), gather_joins(&j.right));
+                        let (left_joins, right_joins) =
+                            (gather_joins(&j.left), gather_joins(&j.right));
 
                         // Add left_joins and right_joins to HashSet
                         join_info.extend(left_joins);
@@ -286,7 +288,8 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
             match current_plan {
                 LogicalPlan::Join(ref j) => {
                     // Recurse on left and right inputs of Join
-                    let (left_tables, right_tables) = (gather_tables(&j.left), gather_tables(&j.right));
+                    let (left_tables, right_tables) =
+                        (gather_tables(&j.left), gather_tables(&j.right));
 
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
@@ -294,7 +297,8 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let (left_tables, right_tables) = (gather_tables(&c.left), gather_tables(&c.right));
+                    let (left_tables, right_tables) =
+                        (gather_tables(&c.left), gather_tables(&c.right));
 
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
@@ -358,7 +362,8 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
             match current_plan {
                 LogicalPlan::Join(ref j) => {
                     // Recurse on left and right inputs of Join
-                    let (left_aliases, right_aliases) = (gather_aliases(&j.left), gather_aliases(&j.right));
+                    let (left_aliases, right_aliases) =
+                        (gather_aliases(&j.left), gather_aliases(&j.right));
 
                     // Add left_aliases and right_aliases to HashMap
                     aliases.extend(left_aliases);
@@ -366,7 +371,8 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
                 }
                 LogicalPlan::CrossJoin(ref c) => {
                     // Recurse on left and right inputs of CrossJoin
-                    let (left_aliases, right_aliases) = (gather_aliases(&c.left), gather_aliases(&c.right));
+                    let (left_aliases, right_aliases) =
+                        (gather_aliases(&c.left), gather_aliases(&c.right));
 
                     // Add left_aliases and right_aliases to HashMap
                     aliases.extend(left_aliases);
@@ -700,12 +706,8 @@ fn push_filtered_fields(
 fn satisfies_string(string_value: Option<&String>, filter: Expr) -> bool {
     match filter {
         Expr::BinaryExpr(b) => match b.op {
-            Operator::Eq => {
-                Expr::Literal(ScalarValue::Utf8(string_value.cloned())) == *b.right
-            }
-            Operator::NotEq => {
-                Expr::Literal(ScalarValue::Utf8(string_value.cloned())) != *b.right
-            }
+            Operator::Eq => Expr::Literal(ScalarValue::Utf8(string_value.cloned())) == *b.right,
+            Operator::NotEq => Expr::Literal(ScalarValue::Utf8(string_value.cloned())) != *b.right,
             _ => {
                 panic!("Unknown satisfies_string operator");
             }
