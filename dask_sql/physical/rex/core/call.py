@@ -159,11 +159,7 @@ class SQLDivisionOperator(Operation):
         result = lhs / rhs
 
         data_type_map = rex.types()
-        # output_type = str(rex.getType())
-        # output_type = sql_to_python_type(SqlType.fromString(output_type.upper()))
-        breakpoint()
         output_type = sql_to_python_type(str(data_type_map.sql_type))
-        breakpoint()
 
         is_float = pd.api.types.is_float_dtype(output_type)
         if not is_float:

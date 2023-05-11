@@ -9,7 +9,7 @@ from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
-from dask_planner.rust import row_type
+from dask_planner.rust import RexType, row_type
 from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -18,7 +18,7 @@ from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan, Expression
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +49,12 @@ class DaskJoinPlugin(BaseRelPlugin):
         "LEFTSEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
     }
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
-        join = rel.join()
+        join = rel.to_variant()
 
         # 1. We now have two inputs (from left and right), so we fetch them both
         dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
@@ -269,9 +271,9 @@ class DaskJoinPlugin(BaseRelPlugin):
     def _split_join_condition(
         self, join_condition: "Expression"
     ) -> Tuple[List[str], List[str], List["Expression"]]:
-        if str(join_condition.getRexType()) in ["RexType.Literal", "RexType.Reference"]:
+        if str(join_condition.rex_type()) in [RexType.Literal, RexType.Reference]:
             return [], [], [join_condition]
-        elif not str(join_condition.getRexType()) == "RexType.Call":
+        elif not str(join_condition.rex_type()) == RexType.Call:
             raise NotImplementedError("Can not understand join condition.")
 
         lhs_on = []
@@ -291,7 +293,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         return [], [], [join_condition]
 
     def _extract_lhs_rhs(self, rex):
-        assert str(rex.getRexType()) == "RexType.Call"
+        assert str(rex.rex_type()) == RexType.Call
 
         operator_name = str(rex.getOperatorName())
         assert operator_name in ["=", "AND"]
@@ -305,8 +307,8 @@ class DaskJoinPlugin(BaseRelPlugin):
             operand_rhs = operands[1]
 
             if (
-                str(operand_lhs.getRexType()) == "RexType.Reference"
-                and str(operand_rhs.getRexType()) == "RexType.Reference"
+                str(operand_lhs.rex_type()) == RexType.Reference
+                and str(operand_rhs.rex_type()) == RexType.Reference
             ):
                 lhs_index = operand_lhs.getIndex()
                 rhs_index = operand_rhs.getIndex()

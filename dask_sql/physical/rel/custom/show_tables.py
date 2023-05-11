@@ -8,7 +8,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner import LogicalPlan
+    from dask_planner import DaskLogicalPlan
 
 
 class ShowTablesPlugin(BaseRelPlugin):
@@ -26,8 +26,10 @@ class ShowTablesPlugin(BaseRelPlugin):
 
     class_name = "ShowTables"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        show_tables = rel.show_tables()
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
+        show_tables = rel.to_variant()
 
         # currently catalogs other than the default `dask_sql` are not supported
         catalog_name = show_tables.getCatalogName() or context.catalog_name

@@ -218,7 +218,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_columns = (
             agg.getDistinctColumns()
             if agg.isDistinctNode()
-            else [group_expr.column_name(rel) for group_expr in group_exprs]
+            else [
+                group_expr.column_name(rel.datafusion_plan())
+                for group_expr in group_exprs
+            ]
         )
 
         dc = DataContainer(df, cc)

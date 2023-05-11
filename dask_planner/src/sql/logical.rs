@@ -20,6 +20,8 @@ use self::{
     drop_model::{DropModelPlanNode, PyDropModel},
     drop_schema::{DropSchemaPlanNode, PyDropSchema},
     export_model::{ExportModelPlanNode, PyExportModel},
+    filter::PyFilter,
+    join::PyJoin,
     predict_model::{PredictModelPlanNode, PyPredictModel},
     show_columns::{PyShowColumns, ShowColumnsPlanNode},
     show_models::{PyShowModels, ShowModelsPlanNode},
@@ -176,6 +178,12 @@ impl DaskLogicalPlan {
 
             // Sort logic should remain here for the time being
             LogicalPlan::Sort(_) => Ok(PySort::try_from((*self.plan).clone())?.into_py(py)),
+
+            // Join logic
+            LogicalPlan::Join(_) => Ok(PyJoin::try_from((*self.plan).clone())?.into_py(py)),
+
+            // Filter logic
+            LogicalPlan::Filter(_) => Ok(PyFilter::try_from((*self.plan).clone())?.into_py(py)),
 
             // Delegate processing to Arrow DataFusion Python
             other => PyLogicalPlan::new((*other).clone()).to_variant(py),
