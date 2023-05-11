@@ -271,9 +271,9 @@ class DaskJoinPlugin(BaseRelPlugin):
     def _split_join_condition(
         self, join_condition: "Expression"
     ) -> Tuple[List[str], List[str], List["Expression"]]:
-        if str(join_condition.rex_type()) in [RexType.Literal, RexType.Reference]:
+        if str(join_condition.rex_type()) in ["RexType.Literal", "RexType.Reference"]:
             return [], [], [join_condition]
-        elif not str(join_condition.rex_type()) == RexType.Call:
+        elif not str(join_condition.rex_type()) == "RexType.Call":
             raise NotImplementedError("Can not understand join condition.")
 
         lhs_on = []

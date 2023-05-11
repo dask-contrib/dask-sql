@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use datafusion_python::{
-    datafusion_expr::LogicalPlan,
+    datafusion_expr::{DdlStatement, LogicalPlan},
     errors::py_unsupported_variant_err,
     sql::logical::PyLogicalPlan,
 };
@@ -14,15 +14,18 @@ use self::{
     analyze_table::{AnalyzeTablePlanNode, PyAnalyzeTable},
     create_catalog_schema::{CreateCatalogSchemaPlanNode, PyCreateCatalogSchema},
     create_experiment::{CreateExperimentPlanNode, PyCreateExperiment},
+    create_memory_table::PyCreateMemoryTable,
     create_model::{CreateModelPlanNode, PyCreateModel},
     create_table::{CreateTablePlanNode, PyCreateTable},
     describe_model::{DescribeModelPlanNode, PyDescribeModel},
     drop_model::{DropModelPlanNode, PyDropModel},
     drop_schema::{DropSchemaPlanNode, PyDropSchema},
+    drop_table::PyDropTable,
     export_model::{ExportModelPlanNode, PyExportModel},
     filter::PyFilter,
     join::PyJoin,
     predict_model::{PredictModelPlanNode, PyPredictModel},
+    repartition_by::PyRepartitionBy,
     show_columns::{PyShowColumns, ShowColumnsPlanNode},
     show_models::{PyShowModels, ShowModelsPlanNode},
     show_schemas::{PyShowSchema, ShowSchemasPlanNode},
@@ -71,7 +74,7 @@ pub struct DaskLogicalPlan {
 }
 
 impl DaskLogicalPlan {
-    pub fn new(plan: LogicalPlan) -> Self {
+    pub fn _new(plan: LogicalPlan) -> Self {
         DaskLogicalPlan {
             plan: Arc::new(plan),
         }
@@ -84,6 +87,11 @@ impl DaskLogicalPlan {
 
 #[pymethods]
 impl DaskLogicalPlan {
+    #[new]
+    pub fn new(plan: PyLogicalPlan) -> Self {
+        DaskLogicalPlan { plan: plan.plan() }
+    }
+
     /// Return the specific logical operator
     fn to_variant(&self, py: Python) -> PyResult<PyObject> {
         Python::with_gil(|_| match self.plan.as_ref() {
@@ -184,6 +192,24 @@ impl DaskLogicalPlan {
 
             // Filter logic
             LogicalPlan::Filter(_) => Ok(PyFilter::try_from((*self.plan).clone())?.into_py(py)),
+
+            // Existing DistributeBy/RepartitionBy logic
+            LogicalPlan::Repartition(_) => {
+                Ok(PyRepartitionBy::try_from((*self.plan).clone())?.into_py(py))
+            }
+
+            // Drop Table logic
+            LogicalPlan::Ddl(DdlStatement::DropTable(_)) => {
+                Ok(PyDropTable::try_from((*self.plan).clone())?.into_py(py))
+            }
+
+            LogicalPlan::Ddl(DdlStatement::CreateMemoryTable(_)) => {
+                Ok(PyCreateMemoryTable::try_from((*self.plan).clone())?.into_py(py))
+            }
+
+            LogicalPlan::Ddl(DdlStatement::CreateView(_)) => {
+                Ok(PyCreateMemoryTable::try_from((*self.plan).clone())?.into_py(py))
+            }
 
             // Delegate processing to Arrow DataFusion Python
             other => PyLogicalPlan::new((*other).clone()).to_variant(py),

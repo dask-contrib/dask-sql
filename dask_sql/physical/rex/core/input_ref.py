@@ -30,7 +30,5 @@ class RexInputRefPlugin(BaseRexPlugin):
         cc = dc.column_container
 
         column_name = rex.display_name()
-        column_name = column_name.split(".")
-        column_name = column_name[len(column_name) - 1]
         backend_column_name = cc.get_backend_by_frontend_name(column_name)
         return df[backend_column_name]

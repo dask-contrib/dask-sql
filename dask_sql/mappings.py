@@ -133,7 +133,6 @@ def sql_to_python_value(sql_type: "SqlType", literal_value: Any) -> Any:
     logger.debug(
         f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}"
     )
-
     if sql_type == SqlType.CHAR or sql_type == SqlType.VARCHAR:
         # Some varchars contain an additional encoding
         # in the format _ENCODING'string'
@@ -177,11 +176,11 @@ def sql_to_python_value(sql_type: "SqlType", literal_value: Any) -> Any:
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
-    elif sql_type == SqlType.INTERVAL_MONTH_DAY_NANOSECOND:
-        # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
-        return np.timedelta64(
-            (literal_value[0] * 30) + literal_value[1], "D"
-        ) + np.timedelta64(literal_value[2], "ns")
+    # elif sql_type == SqlType.INTERVAL_MONTH_DAY_NANOSECOND:
+    #     # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
+    #     return np.timedelta64(
+    #         (literal_value[0] * 30) + literal_value[1], "D"
+    #     ) + np.timedelta64(literal_value[2], "ns")
 
     elif sql_type == SqlType.BOOLEAN:
         return bool(literal_value)
@@ -197,7 +196,8 @@ def sql_to_python_value(sql_type: "SqlType", literal_value: Any) -> Any:
             # NULL time
             return pd.NaT  # pragma: no cover
         if sql_type == SqlType.DATE:
-            return literal_value.astype("<M8[D]")
+            literal_value = np.datetime64(literal_value, "ns")
+            return literal_value.astype("<M8[ns]")
         return literal_value.astype("<M8[ns]")
     else:
         try:

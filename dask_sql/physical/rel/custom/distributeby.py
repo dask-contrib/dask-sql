@@ -7,7 +7,7 @@ from dask_sql.utils import LoggableDataFrame
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,10 @@ class DistributeByPlugin(BaseRelPlugin):
     # DataFusion provides the phrase `Repartition` in the LogicalPlan instead of `Distribute By`, it is the same thing
     class_name = "Repartition"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        distribute = rel.repartition_by()
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
+        distribute = rel.to_variant()
         select = distribute.getSelectQuery()
         distribute_list = distribute.getDistributionColumns()
 

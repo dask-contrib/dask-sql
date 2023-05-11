@@ -1,8 +1,16 @@
 use std::sync::Arc;
 
 use datafusion_python::{
+    datafusion::arrow::datatypes::DataType,
     datafusion_common::DFField,
-    datafusion_expr::{expr::Sort, utils::exprlist_to_fields, DdlStatement, Expr, LogicalPlan},
+    datafusion_expr::{
+        expr::Sort,
+        utils::exprlist_to_fields,
+        Cast,
+        DdlStatement,
+        Expr,
+        LogicalPlan,
+    },
     expr::{projection::PyProjection, PyExpr},
 };
 use pyo3::{pyfunction, PyResult};
@@ -299,4 +307,26 @@ pub fn get_filter_expr(expr: PyExpr) -> PyResult<Option<PyExpr>> {
             "get_filter_expr() - Non-aggregate expression encountered",
         )),
     }
+}
+
+#[pyfunction]
+pub fn get_precision_scale(expr: PyExpr) -> PyResult<(u8, i8)> {
+    Ok(match &expr.expr {
+        Expr::Cast(Cast { expr: _, data_type }) => match data_type {
+            DataType::Decimal128(precision, scale) | DataType::Decimal256(precision, scale) => {
+                (*precision, *scale)
+            }
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered for Cast in get_precision_scale; {data_type:?}"
+                )))
+            }
+        },
+        _ => {
+            return Err(py_type_err(format!(
+                "Catch all triggered in get_precision_scale; {:?}",
+                &expr.expr
+            )))
+        }
+    })
 }

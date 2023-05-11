@@ -10,6 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 
 from dask_planner.rust import (
+    DaskLogicalPlan,
     DaskSchema,
     DaskSQLContext,
     DaskTable,
@@ -495,7 +496,7 @@ class Context:
 
             if isinstance(sql, str):
                 rel, _ = self._get_ral(sql)
-            elif isinstance(sql, LogicalPlan):
+            elif isinstance(sql, DaskLogicalPlan) or isinstance(sql, LogicalPlan):
                 rel = sql
             else:
                 raise RuntimeError(
@@ -827,8 +828,13 @@ class Context:
 
         return rel, rel_string
 
-    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
+    def _compute_table_from_rel(
+        self, rel: "DaskLogicalPlan", return_futures: bool = True
+    ):
         dc = RelConverter.convert(rel, context=self)
+
+        if not isinstance(rel, DaskLogicalPlan):
+            rel = DaskLogicalPlan(rel)
 
         # Optimization might remove some alias projects. Make sure to keep them here.
         select_names = [field for field in row_type(rel).getFieldList()]

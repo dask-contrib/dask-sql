@@ -3,13 +3,12 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
-from dask_planner.rust import get_current_node_type
+from dask_planner.rust import DaskLogicalPlan, get_current_node_type
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +48,9 @@ class RelConverter(Pluggable):
         in the Rust logic. We need to take that current node and determine
         what "type" of Relational operator it represents to build the execution chain.
         """
+
+        if not isinstance(rel, DaskLogicalPlan):
+            rel = DaskLogicalPlan(rel)
 
         node_type = get_current_node_type(rel)
 

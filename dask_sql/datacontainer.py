@@ -156,6 +156,10 @@ class ColumnContainer:
         try:
             return self._frontend_backend_mapping[column]
         except KeyError:
+            # Attempt to lookup by simple name if full name fails
+            if "." in column:
+                column = column.split(".")
+                column = self.get_backend_by_frontend_name(column[len(column) - 1])
             return column
 
     def make_unique(self, prefix="col"):

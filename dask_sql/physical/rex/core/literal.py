@@ -3,13 +3,11 @@ import logging
 # from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 from dask_sql.datacontainer import DataContainer
-
-# from dask_sql.mappings import sql_to_python_value
+from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
-
-# import numpy as np
-
 
 if TYPE_CHECKING:
     import dask_sql
@@ -37,9 +35,16 @@ class RexLiteralPlugin(BaseRexPlugin):
         dc: DataContainer,
         context: "dask_sql.Context",
     ) -> Any:
-        # data_type_map = rex.types()
-        python_value = rex.python_value()
-        # breakpoint()
+        data_type_map = rex.types()
+        literal_type = data_type_map.friendly_arrow_type_name()
+        literal_value = rex.python_value()
+
+        if literal_type == "Date32":
+            literal_value = np.datetime64(literal_value, "D")
+        elif literal_type == "Date64":
+            literal_value = np.datetime64(literal_value, "ms")
+        elif literal_type == "Time64":
+            literal_value = np.datetime64(literal_value, "ns")
 
         # # Retrieve the SQL value from the `Expr` instance.
         # # Value is retrieved based on Arrow DataType
@@ -87,15 +92,6 @@ class RexLiteralPlugin(BaseRexPlugin):
         # elif literal_type == "Utf8":
         #     literal_type = SqlType.VARCHAR
         #     literal_value = rex.getStringValue()
-        # elif literal_type == "Date32":
-        #     literal_type = SqlType.DATE
-        #     literal_value = np.datetime64(rex.getDate32Value(), "D")
-        # elif literal_type == "Date64":
-        #     literal_type = SqlType.DATE
-        #     literal_value = np.datetime64(rex.getDate64Value(), "ms")
-        # elif literal_type == "Time64":
-        #     literal_value = np.datetime64(rex.getTime64Value(), "ns")
-        #     literal_type = SqlType.TIME
         # elif literal_type == "Null":
         #     literal_type = SqlType.NULL
         #     literal_value = None
@@ -131,9 +127,9 @@ class RexLiteralPlugin(BaseRexPlugin):
         #         f"Failed to map literal type {literal_type} to python type in literal.py"
         #     )
 
-        # python_value = sql_to_python_value(literal_type, literal_value)
-        # logger.debug(
-        #     f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
-        # )
+        python_value = sql_to_python_value(data_type_map.sql_type, literal_value)
+        logger.debug(
+            f"literal.py python_value: {python_value} or Python type: {type(python_value)}"
+        )
 
         return python_value

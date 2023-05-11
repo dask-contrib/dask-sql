@@ -707,7 +707,7 @@ impl DaskSQLContext {
             })),
         };
 
-        Ok(DaskLogicalPlan::new(inner_plan?))
+        Ok(DaskLogicalPlan::_new(inner_plan?))
     }
 }
 

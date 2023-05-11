@@ -14,7 +14,7 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import PythonType, SqlType
+from dask_planner.rust import PythonType, SqlType, get_precision_scale
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
@@ -42,6 +42,8 @@ SeriesOrScalar = Union[dd.Series, Any]
 def as_timelike(op):
     if isinstance(op, np.int64):
         return np.timedelta64(op, "D")
+    elif isinstance(op, int):
+        return np.datetime64(op, "D")
     elif isinstance(op, str):
         return np.datetime64(op)
     elif pd.api.types.is_datetime64_dtype(op) or isinstance(op, np.timedelta64):
@@ -247,7 +249,7 @@ class CastOperation(Operation):
 
         # decimal datatypes require precision and scale
         if data_type_map.python_type == PythonType.Float:
-            sql_type_args = rex.getPrecisionScale()
+            sql_type_args = get_precision_scale(rex)
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)

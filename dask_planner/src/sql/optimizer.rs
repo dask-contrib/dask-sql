@@ -92,7 +92,7 @@ impl DaskSqlOptimizer {
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<DaskLogicalPlan, DataFusionError> {
         let config = OptimizerContext::new();
-        Ok(DaskLogicalPlan::new(self.optimizer.optimize(
+        Ok(DaskLogicalPlan::_new(self.optimizer.optimize(
             &plan,
             &config,
             Self::observe,
