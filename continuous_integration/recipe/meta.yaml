@@ -22,9 +22,12 @@ build:
 
 requirements:
   build:
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
+    - libprotobuf =3
   host:
     - pip
     - python

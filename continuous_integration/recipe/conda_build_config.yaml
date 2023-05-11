@@ -6,3 +6,6 @@ c_compiler_version:
     - 11
 rust_compiler_version:
     - 1.69
+target_platform:
+    - linux-64
+    - linux-aarch64
