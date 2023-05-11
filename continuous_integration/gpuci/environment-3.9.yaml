@@ -14,7 +14,7 @@ dependencies:
 - libprotobuf=3
 - lightgbm
 - maturin=0.12.8
-- mlflow
+- mlflow>=1.13.1
 - mock
 - pandas=1.4.0
 - pre-commit
