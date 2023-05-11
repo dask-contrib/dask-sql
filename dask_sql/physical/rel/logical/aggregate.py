@@ -8,7 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-from dask_planner.rust import row_type
+from dask_planner.rust import distinct_agg, get_filter_expr, row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -17,7 +17,7 @@ from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         ),
     }
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
         agg = rel.to_variant()
@@ -212,7 +214,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # We make our life easier with having unique column names
         cc = cc.make_unique()
 
-        group_exprs = agg.group_by_exprs()
+        group_exprs = agg.getGroupSets()
         group_columns = (
             agg.getDistinctColumns()
             if agg.isDistinctNode()
@@ -258,7 +260,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _do_aggregations(
         self,
-        rel: "LogicalPlan",
+        rel: "DaskLogicalPlan",
         dc: DataContainer,
         group_columns: List[str],
         context: "dask_sql.Context",
@@ -347,7 +349,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _collect_aggregations(
         self,
-        rel: "LogicalPlan",
+        rel: "DaskLogicalPlan",
         df: dd.DataFrame,
         cc: ColumnContainer,
         context: "dask_sql.Context",
@@ -364,31 +366,31 @@ class DaskAggregatePlugin(BaseRelPlugin):
         where the aggregations are in the form (input_col, output_col, aggregation function (or string))
         """
         dc = DataContainer(df, cc)
-        agg = rel.aggregate()
+        agg = rel.to_variant()
 
-        input_rel = rel.get_inputs()[0]
+        input_rel = rel.inputs()[0]
 
         collected_aggregations = defaultdict(list)
 
         # convert and assign any input/filter columns that don't currently exist
         new_columns = {}
         for expr in agg.getNamedAggCalls():
-            assert expr.getExprType() in {
+            assert expr.variant_name() in {
                 "Alias",
                 "AggregateFunction",
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
             for input_expr in agg.getArgs(expr):
-                input_col = input_expr.column_name(input_rel)
+                input_col = input_expr.column_name(input_rel.datafusion_plan())
                 if input_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(
                         input_rel, input_expr, dc, context=context
                     )
                     cc = cc.add(input_col, random_name)
-            filter_expr = expr.getFilterExpr()
+            filter_expr = get_filter_expr(expr)
             if filter_expr is not None:
-                filter_col = filter_expr.column_name(input_rel)
+                filter_col = filter_expr.column_name(input_rel.datafusion_plan())
                 if filter_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(
@@ -412,16 +414,16 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     # calcite some times gives one input/col to regr_count and
                     # another col has filter column
                     col1 = cc.get_backend_by_frontend_name(
-                        inputs[0].column_name(input_rel)
+                        inputs[0].column_name(input_rel.datafusion_plan())
                     )
                     df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
 
                 else:
                     col1 = cc.get_backend_by_frontend_name(
-                        inputs[0].column_name(input_rel)
+                        inputs[0].column_name(input_rel.datafusion_plan())
                     )
                     col2 = cc.get_backend_by_frontend_name(
-                        inputs[1].column_name(input_rel)
+                        inputs[1].column_name(input_rel.datafusion_plan())
                     )
                     # both cols should be not null
                     df = df.assign(
@@ -433,20 +435,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     )
                 input_col = two_columns_proxy
             elif aggregation_name == "regr_syy":
-                input_col = inputs[0].column_name(input_rel)
+                input_col = inputs[0].column_name(input_rel.datafusion_plan())
             elif aggregation_name == "regr_sxx":
-                input_col = inputs[1].column_name(input_rel)
+                input_col = inputs[1].column_name(input_rel.datafusion_plan())
             elif len(inputs) == 1:
-                input_col = inputs[0].column_name(input_rel)
+                input_col = inputs[0].column_name(input_rel.datafusion_plan())
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
                 raise NotImplementedError("Can not cope with more than one input")
 
-            filter_expr = expr.getFilterExpr()
+            filter_expr = get_filter_expr(expr)
             if filter_expr is not None:
                 filter_backend_col = cc.get_backend_by_frontend_name(
-                    filter_expr.column_name(input_rel)
+                    filter_expr.column_name(input_rel.datafusion_plan())
                 )
             else:
                 filter_backend_col = None
@@ -480,11 +482,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 )
 
             # Finally, extract the output column name
-            output_col = expr.toString()
+            output_col = expr.column_name(input_rel.datafusion_plan())
 
             # Store the aggregation
             collected_aggregations[
-                (filter_backend_col, backend_name if expr.isDistinctAgg() else None)
+                (filter_backend_col, backend_name if distinct_agg(expr) else None)
             ].append((input_col, output_col, aggregation_function))
             output_column_order.append(output_col)
 

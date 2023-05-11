@@ -15,8 +15,8 @@ use super::utils::py_expr_list;
 #[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
 #[derive(Clone)]
 pub struct PyAggregate {
-    aggregate: Option<Aggregate>,
-    distinct: Option<Distinct>,
+    pub aggregate: Option<Aggregate>,
+    pub distinct: Option<Distinct>,
 }
 
 #[pymethods]

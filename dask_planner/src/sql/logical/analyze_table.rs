@@ -101,7 +101,7 @@ impl UserDefinedLogicalNode for AnalyzeTablePlanNode {
 
 #[pyclass(name = "AnalyzeTable", module = "dask_planner", subclass)]
 pub struct PyAnalyzeTable {
-    pub(crate) analyze_table: AnalyzeTablePlanNode,
+    pub analyze_table: AnalyzeTablePlanNode,
 }
 
 #[pymethods]

@@ -20,7 +20,7 @@ class SubqueryAlias(BaseRelPlugin):
 
         cc = dc.column_container
 
-        alias = rel.subquery_alias().getAlias()
+        alias = rel.to_variant().alias()
 
         return DataContainer(
             dc.df,

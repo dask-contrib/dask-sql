@@ -27,6 +27,8 @@ use log::{debug, trace};
 mod join_reorder;
 use join_reorder::JoinReorder;
 
+use super::logical::DaskLogicalPlan;
+
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
@@ -88,9 +90,13 @@ impl DaskSqlOptimizer {
 
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
-    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<DaskLogicalPlan, DataFusionError> {
         let config = OptimizerContext::new();
-        self.optimizer.optimize(&plan, &config, Self::observe)
+        Ok(DaskLogicalPlan::new(self.optimizer.optimize(
+            &plan,
+            &config,
+            Self::observe,
+        )?))
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
@@ -156,7 +162,7 @@ mod tests {
 
         // optimize the logical plan
         let optimizer = DaskSqlOptimizer::new();
-        optimizer.optimize(plan)
+        Ok((*optimizer.optimize(plan)?.plan).clone())
     }
 
     struct MySchemaProvider {

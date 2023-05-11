@@ -4,7 +4,6 @@ use datafusion_python::{
     datafusion_common::DFField,
     datafusion_expr::{expr::Sort, utils::exprlist_to_fields, DdlStatement, Expr, LogicalPlan},
     expr::{projection::PyProjection, PyExpr},
-    sql::logical::PyLogicalPlan,
 };
 use pyo3::{pyfunction, PyResult};
 
@@ -33,6 +32,7 @@ use crate::{
         exceptions::py_type_err,
         table::{table_from_logical_plan, DaskTable},
         types::{rel_data_type::RelDataType, rel_data_type_field::RelDataTypeField},
+        DaskLogicalPlan,
     },
 };
 
@@ -64,7 +64,12 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
 }
 
 #[pyfunction]
-pub fn get_current_node_type(plan: PyLogicalPlan) -> Result<String> {
+pub fn py_column_name(expr: PyExpr, plan: DaskLogicalPlan) -> Result<String> {
+    column_name(&expr.expr, &(*plan.plan()).clone())
+}
+
+#[pyfunction]
+pub fn get_current_node_type(plan: DaskLogicalPlan) -> Result<String> {
     Ok(match &*plan.plan() {
         LogicalPlan::Dml(_) => "DataManipulationLanguage".to_string(),
         LogicalPlan::DescribeTable(_) => "DescribeTable".to_string(),
@@ -145,7 +150,7 @@ pub fn get_current_node_type(plan: PyLogicalPlan) -> Result<String> {
 }
 
 #[pyfunction]
-pub fn plan_to_table(plan: PyLogicalPlan) -> PyResult<DaskTable> {
+pub fn plan_to_table(plan: DaskLogicalPlan) -> PyResult<DaskTable> {
     match table_from_logical_plan(&plan.plan())? {
         Some(table) => Ok(table),
         None => Err(py_type_err(
@@ -155,7 +160,7 @@ pub fn plan_to_table(plan: PyLogicalPlan) -> PyResult<DaskTable> {
 }
 
 #[pyfunction]
-pub fn row_type(plan: PyLogicalPlan) -> PyResult<RelDataType> {
+pub fn row_type(plan: DaskLogicalPlan) -> PyResult<RelDataType> {
     match &*plan.plan() {
         LogicalPlan::Join(join) => {
             let mut lhs_fields: Vec<RelDataTypeField> = join
@@ -221,4 +226,77 @@ pub fn named_projects(projection: PyProjection) -> PyResult<Vec<(String, PyExpr)
         }
     }
     Ok(named)
+}
+
+#[pyfunction]
+pub fn distinct_agg(expr: PyExpr) -> PyResult<bool> {
+    match expr.expr {
+        Expr::AggregateFunction(funct) => Ok(funct.distinct),
+        Expr::AggregateUDF { .. } => Ok(false),
+        Expr::Alias(expr, _) => match expr.as_ref() {
+            Expr::AggregateFunction(funct) => Ok(funct.distinct),
+            Expr::AggregateUDF { .. } => Ok(false),
+            _ => Err(py_type_err(
+                "isDistinctAgg() - Non-aggregate expression encountered",
+            )),
+        },
+        _ => Err(py_type_err(
+            "getFilterExpr() - Non-aggregate expression encountered",
+        )),
+    }
+}
+
+/// Returns if a sort expressions is an ascending sort
+#[pyfunction]
+pub fn sort_ascending(expr: PyExpr) -> PyResult<bool> {
+    match expr.expr {
+        Expr::Sort(Sort { asc, .. }) => Ok(asc),
+        _ => Err(py_type_err(format!(
+            "Provided Expr {:?} is not a sort type",
+            &expr.expr
+        ))),
+    }
+}
+
+/// Returns if nulls should be placed first in a sort expression
+#[pyfunction]
+pub fn sort_nulls_first(expr: PyExpr) -> PyResult<bool> {
+    match expr.expr {
+        Expr::Sort(Sort { nulls_first, .. }) => Ok(nulls_first),
+        _ => Err(py_type_err(format!(
+            "Provided Expr {:?} is not a sort type",
+            &expr.expr
+        ))),
+    }
+}
+
+#[pyfunction]
+pub fn get_filter_expr(expr: PyExpr) -> PyResult<Option<PyExpr>> {
+    // TODO refactor to avoid duplication
+    match &expr.expr {
+        Expr::Alias(expr, _) => match expr.as_ref() {
+            Expr::AggregateFunction(agg_function) => match &agg_function.filter {
+                Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
+                None => Ok(None),
+            },
+            Expr::AggregateUDF { filter, .. } => match filter {
+                Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
+                None => Ok(None),
+            },
+            _ => Err(py_type_err(
+                "get_filter_expr() - Non-aggregate expression encountered",
+            )),
+        },
+        Expr::AggregateFunction(agg_function) => match &agg_function.filter {
+            Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
+            None => Ok(None),
+        },
+        Expr::AggregateUDF { filter, .. } => match filter {
+            Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
+            None => Ok(None),
+        },
+        _ => Err(py_type_err(
+            "get_filter_expr() - Non-aggregate expression encountered",
+        )),
+    }
 }

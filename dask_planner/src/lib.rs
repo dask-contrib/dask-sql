@@ -22,6 +22,7 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
 
     // Register the python classes
     m.add_class::<sql::DaskSQLContext>()?;
+    m.add_class::<sql::logical::DaskLogicalPlan>()?;
     m.add_class::<sql::types::RexType>()?;
     m.add_class::<sql::types::DaskTypeMap>()?;
     m.add_class::<sql::types::rel_data_type::RelDataType>()?;
@@ -46,6 +47,16 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sql::logical::utils::row_type))
         .unwrap();
     m.add_wrapped(wrap_pyfunction!(sql::logical::utils::named_projects))
+        .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::py_column_name))
+        .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::distinct_agg))
+        .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::sort_ascending))
+        .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::sort_nulls_first))
+        .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::get_filter_expr))
         .unwrap();
 
     // Exceptions
