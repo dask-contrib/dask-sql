@@ -112,6 +112,11 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         env:
