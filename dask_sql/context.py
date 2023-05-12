@@ -250,7 +250,9 @@ class Context:
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
         elif "dask" in str(type(input_table)):
             try:
-                dask_filepath = hlg_layer(input_table.dask, "read-parquet").creation_info["args"][0]
+                dask_filepath = hlg_layer(
+                    input_table.dask, "read-parquet"
+                ).creation_info["args"][0]
                 dc.filepath = dask_filepath
                 self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
             except KeyError:
