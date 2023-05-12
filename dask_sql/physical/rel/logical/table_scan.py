@@ -7,7 +7,6 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
-from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
@@ -93,7 +92,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
             df = filter_or_scalar(
                 df, df_condition, conjunctive_filters=conjunctive_dnf_filters
             )
-            if is_cudf_type(df) and all_filters:
+            if conjunctive_dnf_filters:
                 df_condition = reduce(
                     operator.and_,
                     [
