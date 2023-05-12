@@ -7,6 +7,7 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
+from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
@@ -77,7 +78,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
     def _apply_filters(self, table_scan, rel, dc, context):
         df = dc.df
         cc = dc.column_container
-        # all_filters = table_scan.getFilters()
+        all_filters = table_scan.getFilters()
         conjunctive_dnf_filters = table_scan.getDNFFilters().filtered_exprs
         non_dnf_filters = table_scan.getDNFFilters().io_unfilterable_exprs
         # All filters here are applied in conjunction (&)
@@ -92,5 +93,14 @@ class DaskTableScanPlugin(BaseRelPlugin):
             df = filter_or_scalar(
                 df, df_condition, conjunctive_filters=conjunctive_dnf_filters
             )
+            if is_cudf_type(df) and all_filters:
+                df_condition = reduce(
+                    operator.and_,
+                    [
+                        RexConverter.convert(rel, rex, dc, context=context)
+                        for rex in all_filters
+                    ],
+                )
+                df = filter_or_scalar(df, df_condition)
 
         return DataContainer(df, cc)
