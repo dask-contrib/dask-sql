@@ -248,7 +248,7 @@ class Context:
         if type(input_table) == str:
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
-        elif dd.utils.is_dataframe_like(input_table):
+        elif hasattr(input_table, "dask") and dd.utils.is_dataframe_like(input_table):
             try:
                 dask_filepath = hlg_layer(
                     input_table.dask, "read-parquet"
