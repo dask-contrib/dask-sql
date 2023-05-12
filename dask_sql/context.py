@@ -249,9 +249,12 @@ class Context:
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
         elif "dask" in str(type(input_table)):
-            dask_filepath = hlg_layer(input_table.dask, "read-parquet").creation_info["args"][0]
-            dc.filepath = dask_filepath
-            self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
+            try:
+                dask_filepath = hlg_layer(input_table.dask, "read-parquet").creation_info["args"][0]
+                dc.filepath = dask_filepath
+                self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
+            except KeyError:
+                logger.debug("Expected 'read-parquet' layer")
 
         if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
