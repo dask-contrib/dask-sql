@@ -331,6 +331,7 @@ def test_filepath(tmpdir):
         },
     )
     dd.from_pandas(parquet_df, npartitions=3).to_parquet(parquet_path)
+    # Create table with string (Parquet filepath)
     c.create_table("parquet_df", parquet_path, format="parquet")
 
     assert c.schema["root"].tables["parquet_df"].filepath == parquet_path
@@ -342,3 +343,30 @@ def test_filepath(tmpdir):
     assert c.schema["root"].tables["df"].filepath is None
     with pytest.raises(KeyError):
         c.schema["root"].filepaths["df"]
+
+
+def test_ddf_filepath(tmpdir):
+    c = Context()
+
+    parquet_path = os.path.join(tmpdir, "parquet")
+    parquet_df = pd.DataFrame(
+        {
+            "a": [1, 2, 3] * 5,
+            "b": range(15),
+            "c": ["A"] * 15,
+            "d": [
+                pd.Timestamp("2013-08-01 23:00:00"),
+                pd.Timestamp("2014-09-01 23:00:00"),
+                pd.Timestamp("2015-10-01 23:00:00"),
+            ]
+            * 5,
+            "index": range(15),
+        },
+    )
+    dd.from_pandas(parquet_df, npartitions=3).to_parquet(parquet_path)
+    # Create table with Dask DataFrame (created from read_parquet)
+    ddf = dd.read_parquet(parquet_path)
+    c.create_table("parquet_df", ddf)
+
+    assert c.schema["root"].tables["parquet_df"].filepath == parquet_path
+    assert c.schema["root"].filepaths["parquet_df"] == parquet_path

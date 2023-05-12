@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
+from dask.utils_test import hlg_layer
 
 from dask_planner.rust import (
     DaskSchema,
@@ -247,6 +248,10 @@ class Context:
         if type(input_table) == str:
             dc.filepath = input_table
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
+        elif "dask" in str(type(input_table)):
+            dask_filepath = hlg_layer(input_table.dask, "read-parquet").creation_info["args"][0]
+            dc.filepath = dask_filepath
+            self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
 
         if parquet_statistics and not statistics:
             statistics = parquet_statistics(dc.df)
