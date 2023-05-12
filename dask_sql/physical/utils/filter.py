@@ -83,9 +83,13 @@ def attempt_predicate_pushdown(
     try:
         filters = dsk.layers[name]._dnf_filter_expression(dsk)
         if not isinstance(filters, frozenset):
-            # No filters encountered
-            return ddf
-        filters = filters.to_list_tuple()
+            if conjunctive_filters or disjunctive_filters:
+                filters = []
+            else:
+                # No filters encountered
+                return ddf
+        else:
+            filters = filters.to_list_tuple()
     except ValueError:
         # DNF dispatching failed for 1+ layers
         logger.warning(
@@ -97,8 +101,11 @@ def attempt_predicate_pushdown(
     # Expand the filter set with provided conjunctive and disjunctive filters
     filters.extend([f] for f in disjunctive_filters or [])
     # Add conjunctive filters to each disjunctive filter
-    for f in filters:
-        f.extend(conjunctive_filters or [])
+    if filters:
+        for f in filters:
+            f.extend(conjunctive_filters or [])
+    else:
+        filters = [conjunctive_filters or []]
     # Regenerate collection with filtered IO layer
     try:
         return dsk.layers[name]._regenerate_collection(
@@ -275,6 +282,8 @@ class RegenerableLayer:
             func = _blockwise_getitem_dnf
         elif op == dd._Frame.fillna:
             func = _blockwise_fillna_dnf
+        elif op == dd.io.read_parquet:
+            return []
         else:
             raise ValueError(f"No DNF expression for {op}")
 
