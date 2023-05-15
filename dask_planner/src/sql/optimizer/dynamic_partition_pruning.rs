@@ -728,8 +728,9 @@ fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
                 Expr::Literal(ScalarValue::Int64(i)) => i.unwrap(),
                 Expr::Literal(ScalarValue::Int32(i)) => i64::from(i.unwrap()),
                 Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i64,
+                Expr::Literal(ScalarValue::TimestampNanosecond(i, None)) => i.unwrap() as i64,
                 _ => {
-                    panic!("Unknown ScalarValue type");
+                    panic!("Unknown ScalarValue type {filter_value}");
                 }
             };
             let filter_value = Expr::Literal(ScalarValue::Int64(Some(int_value)));
@@ -762,7 +763,7 @@ fn satisfies_int32(long_value: Option<i32>, filter: Expr) -> bool {
                 Expr::Literal(ScalarValue::Int32(i)) => i.unwrap(),
                 Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i32,
                 _ => {
-                    panic!("Unknown ScalarValue type");
+                    panic!("Unknown ScalarValue type {filter_value}");
                 }
             };
             let filter_value = Expr::Literal(ScalarValue::Int32(Some(int_value)));
@@ -795,7 +796,7 @@ fn satisfies_float(long_value: Option<f64>, filter: Expr) -> bool {
                 Expr::Literal(ScalarValue::Int32(i)) => i.unwrap() as f64,
                 Expr::Literal(ScalarValue::Float64(i)) => i.unwrap(),
                 _ => {
-                    panic!("Unknown ScalarValue type");
+                    panic!("Unknown ScalarValue type {filter_value}");
                 }
             };
             let filter_value = Expr::Literal(ScalarValue::Float64(Some(float_value)));
@@ -947,7 +948,9 @@ fn optimize_table_scans(
             for (key, value) in table_filters.iter() {
                 let current_expr =
                     format_inlist_expr(value.clone(), key.0.to_owned(), key.1.to_owned());
-                updated_filters.push(current_expr);
+                if current_expr.is_some() {
+                    updated_filters.push(current_expr.unwrap());
+                }
             }
             let scan = LogicalPlan::TableScan(TableScan {
                 table_name: t.table_name.clone(),
@@ -968,7 +971,7 @@ fn format_inlist_expr(
     value_set: HashSet<RowValue>,
     join_table: String,
     join_field: String,
-) -> Expr {
+) -> Option<Expr> {
     let expr = Box::new(Expr::Column(Column::new(Some(join_table), join_field)));
     let mut list: Vec<Expr> = vec![];
 
@@ -995,10 +998,14 @@ fn format_inlist_expr(
         }
     }
 
-    Expr::InList {
-        expr,
-        list,
-        negated: false,
+    if list.is_empty() {
+        return None;
+    } else {
+        Some(Expr::InList {
+            expr,
+            list,
+            negated: false,
+        })
     }
 }
 
