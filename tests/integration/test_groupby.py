@@ -598,54 +598,60 @@ def test_groupby_split_every(c, gpu):
     c.drop_table("split_every_input")
 
 
-@pytest.mark.gpu
-def test_agg_decimal(c):
-    import cudf
-
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_agg_decimal(c, gpu):
+    df = pd.DataFrame(
         {
             "a": [1.23, 12.65, 134.64, -34.3, 945.19],
             "b": [1, 1, 2, 2, 3],
         }
     )
-    df["a"] = df["a"].astype(cudf.Decimal64Dtype(10, 2))
 
-    c.create_table("df", df, gpu=True)
+    c.create_table("df", df, gpu=gpu)
 
     result_df = c.sql(
         """
         SELECT
-            SUM(a) as s,
-            COUNT(a) as c,
-            SUM(a+a) as s2
+            SUM(CAST(a AS DECIMAL)) as s,
+            COUNT(CAST(a AS DECIMAL)) as c,
+            SUM(CAST(a+a AS DECIMAL)) as s2
         FROM
             df
         GROUP BY
             b
         """
     )
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["s"] = result_df["s"].astype("float64")
+        result_df["s2"] = result_df["s2"].astype("float64")
 
-    expected_df = cudf.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "s": df.groupby("b").sum()["a"],
-            "c": df.groupby("b").count()["a"].astype("int64"),
+            "c": df.groupby("b").count()["a"],
             "s2": df.groupby("b").sum()["a"] + df.groupby("b").sum()["a"],
         }
     )
 
-    assert_eq(result_df, expected_df.reset_index(drop=True))
+    # dtype of count aggregation is float on gpu
+    assert_eq(result_df, expected_df, check_index=False, check_dtype=(not gpu))
 
     result_df = c.sql(
         """
         SELECT
-            MIN(a) as min,
-            MAX(a) as max
+            MIN(CAST(a AS DECIMAL)) as min,
+            MAX(CAST(a AS DECIMAL)) as max
         FROM
             df
         """
     )
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["min"] = result_df["min"].astype("float64")
+        result_df["max"] = result_df["max"].astype("float64")
 
-    expected_df = cudf.DataFrame(
+    expected_df = pd.DataFrame(
         {
             "min": [df.a.min()],
             "max": [df.a.max()],
