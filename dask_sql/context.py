@@ -101,6 +101,9 @@ class Context:
         self.context = DaskSQLContext(self.catalog_name, self.schema_name)
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
+        if dask_config.get("sql.dynamic_partition_pruning"):
+            self.context.apply_dynamic_partition_pruning()
+
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
         RelConverter.add_plugin_class(logical.DaskCrossJoinPlugin, replace=False)
