@@ -57,7 +57,7 @@ jobs:
           conda mambabuild continuous_integration/recipe \
                            --no-anaconda-upload \
                            --no-test \
-                           --output-folder nightlies
+                           --output-folder .
       - name: Test conda packages
         run: |
           conda mambabuild --test linux-64/*.tar.bz2
