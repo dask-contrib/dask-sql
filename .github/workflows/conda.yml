@@ -57,11 +57,21 @@ jobs:
           conda mambabuild continuous_integration/recipe \
                            --no-anaconda-upload \
                            --no-test \
-                           --output-folder .
+                           --output-folder nightlies
       - name: Test conda packages
         run: |
           conda mambabuild --test linux-64/*.tar.bz2
-      - name: Upload conda packages
+      - name: Upload linux-64 conda packages as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: conda nightlies for linux-64
+          path: linux-64/*.tar.bz2
+      - name: Upload linux-aarch64 conda packages as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: conda nightlies for linux-aarch64
+          path: linux-aarch64/*.tar.bz2
+      - name: Upload conda packages to Anaconda
         if: |
           github.event_name == 'push'
           && github.repository == 'dask-contrib/dask-sql'
