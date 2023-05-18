@@ -4,6 +4,8 @@ python:
     - 3.10
 c_compiler_version:
     - 11
+libprotobuf:
+    - 3
 rust_compiler_version:
     - 1.69
 target_platform:
