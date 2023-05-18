@@ -49,15 +49,19 @@ jobs:
           which python
           pip list
           mamba list
-      - name: Build conda package
+      - name: Build conda packages
         run: |
           # suffix for nightly package versions
           export VERSION_SUFFIX=a`date +%y%m%d`
 
           conda mambabuild continuous_integration/recipe \
                            --no-anaconda-upload \
+                           --no-test \
                            --output-folder .
-      - name: Upload conda package
+      - name: Test conda packages
+        run: |
+          conda mambabuild --test linux-64/*.tar.bz2
+      - name: Upload conda packages
         if: |
           github.event_name == 'push'
           && github.repository == 'dask-contrib/dask-sql'

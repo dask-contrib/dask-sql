@@ -27,7 +27,6 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
     - setuptools-rust >=1.5.2
-    - libprotobuf =3
   host:
     - pip
     - python
@@ -45,15 +44,15 @@ requirements:
     - pygments >=2.7.1
     - tabulate
 
-test:                                        # [build_platform == target_platform]
-  imports:                                   # [build_platform == target_platform]
-    - dask_sql                               # [build_platform == target_platform]
-  commands:                                  # [build_platform == target_platform]
-    - pip check                              # [build_platform == target_platform]
-    - dask-sql-server --help                 # [build_platform == target_platform]
-    - dask-sql --help                        # [build_platform == target_platform]
-  requires:                                  # [build_platform == target_platform]
-    - pip                                    # [build_platform == target_platform]
+test:
+  imports:
+    - dask_sql
+  commands:
+    - pip check
+    - dask-sql-server --help
+    - dask-sql --help
+  requires:
+    - pip
 
 about:
   home: https://github.com/dask-contrib/dask-sql/
