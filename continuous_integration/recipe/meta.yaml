@@ -27,11 +27,11 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
     - libprotobuf                            # [build_platform != target_platform]
-    - setuptools-rust >=1.5.2                # [build_platform != target_platform]
+    - setuptools-rust                        # [build_platform != target_platform]
   host:
     - pip
     - python
-    - setuptools-rust >=1.5.2
+    - setuptools-rust
     - libprotobuf
   run:
     - python
