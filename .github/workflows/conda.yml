@@ -29,11 +29,12 @@ defaults:
 
 jobs:
   conda:
-    name: Build (and optionally upload) conda nightlies for ${{ matrix.arch }}
+    name: "Build conda nightlies (python: ${{ matrix.python }}, arch: ${{ matrix.arch }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        python: ["3.8", "3.9", "3.10"]
         arch: ["linux-64", "linux-aarch64"]
     steps:
       - uses: actions/checkout@v3
@@ -59,7 +60,8 @@ jobs:
           export VERSION_SUFFIX=a`date +%y%m%d`
 
           conda mambabuild continuous_integration/recipe \
-                           --variants "{target_platform: [${{ matrix.arch }}]}"
+                           --python ${{ matrix.python }} \
+                           --variants "{target_platform: [${{ matrix.arch }}]}" \
                            --build-only \
                            --output-folder .
       - name: Test conda packages
@@ -69,7 +71,7 @@ jobs:
       - name: Upload conda packages as artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: conda nightlies for ${{ matrix.arch }}
+          name: "conda nightlies (python: ${{ matrix.python }}, arch: ${{ matrix.arch }})"
           path: ${{ matrix.arch }}/*.tar.bz2
       - name: Upload conda packages to Anaconda
         if: |

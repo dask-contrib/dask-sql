@@ -1,10 +1,3 @@
-python:
-    - 3.8
-    - 3.9
-    - 3.10
-# target_platform:
-#     - linux-64
-#     - linux-aarch64
 c_compiler_version:
     - 11
 rust_compiler_version:
