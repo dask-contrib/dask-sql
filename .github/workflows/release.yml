@@ -95,6 +95,9 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
+        if: |
+          github.event_name == 'release'
+          && github.repository == 'dask-contrib/dask-sql'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -123,6 +126,9 @@ jobs:
           twine check dist/*
           ls -lh dist/
       - name: Publish source distribution
+        if: |
+          github.event_name == 'release'
+          && github.repository == 'dask-contrib/dask-sql'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
