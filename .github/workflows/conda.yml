@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - datafusion-sql-planner
   pull_request:
     paths:
       - setup.py
