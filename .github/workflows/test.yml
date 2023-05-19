@@ -74,7 +74,9 @@ jobs:
         run: |
           python setup.py build install
       - name: Install hive testing dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: |
+          matrix.os == 'ubuntu-latest'
+          && matrix.os != '3.11'  # FIXME: sasl is not available on python 3.11
         run: |
           mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
