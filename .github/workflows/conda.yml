@@ -63,7 +63,7 @@ jobs:
                            --build-only \
                            --output-folder .
       - name: Test conda packages
-        if: matrix.arch == "linux-64"  # can only test native platform packages
+        if: matrix.arch == 'linux-64'  # can only test native platform packages
         run: |
           conda mambabuild --test ${{ matrix.arch }}/*.tar.bz2
       - name: Upload conda packages as artifacts
