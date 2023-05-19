@@ -62,7 +62,8 @@ jobs:
           conda mambabuild continuous_integration/recipe \
                            --python ${{ matrix.python }} \
                            --variants "{target_platform: [${{ matrix.arch }}]}" \
-                           --build-only \
+                           --no-test \
+                           --no-anaconda-upload \
                            --output-folder .
       - name: Test conda packages
         if: matrix.arch == 'linux-64'  # can only test native platform packages
