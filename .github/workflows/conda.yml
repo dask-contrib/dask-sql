@@ -29,8 +29,12 @@ defaults:
 
 jobs:
   conda:
-    name: Build (and optionally upload) the conda nightly
+    name: Build (and optionally upload) conda nightlies for ${{ matrix.arch }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ["linux-64", "linux-aarch64"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -55,22 +59,18 @@ jobs:
           export VERSION_SUFFIX=a`date +%y%m%d`
 
           conda mambabuild continuous_integration/recipe \
-                           --no-anaconda-upload \
-                           --no-test \
+                           --variants "{target_platform: [${{ matrix.arch }}]}"
+                           --build-only \
                            --output-folder .
       - name: Test conda packages
+        if: matrix.arch == "linux-64"  # can only test native platform packages
         run: |
-          conda mambabuild --test linux-64/*.tar.bz2
-      - name: Upload linux-64 conda packages as artifacts
+          conda mambabuild --test ${{ matrix.arch }}/*.tar.bz2
+      - name: Upload conda packages as artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: conda nightlies for linux-64
-          path: linux-64/*.tar.bz2
-      - name: Upload linux-aarch64 conda packages as artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: conda nightlies for linux-aarch64
-          path: linux-aarch64/*.tar.bz2
+          name: conda nightlies for ${{ matrix.arch }}
+          path: ${{ matrix.arch }}/*.tar.bz2
       - name: Upload conda packages to Anaconda
         if: |
           github.event_name == 'push'
@@ -81,5 +81,4 @@ jobs:
           # install anaconda for upload
           mamba install anaconda-client
 
-          anaconda upload --label dev linux-64/*.tar.bz2
-          anaconda upload --label dev linux-aarch64/*.tar.bz2
+          anaconda upload --label dev ${{ matrix.arch }}/*.tar.bz2
