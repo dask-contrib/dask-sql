@@ -2,9 +2,6 @@ name: Upload Python package
 on:
   release:
     types: [created]
-  pull_request:
-    paths:
-      - .github/workflows/release.yml
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -25,11 +22,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up QEMU for linux aarch64
         if: contains(matrix.os, 'ubuntu')
         uses: docker/setup-qemu-action@v2
@@ -77,9 +69,6 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
-        if: |
-          github.event_name == 'release'
-          && github.repository == 'dask-contrib/dask-sql'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -108,9 +97,6 @@ jobs:
           twine check dist/*
           ls -lh dist/
       - name: Publish source distribution
-        if: |
-          github.event_name == 'release'
-          && github.repository == 'dask-contrib/dask-sql'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
