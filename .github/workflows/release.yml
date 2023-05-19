@@ -2,6 +2,15 @@ name: Upload Python package
 on:
   release:
     types: [created]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+
+# When this workflow is queued, automatically cancel any previous running
+# or pending jobs from the same branch
+concurrency:
+  group: release-${{ github.head_ref }}
+  cancel-in-progress: true
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -40,11 +49,29 @@ jobs:
           CIBW_ENVIRONMENT_LINUX: 'CARGO_NET_GIT_FETCH_WITH_CLI="true" PATH="$HOME/.cargo/bin:$PATH"'
           # Without CARGO_NET_GIT_FETCH_WITH_CLI we oom (https://github.com/rust-lang/cargo/issues/10583)
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
-          CIBW_BEFORE_BUILD_LINUX: >
-            pip install -U setuptools-rust &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
-            rustup show
+          CIBW_BEFORE_BUILD_LINUX: >-
+            apt install -y protobuf-compiler
+            && protoc --version
+            && curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y
+            && rustup show
+            && pip install -U setuptools-rust
+            && pip list
+          CIBW_BEFORE_BUILD_WINDOWS: >-
+            curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-win64.zip
+            && unzip protoc-23.1-win64.zip -d $HOME/.local
+            && export PATH="$PATH:$HOME/.local/bin"
+            && protoc --version
+            && curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y
+            && rustup show
+            && pip install -U setuptools-rust
+            && pip list
+          CIBW_BEFORE_BUILD_MACOS: >-
+            brew install protobuf
+            && protoc --version
+            && curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y
+            && rustup show
+            && pip install -U setuptools-rust
+            && pip list
         with:
           package-dir: .
           output-dir: dist
