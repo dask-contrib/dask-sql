@@ -58,7 +58,7 @@ jobs:
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-linux-$(uname -m).zip &&
-            unzip protoc-3.15.8-linux-$(uname -m).zip -d $HOME/.local &&
+            unzip protoc-23.1-linux-$(uname -m).zip -d $HOME/.local &&
             export PATH="$PATH:$HOME/.local/bin" &&
             protoc --version &&
             pip install -U setuptools-rust &&
