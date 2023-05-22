@@ -59,8 +59,9 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
-            curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-linux-$(uname -m).zip &&
-            unzip protoc-23.1-linux-$(uname -m).zip -d $HOME/.local &&
+            ARCH=$([ $(uname -m) == x86_64 ] && echo x86_64 || echo aarch_64) &&
+            curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-linux-$ARCH.zip &&
+            unzip protoc-23.1-linux-$ARCH.zip -d $HOME/.local &&
             protoc --version &&
             pip install -U setuptools-rust &&
             pip list &&
