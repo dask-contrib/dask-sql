@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Install protoc for macOS/Windows
+      - name: Install Protoc
         if: matrix.os != 'ubuntu-latest'
         uses: arduino/setup-protoc@v1
         with:
@@ -52,14 +52,15 @@ jobs:
           CIBW_ARCHS_LINUX: 'aarch64 x86_64'
           CIBW_ARCHS_WINDOWS: 'AMD64'
           CIBW_ARCHS_MACOS: 'x86_64 arm64'
-          CIBW_ENVIRONMENT_LINUX: 'CARGO_NET_GIT_FETCH_WITH_CLI="true" PATH="$HOME/.cargo/bin:$PATH"'
           # Without CARGO_NET_GIT_FETCH_WITH_CLI we oom (https://github.com/rust-lang/cargo/issues/10583)
+          CIBW_ENVIRONMENT_LINUX: >
+            CARGO_NET_GIT_FETCH_WITH_CLI="true"
+            PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-linux-$(uname -m).zip &&
             unzip protoc-23.1-linux-$(uname -m).zip -d $HOME/.local &&
-            export PATH="$PATH:$HOME/.local/bin" &&
             protoc --version &&
             pip install -U setuptools-rust &&
             pip list &&
