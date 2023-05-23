@@ -60,8 +60,9 @@ jobs:
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             ARCH=$([ $(uname -m) == x86_64 ] && echo x86_64 || echo aarch_64) &&
-            curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v23.1/protoc-23.1-linux-$ARCH.zip &&
-            unzip protoc-23.1-linux-$ARCH.zip -d $HOME/.local &&
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-${ARCH}.zip$") &&
+            curl -LO $DOWNLOAD_URL &&
+            unzip protoc-*-linux-$ARCH.zip -d $HOME/.local &&
             protoc --version &&
             pip install -U setuptools-rust &&
             pip list &&
