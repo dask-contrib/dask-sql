@@ -36,7 +36,20 @@ def check_trained_model(c, model_name="my_model", df_name="timeseries"):
 
 
 @pytest.mark.parametrize(
-    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+    "gpu_client",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                ),
+            ),
+        ),
+    ],
+    indirect=True,
 )
 def test_training_and_prediction(c, gpu_client):
     gpu = "CUDA" in str(gpu_client.cluster)
@@ -93,7 +106,20 @@ def test_training_and_prediction(c, gpu_client):
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
 )
 @pytest.mark.parametrize(
-    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+    "gpu_client",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                ),
+            ),
+        ),
+    ],
+    indirect=True,
 )
 def test_xgboost_training_prediction(c, gpu_client):
     gpu = "CUDA" in str(gpu_client.cluster)
@@ -163,7 +189,20 @@ def test_xgboost_training_prediction(c, gpu_client):
 
 
 @pytest.mark.parametrize(
-    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+    "gpu_client",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                ),
+            ),
+        ),
+    ],
+    indirect=True,
 )
 def test_clustering_and_prediction(c, gpu_client):
     gpu = "CUDA" in str(gpu_client.cluster)
