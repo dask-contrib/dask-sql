@@ -22,12 +22,11 @@ build:
 
 requirements:
   build:
-    - {{ compiler('c') }}
-    - {{ compiler('rust') }}
-    - libprotobuf                            # [build_platform != target_platform]
     - python                                 # [build_platform != target_platform]
     - cross-python_{{ target_platform }}     # [build_platform != target_platform]
-    - setuptools-rust                        # [build_platform != target_platform]
+    - libprotobuf                            # [build_platform != target_platform]
+    - {{ compiler('c') }}
+    - {{ compiler('rust') }}
   host:
     - pip
     - python
