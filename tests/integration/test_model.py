@@ -44,7 +44,7 @@ def check_trained_model(c, model_name="my_model", df_name="timeseries"):
             marks=(
                 pytest.mark.gpu,
                 pytest.mark.xfail(
-                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                    reason="Failing due to cuML bug https://github.com/rapidsai/cuml/pull/5434"
                 ),
             ),
         ),
@@ -114,7 +114,7 @@ def test_training_and_prediction(c, gpu_client):
             marks=(
                 pytest.mark.gpu,
                 pytest.mark.xfail(
-                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                    reason="Failing due to cuML bug https://github.com/rapidsai/cuml/pull/5434"
                 ),
             ),
         ),
@@ -197,7 +197,7 @@ def test_xgboost_training_prediction(c, gpu_client):
             marks=(
                 pytest.mark.gpu,
                 pytest.mark.xfail(
-                    reason="Failing due to cuDF bug https://github.com/rapidsai/cuml/pull/5434"
+                    reason="Failing due to cuML bug https://github.com/rapidsai/cuml/pull/5434"
                 ),
             ),
         ),
