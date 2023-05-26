@@ -5,7 +5,7 @@ import operator
 import dask.dataframe as dd
 import numpy as np
 from dask.blockwise import Blockwise
-from dask.highlevelgraph import HighLevelGraph
+from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
@@ -179,11 +179,42 @@ _regenerable_ops = set(_comparison_symbols.keys()) | {
     operator.or_,
     operator.getitem,
     M.fillna,
+    M.isin,
 }
 
 # Specify functions that must be generated with
 # a different API at the dataframe-collection level
-_special_op_mappings = {M.fillna: dd._Frame.fillna}
+_special_op_mappings = {
+    M.fillna: dd._Frame.fillna,
+    M.isin: dd._Frame.isin,
+}
+
+
+def _preprocess_layers(input_layers):
+    # NOTE: This is a Layer-specific work-around to deal with
+    # the fact that `dd._Frame.isin(values)` will add a distinct
+    # `MaterializedLayer` for the `values` argument.
+    # See: https://github.com/dask-contrib/dask-sql/issues/607
+    skip = set()
+    layers = input_layers.copy()
+    for key, layer in layers.items():
+        if key.startswith("isin-") and isinstance(layer, Blockwise):
+            indices = list(layer.indices)
+            for i, (k, ind) in enumerate(layer.indices):
+                if (
+                    ind is None
+                    and isinstance(layers.get(k), MaterializedLayer)
+                    and isinstance(layers[k].get(k), (np.ndarray, tuple))
+                ):
+                    # Replace `indices[i]` with a literal value and
+                    # make sure we skip the `MaterializedLayer` that
+                    # we are now fusing into the `isin`
+                    value = layers[k][k]
+                    value = value[0](*value[1:]) if callable(value[0]) else value
+                    indices[i] = (value, None)
+                    skip.add(k)
+            layer.indices = tuple(indices)
+    return {k: v for k, v in layers.items() if k not in skip}
 
 
 class RegenerableLayer:
@@ -263,6 +294,8 @@ class RegenerableLayer:
             func = _blockwise_getitem_dnf
         elif op == dd._Frame.fillna:
             func = _blockwise_fillna_dnf
+        elif op == dd._Frame.isin:
+            func = _blockwise_isin_dnf
         else:
             raise ValueError(f"No DNF expression for {op}")
 
@@ -288,7 +321,7 @@ class RegenerableGraph:
             raise TypeError(f"Expected HighLevelGraph, got {type(hlg)}")
 
         _layers = {}
-        for key, layer in hlg.layers.items():
+        for key, layer in _preprocess_layers(hlg.layers).items():
             regenerable_layer = None
             if isinstance(layer, DataFrameIOLayer):
                 regenerable_layer = RegenerableLayer(layer, layer.creation_info or {})
@@ -378,3 +411,10 @@ def _blockwise_getitem_dnf(op, indices: list, dsk: RegenerableGraph):
 def _blockwise_fillna_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return dnf of input collection
     return _get_blockwise_input(0, indices, dsk)
+
+
+def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return DNF expression pattern for a simple "in" comparison
+    left = _get_blockwise_input(0, indices, dsk)
+    right = _get_blockwise_input(1, indices, dsk)
+    return to_dnf((left, "in", tuple(right)))

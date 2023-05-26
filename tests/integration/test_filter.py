@@ -162,11 +162,13 @@ def test_filter_year(c):
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 3, 5, 6)",
-            lambda x: x[(x["b"] == 1) | (x["b"] == 3) | (x["b"] == 5) | (x["b"] == 6)],
-            [[("b", "==", 1)], [("b", "==", 3)], [("b", "==", 5)], [("b", "==", 6)]],
-            marks=pytest.mark.xfail(
-                reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
-            ),
+            lambda x: x[x["b"].isin([1, 3, 5, 6])],
+            [[("b", "in", (1, 3, 5, 6))]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE c IN ('A', 'B', 'C', 'D')",
+            lambda x: x[x["c"].isin(["A", "B", "C", "D"])],
+            [[("c", "in", ("A", "B", "C", "D"))]],
         ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
