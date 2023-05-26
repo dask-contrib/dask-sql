@@ -55,15 +55,17 @@ QUERIES = [
 
 
 @pytest.fixture(scope="module")
-def c():
+def c(filepath):
     # Lazy import, otherwise the pytest framework has problems
     from dask_sql.context import Context
 
     c = Context()
-    for table_name in os.listdir(f"{os.path.dirname(__file__)}/data/"):
+    if not filepath:
+        filepath = f"{os.path.dirname(__file__)}/data/"
+    for table_name in os.listdir(filepath):
         c.create_table(
             table_name,
-            f"{os.path.dirname(__file__)}/data/{table_name}",
+            filepath + "/" + table_name,
             format="parquet",
             gpu=False,
         )
@@ -72,17 +74,19 @@ def c():
 
 
 @pytest.fixture(scope="module")
-def gpu_c():
+def gpu_c(filepath):
     pytest.importorskip("dask_cudf")
 
     # Lazy import, otherwise the pytest framework has problems
     from dask_sql.context import Context
 
     c = Context()
-    for table_name in os.listdir(f"{os.path.dirname(__file__)}/data/"):
+    if not filepath:
+        filepath = f"{os.path.dirname(__file__)}/data/"
+    for table_name in os.listdir(filepath):
         c.create_table(
             table_name,
-            f"{os.path.dirname(__file__)}/data/{table_name}",
+            filepath + "/" + table_name,
             format="parquet",
             gpu=True,
         )
