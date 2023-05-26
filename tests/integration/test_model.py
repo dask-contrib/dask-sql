@@ -360,7 +360,7 @@ def test_correct_argument_passing(c):
         boolean=False,
         array=[1, 2],
         dict={"a": 1},
-        set=set([1, 2, 3]),
+        set={1, 2, 3},
     )
 
 

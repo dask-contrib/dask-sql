@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -28,8 +28,8 @@ class ColumnContainer:
 
     def __init__(
         self,
-        frontend_columns: List[str],
-        frontend_backend_mapping: Union[Dict[str, ColumnType], None] = None,
+        frontend_columns: list[str],
+        frontend_backend_mapping: Union[dict[str, ColumnType], None] = None,
     ):
         assert all(
             isinstance(col, str) for col in frontend_columns
@@ -50,7 +50,7 @@ class ColumnContainer:
             self._frontend_columns.copy(), self._frontend_backend_mapping.copy()
         )
 
-    def limit_to(self, fields: List[str]) -> ColumnContainer:
+    def limit_to(self, fields: list[str]) -> ColumnContainer:
         """
         Create a new ColumnContainer, which has frontend columns
         limited to only the ones given as parameter.
@@ -64,7 +64,7 @@ class ColumnContainer:
         cc._frontend_columns = [str(x) for x in fields]
         return cc
 
-    def rename(self, columns: Dict[str, str]) -> ColumnContainer:
+    def rename(self, columns: dict[str, str]) -> ColumnContainer:
         """
         Return a new ColumnContainer where the frontend columns
         are renamed according to the given mapping.
@@ -84,7 +84,7 @@ class ColumnContainer:
         return cc
 
     def rename_handle_duplicates(
-        self, from_columns: List[str], to_columns: List[str]
+        self, from_columns: list[str], to_columns: list[str]
     ) -> ColumnContainer:
         """
         Same as `rename` but additionally handles presence of
@@ -105,14 +105,14 @@ class ColumnContainer:
 
         return cc
 
-    def mapping(self) -> List[Tuple[str, ColumnType]]:
+    def mapping(self) -> list[tuple[str, ColumnType]]:
         """
         The mapping from frontend columns to backend columns.
         """
         return list(self._frontend_backend_mapping.items())
 
     @property
-    def columns(self) -> List[str]:
+    def columns(self) -> list[str]:
         """
         The stored frontend columns in the correct order
         """
@@ -281,10 +281,10 @@ class UDF:
 class SchemaContainer:
     def __init__(self, name: str):
         self.__name__ = name
-        self.tables: Dict[str, DataContainer] = {}
-        self.statistics: Dict[str, Statistics] = {}
-        self.experiments: Dict[str, pd.DataFrame] = {}
-        self.models: Dict[str, Tuple[Any, List[str]]] = {}
-        self.functions: Dict[str, UDF] = {}
-        self.function_lists: List[FunctionDescription] = []
-        self.filepaths: Dict[str, str] = {}
+        self.tables: dict[str, DataContainer] = {}
+        self.statistics: dict[str, Statistics] = {}
+        self.experiments: dict[str, pd.DataFrame] = {}
+        self.models: dict[str, tuple[Any, list[str]]] = {}
+        self.functions: dict[str, UDF] = {}
+        self.function_lists: list[FunctionDescription] = []
+        self.filepaths: dict[str, str] = {}

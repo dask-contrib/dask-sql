@@ -2,7 +2,7 @@ import logging
 import operator
 import warnings
 from functools import reduce
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 from dask import config as dask_config
@@ -212,8 +212,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         self,
         df_lhs_renamed: dd.DataFrame,
         df_rhs_renamed: dd.DataFrame,
-        lhs_on: List[str],
-        rhs_on: List[str],
+        lhs_on: list[str],
+        rhs_on: list[str],
         join_type: str,
     ) -> dd.DataFrame:
 
@@ -267,7 +267,7 @@ class DaskJoinPlugin(BaseRelPlugin):
 
     def _split_join_condition(
         self, join_condition: "Expression"
-    ) -> Tuple[List[str], List[str], List["Expression"]]:
+    ) -> tuple[list[str], list[str], list["Expression"]]:
         if str(join_condition.getRexType()) in ["RexType.Literal", "RexType.Reference"]:
             return [], [], [join_condition]
         elif not str(join_condition.getRexType()) == "RexType.Call":

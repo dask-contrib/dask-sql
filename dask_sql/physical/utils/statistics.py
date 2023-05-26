@@ -4,7 +4,6 @@ import itertools
 import logging
 from collections import defaultdict
 from functools import lru_cache
-from typing import List
 
 import dask
 import dask.dataframe as dd
@@ -21,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 def parquet_statistics(
     ddf: dd.DataFrame,
-    columns: List | None = None,
+    columns: list | None = None,
     parallel: int | False | None = None,
     **compute_kwargs,
-) -> List[dict] | None:
+) -> list[dict] | None:
     """Extract Parquet statistics from a Dask DataFrame collection
 
     WARNING: This API is experimental

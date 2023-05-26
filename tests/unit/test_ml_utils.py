@@ -61,7 +61,7 @@ def check_random_state(random_state):
     elif isinstance(random_state, da.random.RandomState):
         return random_state
     else:
-        raise TypeError("Unexpected type '{}'".format(type(random_state)))
+        raise TypeError(f"Unexpected type '{type(random_state)}'")
 
 
 def make_classification(

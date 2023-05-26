@@ -1,5 +1,3 @@
-from typing import List
-
 import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
@@ -10,9 +8,9 @@ from dask_sql.utils import is_cudf_type
 
 def apply_sort(
     df: dd.DataFrame,
-    sort_columns: List[str],
-    sort_ascending: List[bool],
-    sort_null_first: List[bool],
+    sort_columns: list[str],
+    sort_ascending: list[bool],
+    sort_null_first: list[bool],
     sort_num_rows: int = None,
 ) -> dd.DataFrame:
     # when sort_values doesn't support lists of ascending / null
@@ -79,8 +77,8 @@ def apply_sort(
 
 def topk_sort(
     df: dd.DataFrame,
-    sort_columns: List[str],
-    sort_ascending: List[bool],
+    sort_columns: list[str],
+    sort_ascending: list[bool],
     sort_num_rows: int = None,
 ):
     if sort_ascending[0]:
@@ -91,9 +89,9 @@ def topk_sort(
 
 def sort_partition_func(
     partition: pd.DataFrame,
-    sort_columns: List[str],
-    sort_ascending: List[bool],
-    sort_null_first: List[bool],
+    sort_columns: list[str],
+    sort_ascending: list[bool],
+    sort_null_first: list[bool],
     **kwargs,
 ):
     if partition.empty:
@@ -121,9 +119,9 @@ def sort_partition_func(
 
 def is_topk_optimizable(
     df: dd.DataFrame,
-    sort_columns: List[str],
+    sort_columns: list[str],
     single_ascending: bool,
-    sort_null_first: List[bool],
+    sort_null_first: list[bool],
     sort_num_rows: int = None,
 ):
     if (

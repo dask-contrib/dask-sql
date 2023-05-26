@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 from collections import Counter
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -295,7 +295,7 @@ class Context:
         self,
         f: Callable,
         name: str,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
@@ -386,7 +386,7 @@ class Context:
         self,
         f: dd.Aggregation,
         name: str,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
@@ -453,9 +453,9 @@ class Context:
         self,
         sql: Any,
         return_futures: bool = True,
-        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        dataframes: dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
-        config_options: Dict[str, Any] = None,
+        config_options: dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -505,7 +505,7 @@ class Context:
     def explain(
         self,
         sql: str,
-        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        dataframes: dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
     ) -> str:
         """
@@ -592,7 +592,7 @@ class Context:
         self,
         model_name: str,
         model: Any,
-        training_columns: List[str],
+        training_columns: list[str],
         schema_name: str = None,
     ):
         """
@@ -694,7 +694,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, tbl: "DaskTable") -> Tuple[str, str]:
+    def fqn(self, tbl: "DaskTable") -> tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -886,7 +886,7 @@ class Context:
         f: Any,
         name: str,
         aggregation: bool,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name=None,

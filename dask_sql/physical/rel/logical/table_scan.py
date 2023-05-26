@@ -41,7 +41,7 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
         # The table(s) we need to return
         dask_table = rel.getTable()
-        schema_name, table_name = [n.lower() for n in context.fqn(dask_table)]
+        schema_name, table_name = (n.lower() for n in context.fqn(dask_table))
 
         dc = context.schema[schema_name].tables[table_name]
 

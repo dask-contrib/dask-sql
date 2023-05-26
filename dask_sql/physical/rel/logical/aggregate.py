@@ -2,7 +2,7 @@ import logging
 import operator
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 import dask.dataframe as dd
 import pandas as pd
@@ -259,9 +259,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         self,
         rel: "LogicalPlan",
         dc: DataContainer,
-        group_columns: List[str],
+        group_columns: list[str],
         context: "dask_sql.Context",
-    ) -> Tuple[dd.DataFrame, List[str]]:
+    ) -> tuple[dd.DataFrame, list[str]]:
         """
         Main functionality: return the result dataframe
         and the output column order
@@ -351,9 +351,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
         cc: ColumnContainer,
         context: "dask_sql.Context",
         additional_column_name: str,
-        output_column_order: List[str],
-    ) -> Tuple[
-        Dict[Tuple[str, str], List[Tuple[str, str, Any]]], List[str], dd.DataFrame
+        output_column_order: list[str],
+    ) -> tuple[
+        dict[tuple[str, str], list[tuple[str, str, Any]]], list[str], dd.DataFrame
     ]:
         """
         Collect all aggregations together, which have the same filter column
@@ -494,10 +494,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         dc: DataContainer,
         filter_column: str,
         distinct_column: str,
-        aggregations: List[Tuple[str, str, Any]],
+        aggregations: list[tuple[str, str, Any]],
         additional_column_name: str,
-        group_columns: List[str],
-        groupby_agg_options: Dict[str, Any] = {},
+        group_columns: list[str],
+        groupby_agg_options: dict[str, Any] = {},
     ):
         tmp_df = dc.df
 
