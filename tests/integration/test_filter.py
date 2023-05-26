@@ -170,6 +170,16 @@ def test_filter_year(c):
             lambda x: x[x["c"].isin(["A", "B", "C", "D"])],
             [[("c", "in", ("A", "B", "C", "D"))]],
         ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 6)",
+            lambda x: x[(x["b"] != 1) & (x["b"] != 6)],
+            [[("b", "!=", 1), ("b", "!=", 6)]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 3, 5, 6)",
+            lambda x: x[~x["b"].isin([1, 3, 5, 6])],
+            [[("b", "not in", (1, 3, 5, 6))]],
+        ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],

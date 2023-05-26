@@ -178,6 +178,7 @@ _regenerable_ops = set(_comparison_symbols.keys()) | {
     operator.and_,
     operator.or_,
     operator.getitem,
+    operator.inv,
     M.fillna,
     M.isin,
 }
@@ -296,6 +297,8 @@ class RegenerableLayer:
             func = _blockwise_fillna_dnf
         elif op == dd._Frame.isin:
             func = _blockwise_isin_dnf
+        elif op == operator.inv:
+            func = _blockwise_inv_dnf
         else:
             raise ValueError(f"No DNF expression for {op}")
 
@@ -368,18 +371,21 @@ def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
     return dsk.layers[key]._dnf_filter_expression(dsk)
 
 
+def _inv(symbol: str):
+    return {
+        ">": "<",
+        "<": ">",
+        ">=": "<=",
+        "<=": ">=",
+        "in": "not in",
+        "not in": "in",
+    }.get(symbol, symbol)
+
+
 def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return DNF expression pattern for a simple comparison
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
-
-    def _inv(symbol: str):
-        return {
-            ">": "<",
-            "<": ">",
-            ">=": "<=",
-            "<=": ">=",
-        }.get(symbol, symbol)
 
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
         left = left.item()
@@ -418,3 +424,21 @@ def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
     return to_dnf((left, "in", tuple(right)))
+
+
+def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return DNF expression pattern for a simple "in" comparison
+    expr = _get_blockwise_input(0, indices, dsk).to_list_tuple()
+    new_expr = []
+    count = 0
+    for conjunction in expr:
+        new_conjunction = []
+        for col, op, val in conjunction:
+            count += 1
+            new_conjunction.append((col, _inv(op), val))
+        new_expr.append(And(new_conjunction))
+    if count > 1:
+        # Havent taken the time to think through
+        # general inversion yet.
+        raise ValueError("inv(DNF) case not implemented.")
+    return to_dnf(Or(new_expr))
