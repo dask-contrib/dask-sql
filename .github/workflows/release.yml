@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  upload: ${{ github.event_name == 'release' && && github.repository == 'dask-contrib/dask-sql' }}
+  upload: ${{ github.event_name == 'release' && github.repository == 'dask-contrib/dask-sql' }}
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
