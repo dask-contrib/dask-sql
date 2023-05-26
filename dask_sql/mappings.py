@@ -1,18 +1,13 @@
 import logging
-from decimal import Decimal
 from typing import Any
 
 import dask.array as da
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
 from dask_planner.rust import DaskTypeMap, SqlTypeName
-
-try:
-    import cudf
-except ImportError:
-    cudf = None
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +49,7 @@ _PYTHON_TO_SQL = {
 _SQL_TO_PYTHON_SCALARS = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": Decimal,
+    "SqlTypeName.DECIMAL": np.float32,
     "SqlTypeName.BIGINT": np.int64,
     "SqlTypeName.INTEGER": np.int32,
     "SqlTypeName.SMALLINT": np.int16,
@@ -71,8 +66,7 @@ _SQL_TO_PYTHON_SCALARS = {
 _SQL_TO_PYTHON_FRAMES = {
     "SqlTypeName.DOUBLE": np.float64,
     "SqlTypeName.FLOAT": np.float32,
-    # a column of Decimals in pandas is `object`, but cuDF has a dedicated dtype
-    "SqlTypeName.DECIMAL": object if not cudf else cudf.Decimal128Dtype(38, 10),
+    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
     "SqlTypeName.BIGINT": pd.Int64Dtype(),
     "SqlTypeName.INTEGER": pd.Int32Dtype(),
     "SqlTypeName.SMALLINT": pd.Int16Dtype(),
@@ -151,6 +145,14 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 
         return literal_value
 
+    elif (
+        sql_type == SqlTypeName.DECIMAL
+        and dask_config.get("sql.mappings.decimal_support") == "cudf"
+    ):
+        from decimal import Decimal
+
+        python_type = Decimal
+
     elif sql_type == SqlTypeName.INTERVAL_DAY:
         return np.timedelta64(literal_value[0], "D") + np.timedelta64(
             literal_value[1], "ms"
@@ -219,7 +221,16 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
 def sql_to_python_type(sql_type: "SqlTypeName", *args) -> type:
     """Turn an SQL type into a dataframe dtype"""
     try:
-        if str(sql_type) == "SqlTypeName.DECIMAL":
+        if (
+            sql_type == SqlTypeName.DECIMAL
+            and dask_config.get("sql.mappings.decimal_support") == "cudf"
+        ):
+            try:
+                import cudf
+            except ImportError:
+                raise ModuleNotFoundError(
+                    "Setting `sql.mappings.decimal_support=cudf` requires cudf"
+                )
             return cudf.Decimal128Dtype(*args)
         return _SQL_TO_PYTHON_FRAMES[str(sql_type)]
     except KeyError:  # pragma: no cover
