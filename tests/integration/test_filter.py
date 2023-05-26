@@ -179,6 +179,9 @@ def test_filter_year(c):
             "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 3, 5, 6)",
             lambda x: x[~x["b"].isin([1, 3, 5, 6])],
             [[("b", "not in", (1, 3, 5, 6))]],
+            marks=pytest.mark.xfail(
+                reason="Requires https://github.com/dask/dask/pull/10320"
+            ),
         ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
