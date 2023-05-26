@@ -29,7 +29,7 @@ dependencies:
 - setuptools-rust>=1.5.2
 - sphinx
 - sqlalchemy<2
-- tpot
+- tpot>=0.12.0
 - tzlocal>=2.1
 - uvicorn>=0.13.4
 - libprotobuf=3
