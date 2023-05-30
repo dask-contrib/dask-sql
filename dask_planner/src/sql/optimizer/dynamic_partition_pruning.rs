@@ -325,11 +325,6 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
 
                         // TODO: Add better handling for when a table is read in more than once
                         // https://github.com/dask-contrib/dask-sql/issues/1121
-                        if tables.keys().any(|k| union_tables.contains_key(k)) {
-                            return HashMap::new();
-                        } else if union_tables.keys().any(|k| tables.contains_key(k)) {
-                            return HashMap::new();
-                        }
                         if tables.keys().any(|k| union_tables.contains_key(k))
                             || union_tables.keys().any(|k| tables.contains_key(k))
                         {
@@ -361,11 +356,13 @@ fn check_table_overlaps(
     m2: &HashMap<String, TableInfo>,
     m3: &HashMap<String, TableInfo>,
 ) -> bool {
-    if m1.keys().any(|k| m2.contains_key(k)) || m2.keys().any(|k| m1.contains_key(k)) {
-        true
-    } else if m1.keys().any(|k| m3.contains_key(k)) || m3.keys().any(|k| m1.contains_key(k)) {
-        true
-    } else if m2.keys().any(|k| m3.contains_key(k)) || m3.keys().any(|k| m2.contains_key(k)) {
+    if m1.keys().any(|k| m2.contains_key(k))
+        || m2.keys().any(|k| m1.contains_key(k))
+        || m1.keys().any(|k| m3.contains_key(k))
+        || m3.keys().any(|k| m1.contains_key(k))
+        || m2.keys().any(|k| m3.contains_key(k))
+        || m3.keys().any(|k| m2.contains_key(k))
+    {
         true
     } else {
         false
