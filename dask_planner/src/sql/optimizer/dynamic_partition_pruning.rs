@@ -269,6 +269,12 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                 let size = get_table_size(&current_plan);
                 match filepath {
                     Some(f) => {
+                        // TODO: Add better handling for when a table is read in more than once
+                        // https://github.com/dask-contrib/dask-sql/issues/1121
+                        if tables.contains_key(&t.table_name.to_string()) {
+                            return HashMap::new();
+                        }
+
                         tables.insert(
                             t.table_name.to_string(),
                             TableInfo {
@@ -291,6 +297,10 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                     let (left_tables, right_tables) =
                         (gather_tables(&j.left), gather_tables(&j.right));
 
+                    if check_table_overlaps(&tables, &left_tables, &right_tables) {
+                        return HashMap::new();
+                    }
+
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
                     tables.extend(right_tables);
@@ -300,6 +310,10 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                     let (left_tables, right_tables) =
                         (gather_tables(&c.left), gather_tables(&c.right));
 
+                    if check_table_overlaps(&tables, &left_tables, &right_tables) {
+                        return HashMap::new();
+                    }
+
                     // Add left_tables and right_tables to HashMap
                     tables.extend(left_tables);
                     tables.extend(right_tables);
@@ -308,6 +322,14 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                     // Recurse on inputs vector of Union
                     for input in &u.inputs {
                         let union_tables = gather_tables(input);
+
+                        // TODO: Add better handling for when a table is read in more than once
+                        // https://github.com/dask-contrib/dask-sql/issues/1121
+                        if tables.keys().any(|k| union_tables.contains_key(k)) {
+                            return HashMap::new();
+                        } else if union_tables.keys().any(|k| tables.contains_key(k)) {
+                            return HashMap::new();
+                        }
 
                         // Add union_tables to HashMap
                         tables.extend(union_tables);
@@ -325,6 +347,30 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
         }
     }
     tables
+}
+
+// TODO: Add better handling for when a table is read in more than once
+// https://github.com/dask-contrib/dask-sql/issues/1121
+fn check_table_overlaps(
+    m1: &HashMap<String, TableInfo>,
+    m2: &HashMap<String, TableInfo>,
+    m3: &HashMap<String, TableInfo>,
+) -> bool {
+    if m1.keys().any(|k| m2.contains_key(k)) {
+        true
+    } else if m1.keys().any(|k| m3.contains_key(k)) {
+        true
+    } else if m2.keys().any(|k| m1.contains_key(k)) {
+        true
+    } else if m2.keys().any(|k| m3.contains_key(k)) {
+        true
+    } else if m3.keys().any(|k| m1.contains_key(k)) {
+        true
+    } else if m3.keys().any(|k| m2.contains_key(k)) {
+        true
+    } else {
+        false
+    }
 }
 
 fn get_filepath(plan: &LogicalPlan) -> Option<&String> {
@@ -728,7 +774,7 @@ fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
                 Expr::Literal(ScalarValue::Int64(i)) => i.unwrap(),
                 Expr::Literal(ScalarValue::Int32(i)) => i64::from(i.unwrap()),
                 Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i64,
-                Expr::Literal(ScalarValue::TimestampNanosecond(i, None)) => i.unwrap() as i64,
+                Expr::Literal(ScalarValue::TimestampNanosecond(i, None)) => i.unwrap(),
                 _ => {
                     panic!("Unknown ScalarValue type {filter_value}");
                 }
@@ -948,8 +994,8 @@ fn optimize_table_scans(
             for (key, value) in table_filters.iter() {
                 let current_expr =
                     format_inlist_expr(value.clone(), key.0.to_owned(), key.1.to_owned());
-                if current_expr.is_some() {
-                    updated_filters.push(current_expr.unwrap());
+                if let Some(e) = current_expr {
+                    updated_filters.push(e);
                 }
             }
             let scan = LogicalPlan::TableScan(TableScan {
@@ -999,7 +1045,7 @@ fn format_inlist_expr(
     }
 
     if list.is_empty() {
-        return None;
+        None
     } else {
         Some(Expr::InList {
             expr,
