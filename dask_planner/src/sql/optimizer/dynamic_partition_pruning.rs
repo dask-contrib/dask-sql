@@ -330,6 +330,11 @@ fn gather_tables(plan: &LogicalPlan) -> HashMap<String, TableInfo> {
                         } else if union_tables.keys().any(|k| tables.contains_key(k)) {
                             return HashMap::new();
                         }
+                        if tables.keys().any(|k| union_tables.contains_key(k))
+                            || union_tables.keys().any(|k| tables.contains_key(k))
+                        {
+                            return HashMap::new();
+                        }
 
                         // Add union_tables to HashMap
                         tables.extend(union_tables);
@@ -356,17 +361,11 @@ fn check_table_overlaps(
     m2: &HashMap<String, TableInfo>,
     m3: &HashMap<String, TableInfo>,
 ) -> bool {
-    if m1.keys().any(|k| m2.contains_key(k)) {
+    if m1.keys().any(|k| m2.contains_key(k)) || m2.keys().any(|k| m1.contains_key(k)) {
         true
-    } else if m1.keys().any(|k| m3.contains_key(k)) {
+    } else if m1.keys().any(|k| m3.contains_key(k)) || m3.keys().any(|k| m1.contains_key(k)) {
         true
-    } else if m2.keys().any(|k| m1.contains_key(k)) {
-        true
-    } else if m2.keys().any(|k| m3.contains_key(k)) {
-        true
-    } else if m3.keys().any(|k| m1.contains_key(k)) {
-        true
-    } else if m3.keys().any(|k| m2.contains_key(k)) {
+    } else if m2.keys().any(|k| m3.contains_key(k)) || m3.keys().any(|k| m2.contains_key(k)) {
         true
     } else {
         false
@@ -536,14 +535,29 @@ fn read_table(
         + &field_string
         + "; }";
     let projection = parse_message_type(&projection_schema).ok();
-    let rows = files
-        .iter()
-        .map(|p| SerializedFileReader::try_from(&*p.clone()).unwrap())
-        .flat_map(|r| {
-            RowIter::from_file_into(Box::new(r))
+
+    let mut rows = Vec::new();
+    for file in files {
+        let reader_result = SerializedFileReader::try_from(&*file.clone());
+        if let Ok(reader) = reader_result {
+            let row_iter_result = RowIter::from_file_into(Box::new(reader))
                 .project(projection.clone())
-                .unwrap()
-        });
+                .ok();
+            if let Some(row_iter) = row_iter_result {
+                rows.extend(row_iter);
+            } else {
+                // TODO: Investigate cases when this would happen
+                rows.clear();
+                break;
+            }
+        } else {
+            rows.clear();
+            break;
+        }
+    }
+    if rows.is_empty() {
+        return None;
+    }
 
     // Create HashSets for the join column values
     let mut value_set: HashSet<RowValue> = HashSet::new();
