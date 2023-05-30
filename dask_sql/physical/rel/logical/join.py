@@ -217,15 +217,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         join_type: str,
     ) -> dd.DataFrame:
 
-        lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
-            for i, index in enumerate(lhs_on)
-        }
-        rhs_columns_to_add = {
-            f"common_{i}": df_rhs_renamed.iloc[:, index]
-            for i, index in enumerate(rhs_on)
-        }
-
         # SQL compatibility: when joining on columns that
         # contain NULLs, pandas will actually happily
         # keep those NULLs. That is however not compatible with
@@ -242,6 +233,15 @@ class DaskJoinPlugin(BaseRelPlugin):
                 [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
             )
             df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
+
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
+            for i, index in enumerate(lhs_on)
+        }
+        rhs_columns_to_add = {
+            f"common_{i}": df_rhs_renamed.iloc[:, index]
+            for i, index in enumerate(rhs_on)
+        }
 
         df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
