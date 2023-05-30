@@ -356,17 +356,12 @@ fn check_table_overlaps(
     m2: &HashMap<String, TableInfo>,
     m3: &HashMap<String, TableInfo>,
 ) -> bool {
-    if m1.keys().any(|k| m2.contains_key(k))
+    m1.keys().any(|k| m2.contains_key(k))
         || m2.keys().any(|k| m1.contains_key(k))
         || m1.keys().any(|k| m3.contains_key(k))
         || m3.keys().any(|k| m1.contains_key(k))
         || m2.keys().any(|k| m3.contains_key(k))
         || m3.keys().any(|k| m2.contains_key(k))
-    {
-        true
-    } else {
-        false
-    }
 }
 
 fn get_filepath(plan: &LogicalPlan) -> Option<&String> {
