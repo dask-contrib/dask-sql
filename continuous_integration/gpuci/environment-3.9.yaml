@@ -2,8 +2,8 @@ name: dask-sql
 channels:
 - rapidsai
 - rapidsai-nightly
-- nvidia
 - conda-forge
+- nvidia
 - nodefaults
 dependencies:
 - c-compiler
