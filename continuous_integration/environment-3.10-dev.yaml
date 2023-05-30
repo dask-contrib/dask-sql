@@ -3,6 +3,9 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
+# TODO: remove once anyio fixes its runtime dependencies on conda-forge
+# https://github.com/conda-forge/anyio-feedstock/issues/47
+- anyio<3.7
 - c-compiler
 - dask>=2022.3.0
 # FIXME: handling is needed for httpx-based fastapi>=0.87.0

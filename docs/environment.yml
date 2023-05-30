@@ -12,6 +12,9 @@ dependencies:
   - fugue>=0.7.3
   # FIXME: handling is needed for httpx-based fastapi>=0.87.0
   - fastapi>=0.69.0,<0.87.0
+  # TODO: remove once anyio fixes its runtime dependencies on conda-forge
+  # https://github.com/conda-forge/anyio-feedstock/issues/47
+  - anyio<3.7
   - uvicorn>=0.13.4
   - tzlocal>=2.1
   - prompt_toolkit>=3.0.8
