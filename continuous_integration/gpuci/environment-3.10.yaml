@@ -2,10 +2,11 @@ name: dask-sql
 channels:
 - rapidsai
 - rapidsai-nightly
-- nvidia
 - conda-forge
+- nvidia
 - nodefaults
 dependencies:
+- c-compiler
 - dask>=2022.3.0
 # FIXME: handling is needed for httpx-based fastapi>=0.87.0
 - fastapi>=0.69.0,<0.87.0
