@@ -7,7 +7,8 @@ pytest_plugins = ["tests.integration.fixtures"]
 def pytest_addoption(parser):
     parser.addoption("--rungpu", action="store_true", help="run tests meant for GPU")
     parser.addoption("--runqueries", action="store_true", help="run test queries")
-    parser.addoption("--filepath", help="specify the file path")
+    parser.addoption("--data_dir", help="specify file path to the data")
+    parser.addoption("--queries_dir", help="specify file path to the queries")
 
 
 def pytest_runtest_setup(item):
@@ -25,5 +26,10 @@ def pytest_runtest_setup(item):
 
 
 @pytest.fixture(scope="session")
-def filepath(request):
-    return request.config.getoption("--filepath")
+def data_dir(request):
+    return request.config.getoption("--data_dir")
+
+
+@pytest.fixture(scope="session")
+def queries_dir(request):
+    return request.config.getoption("--queries_dir")
