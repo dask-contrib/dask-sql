@@ -2,16 +2,13 @@
 
 export RUST_BACKTRACE=full
 
-# set up caching if we are being executed in a github workflow
-if [[ -v GITHUB_WORKSPACE ]]; then
-    echo "GITHUB_WORKSPACE is set so assuming we are building from a GHA workflow; searching for cached work directory..."
-    if [[ ! -d "$GITHUB_WORKSPACE/dask_planner/target" ]]; then
-        echo "No cached work directory found; creating a new one..."
-        mkdir "$GITHUB_WORKSPACE/dask_planner/target"
-    fi
-    echo "Symlinking work directory to conda build work directory..."
-    ln -s $GITHUB_WORKSPACE/dask_planner/target $CONDA_PREFIX/../work/dask_planner/target
+# pull cached work directory from previous compilations, if any
+if [[ ! -d "$RECIPE_DIR/../../dask_planner/target" ]]; then
+    echo "No cached work directory found; creating a new one..."
+    mkdir "$RECIPE_DIR/../../dask_planner/target"
 fi
+echo "Symlinking work directory to conda build work directory..."
+ln -s $RECIPE_DIR/../../dask_planner/target $CONDA_PREFIX/../work/dask_planner/target
 
 # pull cached registry from existing rust installation, if any
 if [[ -d "$HOME/.cargo/registry" ]]; then
