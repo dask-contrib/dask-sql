@@ -39,7 +39,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: dask_planner
-          shared-key: test
+          shared-key: conda
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
