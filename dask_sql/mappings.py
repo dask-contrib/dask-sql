@@ -212,11 +212,8 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         or sql_type == SqlTypeName.DATE
     ):
         if isinstance(literal_value, str):
-            try:
-                literal_value = np.datetime64(literal_value)
-            except ValueError:
-                literal_value = parse_datetime(literal_value)
-                literal_value = np.datetime64(literal_value)
+            literal_value = parse_datetime(literal_value)
+            literal_value = np.datetime64(literal_value)
         elif str(literal_value) == "None":
             # NULL time
             return pd.NaT  # pragma: no cover
