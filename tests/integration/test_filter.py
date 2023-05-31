@@ -235,20 +235,16 @@ def test_filtered_csv(tmpdir, c):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.gpu
-def test_filter_decimal(c):
-    import cudf
-
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_filter_decimal(c, gpu):
+    df = pd.DataFrame(
         {
             "a": [304.5, 35.305, 9.043, 102.424, 53.34],
             "b": [2.2, 82.4, 42, 76.9, 54.4],
             "c": [1, 2, 2, 5, 9],
         }
     )
-    df["a"] = df["a"].astype(cudf.Decimal64Dtype(12, 3))
-    df["b"] = df["b"].astype(cudf.Decimal64Dtype(7, 1))
-    c.create_table("df", df)
+    c.create_table("df", df, gpu=gpu)
 
     result_df = c.sql(
         """
@@ -257,7 +253,7 @@ def test_filter_decimal(c):
         FROM
             df
         WHERE
-            a < b
+            CAST(a AS DECIMAL) < CAST(b AS DECIMAL)
         """
     )
 
@@ -268,16 +264,19 @@ def test_filter_decimal(c):
     result_df = c.sql(
         """
         SELECT
-            b
+            CAST(b AS DECIMAL) as b
         FROM
             df
         WHERE
-            a < decimal '100.2'
+            CAST(a AS DECIMAL) < DECIMAL '100.2'
         """
     )
 
-    expected_df = cudf.DataFrame({"b": [82.4, 42, 54.4]})
-    expected_df["b"] = expected_df["b"].astype(cudf.Decimal64Dtype(7, 1))
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["b"] = result_df["b"].astype("float64")
 
-    assert_eq(result_df.reset_index(drop=True), expected_df)
+    expected_df = df.loc[df.a < 100.2][["b"]]
+
+    assert_eq(result_df, expected_df, check_index=False)
     c.drop_table("df")

@@ -22,6 +22,8 @@ def pytest_runtest_setup(item):
         if dask_cudf is None:
             pytest.skip("Test intended for CPU environments")
         dask.config.set({"dataframe.shuffle.algorithm": "tasks"})
+        # manually enable cudf decimal support
+        dask.config.set({"sql.mappings.decimal_support": "cudf"})
     else:
         if "cpu" in item.keywords and dask_cudf is not None:
             pytest.skip("Test intended for CPU environments")
