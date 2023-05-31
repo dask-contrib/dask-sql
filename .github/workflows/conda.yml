@@ -44,7 +44,7 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         run: |
-          mamba install boa conda-verify
+          mamba install -c conda-forge boa conda-verify
 
           which python
           pip list
@@ -66,6 +66,6 @@ jobs:
           LABEL: ${{ github.ref == 'refs/heads/datafusion-sql-planner' && 'dev_datafusion' || 'dev' }}
         run: |
           # install anaconda for upload
-          mamba install anaconda-client
+          mamba install -c conda-forge anaconda-client
 
           anaconda upload --label $LABEL linux-64/*.tar.bz2
