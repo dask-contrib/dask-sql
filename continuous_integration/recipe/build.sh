@@ -21,3 +21,8 @@ if [[ -d "$HOME/.cargo/git" ]]; then
 fi
 
 $PYTHON -m pip install . --no-deps -vv
+
+# remove symlinks before proceeding to make sure that cached files aren't cleaned up by conda build
+rm $CONDA_PREFIX/../work/dask_planner/target
+rm $CONDA_PREFIX/.cargo/registry
+rm $CONDA_PREFIX/.cargo/git
