@@ -170,25 +170,38 @@ _comparison_symbols = {
     np.not_equal: "!=",
 }
 
+# Define all regenerable "pass-through" ops
+# that do not affect filters.
+_pass_through_ops = {M.fillna, M.astype}
+
 # Define set of all "regenerable" operations.
 # Predicate pushdown is supported for graphs
 # comprised of `Blockwise` layers based on these
 # operations
-_regenerable_ops = set(_comparison_symbols.keys()) | {
-    operator.and_,
-    operator.or_,
-    operator.getitem,
-    operator.inv,
-    M.fillna,
-    M.isin,
-}
+_regenerable_ops = (
+    set(_comparison_symbols.keys())
+    | {
+        operator.and_,
+        operator.or_,
+        operator.getitem,
+        operator.inv,
+        M.isin,
+        M.isna,
+    }
+    | _pass_through_ops
+)
 
 # Specify functions that must be generated with
 # a different API at the dataframe-collection level
 _special_op_mappings = {
     M.fillna: dd._Frame.fillna,
     M.isin: dd._Frame.isin,
+    M.isna: dd._Frame.isna,
+    M.astype: dd._Frame.astype,
 }
+
+# Convert _pass_through_ops to respect "special" mappings
+_pass_through_ops = {_special_op_mappings.get(op, op) for op in _pass_through_ops}
 
 
 def _preprocess_layers(input_layers):
@@ -293,12 +306,14 @@ class RegenerableLayer:
             func = _blockwise_logical_dnf
         elif op == operator.getitem:
             func = _blockwise_getitem_dnf
-        elif op == dd._Frame.fillna:
-            func = _blockwise_fillna_dnf
         elif op == dd._Frame.isin:
             func = _blockwise_isin_dnf
+        elif op == dd._Frame.isna:
+            func = _blockwise_isna_dnf
         elif op == operator.inv:
             func = _blockwise_inv_dnf
+        elif op in _pass_through_ops:
+            func = _blockwise_pass_through_dnf
         else:
             raise ValueError(f"No DNF expression for {op}")
 
@@ -379,6 +394,8 @@ def _inv(symbol: str):
         "<=": ">=",
         "in": "not in",
         "not in": "in",
+        "is": "is not",
+        "is not": "is",
     }.get(symbol, symbol)
 
 
@@ -414,7 +431,7 @@ def _blockwise_getitem_dnf(op, indices: list, dsk: RegenerableGraph):
     return key
 
 
-def _blockwise_fillna_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_pass_through_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return dnf of input collection
     return _get_blockwise_input(0, indices, dsk)
 
@@ -426,8 +443,14 @@ def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
     return to_dnf((left, "in", tuple(right)))
 
 
+def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
+    # Return DNF expression pattern for `isna`
+    left = _get_blockwise_input(0, indices, dsk)
+    return to_dnf((left, "is", np.nan))
+
+
 def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
-    # Return DNF expression pattern for a simple "in" comparison
+    # Return DNF expression pattern for the inverse of a comparison
     expr = _get_blockwise_input(0, indices, dsk).to_list_tuple()
     new_expr = []
     count = 0

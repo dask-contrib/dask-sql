@@ -1,5 +1,6 @@
 import dask
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
 import pytest
 from dask.utils_test import hlg_layer
@@ -313,3 +314,47 @@ def test_filter_decimal(c, gpu):
 
     assert_eq(result_df, expected_df, check_index=False)
     c.drop_table("df")
+
+
+def test_predicate_pushdown_isna(tmpdir):
+    from dask_sql.context import Context
+
+    c = Context()
+
+    path = str(tmpdir)
+    dd.from_dict(
+        {
+            "a": [1, 2, None] * 5,
+            "b": range(15),
+            "index": range(15),
+        },
+        npartitions=3,
+    ).to_parquet(path + "/df1")
+    df1 = dd.read_parquet(path + "/df1", index="index")
+    c.create_table("df1", df1)
+
+    dd.from_dict(
+        {
+            "a": [None, 2, 3] * 5,
+            "b": range(15),
+            "index": range(15),
+        },
+        npartitions=3,
+    ).to_parquet(path + "/df2")
+    df2 = dd.read_parquet(path + "/df2", index="index")
+    c.create_table("df2", df2)
+
+    return_df = c.sql("SELECT df1.a FROM df1, df2 WHERE df1.a = df2.a")
+
+    # Check for predicate pushdown
+    filters = [[("a", "is not", np.nan)]]
+    got_filters = hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expect_filters = frozenset(frozenset(v) for v in filters)
+
+    assert got_filters == expect_filters
+    assert all(return_df.compute() == 2)
+    assert len(return_df) == 25
