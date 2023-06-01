@@ -8,6 +8,7 @@ from packaging.version import parse as parseVersion
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
+DASK_LE_2023_5_1 = parseVersion(dask.__version__) <= parseVersion("2023.5.1")
 
 
 def test_filter(c, df):
@@ -179,8 +180,9 @@ def test_filter_year(c):
             "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 3, 5, 6)",
             lambda x: x[~x["b"].isin([1, 3, 5, 6])],
             [[("b", "not in", (1, 3, 5, 6))]],
-            marks=pytest.mark.xfail(
-                reason="Requires https://github.com/dask/dask/pull/10320"
+            marks=pytest.mark.skipif(
+                DASK_LE_2023_5_1,
+                reason="Requires https://github.com/dask/dask/pull/10320",
             ),
         ),
         (
