@@ -1,7 +1,14 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::DFSchemaRef;
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::DFSchemaRef,
+    datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+};
 use fmt::Debug;
 use pyo3::prelude::*;
 
@@ -10,8 +17,9 @@ use crate::{
     sql::{exceptions::py_type_err, logical},
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct CreateExperimentPlanNode {
+    pub schema_name: Option<String>,
     pub experiment_name: String,
     pub input: LogicalPlan,
     pub if_not_exists: bool,
@@ -22,6 +30,17 @@ pub struct CreateExperimentPlanNode {
 impl Debug for CreateExperimentPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for CreateExperimentPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema_name.hash(state);
+        self.experiment_name.hash(state);
+        self.input.hash(state);
+        self.if_not_exists.hash(state);
+        self.or_replace.hash(state);
+        // self.with_options.hash(state);
     }
 }
 
@@ -60,12 +79,29 @@ impl UserDefinedLogicalNode for CreateExperimentPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         assert_eq!(inputs.len(), 1, "input size inconsistent");
         Arc::new(CreateExperimentPlanNode {
+            schema_name: self.schema_name.clone(),
             experiment_name: self.experiment_name.clone(),
             input: inputs[0].clone(),
             if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
             with_options: self.with_options.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "CreateExperiment"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 
@@ -82,6 +118,11 @@ impl PyCreateExperiment {
     #[pyo3(name = "getSelectQuery")]
     fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
         Ok(self.create_experiment.input.clone().into())
+    }
+
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.create_experiment.schema_name.clone())
     }
 
     #[pyo3(name = "getExperimentName")]

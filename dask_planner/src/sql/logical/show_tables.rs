@@ -1,25 +1,40 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{
-    logical_plan::{Extension, UserDefinedLogicalNode},
-    Expr,
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_common::{DFSchema, DFSchemaRef},
+    datafusion_expr::{
+        logical_plan::{Extension, UserDefinedLogicalNode},
+        Expr,
+        LogicalPlan,
+    },
 };
 use fmt::Debug;
 use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShowTablesPlanNode {
     pub schema: DFSchemaRef,
+    pub catalog_name: Option<String>,
     pub schema_name: Option<String>,
 }
 
 impl Debug for ShowTablesPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for ShowTablesPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema.hash(state);
+        self.schema_name.hash(state);
     }
 }
 
@@ -44,7 +59,11 @@ impl UserDefinedLogicalNode for ShowTablesPlanNode {
     }
 
     fn fmt_for_explain(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ShowTables: schema_name: {:?}", self.schema_name)
+        write!(
+            f,
+            "ShowTables: catalog_name: {:?}, schema_name: {:?}",
+            self.catalog_name, self.schema_name
+        )
     }
 
     fn from_template(
@@ -54,8 +73,25 @@ impl UserDefinedLogicalNode for ShowTablesPlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(ShowTablesPlanNode {
             schema: Arc::new(DFSchema::empty()),
+            catalog_name: self.catalog_name.clone(),
             schema_name: self.schema_name.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "ShowTables"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 
@@ -66,14 +102,14 @@ pub struct PyShowTables {
 
 #[pymethods]
 impl PyShowTables {
+    #[pyo3(name = "getCatalogName")]
+    fn get_catalog_name(&self) -> PyResult<Option<String>> {
+        Ok(self.show_tables.catalog_name.clone())
+    }
+
     #[pyo3(name = "getSchemaName")]
-    fn get_schema_name(&self) -> PyResult<String> {
-        Ok(self
-            .show_tables
-            .schema_name
-            .as_ref()
-            .cloned()
-            .unwrap_or_default())
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.show_tables.schema_name.clone())
     }
 }
 

@@ -1,4 +1,3 @@
-import os
 from time import sleep
 
 import pandas as pd
@@ -7,6 +6,7 @@ import pytest
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
 from dask_sql.server.presto_jdbc import create_meta_data
+from tests.integration.fixtures import DISTRIBUTED_TESTS
 
 # needed for the testclient
 pytest.importorskip("requests")
@@ -38,12 +38,12 @@ def app_client(c):
 
     yield TestClient(app)
 
-    # don't disconnect the client if using an independent cluster
-    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
+    # avoid closing client it's session-wide
+    if not DISTRIBUTED_TESTS:
         app.client.close()
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_jdbc_has_schema(app_client, c):
     create_meta_data(c)
 
@@ -75,7 +75,6 @@ def test_jdbc_has_schema(app_client, c):
     ]
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_jdbc_has_table(app_client, c):
     create_meta_data(c)
     check_data(app_client)
@@ -93,7 +92,7 @@ def test_jdbc_has_table(app_client, c):
     ]
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_jdbc_has_columns(app_client, c):
     create_meta_data(c)
     check_data(app_client)

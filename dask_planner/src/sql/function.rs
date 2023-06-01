@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use arrow::datatypes::DataType;
+use datafusion_python::datafusion::arrow::datatypes::DataType;
 use pyo3::prelude::*;
 
 use super::types::PyDataType;

@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -6,13 +7,17 @@ from dask import delayed
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
-from dask_sql.utils import convert_sql_kwargs, import_class
+from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
+from dask_sql.utils import convert_sql_kwargs, import_class, is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
     from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
+
+cpu_classes = get_cpu_classes()
+gpu_classes = get_gpu_classes()
 
 
 class CreateModelPlugin(BaseRelPlugin):
@@ -29,7 +34,11 @@ class CreateModelPlugin(BaseRelPlugin):
     as the training input.
 
     The options control, how and which model is trained:
-    * model_class: Full path to the class of the model to train.
+    * model_class: Class name or full path to the class of the model to train.
+      Any sklearn, cuML, XGBoost, or LightGBM classes can be inferred
+      without the full path. In this case, models trained on cuDF dataframes
+      are automatically mapped to cuML classes, and sklearn models otherwise.
+      We map to cuML-Dask based models when possible and single-GPU cuML models otherwise.
       Any model class with sklearn interface is valid, but might or
       might not work well with Dask dataframes.
       You might need to install necessary packages to use
@@ -102,9 +111,10 @@ class CreateModelPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         create_model = rel.create_model()
-        select = create_model.getSelectQuery()
 
-        schema_name, model_name = context.schema_name, create_model.getModelName()
+        select = create_model.getSelectQuery()
+        schema_name = create_model.getSchemaName() or context.schema_name
+        model_name = create_model.getModelName()
         kwargs = convert_sql_kwargs(create_model.getSQLWithOptions())
 
         if model_name in context.schema[schema_name].models:
@@ -129,6 +139,19 @@ class CreateModelPlugin(BaseRelPlugin):
         wrap_fit = kwargs.pop("wrap_fit", None)
         fit_kwargs = kwargs.pop("fit_kwargs", {})
 
+        if wrap_predict is False and "dask" not in model_class.lower():
+            warnings.warn(
+                f"Consider using wrap_predict=True for non-Dask model {model_class}",
+                RuntimeWarning,
+            )
+
+        training_df = context.sql(select)
+
+        if is_cudf_type(training_df):
+            model_class = gpu_classes.get(model_class, model_class)
+        else:
+            model_class = cpu_classes.get(model_class, model_class)
+
         try:
             ModelClass = import_class(model_class)
         except ImportError:
@@ -139,8 +162,10 @@ class CreateModelPlugin(BaseRelPlugin):
         model = ModelClass(**kwargs)
 
         if wrap_predict is None:
-            if "sklearn" in model_class or (
-                "cuml" in model_class and "cuml.dask" not in model_class
+            if (
+                "sklearn" in model_class
+                or ("cuml" in model_class and "cuml.dask" not in model_class)
+                or ("xgboost" in model_class and "xgboost.dask" not in model_class)
             ):
                 wrap_predict = True
             else:
@@ -149,12 +174,11 @@ class CreateModelPlugin(BaseRelPlugin):
             if (
                 "sklearn" in model_class
                 or ("cuml" in model_class and "cuml.dask" not in model_class)
+                or ("xgboost" in model_class and "xgboost.dask" not in model_class)
             ) and hasattr(model, "partial_fit"):
                 wrap_fit = True
             else:
                 wrap_fit = False
-
-        training_df = context.sql(select)
 
         if target_column:
             non_target_columns = [

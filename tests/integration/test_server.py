@@ -1,10 +1,11 @@
-import os
 from time import sleep
 
+import pandas as pd
 import pytest
 
 from dask_sql import Context
 from dask_sql.server.app import _init_app, app
+from tests.integration.fixtures import DISTRIBUTED_TESTS
 
 # needed for the testclient
 pytest.importorskip("requests")
@@ -21,12 +22,40 @@ def app_client():
 
     yield TestClient(app)
 
-    # don't disconnect the client if using an independent cluster
-    if os.getenv("DASK_SQL_TEST_SCHEDULER", None) is None:
+    # avoid closing client it's session-wide
+    if not DISTRIBUTED_TESTS:
         app.client.close()
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+def get_result_or_error(app_client, response):
+    result = response.json()
+
+    assert "nextUri" in result
+    assert "error" not in result
+
+    status_url = result["nextUri"]
+    next_url = status_url
+
+    counter = 0
+    while True:
+        response = app_client.get(next_url)
+        assert response.status_code == 200
+
+        result = response.json()
+
+        if "nextUri" not in result:
+            break
+
+        next_url = result["nextUri"]
+
+        counter += 1
+        assert counter <= 100
+
+        sleep(0.1)
+
+    return result
+
+
 def test_routes(app_client):
     assert app_client.post("/v1/statement", data="SELECT 1 + 1").status_code == 200
     assert app_client.get("/v1/statement", data="SELECT 1 + 1").status_code == 405
@@ -36,7 +65,6 @@ def test_routes(app_client):
     assert app_client.get("/v1/cancel/some-wrong-uuid").status_code == 405
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_sql_query_cancel(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + 1")
     assert response.status_code == 200
@@ -50,7 +78,6 @@ def test_sql_query_cancel(app_client):
     assert response.status_code == 404
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_sql_query(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + 1")
     assert response.status_code == 200
@@ -64,15 +91,14 @@ def test_sql_query(app_client):
 
     assert result["columns"] == [
         {
-            "name": "1 + 1",
-            "type": "integer",
-            "typeSignature": {"rawType": "integer", "arguments": []},
+            "name": "Int64(1) + Int64(1)",
+            "type": "bigint",
+            "typeSignature": {"rawType": "bigint", "arguments": []},
         }
     ]
     assert result["data"] == [[2]]
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_wrong_sql_query(app_client):
     response = app_client.post("/v1/statement", data="SELECT 1 + ")
     assert response.status_code == 200
@@ -83,14 +109,14 @@ def test_wrong_sql_query(app_client):
     assert "data" not in result
     assert "error" in result
     assert "message" in result["error"]
-    assert "errorLocation" in result["error"]
-    assert result["error"]["errorLocation"] == {
-        "lineNumber": 1,
-        "columnNumber": 10,
-    }
+    # FIXME: ParserErrors currently don't contain information on where the syntax error occurred
+    # assert "errorLocation" in result["error"]
+    # assert result["error"]["errorLocation"] == {
+    #     "lineNumber": 1,
+    #     "columnNumber": 10,
+    # }
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_add_and_query(app_client, df, temporary_data_file):
     df.to_csv(temporary_data_file, index=False)
 
@@ -133,7 +159,6 @@ def test_add_and_query(app_client, df, temporary_data_file):
     assert "error" not in result
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_register_and_query(app_client, df):
     df["a"] = df["a"].astype("UInt8")
     app_client.app.c.create_table("new_table", df)
@@ -162,7 +187,6 @@ def test_register_and_query(app_client, df):
     assert "error" not in result
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_inf_table(app_client, user_table_inf):
     app_client.app.c.create_table("new_table", user_table_inf)
 
@@ -186,31 +210,26 @@ def test_inf_table(app_client, user_table_inf):
     assert "error" not in result
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
-def get_result_or_error(app_client, response):
-    result = response.json()
+def test_nullable_int_table(app_client):
+    app_client.app.c.create_table(
+        "null_table", pd.DataFrame({"a": [None]}, dtype="Int64")
+    )
 
-    assert "nextUri" in result
+    response = app_client.post("/v1/statement", data="SELECT * FROM null_table")
+    assert response.status_code == 200
+
+    result = get_result_or_error(app_client, response)
+
+    assert "columns" in result
+    assert "data" in result
+    assert result["columns"] == [
+        {
+            "name": "a",
+            "type": "bigint",
+            "typeSignature": {"rawType": "bigint", "arguments": []},
+        }
+    ]
+
+    assert len(result["data"]) == 1
+    assert result["data"][0] == [None]
     assert "error" not in result
-
-    status_url = result["nextUri"]
-    next_url = status_url
-
-    counter = 0
-    while True:
-        response = app_client.get(next_url)
-        assert response.status_code == 200
-
-        result = response.json()
-
-        if "nextUri" not in result:
-            break
-
-        next_url = result["nextUri"]
-
-        counter += 1
-        assert counter <= 100
-
-        sleep(0.1)
-
-    return result

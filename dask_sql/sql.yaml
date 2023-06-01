@@ -6,6 +6,9 @@ sql:
   identifier:
     case_sensitive: True
 
+  join:
+    broadcast: null
+
   limit:
     check-first-partition: True
 
@@ -15,3 +18,6 @@ sql:
 
   sort:
     topk-nelem-limit: 1000000
+
+  mappings:
+    decimal_support: "pandas"

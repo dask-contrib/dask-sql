@@ -5,6 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from dask.datasets import timeseries as dd_timeseries
 from dask.distributed import Client
 
 from tests.utils import assert_eq
@@ -17,10 +18,14 @@ try:
     from dask_cuda import LocalCUDACluster  # noqa: F401
 except ImportError:
     cudf = None
+    dask_cudf = None
     LocalCUDACluster = None
 
-# check if we want to connect to an independent cluster
-SCHEDULER_ADDR = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
+# check if we want to run tests on a distributed client
+DISTRIBUTED_TESTS = os.getenv("DASK_SQL_DISTRIBUTED_TESTS", "False").lower() in (
+    "true",
+    "1",
+)
 
 
 @pytest.fixture()
@@ -79,18 +84,21 @@ def user_table_inf():
 
 @pytest.fixture()
 def user_table_nan():
-    # Lazy import, otherwise pytest segfaults
-    from dask_sql._compat import INT_NAN_IMPLEMENTED
-
-    if INT_NAN_IMPLEMENTED:
-        return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
-    else:
-        return pd.DataFrame({"c": [3, float("nan"), 1]}).astype("float")
+    return pd.DataFrame({"c": [3, pd.NA, 1]}).astype("UInt8")
 
 
 @pytest.fixture()
 def string_table():
-    return pd.DataFrame({"a": ["a normal string", "%_%", "^|()-*[]$"]})
+    return pd.DataFrame(
+        {
+            "a": [
+                "a normal string",
+                "%_%",
+                "^|()-*[]$",
+                "^|()-*[]$\n%_%\na normal string",
+            ]
+        }
+    )
 
 
 @pytest.fixture()
@@ -108,6 +116,11 @@ def datetime_table():
             ),
         }
     )
+
+
+@pytest.fixture()
+def timeseries():
+    return dd_timeseries(freq="1d").reset_index(drop=True)
 
 
 @pytest.fixture()
@@ -156,7 +169,17 @@ def gpu_string_table(string_table):
 
 @pytest.fixture()
 def gpu_datetime_table(datetime_table):
+    # cudf doesn't have support for timezoned datetime data
+    datetime_table["timezone"] = datetime_table["timezone"].astype("datetime64[ns]")
+    datetime_table["utc_timezone"] = datetime_table["utc_timezone"].astype(
+        "datetime64[ns]"
+    )
     return cudf.from_pandas(datetime_table) if cudf else None
+
+
+@pytest.fixture()
+def gpu_timeseries(timeseries):
+    return dask_cudf.from_dask_dataframe(timeseries) if dask_cudf else None
 
 
 @pytest.fixture()
@@ -172,12 +195,14 @@ def c(
     user_table_nan,
     string_table,
     datetime_table,
+    timeseries,
     parquet_ddf,
     gpu_user_table_1,
     gpu_df,
     gpu_long_table,
     gpu_string_table,
     gpu_datetime_table,
+    gpu_timeseries,
 ):
     dfs = {
         "df_simple": df_simple,
@@ -191,12 +216,14 @@ def c(
         "user_table_nan": user_table_nan,
         "string_table": string_table,
         "datetime_table": datetime_table,
+        "timeseries": timeseries,
         "parquet_ddf": parquet_ddf,
         "gpu_user_table_1": gpu_user_table_1,
         "gpu_df": gpu_df,
         "gpu_long_table": gpu_long_table,
         "gpu_string_table": gpu_string_table,
         "gpu_datetime_table": gpu_datetime_table,
+        "gpu_timeseries": gpu_timeseries,
     }
 
     # Lazy import, otherwise the pytest framework has problems
@@ -312,35 +339,21 @@ def assert_query_gives_same_result(engine):
 
 
 @pytest.fixture()
-def gpu_cluster():
-    if LocalCUDACluster is None:
-        pytest.skip("dask_cuda not installed")
-        return None
-
-    with LocalCUDACluster(protocol="tcp") as cluster:
-        yield cluster
-
-
-@pytest.fixture()
-def gpu_client(gpu_cluster):
-    if gpu_cluster:
-        with Client(gpu_cluster) as client:
+def gpu_client(request):
+    # allow gpu_client to be used directly as a fixture or parametrized
+    if not hasattr(request, "param") or request.param:
+        with LocalCUDACluster(protocol="tcp") as cluster:
+            with Client(cluster) as client:
+                yield client
+    else:
+        with Client() as client:
             yield client
 
 
-# if connecting to an independent cluster, use a session-wide
-# client for all computations. otherwise, only connect to a client
-# when specified.
+# use session-wide distributed client if specified otherwise default to standard fixture
 @pytest.fixture(
-    scope="function" if SCHEDULER_ADDR is None else "session",
-    autouse=False if SCHEDULER_ADDR is None else True,
+    scope="session" if DISTRIBUTED_TESTS else "function", autouse=DISTRIBUTED_TESTS
 )
 def client():
-    with Client(address=SCHEDULER_ADDR) as client:
+    with Client() as client:
         yield client
-
-
-skip_if_external_scheduler = pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)

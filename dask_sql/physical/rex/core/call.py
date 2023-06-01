@@ -27,9 +27,9 @@ from dask_sql.physical.rex.core.literal import SargPythonImplementation
 from dask_sql.utils import (
     LoggableDataFrame,
     convert_to_datetime,
+    is_cudf_type,
     is_datetime,
     is_frame,
-    make_pickable_without_dask_sql,
 )
 
 if TYPE_CHECKING:
@@ -242,13 +242,18 @@ class CastOperation(Operation):
         super().__init__(self.cast)
 
     def cast(self, operand, rex=None) -> SeriesOrScalar:
-        output_type = str(rex.getType())
-        sql_type = SqlTypeName.fromString(output_type.upper())
+        output_type = rex.getType()
+        sql_type = SqlTypeName.fromString(output_type)
+        sql_type_args = ()
+
+        # decimal datatypes require precision and scale
+        if output_type == "DECIMAL":
+            sql_type_args = rex.getPrecisionScale()
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
 
-        python_type = sql_to_python_type(sql_type)
+        python_type = sql_to_python_type(sql_type, *sql_type_args)
 
         return_column = cast_column_to_type(operand, python_type)
 
@@ -433,31 +438,35 @@ class RegexOperation(Operation):
         transformed_regex = "^" + transformed_regex + "$"
 
         # Finally, apply the string
+        flags = re.DOTALL | re.IGNORECASE if not self.case_sensitive else re.DOTALL
         if is_frame(test):
-            return test.str.match(transformed_regex).astype("boolean")
+            return test.str.match(transformed_regex, flags=flags).astype("boolean")
         else:
-            return bool(re.match(transformed_regex, test))
+            return bool(re.match(transformed_regex, test, flags=flags))
 
 
 class LikeOperation(RegexOperation):
-    replacement_chars = [
-        "#",
-        "$",
-        "^",
-        ".",
-        "|",
-        "~",
-        "-",
-        "+",
-        "*",
-        "?",
-        "(",
-        ")",
-        "{",
-        "}",
-        "[",
-        "]",
-    ]
+    def __init__(self, case_sensitive: bool = True):
+        self.case_sensitive = case_sensitive
+        self.replacement_chars = [
+            "#",
+            "$",
+            "^",
+            ".",
+            "|",
+            "~",
+            "-",
+            "+",
+            "*",
+            "?",
+            "(",
+            ")",
+            "{",
+            "}",
+            "[",
+            "]",
+        ]
+        super().__init__()
 
 
 class SimilarOperation(RegexOperation):
@@ -469,6 +478,7 @@ class SimilarOperation(RegexOperation):
         "~",
         "-",
     ]
+    case_sensitive = True
 
 
 class PositionOperation(Operation):
@@ -592,47 +602,6 @@ class CoalesceOperation(Operation):
         return result
 
 
-class ExtractOperation(Operation):
-    def __init__(self):
-        super().__init__(self.extract)
-
-    def extract(self, what, df: SeriesOrScalar):
-        df = convert_to_datetime(df)
-
-        if what in {"CENTURY", "CENTURIES"}:
-            return da.trunc(df.year / 100)
-        elif what in {"DAY", "DAYS"}:
-            return df.day
-        elif what in {"DECADE", "DECADES"}:
-            return da.trunc(df.year / 10)
-        elif what == "DOW":
-            return (df.dayofweek + 1) % 7
-        elif what == "DOY":
-            return df.dayofyear
-        elif what in {"HOUR", "HOURS"}:
-            return df.hour
-        elif what in {"MICROSECOND", "MICROSECONDS"}:
-            return df.microsecond
-        elif what in {"MILLENIUM", "MILLENIUMS", "MILLENNIUM", "MILLENNIUMS"}:
-            return da.trunc(df.year / 1000)
-        elif what in {"MILLISECOND", "MILLISECONDS"}:
-            return da.trunc(1000 * df.microsecond)
-        elif what in {"MINUTE", "MINUTES"}:
-            return df.minute
-        elif what in {"MONTH", "MONTHS"}:
-            return df.month
-        elif what in {"QUARTER", "QUARTERS"}:
-            return df.quarter
-        elif what in {"SECOND", "SECONDS"}:
-            return df.second
-        elif what in {"WEEK", "WEEKS"}:
-            return df.week
-        elif what in {"YEAR", "YEARS"}:
-            return df.year
-        else:
-            raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
-
-
 class ToTimestampOperation(Operation):
     def __init__(self):
         super().__init__(self.to_timestamp)
@@ -644,7 +613,7 @@ class ToTimestampOperation(Operation):
         format = format.replace("'", "")
 
         # TODO: format timestamps for GPU tests
-        if "cudf" in str(type(df)):
+        if is_cudf_type(df):
             if format != default_format:
                 raise RuntimeError("Non-default timestamp formats not supported on GPU")
             if df.dtype == "object":
@@ -688,7 +657,7 @@ class TimeStampAddOperation(Operation):
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
         df = df.astype("datetime64[ns]")
 
-        if "cudf" in str(type(df)):
+        if is_cudf_type(df):
             from cudf import DateOffset
         else:
             from pandas.tseries.offsets import DateOffset
@@ -839,7 +808,7 @@ class BaseRandomOperation(Operation):
         state_data = random_state_data(df.npartitions, random_state)
         dsk = {
             (name, i): (
-                make_pickable_without_dask_sql(self.random_function),
+                self.random_function,
                 (df._name, i),
                 np.random.RandomState(state),
                 kwargs,
@@ -916,7 +885,7 @@ class SearchOperation(Operation):
             return conditions[0]
 
 
-class DatePartOperation(Operation):
+class ExtractOperation(Operation):
     """
     Function for performing PostgreSQL like functions in a more convenient setting.
     """
@@ -1037,8 +1006,11 @@ class RexCallPlugin(BaseRexPlugin):
         # special operations
         "cast": CastOperation(),
         "case": CaseOperation(),
-        "not like": NotOperation().of(LikeOperation()),
-        "like": LikeOperation(),
+        "not like": NotOperation().of(LikeOperation(case_sensitive=True)),
+        "like": LikeOperation(case_sensitive=True),
+        "not ilike": NotOperation().of(LikeOperation(case_sensitive=False)),
+        "ilike": LikeOperation(case_sensitive=False),
+        "not similar to": NotOperation().of(SimilarOperation()),
         "similar to": SimilarOperation(),
         "negative": NegativeOperation(),
         "not": NotOperation(),
@@ -1098,7 +1070,6 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
-        "extract": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
@@ -1110,7 +1081,7 @@ class RexCallPlugin(BaseRexPlugin):
         ),
         "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
-        "datepart": DatePartOperation(),
+        "datepart": ExtractOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),

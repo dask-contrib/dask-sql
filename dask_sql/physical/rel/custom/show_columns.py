@@ -25,19 +25,17 @@ class ShowColumnsPlugin(BaseRelPlugin):
     class_name = "ShowColumns"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        schema_name = rel.show_columns().getSchemaName()
-        name = rel.show_columns().getTableName()
-        if not schema_name:
-            schema_name = context.DEFAULT_SCHEMA_NAME
+        show_columns = rel.show_columns()
 
-        dc = context.schema[schema_name].tables[name]
+        schema_name = show_columns.getSchemaName() or context.schema_name
+        table_name = show_columns.getTableName()
+
+        dc = context.schema[schema_name].tables[table_name]
 
         cols = dc.column_container.columns
         dtypes = list(
             map(
-                lambda x: str(python_to_sql_type(x).getSqlType())
-                .rpartition(".")[2]
-                .lower(),
+                lambda x: str(python_to_sql_type(x)).lower(),
                 dc.df.dtypes,
             )
         )

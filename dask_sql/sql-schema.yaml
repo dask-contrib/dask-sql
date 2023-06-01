@@ -27,6 +27,20 @@ properties:
             description: |
               Whether sql identifiers are considered case sensitive while parsing.
 
+      join:
+        type: object
+        properties:
+
+          broadcast:
+            type: [boolean, number, "null"]
+            description: |
+              If boolean, it determines whether all joins should use the broadcast join algorithm.
+              If float, it's a value denoting dask's likelihood of selecting a broadcast join based
+              codepath over a shuffle based join. Concretely, dask will select a broadcast based join
+              algorithm if small_table.npartitions < log2(big_table.npartitions) * broadcast_bias
+              Note: Forcing a broadcast join might lead to perf issues or OOM errors in cases where the
+              broadcasted table is too large to fit on a single worker.
+
       limit:
         type: object
         properties:
@@ -61,3 +75,12 @@ properties:
               optimization (when possible). ``nelem`` is defined as the limit or ``k`` value times the
               number of columns. Default is 1000000, corresponding to a LIMIT clause of 1 million in a
               1 column table.
+
+      mappings:
+        type: object
+        properties:
+
+          decimal_support:
+            type: string
+            description:
+              Decides how to handle decimal scalars/columns. ``"pandas"`` handling will treat decimals scalars and columns as floats and float64 columns, respectively, while ``"cudf"`` handling treats decimal scalars as ``decimal.Decimal`` objects and decimal columns as ``cudf.Decimal128Dtype`` columns, handling precision/scale accordingly. Default is ``"pandas"``, but ``"cudf"`` should be used if attempting to work with decimal columns on GPU.

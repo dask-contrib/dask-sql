@@ -33,7 +33,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         analyze_table = rel.analyze_table()
 
-        schema_name = analyze_table.getSchemaName() or context.DEFAULT_SCHEMA_NAME
+        schema_name = analyze_table.getSchemaName() or context.schema_name
         table_name = analyze_table.getTableName()
 
         dc = context.schema[schema_name].tables[table_name]
@@ -56,9 +56,7 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         statistics = statistics.append(
             pd.Series(
                 {
-                    col: str(python_to_sql_type(df[mapping(col)].dtype).getSqlType())
-                    .rpartition(".")[2]
-                    .lower()
+                    col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
                     for col in columns
                 },
                 name="data_type",

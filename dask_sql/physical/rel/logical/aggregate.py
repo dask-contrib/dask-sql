@@ -12,7 +12,7 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
 from dask_sql.physical.rex.core.call import IsNullOperation
-from dask_sql.utils import new_temporary_column
+from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
@@ -78,7 +78,7 @@ class AggregationSpecification:
 
             if pd.api.types.is_string_dtype(series.dtype):
                 # If dask_cudf strings dtype, return built-in aggregation
-                if "cudf" in str(series._partition_type):
+                if is_cudf_type(series):
                     return built_in_aggregation
 
                 # with pandas StringDtype built-in aggregations work
@@ -320,11 +320,12 @@ class DaskAggregatePlugin(BaseRelPlugin):
         # It is very important to start with the non-filtered entry.
         # Otherwise we might loose some entries in the grouped columns
         df_result = None
-        key = None
+        key = (None, None)
         if key in collected_aggregations:
             aggregations = collected_aggregations.pop(key)
             df_result = self._perform_aggregation(
                 DataContainer(df, cc),
+                None,
                 None,
                 aggregations,
                 additional_column_name,
@@ -333,10 +334,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
             )
 
         # Now we can also the the rest
-        for filter_column, aggregations in collected_aggregations.items():
+        for (
+            filter_column,
+            distinct_column,
+        ), aggregations in collected_aggregations.items():
             agg_result = self._perform_aggregation(
                 DataContainer(df, cc),
                 filter_column,
+                distinct_column,
                 aggregations,
                 additional_column_name,
                 group_columns,
@@ -491,9 +496,9 @@ class DaskAggregatePlugin(BaseRelPlugin):
             output_col = expr.toString()
 
             # Store the aggregation
-            collected_aggregations[filter_backend_col].append(
-                (input_col, output_col, aggregation_function)
-            )
+            collected_aggregations[
+                (filter_backend_col, backend_name if expr.isDistinctAgg() else None)
+            ].append((input_col, output_col, aggregation_function))
             output_column_order.append(output_col)
 
         return collected_aggregations, output_column_order, df, cc
@@ -502,6 +507,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
         self,
         dc: DataContainer,
         filter_column: str,
+        distinct_column: str,
         aggregations: List[Tuple[str, str, Any]],
         additional_column_name: str,
         group_columns: List[str],
@@ -527,20 +533,27 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
             aggregations_dict[input_col][output_col] = aggregation_f
 
+        group_columns = [
+            dc.column_container.get_backend_by_frontend_name(group_name)
+            for group_name in group_columns
+        ]
+
         # filter dataframe if specified
         if filter_column:
             filter_expression = tmp_df[filter_column]
             tmp_df = tmp_df[filter_expression]
             logger.debug(f"Filtered by {filter_column} before aggregation.")
+        if distinct_column:
+            tmp_df = tmp_df.drop_duplicates(
+                subset=(group_columns + [distinct_column]), **groupby_agg_options
+            )
+            logger.debug(
+                f"Dropped duplicates from {distinct_column} before aggregation."
+            )
 
         # we might need a temporary column name if no groupby columns are specified
         if additional_column_name is None:
             additional_column_name = new_temporary_column(dc.df)
-
-        group_columns = [
-            dc.column_container.get_backend_by_frontend_name(group_name)
-            for group_name in group_columns
-        ]
 
         # perform groupby operation
         grouped_df = tmp_df.groupby(

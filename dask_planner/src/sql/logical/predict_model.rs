@@ -1,16 +1,23 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::DFSchemaRef;
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::DFSchemaRef,
+    datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+};
 use fmt::Debug;
 use pyo3::prelude::*;
 
 use super::PyLogicalPlan;
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PredictModelPlanNode {
-    pub model_schema: String, // "something" in `something.model_name`
+    pub schema_name: Option<String>, // "something" in `something.model_name`
     pub model_name: String,
     pub input: LogicalPlan,
 }
@@ -18,6 +25,14 @@ pub struct PredictModelPlanNode {
 impl Debug for PredictModelPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for PredictModelPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema_name.hash(state);
+        self.model_name.hash(state);
+        self.input.hash(state);
     }
 }
 
@@ -51,10 +66,26 @@ impl UserDefinedLogicalNode for PredictModelPlanNode {
         inputs: &[LogicalPlan],
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(PredictModelPlanNode {
-            model_schema: self.model_schema.clone(),
+            schema_name: self.schema_name.clone(),
             model_name: self.model_name.clone(),
             input: inputs[0].clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "PredictModel"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 
@@ -65,6 +96,11 @@ pub struct PyPredictModel {
 
 #[pymethods]
 impl PyPredictModel {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.predict_model.schema_name.clone())
+    }
+
     #[pyo3(name = "getModelName")]
     fn get_model_name(&self) -> PyResult<String> {
         Ok(self.predict_model.model_name.clone())

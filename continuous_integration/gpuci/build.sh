@@ -41,22 +41,19 @@ gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
 gpuci_logger "Download parquet dataset"
-gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb/" tests/unit/data/ --recursive
+gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb_sorted/" tests/unit/data/ --recursive
 
 gpuci_logger "Download query files"
 gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
 
-gpuci_logger "Install dask"
-python -m pip install git+https://github.com/dask/dask
-
-gpuci_logger "Install distributed"
-python -m pip install git+https://github.com/dask/distributed
-
-gpuci_logger "Install latest dask-cuda"
-gpuci_mamba_retry update -y -c rapidsai-nightly dask-cuda
+# TODO: source install once dask/distributed are unpinned by dask-cuda
+# gpuci_logger "Install dask"
+# python -m pip install git+https://github.com/dask/dask
+# gpuci_logger "Install distributed"
+# python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
-pip install -e ".[dev]"
+pip install -e . -vv
 
 gpuci_logger "Check Python version"
 python --version

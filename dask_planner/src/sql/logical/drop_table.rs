@@ -1,4 +1,4 @@
-use datafusion_expr::logical_plan::{DropTable, LogicalPlan};
+use datafusion_python::datafusion_expr::logical_plan::{DropTable, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;
@@ -11,9 +11,9 @@ pub struct PyDropTable {
 
 #[pymethods]
 impl PyDropTable {
-    #[pyo3(name = "getName")]
+    #[pyo3(name = "getQualifiedName")]
     pub fn get_name(&self) -> PyResult<String> {
-        Ok(self.drop_table.name.clone())
+        Ok(self.drop_table.name.to_string())
     }
 
     #[pyo3(name = "getIfExists")]

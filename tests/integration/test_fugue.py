@@ -3,49 +3,45 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from tests.integration.fixtures import skip_if_external_scheduler
 from tests.utils import assert_eq
 
 fugue_sql = pytest.importorskip("fugue_sql")
 
-# needs to be imported after the check for fugue
-if fugue_sql:
-    from dask_sql.integrations.fugue import DaskSQLExecutionEngine, fsql_dask
+from dask_sql.integrations.fugue import fsql_dask  # noqa: E402
 
 
-@skip_if_external_scheduler
-def test_simple_statement(client):
-    with fugue_sql.FugueSQLWorkflow(DaskSQLExecutionEngine) as dag:
-        df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
-        dag("SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result")
-        result = dag.run()
+def test_fugue_workflow(client):
+    dag = fugue_sql.FugueSQLWorkflow()
+    df = dag.df([[0, "hello"], [1, "world"]], "a:int64,b:str")
+    dag("SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result")
 
+    result = dag.run("dask")
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
-    # A more elegant way to do things
+    result = dag.run(client)
+    return_df = result["result"].as_pandas()
+    assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
+
+
+def test_fugue_fsql(client):
     pdf = pd.DataFrame([[0, "hello"], [1, "world"]], columns=["a", "b"])
-    result = fugue_sql.fsql(
+    dag = fugue_sql.fsql(
         "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result",
         df=pdf,
-    ).run("dask")
+    )
 
+    result = dag.run("dask")
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
-    result = fugue_sql.fsql(
-        "SELECT * FROM df WHERE a > 0 YIELD DATAFRAME AS result",
-        df=pdf,
-    ).run(client)
-
+    result = dag.run(client)
     return_df = result["result"].as_pandas()
     assert_eq(return_df, pd.DataFrame({"a": [1], "b": ["world"]}))
 
 
-# TODO: Revisit fixing this on an independant cluster (without dask-sql) based on the
-# discussion in https://github.com/dask-contrib/dask-sql/issues/407
-@skip_if_external_scheduler
-def test_fsql(client):
+@pytest.mark.flaky(reruns=4, condition="sys.version_info < (3, 9)")
+def test_dask_fsql(client):
     def assert_fsql(df: pd.DataFrame) -> None:
         assert_eq(df, pd.DataFrame({"a": [1]}))
 

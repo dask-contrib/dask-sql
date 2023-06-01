@@ -1,8 +1,12 @@
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pytest
+from dask.utils_test import hlg_layer
 
 from dask_sql import Context
+from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
+from dask_sql.datacontainer import Statistics
 from tests.utils import assert_eq
 
 
@@ -376,3 +380,161 @@ def test_join_alias_w_projection(c, parquet_ddf):
     expected_df = parquet_ddf.merge(parquet_ddf, on=["a"], how="inner")
     expected_df = expected_df[expected_df["c_x"] == "A"][["c_y"]]
     assert_eq(result_df, expected_df, check_index=False)
+
+
+def test_filter_columns_post_join(c):
+    df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "c": [1, None, 2, 2, 2]})
+    df2 = pd.DataFrame({"b": [1, 1, 2, 2, 3], "c": [2, 2, 2, 2, 2]})
+    c.create_table("df", df)
+    c.create_table("df2", df2)
+
+    query = "SELECT SUM(df.a) as sum_a, df2.b FROM df INNER JOIN df2 ON df.c=df2.c GROUP BY df2.b"
+
+    explain_string = c.explain(query)
+    assert ("Projection: df.a, df2.b" in explain_string) or (
+        "Projection: df2.b, df.a" in explain_string
+    )
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"sum_a": [24, 24, 12], "b": [1, 2, 3]})
+    assert_eq(result_df, expected_df)
+
+
+def test_join_reorder(c):
+    df = pd.DataFrame({"a1": [1, 2, 3, 4, 5] * 2, "a2": [1, 1, 2, 2, 2] * 2})
+    df2 = pd.DataFrame({"b1": [1, 1, 2, 2, 3] * 10000, "b2": [2, 2, 2, 2, 2] * 10000})
+    df3 = pd.DataFrame({"c2": [1, 1, 2, 2, 3], "c3": [2, 3, 4, 5, 6]})
+    c.create_table("a", df, statistics=Statistics(10))
+    c.create_table("b", df2, statistics=Statistics(50000))
+    c.create_table("c", df3, statistics=Statistics(5))
+
+    # Basic join reorder test
+    query = """
+        SELECT a1, b2, c3
+        FROM a, b, c
+        WHERE b1 < 3 AND c3 < 5 AND a1 = b1 AND b2 = c2
+        LIMIT 10
+    """
+
+    explain_string = c.explain(query)
+
+    first_join = "Inner Join: b.b2 = c.c2"
+    second_join = "Inner Join: b.b1 = a.a1"
+    """
+    LogicalPlan is expected to look something like:
+
+    Limit: skip=0, fetch=10
+    Projection: a.a1, b.b2, c.c3
+        Inner Join: b.b1 = a.a1
+        Projection: b.b1, b.b2, c.c3
+            Inner Join: b.b2 = c.c2
+            Projection: b.b1, b.b2
+                TableScan: b projection=[b1, b2], full_filters=[b.b1 < Int64(3), b.b2 IS NOT NULL, b.b1 IS NOT NULL]
+            Projection: c.c2, c.c3
+                TableScan: c projection=[c2, c3], full_filters=[c.c3 < Int64(5), c.c2 IS NOT NULL]
+        Projection: a.a1
+            TableScan: a projection=[a1], full_filters=[a.a1 < Int64(3), a.a1 IS NOT NULL]
+
+    So the a-b join is expected to appear earlier in the string than the b-c join
+    """
+    assert first_join in explain_string and second_join in explain_string
+    assert explain_string.index(second_join) < explain_string.index(first_join)
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4] * 10})
+    assert_eq(result_df, expected_df)
+
+    # By default, join reordering should NOT reorder unfiltered dimension tables
+    query = """
+        SELECT a1, b2, c3
+        FROM a, b, c
+        WHERE a1 = b1 AND b2 = c2
+        LIMIT 10
+    """
+
+    explain_string = c.explain(query)
+
+    first_join = "Inner Join: b.b1 = a.a1"
+    second_join = "Inner Join: b.b2 = c.c2"
+    assert first_join in explain_string and second_join in explain_string
+    assert explain_string.index(second_join) < explain_string.index(first_join)
+
+    result_df = c.sql(query)
+    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4, 5] * 5})
+    assert_eq(result_df, expected_df)
+
+
+@pytest.mark.xfail(
+    not BROADCAST_JOIN_SUPPORT_WORKING,
+    reason="Broadcast Joins do not work as expected with dask<2023.1.1",
+)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_broadcast_join(c, client, gpu):
+    df1 = dd.from_pandas(
+        pd.DataFrame({"user_id": [1, 2, 3, 4], "b": [5, 6, 7, 8]}),
+        npartitions=2,
+    )
+    df2 = dd.from_pandas(
+        pd.DataFrame({"user_id": [1, 2, 3, 4] * 4, "c": [5, 6, 7, 8] * 4}),
+        npartitions=8,
+    )
+    c.create_table("df1", df1, gpu=gpu)
+    c.create_table("df2", df2, gpu=gpu)
+
+    query_string = """
+    SELECT df1.user_id as user_id, b, c
+    FROM df1, df2
+    WHERE df1.user_id = df2.user_id
+    """
+
+    expected_df = df1.merge(df2, on="user_id", how="inner")
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": True})
+    assert hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(
+        res_df,
+        expected_df,
+        check_divisions=False,
+        check_index=False,
+        scheduler="distributed",
+    )
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": 1.0})
+    assert hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(
+        res_df,
+        expected_df,
+        check_divisions=False,
+        check_index=False,
+        scheduler="distributed",
+    )
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": 0.5})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": False})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
+
+    res_df = c.sql(query_string, config_options={"sql.join.broadcast": None})
+    with pytest.raises(KeyError):
+        hlg_layer(res_df.dask, "bcast-join")
+    assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
+
+
+@pytest.mark.gpu
+def test_null_key_join(c):
+    df1 = pd.DataFrame({"a": [None, None, None, None, None, 1]})
+    df2 = pd.DataFrame({"b": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]})
+    c.create_table("df1", df1, gpu=True)
+    c.create_table("df2", df2, gpu=True)
+
+    result_df = c.sql(
+        "SELECT * FROM (select * from df1 limit 5) JOIN (select * from df2 limit 5) ON a=b"
+    )
+    expected_df = pd.DataFrame({"a": [], "b": []})
+
+    assert_eq(result_df, expected_df)

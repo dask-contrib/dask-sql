@@ -33,16 +33,26 @@ jobs:
           keyword: "[test-upstream]"
 
   test:
-    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }})"
+    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
+        distributed: [false]
+        include:
+          # run tests on a distributed client
+          - os: "ubuntu-latest"
+            python: "3.8"
+            distributed: true
+          - os: "ubuntu-latest"
+            python: "3.10"
+            distributed: true
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -54,6 +64,12 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
+          run-post: ${{ matrix.os != 'windows-latest' && 'true' || 'false' }}
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dask_planner
+          shared-key: test
       - name: Build the Rust DataFusion bindings
         run: |
           python setup.py build install
@@ -72,61 +88,13 @@ jobs:
           pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
       - name: Upload pytest test results
         if: always()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: pytest-results
           path: junit/test-results.xml
       - name: Upload coverage to Codecov
         if: github.repository == 'dask-contrib/dask-sql'
         uses: codecov/codecov-action@v3
-
-  cluster:
-    name: "Test in a dask cluster"
-    needs: [detect-ci-trigger]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.9"
-          channel-priority: strict
-          activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Build the Rust DataFusion bindings
-        run: |
-          python setup.py build install
-      - name: Install dependencies
-        run: |
-          mamba install python-blosc lz4 -c conda-forge
-
-          which python
-          pip list
-          mamba list
-      - name: Optionally install upstream dev Dask
-        if: needs.detect-ci-trigger.outputs.triggered == 'true'
-        run: |
-          mamba install --no-channel-priority dask/label/dev::dask
-      - name: run a dask cluster
-        env:
-          UPSTREAM: ${{ needs.detect-ci-trigger.outputs.triggered }}
-        run: |
-          if [[ $UPSTREAM == "true" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
-          else
-            docker-compose -f .github/cluster.yml up -d
-          fi
-
-          # periodically ping logs until a connection has been established; assume failure after 2 minutes
-          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
-
-          docker logs dask-scheduler
-          docker logs dask-worker
-      - name: Test with pytest while running an independent dask cluster
-        run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest tests
 
   import:
     name: "Test importing with bare requirements"
@@ -137,13 +105,18 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
           python-version: "3.8"
-          mamba-version: "*"
-          channels: conda-forge,nodefaults
           channel-priority: strict
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies and nothing else
         run: |
-          mamba install setuptools-rust
+          mamba install "setuptools-rust>=1.5.2"
           pip install -e . -vv
 
           which python
@@ -152,8 +125,8 @@ jobs:
       - name: Optionally install upstream dev Dask
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install git+https://github.com/dask/dask
+          python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"

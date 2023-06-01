@@ -12,7 +12,6 @@ pub mod create_experiment;
 pub mod create_memory_table;
 pub mod create_model;
 pub mod create_table;
-pub mod create_view;
 pub mod describe_model;
 pub mod drop_model;
 pub mod drop_schema;
@@ -28,15 +27,18 @@ pub mod projection;
 pub mod repartition_by;
 pub mod show_columns;
 pub mod show_models;
-pub mod show_schema;
+pub mod show_schemas;
 pub mod show_tables;
 pub mod sort;
+pub mod subquery_alias;
 pub mod table_scan;
 pub mod use_schema;
 pub mod window;
 
-use datafusion_common::{DFSchemaRef, DataFusionError};
-use datafusion_expr::LogicalPlan;
+use datafusion_python::{
+    datafusion_common::{DFSchemaRef, DataFusionError},
+    datafusion_expr::LogicalPlan,
+};
 use pyo3::prelude::*;
 
 use self::{
@@ -47,7 +49,6 @@ use self::{
     create_experiment::CreateExperimentPlanNode,
     create_model::CreateModelPlanNode,
     create_table::CreateTablePlanNode,
-    create_view::CreateViewPlanNode,
     describe_model::DescribeModelPlanNode,
     drop_model::DropModelPlanNode,
     drop_schema::DropSchemaPlanNode,
@@ -55,7 +56,7 @@ use self::{
     predict_model::PredictModelPlanNode,
     show_columns::ShowColumnsPlanNode,
     show_models::ShowModelsPlanNode,
-    show_schema::ShowSchemasPlanNode,
+    show_schemas::ShowSchemasPlanNode,
     show_tables::ShowTablesPlanNode,
     use_schema::UseSchemaPlanNode,
 };
@@ -137,6 +138,11 @@ impl PyLogicalPlan {
         to_py_plan(self.current_node.as_ref())
     }
 
+    /// LogicalPlan::SubqueryAlias as PySubqueryAlias
+    pub fn subquery_alias(&self) -> PyResult<subquery_alias::PySubqueryAlias> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Window as PyWindow
     pub fn window(&self) -> PyResult<window::PyWindow> {
         to_py_plan(self.current_node.as_ref())
@@ -173,7 +179,7 @@ impl PyLogicalPlan {
     }
 
     /// LogicalPlan::Extension::ShowSchemas as PyShowSchemas
-    pub fn show_schemas(&self) -> PyResult<show_schema::PyShowSchema> {
+    pub fn show_schemas(&self) -> PyResult<show_schemas::PyShowSchema> {
         to_py_plan(self.current_node.as_ref())
     }
 
@@ -211,6 +217,11 @@ impl PyLogicalPlan {
     pub fn show_columns(&self) -> PyResult<show_columns::PyShowColumns> {
         to_py_plan(self.current_node.as_ref())
     }
+
+    pub fn show_models(&self) -> PyResult<show_models::PyShowModels> {
+        to_py_plan(self.current_node.as_ref())
+    }
+
     /// LogicalPlan::Extension::ShowColumns as PyShowColumns
     pub fn analyze_table(&self) -> PyResult<analyze_table::PyAnalyzeTable> {
         to_py_plan(self.current_node.as_ref())
@@ -280,7 +291,7 @@ impl PyLogicalPlan {
     #[pyo3(name = "getCurrentNodeTableName")]
     pub fn get_current_node_table_name(&mut self) -> PyResult<String> {
         match self.table() {
-            Ok(dask_table) => Ok(dask_table.name),
+            Ok(dask_table) => Ok(dask_table.table_name),
             Err(_e) => Err(py_type_err("Unable to determine current node table name")),
         }
     }
@@ -288,6 +299,9 @@ impl PyLogicalPlan {
     /// Gets the Relation "type" of the current node. Ex: Projection, TableScan, etc
     pub fn get_current_node_type(&mut self) -> PyResult<&str> {
         Ok(match self.current_node() {
+            LogicalPlan::Dml(_) => "DataManipulationLanguage",
+            LogicalPlan::DescribeTable(_) => "DescribeTable",
+            LogicalPlan::Prepare(_) => "Prepare",
             LogicalPlan::Distinct(_) => "Distinct",
             LogicalPlan::Projection(_projection) => "Projection",
             LogicalPlan::Filter(_filter) => "Filter",
@@ -313,7 +327,7 @@ impl PyLogicalPlan {
             LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
             LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
             LogicalPlan::CreateView(_create_view) => "CreateView",
-            LogicalPlan::SetVariable(_) => "SetVariable",
+            LogicalPlan::Statement(_) => "Statement",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {
                 let node = extension.node.as_any();
@@ -325,8 +339,6 @@ impl PyLogicalPlan {
                     "CreateCatalogSchema"
                 } else if node.downcast_ref::<CreateTablePlanNode>().is_some() {
                     "CreateTable"
-                } else if node.downcast_ref::<CreateViewPlanNode>().is_some() {
-                    "CreateView"
                 } else if node.downcast_ref::<DropModelPlanNode>().is_some() {
                     "DropModel"
                 } else if node.downcast_ref::<PredictModelPlanNode>().is_some() {
@@ -334,7 +346,7 @@ impl PyLogicalPlan {
                 } else if node.downcast_ref::<ExportModelPlanNode>().is_some() {
                     "ExportModel"
                 } else if node.downcast_ref::<DescribeModelPlanNode>().is_some() {
-                    "ShowModelParams"
+                    "DescribeModel"
                 } else if node.downcast_ref::<ShowSchemasPlanNode>().is_some() {
                     "ShowSchemas"
                 } else if node.downcast_ref::<ShowTablesPlanNode>().is_some() {
@@ -358,6 +370,7 @@ impl PyLogicalPlan {
                     "Extension"
                 }
             }
+            LogicalPlan::Unnest(_unnest) => "Unnest",
         })
     }
 
@@ -414,6 +427,7 @@ impl PyLogicalPlan {
                     .map(|f| RelDataTypeField::from(f, schema.as_ref()))
                     .collect::<Result<Vec<_>>>()
                     .map_err(py_type_err)?;
+
                 Ok(RelDataType::new(false, rel_fields))
             }
         }

@@ -1,7 +1,14 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::{DFSchema, DFSchemaRef},
+    datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+};
 use fmt::Debug;
 use pyo3::prelude::*;
 
@@ -10,10 +17,10 @@ use crate::{
     sql::{exceptions::py_type_err, logical},
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct CreateTablePlanNode {
     pub schema: DFSchemaRef,
-    pub table_schema: String, // "something" in `something.table_name`
+    pub schema_name: Option<String>, // "something" in `something.table_name`
     pub table_name: String,
     pub if_not_exists: bool,
     pub or_replace: bool,
@@ -23,6 +30,17 @@ pub struct CreateTablePlanNode {
 impl Debug for CreateTablePlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for CreateTablePlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema.hash(state);
+        self.schema_name.hash(state);
+        self.table_name.hash(state);
+        self.if_not_exists.hash(state);
+        self.or_replace.hash(state);
+        // self.with_options.hash(state);
     }
 }
 
@@ -57,12 +75,28 @@ impl UserDefinedLogicalNode for CreateTablePlanNode {
     ) -> Arc<dyn UserDefinedLogicalNode> {
         Arc::new(CreateTablePlanNode {
             schema: Arc::new(DFSchema::empty()),
-            table_schema: self.table_schema.clone(),
+            schema_name: self.schema_name.clone(),
             table_name: self.table_name.clone(),
             if_not_exists: self.if_not_exists,
             or_replace: self.or_replace,
             with_options: self.with_options.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "CreateTable"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 
@@ -73,6 +107,11 @@ pub struct PyCreateTable {
 
 #[pymethods]
 impl PyCreateTable {
+    #[pyo3(name = "getSchemaName")]
+    fn get_schema_name(&self) -> PyResult<Option<String>> {
+        Ok(self.create_table.schema_name.clone())
+    }
+
     #[pyo3(name = "getTableName")]
     fn get_table_name(&self) -> PyResult<String> {
         Ok(self.create_table.table_name.clone())

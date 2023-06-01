@@ -13,6 +13,7 @@ on:
         options:
           - Dask
           - DataFusion
+
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
@@ -32,19 +33,25 @@ env:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     runs-on: ${{ matrix.os }}
-    if: github.repository == 'dask-contrib/dask-sql'
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
-    defaults:
-      run:
-        shell: bash -l {0}
+      DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
+        distributed: [false]
+        include:
+          # run tests on a distributed client
+          - os: "ubuntu-latest"
+            python: "3.8"
+            distributed: true
+          - os: "ubuntu-latest"
+            python: "3.10"
+            distributed: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -76,59 +83,22 @@ jobs:
         if: env.which_upstream == 'Dask'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
+      - name: Install pytest-reportlog
+        run: |
+          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
+          mamba install pytest-reportlog
       - name: Test with pytest
+        id: run_tests
         run: |
-          pytest --junitxml=junit/test-results.xml --cov-report=xml -n auto tests --dist loadfile
-
-  cluster-dev:
-    name: "Test upstream dev in a dask cluster"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
+          pytest --report-log test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl --cov-report=xml -n auto tests --dist loadfile
+      - name: Upload pytest results for failure
+        if: |
+          always()
+          && steps.run_tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v3
         with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.9"
-          channel-priority: strict
-          activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        run: |
-          cd dask_planner
-          bash update-dependencies.sh
-      - name: Build the Rust DataFusion bindings
-        run: |
-          python setup.py build install
-      - name: Install cluster dependencies
-        run: |
-          mamba install python-blosc lz4 -c conda-forge
-
-          which python
-          pip list
-          mamba list
-      - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
-        run: |
-          mamba install --no-channel-priority dask/label/dev::dask
-      - name: run a dask cluster
-        run: |
-          if [[ $which_upstream == "Dask" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
-          else
-            docker-compose -f .github/cluster.yml up -d
-          fi
-
-          # periodically ping logs until a connection has been established; assume failure after 2 minutes
-          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
-
-          docker logs dask-scheduler
-          docker logs dask-worker
-      - name: Test with pytest while running an independent dask cluster
-        run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --junitxml=junit/test-cluster-results.xml --cov-report=xml -n auto tests --dist loadfile
+          name: test-${{ matrix.os }}-py${{ matrix.python }}-results
+          path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
   import-dev:
     name: "Test importing with bare requirements and upstream dev"
@@ -138,10 +108,15 @@ jobs:
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
           python-version: "3.8"
-          mamba-version: "*"
-          channels: conda-forge,nodefaults
           channel-priority: strict
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         env:
@@ -160,67 +135,40 @@ jobs:
       - name: Install upstream dev Dask
         if: env.which_upstream == 'Dask'
         run: |
-          python -m pip install --no-deps git+https://github.com/dask/dask
-          python -m pip install --no-deps git+https://github.com/dask/distributed
+          python -m pip install git+https://github.com/dask/dask
+          python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
         run: |
           python -c "import dask_sql; print('ok')"
 
   report-failures:
     name: Open issue for upstream dev failures
-    needs: [test-dev, cluster-dev]
+    needs: [test-dev, import-dev]
     if: |
       always()
       && (
-        needs.test-dev.result == 'failure' || needs.cluster-dev.result == 'failure'
+        needs.test-dev.result == 'failure'
+        || needs.import-dev.result == 'failure'
       )
+      && github.repository == 'dask-contrib/dask-sql'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Report failures
-        uses: actions/github-script@v6
+      - uses: actions/download-artifact@v3
+      - name: Prepare logs & issue label
+        run: |
+          # TODO: remove this if xarray-contrib/issue-from-pytest-log no longer needs a log-path
+          if [ -f test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl ]; then
+              cp test-ubuntu-latest-py3.10-results/test-ubuntu-latest-py3.10-results.jsonl results.jsonl
+          else
+              touch results.jsonl
+          fi
+
+          # convert which_upstream to lowercase
+          echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
+      - name: Open or update issue on failure
+        uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const title = "⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️"
-            const workflow_url = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
-            const issue_body = `[Workflow Run URL](${workflow_url})`
-            // Run GraphQL query against GitHub API to find the most recent open issue used for reporting failures
-            const query = `query($owner:String!, $name:String!, $creator:String!, $label:String!){
-              repository(owner: $owner, name: $name) {
-                issues(first: 1, states: OPEN, filterBy: {createdBy: $creator, labels: [$label]}, orderBy: {field: CREATED_AT, direction: DESC}) {
-                  edges {
-                    node {
-                      body
-                      id
-                      number
-                    }
-                  }
-                }
-              }
-            }`;
-            const variables = {
-                owner: context.repo.owner,
-                name: context.repo.repo,
-                label: 'upstream',
-                creator: "github-actions[bot]"
-            }
-            const result = await github.graphql(query, variables)
-            // If no issue is open, create a new issue,
-            // else update the body of the existing issue.
-            if (result.repository.issues.edges.length === 0) {
-                github.issues.create({
-                    owner: variables.owner,
-                    repo: variables.name,
-                    body: issue_body,
-                    title: title,
-                    labels: [variables.label]
-                })
-            } else {
-                github.issues.update({
-                    owner: variables.owner,
-                    repo: variables.name,
-                    issue_number: result.repository.issues.edges[0].node.number,
-                    body: issue_body
-                })
-            }
+          log-path: results.jsonl
+          issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
+          issue-label: upstream-${{ env.which_upstream_lower }}

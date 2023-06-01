@@ -1,8 +1,6 @@
 import logging
 from typing import TYPE_CHECKING
 
-import dask.dataframe as dd
-
 import dask_sql.utils as utils
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -36,8 +34,20 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
         df_lhs[cross_join_key] = 1
         df_rhs[cross_join_key] = 1
 
-        result = dd.merge(df_lhs, df_rhs, on=cross_join_key, suffixes=("", "0")).drop(
+        result = df_lhs.merge(df_rhs, on=cross_join_key, suffixes=("", "0")).drop(
             cross_join_key, 1
         )
+        cc = ColumnContainer(result.columns)
 
-        return DataContainer(result, ColumnContainer(result.columns))
+        # Rename columns like the rel specifies
+        row_type = rel.getRowType()
+        field_specifications = [str(f) for f in row_type.getFieldNames()]
+
+        cc = cc.rename(
+            {
+                from_col: to_col
+                for from_col, to_col in zip(cc.columns, field_specifications)
+            }
+        )
+        cc = self.fix_column_to_row_type(cc, row_type)
+        return DataContainer(result, cc)

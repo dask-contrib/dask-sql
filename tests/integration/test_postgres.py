@@ -2,8 +2,8 @@ import sys
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    sys.platform in ("win32", "darwin"),
+pytestmark = pytest.mark.xfail(
+    condition=sys.platform in ("win32", "darwin"),
     reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
@@ -53,7 +53,7 @@ def engine():
     network.remove()
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_select(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -174,7 +174,7 @@ def test_limit(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_groupby(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -221,7 +221,6 @@ def test_filter(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
 def test_string_operations(assert_query_gives_same_result):
     assert_query_gives_same_result(
         """
@@ -232,27 +231,28 @@ def test_string_operations(assert_query_gives_same_result):
             s SIMILAR TO '%%(B|c)%%',
             s SIMILAR TO '%%[a-zA-Z]%%',
             s SIMILAR TO '.*',
+            s NOT SIMILAR TO '.*',
             s LIKE '%%(b|d)%%',
             s LIKE '%%(B|c)%%',
             s LIKE '%%[a-zA-Z]%%',
             s LIKE '.*',
+            S NOT LIKE '.*',
+            s ILIKE '%%(b|d)%%',
+            s ILIKE '%%(B|c)%%',
+            s NOT ILIKE '%%(b|d)%%',
+            s NOT ILIKE '%%(B|c)%%',
             CHAR_LENGTH(s),
             UPPER(s),
             LOWER(s),
-            POSITION('a' IN s),
-            POSITION('ZL' IN s),
             TRIM('a' FROM s),
             TRIM(BOTH 'a' FROM s),
             TRIM(LEADING 'a' FROM s),
             TRIM(TRAILING 'a' FROM s),
-            OVERLAY(s PLACING 'XXX' FROM 2),
-            OVERLAY(s PLACING 'XXX' FROM 2 FOR 4),
-            OVERLAY(s PLACING 'XXX' FROM 2 FOR 1),
             SUBSTRING(s FROM -1),
             SUBSTRING(s FROM 10),
             SUBSTRING(s FROM 2),
             SUBSTRING(s FROM 2 FOR 2),
-            SUBSTR(s,2,2),
+            SUBSTR(s,2,2) as s2,
             INITCAP(s),
             INITCAP(UPPER(s)),
             INITCAP(LOWER(s))
@@ -261,7 +261,32 @@ def test_string_operations(assert_query_gives_same_result):
     )
 
 
-@pytest.mark.skip(reason="WIP DataFusion")
+@pytest.mark.xfail(reason="POSITION syntax not supported by parser")
+def test_string_position(assert_query_gives_same_result):
+    assert_query_gives_same_result(
+        """
+        SELECT
+            POSITION('a' IN s),
+            POSITION('ZL' IN s)
+        FROM df3
+    """
+    )
+
+
+@pytest.mark.xfail(reason="OVERLAY syntax not supported by parser")
+def test_string_overlay(assert_query_gives_same_result):
+    assert_query_gives_same_result(
+        """
+        SELECT
+            OVERLAY(s PLACING 'XXX' FROM 2),
+            OVERLAY(s PLACING 'XXX' FROM 2 FOR 4),
+            OVERLAY(s PLACING 'XXX' FROM 2 FOR 1)
+        FROM df3
+    """
+    )
+
+
+@pytest.mark.xfail(reason="WIP DataFusion")
 def test_statistical_functions(assert_query_gives_same_result):
 
     # test regr_count

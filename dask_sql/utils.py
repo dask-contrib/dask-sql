@@ -3,10 +3,8 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict
-from unittest.mock import patch
 from uuid import uuid4
 
-import cloudpickle
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -46,6 +44,18 @@ def convert_to_datetime(df):
     else:
         df = pd.to_datetime(df)
     return df
+
+
+def is_cudf_type(obj):
+    """
+    Check if an object is a cuDF type
+    """
+    types = [
+        str(type(obj)),
+        str(getattr(obj, "_partition_type", "")),
+        str(getattr(obj, "_meta", "")),
+    ]
+    return any("cudf" in obj_type for obj_type in types)
 
 
 class Pluggable:
@@ -187,49 +197,3 @@ def new_temporary_column(df: dd.DataFrame) -> str:
             return col_name
         else:  # pragma: no cover
             continue
-
-
-def make_pickable_without_dask_sql(f):
-    """
-    Helper function turning f into another function which can be deserialized without dask_sql
-
-    When transporting functions from the client to the dask-workers,
-    the are normally pickled. During this process, everything which is "importable"
-    (e.g. references to library function calls or classes) are just replaced by references,
-    to keep the pickled object small. However, in the case of dask-sql we do not assume
-    that the workers also have dask-sql installed, so any usage to dask-sql
-    can not be replaced by a pure reference, but by the actual content of the function/class
-    etc. To reuse as much as possible from the cloudpickle module, we do a very nasty
-    trick here: we replace the logic in the cloudpickle module to find out the origin module
-    to make it look to cloudpickle as if those modules are not importable.
-    """
-
-    class WhichModuleReplacement:
-        """Temporary replacement for the _which_module function"""
-
-        def __init__(self, spec):
-            """Store the original function"""
-            self._old_which_module = spec
-
-        def __call__(self, obj, name):
-            """Ask the original _which_module function for the module and return None, if it is the dask_sql one"""
-            module_name = self._old_which_module(obj, name)
-            module_name_root = module_name.split(".", 1)[0]
-            if module_name_root == "dask_sql":
-                return None
-            return module_name
-
-    with patch(
-        "cloudpickle.cloudpickle._whichmodule",
-        spec=True,
-        new_callable=WhichModuleReplacement,
-    ):
-        pickled_f = cloudpickle.dumps(f)
-
-    def wrapped_f(*args, **kwargs):
-        import cloudpickle
-
-        f = cloudpickle.loads(pickled_f)
-        return f(*args, **kwargs)
-
-    return wrapped_f

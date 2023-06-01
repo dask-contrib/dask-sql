@@ -16,7 +16,7 @@ class ShowTablesPlugin(BaseRelPlugin):
     Show all tables currently defined for a given schema.
     The SQL is:
 
-        SHOW TABLES FROM <schema>
+        SHOW TABLES FROM [<catalog>.]<schema>
 
     Please note that dask-sql currently
     only allows for a single schema (called "schema").
@@ -27,16 +27,21 @@ class ShowTablesPlugin(BaseRelPlugin):
     class_name = "ShowTables"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        schema = rel.show_tables().getSchemaName()
-        if schema:
-            schema = str(schema).split(".")[-1]
-        else:
-            schema = context.DEFAULT_SCHEMA_NAME
+        show_tables = rel.show_tables()
 
-        if schema not in context.schema:
-            raise AttributeError(f"Schema {schema} is not defined.")
+        # currently catalogs other than the default `dask_sql` are not supported
+        catalog_name = show_tables.getCatalogName() or context.catalog_name
+        if catalog_name != context.catalog_name:
+            raise RuntimeError(
+                f"A catalog with the name {catalog_name} is not present."
+            )
 
-        df = pd.DataFrame({"Table": list(context.schema[schema].tables.keys())})
+        schema_name = show_tables.getSchemaName() or context.schema_name
+
+        if schema_name not in context.schema:
+            raise AttributeError(f"Schema {schema_name} is not defined.")
+
+        df = pd.DataFrame({"Table": list(context.schema[schema_name].tables.keys())})
 
         cc = ColumnContainer(df.columns)
         dc = DataContainer(dd.from_pandas(df, npartitions=1), cc)

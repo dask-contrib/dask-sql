@@ -1,19 +1,22 @@
-use std::{convert::From, sync::Arc};
+use std::{borrow::Cow, convert::From, sync::Arc};
 
-use arrow::datatypes::DataType;
-use datafusion_common::{Column, DFField, DFSchema, ScalarValue};
-use datafusion_expr::{
-    expr::{BinaryExpr, Cast},
-    lit,
-    utils::exprlist_to_fields,
-    Between,
-    BuiltinScalarFunction,
-    Case,
-    Expr,
-    GetIndexedField,
-    Like,
-    LogicalPlan,
-    Operator,
+use datafusion_python::{
+    datafusion::arrow::datatypes::DataType,
+    datafusion_common::{Column, DFField, DFSchema, ScalarValue},
+    datafusion_expr::{
+        expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
+        lit,
+        utils::exprlist_to_fields,
+        Between,
+        BuiltinScalarFunction,
+        Case,
+        Expr,
+        GetIndexedField,
+        Like,
+        LogicalPlan,
+        Operator,
+    },
+    datafusion_sql::TableReference,
 };
 use pyo3::prelude::*;
 
@@ -87,10 +90,10 @@ impl PyExpr {
 
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
-            Expr::Alias(..)
-            | Expr::Column(..)
-            | Expr::QualifiedWildcard { .. }
-            | Expr::GetIndexedField { .. } => RexType::Reference,
+            Expr::Alias(..) => RexType::Alias,
+            Expr::Column(..) | Expr::QualifiedWildcard { .. } | Expr::GetIndexedField { .. } => {
+                RexType::Reference
+            }
             Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
             Expr::BinaryExpr { .. }
             | Expr::Not(..)
@@ -120,8 +123,10 @@ impl PyExpr {
             | Expr::IsUnknown(_)
             | Expr::IsNotTrue(..)
             | Expr::IsNotFalse(..)
+            | Expr::Placeholder { .. }
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::IsNotUnknown(_) => RexType::Call,
-            Expr::ScalarSubquery(..) => RexType::SubqueryAlias,
+            Expr::ScalarSubquery(..) => RexType::ScalarSubquery,
         }
     }
 }
@@ -180,8 +185,48 @@ impl PyExpr {
                 }
                 let name = get_expr_name(&self.expr).map_err(py_runtime_err)?;
                 schema
-                    .index_of_column(&Column::from_qualified_name(&name))
-                    .map_err(py_runtime_err)
+                    .index_of_column(&Column::from_qualified_name(name.clone()))
+                    .or_else(|_| {
+                        // Handles cases when from_qualified_name doesn't format the Column correctly.
+                        // "name" will always contain the name of the column. Anything in addition to
+                        // that will be separated by a '.' and should be further referenced.
+                        let parts = name.split('.').collect::<Vec<&str>>();
+                        let tbl_reference = match parts.len() {
+                            // Single element means name contains just the column name so no TableReference
+                            1 => None,
+                            // Tablename.column_name
+                            2 => Some(
+                                TableReference::Bare {
+                                    table: Cow::Borrowed(parts[0]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            // Schema_name.table_name.column_name
+                            3 => Some(
+                                TableReference::Partial {
+                                    schema: Cow::Borrowed(parts[0]),
+                                    table: Cow::Borrowed(parts[1]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            // catalog_name.schema_name.table_name.column_name
+                            4 => Some(
+                                TableReference::Full {
+                                    catalog: Cow::Borrowed(parts[0]),
+                                    schema: Cow::Borrowed(parts[1]),
+                                    table: Cow::Borrowed(parts[2]),
+                                }
+                                .to_owned_reference(),
+                            ),
+                            _ => None,
+                        };
+
+                        let col = Column {
+                            relation: tbl_reference.clone(),
+                            name: parts[parts.len() - 1].to_string(),
+                        };
+                        schema.index_of_column(&col).map_err(py_runtime_err)
+                    })
             }
             _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
@@ -213,6 +258,7 @@ impl PyExpr {
             | Expr::ScalarSubquery(..)
             | Expr::QualifiedWildcard { .. }
             | Expr::Not(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::GroupingSet(..) => self.expr.variant_name(),
             Expr::ScalarVariable(..)
             | Expr::IsNotNull(..)
@@ -231,6 +277,7 @@ impl PyExpr {
             | Expr::Case { .. }
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
+            | Expr::Placeholder { .. }
             | Expr::Wildcard => {
                 return Err(py_type_err(format!(
                     "Encountered unsupported expression type: {}",
@@ -281,18 +328,18 @@ impl PyExpr {
             | Expr::Negative(expr)
             | Expr::GetIndexedField(GetIndexedField { expr, .. })
             | Expr::Cast(Cast { expr, .. })
-            | Expr::TryCast { expr, .. }
-            | Expr::Sort { expr, .. }
+            | Expr::TryCast(TryCast { expr, .. })
+            | Expr::Sort(Sort { expr, .. })
             | Expr::InSubquery { expr, .. } => {
                 Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
             }
 
             // Expr variants containing a collection of Expr(s) for operands
-            Expr::AggregateFunction { args, .. }
+            Expr::AggregateFunction(AggregateFunction { args, .. })
             | Expr::AggregateUDF { args, .. }
             | Expr::ScalarFunction { args, .. }
             | Expr::ScalarUDF { args, .. }
-            | Expr::WindowFunction { args, .. } => Ok(args
+            | Expr::WindowFunction(WindowFunction { args, .. }) => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
                 .collect()),
@@ -358,9 +405,11 @@ impl PyExpr {
 
             // Currently un-support/implemented Expr types for Rex Call operations
             Expr::GroupingSet(..)
+            | Expr::OuterReferenceColumn(_, _)
             | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
+            | Expr::Placeholder { .. }
             | Expr::Exists { .. } => Err(py_runtime_err(format!(
                 "Unimplemented Expr type: {}",
                 self.expr
@@ -375,8 +424,8 @@ impl PyExpr {
                 left: _,
                 op,
                 right: _,
-            }) => format!("{}", op),
-            Expr::ScalarFunction { fun, args: _ } => format!("{}", fun),
+            }) => format!("{op}"),
+            Expr::ScalarFunction { fun, args: _ } => format!("{fun}"),
             Expr::ScalarUDF { fun, .. } => fun.name.clone(),
             Expr::Cast { .. } => "cast".to_string(),
             Expr::Between { .. } => "between".to_string(),
@@ -439,8 +488,6 @@ impl PyExpr {
                 | Operator::GtEq
                 | Operator::And
                 | Operator::Or
-                | Operator::Like
-                | Operator::NotLike
                 | Operator::IsDistinctFrom
                 | Operator::IsNotDistinctFrom
                 | Operator::RegexMatch
@@ -484,7 +531,10 @@ impl PyExpr {
                 ScalarValue::LargeBinary(_value) => "LargeBinary",
                 ScalarValue::Date32(_value) => "Date32",
                 ScalarValue::Date64(_value) => "Date64",
-                ScalarValue::Time64(_value) => "Time64",
+                ScalarValue::Time32Second(_value) => "Time32",
+                ScalarValue::Time32Millisecond(_value) => "Time32",
+                ScalarValue::Time64Microsecond(_value) => "Time64",
+                ScalarValue::Time64Nanosecond(_value) => "Time64",
                 ScalarValue::Null => "Null",
                 ScalarValue::TimestampSecond(..) => "TimestampSecond",
                 ScalarValue::TimestampMillisecond(..) => "TimestampMillisecond",
@@ -502,8 +552,7 @@ impl PyExpr {
                 BuiltinScalarFunction::DatePart => "DatePart",
                 _ => {
                     return Err(py_type_err(format!(
-                        "Catch all triggered for ScalarFunction in get_type; {:?}",
-                        fun
+                        "Catch all triggered for ScalarFunction in get_type; {fun:?}"
                     )))
                 }
             },
@@ -538,8 +587,7 @@ impl PyExpr {
                 DataType::Map(..) => "MAP",
                 _ => {
                     return Err(py_type_err(format!(
-                        "Catch all triggered for Cast in get_type; {:?}",
-                        data_type
+                        "Catch all triggered for Cast in get_type; {data_type:?}"
                     )))
                 }
             },
@@ -552,31 +600,50 @@ impl PyExpr {
         }))
     }
 
+    /// Gets the precision/scale represented by the Expression's decimal datatype
+    #[pyo3(name = "getPrecisionScale")]
+    pub fn get_precision_scale(&self) -> PyResult<(u8, i8)> {
+        Ok(match &self.expr {
+            Expr::Cast(Cast { expr: _, data_type }) => match data_type {
+                DataType::Decimal128(precision, scale) | DataType::Decimal256(precision, scale) => {
+                    (*precision, *scale)
+                }
+                _ => {
+                    return Err(py_type_err(format!(
+                        "Catch all triggered for Cast in get_precision_scale; {data_type:?}"
+                    )))
+                }
+            },
+            _ => {
+                return Err(py_type_err(format!(
+                    "Catch all triggered in get_precision_scale; {:?}",
+                    &self.expr
+                )))
+            }
+        })
+    }
+
     #[pyo3(name = "getFilterExpr")]
     pub fn get_filter_expr(&self) -> PyResult<Option<PyExpr>> {
         // TODO refactor to avoid duplication
         match &self.expr {
             Expr::Alias(expr, _) => match expr.as_ref() {
-                Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
-                    match filter {
-                        Some(filter) => {
-                            Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
-                        }
-                        None => Ok(None),
-                    }
-                }
-                _ => Err(py_type_err(
-                    "getFilterExpr() - Non-aggregate expression encountered",
-                )),
-            },
-            Expr::AggregateFunction { filter, .. } | Expr::AggregateUDF { filter, .. } => {
-                match filter {
+                Expr::AggregateFunction(AggregateFunction { filter, .. })
+                | Expr::AggregateUDF { filter, .. } => match filter {
                     Some(filter) => {
                         Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
                     }
                     None => Ok(None),
-                }
-            }
+                },
+                _ => Err(py_type_err(
+                    "getFilterExpr() - Non-aggregate expression encountered",
+                )),
+            },
+            Expr::AggregateFunction(AggregateFunction { filter, .. })
+            | Expr::AggregateUDF { filter, .. } => match filter {
+                Some(filter) => Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone()))),
+                None => Ok(None),
+            },
             _ => Err(py_type_err(
                 "getFilterExpr() - Non-aggregate expression encountered",
             )),
@@ -594,7 +661,7 @@ impl PyExpr {
     }
 
     #[pyo3(name = "getDecimal128Value")]
-    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, u8)> {
+    pub fn decimal_128_value(&mut self) -> PyResult<(Option<i128>, u8, i8)> {
         match self.get_scalar_value()? {
             ScalarValue::Decimal128(value, precision, scale) => Ok((*value, *precision, *scale)),
             other => Err(unexpected_literal_value(other)),
@@ -653,7 +720,7 @@ impl PyExpr {
 
     #[pyo3(name = "getTime64Value")]
     pub fn time_64_value(&self) -> PyResult<Option<i64>> {
-        extract_scalar_value!(self, Time64)
+        extract_scalar_value!(self, Time64Nanosecond)
     }
 
     #[pyo3(name = "getTimestampValue")]
@@ -694,6 +761,21 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "getIntervalMonthDayNanoValue")]
+    pub fn interval_month_day_nano_value(&self) -> PyResult<Option<(i32, i32, i64)>> {
+        match self.get_scalar_value()? {
+            ScalarValue::IntervalMonthDayNano(Some(iv)) => {
+                let interval = *iv as u128;
+                let months = (interval >> 32) as i32;
+                let days = (interval >> 64) as i32;
+                let ns = interval as i64;
+                Ok(Some((months, days, ns)))
+            }
+            ScalarValue::IntervalMonthDayNano(None) => Ok(None),
+            other => Err(unexpected_literal_value(other)),
+        }
+    }
+
     #[pyo3(name = "isNegated")]
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {
@@ -708,11 +790,30 @@ impl PyExpr {
         }
     }
 
+    #[pyo3(name = "isDistinctAgg")]
+    pub fn is_distinct_aggregation(&self) -> PyResult<bool> {
+        // TODO refactor to avoid duplication
+        match &self.expr {
+            Expr::AggregateFunction(funct) => Ok(funct.distinct),
+            Expr::AggregateUDF { .. } => Ok(false),
+            Expr::Alias(expr, _) => match expr.as_ref() {
+                Expr::AggregateFunction(funct) => Ok(funct.distinct),
+                Expr::AggregateUDF { .. } => Ok(false),
+                _ => Err(py_type_err(
+                    "isDistinctAgg() - Non-aggregate expression encountered",
+                )),
+            },
+            _ => Err(py_type_err(
+                "getFilterExpr() - Non-aggregate expression encountered",
+            )),
+        }
+    }
+
     /// Returns if a sort expressions is an ascending sort
     #[pyo3(name = "isSortAscending")]
     pub fn is_sort_ascending(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { asc, .. } => Ok(*asc),
+            Expr::Sort(Sort { asc, .. }) => Ok(*asc),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr
@@ -724,7 +825,7 @@ impl PyExpr {
     #[pyo3(name = "isSortNullsFirst")]
     pub fn is_sort_nulls_first(&self) -> PyResult<bool> {
         match &self.expr {
-            Expr::Sort { nulls_first, .. } => Ok(*nulls_first),
+            Expr::Sort(Sort { nulls_first, .. }) => Ok(*nulls_first),
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} is not a sort type",
                 &self.expr
@@ -761,7 +862,7 @@ impl PyExpr {
 }
 
 fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
-    DaskPlannerError::Internal(format!("getValue<T>() - Unexpected value: {}", value)).into()
+    DaskPlannerError::Internal(format!("getValue<T>() - Unexpected value: {value}")).into()
 }
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
@@ -774,7 +875,7 @@ fn get_expr_name(expr: &Expr) -> Result<String> {
 /// Create a [DFField] representing an [Expr], given an input [LogicalPlan] to resolve against
 pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
     match expr {
-        Expr::Sort { expr, .. } => {
+        Expr::Sort(Sort { expr, .. }) => {
             // DataFusion does not support create_name for sort expressions (since they never
             // appear in projections) so we just delegate to the contained expression instead
             expr_to_field(expr, input_plan)
@@ -789,8 +890,10 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
 
 #[cfg(test)]
 mod test {
-    use datafusion_common::{Column, ScalarValue};
-    use datafusion_expr::Expr;
+    use datafusion_python::{
+        datafusion_common::{Column, ScalarValue},
+        datafusion_expr::Expr,
+    };
 
     use crate::{error::Result, expression::PyExpr};
 

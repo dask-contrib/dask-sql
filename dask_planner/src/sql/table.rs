@@ -1,11 +1,13 @@
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
-use datafusion_common::DFField;
-use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
-use datafusion_optimizer::utils::split_conjunction;
-use datafusion_sql::TableReference;
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, Field, SchemaRef},
+    datafusion_common::DFField,
+    datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
+    datafusion_optimizer::utils::split_conjunction,
+    datafusion_sql::TableReference,
+};
 use pyo3::prelude::*;
 
 use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
@@ -25,12 +27,33 @@ use crate::{
 /// DaskTable wrapper that is compatible with DataFusion logical query plans
 pub struct DaskTableSource {
     schema: SchemaRef,
+    statistics: Option<DaskStatistics>,
+    filepath: Option<String>,
 }
 
 impl DaskTableSource {
-    /// Initialize a new `EmptyTable` from a schema.
-    pub fn new(schema: SchemaRef) -> Self {
-        Self { schema }
+    /// Initialize a new `EmptyTable` from a schema
+    pub fn new(
+        schema: SchemaRef,
+        statistics: Option<DaskStatistics>,
+        filepath: Option<String>,
+    ) -> Self {
+        Self {
+            schema,
+            statistics,
+            filepath,
+        }
+    }
+
+    /// Access optional statistics associated with this table source
+    pub fn statistics(&self) -> Option<&DaskStatistics> {
+        self.statistics.as_ref()
+    }
+
+    /// Access optional filepath associated with this table source
+    #[allow(dead_code)]
+    pub fn filepath(&self) -> Option<&String> {
+        self.filepath.as_ref()
     }
 }
 
@@ -48,7 +71,7 @@ impl TableSource for DaskTableSource {
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
-    ) -> datafusion_common::Result<TableProviderFilterPushDown> {
+    ) -> datafusion_python::datafusion_common::Result<TableProviderFilterPushDown> {
         let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
             // Push down filters to the tablescan operation if all are supported
@@ -71,7 +94,6 @@ fn is_supported_push_down_expr(_expr: &Expr) -> bool {
 #[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {
-    #[allow(dead_code)]
     row_count: f64,
 }
 
@@ -81,27 +103,39 @@ impl DaskStatistics {
     pub fn new(row_count: f64) -> Self {
         Self { row_count }
     }
+
+    #[pyo3(name = "getRowCount")]
+    pub fn get_row_count(&self) -> f64 {
+        self.row_count
+    }
 }
 
 #[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
-    pub(crate) schema: String,
-    pub(crate) name: String,
-    #[allow(dead_code)]
+    pub(crate) schema_name: Option<String>,
+    pub(crate) table_name: String,
     pub(crate) statistics: DaskStatistics,
     pub(crate) columns: Vec<(String, DaskTypeMap)>,
+    pub(crate) filepath: Option<String>,
 }
 
 #[pymethods]
 impl DaskTable {
     #[new]
-    pub fn new(schema: &str, name: &str, row_count: f64) -> Self {
+    pub fn new(
+        schema_name: &str,
+        table_name: &str,
+        row_count: f64,
+        columns: Option<Vec<(String, DaskTypeMap)>>,
+        filepath: Option<String>,
+    ) -> Self {
         Self {
-            schema: schema.to_owned(),
-            name: name.to_owned(),
+            schema_name: Some(schema_name.to_owned()),
+            table_name: table_name.to_owned(),
             statistics: DaskStatistics::new(row_count),
-            columns: Vec::new(),
+            columns: columns.unwrap_or_default(),
+            filepath,
         }
     }
 
@@ -112,25 +146,28 @@ impl DaskTable {
     }
 
     #[pyo3(name = "getSchema")]
-    pub fn get_schema(&self) -> PyResult<String> {
-        Ok(self.schema.clone())
+    pub fn get_schema(&self) -> PyResult<Option<String>> {
+        Ok(self.schema_name.clone())
     }
 
     #[pyo3(name = "getTableName")]
     pub fn get_table_name(&self) -> PyResult<String> {
-        Ok(self.name.clone())
+        Ok(self.table_name.clone())
     }
 
     #[pyo3(name = "getQualifiedName")]
     pub fn qualified_name(&self, plan: logical::PyLogicalPlan) -> Vec<String> {
-        let mut qualified_name = Vec::from([self.schema.clone()]);
+        let mut qualified_name = match &self.schema_name {
+            Some(schema_name) => vec![schema_name.clone()],
+            None => vec![],
+        };
 
         match plan.original_plan {
             LogicalPlan::TableScan(table_scan) => {
-                qualified_name.push(table_scan.table_name);
+                qualified_name.push(table_scan.table_name.to_string());
             }
             _ => {
-                qualified_name.push(self.name.clone());
+                qualified_name.push(self.table_name.clone());
             }
         }
 
@@ -153,7 +190,7 @@ pub(crate) fn table_from_logical_plan(
 ) -> Result<Option<DaskTable>, DaskPlannerError> {
     match plan {
         LogicalPlan::Projection(projection) => table_from_logical_plan(&projection.input),
-        LogicalPlan::Filter(filter) => table_from_logical_plan(filter.input()),
+        LogicalPlan::Filter(filter) => table_from_logical_plan(&filter.input),
         LogicalPlan::TableScan(table_scan) => {
             // Get the TableProvider for this Table instance
             let tbl_provider: Arc<dyn TableSource> = table_scan.source.clone();
@@ -172,26 +209,27 @@ pub(crate) fn table_from_logical_plan(
                 ));
             }
 
-            let table_ref: TableReference = table_scan.table_name.as_str().into();
+            let table_ref: TableReference = table_scan.table_name.clone();
             let (schema, tbl) = match table_ref {
-                TableReference::Bare { table } => ("", table),
-                TableReference::Partial { schema, table } => (schema, table),
+                TableReference::Bare { table } => ("".to_string(), table),
+                TableReference::Partial { schema, table } => (schema.to_string(), table),
                 TableReference::Full {
                     catalog: _,
                     schema,
                     table,
-                } => (schema, table),
+                } => (schema.to_string(), table),
             };
 
             Ok(Some(DaskTable {
-                schema: String::from(schema),
-                name: String::from(tbl),
+                schema_name: Some(schema),
+                table_name: String::from(tbl),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
+                filepath: None,
             }))
         }
         LogicalPlan::Join(join) => {
-            //TODO: Don't always hardcode the left
+            // TODO: Don't always hardcode the left
             table_from_logical_plan(&join.left)
         }
         LogicalPlan::Aggregate(agg) => table_from_logical_plan(&agg.input),
@@ -212,38 +250,39 @@ pub(crate) fn table_from_logical_plan(
             }
 
             Ok(Some(DaskTable {
-                schema: String::from("EmptySchema"),
-                name: String::from("EmptyRelation"),
+                schema_name: Some(String::from("EmptySchema")),
+                table_name: String::from("EmptyRelation"),
                 statistics: DaskStatistics { row_count: 0.0 },
                 columns: cols,
+                filepath: None,
             }))
         }
         LogicalPlan::Extension(ex) => {
             let node = ex.node.as_any();
             if let Some(e) = node.downcast_ref::<CreateTablePlanNode>() {
                 Ok(Some(DaskTable {
-                    schema: e.table_schema.clone(),
-                    name: e.table_name.clone(),
+                    schema_name: e.schema_name.clone(),
+                    table_name: e.table_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
+                    filepath: None,
                 }))
             } else if let Some(e) = node.downcast_ref::<PredictModelPlanNode>() {
                 Ok(Some(DaskTable {
-                    schema: e.model_schema.clone(),
-                    name: e.model_name.clone(),
+                    schema_name: e.schema_name.clone(),
+                    table_name: e.model_name.clone(),
                     statistics: DaskStatistics { row_count: 0.0 },
                     columns: vec![],
+                    filepath: None,
                 }))
             } else {
                 Err(DaskPlannerError::Internal(format!(
-                    "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-                    plan
+                    "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
                 )))
             }
         }
         _ => Err(DaskPlannerError::Internal(format!(
-            "table_from_logical_plan: unimplemented LogicalPlan type {:?} encountered",
-            plan
+            "table_from_logical_plan: unimplemented LogicalPlan type {plan:?} encountered"
         ))),
     }
 }
