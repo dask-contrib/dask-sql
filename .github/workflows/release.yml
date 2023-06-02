@@ -63,13 +63,13 @@ jobs:
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
             ARCH=$([ $(uname -m) == x86_64 ] && echo x86_64 || echo aarch_64) &&
-            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-${ARCH}.zip$") &&
-            curl -LO $DOWNLOAD_URL &&
+            DOWNLOAD_URL=$(curl --retry 6 --retry-delay 10 -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-${ARCH}.zip$") &&
+            curl --retry 6 --retry-delay 10 -LO $DOWNLOAD_URL &&
             unzip protoc-*-linux-$ARCH.zip -d $HOME/.local &&
             protoc --version &&
             pip install -U setuptools-rust &&
             pip list &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
+            curl --retry 6 --retry-delay 10 https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
             rustup show
         with:
           package-dir: .
