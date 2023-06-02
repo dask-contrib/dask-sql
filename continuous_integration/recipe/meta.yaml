@@ -43,6 +43,8 @@ requirements:
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
     - tabulate
+  run_constrained:
+    - __glibc >=2.32  # [aarch64]
 
 test:
   imports:
