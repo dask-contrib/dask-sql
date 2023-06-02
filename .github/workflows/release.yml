@@ -85,6 +85,7 @@ jobs:
       # FIXME: aarch64 builds require glibc>=2.32 to prevent TLS allocation error when importing;
       # is there any way we could modify the TLS model of its shared object to avoid this?
       # https://bugzilla.redhat.com/show_bug.cgi?id=1722181
+      # xref: https://github.com/dask-contrib/dask-sql/issues/1169
       - name: Update platform tag for aarch64 wheel
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -92,7 +93,7 @@ jobs:
 
           wheel tags --platform-tag=manylinux_2_32_aarch64 \
                      --remove \
-                     *_aarch64.whl
+                     dist/*_aarch64.whl
       - name: Check dist files
         run: |
           mamba install twine
