@@ -1,6 +1,5 @@
 import dask
 import dask.dataframe as dd
-import numpy as np
 import pandas as pd
 import pytest
 from dask.utils_test import hlg_layer
@@ -355,7 +354,7 @@ def test_predicate_pushdown_isna(tmpdir):
     return_df = c.sql("SELECT df1.a FROM df1, df2 WHERE df1.a = df2.a")
 
     # Check for predicate pushdown
-    filters = [[("a", "is not", np.nan)]]
+    filters = [[("a", "is not", None)]]
     got_filters = hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"][
         "filters"
     ]

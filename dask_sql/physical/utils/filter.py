@@ -394,7 +394,7 @@ def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
 
 def _inv(symbol: str):
     if DASK_LE_2023_5_1 and symbol == "in":
-        raise ValueError("This version of dask doesn't support 'not in'")
+        raise ValueError("This version of dask does not support 'not in'")
     return {
         ">": "<",
         "<": ">",
@@ -456,7 +456,7 @@ def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
     if DASK_LT_2023_3_1:
         raise ValueError("This version of dask does not support 'is' predicates.")
     left = _get_blockwise_input(0, indices, dsk)
-    return to_dnf((left, "is", np.nan))
+    return to_dnf((left, "is", None))
 
 
 def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
