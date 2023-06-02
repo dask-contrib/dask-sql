@@ -82,6 +82,9 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      # FIXME: aarch64 builds require glibc>=2.32 to prevent TLS allocation error when importing;
+      # is there any way we could modify the TLS model of its shared object to avoid this?
+      # https://bugzilla.redhat.com/show_bug.cgi?id=1722181
       - name: Update platform tag for aarch64 wheel
         if: matrix.os == 'ubuntu-latest'
         run: |
