@@ -2,14 +2,20 @@ import itertools
 import logging
 import operator
 
+import dask
 import dask.dataframe as dd
 import numpy as np
 from dask.blockwise import Blockwise
 from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
+from packaging.version import parse as parseVersion
 
 logger = logging.getLogger(__name__)
+
+
+DASK_LE_2023_5_1 = parseVersion(dask.__version__) <= parseVersion("2023.5.1")
+DASK_LT_2023_3_1 = parseVersion(dask.__version__) < parseVersion("2023.3.1")
 
 
 def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
@@ -387,6 +393,8 @@ def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
 
 
 def _inv(symbol: str):
+    if DASK_LE_2023_5_1 and symbol == "in":
+        raise ValueError("This version of dask doesn't support 'not in'")
     return {
         ">": "<",
         "<": ">",
@@ -445,6 +453,8 @@ def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
 
 def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return DNF expression pattern for `isna`
+    if DASK_LT_2023_3_1:
+        raise ValueError("This version of dask does not support 'is' predicates.")
     left = _get_blockwise_input(0, indices, dsk)
     return to_dnf((left, "is", np.nan))
 

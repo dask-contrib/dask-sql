@@ -316,6 +316,10 @@ def test_filter_decimal(c, gpu):
     c.drop_table("df")
 
 
+@pytest.mark.skipif(
+    DASK_LE_2023_5_1,
+    reason="Requires https://github.com/dask/dask/pull/10320",
+)
 def test_predicate_pushdown_isna(tmpdir):
     from dask_sql.context import Context
 
