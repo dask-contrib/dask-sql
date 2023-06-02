@@ -82,6 +82,14 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      - name: Update platform tag for aarch64 wheel
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mamba install wheel
+
+          wheel tags --platform-tag=manylinux_2_32_aarch64 \
+                     --remove \
+                     *_aarch64.whl
       - name: Check dist files
         run: |
           mamba install twine
