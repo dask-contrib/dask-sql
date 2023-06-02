@@ -335,12 +335,14 @@ def test_predicate_pushdown_isna(tmpdir):
     df1 = dd.read_parquet(path + "/df1", index="index")
     c.create_table("df1", df1)
 
-    dd.from_dict(
-        {
-            "a": [None, 2, 3] * 5,
-            "b": range(15),
-            "index": range(15),
-        },
+    dd.from_pandas(
+        pd.DataFrame(
+            {
+                "a": [None, 2, 3] * 5,
+                "b": range(15),
+                "index": range(15),
+            },
+        ),
         npartitions=3,
     ).to_parquet(path + "/df2")
     df2 = dd.read_parquet(path + "/df2", index="index")
