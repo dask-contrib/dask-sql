@@ -63,16 +63,17 @@ jobs:
                            --variants "{target_platform: [${{ matrix.arch }}]}" \
                            --no-test \
                            --no-anaconda-upload \
-                           --output-folder .
+                           --output-folder packages
       - name: Test conda packages
         if: matrix.arch == 'linux-64'  # can only test native platform packages
         run: |
-          conda mambabuild --test ${{ matrix.arch }}/*.tar.bz2
+          conda mambabuild --test packages/${{ matrix.arch }}/*.tar.bz2
       - name: Upload conda packages as artifacts
         uses: actions/upload-artifact@v3
         with:
           name: "conda nightlies (python - ${{ matrix.python }}, arch - ${{ matrix.arch }})"
-          path: ${{ matrix.arch }}/*
+          # need to install all conda channel metadata to properly install locally
+          path: packages/
       - name: Upload conda packages to Anaconda
         if: |
           github.event_name == 'push'
@@ -83,4 +84,4 @@ jobs:
           # install anaconda for upload
           mamba install -c conda-forge anaconda-client
 
-          anaconda upload --label dev ${{ matrix.arch }}/*.tar.bz2
+          anaconda upload --label dev packages/${{ matrix.arch }}/*.tar.bz2
