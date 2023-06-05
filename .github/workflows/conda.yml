@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: "conda nightlies (python - ${{ matrix.python }}, arch - ${{ matrix.arch }})"
-          path: ${{ matrix.arch }}/*.tar.bz2
+          path: ${{ matrix.arch }}/*
       - name: Upload conda packages to Anaconda
         if: |
           github.event_name == 'push'
