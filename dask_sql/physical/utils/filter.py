@@ -61,13 +61,6 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         return ddf
     io_layer = io_layer.pop()
 
-    # Bail if any filters are already present in ddf
-    existing_filters = (
-        ddf.dask.layers[io_layer].creation_info.get("kwargs", {}).get("filters")
-    )
-    if existing_filters:
-        return ddf
-
     # Start by converting the HLG to a `RegenerableGraph`.
     # Succeeding here means that all layers in the graph
     # are regenerable.
