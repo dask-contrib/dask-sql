@@ -419,7 +419,7 @@ def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
         left = left.item()
         # Need inverse comparison in read_parquet
-        return (right, _inv(_comparison_symbols[op]), left)
+        return to_dnf((right, _inv(_comparison_symbols[op]), left))
     if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
         right = right.item()
     return to_dnf((left, _comparison_symbols[op], right))
