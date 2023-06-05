@@ -2,20 +2,16 @@ import itertools
 import logging
 import operator
 
-import dask
 import dask.dataframe as dd
 import numpy as np
 from dask.blockwise import Blockwise
 from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
-from packaging.version import parse as parseVersion
+
+from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
 
 logger = logging.getLogger(__name__)
-
-
-DASK_LE_2023_5_1 = parseVersion(dask.__version__) <= parseVersion("2023.5.1")
-DASK_LT_2023_3_1 = parseVersion(dask.__version__) < parseVersion("2023.3.1")
 
 
 def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
@@ -64,6 +60,13 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         # Not a single IO layer
         return ddf
     io_layer = io_layer.pop()
+
+    # Bail if any filters are already present in ddf
+    existing_filters = (
+        ddf.dask.layers[io_layer].creation_info.get("kwargs", {}).get("filters")
+    )
+    if existing_filters:
+        return ddf
 
     # Start by converting the HLG to a `RegenerableGraph`.
     # Succeeding here means that all layers in the graph
@@ -393,7 +396,7 @@ def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
 
 
 def _inv(symbol: str):
-    if DASK_LE_2023_5_1 and symbol == "in":
+    if symbol == "in" and not PQ_NOT_IN_SUPPORT:
         raise ValueError("This version of dask does not support 'not in'")
     return {
         ">": "<",
@@ -453,7 +456,7 @@ def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
 
 def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return DNF expression pattern for `isna`
-    if DASK_LT_2023_3_1:
+    if not PQ_IS_SUPPORT:
         raise ValueError("This version of dask does not support 'is' predicates.")
     left = _get_blockwise_input(0, indices, dsk)
     return to_dnf((left, "is", None))
