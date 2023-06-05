@@ -61,6 +61,13 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         return ddf
     io_layer = io_layer.pop()
 
+    # Bail if any filters are already present in ddf
+    existing_filters = (
+        ddf.dask.layers[io_layer].creation_info.get("kwargs", {}).get("filters")
+    )
+    if existing_filters:
+        return ddf
+
     # Start by converting the HLG to a `RegenerableGraph`.
     # Succeeding here means that all layers in the graph
     # are regenerable.
@@ -144,6 +151,7 @@ def to_dnf(expr):
 
     # Credit: https://stackoverflow.com/a/58372345
     if not isinstance(expr, (Or, And)):
+        assert isinstance(expr, tuple), f"expected tuple, got {expr}"
         result = Or((And((expr,)),))
     elif isinstance(expr, Or):
         result = Or(se for e in expr for se in to_dnf(e))
