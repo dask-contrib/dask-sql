@@ -17,6 +17,7 @@ dependencies:
 - maturin>=0.12.8
 - mlflow
 - mock
+- numpy>=1.21.6
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
@@ -42,7 +43,6 @@ dependencies:
 - cuml=23.06
 - dask-cudf=23.06
 - dask-cuda=23.06
-- numpy>=1.20.1
 - ucx-proc=*=gpu
 - ucx-py=0.32
 - xgboost=*rapidsai23.06
