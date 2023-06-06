@@ -32,7 +32,8 @@ def test_case(c, df):
         CASE
             WHEN (a < 2) OR (3 < a AND a < 4) THEN 42 ELSE 47
         END AS "S6",
-        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7"
+        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7",
+        CASE a WHEN 2 THEN 5 ELSE a + 1 END AS "S8"
     FROM df
     """
     )
@@ -46,6 +47,7 @@ def test_case(c, df):
     )
     expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
+    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1)
 
     # Do not check dtypes, as pandas versions are inconsistent here
     assert_eq(result_df, expected_df, check_dtype=False)
