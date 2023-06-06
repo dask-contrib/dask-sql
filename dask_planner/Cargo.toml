@@ -14,7 +14,7 @@ datafusion-python = { git = "https://github.com/apache/arrow-datafusion-python.g
 env_logger = "0.10"
 log = "^0.4"
 pyo3 = { version = "0.18.3", features = ["extension-module", "abi3", "abi3-py38"] }
-pyo3-log = "0.8.1"
+pyo3-log = "0.8.2"
 
 [build-dependencies]
 pyo3-build-config = "0.18.3"
