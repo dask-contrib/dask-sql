@@ -12,9 +12,9 @@ from .drop_schema import DropSchemaPlugin
 from .drop_table import DropTablePlugin
 from .export_model import ExportModelPlugin
 from .predict_model import PredictModelPlugin
-from .schemas import ShowSchemasPlugin
 from .show_columns import ShowColumnsPlugin
 from .show_models import ShowModelsPlugin
+from .show_schemas import ShowSchemasPlugin
 from .show_tables import ShowTablesPlugin
 from .use_schema import UseSchemaPlugin
 

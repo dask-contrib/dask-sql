@@ -4,7 +4,6 @@ Machine Learning
 ================
 
 .. note::
-
     Machine Learning support is experimental in ``dask-sql``.
     We encourage you to try it out and report any issues on our
     `issue tracker <https://github.com/dask-contrib/dask-sql/issues>`_.
@@ -25,8 +24,8 @@ The result will be a Dask dataframe, which you can either directly feed into you
 or convert to a pandas dataframe with `.compute()` before.
 
 This gives you full control on the training process and the simplicity of
-using SQL for data manipulation. You can use this method in your python scripts
-or Jupyter notebooks, but not from the :ref:`server` or :ref:`cmd`.
+using SQL for data manipulation. You can use this method in your Python scripts
+or Jupyter Notebooks, but not from the :ref:`server` or :ref:`cmd`.
 
 2. Training in Python, Prediction in SQL
 ----------------------------------------
@@ -68,48 +67,32 @@ which allows you to also call it e.g. from your BI tool.
 Additionally to the ``PREDICT`` keyword mentioned above, ``dask-sql`` also has a way to
 create and train a model from SQL:
 
-.. tabs::
+.. code-block:: sql
 
-    .. group-tab:: CPU
+    CREATE MODEL my_model WITH (
+        model_class = 'LogisticRegression',
+        wrap_predict = True,
+        target_column = 'target'
+    ) AS (
+        SELECT x, y, x*y > 0 as target
+        FROM timeseries
+        LIMIT 100
+    )
 
-        .. code-block:: sql
-
-            CREATE MODEL my_model WITH (
-                model_class = 'sklearn.linear_model.LogisticRegression',
-                wrap_predict = True,
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y > 0 as target
-                FROM timeseries
-                LIMIT 100
-            )
-
-    .. group-tab:: GPU
-
-        .. code-block:: sql
-
-            CREATE MODEL my_model WITH (
-                model_class = 'cuml.linear_model.LogisticRegression',
-                wrap_predict = True,
-                target_column = 'target'
-            ) AS (
-                SELECT x, y, x*y > 0 as target
-                FROM timeseries
-                LIMIT 100
-            )
-
-This call will create a new instance of ``linear_model.LogisticRegression``
+This call will create a new instance of ``sklearn.linear_model.LogisticRegression`` or ``cuml.linear_model.LogisticRegression``
+(the full path is inferred by Dask-SQL depending on whether you are using a CPU or GPU DataFrame)
 and train it with the data collected from the ``SELECT`` call (again, every valid ``SELECT``
 query can be given). The model can than be used in subsequent calls to ``PREDICT``
 using the given name.
-We set ``wrap_predict`` = ``True`` here to parallelize post fit prediction task of non distributed models (sklearn/cuML etc) across workers.
+We explicitly set ``wrap_predict`` = ``True`` here to parallelize post fit prediction task of non distributed models (sklearn/cuML etc) across workers,
+although in this case ``wrap_predict`` would have already defaulted to ``True`` for the sklearn model.
 
 Have a look into :ref:`ml` for more information.
 
 4. Check Model parameters - Model meta data
 -------------------------------------------
 After the model was trained, you can inspect and get model details by using the
-following sql statements
+following SQL statements
 
 .. code-block:: sql
 
@@ -133,12 +116,13 @@ based on memory and compute constraints.
 .. code-block:: sql
 
  CREATE EXPERIMENT my_exp WITH (
-    model_class = 'sklearn.ensemble.GradientBoostingClassifier',
-    experiment_class = 'sklearn.model_selection.GridSearchCV',
+    model_class = 'GradientBoostingClassifier',
+    experiment_class = 'GridSearchCV',
     tune_parameters = (n_estimators = ARRAY [16, 32, 2],
                     learning_rate = ARRAY [0.1,0.01,0.001],
                    max_depth = ARRAY [3,4,5,10]
                    ),
+    experiment_kwargs = (n_jobs = -1),
     target_column = 'target'
     ) AS (
         SELECT x, y, x*y > 0 AS target
@@ -146,13 +130,15 @@ based on memory and compute constraints.
         LIMIT 100
     )
 
-5.1 Automl in SQL
+In this case, we set ``n_jobs`` = ``-1`` to ensure that all jobs run in parallel.
+
+5.1 AutoML in SQL
 -----------------
 Want to try different models with different parameters in SQL? Now you can
-start automl experiments with the help of the ``tpot`` framework which trains
-and evaluates a number of different sklearn compatible models and uses dask for
-distributing the work across the dask clusters.
-Use below SQL syntax for automl and for more details refer to the
+start AutoML experiments with the help of the ``tpot`` framework, which trains
+and evaluates a number of different sklearn-compatible models and uses Dask for
+distributing the work across the Dask clusters.
+Use below SQL syntax for AutoML and for more details refer to the
 `tpot automl framework <https://epistasislab.github.io/tpot/>`_
 
 
@@ -174,26 +160,26 @@ Use below SQL syntax for automl and for more details refer to the
             )
 
 After the experiment was completed, both hyperparameter tuner and
-automl experiments stores the best model of the experiment in the sql context with
+AutoML experiments stores the best model of the experiment in the SQL context with
 the name same as the experiment name, which can be used for prediction.
 
 6. Export Trained Model
 ------------------------
 Once your model was trained and performs good in your validation dataset,
 you can export the model into a file with one of the supported model serialization
-formats like pickle, joblib, mlflow (framework-agnostic serialization format), etc.
+formats like Pickle, Joblib, MLflow (framework-agnostic serialization format), etc.
 
-Currently, dask-sql supports the pickle, joblib and mlflow format for exporting the
-trained model, which can then be deployed as microservices etc
+Currently, Dask-SQL supports the Pickle, Joblib and MLflow format for exporting the
+trained model, which can then be deployed as microservices, etc.
 
 Before training and exporting the models from different framework like
-lightgbm, catboost, please ensure the relevant packages are installed in the
-dask-sql environment, otherwise it will raise an exception on import and if you
-are using mlflow as format ensure mlflow was installed. Keep in mind that dask-sql supports
-only sklearn compatible model (i.e fit-predict style models) so far, so instead of using
-xgb.core.Booster consider using xgboost.XGBClassifier since later is sklearn compatible
-and used by dask-sql for training, prediction and exporting the model
-through standard sklearn interface
+LightGBM or CatBoost, please ensure the relevant packages are installed in the
+Dask-SQL environment, otherwise it will raise an exception on import. If you
+are using MLflow, ensure MLflow is installed. Keep in mind that Dask-SQL supports
+only sklearn-compatible models (i.e fit-predict style models) so far, so instead of using
+``xgb.core.Booster``, consider using ``xgboost.XGBClassifier`` since the latter is sklearn-compatible
+and used by Dask-SQL for training, predicting, and exporting the model
+through the standard sklearn interface.
 
 
 ..
@@ -285,6 +271,7 @@ and the boolean target ``label``.
                     learning_rate = ARRAY [0.1,0.01,0.001],
                    max_depth = ARRAY [3,4,5,10]
                    ),
+    experiment_kwargs = (n_jobs = -1),
     target_column = 'label'
     ) AS (
         SELECT * FROM training_data

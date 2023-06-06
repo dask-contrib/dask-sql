@@ -596,3 +596,67 @@ def test_groupby_split_every(c, gpu):
     assert_eq(split_every_4_df, expected_df, check_index=False)
 
     c.drop_table("split_every_input")
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_agg_decimal(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": [1.23, 12.65, 134.64, -34.3, 945.19],
+            "b": [1, 1, 2, 2, 3],
+        }
+    )
+
+    c.create_table("df", df, gpu=gpu)
+
+    result_df = c.sql(
+        """
+        SELECT
+            SUM(CAST(a AS DECIMAL)) as s,
+            COUNT(CAST(a AS DECIMAL)) as c,
+            SUM(CAST(a+a AS DECIMAL)) as s2
+        FROM
+            df
+        GROUP BY
+            b
+        """
+    )
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["s"] = result_df["s"].astype("float64")
+        result_df["s2"] = result_df["s2"].astype("float64")
+
+    expected_df = pd.DataFrame(
+        {
+            "s": df.groupby("b").sum()["a"],
+            "c": df.groupby("b").count()["a"],
+            "s2": df.groupby("b").sum()["a"] + df.groupby("b").sum()["a"],
+        }
+    )
+
+    # dtype of count aggregation is float on gpu
+    assert_eq(result_df, expected_df, check_index=False, check_dtype=(not gpu))
+
+    result_df = c.sql(
+        """
+        SELECT
+            MIN(CAST(a AS DECIMAL)) as min,
+            MAX(CAST(a AS DECIMAL)) as max
+        FROM
+            df
+        """
+    )
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["min"] = result_df["min"].astype("float64")
+        result_df["max"] = result_df["max"].astype("float64")
+
+    expected_df = pd.DataFrame(
+        {
+            "min": [df.a.min()],
+            "max": [df.a.max()],
+        }
+    )
+
+    assert_eq(result_df, expected_df)
+    c.drop_table("df")

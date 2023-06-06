@@ -1,4 +1,5 @@
-use datafusion_expr::{
+use datafusion_python::datafusion_expr::{
+    expr::AggregateFunction,
     logical_plan::{Aggregate, Distinct},
     Expr,
     LogicalPlan,
@@ -73,7 +74,7 @@ impl PyAggregate {
     fn _aggregation_arguments(&self, expr: &Expr) -> PyResult<Vec<PyExpr>> {
         match expr {
             Expr::Alias(expr, _) => self._aggregation_arguments(expr.as_ref()),
-            Expr::AggregateFunction { fun: _, args, .. }
+            Expr::AggregateFunction(AggregateFunction { fun: _, args, .. })
             | Expr::AggregateUDF { fun: _, args, .. } => match &self.aggregate {
                 Some(e) => py_expr_list(&e.input, args),
                 None => Ok(vec![]),
@@ -88,7 +89,7 @@ impl PyAggregate {
 fn _agg_func_name(expr: &Expr) -> PyResult<String> {
     match expr {
         Expr::Alias(expr, _) => _agg_func_name(expr.as_ref()),
-        Expr::AggregateFunction { fun, .. } => Ok(fun.to_string()),
+        Expr::AggregateFunction(AggregateFunction { fun, .. }) => Ok(fun.to_string()),
         Expr::AggregateUDF { fun, .. } => Ok(fun.name.clone()),
         _ => Err(py_type_err(
             "Encountered a non Aggregate type in agg_func_name",
@@ -99,7 +100,7 @@ fn _agg_func_name(expr: &Expr) -> PyResult<String> {
 fn _distinct_agg_expr(expr: &Expr) -> PyResult<bool> {
     match expr {
         Expr::Alias(expr, _) => _distinct_agg_expr(expr.as_ref()),
-        Expr::AggregateFunction { distinct, .. } => Ok(*distinct),
+        Expr::AggregateFunction(AggregateFunction { distinct, .. }) => Ok(*distinct),
         Expr::AggregateUDF { .. } => {
             // DataFusion does not support DISTINCT in UDAFs
             Ok(false)

@@ -1,5 +1,7 @@
-use datafusion_common::ScalarValue;
-use datafusion_expr::{logical_plan::Limit, Expr, LogicalPlan};
+use datafusion_python::{
+    datafusion_common::ScalarValue,
+    datafusion_expr::{logical_plan::Limit, Expr, LogicalPlan},
+};
 use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};

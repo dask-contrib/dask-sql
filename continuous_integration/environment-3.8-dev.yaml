@@ -3,6 +3,7 @@ channels:
 - conda-forge
 - nodefaults
 dependencies:
+- c-compiler
 - dask=2022.3.0
 - fastapi=0.69.0
 - fugue=0.7.3
@@ -12,14 +13,11 @@ dependencies:
 - maturin=0.12.8
 - mlflow
 - mock
-- nest-asyncio
+- numpy=1.21.6
 - pandas=1.4.0
 - pre-commit
 - prompt_toolkit=3.0.8
 - psycopg2
-# TODO: remove once py is added to pytest downstream libraries
-# https://github.com/pytest-dev/pytest-xdist/issues/832
-- py
 - pyarrow=6.0.1
 - pygments=2.7.1
 - pyhive
@@ -29,8 +27,10 @@ dependencies:
 - pytest
 - python=3.8
 - scikit-learn=1.0.0
-- setuptools-rust=1.4.1
+- setuptools-rust=1.5.2
 - sphinx
-- tpot
+- sqlalchemy<2
+- tpot>=0.12.0
 - tzlocal=2.1
 - uvicorn=0.13.4
+- libprotobuf=3

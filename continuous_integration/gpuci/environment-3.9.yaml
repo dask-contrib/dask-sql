@@ -1,6 +1,9 @@
 name: dask-sql
 channels:
+- rapidsai
+- rapidsai-nightly
 - conda-forge
+- nvidia
 - nodefaults
 dependencies:
 - c-compiler
@@ -34,4 +37,12 @@ dependencies:
 - tpot>=0.12.0
 - tzlocal>=2.1
 - uvicorn>=0.13.4
-- libprotobuf=3
+# GPU-specific requirements
+- cudatoolkit=11.5
+- cudf=23.06
+- cuml=23.06
+- dask-cudf=23.06
+- dask-cuda=23.06
+- ucx-proc=*=gpu
+- ucx-py=0.32
+- xgboost=*rapidsai23.06

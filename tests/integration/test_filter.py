@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from dask_sql._compat import INT_NAN_IMPLEMENTED
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -52,11 +51,8 @@ def test_filter_complicated(c, df):
 
 def test_filter_with_nan(c):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
+    expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
 
-    if INT_NAN_IMPLEMENTED:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
-    else:
-        expected_df = pd.DataFrame({"c": [3]}, dtype="float")
     assert_eq(
         return_df,
         expected_df,
@@ -157,12 +153,7 @@ def test_filter_year(c):
         (
             "SELECT * FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)],
-            [
-                [("a", "==", 1), ("b", "<", 10)],
-                [("a", "==", 1), ("b", ">", 5)],
-                [("b", ">", 5), ("b", "<", 10)],
-                [("a", "==", 1)],
-            ],
+            [[("b", ">", 5), ("b", "<", 10)], [("a", "==", 1)]],
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 6)",
@@ -180,12 +171,7 @@ def test_filter_year(c):
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
             lambda x: x[((x["b"] > 5) & (x["b"] < 10)) | (x["a"] == 1)][["a"]],
-            [
-                [("a", "==", 1), ("b", "<", 10)],
-                [("a", "==", 1), ("b", ">", 5)],
-                [("b", ">", 5), ("b", "<", 10)],
-                [("a", "==", 1)],
-            ],
+            [[("b", ">", 5), ("b", "<", 10)], [("a", "==", 1)]],
         ),
         (
             # Original filters NOT in disjunctive normal form
@@ -263,3 +249,50 @@ def test_filtered_csv(tmpdir, c):
     expected_df = df[df["b"] < 10]
 
     assert_eq(return_df, expected_df)
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_filter_decimal(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": [304.5, 35.305, 9.043, 102.424, 53.34],
+            "b": [2.2, 82.4, 42, 76.9, 54.4],
+            "c": [1, 2, 2, 5, 9],
+        }
+    )
+    c.create_table("df", df, gpu=gpu)
+
+    result_df = c.sql(
+        """
+        SELECT
+            c
+        FROM
+            df
+        WHERE
+            CAST(a AS DECIMAL) < CAST(b AS DECIMAL)
+        """
+    )
+
+    expected_df = df.loc[df.a < df.b][["c"]]
+
+    assert_eq(result_df, expected_df)
+
+    result_df = c.sql(
+        """
+        SELECT
+            CAST(b AS DECIMAL) as b
+        FROM
+            df
+        WHERE
+            CAST(a AS DECIMAL) < DECIMAL '100.2'
+        """
+    )
+
+    # decimal precision doesn't match up with pandas floats
+    if gpu:
+        result_df["b"] = result_df["b"].astype("float64")
+
+    expected_df = df.loc[df.a < 100.2][["b"]]
+
+    assert_eq(result_df, expected_df, check_index=False)
+    c.drop_table("df")

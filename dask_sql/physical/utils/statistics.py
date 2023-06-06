@@ -16,8 +16,6 @@ from dask.delayed import delayed
 from dask.layers import DataFrameIOLayer
 from dask.utils_test import hlg_layer
 
-from dask_sql.utils import make_pickable_without_dask_sql
-
 logger = logging.getLogger(__name__)
 
 
@@ -87,7 +85,7 @@ def parquet_statistics(
     if not isinstance(layer, DataFrameIOLayer) or not isinstance(
         layer.io_func, ParquetFunctionWrapper
     ):
-        logger.warning(
+        logger.debug(
             f"Could not extract Parquet statistics from {ddf}."
             f"\nAttempted IO layer: {layer}"
         )
@@ -98,7 +96,7 @@ def parquet_statistics(
     fs = layer.io_func.fs
     engine = layer.io_func.engine
     if not issubclass(engine, ArrowDatasetEngine):
-        logger.warning(
+        logger.debug(
             f"Could not extract Parquet statistics from {ddf}."
             f"\nUnsupported parquet engine: {engine}"
         )
@@ -116,8 +114,9 @@ def parquet_statistics(
         # all be in the same footer)
         groups = defaultdict(list)
         for part in parts:
-            path = part.get("piece")[0]
-            groups[path].append(part)
+            for p in [part] if isinstance(part, dict) else part:
+                path = p.get("piece")[0]
+                groups[path].append(p)
         group_keys = list(groups.keys())
 
         # Compute and return flattened result
@@ -144,7 +143,6 @@ def parquet_statistics(
         return _read_partition_stats_group(parts, fs, engine, columns=columns)
 
 
-@make_pickable_without_dask_sql
 def _read_partition_stats_group(parts, fs, engine, columns=None):
     def _read_partition_stats(part, fs, columns=None):
         # Helper function to read Parquet-metadata
