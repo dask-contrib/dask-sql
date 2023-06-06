@@ -151,7 +151,8 @@ def to_dnf(expr):
 
     # Credit: https://stackoverflow.com/a/58372345
     if not isinstance(expr, (Or, And)):
-        assert isinstance(expr, tuple), f"expected tuple, got {expr}"
+        if not isinstance(expr, tuple):
+            raise TypeError(f"expected tuple, got {expr}")
         result = Or((And((expr,)),))
     elif isinstance(expr, Or):
         result = Or(se for e in expr for se in to_dnf(e))
@@ -430,10 +431,17 @@ def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph):
     # Return DNF expression pattern for logical "and" or "or"
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
+
+    vals = []
+    for val in [left, right]:
+        if not isinstance(val, (tuple, Or, And)):
+            raise TypeError(f"Invalid logical operand: {val}")
+        vals.append(to_dnf(val))
+
     if op == operator.or_:
-        return to_dnf(Or([left, right]))
+        return to_dnf(Or(vals))
     elif op == operator.and_:
-        return to_dnf(And([left, right]))
+        return to_dnf(And(vals))
     else:
         raise ValueError
 
