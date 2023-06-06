@@ -158,7 +158,8 @@ def to_dnf(expr):
     elif isinstance(expr, And):
         total = []
         for c in itertools.product(*[to_dnf(e) for e in expr]):
-            total.append(And(se for e in c for se in e))
+            conjunction = [se for e in c for se in e if isinstance(se, tuple)]
+            total.append(And(conjunction))
         result = Or(total)
     return result
 
