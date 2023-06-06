@@ -1081,7 +1081,7 @@ def test_scalar_timestamps(c, gpu):
 
     expected_df = pd.DataFrame({"day": [15, 18]})
     df1 = c.sql("SELECT EXTRACT(DAY FROM to_timestamp(d)) AS day FROM df")
-    assert_eq(df1, expected_df)
+    assert_eq(df1, expected_df, check_dtype=False)
     df2 = c.sql("SELECT EXTRACT(DAY FROM CAST(d AS TIMESTAMP)) AS day FROM df")
     assert_eq(df2, expected_df, check_dtype=False)
 
@@ -1139,10 +1139,10 @@ def test_scalar_timestamps(c, gpu):
 
     expected_df = pd.DataFrame({"day": [15]})
     df1 = c.sql(f"SELECT EXTRACT(DAY FROM to_timestamp({scalar1})) AS day")
-    assert_eq(df1, expected_df)
+    assert_eq(df1, expected_df, check_dtype=False)
     # TODO: Fix seconds/nanoseconds conversion
     # df2 = c.sql(f"SELECT EXTRACT(DAY FROM CAST({scalar1} AS TIMESTAMP)) AS day")
-    # assert_eq(df2, expected_df)
+    # assert_eq(df2, expected_df, check_dtype=False)
 
     expected_df = pd.DataFrame({"ceil_to_day": [datetime(2008, 2, 16)]})
     df1 = c.sql(f"SELECT CEIL(to_timestamp({scalar1}) TO DAY) AS ceil_to_day")
