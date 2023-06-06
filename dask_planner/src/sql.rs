@@ -243,6 +243,11 @@ impl ContextProvider for DaskSQLContext {
                             DataType::Int64,
                             DataType::Timestamp(TimeUnit::Nanosecond, None),
                         ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Int64,
+                        ]),
                     ],
                     Volatility::Immutable,
                 );
@@ -250,11 +255,23 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampdiff" => {
-                let sig = Signature::exact(
+                let sig = Signature::one_of(
                     vec![
-                        DataType::Utf8,
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Date64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Int64,
+                        ]),
                     ],
                     Volatility::Immutable,
                 );
