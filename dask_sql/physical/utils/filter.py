@@ -88,7 +88,7 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
             # No filters encountered
             return ddf
         filters = filters.to_list_tuple()
-    except ValueError:
+    except (ValueError, TypeError):
         # DNF dispatching failed for 1+ layers
         logger.warning(
             "Predicate pushdown optimization skipped. One or more "
