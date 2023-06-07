@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import operator
@@ -14,7 +16,12 @@ from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
 logger = logging.getLogger(__name__)
 
 
-def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
+def attempt_predicate_pushdown(
+    ddf: dd.DataFrame,
+    preserve_filters: bool = True,
+    extract_filters: bool = True,
+    add_filters: list | tuple | DNF | None = None,
+) -> dd.DataFrame:
     """Use graph information to update IO-level filters
 
     The original `ddf` will be returned if/when the
@@ -26,7 +33,26 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
     is due to the fact that `npartitions` and `divisions`
     may change when this optimization is applied (invalidating
     npartition/divisions-specific logic in following Layers).
+
+    Parameters
+    ----------
+    ddf
+        Dask-DataFrame target for predicate pushdown.
+    preserve_filters
+        Whether to preserve pre-existing filters in the case that either
+        `add_filters` is specified, or `extract_filters` is `True` and
+        filters are successfully extracted from `ddf`. Default is `True`.
+    extract_filters
+        Whether to extract filters from the task graph of `ddf`. Default
+        is `True`.
+    add_filters
+        Custom filters to manually add to the IO layer of `ddf`.
     """
+
+    if not (extract_filters or add_filters):
+        # Not extracting filters from the graph or
+        # manually adding user-defined filters. Return
+        return ddf
 
     # Check that we have a supported `ddf` object
     if not isinstance(ddf, dd.DataFrame):
@@ -61,12 +87,10 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         return ddf
     io_layer = io_layer.pop()
 
-    # Bail if any filters are already present in ddf
+    # Get pre-existing filters
     existing_filters = (
         ddf.dask.layers[io_layer].creation_info.get("kwargs", {}).get("filters")
     )
-    if existing_filters:
-        return ddf
 
     # Start by converting the HLG to a `RegenerableGraph`.
     # Succeeding here means that all layers in the graph
@@ -80,21 +104,36 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         )
         return ddf
 
-    # Extract a DNF-formatted filter expression
     name = ddf._name
-    try:
-        filters = dsk.layers[name]._dnf_filter_expression(dsk)
-        if not isinstance(filters, frozenset):
-            # No filters encountered
-            return ddf
-        filters = filters.to_list_tuple()
-    except (ValueError, TypeError):
-        # DNF dispatching failed for 1+ layers
-        logger.warning(
-            "Predicate pushdown optimization skipped. One or more "
-            "layers has an unknown filter expression."
-        )
+    extracted_filters = DNF(None)
+    if extract_filters:
+        # Extract a DNF-formatted filter expression
+        try:
+            extracted_filters = dsk.layers[name]._dnf_filter_expression(dsk)
+            # if extracted_filters and isinstance(extracted_filters, DNF):
+            #     filters = extracted_filters.to_list_tuple()
+            # else:
+            #     # No filters encountered
+            #     return ddf
+        except (ValueError, TypeError):
+            # DNF dispatching failed for 1+ layers
+            logger.warning(
+                "Predicate pushdown optimization skipped. One or more "
+                "layers has an unknown filter expression."
+            )
+
+    # Combine filters
+    filters = DNF(None)
+    if preserve_filters:
+        filters = filters.combine(existing_filters)
+    if extract_filters:
+        filters = filters.combine(extracted_filters)
+    if add_filters:
+        filters = filters.combine(add_filters)
+    if not filters:
+        # No filters encountered
         return ddf
+    filters = filters.to_list_tuple()
 
     # Regenerate collection with filtered IO layer
     try:
@@ -117,52 +156,85 @@ def attempt_predicate_pushdown(ddf: dd.DataFrame) -> dd.DataFrame:
         return ddf
 
 
-class Or(frozenset):
-    """Helper class for 'OR' expressions"""
+class DNF:
+    """Manage filters in Disjunctive Normal Form (DNF)"""
 
-    def to_list_tuple(self):
-        # NDF "or" is List[List[Tuple]]
-        def _maybe_list(val):
-            if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
-                return list(val)
-            return [val]
+    class _Or(frozenset):
+        """Fozen set of disjunctions"""
 
-        return [
-            _maybe_list(val.to_list_tuple())
-            if hasattr(val, "to_list_tuple")
-            else _maybe_list(val)
-            for val in self
-        ]
+        def to_list_tuple(self) -> list:
+            # DNF "or" is List[List[Tuple]]
+            def _maybe_list(val):
+                if isinstance(val, tuple) and val and isinstance(val[0], (tuple, list)):
+                    return list(val)
+                return [val]
 
+            return [
+                _maybe_list(val.to_list_tuple())
+                if hasattr(val, "to_list_tuple")
+                else _maybe_list(val)
+                for val in self
+            ]
 
-class And(frozenset):
-    """Helper class for 'AND' expressions"""
+    class _And(frozenset):
+        """Frozen set of conjunctions"""
 
-    def to_list_tuple(self):
-        # NDF "and" is List[Tuple]
-        return tuple(
-            val.to_list_tuple() if hasattr(val, "to_list_tuple") else val
-            for val in self
-        )
+        def to_list_tuple(self) -> list:
+            # DNF "and" is List[Tuple]
+            return tuple(
+                val.to_list_tuple() if hasattr(val, "to_list_tuple") else val
+                for val in self
+            )
 
+    _filters: _And | _Or | None  # Underlying filter expression
 
-def to_dnf(expr):
-    """Normalize a boolean filter expression to disjunctive normal form (DNF)"""
+    def __init__(self, filters: DNF | _And | _Or | list | tuple | None) -> DNF:
+        if isinstance(filters, DNF):
+            self._filters = filters._filters
+        else:
+            self._filters = self.normalize(filters)
 
-    # Credit: https://stackoverflow.com/a/58372345
-    if not isinstance(expr, (Or, And)):
-        if not isinstance(expr, tuple):
-            raise TypeError(f"expected tuple, got {expr}")
-        result = Or((And((expr,)),))
-    elif isinstance(expr, Or):
-        result = Or(se for e in expr for se in to_dnf(e))
-    elif isinstance(expr, And):
-        total = []
-        for c in itertools.product(*[to_dnf(e) for e in expr]):
-            conjunction = [se for e in c for se in e if isinstance(se, tuple)]
-            total.append(And(conjunction))
-        result = Or(total)
-    return result
+    def to_list_tuple(self) -> list:
+        return self._filters.to_list_tuple()
+
+    def __bool__(self) -> bool:
+        return bool(self._filters)
+
+    @classmethod
+    def normalize(cls, filters: _And | _Or | list | tuple | None):
+        """Convert raw filters to the `_Or(_And)` DNF representation"""
+        if not filters:
+            result = None
+        elif isinstance(filters, list):
+            conjunctions = filters if isinstance(filters[0], list) else [filters]
+            result = cls._Or([cls._And(conjunction) for conjunction in conjunctions])
+        elif isinstance(filters, tuple):
+            if isinstance(filters[0], tuple):
+                raise TypeError("filters must be List[Tuple] or List[List[Tuple]]")
+            result = cls._Or((cls._And((filters,)),))
+        elif isinstance(filters, cls._Or):
+            result = cls._Or(se for e in filters for se in cls.normalize(e))
+        elif isinstance(filters, cls._And):
+            total = []
+            for c in itertools.product(*[cls.normalize(e) for e in filters]):
+                total.append(cls._And(se for e in c for se in e))
+            result = cls._Or(total)
+        else:
+            raise TypeError(f"{type(filters)} not a supported type for DNF")
+        return result
+
+    def combine(self, other: DNF | _And | _Or | list | tuple | None) -> DNF:
+        """Combine with another DNF object"""
+        if not isinstance(other, DNF):
+            other = DNF(other)
+        assert isinstance(other, DNF)
+        if self._filters is None:
+            result = other._filters
+        elif other._filters is None:
+            result = self._filters
+        else:
+            result = self._And([self._filters, other._filters])
+        return DNF(result)
 
 
 # Define all supported comparison functions
@@ -413,7 +485,7 @@ def _inv(symbol: str):
     }.get(symbol, symbol)
 
 
-def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for a simple comparison
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
@@ -421,27 +493,27 @@ def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph):
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
         left = left.item()
         # Need inverse comparison in read_parquet
-        return to_dnf((right, _inv(_comparison_symbols[op]), left))
+        return DNF((right, _inv(_comparison_symbols[op]), left))
     if is_arraylike(right) and hasattr(right, "item") and right.size == 1:
         right = right.item()
-    return to_dnf((left, _comparison_symbols[op], right))
+    return DNF((left, _comparison_symbols[op], right))
 
 
-def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_logical_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for logical "and" or "or"
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
 
-    vals = []
+    filters = []
     for val in [left, right]:
-        if not isinstance(val, (tuple, Or, And)):
+        if not isinstance(val, (tuple, DNF)):
             raise TypeError(f"Invalid logical operand: {val}")
-        vals.append(to_dnf(val))
+        filters.append(DNF(val)._filters)
 
     if op == operator.or_:
-        return to_dnf(Or(vals))
+        return DNF(DNF._Or(filters))
     elif op == operator.and_:
-        return to_dnf(And(vals))
+        return DNF(DNF._And(filters))
     else:
         raise ValueError
 
@@ -457,22 +529,22 @@ def _blockwise_pass_through_dnf(op, indices: list, dsk: RegenerableGraph):
     return _get_blockwise_input(0, indices, dsk)
 
 
-def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for a simple "in" comparison
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
-    return to_dnf((left, "in", tuple(right)))
+    return DNF((left, "in", tuple(right)))
 
 
-def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for `isna`
     if not PQ_IS_SUPPORT:
         raise ValueError("This version of dask does not support 'is' predicates.")
     left = _get_blockwise_input(0, indices, dsk)
-    return to_dnf((left, "is", None))
+    return DNF((left, "is", None))
 
 
-def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
+def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for the inverse of a comparison
     expr = _get_blockwise_input(0, indices, dsk).to_list_tuple()
     new_expr = []
@@ -482,9 +554,9 @@ def _blockwise_inv_dnf(op, indices: list, dsk: RegenerableGraph):
         for col, op, val in conjunction:
             count += 1
             new_conjunction.append((col, _inv(op), val))
-        new_expr.append(And(new_conjunction))
+        new_expr.append(DNF._And(new_conjunction))
     if count > 1:
         # Havent taken the time to think through
         # general inversion yet.
         raise ValueError("inv(DNF) case not implemented.")
-    return to_dnf(Or(new_expr))
+    return DNF(DNF._Or(new_expr))

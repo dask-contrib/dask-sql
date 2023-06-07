@@ -130,3 +130,55 @@ def test_predicate_pushdown_isna(parquet_ddf):
     ]
     expected_filters = frozenset(frozenset(v) for v in expected_filters)
     assert got_filters == expected_filters
+
+
+def test_predicate_pushdown_add_filters(parquet_ddf):
+    filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df,
+        add_filters=("b", "<", 2),
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [
+        [("a", ">", 1), ("b", "<", 2)],
+        [("a", "==", -1), ("b", "<", 2)],
+    ]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+
+def test_predicate_pushdown_add_filters_no_extract(parquet_ddf):
+    filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
+    pushdown_df = attempt_predicate_pushdown(
+        filtered_df,
+        extract_filters=False,
+        add_filters=("b", "<", 2),
+    )
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [[("b", "<", 2)]]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
+
+
+def test_predicate_pushdown_add_filters_no_preserve(parquet_ddf):
+    filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
+    pushdown_df0 = attempt_predicate_pushdown(filtered_df)
+    pushdown_df = attempt_predicate_pushdown(
+        pushdown_df0,
+        preserve_filters=False,
+        add_filters=("b", "<", 2),
+    )
+
+    got_filters = hlg_layer(pushdown_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expected_filters = [[("b", "<", 2)]]
+    expected_filters = frozenset(frozenset(v) for v in expected_filters)
+    assert got_filters == expected_filters
