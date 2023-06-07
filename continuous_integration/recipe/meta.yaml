@@ -22,14 +22,16 @@ build:
 
 requirements:
   build:
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - libprotobuf                            # [build_platform != target_platform]
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
-    - setuptools-rust >=1.5.2
   host:
     - pip
     - python
-    - setuptools-rust >=1.5.2
-    - libprotobuf =3
+    - setuptools-rust
+    - libprotobuf
   run:
     - python
     - dask >=2022.3.0
@@ -41,6 +43,12 @@ requirements:
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
     - tabulate
+  run_constrained:
+    # FIXME: aarch64 builds require glibc>=2.32 to prevent TLS allocation error when importing;
+    # is there any way we could modify the TLS model of its shared object to avoid this?
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1722181
+    # xref: https://github.com/dask-contrib/dask-sql/issues/1169
+    - __glibc >=2.32  # [aarch64]
 
 test:
   imports:
