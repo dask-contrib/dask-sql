@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - datafusion-sql-planner
   pull_request:
     paths:
       - setup.py
@@ -29,8 +28,13 @@ defaults:
 
 jobs:
   conda:
-    name: Build (and optionally upload) the conda nightly
+    name: "Build conda nightlies (python: ${{ matrix.python }}, arch: ${{ matrix.arch }})"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.8", "3.9", "3.10"]
+        arch: ["linux-64", "linux-aarch64"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -49,23 +53,35 @@ jobs:
           which python
           pip list
           mamba list
-      - name: Build conda package
+      - name: Build conda packages
         run: |
           # suffix for nightly package versions
           export VERSION_SUFFIX=a`date +%y%m%d`
 
           conda mambabuild continuous_integration/recipe \
+                           --python ${{ matrix.python }} \
+                           --variants "{target_platform: [${{ matrix.arch }}]}" \
+                           --no-test \
                            --no-anaconda-upload \
-                           --output-folder .
-      - name: Upload conda package
+                           --output-folder packages
+      - name: Test conda packages
+        if: matrix.arch == 'linux-64'  # can only test native platform packages
+        run: |
+          conda mambabuild --test packages/${{ matrix.arch }}/*.tar.bz2
+      - name: Upload conda packages as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: "conda nightlies (python - ${{ matrix.python }}, arch - ${{ matrix.arch }})"
+          # need to install all conda channel metadata to properly install locally
+          path: packages/
+      - name: Upload conda packages to Anaconda
         if: |
           github.event_name == 'push'
           && github.repository == 'dask-contrib/dask-sql'
         env:
           ANACONDA_API_TOKEN: ${{ secrets.DASK_CONDA_TOKEN }}
-          LABEL: ${{ github.ref == 'refs/heads/datafusion-sql-planner' && 'dev_datafusion' || 'dev' }}
         run: |
           # install anaconda for upload
           mamba install -c conda-forge anaconda-client
 
-          anaconda upload --label $LABEL linux-64/*.tar.bz2
+          anaconda upload --label dev packages/${{ matrix.arch }}/*.tar.bz2
