@@ -172,6 +172,7 @@ def test_predicate_pushdown_add_filters_no_preserve(parquet_ddf):
     pushdown_df = attempt_predicate_pushdown(
         pushdown_df0,
         preserve_filters=False,
+        extract_filters=False,
         add_filters=("b", "<", 2),
     )
 

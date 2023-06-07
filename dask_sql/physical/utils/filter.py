@@ -76,11 +76,8 @@ def attempt_predicate_pushdown(
             creation_info = (
                 (v.creation_info or {}) if hasattr(v, "creation_info") else {}
             )
-            if (
-                "filters" not in creation_info.get("kwargs", {})
-                or creation_info["kwargs"]["filters"] is not None
-            ):
-                # No filters support, or filters is already set
+            if "filters" not in creation_info.get("kwargs", {}):
+                # No filters support
                 return ddf
     if len(io_layer) != 1:
         # Not a single IO layer
