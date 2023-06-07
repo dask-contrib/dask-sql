@@ -1,4 +1,4 @@
-use datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
+use datafusion_python::datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
 use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};
@@ -34,8 +34,16 @@ impl PyProjection {
             let py_expr: PyExpr =
                 PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
             for expr in self.projected_expressions(&py_expr) {
-                if let Ok(name) = expr._column_name(&self.projection.input) {
-                    named.push((name, expr.clone()));
+                match expr.expr {
+                    Expr::Alias(ex, name) => named.push((
+                        name.to_string(),
+                        PyExpr::from(*ex, Some(vec![self.projection.input.clone()])),
+                    )),
+                    _ => {
+                        if let Ok(name) = expr._column_name(&self.projection.input) {
+                            named.push((name, expr.clone()));
+                        }
+                    }
                 }
             }
         }

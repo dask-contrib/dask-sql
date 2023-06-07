@@ -13,6 +13,7 @@ on:
         options:
           - Dask
           - DataFusion
+
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
@@ -32,18 +33,25 @@ env:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
-    defaults:
-      run:
-        shell: bash -l {0}
+      DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.8", "3.9", "3.10"]
+        distributed: [false]
+        include:
+          # run tests on a distributed client
+          - os: "ubuntu-latest"
+            python: "3.8"
+            distributed: true
+          - os: "ubuntu-latest"
+            python: "3.10"
+            distributed: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -92,66 +100,6 @@ jobs:
           name: test-${{ matrix.os }}-py${{ matrix.python }}-results
           path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
-  cluster-dev:
-    name: "Test upstream dev in a dask cluster"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
-        with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.9"
-          channel-priority: strict
-          activate-environment: dask-sql
-          environment-file: continuous_integration/environment-3.9-dev.yaml
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        run: |
-          cd dask_planner
-          bash update-dependencies.sh
-      - name: Build the Rust DataFusion bindings
-        run: |
-          python setup.py build install
-      - name: Install cluster dependencies
-        run: |
-          # TODO: add pytest-reportlog to testing environments if we move over to JSONL output
-          mamba install pytest-reportlog python-blosc lz4 -c conda-forge
-
-          which python
-          pip list
-          mamba list
-      - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
-        run: |
-          mamba install --no-channel-priority dask/label/dev::dask
-      - name: run a dask cluster
-        run: |
-          if [[ $which_upstream == "Dask" ]]; then
-            docker-compose -f .github/cluster-upstream.yml up -d
-          else
-            docker-compose -f .github/cluster.yml up -d
-          fi
-
-          # periodically ping logs until a connection has been established; assume failure after 2 minutes
-          timeout 2m bash -c 'until docker logs dask-worker 2>&1 | grep -q "Starting established connection"; do sleep 1; done'
-
-          docker logs dask-scheduler
-          docker logs dask-worker
-      - name: Test with pytest while running an independent dask cluster
-        id: run_tests
-        run: |
-          DASK_SQL_TEST_SCHEDULER="tcp://127.0.0.1:8786" pytest --report-log test-cluster-results.jsonl --cov-report=xml -n auto tests --dist loadfile
-      - name: Upload pytest results for failure
-        if: |
-          always()
-          && steps.run_tests.outcome != 'skipped'
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-cluster-results
-          path: test-cluster-results.jsonl
-
   import-dev:
     name: "Test importing with bare requirements and upstream dev"
     runs-on: ubuntu-latest
@@ -164,6 +112,11 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         env:
@@ -190,12 +143,11 @@ jobs:
 
   report-failures:
     name: Open issue for upstream dev failures
-    needs: [test-dev, cluster-dev, import-dev]
+    needs: [test-dev, import-dev]
     if: |
       always()
       && (
         needs.test-dev.result == 'failure'
-        || needs.cluster-dev.result == 'failure'
         || needs.import-dev.result == 'failure'
       )
       && github.repository == 'dask-contrib/dask-sql'

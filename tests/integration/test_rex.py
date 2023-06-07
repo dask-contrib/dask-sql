@@ -32,7 +32,8 @@ def test_case(c, df):
         CASE
             WHEN (a < 2) OR (3 < a AND a < 4) THEN 42 ELSE 47
         END AS "S6",
-        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7"
+        CASE WHEN (1 < a AND a <= 4) THEN 1 ELSE 0 END AS "S7",
+        CASE a WHEN 2 THEN 5 ELSE a + 1 END AS "S8"
     FROM df
     """
     )
@@ -46,6 +47,7 @@ def test_case(c, df):
     )
     expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
+    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1)
 
     # Do not check dtypes, as pandas versions are inconsistent here
     assert_eq(result_df, expected_df, check_dtype=False)
@@ -258,8 +260,15 @@ def test_like(c, input_table, gpu, request):
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     )
+    assert_eq(df, string_table.iloc[[0, 3]])
 
-    assert_eq(df, string_table.iloc[[0]])
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT SIMILAR TO '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
 
     df = c.sql(
         f"""
@@ -267,9 +276,39 @@ def test_like(c, input_table, gpu, request):
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
     )
-
     assert len(df) == 0
 
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT LIKE '%n[a-z]rmal st_i%'
+    """
+    )
+    assert_eq(df, string_table)
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a LIKE '%a Normal String%'
+    """
+    )
+    assert len(df) == 0
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[0, 3]])
+
+    df = c.sql(
+        f"""
+        SELECT * FROM {input_table}
+        WHERE a NOT ILIKE '%a Normal String%'
+    """
+    )
+    assert_eq(df, string_table.iloc[[1, 2]])
     # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
     # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
@@ -288,7 +327,7 @@ def test_like(c, input_table, gpu, request):
         """
     )
 
-    assert_eq(df, string_table.iloc[[2]])
+    assert_eq(df, string_table.iloc[[2, 3]])
 
     df = c.sql(
         f"""
@@ -345,10 +384,10 @@ def test_null(c):
     """
     )
 
-    expected_df = pd.DataFrame(index=[0, 1, 2])
-    expected_df["nn"] = [True, True, True]
+    expected_df = pd.DataFrame(index=[0, 1, 2, 3])
+    expected_df["nn"] = [True, True, True, True]
     expected_df["nn"] = expected_df["nn"].astype("boolean")
-    expected_df["n"] = [False, False, False]
+    expected_df["n"] = [False, False, False, False]
     assert_eq(df, expected_df)
 
 

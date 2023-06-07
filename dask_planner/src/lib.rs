@@ -1,5 +1,4 @@
 use log::debug;
-use mimalloc::MiMalloc;
 use pyo3::prelude::*;
 
 mod dialect;
@@ -7,9 +6,6 @@ mod error;
 mod expression;
 mod parser;
 mod sql;
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
 
 /// Low-level DataFusion internal package.
 ///

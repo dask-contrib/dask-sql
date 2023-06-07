@@ -1,4 +1,4 @@
-use datafusion_common::Column;
+use datafusion_python::datafusion_common::Column;
 use pyo3::prelude::*;
 
 #[pyclass(name = "Column", module = "dask_planner", subclass)]
@@ -24,7 +24,7 @@ impl From<Column> for PyColumn {
 impl PyColumn {
     #[pyo3(name = "getRelation")]
     pub fn relation(&self) -> String {
-        self.column.relation.clone().unwrap()
+        self.column.relation.clone().unwrap().to_string()
     }
 
     #[pyo3(name = "getName")]

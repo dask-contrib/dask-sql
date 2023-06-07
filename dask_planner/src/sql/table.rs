@@ -1,11 +1,13 @@
 use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
-use datafusion::arrow::datatypes::{DataType, Field, SchemaRef};
-use datafusion_common::DFField;
-use datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource};
-use datafusion_optimizer::utils::split_conjunction;
-use datafusion_sql::TableReference;
+use datafusion_python::{
+    datafusion::arrow::datatypes::{DataType, Field, SchemaRef},
+    datafusion_common::DFField,
+    datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
+    datafusion_optimizer::utils::split_conjunction,
+    datafusion_sql::TableReference,
+};
 use pyo3::prelude::*;
 
 use super::logical::{create_table::CreateTablePlanNode, predict_model::PredictModelPlanNode};
@@ -69,7 +71,7 @@ impl TableSource for DaskTableSource {
     fn supports_filter_pushdown(
         &self,
         filter: &Expr,
-    ) -> datafusion_common::Result<TableProviderFilterPushDown> {
+    ) -> datafusion_python::datafusion_common::Result<TableProviderFilterPushDown> {
         let filters = split_conjunction(filter);
         if filters.iter().all(|f| is_supported_push_down_expr(f)) {
             // Push down filters to the tablescan operation if all are supported
@@ -162,7 +164,7 @@ impl DaskTable {
 
         match plan.original_plan {
             LogicalPlan::TableScan(table_scan) => {
-                qualified_name.push(table_scan.table_name);
+                qualified_name.push(table_scan.table_name.to_string());
             }
             _ => {
                 qualified_name.push(self.table_name.clone());
@@ -207,7 +209,7 @@ pub(crate) fn table_from_logical_plan(
                 ));
             }
 
-            let table_ref: TableReference = table_scan.table_name.as_str().into();
+            let table_ref: TableReference = table_scan.table_name.clone();
             let (schema, tbl) = match table_ref {
                 TableReference::Bare { table } => ("".to_string(), table),
                 TableReference::Partial { schema, table } => (schema.to_string(), table),

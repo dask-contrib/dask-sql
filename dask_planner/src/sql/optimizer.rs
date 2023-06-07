@@ -1,30 +1,28 @@
 use std::sync::Arc;
 
-use datafusion_common::DataFusionError;
-use datafusion_expr::LogicalPlan;
-use datafusion_optimizer::{
-    common_subexpr_eliminate::CommonSubexprEliminate,
-    decorrelate_where_exists::DecorrelateWhereExists,
-    decorrelate_where_in::DecorrelateWhereIn,
-    eliminate_cross_join::EliminateCrossJoin,
-    eliminate_limit::EliminateLimit,
-    eliminate_outer_join::EliminateOuterJoin,
-    filter_null_join_keys::FilterNullJoinKeys,
-    inline_table_scan::InlineTableScan,
-    optimizer::{Optimizer, OptimizerRule},
-    push_down_filter::PushDownFilter,
-    push_down_limit::PushDownLimit,
-    push_down_projection::PushDownProjection,
-    rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
-    scalar_subquery_to_join::ScalarSubqueryToJoin,
-    simplify_expressions::SimplifyExpressions,
-    type_coercion::TypeCoercion,
-    unwrap_cast_in_comparison::UnwrapCastInComparison,
-    OptimizerContext,
+use datafusion_python::{
+    datafusion_common::DataFusionError,
+    datafusion_expr::LogicalPlan,
+    datafusion_optimizer::{
+        decorrelate_where_exists::DecorrelateWhereExists,
+        decorrelate_where_in::DecorrelateWhereIn,
+        eliminate_cross_join::EliminateCrossJoin,
+        eliminate_limit::EliminateLimit,
+        eliminate_outer_join::EliminateOuterJoin,
+        eliminate_project::EliminateProjection,
+        filter_null_join_keys::FilterNullJoinKeys,
+        optimizer::{Optimizer, OptimizerRule},
+        push_down_filter::PushDownFilter,
+        push_down_limit::PushDownLimit,
+        push_down_projection::PushDownProjection,
+        rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
+        scalar_subquery_to_join::ScalarSubqueryToJoin,
+        simplify_expressions::SimplifyExpressions,
+        unwrap_cast_in_comparison::UnwrapCastInComparison,
+        OptimizerContext,
+    },
 };
 use log::{debug, trace};
-
-mod filter_columns_post_join;
 
 mod join_reorder;
 use join_reorder::JoinReorder;
@@ -40,37 +38,47 @@ impl DaskSqlOptimizer {
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
     pub fn new() -> Self {
         debug!("Creating new instance of DaskSqlOptimizer");
+
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
-            Arc::new(InlineTableScan::new()),
-            Arc::new(TypeCoercion::new()),
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
+            // Arc::new(ReplaceDistinctWithAggregate::new()),
             Arc::new(DecorrelateWhereExists::new()),
             Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
+            //Arc::new(ExtractEquijoinPredicate::new()),
+
             // simplify expressions does not simplify expressions in subqueries, so we
             // run it again after running the optimizations that potentially converted
             // subqueries to joins
             Arc::new(SimplifyExpressions::new()),
+            // Arc::new(MergeProjection::new()),
+            Arc::new(RewriteDisjunctivePredicate::new()),
+            // Arc::new(EliminateDuplicatedExpr::new()),
+
             // TODO: need to handle EmptyRelation for GPU cases
             // Arc::new(EliminateFilter::new()),
             Arc::new(EliminateCrossJoin::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()),
             Arc::new(EliminateLimit::new()),
-            Arc::new(RewriteDisjunctivePredicate::new()),
+            // Arc::new(PropagateEmptyRelation::new()),
             Arc::new(FilterNullJoinKeys::default()),
             Arc::new(EliminateOuterJoin::new()),
-            Arc::new(PushDownFilter::new()),
+            // Filters can't be pushed down past Limits, we should do PushDownFilter after PushDownLimit
             Arc::new(PushDownLimit::new()),
+            Arc::new(PushDownFilter::new()),
+            // Arc::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
-            // Arc::new(FilterColumnsPostJoin::new()),
             Arc::new(JoinReorder::default()),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
-            Arc::new(CommonSubexprEliminate::new()),
+            // Arc::new(CommonSubexprEliminate::new()),
             Arc::new(PushDownProjection::new()),
+            Arc::new(EliminateProjection::new()),
+            // PushDownProjection can pushdown Projections through Limits, do PushDownLimit again.
+            Arc::new(PushDownLimit::new()),
         ];
 
         Self {
@@ -98,13 +106,15 @@ impl DaskSqlOptimizer {
 mod tests {
     use std::{any::Any, collections::HashMap, sync::Arc};
 
-    use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-    use datafusion_common::{config::ConfigOptions, DataFusionError, Result};
-    use datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource};
-    use datafusion_sql::{
-        planner::{ContextProvider, SqlToRel},
-        sqlparser::{ast::Statement, parser::Parser},
-        TableReference,
+    use datafusion_python::{
+        datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef},
+        datafusion_common::{config::ConfigOptions, DataFusionError, Result},
+        datafusion_expr::{AggregateUDF, LogicalPlan, ScalarUDF, TableSource},
+        datafusion_sql::{
+            planner::{ContextProvider, SqlToRel},
+            sqlparser::{ast::Statement, parser::Parser},
+            TableReference,
+        },
     };
 
     use crate::{dialect::DaskDialect, sql::optimizer::DaskSqlOptimizer};
@@ -126,8 +136,9 @@ mod tests {
       SubqueryAlias: __scalar_sq_1
         Projection: AVG(test.col_int32) AS __value
           Aggregate: groupBy=[[]], aggr=[[AVG(test.col_int32)]]
-            Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
-              TableScan: test projection=[col_int32, col_utf8]"#;
+            Projection: test.col_int32
+              Filter: test.col_utf8 >= Utf8("2002-05-08") AND test.col_utf8 <= Utf8("2002-05-13")
+                TableScan: test projection=[col_int32, col_utf8]"#;
         assert_eq!(expected, format!("{:?}", plan));
         Ok(())
     }
@@ -168,7 +179,7 @@ mod tests {
         fn get_table_provider(
             &self,
             name: TableReference,
-        ) -> datafusion_common::Result<Arc<dyn TableSource>> {
+        ) -> datafusion_python::datafusion_common::Result<Arc<dyn TableSource>> {
             let table_name = name.table();
             if table_name.starts_with("test") {
                 let schema = Schema::new_with_metadata(

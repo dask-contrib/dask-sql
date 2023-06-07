@@ -2,11 +2,12 @@ name: dask-sql
 channels:
 - rapidsai
 - rapidsai-nightly
-- nvidia
 - conda-forge
+- nvidia
 - nodefaults
 dependencies:
-- dask>=2022.3.0,<=2023.3.2
+- c-compiler
+- dask>=2022.3.0
 # FIXME: handling is needed for httpx-based fastapi>=0.87.0
 - fastapi>=0.69.0,<0.87.0
 - fugue>=0.7.3
@@ -16,12 +17,10 @@ dependencies:
 - maturin>=0.12.8
 - mlflow
 - mock
+- numpy>=1.21.6
 - pandas>=1.4.0
 - pre-commit
 - prompt_toolkit>=3.0.8
-# TODO: remove once py is added to pytest downstream libraries
-# https://github.com/pytest-dev/pytest-xdist/issues/832
-- py
 - psycopg2
 - pyarrow>=6.0.1
 - pygments>=2.7.1
@@ -35,7 +34,7 @@ dependencies:
 - setuptools-rust>=1.5.2
 - sphinx
 - sqlalchemy<2
-- tpot
+- tpot>=0.12.0
 - tzlocal>=2.1
 - uvicorn>=0.13.4
 # GPU-specific requirements
@@ -44,7 +43,6 @@ dependencies:
 - cuml=23.06
 - dask-cudf=23.06
 - dask-cuda=23.06
-- numpy>=1.20.1
 - ucx-proc=*=gpu
 - ucx-py=0.32
 - xgboost=*rapidsai23.06

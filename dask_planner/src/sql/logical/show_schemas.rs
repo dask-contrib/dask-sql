@@ -1,17 +1,24 @@
-use std::{any::Any, fmt, sync::Arc};
+use std::{
+    any::Any,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use datafusion_common::{DFSchema, DFSchemaRef};
-use datafusion_expr::{
-    logical_plan::{Extension, UserDefinedLogicalNode},
-    Expr,
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_common::{DFSchema, DFSchemaRef},
+    datafusion_expr::{
+        logical_plan::{Extension, UserDefinedLogicalNode},
+        Expr,
+        LogicalPlan,
+    },
 };
 use fmt::Debug;
 use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShowSchemasPlanNode {
     pub schema: DFSchemaRef,
     pub catalog_name: Option<String>,
@@ -21,6 +28,13 @@ pub struct ShowSchemasPlanNode {
 impl Debug for ShowSchemasPlanNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.fmt_for_explain(f)
+    }
+}
+
+impl Hash for ShowSchemasPlanNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.schema.hash(state);
+        self.like.hash(state);
     }
 }
 
@@ -58,6 +72,22 @@ impl UserDefinedLogicalNode for ShowSchemasPlanNode {
             catalog_name: self.catalog_name.clone(),
             like: self.like.clone(),
         })
+    }
+
+    fn name(&self) -> &str {
+        "ShowSchema"
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        let mut s = state;
+        self.hash(&mut s);
+    }
+
+    fn dyn_eq(&self, other: &dyn UserDefinedLogicalNode) -> bool {
+        match other.as_any().downcast_ref::<Self>() {
+            Some(o) => self == o,
+            None => false,
+        }
     }
 }
 

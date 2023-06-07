@@ -161,6 +161,9 @@ class RexLiteralPlugin(BaseRexPlugin):
         elif literal_type == "IntervalDayTime":
             literal_type = SqlTypeName.INTERVAL_DAY
             literal_value = rex.getIntervalDayTimeValue()
+        elif literal_type == "IntervalMonthDayNano":
+            literal_type = SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND
+            literal_value = rex.getIntervalMonthDayNanoValue()
         elif literal_type in {
             "TimestampSecond",
             "TimestampMillisecond",

@@ -1,4 +1,4 @@
-use datafusion_sql::sqlparser::{ast::ObjectName, parser::ParserError};
+use datafusion_python::datafusion_sql::sqlparser::{ast::ObjectName, parser::ParserError};
 
 pub struct DaskParserUtils;
 
