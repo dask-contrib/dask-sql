@@ -110,11 +110,6 @@ def attempt_predicate_pushdown(
         # Extract a DNF-formatted filter expression
         try:
             extracted_filters = dsk.layers[name]._dnf_filter_expression(dsk)
-            # if extracted_filters and isinstance(extracted_filters, DNF):
-            #     filters = extracted_filters.to_list_tuple()
-            # else:
-            #     # No filters encountered
-            #     return ddf
         except (ValueError, TypeError):
             # DNF dispatching failed for 1+ layers
             logger.warning(
