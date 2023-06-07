@@ -5,6 +5,7 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
+from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -162,10 +163,26 @@ def test_filter_year(c):
         ),
         pytest.param(
             "SELECT * FROM parquet_ddf WHERE b IN (1, 3, 5, 6)",
-            lambda x: x[(x["b"] == 1) | (x["b"] == 3) | (x["b"] == 5) | (x["b"] == 6)],
-            [[("b", "==", 1)], [("b", "==", 3)], [("b", "==", 5)], [("b", "==", 6)]],
-            marks=pytest.mark.xfail(
-                reason="WIP https://github.com/dask-contrib/dask-sql/issues/607"
+            lambda x: x[x["b"].isin([1, 3, 5, 6])],
+            [[("b", "in", (1, 3, 5, 6))]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE c IN ('A', 'B', 'C', 'D')",
+            lambda x: x[x["c"].isin(["A", "B", "C", "D"])],
+            [[("c", "in", ("A", "B", "C", "D"))]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 6)",
+            lambda x: x[(x["b"] != 1) & (x["b"] != 6)],
+            [[("b", "!=", 1), ("b", "!=", 6)]],
+        ),
+        pytest.param(
+            "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 3, 5, 6)",
+            lambda x: x[~x["b"].isin([1, 3, 5, 6])],
+            [[("b", "not in", (1, 3, 5, 6))]],
+            marks=pytest.mark.skipif(
+                not PQ_NOT_IN_SUPPORT,
+                reason="Requires https://github.com/dask/dask/pull/10320",
             ),
         ),
         (
@@ -296,3 +313,55 @@ def test_filter_decimal(c, gpu):
 
     assert_eq(result_df, expected_df, check_index=False)
     c.drop_table("df")
+
+
+@pytest.mark.skipif(
+    not PQ_IS_SUPPORT,
+    reason="Requires https://github.com/dask/dask/pull/10320",
+)
+def test_predicate_pushdown_isna(tmpdir):
+    from dask_sql.context import Context
+
+    c = Context()
+
+    path = str(tmpdir)
+    dd.from_pandas(
+        pd.DataFrame(
+            {
+                "a": [1, 2, None] * 5,
+                "b": range(15),
+                "index": range(15),
+            }
+        ),
+        npartitions=3,
+    ).to_parquet(path + "/df1")
+    df1 = dd.read_parquet(path + "/df1", index="index")
+    c.create_table("df1", df1)
+
+    dd.from_pandas(
+        pd.DataFrame(
+            {
+                "a": [None, 2, 3] * 5,
+                "b": range(15),
+                "index": range(15),
+            },
+        ),
+        npartitions=3,
+    ).to_parquet(path + "/df2")
+    df2 = dd.read_parquet(path + "/df2", index="index")
+    c.create_table("df2", df2)
+
+    return_df = c.sql("SELECT df1.a FROM df1, df2 WHERE df1.a = df2.a")
+
+    # Check for predicate pushdown
+    filters = [[("a", "is not", None)]]
+    got_filters = hlg_layer(return_df.dask, "read-parquet").creation_info["kwargs"][
+        "filters"
+    ]
+
+    got_filters = frozenset(frozenset(v) for v in got_filters)
+    expect_filters = frozenset(frozenset(v) for v in filters)
+
+    assert got_filters == expect_filters
+    assert all(return_df.compute() == 2)
+    assert len(return_df) == 25
