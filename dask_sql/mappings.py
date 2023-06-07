@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Any
 
 import dask.array as da
@@ -121,6 +122,26 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
         )
 
 
+def parse_datetime(obj):
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y",
+    ]
+
+    for f in formats:
+        try:
+            datetime_obj = datetime.strptime(obj, f)
+            return datetime_obj
+        except ValueError:
+            pass
+
+    raise ValueError("Unable to parse datetime: " + obj)
+
+
 def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     """Mapping between SQL and python values (of correct type)."""
     # In most of the cases, we turn the value first into a string.
@@ -191,6 +212,7 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         or sql_type == SqlTypeName.DATE
     ):
         if isinstance(literal_value, str):
+            literal_value = parse_datetime(literal_value)
             literal_value = np.datetime64(literal_value)
         elif str(literal_value) == "None":
             # NULL time

@@ -523,3 +523,18 @@ def test_broadcast_join(c, client, gpu):
     with pytest.raises(KeyError):
         hlg_layer(res_df.dask, "bcast-join")
     assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
+
+
+@pytest.mark.gpu
+def test_null_key_join(c):
+    df1 = pd.DataFrame({"a": [None, None, None, None, None, 1]})
+    df2 = pd.DataFrame({"b": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]})
+    c.create_table("df1", df1, gpu=True)
+    c.create_table("df2", df2, gpu=True)
+
+    result_df = c.sql(
+        "SELECT * FROM (select * from df1 limit 5) JOIN (select * from df2 limit 5) ON a=b"
+    )
+    expected_df = pd.DataFrame({"a": [], "b": []})
+
+    assert_eq(result_df, expected_df)
