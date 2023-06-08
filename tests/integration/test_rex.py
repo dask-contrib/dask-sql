@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT
 from tests.utils import assert_eq
 
 
@@ -1056,7 +1057,19 @@ def test_totimestamp(c, gpu):
     assert_eq(df, expected_df, check_dtype=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=(pytest.mark.gpu))])
+@pytest.mark.parametrize("gpu", [
+    False,
+    pytest.param(
+        True,
+        marks=(
+            pytest.mark.gpu,
+            pytest.mark.skipif(
+                not DASK_CUDF_TODATETIME_SUPPORT,
+                reason="Requires https://github.com/dask/dask/pull/9881"
+            )
+        )
+    )
+])
 def test_scalar_timestamps(c, gpu):
     df = pd.DataFrame({"d": [1203073300, 1503073700]})
     c.create_table("df", df, gpu=gpu)
