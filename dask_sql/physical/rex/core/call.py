@@ -930,10 +930,7 @@ class ExtractOperation(Operation):
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":
-            if is_cudf_type(df):
-                return df.strftime("%Y-%m-%d")
-            else:
-                return dd.to_datetime(df.strftime("%Y-%m-%d"))
+            return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
@@ -1075,7 +1072,7 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
-        "extract_date": DatePartOperation(),
+        "extract_date": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
