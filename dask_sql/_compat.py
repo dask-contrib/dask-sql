@@ -14,3 +14,7 @@ PIPE_INPUT_CONTEXT_MANAGER = _prompt_toolkit_version >= parseVersion("3.0.29")
 
 # TODO: remove when dask min version gets bumped
 BROADCAST_JOIN_SUPPORT_WORKING = _dask_version > parseVersion("2023.1.0")
+
+# Parquet predicate-support version checks
+PQ_NOT_IN_SUPPORT = parseVersion(dask.__version__) > parseVersion("2023.5.1")
+PQ_IS_SUPPORT = parseVersion(dask.__version__) >= parseVersion("2023.3.1")
