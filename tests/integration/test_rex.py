@@ -1076,37 +1076,47 @@ def test_totimestamp(c, gpu):
     ],
 )
 def test_extract_date(c, gpu):
-    df = pd.DataFrame({
-        'a': [1, 2, 3],
-        'b': [4, 5, 6],
-    })
-    df['t'] = [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3],
+            "b": [4, 5, 6],
+        }
+    )
+    df["t"] = [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]
     c.create_table("df", df, gpu=gpu)
 
     result = c.sql("SELECT EXTRACT(DATE FROM t) AS e FROM df")
-    expected_df = pd.DataFrame({"e": [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]})
+    expected_df = pd.DataFrame(
+        {"e": [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]}
+    )
     assert_eq(result, expected_df)
 
     result = c.sql("SELECT * FROM df WHERE EXTRACT(DATE FROM t) > '2021-02-01'")
-    expected_df = pd.DataFrame({
-        "a": [2, 3],
-        "b": [5, 6],
-        "t": [datetime(2022, 2, 2), datetime(2023, 3, 3)],
-    })
+    expected_df = pd.DataFrame(
+        {
+            "a": [2, 3],
+            "b": [5, 6],
+            "t": [datetime(2022, 2, 2), datetime(2023, 3, 3)],
+        }
+    )
     assert_eq(result, expected_df)
 
-    result = c.sql("SELECT * FROM df WHERE EXTRACT(DATE FROM t) BETWEEN '2020-10-01' AND '2022-10-10'")
-    expected_df = pd.DataFrame({
-        "a": [1, 2],
-        "b": [4, 5],
-        "t": [datetime(2021, 1, 1), datetime(2022, 2, 2)]
-    })
+    result = c.sql(
+        "SELECT * FROM df WHERE EXTRACT(DATE FROM t) BETWEEN '2020-10-01' AND '2022-10-10'"
+    )
+    expected_df = pd.DataFrame(
+        {"a": [1, 2], "b": [4, 5], "t": [datetime(2021, 1, 1), datetime(2022, 2, 2)]}
+    )
     assert_eq(result, expected_df)
 
     result = c.sql("SELECT TIMESTAMPADD(YEAR, 1, EXTRACT(DATE FROM t)) AS ta FROM df")
-    expected_df = pd.DataFrame({"ta": [datetime(2022, 1, 1), datetime(2023, 2, 2), datetime(2024, 3, 3)]})
+    expected_df = pd.DataFrame(
+        {"ta": [datetime(2022, 1, 1), datetime(2023, 2, 2), datetime(2024, 3, 3)]}
+    )
     assert_eq(result, expected_df)
 
     result = c.sql("SELECT EXTRACT(DATE FROM t) + INTERVAL '2 days' AS i FROM df")
-    expected_df = pd.DataFrame({"i": [datetime(2021, 1, 3), datetime(2022, 2, 4), datetime(2023, 3, 5)]})
+    expected_df = pd.DataFrame(
+        {"i": [datetime(2021, 1, 3), datetime(2022, 2, 4), datetime(2023, 3, 5)]}
+    )
     assert_eq(result, expected_df)

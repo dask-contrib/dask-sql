@@ -314,7 +314,8 @@ impl ContextProvider for DaskSQLContext {
                     vec![
                         TypeSignature::Exact(vec![DataType::Utf8, DataType::Date64]),
                         TypeSignature::Exact(vec![
-                            DataType::Utf8, DataType::Timestamp(TimeUnit::Nanosecond, None),
+                            DataType::Utf8,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
                         ]),
                     ],
                     Volatility::Immutable,
