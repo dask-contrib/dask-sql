@@ -5,7 +5,7 @@ import pandas as pd
 from dask import config as dask_config
 from dask.utils import M
 
-from dask_sql.utils import is_cudf_type, make_pickable_without_dask_sql
+from dask_sql.utils import is_cudf_type
 
 
 def apply_sort(
@@ -68,7 +68,7 @@ def apply_sort(
         by=sort_columns[0],
         ascending=sort_ascending[0],
         na_position="first" if sort_null_first[0] else "last",
-        sort_function=make_pickable_without_dask_sql(sort_partition_func),
+        sort_function=(sort_partition_func),
         sort_function_kwargs={
             "sort_columns": sort_columns,
             "sort_ascending": sort_ascending,

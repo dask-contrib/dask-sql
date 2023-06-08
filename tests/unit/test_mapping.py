@@ -2,19 +2,28 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from dask_planner.rust import SqlTypeName
 from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 
 def test_python_to_sql():
-    assert python_to_sql_type(np.dtype("int32")).getSqlType() == SqlTypeName.INTEGER
-    assert python_to_sql_type(np.dtype(">M8[ns]")).getSqlType() == SqlTypeName.TIMESTAMP
-    thing = python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
+    assert str(python_to_sql_type(np.dtype("int32"))) == "INTEGER"
+    assert str(python_to_sql_type(np.dtype(">M8[ns]"))) == "TIMESTAMP"
     assert (
-        python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")).getSqlType()
-        == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+        str(python_to_sql_type(pd.DatetimeTZDtype(unit="ns", tz="UTC")))
+        == "TIMESTAMP_WITH_LOCAL_TIME_ZONE"
     )
+
+
+@pytest.mark.gpu
+def test_python_decimal_to_sql():
+    import cudf
+
+    assert str(python_to_sql_type(cudf.Decimal64Dtype(12, 3))) == "DECIMAL"
+    assert str(python_to_sql_type(cudf.Decimal128Dtype(32, 12))) == "DECIMAL"
+    assert str(python_to_sql_type(cudf.Decimal32Dtype(5, -2))) == "DECIMAL"
 
 
 def test_sql_to_python():

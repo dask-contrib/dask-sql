@@ -2,9 +2,12 @@ import os
 
 from dask.dataframe.utils import assert_eq as _assert_eq
 
-# use independent cluster for testing if it's available
-address = os.getenv("DASK_SQL_TEST_SCHEDULER", None)
-scheduler = "sync" if address is None else "distributed"
+# use distributed client for testing if it's available
+scheduler = (
+    "distributed"
+    if os.getenv("DASK_SQL_DISTRIBUTED_TESTS", "False").lower() in ("true", "1")
+    else "sync"
+)
 
 
 def assert_eq(*args, **kwargs):

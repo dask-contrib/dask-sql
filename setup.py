@@ -42,7 +42,8 @@ setup(
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
-        "dask[dataframe,distributed]>=2022.3.0",
+        "dask[dataframe]>=2022.3.0,<=2023.5.1",
+        "distributed>=2022.3.0,<=2023.5.1",
         "pandas>=1.4.0",
         # FIXME: handling is needed for httpx-based fastapi>=0.87.0
         "fastapi>=0.69.0,<0.87.0",
@@ -51,7 +52,6 @@ setup(
         "prompt_toolkit>=3.0.8",
         "pygments>=2.7.1",
         "tabulate",
-        "nest-asyncio",
     ],
     extras_require={
         "dev": [
@@ -63,8 +63,8 @@ setup(
             "scikit-learn>=1.0.0",
             "intake>=0.6.0",
             "pre-commit",
-            "black==22.3.0",
-            "isort==5.7.0",
+            "black==22.10.0",
+            "isort==5.12.0",
         ],
         "fugue": ["fugue>=0.7.3"],
     },

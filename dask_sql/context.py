@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import logging
-import warnings
 from collections import Counter
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -9,7 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
-from dask.distributed import Client
+from dask.utils_test import hlg_layer
 
 from dask_planner.rust import (
     DaskSchema,
@@ -19,6 +18,11 @@ from dask_planner.rust import (
     DFParsingException,
     LogicalPlan,
 )
+
+try:
+    from dask_sql.physical.utils.statistics import parquet_statistics
+except ModuleNotFoundError:
+    parquet_statistics = None
 
 try:
     import dask_cuda  # noqa: F401
@@ -135,10 +139,11 @@ class Context:
         RelConverter.add_plugin_class(custom.AlterTablePlugin, replace=False)
         RelConverter.add_plugin_class(custom.DistributeByPlugin, replace=False)
 
+        RexConverter.add_plugin_class(core.RexAliasPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexCallPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexInputRefPlugin, replace=False)
         RexConverter.add_plugin_class(core.RexLiteralPlugin, replace=False)
-        RexConverter.add_plugin_class(core.RexSubqueryAliasPlugin, replace=False)
+        RexConverter.add_plugin_class(core.RexScalarSubqueryPlugin, replace=False)
 
         InputUtil.add_plugin_class(input_utils.DaskInputPlugin, replace=False)
         InputUtil.add_plugin_class(input_utils.PandasLikeInputPlugin, replace=False)
@@ -219,8 +224,7 @@ class Context:
             persist (:obj:`bool`): Only used when passing a string into the ``input`` parameter.
                 Set to true to turn on loading the file data directly into memory.
             schema_name: (:obj:`str`): in which schema to create the table. By default, will use the currently selected schema.
-            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization. If no
-                statistics are provided, we will just assume 100 rows.
+            statistics: (:obj:`Statistics`): if given, use these statistics during the cost-based optimization.
             gpu: (:obj:`bool`): if set to true, use dask-cudf to run the data frame calculations on your GPU.
                 Please note that the GPU support is currently not covering all of dask-sql's SQL language.
             **kwargs: Additional arguments for specific formats. See :ref:`data_input` for more information.
@@ -229,9 +233,6 @@ class Context:
         logger.debug(
             f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
         )
-        if "file_format" in kwargs:  # pragma: no cover
-            warnings.warn("file_format is renamed to format", DeprecationWarning)
-            format = kwargs.pop("file_format")
 
         schema_name = schema_name or self.schema_name
 
@@ -244,24 +245,32 @@ class Context:
             **kwargs,
         )
 
+        if type(input_table) == str:
+            dc.filepath = input_table
+            self.schema[schema_name].filepaths[table_name.lower()] = input_table
+        elif hasattr(input_table, "dask") and dd.utils.is_dataframe_like(input_table):
+            try:
+                dask_filepath = hlg_layer(
+                    input_table.dask, "read-parquet"
+                ).creation_info["args"][0]
+                dc.filepath = dask_filepath
+                self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
+            except KeyError:
+                logger.debug("Expected 'read-parquet' layer")
+
+        if parquet_statistics and not statistics:
+            statistics = parquet_statistics(dc.df)
+            if statistics:
+                row_count = 0
+                for d in statistics:
+                    row_count += d["num-rows"]
+                statistics = Statistics(row_count)
+        if not statistics:
+            statistics = Statistics(float("nan"))
+        dc.statistics = statistics
+
         self.schema[schema_name].tables[table_name.lower()] = dc
-        if statistics:
-            self.schema[schema_name].statistics[table_name.lower()] = statistics
-
-        # Register the table with the Rust DaskSQLContext
-        self.context.register_table(
-            schema_name, DaskTable(schema_name, table_name, 100)
-        )
-
-    def register_dask_table(self, df: dd.DataFrame, name: str, *args, **kwargs):
-        """
-        Outdated version of :func:`create_table()`.
-        """
-        warnings.warn(
-            "register_dask_table is deprecated, use the more general create_table instead.",
-            DeprecationWarning,
-        )
-        return self.create_table(name, df, *args, **kwargs)
+        self.schema[schema_name].statistics[table_name.lower()] = statistics
 
     def drop_table(self, table_name: str, schema_name: str = None):
         """
@@ -464,11 +473,14 @@ class Context:
         operations are already implemented.
         In general, only select statements (no data manipulation) works.
         For more information, see :ref:`sql`.
+
         Example:
             In this example, a query is called
             using the registered tables and then
             executed using dask.
+
             .. code-block:: python
+
                 result = c.sql("SELECT a, b FROM my_table")
                 print(result.compute())
         Args:
@@ -664,14 +676,7 @@ class Context:
             self, auto_include=auto_include, disable_highlighting=disable_highlighting
         )
 
-    def run_server(
-        self,
-        client: Client = None,
-        host: str = "0.0.0.0",
-        port: int = 8080,
-        log_level=None,
-        blocking: bool = True,
-    ):  # pragma: no cover
+    def run_server(self, **kwargs):  # pragma: no cover
         """
         Run a HTTP server for answering SQL queries using ``dask-sql``.
 
@@ -686,14 +691,7 @@ class Context:
         from dask_sql.server.app import run_server
 
         self.stop_server()
-        self.server = run_server(
-            context=self,
-            client=client,
-            host=host,
-            port=port,
-            log_level=log_level,
-            blocking=blocking,
-        )
+        self.server = run_server(**kwargs)
 
     def stop_server(self):  # pragma: no cover
         """
@@ -747,13 +745,20 @@ class Context:
                     else float(0)
                 )
 
-                table = DaskTable(schema_name, name, row_count)
+                filepath = schema.filepaths[name] if name in schema.filepaths else None
                 df = dc.df
-
-                for column in df.columns:
-                    data_type = df[column].dtype
-                    sql_data_type = python_to_sql_type(data_type)
-                    table.add_column(column, sql_data_type)
+                columns = df.columns
+                cc = dc.column_container
+                if not dask_config.get("sql.identifier.case_sensitive"):
+                    columns = [col.lower() for col in columns]
+                    cc = cc.rename_handle_duplicates(df.columns, columns)
+                    dc.column_container = cc
+                column_type_mapping = list(
+                    zip(columns, map(python_to_sql_type, df.dtypes))
+                )
+                table = DaskTable(
+                    schema_name, name, row_count, column_type_mapping, filepath
+                )
 
                 rust_schema.add_table(table)
 

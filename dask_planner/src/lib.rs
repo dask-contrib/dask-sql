@@ -1,4 +1,4 @@
-use mimalloc::MiMalloc;
+use log::debug;
 use pyo3::prelude::*;
 
 mod dialect;
@@ -7,9 +7,6 @@ mod expression;
 mod parser;
 mod sql;
 
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
 /// Low-level DataFusion internal package.
 ///
 /// The higher-level public API is defined in pure python files under the
@@ -17,6 +14,9 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pymodule]
 #[pyo3(name = "rust")]
 fn rust(py: Python, m: &PyModule) -> PyResult<()> {
+    // Initialize the global Python logger instance
+    pyo3_log::init();
+
     // Register the python classes
     m.add_class::<expression::PyExpr>()?;
     m.add_class::<sql::DaskSQLContext>()?;
@@ -40,6 +40,8 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
         "DFOptimizationException",
         py.get_type::<sql::exceptions::OptimizationException>(),
     )?;
+
+    debug!("dask_planner Python module loaded");
 
     Ok(())
 }

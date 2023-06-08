@@ -1,5 +1,14 @@
-use datafusion_common::ScalarValue;
-use datafusion_expr::{logical_plan::Window, Expr, LogicalPlan, WindowFrame, WindowFrameBound};
+use datafusion_python::{
+    datafusion_common::ScalarValue,
+    datafusion_expr::{
+        expr::WindowFunction,
+        logical_plan::Window,
+        Expr,
+        LogicalPlan,
+        WindowFrame,
+        WindowFrameBound,
+    },
+};
 use pyo3::prelude::*;
 
 use crate::{
@@ -61,7 +70,9 @@ impl PyWindow {
     #[pyo3(name = "getSortExprs")]
     pub fn get_sort_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { order_by, .. } => py_expr_list(&self.window.input, &order_by),
+            Expr::WindowFunction(WindowFunction { order_by, .. }) => {
+                py_expr_list(&self.window.input, &order_by)
+            }
             other => Err(not_window_function_err(other)),
         }
     }
@@ -70,7 +81,7 @@ impl PyWindow {
     #[pyo3(name = "getPartitionExprs")]
     pub fn get_partition_exprs(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { partition_by, .. } => {
+            Expr::WindowFunction(WindowFunction { partition_by, .. }) => {
                 py_expr_list(&self.window.input, &partition_by)
             }
             other => Err(not_window_function_err(other)),
@@ -81,7 +92,9 @@ impl PyWindow {
     #[pyo3(name = "getArgs")]
     pub fn get_args(&self, expr: PyExpr) -> PyResult<Vec<PyExpr>> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { args, .. } => py_expr_list(&self.window.input, &args),
+            Expr::WindowFunction(WindowFunction { args, .. }) => {
+                py_expr_list(&self.window.input, &args)
+            }
             other => Err(not_window_function_err(other)),
         }
     }
@@ -90,7 +103,7 @@ impl PyWindow {
     #[pyo3(name = "getWindowFuncName")]
     pub fn window_func_name(&self, expr: PyExpr) -> PyResult<String> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { fun, .. } => Ok(fun.to_string()),
+            Expr::WindowFunction(WindowFunction { fun, .. }) => Ok(fun.to_string()),
             other => Err(not_window_function_err(other)),
         }
     }
@@ -99,9 +112,7 @@ impl PyWindow {
     #[pyo3(name = "getWindowFrame")]
     pub fn get_window_frame(&self, expr: PyExpr) -> Option<PyWindowFrame> {
         match expr.expr.unalias() {
-            Expr::WindowFunction { window_frame, .. } => {
-                window_frame.map(|window_frame| window_frame.into())
-            }
+            Expr::WindowFunction(WindowFunction { window_frame, .. }) => Some(window_frame.into()),
             _ => None,
         }
     }
@@ -156,13 +167,27 @@ impl PyWindowFrameBound {
     /// Returns the offset of the window frame
     #[pyo3(name = "getOffset")]
     pub fn get_offset(&self) -> PyResult<Option<u64>> {
-        match self.frame_bound {
-            WindowFrameBound::Preceding(ScalarValue::UInt64(val))
-            | WindowFrameBound::Following(ScalarValue::UInt64(val)) => Ok(val),
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
-                    .into(),
-            ),
+        match &self.frame_bound {
+            WindowFrameBound::Preceding(val) | WindowFrameBound::Following(val) => match val {
+                x if x.is_null() => Ok(None),
+                ScalarValue::UInt64(v) => Ok(*v),
+                // The cast below is only safe because window bounds cannot be negative
+                ScalarValue::Int64(v) => Ok(v.map(|n| n as u64)),
+                ScalarValue::Utf8(v) => {
+                    let s = v.clone().unwrap();
+                    match s.parse::<u64>() {
+                        Ok(s) => Ok(Some(s)),
+                        Err(_e) => Err(DaskPlannerError::Internal(format!(
+                            "Unable to parse u64 from Utf8 value '{s}'"
+                        ))
+                        .into()),
+                    }
+                }
+                ref x => Err(DaskPlannerError::Internal(format!(
+                    "Unexpected window frame bound: {x}"
+                ))
+                .into()),
+            },
             WindowFrameBound::CurrentRow => Ok(None),
         }
     }
@@ -170,12 +195,7 @@ impl PyWindowFrameBound {
     #[pyo3(name = "isUnbounded")]
     pub fn is_unbounded(&self) -> PyResult<bool> {
         match &self.frame_bound {
-            WindowFrameBound::Preceding(ScalarValue::UInt64(v))
-            | WindowFrameBound::Following(ScalarValue::UInt64(v)) => Ok(v.is_none()),
-            WindowFrameBound::Preceding(ref x) | WindowFrameBound::Following(ref x) => Err(
-                DaskPlannerError::Internal(format!("Unexpected window frame bound: {:?}", x))
-                    .into(),
-            ),
+            WindowFrameBound::Preceding(v) | WindowFrameBound::Following(v) => Ok(v.is_null()),
             WindowFrameBound::CurrentRow => Ok(false),
         }
     }

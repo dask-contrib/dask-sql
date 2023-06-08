@@ -1,6 +1,5 @@
 # Copyright 2017, Dask developers
 # Dask-ML project - https://github.com/dask/dask-ml
-import os
 from collections.abc import Sequence
 
 import dask
@@ -17,6 +16,27 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 
 from dask_sql.physical.rel.custom.wrappers import Incremental, ParallelPostFit
+
+
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_ml_class_mappings(gpu):
+    from dask_sql.physical.utils.ml_classes import get_cpu_classes, get_gpu_classes
+    from dask_sql.utils import import_class
+
+    try:
+        import lightgbm
+        import xgboost
+    except KeyError:
+        lightgbm = None
+        xgboost = None
+
+    classes_dict = get_gpu_classes() if gpu else get_cpu_classes()
+
+    for key in classes_dict:
+        if not ("XGB" in key and xgboost is None) and not (
+            "LGBM" in key and lightgbm is None
+        ):
+            import_class(classes_dict[key])
 
 
 def _check_axis_partitioning(chunks, n_features):
@@ -124,12 +144,6 @@ def assert_estimator_equal(left, right, exclude=None, **kwargs):
         _assert_eq(l, r, name=attr, **kwargs)
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-# this test failure shuts down the cluster and must be skipped instead of xfailed
-@pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
 def test_parallelpostfit_basic():
     clf = ParallelPostFit(GradientBoostingClassifier())
 
@@ -201,12 +215,6 @@ def test_transform(kind):
     assert_eq_ar(result, expected)
 
 
-# TODO - many ML tests fail on clusters without sklearn - can we avoid this?
-# this test failure shuts down the cluster and must be skipped instead of xfailed
-@pytest.mark.skipif(
-    os.getenv("DASK_SQL_TEST_SCHEDULER", None) is not None,
-    reason="Can not run with external cluster",
-)
 @pytest.mark.parametrize("dataframes", [False, True])
 def test_incremental_basic(dataframes):
     # Create observations that we know linear models can recover

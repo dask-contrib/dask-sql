@@ -171,6 +171,22 @@ class ColumnContainer:
         )
 
 
+class Statistics:
+    """
+    Statistics are used during the cost-based optimization.
+    Currently, only the row count is supported, more
+    properties might follow. It needs to be provided by the user.
+    """
+
+    def __init__(self, row_count: int) -> None:
+        self.row_count = row_count
+
+    def __eq__(self, other):
+        if isinstance(other, Statistics):
+            return self.row_count == other.row_count
+        return False
+
+
 class DataContainer:
     """
     In SQL, every column operation or reference is done via
@@ -186,9 +202,17 @@ class DataContainer:
     and "backend" (what dask has).
     """
 
-    def __init__(self, df: dd.DataFrame, column_container: ColumnContainer):
+    def __init__(
+        self,
+        df: dd.DataFrame,
+        column_container: ColumnContainer,
+        statistics: Statistics = None,
+        filepath: str = None,
+    ):
         self.df = df
         self.column_container = column_container
+        self.statistics = statistics
+        self.filepath = filepath
 
     def assign(self) -> dd.DataFrame:
         """
@@ -254,17 +278,6 @@ class UDF:
         return (self.func, self.row_udf).__hash__()
 
 
-class Statistics:
-    """
-    Statistics are used during the cost-based optimization.
-    Currently, only the row count is supported, more
-    properties might follow. It needs to be provided by the user.
-    """
-
-    def __init__(self, row_count: int) -> None:
-        self.row_count = row_count
-
-
 class SchemaContainer:
     def __init__(self, name: str):
         self.__name__ = name
@@ -274,3 +287,4 @@ class SchemaContainer:
         self.models: Dict[str, Tuple[Any, List[str]]] = {}
         self.functions: Dict[str, UDF] = {}
         self.function_lists: List[FunctionDescription] = []
+        self.filepaths: Dict[str, str] = {}

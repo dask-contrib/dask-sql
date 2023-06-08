@@ -5,9 +5,11 @@ from functools import reduce
 from typing import TYPE_CHECKING, List, Tuple
 
 import dask.dataframe as dd
+from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
+from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -84,17 +86,27 @@ class DaskJoinPlugin(BaseRelPlugin):
         # known solution so far.
 
         join_condition = join.getCondition()
-        lhs_on, rhs_on, filter_condition = self._split_join_condition(join_condition)
+        lhs_on, rhs_on, filter_condition = None, None, None
+        # A user can write certain queries that really should be `cross join` queries
+        # that will still enter this portion of the logic. IF the join_condition is
+        # None that means there are no conditions to join on. This means a cross join.
+        # By not entering this body during that condition we ensure that later on in
+        # processing we perform a cross join.
+        if join_condition is not None:
+            lhs_on, rhs_on, filter_condition = self._split_join_condition(
+                join_condition
+            )
 
-        # lhs_on and rhs_on are the indices of the columns to merge on.
-        # The given column indices are for the full, merged table which consists
-        # of lhs and rhs put side-by-side (in this order)
-        # We therefore need to normalize the rhs indices relative to the rhs table.
-        rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
+            # lhs_on and rhs_on are the indices of the columns to merge on.
+            # The given column indices are for the full, merged table which consists
+            # of lhs and rhs put side-by-side (in this order)
+            # We therefore need to normalize the rhs indices relative to the rhs table.
+            rhs_on = [index - len(df_lhs_renamed.columns) for index in rhs_on]
 
-        # 4. dask can only merge on the same column names.
-        # We therefore create new columns on purpose, which have a distinct name.
-        assert len(lhs_on) == len(rhs_on)
+            # 4. dask can only merge on the same column names.
+            # We therefore create new columns on purpose, which have a distinct name.
+            assert len(lhs_on) == len(rhs_on)
+
         if lhs_on:
             # 5. Now we can finally merge on these columns
             # The resulting dataframe will contain all (renamed) columns from the lhs and rhs
@@ -205,15 +217,6 @@ class DaskJoinPlugin(BaseRelPlugin):
         join_type: str,
     ) -> dd.DataFrame:
 
-        lhs_columns_to_add = {
-            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
-            for i, index in enumerate(lhs_on)
-        }
-        rhs_columns_to_add = {
-            f"common_{i}": df_rhs_renamed.iloc[:, index]
-            for i, index in enumerate(rhs_on)
-        }
-
         # SQL compatibility: when joining on columns that
         # contain NULLs, pandas will actually happily
         # keep those NULLs. That is however not compatible with
@@ -231,12 +234,33 @@ class DaskJoinPlugin(BaseRelPlugin):
             )
             df_rhs_renamed = df_rhs_renamed[df_rhs_filter]
 
+        lhs_columns_to_add = {
+            f"common_{i}": df_lhs_renamed["lhs_" + str(index)]
+            for i, index in enumerate(lhs_on)
+        }
+        rhs_columns_to_add = {
+            f"common_{i}": df_rhs_renamed.iloc[:, index]
+            for i, index in enumerate(rhs_on)
+        }
+
         df_lhs_with_tmp = df_lhs_renamed.assign(**lhs_columns_to_add)
         df_rhs_with_tmp = df_rhs_renamed.assign(**rhs_columns_to_add)
         added_columns = list(lhs_columns_to_add.keys())
 
-        df = dd.merge(
-            df_lhs_with_tmp, df_rhs_with_tmp, on=added_columns, how=join_type
+        broadcast = dask_config.get("sql.join.broadcast")
+        if not BROADCAST_JOIN_SUPPORT_WORKING and (
+            isinstance(broadcast, float) or broadcast
+        ):
+            warnings.warn(
+                "Broadcast Joins may not work as expected with dask<2023.1.1"
+                "For more information refer to https://github.com/dask/dask/issues/9851"
+                " and https://github.com/dask/dask/issues/9870"
+            )
+        df = df_lhs_with_tmp.merge(
+            df_rhs_with_tmp,
+            on=added_columns,
+            how=join_type,
+            broadcast=broadcast,
         ).drop(columns=added_columns)
 
         return df

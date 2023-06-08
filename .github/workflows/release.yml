@@ -2,6 +2,18 @@ name: Upload Python package
 on:
   release:
     types: [created]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+
+# When this workflow is queued, automatically cancel any previous running
+# or pending jobs from the same branch
+concurrency:
+  group: release-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  upload: ${{ github.event_name == 'release' && github.repository == 'dask-contrib/dask-sql' }}
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
@@ -9,8 +21,8 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  build:
-    name: build py3.${{ matrix.python }} on ${{ matrix.os }}
+  wheels:
+    name: Build and publish py3.${{ matrix.python }} wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,13 +33,19 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up QEMU for linux aarch64
-        if: contains(matrix.os, 'ubuntu')
+      - name: Install Protoc
+        if: matrix.os != 'ubuntu-latest'
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up QEMU for linux-aarch64
+        if: matrix.os == 'ubuntu-latest'
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
-      - name: Add arm64 target for macos
-        if: contains(matrix.os, 'macos')
+      - name: Add rust toolchain target for macos-aarch64
+        if: matrix.os == 'macos-latest'
         run: rustup target add aarch64-apple-darwin
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.3
@@ -37,13 +55,21 @@ jobs:
           CIBW_ARCHS_LINUX: 'aarch64 x86_64'
           CIBW_ARCHS_WINDOWS: 'AMD64'
           CIBW_ARCHS_MACOS: 'x86_64 arm64'
-          CIBW_ENVIRONMENT_LINUX: 'CARGO_NET_GIT_FETCH_WITH_CLI="true" PATH="$HOME/.cargo/bin:$PATH"'
           # Without CARGO_NET_GIT_FETCH_WITH_CLI we oom (https://github.com/rust-lang/cargo/issues/10583)
+          CIBW_ENVIRONMENT_LINUX: >
+            CARGO_NET_GIT_FETCH_WITH_CLI="true"
+            PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
           CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
           CIBW_BEFORE_BUILD_LINUX: >
+            ARCH=$([ $(uname -m) == x86_64 ] && echo x86_64 || echo aarch_64) &&
+            DOWNLOAD_URL=$(curl --retry 6 --retry-delay 10 -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-${ARCH}.zip$") &&
+            curl --retry 6 --retry-delay 10 -LO $DOWNLOAD_URL &&
+            unzip protoc-*-linux-$ARCH.zip -d $HOME/.local &&
+            protoc --version &&
             pip install -U setuptools-rust &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
+            pip list &&
+            curl --retry 6 --retry-delay 10 https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
             rustup show
         with:
           package-dir: .
@@ -56,12 +82,18 @@ jobs:
           use-mamba: true
           python-version: "3.8"
           channel-priority: strict
-      - name: Build source distribution
-        if: contains(matrix.os, 'ubuntu') && matrix.python == '8'
+      # FIXME: aarch64 builds require glibc>=2.32 to prevent TLS allocation error when importing;
+      # is there any way we could modify the TLS model of its shared object to avoid this?
+      # https://bugzilla.redhat.com/show_bug.cgi?id=1722181
+      # xref: https://github.com/dask-contrib/dask-sql/issues/1169
+      - name: Update platform tag for aarch64 wheel
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install setuptools-rust
+          mamba install wheel
 
-          python setup.py sdist
+          wheel tags --platform-tag=manylinux_2_32_aarch64 \
+                     --remove \
+                     dist/*_aarch64.whl
       - name: Check dist files
         run: |
           mamba install twine
@@ -74,6 +106,36 @@ jobs:
           name: wheels for py3.${{ matrix.python }} on ${{ matrix.os }}
           path: dist/*
       - name: Publish package
+        if: env.upload == 'true'
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: twine upload dist/*
+  sdist:
+    name: Build and publish source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2.2.0
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          python-version: "3.8"
+          channel-priority: strict
+      - name: Build source distribution
+        run: |
+          mamba install setuptools-rust twine
+
+          python setup.py sdist
+      - name: Check dist files
+        run: |
+          twine check dist/*
+          ls -lh dist/
+      - name: Publish source distribution
+        if: env.upload == 'true'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
