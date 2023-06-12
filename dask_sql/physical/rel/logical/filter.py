@@ -39,7 +39,7 @@ def filter_or_scalar(
     filter_condition = filter_condition.fillna(False)
     out = df[filter_condition]
     if dask_config.get("sql.predicate_pushdown"):
-        return attempt_predicate_pushdown(out, add_filters)
+        return attempt_predicate_pushdown(out, add_filters=add_filters)
     else:
         return out
 
