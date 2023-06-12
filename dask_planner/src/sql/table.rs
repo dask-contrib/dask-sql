@@ -51,7 +51,6 @@ impl DaskTableSource {
     }
 
     /// Access optional filepath associated with this table source
-    #[allow(dead_code)]
     pub fn filepath(&self) -> Option<&String> {
         self.filepath.as_ref()
     }
