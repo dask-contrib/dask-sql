@@ -7,7 +7,7 @@ channels:
 - nodefaults
 dependencies:
 - c-compiler
-- dask>=2022.3.0
+- dask>=2022.3.0,<=2023.5.1
 # FIXME: handling is needed for httpx-based fastapi>=0.87.0
 - fastapi>=0.69.0,<0.87.0
 - fugue>=0.7.3
@@ -39,10 +39,10 @@ dependencies:
 - uvicorn>=0.13.4
 # GPU-specific requirements
 - cudatoolkit=11.5
-- cudf=23.06
-- cuml=23.06
-- dask-cudf=23.06
-- dask-cuda=23.06
+- cudf=23.08
+- cuml=23.08
+- dask-cudf=23.08
+- dask-cuda=23.08
 - ucx-proc=*=gpu
-- ucx-py=0.32
-- xgboost=*rapidsai23.06
+- ucx-py=0.33
+- xgboost=*rapidsai23.08

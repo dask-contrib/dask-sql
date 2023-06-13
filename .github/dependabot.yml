@@ -18,6 +18,5 @@ updates:
       # Check for updates to GitHub Actions every weekday
       interval: "weekly"
     ignore:
-      # ignore cibw patch updates
+      # prefer updating cibuildwheel manually as needed
       - dependency-name: "pypa/cibuildwheel"
-        update-types: ["version-update:semver-patch"]
