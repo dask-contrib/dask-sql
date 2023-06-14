@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use datafusion_python::{
     datafusion_common::{DFSchema, ScalarValue},
-    datafusion_expr::{logical_plan::TableScan, Expr, LogicalPlan},
+    datafusion_expr::{expr::InList, logical_plan::TableScan, Expr, LogicalPlan},
 };
 use pyo3::prelude::*;
 
@@ -50,11 +50,11 @@ impl PyTableScan {
         let mut filter_tuple: Vec<(String, String, Vec<PyObject>)> = Vec::new();
 
         match filter {
-            Expr::InList {
+            Expr::InList(InList {
                 expr,
                 list,
                 negated,
-            } => {
+            }) => {
                 // Only handle simple Expr(s) for InList operations for now
                 if PyTableScan::_valid_expr_type(list) {
                     // While ANSI SQL would not allow for anything other than a Column or Literal

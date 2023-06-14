@@ -1,5 +1,5 @@
 use datafusion_python::datafusion_expr::{
-    expr::AggregateFunction,
+    expr::{AggregateFunction, AggregateUDF},
     logical_plan::{Aggregate, Distinct},
     Expr,
     LogicalPlan,
@@ -75,7 +75,7 @@ impl PyAggregate {
         match expr {
             Expr::Alias(expr, _) => self._aggregation_arguments(expr.as_ref()),
             Expr::AggregateFunction(AggregateFunction { fun: _, args, .. })
-            | Expr::AggregateUDF { fun: _, args, .. } => match &self.aggregate {
+            | Expr::AggregateUDF(AggregateUDF { fun: _, args, .. }) => match &self.aggregate {
                 Some(e) => py_expr_list(&e.input, args),
                 None => Ok(vec![]),
             },
@@ -90,7 +90,7 @@ fn _agg_func_name(expr: &Expr) -> PyResult<String> {
     match expr {
         Expr::Alias(expr, _) => _agg_func_name(expr.as_ref()),
         Expr::AggregateFunction(AggregateFunction { fun, .. }) => Ok(fun.to_string()),
-        Expr::AggregateUDF { fun, .. } => Ok(fun.name.clone()),
+        Expr::AggregateUDF(AggregateUDF { fun, .. }) => Ok(fun.name.clone()),
         _ => Err(py_type_err(
             "Encountered a non Aggregate type in agg_func_name",
         )),

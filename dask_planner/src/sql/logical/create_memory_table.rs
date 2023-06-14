@@ -1,5 +1,6 @@
 use datafusion_python::datafusion_expr::{
     logical_plan::{CreateMemoryTable, CreateView},
+    DdlStatement,
     LogicalPlan,
 };
 use pyo3::prelude::*;
@@ -85,13 +86,13 @@ impl TryFrom<LogicalPlan> for PyCreateMemoryTable {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         Ok(match logical_plan {
-            LogicalPlan::CreateMemoryTable(create_memory_table) => PyCreateMemoryTable {
-                create_memory_table: Some(create_memory_table),
+            LogicalPlan::Ddl(DdlStatement::CreateMemoryTable(cmt)) => PyCreateMemoryTable {
+                create_memory_table: Some(cmt),
                 create_view: None,
             },
-            LogicalPlan::CreateView(create_view) => PyCreateMemoryTable {
+            LogicalPlan::Ddl(DdlStatement::CreateView(cv)) => PyCreateMemoryTable {
                 create_memory_table: None,
-                create_view: Some(create_view),
+                create_view: Some(cv),
             },
             _ => return Err(py_type_err("unexpected plan")),
         })

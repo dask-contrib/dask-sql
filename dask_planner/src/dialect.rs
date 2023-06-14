@@ -77,6 +77,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 Token::Word(w) if w.value.to_lowercase() == "floor" => {
@@ -108,6 +109,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 Token::Word(w) if w.value.to_lowercase() == "timestampadd" => {
@@ -136,6 +138,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 Token::Word(w) if w.value.to_lowercase() == "timestampdiff" => {
@@ -163,6 +166,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 Token::Word(w) if w.value.to_lowercase() == "to_timestamp" => {
@@ -192,6 +196,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 _ => Ok(None),

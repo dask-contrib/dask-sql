@@ -4,8 +4,6 @@ use datafusion_python::{
     datafusion_common::DataFusionError,
     datafusion_expr::LogicalPlan,
     datafusion_optimizer::{
-        decorrelate_where_exists::DecorrelateWhereExists,
-        decorrelate_where_in::DecorrelateWhereIn,
         eliminate_cross_join::EliminateCrossJoin,
         eliminate_limit::EliminateLimit,
         eliminate_outer_join::EliminateOuterJoin,
@@ -43,8 +41,6 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
-            Arc::new(DecorrelateWhereExists::new()),
-            Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
             //Arc::new(ExtractEquijoinPredicate::new()),
 

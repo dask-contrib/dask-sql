@@ -37,7 +37,7 @@ pub mod window;
 
 use datafusion_python::{
     datafusion_common::{DFSchemaRef, DataFusionError},
-    datafusion_expr::LogicalPlan,
+    datafusion_expr::{DdlStatement, LogicalPlan},
 };
 use pyo3::prelude::*;
 
@@ -315,18 +315,19 @@ impl PyLogicalPlan {
             LogicalPlan::TableScan(_table_scan) => "TableScan",
             LogicalPlan::EmptyRelation(_empty_relation) => "EmptyRelation",
             LogicalPlan::Limit(_limit) => "Limit",
-            LogicalPlan::CreateExternalTable(_create_external_table) => "CreateExternalTable",
-            LogicalPlan::CreateMemoryTable(_create_memory_table) => "CreateMemoryTable",
-            LogicalPlan::DropTable(_drop_table) => "DropTable",
-            LogicalPlan::DropView(_drop_view) => "DropView",
+            LogicalPlan::Ddl(DdlStatement::CreateExternalTable { .. }) => "CreateExternalTable",
+            LogicalPlan::Ddl(DdlStatement::CreateMemoryTable { .. }) => "CreateMemoryTable",
+            LogicalPlan::Ddl(DdlStatement::DropTable { .. }) => "DropTable",
+            LogicalPlan::Ddl(DdlStatement::DropView { .. }) => "DropView",
             LogicalPlan::Values(_values) => "Values",
             LogicalPlan::Explain(_explain) => "Explain",
             LogicalPlan::Analyze(_analyze) => "Analyze",
             LogicalPlan::Subquery(_sub_query) => "Subquery",
             LogicalPlan::SubqueryAlias(_sqalias) => "SubqueryAlias",
-            LogicalPlan::CreateCatalogSchema(_create) => "CreateCatalogSchema",
-            LogicalPlan::CreateCatalog(_create_catalog) => "CreateCatalog",
-            LogicalPlan::CreateView(_create_view) => "CreateView",
+            LogicalPlan::Ddl(DdlStatement::CreateCatalogSchema { .. }) => "CreateCatalogSchema",
+            LogicalPlan::Ddl(DdlStatement::DropCatalogSchema { .. }) => "DropCatalogSchema",
+            LogicalPlan::Ddl(DdlStatement::CreateCatalog { .. }) => "CreateCatalog",
+            LogicalPlan::Ddl(DdlStatement::CreateView { .. }) => "CreateView",
             LogicalPlan::Statement(_) => "Statement",
             // Further examine and return the name that is a possible Dask-SQL Extension type
             LogicalPlan::Extension(extension) => {

@@ -4,7 +4,20 @@ use datafusion_python::{
     datafusion::arrow::datatypes::DataType,
     datafusion_common::{Column, DFField, DFSchema, ScalarValue},
     datafusion_expr::{
-        expr::{AggregateFunction, BinaryExpr, Cast, Sort, TryCast, WindowFunction},
+        expr::{
+            AggregateFunction,
+            AggregateUDF,
+            BinaryExpr,
+            Cast,
+            Exists,
+            InList,
+            InSubquery,
+            ScalarFunction,
+            ScalarUDF,
+            Sort,
+            TryCast,
+            WindowFunction,
+        },
         lit,
         utils::exprlist_to_fields,
         Between,
@@ -330,15 +343,15 @@ impl PyExpr {
             | Expr::Cast(Cast { expr, .. })
             | Expr::TryCast(TryCast { expr, .. })
             | Expr::Sort(Sort { expr, .. })
-            | Expr::InSubquery { expr, .. } => {
+            | Expr::InSubquery(InSubquery { expr, .. }) => {
                 Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
             }
 
             // Expr variants containing a collection of Expr(s) for operands
             Expr::AggregateFunction(AggregateFunction { args, .. })
-            | Expr::AggregateUDF { args, .. }
-            | Expr::ScalarFunction { args, .. }
-            | Expr::ScalarUDF { args, .. }
+            | Expr::AggregateUDF(AggregateUDF { args, .. })
+            | Expr::ScalarFunction(ScalarFunction { args, .. })
+            | Expr::ScalarUDF(ScalarUDF { args, .. })
             | Expr::WindowFunction(WindowFunction { args, .. }) => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
@@ -377,7 +390,7 @@ impl PyExpr {
 
                 Ok(operands)
             }
-            Expr::InList { expr, list, .. } => {
+            Expr::InList(InList { expr, list, .. }) => {
                 let mut operands: Vec<PyExpr> =
                     vec![PyExpr::from(*expr.clone(), self.input_plan.clone())];
                 for list_elem in list {
@@ -435,8 +448,8 @@ impl PyExpr {
                 op,
                 right: _,
             }) => format!("{op}"),
-            Expr::ScalarFunction { fun, args: _ } => format!("{fun}"),
-            Expr::ScalarUDF { fun, .. } => fun.name.clone(),
+            Expr::ScalarFunction(ScalarFunction { fun, args: _ }) => format!("{fun}"),
+            Expr::ScalarUDF(ScalarUDF { fun, .. }) => fun.name.clone(),
             Expr::Cast { .. } => "cast".to_string(),
             Expr::Between { .. } => "between".to_string(),
             Expr::Case { .. } => "case".to_string(),
@@ -557,7 +570,7 @@ impl PyExpr {
                 ScalarValue::Struct(..) => "Struct",
                 ScalarValue::FixedSizeBinary(_, _) => "FixedSizeBinary",
             },
-            Expr::ScalarFunction { fun, args: _ } => match fun {
+            Expr::ScalarFunction(ScalarFunction { fun, args: _ }) => match fun {
                 BuiltinScalarFunction::Abs => "Abs",
                 BuiltinScalarFunction::DatePart => "DatePart",
                 _ => {
@@ -639,7 +652,7 @@ impl PyExpr {
         match &self.expr {
             Expr::Alias(expr, _) => match expr.as_ref() {
                 Expr::AggregateFunction(AggregateFunction { filter, .. })
-                | Expr::AggregateUDF { filter, .. } => match filter {
+                | Expr::AggregateUDF(AggregateUDF { filter, .. }) => match filter {
                     Some(filter) => {
                         Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
                     }
@@ -650,7 +663,7 @@ impl PyExpr {
                 )),
             },
             Expr::AggregateFunction(AggregateFunction { filter, .. })
-            | Expr::AggregateUDF { filter, .. } => match filter {
+            | Expr::AggregateUDF(AggregateUDF { filter, .. }) => match filter {
                 Some(filter) => Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone()))),
                 None => Ok(None),
             },
@@ -739,7 +752,10 @@ impl PyExpr {
             ScalarValue::TimestampNanosecond(iv, tz)
             | ScalarValue::TimestampMicrosecond(iv, tz)
             | ScalarValue::TimestampMillisecond(iv, tz)
-            | ScalarValue::TimestampSecond(iv, tz) => Ok((*iv, tz.clone())),
+            | ScalarValue::TimestampSecond(iv, tz) => match tz {
+                Some(time_zone) => Ok((*iv, Some(time_zone.to_string()))),
+                None => Ok((*iv, None)),
+            },
             other => Err(unexpected_literal_value(other)),
         }
     }
@@ -790,9 +806,9 @@ impl PyExpr {
     pub fn is_negated(&self) -> PyResult<bool> {
         match &self.expr {
             Expr::Between(Between { negated, .. })
-            | Expr::Exists { negated, .. }
-            | Expr::InList { negated, .. }
-            | Expr::InSubquery { negated, .. } => Ok(*negated),
+            | Expr::Exists(Exists { negated, .. })
+            | Expr::InList(InList { negated, .. })
+            | Expr::InSubquery(InSubquery { negated, .. }) => Ok(*negated),
             _ => Err(py_type_err(format!(
                 "unknown Expr type {:?} encountered",
                 &self.expr

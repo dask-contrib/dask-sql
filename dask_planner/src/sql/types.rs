@@ -1,6 +1,8 @@
 pub mod rel_data_type;
 pub mod rel_data_type_field;
 
+use std::sync::Arc;
+
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, IntervalUnit, TimeUnit},
     datafusion_sql::sqlparser::{ast::DataType as SQLType, parser::Parser, tokenizer::Tokenizer},
@@ -54,10 +56,12 @@ impl DaskTypeMap {
             SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
                 let (unit, tz) = match py_kwargs {
                     Some(dict) => {
-                        let tz: Option<String> = match dict.get_item("tz") {
+                        let tz: Option<Arc<str>> = match dict.get_item("tz") {
                             Some(e) => {
                                 let res: PyResult<String> = e.extract();
-                                Some(res.unwrap())
+                                Some(Arc::from(<std::string::String as AsRef<str>>::as_ref(
+                                    &res.unwrap(),
+                                )))
                             }
                             None => None,
                         };
@@ -85,10 +89,12 @@ impl DaskTypeMap {
             SqlTypeName::TIMESTAMP => {
                 let (unit, tz) = match py_kwargs {
                     Some(dict) => {
-                        let tz: Option<String> = match dict.get_item("tz") {
+                        let tz: Option<Arc<str>> = match dict.get_item("tz") {
                             Some(e) => {
                                 let res: PyResult<String> = e.extract();
-                                Some(res.unwrap())
+                                Some(Arc::from(<std::string::String as AsRef<str>>::as_ref(
+                                    &res.unwrap(),
+                                )))
                             }
                             None => None,
                         };
