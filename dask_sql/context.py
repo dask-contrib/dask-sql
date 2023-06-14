@@ -42,7 +42,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import OptimizationException, ParsingException
+from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
 
@@ -824,8 +824,9 @@ class Context:
             try:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
             except DFOptimizationException as oe:
+                # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
-                raise OptimizationException(str(oe)) from None
+                logger.warn(str(oe))
         else:
             rel = nonOptimizedRel
 
