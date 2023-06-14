@@ -46,6 +46,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "RIGHT": "right",
         "FULL": "outer",
         "LEFTSEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
+        "LEFTANTI": "leftanti",
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
@@ -227,7 +228,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
             )
             df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
-        if join_type in ["inner", "left"]:
+        if join_type in ["inner", "left", "leftanti"]:
             df_rhs_filter = reduce(
                 operator.and_,
                 [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
@@ -256,12 +257,22 @@ class DaskJoinPlugin(BaseRelPlugin):
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 " and https://github.com/dask/dask/issues/9870"
             )
-        df = df_lhs_with_tmp.merge(
-            df_rhs_with_tmp,
-            on=added_columns,
-            how=join_type,
-            broadcast=broadcast,
-        ).drop(columns=added_columns)
+        if join_type == "leftanti":
+            df = df_lhs_with_tmp.merge(
+                df_rhs_with_tmp,
+                on=added_columns,
+                how="left",
+                broadcast=broadcast,
+                indicator=True,
+            ).drop(columns=added_columns)
+            df = df[df["_merge"] == "left_only"].drop(columns=["_merge"])
+        else:
+            df = df_lhs_with_tmp.merge(
+                df_rhs_with_tmp,
+                on=added_columns,
+                how=join_type,
+                broadcast=broadcast,
+            ).drop(columns=added_columns)
 
         return df
 
