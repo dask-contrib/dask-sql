@@ -19,8 +19,7 @@ table = "a_table"
 def c():
     c = Context()
     c.create_schema(schema)
-    row = create_table_row()
-    tables = pd.DataFrame().append(row, ignore_index=True)
+    tables = pd.DataFrame(create_table_row(), index=[0])
     tables = tables.astype({"AN_INT": "int64"})
     c.create_table(table, tables, schema_name=schema)
 
