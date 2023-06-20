@@ -171,11 +171,10 @@ def gpu_string_table(string_table):
 def gpu_datetime_table(datetime_table):
     if cudf:
         # cudf doesn't have support for timezoned datetime data
-        datetime_table["timezone"] = datetime_table["timezone"].dt.tz_localize(None)
-        datetime_table["utc_timezone"] = datetime_table["utc_timezone"].dt.tz_localize(
-            None
-        )
-        return cudf.from_pandas(datetime_table)
+        df = datetime_table.copy()
+        df["timezone"] = df["timezone"].dt.tz_localize(None)
+        df["utc_timezone"] = df["utc_timezone"].dt.tz_localize(None)
+        return cudf.from_pandas(df)
     return None
 
 
