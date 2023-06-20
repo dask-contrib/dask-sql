@@ -1,5 +1,6 @@
 import os
 
+import pytest
 from dask.dataframe.utils import assert_eq as _assert_eq
 
 # use distributed client for testing if it's available
@@ -14,3 +15,7 @@ def assert_eq(*args, **kwargs):
     kwargs.setdefault("scheduler", scheduler)
 
     return _assert_eq(*args, **kwargs)
+
+
+def xfail_on_gpu(request, c, reason):
+    request.applymarker(pytest.mark.xfail(condition=c.gpu is True, reason=reason))

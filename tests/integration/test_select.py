@@ -121,19 +121,10 @@ def test_timezones(c, datetime_table):
 
 
 @pytest.mark.parametrize(
-    "input_table",
-    [
-        "long_table",
-        pytest.param("gpu_long_table", marks=pytest.mark.gpu),
-    ],
-)
-@pytest.mark.parametrize(
     "limit,offset",
     [(101, 0), (200, 0), (100, 0), (100, 99), (100, 100), (101, 101), (0, 101)],
 )
-def test_limit(c, input_table, limit, offset, request):
-    long_table = request.getfixturevalue(input_table)
-
+def test_limit(c, long_table, limit, offset):
     if not limit:
         query = f"SELECT * FROM long_table OFFSET {offset}"
     else:
@@ -142,22 +133,14 @@ def test_limit(c, input_table, limit, offset, request):
     assert_eq(c.sql(query), long_table.iloc[offset : offset + limit if limit else None])
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
-    ],
-)
-def test_date_casting(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_date_casting(c, datetime_table, request):
     result_df = c.sql(
-        f"""
+        """
         SELECT
             CAST(timezone AS DATE) AS timezone,
             CAST(no_timezone AS DATE) AS no_timezone,
             CAST(utc_timezone AS DATE) AS utc_timezone
-        FROM {input_table}
+        FROM datetime_table
         """
     )
 
@@ -175,22 +158,14 @@ def test_date_casting(c, input_table, request):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param("gpu_datetime_table", marks=pytest.mark.gpu),
-    ],
-)
-def test_timestamp_casting(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_timestamp_casting(c, datetime_table):
     result_df = c.sql(
-        f"""
+        """
         SELECT
             CAST(timezone AS TIMESTAMP) AS timezone,
             CAST(no_timezone AS TIMESTAMP) AS no_timezone,
             CAST(utc_timezone AS TIMESTAMP) AS utc_timezone
-        FROM {input_table}
+        FROM datetime_table
         """
     )
 

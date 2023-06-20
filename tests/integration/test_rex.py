@@ -4,6 +4,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.api.types import is_float_dtype, is_integer_dtype
 
 from tests.utils import assert_eq
 
@@ -134,9 +135,9 @@ def test_literal_null(c):
     """
     )
 
-    expected_df = pd.DataFrame({"N": [pd.NA], "I": [pd.NA]})
-    expected_df["I"] = expected_df["I"].astype("Int64")
-    assert_eq(df, expected_df)
+    assert is_integer_dtype(df["I"])
+
+    assert_eq(df, pd.DataFrame({"N": [pd.NA], "I": [pd.NA]}), check_dtype=False)
 
 
 def test_random(c):
@@ -154,8 +155,8 @@ def test_random(c):
     # assert output
     result_df = result_df.compute()
 
-    assert result_df["0"].dtype == "float64"
-    assert result_df["1"].dtype == "Int64"
+    assert is_float_dtype(result_df["0"])
+    assert is_integer_dtype(result_df["1"])
 
     assert 0 <= result_df["0"][0] < 1
     assert 0 <= result_df["1"][0] < 10
@@ -170,29 +171,21 @@ def test_random(c):
     result_df = result_df.compute()
     # assert output types
 
-    assert result_df["0"].dtype == "float64"
-    assert result_df["1"].dtype == "float64"
-    assert result_df["2"].dtype == "Int64"
+    assert is_float_dtype(result_df["0"])
+    assert is_float_dtype(result_df["1"])
+    assert is_integer_dtype(result_df["2"])
 
     assert 0 <= result_df["0"][0] < 1
     assert 0 <= result_df["1"][0] < 1
     assert 0 <= result_df["2"][0] < 30
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "string_table",
-        pytest.param("gpu_string_table", marks=pytest.mark.gpu),
-    ],
-)
-def test_not(c, input_table, request):
-    string_table = request.getfixturevalue(input_table)
+def test_not(c, string_table):
     df = c.sql(
-        f"""
+        """
     SELECT
         *
-    FROM {input_table}
+    FROM string_table
     WHERE NOT a LIKE '%normal%'
     """
     )
@@ -235,76 +228,58 @@ def test_operators(c, df):
     assert_eq(result_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table,gpu",
-    [
-        ("string_table", False),
-        pytest.param(
-            "gpu_string_table",
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="Failing due to cuDF bug https://github.com/rapidsai/cudf/issues/9434"
-                ),
-            ),
-        ),
-    ],
-)
-def test_like(c, input_table, gpu, request):
-    string_table = request.getfixturevalue(input_table)
-
+def test_like(c, string_table):
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a SIMILAR TO '%n[a-z]rmal st_i%'
     """
     )
     assert_eq(df, string_table.iloc[[0, 3]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a NOT SIMILAR TO '%n[a-z]rmal st_i%'
     """
     )
     assert_eq(df, string_table.iloc[[1, 2]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a LIKE '%n[a-z]rmal st_i%'
     """
     )
     assert len(df) == 0
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a NOT LIKE '%n[a-z]rmal st_i%'
     """
     )
     assert_eq(df, string_table)
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a LIKE '%a Normal String%'
     """
     )
     assert len(df) == 0
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a ILIKE '%a Normal String%'
     """
     )
     assert_eq(df, string_table.iloc[[0, 3]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a NOT ILIKE '%a Normal String%'
     """
     )
@@ -312,8 +287,8 @@ def test_like(c, input_table, gpu, request):
     # TODO: uncomment when sqlparser adds parsing support for non-standard escape characters
     # https://github.com/dask-contrib/dask-sql/issues/754
     # df = c.sql(
-    #     f"""
-    #     SELECT * FROM {input_table}
+    #     """
+    #     SELECT * FROM string_table
     #     WHERE a LIKE 'Ä%Ä_Ä%' ESCAPE 'Ä'
     # """
     # )
@@ -321,8 +296,8 @@ def test_like(c, input_table, gpu, request):
     # assert_eq(df, string_table.iloc[[1]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a SIMILAR TO '^|()-*r[r]$' ESCAPE 'r'
         """
     )
@@ -330,8 +305,8 @@ def test_like(c, input_table, gpu, request):
     assert_eq(df, string_table.iloc[[2, 3]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a LIKE '^|()-*r[r]$' ESCAPE 'r'
     """
     )
@@ -339,8 +314,8 @@ def test_like(c, input_table, gpu, request):
     assert_eq(df, string_table.iloc[[2]])
 
     df = c.sql(
-        f"""
-        SELECT * FROM {input_table}
+        """
+        SELECT * FROM string_table
         WHERE a LIKE '%_' ESCAPE 'r'
     """
     )
@@ -348,7 +323,7 @@ def test_like(c, input_table, gpu, request):
     assert_eq(df, string_table)
 
     string_table2 = pd.DataFrame({"b": ["a", "b", None, pd.NA, float("nan")]})
-    c.create_table("string_table2", string_table2, gpu=gpu)
+    c.create_table("string_table2", string_table2)
     df = c.sql(
         """
         SELECT * FROM string_table2
@@ -391,12 +366,11 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_coalesce(c, gpu):
+def test_coalesce(c):
     df = dd.from_pandas(
         pd.DataFrame({"a": [1, 2, 3], "b": [np.nan] * 3}), npartitions=1
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df = c.sql(
         """
@@ -588,15 +562,9 @@ def test_subqueries(c, user_table_1, user_table_2):
     assert_eq(df, user_table_2[user_table_2.c.isin(user_table_1.b)], check_index=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_string_functions(c, gpu):
-    if gpu:
-        input_table = "gpu_string_table"
-    else:
-        input_table = "string_table"
-
+def test_string_functions(c):
     df = c.sql(
-        f"""
+        """
         SELECT
             a || 'hello' || a AS a,
             CONCAT(a, 'hello', a) as b,
@@ -623,13 +591,9 @@ def test_string_functions(c, gpu):
             REPLACE(a, 'r', 'l') as w,
             REPLACE('Another String', 'th', 'b') as x
         FROM
-            {input_table}
+            string_table
         """
     )
-
-    if gpu:
-        df = df.astype({"c": "int64"})  # , "f": "int64", "g": "int64"})
-
     expected_df = pd.DataFrame(
         {
             "a": ["a normal stringhelloa normal string"],
@@ -666,26 +630,16 @@ def test_string_functions(c, gpu):
 
 
 @pytest.mark.xfail(reason="POSITION syntax not supported by parser")
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_string_position(c, gpu):
-    if gpu:
-        input_table = "gpu_string_table"
-    else:
-        input_table = "string_table"
-
+def test_string_position(c):
     df = c.sql(
-        f"""
+        """
         SELECT
             POSITION('a' IN a FROM 4) AS f,
             POSITION('ZL' IN a) AS g,
         FROM
-            {input_table}
+            string_table
         """
     )
-
-    if gpu:
-        df = df.astype({"f": "int64", "g": "int64"})
-
     expected_df = pd.DataFrame(
         {
             "f": [7],
@@ -700,27 +654,17 @@ def test_string_position(c, gpu):
 
 
 @pytest.mark.xfail(reason="OVERLAY syntax not supported by parser")
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_string_overlay(c, gpu):
-    if gpu:
-        input_table = "gpu_string_table"
-    else:
-        input_table = "string_table"
-
+def test_string_overlay(c):
     df = c.sql(
-        f"""
+        """
         SELECT
             OVERLAY(a PLACING 'XXX' FROM -1) AS l,
             OVERLAY(a PLACING 'XXX' FROM 2 FOR 4) AS m,
             OVERLAY(a PLACING 'XXX' FROM 2 FOR 1) AS n,
         FROM
-            {input_table}
+            string_table
         """
     )
-
-    if gpu:
-        df = df.astype({"c": "int64"})  # , "f": "int64", "g": "int64"})
-
     expected_df = pd.DataFrame(
         {
             "l": ["XXXormal string"],
@@ -937,28 +881,13 @@ def test_timestampdiff(c):
     assert_eq(ddf, expected_df, check_dtype=False)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
-                ),
-            ),
-        ),
-    ],
-)
-def test_totimestamp(c, gpu):
+def test_totimestamp(c):
     df = pd.DataFrame(
         {
             "a": np.array([1203073300, 1406073600, 2806073600]),
         }
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df = c.sql(
         """
@@ -981,7 +910,7 @@ def test_totimestamp(c, gpu):
             "a": np.array(["1997-02-28 10:30:00", "1997-03-28 10:30:01"]),
         }
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df = c.sql(
         """
@@ -1003,7 +932,7 @@ def test_totimestamp(c, gpu):
             "a": np.array(["02/28/1997", "03/28/1997"]),
         }
     )
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     df = c.sql(
         """
@@ -1019,7 +948,7 @@ def test_totimestamp(c, gpu):
         }
     )
     # https://github.com/rapidsai/cudf/issues/12062
-    if not gpu:
+    if not c.gpu:
         assert_eq(df, expected_df, check_dtype=False)
 
     int_input = 1203073300

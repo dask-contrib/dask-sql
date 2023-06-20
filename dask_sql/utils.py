@@ -58,6 +58,20 @@ def is_cudf_type(obj):
     return any("cudf" in obj_type for obj_type in types)
 
 
+def get_serial_library(gpu):
+    """
+    Import and return serial dataframe library for CPU or GPU
+    """
+    if gpu:
+        import cudf
+
+        return cudf
+    else:
+        import pandas
+
+        return pandas
+
+
 class Pluggable:
     """
     Helper class for everything which can be extended by plugins.

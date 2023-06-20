@@ -1,6 +1,12 @@
 import dask
 import pytest
 
+# determine if we can run CPU/GPU tests
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
+
 pytest_plugins = ["tests.integration.fixtures"]
 
 
@@ -10,14 +16,15 @@ def pytest_addoption(parser):
 
 
 def pytest_runtest_setup(item):
+    if "queries" in item.keywords and not item.config.getoption("--runqueries"):
+        pytest.skip("need --runqueries option to run")
     if "gpu" in item.keywords:
-        if not item.config.getoption("--rungpu"):
-            pytest.skip("need --rungpu option to run")
-        # FIXME: P2P shuffle isn't fully supported on GPU, so we must explicitly disable it
+        if dask_cudf is None:
+            pytest.skip("Test intended for CPU environments")
         dask.config.set({"dataframe.shuffle.algorithm": "tasks"})
         # manually enable cudf decimal support
         dask.config.set({"sql.mappings.decimal_support": "cudf"})
     else:
+        if "cpu" in item.keywords and dask_cudf is not None:
+            pytest.skip("Test intended for CPU environments")
         dask.config.set({"dataframe.shuffle.algorithm": None})
-    if "queries" in item.keywords and not item.config.getoption("--runqueries"):
-        pytest.skip("need --runqueries option to run")

@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import warnings
 from collections import Counter
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -42,7 +43,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import OptimizationException, ParsingException
+from dask_sql.utils import OptimizationException, ParsingException, is_cudf_type
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,8 @@ class Context:
     and can convert SQL queries to dask data frames.
     The tables in these queries are referenced by the name,
     which is given when registering a dask dataframe.
+
+    Usually, you will only ever have a single context in your program.
 
     Example:
         .. code-block:: python
@@ -70,8 +73,6 @@ class Context:
             # Trigger the computation (or use the data frame for something else)
             result.compute()
 
-    Usually, you will only ever have a single context in your program.
-
     See also:
         :func:`sql`
         :func:`create_table`
@@ -81,9 +82,14 @@ class Context:
     DEFAULT_CATALOG_NAME = "dask_sql"
     DEFAULT_SCHEMA_NAME = "root"
 
-    def __init__(self, logging_level=logging.INFO):
+    def __init__(self, gpu=None, logging_level=logging.INFO):
         """
         Create a new context.
+
+        Args:
+            gpu: (:obj:`bool`): Whether or not registered tables in this context should be be created on GPU;
+                if left unspecified, will be inferred based on the first registered table
+            logging_level (:obj:`int`): Level of logs to output to console
         """
 
         # Set the logging level for this SQL context
@@ -97,6 +103,8 @@ class Context:
         self.schema = {self.schema_name: SchemaContainer(self.schema_name)}
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
+        # whether or not to this context is intended for tables on GPU
+        self.gpu = gpu
 
         # Create the `DaskSQLContext` Rust context
         self.context = DaskSQLContext(self.catalog_name, self.schema_name)
@@ -161,7 +169,6 @@ class Context:
         persist: bool = False,
         schema_name: str = None,
         statistics: Statistics = None,
-        gpu: bool = False,
         **kwargs,
     ):
         """
@@ -233,6 +240,13 @@ class Context:
         logger.debug(
             f"Creating table: '{table_name}' of format type '{format}' in schema '{schema_name}'"
         )
+        gpu = kwargs.pop("gpu", None)
+        if gpu is not None:
+            warnings.warn(
+                "The `gpu` word is deprecated and will be removed in a future version. "
+                f"To explicitly specify whether to create tables on CPU or GPU, create a context with `Context(gpu={gpu})`",
+                FutureWarning,
+            )
 
         schema_name = schema_name or self.schema_name
 
@@ -241,9 +255,21 @@ class Context:
             table_name=table_name,
             format=format,
             persist=persist,
-            gpu=gpu,
+            gpu=self.gpu,
             **kwargs,
         )
+
+        # if context hasn't had a GPU flag specified, infer it now
+        is_gpu_table = is_cudf_type(dc.df)
+        if self.gpu is None:
+            self.gpu = True if is_gpu_table else False
+            logger.debug(
+                f"Infering gpu={self.gpu} for context based on type of '{input_table}'"
+            )
+        elif is_gpu_table != self.gpu:
+            raise ValueError(
+                f"Cannot register table of type {type(dc.df)} in Context with gpu={self.gpu}"
+            )
 
         if type(input_table) == str:
             dc.filepath = input_table
@@ -464,7 +490,7 @@ class Context:
         sql: Any,
         return_futures: bool = True,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        gpu: bool = False,
+        gpu: bool = None,
         config_options: Dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
@@ -496,10 +522,16 @@ class Context:
         Returns:
             :obj:`dask.dataframe.DataFrame`: the created data frame of this query.
         """
+        if gpu is not None:
+            warnings.warn(
+                "The `gpu` word is deprecated and will be removed in a future version. "
+                f"To explicitly specify whether to create tables on CPU or GPU, create a context with `Context(gpu={gpu})`",
+                FutureWarning,
+            )
         with dask_config.set(config_options):
             if dataframes is not None:
                 for df_name, df in dataframes.items():
-                    self.create_table(df_name, df, gpu=gpu)
+                    self.create_table(df_name, df)
 
             if isinstance(sql, str):
                 rel, _ = self._get_ral(sql)
@@ -516,7 +548,7 @@ class Context:
         self,
         sql: str,
         dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
-        gpu: bool = False,
+        gpu: bool = None,
     ) -> str:
         """
         Return the stringified relational algebra that this query will produce
@@ -538,9 +570,15 @@ class Context:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        if gpu is not None:
+            warnings.warn(
+                "The `gpu` word is deprecated and will be removed in a future version. "
+                f"To explicitly specify whether to create tables on CPU or GPU, create a context with `Context(gpu={gpu})`",
+                FutureWarning,
+            )
         if dataframes is not None:
             for df_name, df in dataframes.items():
-                self.create_table(df_name, df, gpu=gpu)
+                self.create_table(df_name, df)
 
         _, rel_string = self._get_ral(sql)
         return rel_string

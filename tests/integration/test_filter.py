@@ -50,9 +50,9 @@ def test_filter_complicated(c, df):
     )
 
 
-def test_filter_with_nan(c):
+def test_filter_with_nan(c, user_table_nan):
     return_df = c.sql("SELECT * FROM user_table_nan WHERE c = 3")
-    expected_df = pd.DataFrame({"c": [3]}, dtype="Int8")
+    expected_df = user_table_nan[user_table_nan.c == 3]
 
     assert_eq(
         return_df,
@@ -74,21 +74,10 @@ def test_string_filter(c, string_table):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param(
-            "gpu_datetime_table",
-            marks=(pytest.mark.gpu),
-        ),
-    ],
-)
-def test_filter_cast_date(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_filter_cast_date(c, datetime_table):
     return_df = c.sql(
-        f"""
-        SELECT * FROM {input_table} WHERE
+        """
+        SELECT * FROM datetime_table WHERE
             CAST(timezone AS DATE) > DATE '2014-08-01'
         """
     )
@@ -100,21 +89,10 @@ def test_filter_cast_date(c, input_table, request):
     assert_eq(return_df, expected_df)
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "datetime_table",
-        pytest.param(
-            "gpu_datetime_table",
-            marks=(pytest.mark.gpu),
-        ),
-    ],
-)
-def test_filter_cast_timestamp(c, input_table, request):
-    datetime_table = request.getfixturevalue(input_table)
+def test_filter_cast_timestamp(c, datetime_table):
     return_df = c.sql(
-        f"""
-        SELECT * FROM {input_table} WHERE
+        """
+        SELECT * FROM datetime_table WHERE
             CAST(timezone AS TIMESTAMP) >= TIMESTAMP '2014-08-01 23:00:00+00'
         """
     )
@@ -233,7 +211,13 @@ def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
 
     # divisions aren't equal for older dask versions
     assert_eq(
-        return_df, expected_df, check_index=False, check_divisions=DASK_GT_2022_4_2
+        return_df,
+        expected_df,
+        check_index=False,
+        check_divisions=DASK_GT_2022_4_2,
+        # dask-cudf returns the wrong meta
+        # TODO: remove once https://github.com/rapidsai/cudf/issues/13167 is closed
+        check_dtype=(not c.gpu),
     )
 
 

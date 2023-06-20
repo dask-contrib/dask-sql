@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from dask.datasets import timeseries
 
-from tests.utils import assert_eq
+from tests.utils import assert_eq, xfail_on_gpu
 
 
 @pytest.fixture()
@@ -36,10 +36,9 @@ def test_group_by(c):
     assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_group_by_multi(c, gpu):
+def test_group_by_multi(c):
     df = pd.DataFrame({"a": [1, 2, 3], "b": [1, 1, 2]})
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     result_df = c.sql(
         """
@@ -178,12 +177,13 @@ def test_group_by_nan(c):
         c
     FROM user_table_nan
     GROUP BY c
+    ORDER BY c
     """
     )
-    expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
+    expected_df = pd.DataFrame({"c": [1, 3, None]})
 
     # we return nullable int dtype instead of float
-    assert_eq(return_df, expected_df, check_dtype=False)
+    assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
     return_df = c.sql(
         """
@@ -202,14 +202,96 @@ def test_group_by_nan(c):
     )
 
 
+def test_every(request, c):
+    xfail_on_gpu(request, c, "Need to implement `all` for cuDF groupbys")
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        EVERY(b = 3) AS e
+    FROM user_table_1
+    GROUP BY user_id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 3],
+            "e": [True, False, True],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        EVERY(c = 3) AS e
+    FROM user_table_2
+    GROUP BY user_id
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 4],
+            "e": [False, True, False],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+
+def test_bit_and_or(request, c):
+    xfail_on_gpu(request, c, "Can't iterate over cuDF frame objects")
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        BIT_AND(b) AS b,
+        BIT_OR(b) AS bb
+    FROM user_table_1
+    GROUP BY user_id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 3],
+            "b": [3, 1, 3],
+            "bb": [3, 3, 3],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+    return_df = c.sql(
+        """
+    SELECT
+        user_id,
+        BIT_AND(c) AS b,
+        BIT_OR(c) AS bb
+    FROM user_table_2
+    GROUP BY user_id
+    """
+    )
+
+    expected_df = pd.DataFrame(
+        {
+            "user_id": [1, 2, 4],
+            "b": [0, 3, 4],
+            "bb": [3, 3, 4],
+        }
+    )
+    assert_eq(return_df.sort_values("user_id").reset_index(drop=True), expected_df)
+
+
 def test_aggregations(c):
     return_df = c.sql(
         """
     SELECT
         user_id,
-        EVERY(b = 3) AS e,
-        BIT_AND(b) AS b,
-        BIT_OR(b) AS bb,
+        --EVERY(b = 3) AS e,
+        --BIT_AND(b) AS b,
+        --BIT_OR(b) AS bb,
         MIN(b) AS m,
         SINGLE_VALUE(b) AS s,
         AVG(b) AS a
@@ -220,9 +302,9 @@ def test_aggregations(c):
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 3],
-            "e": [True, False, True],
-            "b": [3, 1, 3],
-            "bb": [3, 3, 3],
+            # "e": [True, False, True],
+            # "b": [3, 1, 3],
+            # "bb": [3, 3, 3],
             "m": [3, 1, 3],
             "s": [3, 3, 3],
             "a": [3, 2, 3],
@@ -236,9 +318,9 @@ def test_aggregations(c):
         """
     SELECT
         user_id,
-        EVERY(c = 3) AS e,
-        BIT_AND(c) AS b,
-        BIT_OR(c) AS bb,
+        --EVERY(c = 3) AS e,
+        --BIT_AND(c) AS b,
+        --BIT_OR(c) AS bb,
         MIN(c) AS m,
         SINGLE_VALUE(c) AS s,
         AVG(c) AS a
@@ -250,9 +332,9 @@ def test_aggregations(c):
     expected_df = pd.DataFrame(
         {
             "user_id": [1, 2, 4],
-            "e": [False, True, False],
-            "b": [0, 3, 4],
-            "bb": [3, 3, 4],
+            # "e": [False, True, False],
+            # "b": [0, 3, 4],
+            # "bb": [3, 3, 4],
             "m": [1, 3, 4],
             "s": [1, 3, 4],
             "a": [1.5, 3, 4],
@@ -273,22 +355,7 @@ def test_aggregations(c):
     assert_eq(return_df.reset_index(drop=True), expected_df)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="stddev_pop is failing on GPU, see https://github.com/dask-contrib/dask-sql/issues/681"
-                ),
-            ),
-        ),
-    ],
-)
-def test_stddev(c, gpu):
+def test_stddev(c):
     df = pd.DataFrame(
         {
             "a": [1, 1, 2, 1, 2],
@@ -296,14 +363,14 @@ def test_stddev(c, gpu):
         }
     )
 
-    c.create_table("df", df, gpu=gpu)
+    c.create_table("df", df)
 
     return_df = c.sql(
         """
         SELECT
             STDDEV(b) AS s
         FROM df
-        GROUP BY df.a
+        GROUP BY a
         """
     )
 
@@ -321,20 +388,20 @@ def test_stddev(c, gpu):
 
     expected_df = pd.DataFrame({"ss": [df.std()["b"]]})
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
         SELECT
             STDDEV_POP(b) AS sp
         FROM df
-        GROUP BY df.a
+        GROUP BY a
         """
     )
 
     expected_df = pd.DataFrame({"sp": df.groupby("a").std(ddof=0)["b"]})
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     return_df = c.sql(
         """
@@ -355,13 +422,12 @@ def test_stddev(c, gpu):
         }
     )
 
-    assert_eq(return_df, expected_df.reset_index(drop=True))
+    assert_eq(return_df, expected_df, check_index=False)
 
     c.drop_table("df")
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_regr_aggregation(c, timeseries_df, gpu):
+def test_regr_aggregation(c):
     # test regr_count
     regr_count = c.sql(
         """
@@ -481,28 +547,19 @@ def test_covar_aggregation(c, timeseries_df):
     )
 
 
-@pytest.mark.parametrize(
-    "input_table",
-    [
-        "user_table_1",
-        pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),
-    ],
-)
 @pytest.mark.parametrize("split_out", [None, 2, 4])
-def test_groupby_split_out(c, input_table, split_out, request):
-    user_table = request.getfixturevalue(input_table)
-
+def test_groupby_split_out(c, user_table_1, split_out):
     return_df = c.sql(
-        f"""
+        """
         SELECT
         user_id, SUM(b) AS "S"
-        FROM {input_table}
+        FROM user_table_1
         GROUP BY user_id
         """,
         config_options={"sql.aggregate.split_out": split_out} if split_out else {},
     )
     expected_df = (
-        user_table.groupby(by="user_id")
+        user_table_1.groupby(by="user_id")
         .agg({"b": "sum"})
         .reset_index(drop=False)
         .rename(columns={"b": "S"})
@@ -513,24 +570,23 @@ def test_groupby_split_out(c, input_table, split_out, request):
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
     return_df = c.sql(
-        f"""
-        SELECT DISTINCT(user_id) FROM {input_table}
+        """
+        SELECT DISTINCT(user_id) FROM user_table_1
         """,
         config_options={"sql.aggregate.split_out": split_out},
     )
-    expected_df = user_table[["user_id"]].drop_duplicates()
+    expected_df = user_table_1[["user_id"]].drop_duplicates()
     assert return_df.npartitions == split_out if split_out else 1
     assert_eq(return_df.sort_values("user_id"), expected_df, check_index=False)
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_groupby_split_every(c, gpu):
+def test_groupby_split_every(c):
     input_ddf = dd.from_pandas(
         pd.DataFrame({"user_id": [1, 2, 3, 4] * 16, "b": [5, 6, 7, 8] * 16}),
         npartitions=16,
     )  # Need an input with multiple partitions to demonstrate split_every
 
-    c.create_table("split_every_input", input_ddf, gpu=gpu)
+    c.create_table("split_every_input", input_ddf)
 
     query_string = """
     SELECT

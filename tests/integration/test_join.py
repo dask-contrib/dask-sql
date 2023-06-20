@@ -468,8 +468,7 @@ def test_join_reorder(c):
     not BROADCAST_JOIN_SUPPORT_WORKING,
     reason="Broadcast Joins do not work as expected with dask<2023.1.1",
 )
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_broadcast_join(c, client, gpu):
+def test_broadcast_join(c, client):
     df1 = dd.from_pandas(
         pd.DataFrame({"user_id": [1, 2, 3, 4], "b": [5, 6, 7, 8]}),
         npartitions=2,
@@ -478,8 +477,8 @@ def test_broadcast_join(c, client, gpu):
         pd.DataFrame({"user_id": [1, 2, 3, 4] * 4, "c": [5, 6, 7, 8] * 4}),
         npartitions=8,
     )
-    c.create_table("df1", df1, gpu=gpu)
-    c.create_table("df2", df2, gpu=gpu)
+    c.create_table("df1", df1)
+    c.create_table("df2", df2)
 
     query_string = """
     SELECT df1.user_id as user_id, b, c

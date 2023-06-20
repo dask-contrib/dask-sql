@@ -19,13 +19,10 @@ except ImportError:
 DEFAULT_INT_TYPE = "INTEGER" if sys.platform == "win32" else "BIGINT"
 
 
-@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
-def test_add_remove_tables(gpu):
-    c = Context()
-
+def test_add_remove_tables(c):
     data_frame = dd.from_pandas(pd.DataFrame(), npartitions=1)
 
-    c.create_table("table", data_frame, gpu=gpu)
+    c.create_table("table", data_frame)
     assert "table" in c.schema[c.schema_name].tables
 
     c.drop_table("table")
@@ -34,25 +31,13 @@ def test_add_remove_tables(gpu):
     with pytest.raises(KeyError):
         c.drop_table("table")
 
-    c.create_table("table", [data_frame], gpu=gpu)
+    c.create_table("table", [data_frame])
     assert "table" in c.schema[c.schema_name].tables
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=pytest.mark.gpu,
-        ),
-    ],
-)
-def test_sql(gpu):
-    c = Context()
-
+def test_sql(c):
     data_frame = dd.from_pandas(pd.DataFrame({"a": [1, 2, 3]}), npartitions=1)
-    c.create_table("df", data_frame, gpu=gpu)
+    c.create_table("df", data_frame)
 
     result = c.sql("SELECT * FROM df")
     assert isinstance(result, dd.DataFrame)
@@ -62,25 +47,12 @@ def test_sql(gpu):
     assert not isinstance(result, dd.DataFrame)
     assert_eq(result, data_frame)
 
-    result = c.sql(
-        "SELECT * FROM other_df", dataframes={"other_df": data_frame}, gpu=gpu
-    )
+    result = c.sql("SELECT * FROM other_df", dataframes={"other_df": data_frame})
     assert isinstance(result, dd.DataFrame)
     assert_eq(result, data_frame)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=pytest.mark.gpu,
-        ),
-    ],
-)
-def test_input_types(temporary_data_file, gpu):
-    c = Context()
+def test_input_types(c, temporary_data_file):
     df = pd.DataFrame({"a": [1, 2, 3]})
 
     def assert_correct_output(gpu):
@@ -88,31 +60,31 @@ def test_input_types(temporary_data_file, gpu):
         assert isinstance(result, dd.DataFrame if not gpu else dask_cudf.DataFrame)
         assert_eq(result, df)
 
-    c.create_table("df", df, gpu=gpu)
-    assert_correct_output(gpu=gpu)
+    c.create_table("df", df)
+    assert_correct_output(gpu=c.gpu)
 
-    c.create_table("df", dd.from_pandas(df, npartitions=1), gpu=gpu)
-    assert_correct_output(gpu=gpu)
-
-    df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, gpu=gpu)
-    assert_correct_output(gpu=gpu)
+    c.create_table("df", dd.from_pandas(df, npartitions=1))
+    assert_correct_output(gpu=c.gpu)
 
     df.to_csv(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, format="csv", gpu=gpu)
-    assert_correct_output(gpu=gpu)
+    c.create_table("df", temporary_data_file)
+    assert_correct_output(gpu=c.gpu)
+
+    df.to_csv(temporary_data_file, index=False)
+    c.create_table("df", temporary_data_file, format="csv")
+    assert_correct_output(gpu=c.gpu)
 
     df.to_parquet(temporary_data_file, index=False)
-    c.create_table("df", temporary_data_file, format="parquet", gpu=gpu)
-    assert_correct_output(gpu=gpu)
+    c.create_table("df", temporary_data_file, format="parquet")
+    assert_correct_output(gpu=c.gpu)
 
     with pytest.raises(AttributeError):
-        c.create_table("df", temporary_data_file, format="unknown", gpu=gpu)
+        c.create_table("df", temporary_data_file, format="unknown")
 
     strangeThing = object()
 
     with pytest.raises(ValueError):
-        c.create_table("df", strangeThing, gpu=gpu)
+        c.create_table("df", strangeThing)
 
 
 @pytest.mark.parametrize(
