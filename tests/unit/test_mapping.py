@@ -47,4 +47,4 @@ def test_similar_type():
     assert similar_type(pd.Int64Dtype(), np.int32)
     assert not similar_type(np.uint32, np.int32)
     assert similar_type(np.float32, np.float64)
-    assert similar_type(np.object_, str)
+    assert similar_type(object, str)
