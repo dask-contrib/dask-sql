@@ -47,26 +47,22 @@ class AnalyzeTablePlugin(BaseRelPlugin):
         df = dc.df
 
         # Calculate statistics
-        statistics = dd.from_pandas(
-            pd.DataFrame({col: [] for col in columns}), npartitions=1
-        )
-        statistics = statistics.append(df[[mapping(col) for col in columns]].describe())
-
-        # Add additional information
-        statistics = statistics.append(
-            pd.Series(
-                {
-                    col: str(python_to_sql_type(df[mapping(col)].dtype)).lower()
-                    for col in columns
-                },
-                name="data_type",
-            )
-        )
-        statistics = statistics.append(
-            pd.Series(
-                {col: col for col in columns},
-                name="col_name",
-            )
+        statistics = dd.concat(
+            [
+                df[[mapping(col) for col in columns]].describe(),
+                pd.DataFrame(
+                    {
+                        mapping(col): str(
+                            python_to_sql_type(df[mapping(col)].dtype)
+                        ).lower()
+                        for col in columns
+                    },
+                    index=["data_type"],
+                ),
+                pd.DataFrame(
+                    {mapping(col): col for col in columns}, index=["col_name"]
+                ),
+            ]
         )
 
         cc = ColumnContainer(statistics.columns)
