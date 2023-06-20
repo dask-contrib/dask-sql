@@ -7,8 +7,8 @@ dependencies:
   - sphinx>=4.0.0
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3
-  - dask>=2022.3.0
-  - pandas>=1.4.0
+  - dask>=2022.3.0,<=2023.5.1
+  - pandas>=1.4.0,<2.0.0
   - fugue>=0.7.3
   # FIXME: handling is needed for httpx-based fastapi>=0.87.0
   - fastapi>=0.69.0,<0.87.0
