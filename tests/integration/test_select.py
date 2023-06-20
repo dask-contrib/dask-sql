@@ -163,13 +163,13 @@ def test_date_casting(c, input_table, request):
 
     expected_df = datetime_table
     expected_df["timezone"] = (
-        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+        expected_df["timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
     )
     expected_df["no_timezone"] = (
         expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
     expected_df["utc_timezone"] = (
-        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+        expected_df["utc_timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
     )
 
     assert_eq(result_df, expected_df)
@@ -194,7 +194,10 @@ def test_timestamp_casting(c, input_table, request):
         """
     )
 
-    expected_df = datetime_table.astype("<M8[ns]")
+    expected_df = datetime_table
+    expected_df["timezone"] = expected_df["timezone"].dt.tz_localize(None)
+    expected_df["utc_timezone"] = expected_df["utc_timezone"].dt.tz_localize(None)
+
     assert_eq(result_df, expected_df)
 
 
