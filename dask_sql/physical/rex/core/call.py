@@ -930,7 +930,10 @@ class ExtractOperation(Operation):
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":
-            return dd.to_datetime(df.strftime("%Y-%m-%d"))
+            if isinstance(df, pd.Timestamp):
+                return df.date()
+            else:
+                return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
