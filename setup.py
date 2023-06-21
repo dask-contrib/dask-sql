@@ -42,8 +42,8 @@ setup(
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[
-        "dask[dataframe]>=2022.3.0,<=2023.5.1",
-        "distributed>=2022.3.0,<=2023.5.1",
+        "dask[dataframe]>=2022.3.0",
+        "distributed>=2022.3.0",
         "pandas>=1.4.0,<2.0.0",
         # FIXME: handling is needed for httpx-based fastapi>=0.87.0
         "fastapi>=0.69.0,<0.87.0",
