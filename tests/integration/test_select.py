@@ -33,7 +33,9 @@ def test_select_column(c, df):
 def test_select_different_types(c):
     expected_df = pd.DataFrame(
         {
-            "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
+            "date": pd.to_datetime(
+                ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT], format="mixed"
+            ),
             "string": ["this is a test", "another test", "äölüć", ""],
             "integer": [1, 2, -4, 5],
             "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
