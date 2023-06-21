@@ -102,8 +102,7 @@ class Context:
         self.context = DaskSQLContext(self.catalog_name, self.schema_name)
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
-        if dask_config.get("sql.dynamic_partition_pruning"):
-            self.context.apply_dynamic_partition_pruning()
+        self.context.apply_dynamic_partition_pruning(dask_config.get("sql.dynamic_partition_pruning"))
 
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
@@ -798,6 +797,7 @@ class Context:
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
+        self.context.apply_dynamic_partition_pruning(dask_config.get("sql.dynamic_partition_pruning"))
 
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
