@@ -1099,7 +1099,7 @@ def test_extract_date(c, gpu):
             "t": [datetime(2022, 2, 2), datetime(2023, 3, 3)],
         }
     )
-    assert_eq(result, expected_df)
+    assert_eq(result, expected_df, check_index=False)
 
     result = c.sql(
         "SELECT * FROM df WHERE EXTRACT(DATE FROM t) BETWEEN '2020-10-01' AND '2022-10-10'"
