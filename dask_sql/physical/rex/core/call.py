@@ -926,7 +926,7 @@ class ExtractOperation(Operation):
         elif what in {"SECOND", "SECONDS"}:
             return df.second
         elif what in {"WEEK", "WEEKS"}:
-            return df.week
+            return df.isocalendar().week
         elif what in {"YEAR", "YEARS"}:
             return df.year
         else:
