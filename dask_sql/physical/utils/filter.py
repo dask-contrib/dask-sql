@@ -195,33 +195,15 @@ class DNF:
     @classmethod
     def normalize(cls, filters: _And | _Or | list | tuple | None):
         """Convert raw filters to the `_Or(_And)` DNF representation"""
-
-        def _valid_tuple(predicate: tuple):
-            col, op, val = predicate
-            if isinstance(col, tuple):
-                raise TypeError("filters must be List[Tuple] or List[List[Tuple]]")
-            if op in ("in", "not in"):
-                return (col, op, tuple(val))
-            else:
-                return predicate
-
-        def _valid_list(conjunction: list):
-            valid = []
-            for predicate in conjunction:
-                if not isinstance(predicate, tuple):
-                    raise TypeError(f"Predicate must be a tuple, got {predicate}")
-                valid.append(_valid_tuple(predicate))
-            return valid
-
         if not filters:
             result = None
         elif isinstance(filters, list):
             conjunctions = filters if isinstance(filters[0], list) else [filters]
-            result = cls._Or(
-                [cls._And(_valid_list(conjunction)) for conjunction in conjunctions]
-            )
+            result = cls._Or([cls._And(conjunction) for conjunction in conjunctions])
         elif isinstance(filters, tuple):
-            result = cls._Or((cls._And((_valid_tuple(filters),)),))
+            if isinstance(filters[0], tuple):
+                raise TypeError("filters must be List[Tuple] or List[List[Tuple]]")
+            result = cls._Or((cls._And((filters,)),))
         elif isinstance(filters, cls._Or):
             result = cls._Or(se for e in filters for se in cls.normalize(e))
         elif isinstance(filters, cls._And):
