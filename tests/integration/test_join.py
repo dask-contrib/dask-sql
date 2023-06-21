@@ -119,7 +119,7 @@ def test_join_cross(c, user_table_1, department_table):
     user_table_1["key"] = 1
     department_table["key"] = 1
 
-    expected_df = dd.merge(user_table_1, department_table, on="key").drop("key", 1)
+    expected_df = dd.merge(user_table_1, department_table, on="key").drop(columns="key")
 
     assert_eq(return_df, expected_df, check_index=False)
 
