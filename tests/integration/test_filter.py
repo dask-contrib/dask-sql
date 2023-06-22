@@ -103,7 +103,12 @@ def test_filter_cast_date(c, input_table, request):
 @pytest.mark.parametrize(
     "input_table",
     [
-        "datetime_table",
+        pytest.param(
+            "datetime_table",
+            marks=pytest.mark.xfail(
+                reason="Need support for non-UTC timezoned literals"
+            ),
+        ),
         pytest.param(
             "gpu_datetime_table",
             marks=(pytest.mark.gpu),

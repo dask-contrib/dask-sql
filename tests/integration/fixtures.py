@@ -170,7 +170,7 @@ def gpu_string_table(string_table):
 @pytest.fixture()
 def gpu_datetime_table(datetime_table):
     if cudf:
-        # cudf doesn't have support for timezoned datetime data
+        # cudf doesn't have full support for timezone-aware data
         df = datetime_table.copy()
         df["timezone"] = df["timezone"].dt.tz_localize(None)
         df["utc_timezone"] = df["utc_timezone"].dt.tz_localize(None)
