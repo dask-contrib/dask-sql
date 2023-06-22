@@ -86,42 +86,50 @@ def test_join_left(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
-def test_join_left_anti(c):
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_join_left_anti(c, gpu):
+    df1 = pd.DataFrame({"id": [1, 1, 2, 4], "a": ["a", "b", "c", "d"]})
+    df2 = pd.DataFrame({"id": [2, 1, 2, 3], "b": ["c", "c", "a", "c"]})
+    c.create_table("df_1", df1, gpu=gpu)
+    c.create_table("df_2", df2, gpu=gpu)
+
     return_df = c.sql(
         """
-    SELECT lhs.user_id, lhs.c
-    FROM user_table_2 AS lhs
-    LEFT ANTI JOIN user_table_1 AS rhs
-    ON lhs.user_id = rhs.user_id
+    SELECT lhs.id, lhs.a
+    FROM df_1 AS lhs
+    LEFT ANTI JOIN df_2 AS rhs
+    ON lhs.id = rhs.id
     """
     )
     expected_df = pd.DataFrame(
         {
-            # That is strange. Unfortunately, it seems dask fills in the
-            # missing rows with NaN, not with NA...
-            "user_id": [4],
-            "c": [4],
+            "id": [4],
+            "a": ["d"],
         }
     )
 
     assert_eq(return_df, expected_df, check_index=False)
 
 
+@pytest.mark.gpu
 def test_join_left_semi(c):
+    df1 = pd.DataFrame({"id": [1, 1, 2, 4], "a": ["a", "b", "c", "d"]})
+    df2 = pd.DataFrame({"id": [2, 1, 2, 3], "b": ["c", "c", "a", "c"]})
+    c.create_table("df_1", df1, gpu=True)
+    c.create_table("df_2", df2, gpu=True)
+
     return_df = c.sql(
         """
-    SELECT lhs.user_id, lhs.c
-    FROM user_table_2 AS lhs
-    LEFT SEMI JOIN user_table_1 AS rhs
-    ON lhs.user_id = rhs.user_id
+    SELECT lhs.id, lhs.a
+    FROM df_1 AS lhs
+    LEFT SEMI JOIN df_2 AS rhs
+    ON lhs.id = rhs.id
     """
     )
     expected_df = pd.DataFrame(
         {
-            # That is strange. Unfortunately, it seems dask fills in the
-            # missing rows with NaN, not with NA...
-            "user_id": [1, 1, 2],
-            "c": [1, 2, 3],
+            "id": [1, 1, 2],
+            "a": ["a", "b", "c"],
         }
     )
 

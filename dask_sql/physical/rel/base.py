@@ -30,7 +30,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: "RelDataType"
+        cc: ColumnContainer, row_type: "RelDataType", join_type: str = None
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -39,6 +39,8 @@ class BaseRelPlugin:
         and will just "blindly" rename the columns.
         """
         field_names = [str(x) for x in row_type.getFieldNames()]
+        if join_type in ("leftsemi", "leftanti"):
+            field_names = field_names[: len(cc.columns)]
 
         logger.debug(f"Renaming {cc.columns} to {field_names}")
         cc = cc.rename_handle_duplicates(

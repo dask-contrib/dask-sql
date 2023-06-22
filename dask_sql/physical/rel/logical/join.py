@@ -171,15 +171,19 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         # 6. So the next step is to make sure
         # we have the correct column order (and to remove the temporary join columns)
-        correct_column_order = list(df_lhs_renamed.columns) + list(
-            df_rhs_renamed.columns
-        )
+        if join_type in ("leftsemi", "leftanti"):
+            correct_column_order = list(df_lhs_renamed.columns)
+        else:
+            correct_column_order = list(df_lhs_renamed.columns) + list(
+                df_rhs_renamed.columns
+            )
         cc = ColumnContainer(df.columns).limit_to(correct_column_order)
 
         # and to rename them like the rel specifies
         row_type = rel.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
-        print(field_specifications)
+        if join_type in ("leftsemi", "leftanti"):
+            field_specifications = field_specifications[: len(cc.columns)]
 
         cc = cc.rename(
             {
@@ -187,7 +191,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-        cc = self.fix_column_to_row_type(cc, row_type)
+        cc = self.fix_column_to_row_type(cc, row_type, join_type)
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
@@ -204,7 +208,8 @@ class DaskJoinPlugin(BaseRelPlugin):
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        if join_type not in ("leftsemi", "leftanti"):
+            dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         # # Rename underlying DataFrame column names back to their original values before returning
         # df = dc.assign()
         # dc = DataContainer(df, ColumnContainer(cc.columns))
@@ -258,7 +263,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 " and https://github.com/dask/dask/issues/9870"
             )
-        # if join_type == "leftanti":
+        # if join_type == "leftanti" and :
         #     df = df_lhs_with_tmp.merge(
         #         df_rhs_with_tmp,
         #         on=added_columns,
@@ -266,10 +271,8 @@ class DaskJoinPlugin(BaseRelPlugin):
         #         broadcast=broadcast,
         #         indicator=True,
         #     ).drop(columns=added_columns)
-        #     df = df[df["_merge"] == "left_only"].drop(columns=["_merge"])
-        # elif join_type == "leftsemi":
-        # df =
-
+        #     df = df[df["_merge"] == "left_only"].drop(columns=["_merge"],errors="ignore")
+        # else:
         df = df_lhs_with_tmp.merge(
             df_rhs_with_tmp,
             on=added_columns,
