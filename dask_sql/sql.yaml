@@ -16,6 +16,8 @@ sql:
 
   predicate_pushdown: True
 
+  dynamic_partition_pruning: True
+
   sort:
     topk-nelem-limit: 1000000
 
