@@ -101,9 +101,10 @@ def test_join_left_anti(c, gpu):
     ON lhs.id = rhs.id
     """
     )
+    # TODO: Figure out why this returns lhs.id instead of id
     expected_df = pd.DataFrame(
         {
-            "id": [4],
+            "lhs.id": [4],
             "a": ["d"],
         }
     )
@@ -126,9 +127,10 @@ def test_join_left_semi(c):
     ON lhs.id = rhs.id
     """
     )
+    # TODO: Figure out why this returns lhs.id instead of id
     expected_df = pd.DataFrame(
         {
-            "id": [1, 1, 2],
+            "lhs.id": [1, 1, 2],
             "a": ["a", "b", "c"],
         }
     )

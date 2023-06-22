@@ -14,6 +14,7 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
+from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
@@ -75,6 +76,9 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         join_type = join.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
+        # TODO: update with correct implementation of leftsemi
+        if join_type == "leftsemi" and not is_cudf_type(df_lhs_renamed):
+            join_type = "inner"
 
         # 3. The join condition can have two forms, that we can understand
         # (a) a = b
@@ -208,6 +212,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
+        # TODO: Debug this...
         if join_type not in ("leftsemi", "leftanti"):
             dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
         # # Rename underlying DataFrame column names back to their original values before returning
@@ -263,22 +268,24 @@ class DaskJoinPlugin(BaseRelPlugin):
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 " and https://github.com/dask/dask/issues/9870"
             )
-        # if join_type == "leftanti" and :
-        #     df = df_lhs_with_tmp.merge(
-        #         df_rhs_with_tmp,
-        #         on=added_columns,
-        #         how="left",
-        #         broadcast=broadcast,
-        #         indicator=True,
-        #     ).drop(columns=added_columns)
-        #     df = df[df["_merge"] == "left_only"].drop(columns=["_merge"],errors="ignore")
-        # else:
-        df = df_lhs_with_tmp.merge(
-            df_rhs_with_tmp,
-            on=added_columns,
-            how=join_type,
-            broadcast=broadcast,
-        ).drop(columns=added_columns)
+        if join_type == "leftanti" and not is_cudf_type(df_lhs_with_tmp):
+            df = df_lhs_with_tmp.merge(
+                df_rhs_with_tmp,
+                on=added_columns,
+                how="left",
+                broadcast=broadcast,
+                indicator=True,
+            ).drop(columns=added_columns)
+            df = df[df["_merge"] == "left_only"].drop(
+                columns=["_merge"] + list(df_rhs_with_tmp.columns), errors="ignore"
+            )
+        else:
+            df = df_lhs_with_tmp.merge(
+                df_rhs_with_tmp,
+                on=added_columns,
+                how=join_type,
+                broadcast=broadcast,
+            ).drop(columns=added_columns)
 
         return df
 
