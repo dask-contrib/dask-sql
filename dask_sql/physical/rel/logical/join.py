@@ -45,7 +45,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         "LEFT": "left",
         "RIGHT": "right",
         "FULL": "outer",
-        "LEFTSEMI": "inner",  # TODO: Need research here! This is likely not a true inner join
+        "LEFTSEMI": "leftsemi",
         "LEFTANTI": "leftanti",
     }
 
@@ -179,6 +179,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         # and to rename them like the rel specifies
         row_type = rel.getRowType()
         field_specifications = [str(f) for f in row_type.getFieldNames()]
+        print(field_specifications)
 
         cc = cc.rename(
             {
@@ -228,7 +229,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 [~df_lhs_renamed.iloc[:, index].isna() for index in lhs_on],
             )
             df_lhs_renamed = df_lhs_renamed[df_lhs_filter]
-        if join_type in ["inner", "left", "leftanti"]:
+        if join_type in ["inner", "left", "leftanti", "leftsemi"]:
             df_rhs_filter = reduce(
                 operator.and_,
                 [~df_rhs_renamed.iloc[:, index].isna() for index in rhs_on],
@@ -257,22 +258,24 @@ class DaskJoinPlugin(BaseRelPlugin):
                 "For more information refer to https://github.com/dask/dask/issues/9851"
                 " and https://github.com/dask/dask/issues/9870"
             )
-        if join_type == "leftanti":
-            df = df_lhs_with_tmp.merge(
-                df_rhs_with_tmp,
-                on=added_columns,
-                how="left",
-                broadcast=broadcast,
-                indicator=True,
-            ).drop(columns=added_columns)
-            df = df[df["_merge"] == "left_only"].drop(columns=["_merge"])
-        else:
-            df = df_lhs_with_tmp.merge(
-                df_rhs_with_tmp,
-                on=added_columns,
-                how=join_type,
-                broadcast=broadcast,
-            ).drop(columns=added_columns)
+        # if join_type == "leftanti":
+        #     df = df_lhs_with_tmp.merge(
+        #         df_rhs_with_tmp,
+        #         on=added_columns,
+        #         how="left",
+        #         broadcast=broadcast,
+        #         indicator=True,
+        #     ).drop(columns=added_columns)
+        #     df = df[df["_merge"] == "left_only"].drop(columns=["_merge"])
+        # elif join_type == "leftsemi":
+        # df =
+
+        df = df_lhs_with_tmp.merge(
+            df_rhs_with_tmp,
+            on=added_columns,
+            how=join_type,
+            broadcast=broadcast,
+        ).drop(columns=added_columns)
 
         return df
 
