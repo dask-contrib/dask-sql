@@ -93,9 +93,16 @@ def test_filter_cast_date(c, input_table, request):
         """
     )
 
+    # FIXME: dt.tz_localize(None) fails on timezone-naive cuDF series
+    # https://github.com/rapidsai/cudf/issues/13601
+    delocalized_col = (
+        datetime_table["timezone"].dt.tz_localize(None)
+        if "gpu" not in input_table
+        else datetime_table["timezone"]
+    )
+
     expected_df = datetime_table[
-        datetime_table["timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
-        > pd.Timestamp("2014-08-01")
+        delocalized_col.dt.floor("D").astype("<M8[ns]") > pd.Timestamp("2014-08-01")
     ]
     assert_eq(return_df, expected_df)
 
