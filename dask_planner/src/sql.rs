@@ -99,6 +99,7 @@ pub struct DaskSQLContext {
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
     options: ConfigOptions,
+    dynamic_partition_pruning: bool,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -471,7 +472,13 @@ impl DaskSQLContext {
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
             options: ConfigOptions::new(),
+            dynamic_partition_pruning: false,
         }
+    }
+
+    pub fn apply_dynamic_partition_pruning(&mut self, config: bool) -> PyResult<()> {
+        self.dynamic_partition_pruning = config;
+        Ok(())
     }
 
     /// Change the current schema
@@ -560,13 +567,26 @@ impl DaskSQLContext {
                         warn!("This LogicalPlan does not support Optimization. Returning original");
                         Ok(existing_plan)
                     }
-                    _ => optimizer::DaskSqlOptimizer::new()
-                        .optimize(existing_plan.original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
-                        .map_err(py_optimization_exp),
+                    _ => {
+                        let optimized_plan = optimizer::DaskSqlOptimizer::new()
+                            .optimize(existing_plan.original_plan)
+                            .map(|k| PyLogicalPlan {
+                                original_plan: k,
+                                current_node: None,
+                            })
+                            .map_err(py_optimization_exp);
+                        if self.dynamic_partition_pruning {
+                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                                .optimize_once(optimized_plan.unwrap().original_plan)
+                                .map(|k| PyLogicalPlan {
+                                    original_plan: k,
+                                    current_node: None,
+                                })
+                                .map_err(py_optimization_exp)
+                        } else {
+                            optimized_plan
+                        }
+                    }
                 }
             }
             Err(e) => Err(py_optimization_exp(e)),
