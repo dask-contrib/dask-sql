@@ -462,8 +462,8 @@ impl DaskSQLContext {
         }
     }
 
-    pub fn apply_dynamic_partition_pruning(&mut self) -> PyResult<()> {
-        self.dynamic_partition_pruning = true;
+    pub fn apply_dynamic_partition_pruning(&mut self, config: bool) -> PyResult<()> {
+        self.dynamic_partition_pruning = config;
         Ok(())
     }
 
