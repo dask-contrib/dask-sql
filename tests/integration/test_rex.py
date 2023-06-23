@@ -940,21 +940,7 @@ def test_timestampdiff(c):
     assert_eq(ddf, expected_df, check_dtype=False)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
-                ),
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_totimestamp(c, gpu):
     df = pd.DataFrame(
         {
