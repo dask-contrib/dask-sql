@@ -52,7 +52,7 @@ def as_timelike(op):
 
 
 def is_timestamp_nano(obj):
-    return "int" in str(type(obj)) or "int" in str(getattr(obj, "dtype", ""))
+    return pd.api.types.is_integer_dtype(obj)
 
 
 class Operation:
@@ -635,10 +635,7 @@ class ToTimestampOperation(Operation):
         else:
             if format != default_format:
                 raise RuntimeError("Integer input does not accept a format argument")
-            if is_cudf_type(df):
-                return df
-            else:
-                return dd.to_datetime(df, unit="s")
+            return dd.to_datetime(df, unit="s")
 
 
 class YearOperation(Operation):
