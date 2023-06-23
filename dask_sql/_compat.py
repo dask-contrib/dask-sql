@@ -18,3 +18,5 @@ BROADCAST_JOIN_SUPPORT_WORKING = _dask_version > parseVersion("2023.1.0")
 # Parquet predicate-support version checks
 PQ_NOT_IN_SUPPORT = parseVersion(dask.__version__) > parseVersion("2023.5.1")
 PQ_IS_SUPPORT = parseVersion(dask.__version__) >= parseVersion("2023.3.1")
+
+DASK_CUDF_TODATETIME_SUPPORT = _dask_version >= parseVersion("2023.5.1")
