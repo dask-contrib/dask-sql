@@ -1067,9 +1067,10 @@ def test_totimestamp(c, gpu):
             True,
             marks=(
                 pytest.mark.gpu,
-                pytest.mark.skipif(
+                pytest.mark.xfail(
                     not DASK_CUDF_TODATETIME_SUPPORT,
                     reason="Requires https://github.com/dask/dask/pull/9881",
+                    raises=RuntimeError,
                 ),
             ),
         ),
