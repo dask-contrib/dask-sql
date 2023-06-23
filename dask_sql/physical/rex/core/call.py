@@ -935,7 +935,9 @@ class ExtractOperation(Operation):
                 return df.date()
             else:
                 if is_cudf_type(df) and not DASK_CUDF_TODATETIME_SUPPORT:
-                    raise RuntimeError("Dask-cuDF to_datetime support requires Dask version >= 2023.5.1")
+                    raise RuntimeError(
+                        "Dask-cuDF to_datetime support requires Dask version >= 2023.5.1"
+                    )
                 else:
                     return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
