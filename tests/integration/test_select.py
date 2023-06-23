@@ -4,6 +4,7 @@ import pytest
 from dask.dataframe.optimize import optimize_dataframe_getitem
 from dask.utils_test import hlg_layer
 
+from dask_sql._compat import PANDAS_GT_200
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
@@ -34,7 +35,8 @@ def test_select_different_types(c):
     expected_df = pd.DataFrame(
         {
             "date": pd.to_datetime(
-                ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT], format="mixed"
+                ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT],
+                format="mixed" if PANDAS_GT_200 else None,
             ),
             "string": ["this is a test", "another test", "äölüć", ""],
             "integer": [1, 2, -4, 5],

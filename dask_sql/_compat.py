@@ -8,6 +8,7 @@ _prompt_toolkit_version = parseVersion(prompt_toolkit.__version__)
 _dask_version = parseVersion(dask.__version__)
 
 INDEXER_WINDOW_STEP_IMPLEMENTED = _pandas_version >= parseVersion("1.5.0")
+PANDAS_GT_200 = _pandas_version >= parseVersion("2.0.0")
 
 # TODO: remove if prompt-toolkit min version gets bumped
 PIPE_INPUT_CONTEXT_MANAGER = _prompt_toolkit_version >= parseVersion("3.0.29")
