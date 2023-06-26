@@ -199,6 +199,35 @@ impl Dialect for DaskDialect {
                         order_by: vec![],
                     })))
                 }
+                Token::Word(w) if w.value.to_lowercase() == "extract" => {
+                    // EXTRACT(DATE FROM d)
+                    parser.next_token(); // skip extract
+                    parser.expect_token(&Token::LParen)?;
+                    if !parser.parse_keywords(&[Keyword::DATE, Keyword::FROM]) {
+                        // Parse EXTRACT(x FROM d) as normal
+                        parser.prev_token();
+                        parser.prev_token();
+                        return Ok(None);
+                    }
+                    let expr = parser.parse_expr()?;
+                    parser.expect_token(&Token::RParen)?;
+
+                    // convert to function args
+                    let args = vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                            Value::SingleQuotedString("DATE".to_string()),
+                        ))),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)),
+                    ];
+
+                    Ok(Some(Expr::Function(Function {
+                        name: ObjectName(vec![Ident::new("extract_date")]),
+                        args,
+                        over: None,
+                        distinct: false,
+                        special: false,
+                    })))
+                }
                 _ => Ok(None),
             }
         }

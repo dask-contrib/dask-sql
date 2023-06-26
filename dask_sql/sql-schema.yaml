@@ -64,6 +64,11 @@ properties:
         description: |
           Whether to try pushing down filter predicates into IO (when possible).
 
+      dynamic_partition_pruning:
+        type: boolean
+        description: |
+          Whether to apply the dynamic partition pruning optimizer rule.
+
       sort:
         type: object
         properties:

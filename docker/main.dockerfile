@@ -16,7 +16,7 @@ RUN mamba install -y \
     # build requirements
     "setuptools-rust>=1.5.2" \
     # core dependencies
-    "dask>=2022.3.0,<=2023.5.1" \
+    "dask>=2022.3.0" \
     "pandas>=1.4.0,<2.0.0" \
     # FIXME: handling is needed for httpx-based fastapi>=0.87.0
     "fastapi>=0.69.0,<0.87.0" \
