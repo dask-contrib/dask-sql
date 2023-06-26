@@ -86,7 +86,9 @@ class BaseRelPlugin:
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
-    def fix_dtype_to_row_type(dc: DataContainer, row_type: "RelDataType"):
+    def fix_dtype_to_row_type(
+        dc: DataContainer, row_type: "RelDataType", join_type: str = None
+    ):
         """
         Fix the dtype of the given data container (or: the df within it)
         to the data type given as argument.
@@ -100,9 +102,12 @@ class BaseRelPlugin:
         df = dc.df
         cc = dc.column_container
 
+        field_list = row_type.getFieldList()
+        if join_type in ("leftsemi", "leftanti"):
+            field_list = field_list[: len(cc.columns)]
+
         field_types = {
-            str(field.getQualifiedName()): field.getType()
-            for field in row_type.getFieldList()
+            str(field.getQualifiedName()): field.getType() for field in field_list
         }
 
         for field_name, field_type in field_types.items():

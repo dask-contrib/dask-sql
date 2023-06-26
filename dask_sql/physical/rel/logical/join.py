@@ -212,9 +212,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
-        # TODO: Debug this...
-        if join_type not in ("leftsemi", "leftanti"):
-            dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, rel.getRowType(), join_type)
         # # Rename underlying DataFrame column names back to their original values before returning
         # df = dc.assign()
         # dc = DataContainer(df, ColumnContainer(cc.columns))
