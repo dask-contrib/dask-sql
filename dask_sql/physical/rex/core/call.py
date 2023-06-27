@@ -653,7 +653,11 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[s]") if pd.api.types.is_integer_dtype(df) else df.astype("datetime64[ns]")
+        df = (
+            df.astype("datetime64[s]")
+            if pd.api.types.is_integer_dtype(df)
+            else df.astype("datetime64[ns]")
+        )
 
         if is_cudf_type(df):
             from cudf import DateOffset
