@@ -52,10 +52,6 @@ def as_timelike(op):
         raise ValueError(f"Don't know how to make {type(op)} timelike")
 
 
-def is_timestamp_nano(obj):
-    return pd.api.types.is_integer_dtype(obj)
-
-
 class Operation:
     """Helper wrapper around a function, which is used as operator"""
 
@@ -258,7 +254,7 @@ class CastOperation(Operation):
         if output_type == "DECIMAL":
             sql_type_args = rex.getPrecisionScale()
 
-        if output_type == "TIMESTAMP" and is_timestamp_nano(operand):
+        if output_type == "TIMESTAMP" and pd.api.types.is_integer_dtype(operand):
             operand = operand * 10**9
 
         if not is_frame(operand):  # pragma: no cover
@@ -657,10 +653,7 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        if is_timestamp_nano(df):
-            df = df.astype("datetime64[s]")
-        else:
-            df = df.astype("datetime64[ns]")
+        df = df.astype("datetime64[s]") if pd.api.types.is_integer_dtype(df) else df.astype("datetime64[ns]")
 
         if is_cudf_type(df):
             from cudf import DateOffset
@@ -704,9 +697,9 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
-        if is_timestamp_nano(df1):
+        if pd.api.types.is_integer_dtype(df1):
             df1 = df1 * 10**9
-        if is_timestamp_nano(df2):
+        if pd.api.types.is_integer_dtype(df2):
             df2 = df2 * 10**9
         if "datetime64[s]" == str(getattr(df1, "dtype", "")):
             df1 = df1.astype("datetime64[ns]")
