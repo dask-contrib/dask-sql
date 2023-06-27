@@ -15,7 +15,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_planner.rust import SqlTypeName
-from dask_sql._compat import PANDAS_GT_200
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT, PANDAS_GT_200
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
@@ -930,6 +930,16 @@ class ExtractOperation(Operation):
             return df.isocalendar().week if PANDAS_GT_200 else df.week
         elif what in {"YEAR", "YEARS"}:
             return df.year
+        elif what == "DATE":
+            if isinstance(df, pd.Timestamp):
+                return df.date()
+            else:
+                if is_cudf_type(df) and not DASK_CUDF_TODATETIME_SUPPORT:
+                    raise RuntimeError(
+                        "Dask-cuDF to_datetime support requires Dask version >= 2023.5.1"
+                    )
+                else:
+                    return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
@@ -1071,6 +1081,7 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
+        "extract_date": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
