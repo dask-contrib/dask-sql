@@ -98,6 +98,17 @@ class DaskTableScanPlugin(BaseRelPlugin):
                 )
             else:
                 df = attempt_predicate_pushdown(df, add_filters=conjunctive_dnf_filters)
+
+            df_condition = reduce(
+                operator.and_,
+                [
+                    RexConverter.convert(
+                        rel, rex, DataContainer(df, cc), context=context
+                    )
+                    for rex in all_filters
+                ],
+            )
+            df = filter_or_scalar(df, df_condition)
         elif all_filters:
             df_condition = reduce(
                 operator.and_,
