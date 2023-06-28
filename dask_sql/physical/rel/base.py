@@ -30,7 +30,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: "RelDataType", join_type: str = None
+        cc: ColumnContainer, row_type: "RelDataType", join_type: str | None = None
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -87,7 +87,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_dtype_to_row_type(
-        dc: DataContainer, row_type: "RelDataType", join_type: str = None
+        dc: DataContainer, row_type: "RelDataType", join_type: str | None = None
     ):
         """
         Fix the dtype of the given data container (or: the df within it)

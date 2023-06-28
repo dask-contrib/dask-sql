@@ -76,7 +76,8 @@ class DaskJoinPlugin(BaseRelPlugin):
 
         join_type = join.getJoinType()
         join_type = self.JOIN_TYPE_MAPPING[str(join_type)]
-        # TODO: update with correct implementation of leftsemi
+        # TODO: update with correct implementation of leftsemi for CPU
+        # https://github.com/dask-contrib/dask-sql/issues/1190
         if join_type == "leftsemi" and not is_cudf_type(df_lhs_renamed):
             join_type = "inner"
 
