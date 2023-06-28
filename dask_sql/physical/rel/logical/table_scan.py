@@ -9,7 +9,6 @@ from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
-from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
@@ -83,32 +82,23 @@ class DaskTableScanPlugin(BaseRelPlugin):
         all_filters = table_scan.getFilters()
         conjunctive_dnf_filters = table_scan.getDNFFilters().filtered_exprs
         non_dnf_filters = table_scan.getDNFFilters().io_unfilterable_exprs
-        # All filters here are applied in conjunction (&)
+
         if conjunctive_dnf_filters:
+            # Extract the PyExprs from the conjunctive DNF filters
+            filter_exprs = [f[0] for f in conjunctive_dnf_filters]
             if non_dnf_filters:
-                df_condition = reduce(
-                    operator.and_,
-                    [
-                        RexConverter.convert(rel, rex, dc, context=context)
-                        for rex in non_dnf_filters
-                    ],
-                )
-                df = filter_or_scalar(
-                    df, df_condition, add_filters=conjunctive_dnf_filters
-                )
-            else:
-                df = attempt_predicate_pushdown(df, add_filters=conjunctive_dnf_filters)
+                filter_exprs.extend(non_dnf_filters)
 
             df_condition = reduce(
                 operator.and_,
                 [
-                    RexConverter.convert(
-                        rel, rex, DataContainer(df, cc), context=context
-                    )
-                    for rex in all_filters
+                    RexConverter.convert(rel, rex, dc, context=context)
+                    for rex in filter_exprs
                 ],
             )
-            df = filter_or_scalar(df, df_condition)
+            df = filter_or_scalar(
+                df, df_condition, add_filters=[f[1] for f in conjunctive_dnf_filters]
+            )
         elif all_filters:
             df_condition = reduce(
                 operator.and_,
