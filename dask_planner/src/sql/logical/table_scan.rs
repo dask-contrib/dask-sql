@@ -32,7 +32,7 @@ pub struct PyFilteredResult {
     // Expr(s) that can have their filtering logic performed in the pyarrow IO logic
     // are stored here in a DNF format that is expected by pyarrow.
     #[pyo3(get)]
-    pub filtered_exprs: Vec<FilterTuple>,
+    pub filtered_exprs: Vec<(PyExpr, FilterTuple)>,
 }
 
 impl PyTableScan {
@@ -46,9 +46,10 @@ impl PyTableScan {
     /// it as well if needed.
     pub fn _expand_dnf_filter(
         filter: &Expr,
+        input: &Arc<LogicalPlan>,
         py: Python,
-    ) -> Result<Vec<FilterTuple>, DaskPlannerError> {
-        let mut filter_tuple: Vec<FilterTuple> = Vec::new();
+    ) -> Result<Vec<(PyExpr, FilterTuple)>, DaskPlannerError> {
+        let mut filter_tuple: Vec<(PyExpr, FilterTuple)> = Vec::new();
 
         match filter {
             Expr::InList {
@@ -101,9 +102,12 @@ impl PyTableScan {
                         .collect();
 
                     filter_tuple.push((
-                        ident.unwrap_or(expr.canonical_name()),
-                        op.to_string(),
-                        Some(il?),
+                        PyExpr::from(filter.clone(), Some(vec![input.clone()])),
+                        (
+                            ident.unwrap_or(expr.canonical_name()),
+                            op.to_string(),
+                            Some(il?),
+                        ),
                     ));
                     Ok(filter_tuple)
                 } else {
@@ -111,7 +115,7 @@ impl PyTableScan {
                         "Invalid identifying column Expr instance `{}`. using in Dask instead",
                         filter
                     ));
-                    Err::<Vec<FilterTuple>, DaskPlannerError>(er)
+                    Err::<Vec<(PyExpr, FilterTuple)>, DaskPlannerError>(er)
                 }
             }
             Expr::IsNotNull(expr) => {
@@ -125,9 +129,12 @@ impl PyTableScan {
                 };
 
                 filter_tuple.push((
-                    ident.unwrap_or(expr.canonical_name()),
-                    "is not".to_string(),
-                    None,
+                    PyExpr::from(filter.clone(), Some(vec![input.clone()])),
+                    (
+                        ident.unwrap_or(expr.canonical_name()),
+                        "is not".to_string(),
+                        None,
+                    ),
                 ));
                 Ok(filter_tuple)
             }
@@ -136,7 +143,7 @@ impl PyTableScan {
                     "Unable to apply filter: `{}` to IO reader, using in Dask instead",
                     filter
                 ));
-                Err::<Vec<FilterTuple>, DaskPlannerError>(er)
+                Err::<Vec<(PyExpr, FilterTuple)>, DaskPlannerError>(er)
             }
         }
     }
@@ -150,12 +157,12 @@ impl PyTableScan {
         filters: &[Expr],
         py: Python,
     ) -> PyFilteredResult {
-        let mut filtered_exprs: Vec<FilterTuple> = Vec::new();
+        let mut filtered_exprs: Vec<(PyExpr, FilterTuple)> = Vec::new();
         let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
 
         filters
             .iter()
-            .for_each(|f| match PyTableScan::_expand_dnf_filter(f, py) {
+            .for_each(|f| match PyTableScan::_expand_dnf_filter(f, input, py) {
                 Ok(mut expanded_dnf_filter) => filtered_exprs.append(&mut expanded_dnf_filter),
                 Err(_e) => {
                     unfiltered_exprs.push(PyExpr::from(f.clone(), Some(vec![input.clone()])))
