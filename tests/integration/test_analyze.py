@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import pandas as pd
 
 from dask_sql.mappings import python_to_sql_type
@@ -8,24 +9,21 @@ def test_analyze(c, df):
     result_df = c.sql("ANALYZE TABLE df COMPUTE STATISTICS FOR ALL COLUMNS")
 
     # extract table and compute stats with Dask manually
-    expected_df = (
-        c.sql("SELECT * FROM df")
-        .describe()
-        .append(
-            pd.Series(
+    expected_df = dd.concat(
+        [
+            c.sql("SELECT * FROM df").describe(),
+            pd.DataFrame(
                 {
                     col: str(python_to_sql_type(df[col].dtype)).lower()
                     for col in df.columns
                 },
-                name="data_type",
-            )
-        )
-        .append(
-            pd.Series(
+                index=["data_type"],
+            ),
+            pd.DataFrame(
                 {col: col for col in df.columns},
-                name="col_name",
-            )
-        )
+                index=["col_name"],
+            ),
+        ]
     )
 
     assert_eq(result_df, expected_df)
