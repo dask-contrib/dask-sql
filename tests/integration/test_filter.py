@@ -109,7 +109,9 @@ def test_filter_cast_date(c, input_table, request):
         ),
     ],
 )
-@pytest.mark.xfail(reason="Need support for non-UTC timezoned literals")
+@pytest.mark.xfail(
+    reason="Need support for non-UTC timezoned literals, see https://github.com/dask-contrib/dask-sql/issues/1193"
+)
 def test_filter_cast_timestamp(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)
     return_df = c.sql(
