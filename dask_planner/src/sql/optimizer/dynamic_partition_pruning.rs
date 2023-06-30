@@ -22,6 +22,7 @@ use datafusion_python::{
     },
     datafusion_common::{Column, Result, ScalarValue},
     datafusion_expr::{
+        expr::InList,
         logical_plan::LogicalPlan,
         utils::from_plan,
         Expr,
@@ -433,13 +434,13 @@ fn gather_aliases(plan: &LogicalPlan) -> HashMap<String, String> {
             if let LogicalPlan::SubqueryAlias(ref s) = current_plan {
                 match *s.input {
                     LogicalPlan::TableScan(ref t) => {
-                        aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
+                        aliases.insert(s.alias.to_string(), t.table_name.to_string().clone());
                     }
                     // Sometimes a TableScan is immediately followed by a Projection, so we can
                     // still use the alias for the table
                     LogicalPlan::Projection(ref p) => {
                         if let LogicalPlan::TableScan(ref t) = *p.input {
-                            aliases.insert(s.alias.clone(), t.table_name.to_string().clone());
+                            aliases.insert(s.alias.to_string(), t.table_name.to_string().clone());
                         }
                     }
                     _ => (),
@@ -1053,11 +1054,11 @@ fn format_inlist_expr(
     if list.is_empty() {
         None
     } else {
-        Some(Expr::InList {
+        Some(Expr::InList(InList {
             expr,
             list,
             negated: false,
-        })
+        }))
     }
 }
 

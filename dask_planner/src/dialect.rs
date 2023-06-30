@@ -226,6 +226,7 @@ impl Dialect for DaskDialect {
                         over: None,
                         distinct: false,
                         special: false,
+                        order_by: vec![],
                     })))
                 }
                 _ => Ok(None),
