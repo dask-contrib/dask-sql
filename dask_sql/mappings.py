@@ -331,13 +331,19 @@ def cast_column_type(
 
 def cast_column_to_type(col: dd.Series, expected_type: str):
     """Cast the given column to the expected type"""
+    pdt = pd.api.types
+
+    is_dt_ns = pdt.is_datetime64_ns_dtype
+    is_dt_tz = lambda t: is_dt_ns(t) and pdt.is_datetime64tz_dtype(t)
+    is_dt_ntz = lambda t: is_dt_ns(t) and not pdt.is_datetime64tz_dtype(t)
+
     current_type = col.dtype
 
     if similar_type(current_type, expected_type):
         logger.debug("...not converting.")
         return None
 
-    if pd.api.types.is_integer_dtype(expected_type):
+    if pdt.is_integer_dtype(expected_type):
         if pd.api.types.is_float_dtype(current_type):
             logger.debug("...truncating...")
             # Currently "trunc" can not be applied to NA (the pandas missing value type),
@@ -345,9 +351,13 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
             # For our use case, that does not matter, as the conversion to integer later
             # will convert both NA and np.NaN to NA.
             col = da.trunc(col.fillna(value=np.NaN))
-        elif pd.api.types.is_timedelta64_dtype(current_type):
+        elif pdt.is_timedelta64_dtype(current_type):
             logger.debug(f"Explicitly casting from {current_type} to np.int64")
             return col.astype(np.int64)
+
+    if is_dt_tz(current_type) and is_dt_ntz(expected_type):
+        # casting from timezone-aware to timezone-naive datatypes with astype is deprecated in pandas 2
+        return col.dt.tz_localize(None)
 
     logger.debug(f"Need to cast from {current_type} to {expected_type}")
     return col.astype(expected_type)
