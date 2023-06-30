@@ -15,7 +15,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_planner.rust import SqlTypeName
-from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT, PANDAS_GT_200
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
@@ -940,7 +940,7 @@ class ExtractOperation(Operation):
         elif what in {"SECOND", "SECONDS"}:
             return df.second
         elif what in {"WEEK", "WEEKS"}:
-            return df.week
+            return df.isocalendar().week if PANDAS_GT_200 else df.week
         elif what in {"YEAR", "YEARS"}:
             return df.year
         elif what == "DATE":

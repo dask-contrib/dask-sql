@@ -37,15 +37,15 @@ def create_meta_data(c: Context):
     #     catalogs = pd.DataFrame().append(create_catalog_row(catalog), ignore_index=True)
     #     c.create_table("catalogs", catalogs, schema_name=system_schema)
 
-    schemas = pd.DataFrame().append(create_schema_row(), ignore_index=True)
+    schemas = pd.DataFrame(create_schema_row(), index=[0])
     c.create_table("schemas", schemas, schema_name=system_schema)
     schema_rows = []
 
-    tables = pd.DataFrame().append(create_table_row(), ignore_index=True)
+    tables = pd.DataFrame(create_table_row(), index=[0])
     c.create_table("tables", tables, schema_name=system_schema)
     table_rows = []
 
-    columns = pd.DataFrame().append(create_column_row(), ignore_index=True)
+    columns = pd.DataFrame(create_column_row(), index=[0])
     c.create_table("columns", columns, schema_name=system_schema)
     column_rows = []
 
