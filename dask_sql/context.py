@@ -845,15 +845,19 @@ class Context:
     def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
         dc = RelConverter.convert(rel, context=self)
 
-        # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [field for field in rel.getRowType().getFieldList()]
-
         if rel.get_current_node_type() == "Explain":
             return dc
         if dc is None:
             return
 
+        # Optimization might remove some alias projects. Make sure to keep them here.
+        select_names = [field for field in rel.getRowType().getFieldList()]
+
         if select_names:
+            cc = dc.column_container
+
+            select_names = select_names[: len(cc.columns)]
+
             # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
             # names the output col is prepended with the fully qualified column name
             field_counts = Counter([field.getName() for field in select_names])
@@ -864,7 +868,6 @@ class Context:
                 for field in select_names
             ]
 
-            cc = dc.column_container
             cc = cc.rename(
                 {
                     df_col: select_name
