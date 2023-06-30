@@ -176,8 +176,12 @@ def gpu_datetime_table(datetime_table):
         df["timezone"] = df["timezone"].dt.tz_localize(None)
         df["utc_timezone"] = df["utc_timezone"].dt.tz_localize(None)
         gdf = cudf.from_pandas(df)
-        gdf["timezone"] = gdf["timezone"].dt.tz_localize("Europe/Berlin")
-        gdf["utc_timezone"] = gdf["utc_timezone"].dt.tz_localize("UTC")
+        gdf["timezone"] = gdf["timezone"].dt.tz_localize(
+            str(datetime_table["timezone"].dt.tz)
+        )
+        gdf["utc_timezone"] = gdf["utc_timezone"].dt.tz_localize(
+            str(datetime_table["utc_timezone"].dt.tz)
+        )
         return gdf
     return None
 
