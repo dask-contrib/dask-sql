@@ -2,18 +2,8 @@ use std::collections::HashMap;
 
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, TimeUnit},
-    datafusion_common::{
-        Column,
-        DFField,
-        ScalarValue,
-    },
-    datafusion_expr::{
-        logical_plan::Filter,
-        utils::from_plan,
-        BinaryExpr,
-        Expr,
-        LogicalPlan,
-    },
+    datafusion_common::{Column, DFField, ScalarValue},
+    datafusion_expr::{logical_plan::Filter, utils::from_plan, BinaryExpr, Expr, LogicalPlan},
 };
 
 // Sometimes, DataFusion's optimizer will raise an OptimizationException before we even get the
@@ -48,8 +38,12 @@ fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
 fn find_data_type(column: Column, fields: Vec<DFField>) -> Option<DataType> {
     for field in fields {
         if let Some(qualifier) = field.qualifier() {
-            if qualifier.table() == column.relation.clone().unwrap().table() && field.field().name() == &column.name {
-                return Some(field.field().data_type().clone());
+            if column.relation.is_some() {
+                if qualifier.table() == column.relation.clone().unwrap().table()
+                    && field.field().name() == &column.name
+                {
+                    return Some(field.field().data_type().clone());
+                }
             }
         }
     }
@@ -94,11 +88,10 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
             let mut is_timestamp_operation = false;
             for item in columns_and_literals.clone() {
                 if let Expr::Column(column) = item {
-                    if let Some(data_type) = find_data_type(column, plan.schema().fields().clone()) {
-                        match data_type {
-                            DataType::Timestamp(TimeUnit::Nanosecond, _) => is_timestamp_operation = true,
-                            _ => (),
-                        }
+                    if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _))
+                        = find_data_type(column, plan.schema().fields().clone())
+                    {
+                        is_timestamp_operation = true;
                     }
                 }
             }

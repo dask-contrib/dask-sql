@@ -556,9 +556,9 @@ impl DaskSQLContext {
         existing_plan: logical::PyLogicalPlan,
     ) -> PyResult<logical::PyLogicalPlan> {
         if let Some(plan) = datetime_coercion(&existing_plan.original_plan) {
-            return Ok(plan.into());
+            Ok(plan.into())
         } else {
-            return Ok(existing_plan);
+            Ok(existing_plan)
         }
     }
 
