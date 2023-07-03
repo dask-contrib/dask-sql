@@ -38,12 +38,11 @@ fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
 fn find_data_type(column: Column, fields: Vec<DFField>) -> Option<DataType> {
     for field in fields {
         if let Some(qualifier) = field.qualifier() {
-            if column.relation.is_some() {
-                if qualifier.table() == column.relation.clone().unwrap().table()
-                    && field.field().name() == &column.name
-                {
-                    return Some(field.field().data_type().clone());
-                }
+            if column.relation.is_some()
+                && qualifier.table() == column.relation.clone().unwrap().table()
+                && field.field().name() == &column.name
+            {
+                return Some(field.field().data_type().clone());
             }
         }
     }
@@ -88,8 +87,8 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
             let mut is_timestamp_operation = false;
             for item in columns_and_literals.clone() {
                 if let Expr::Column(column) = item {
-                    if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _))
-                        = find_data_type(column, plan.schema().fields().clone())
+                    if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
+                        find_data_type(column, plan.schema().fields().clone())
                     {
                         is_timestamp_operation = true;
                     }
@@ -112,7 +111,9 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
             }
 
             let new_filter = replace_literals(filter_expr, &days_to_nanoseconds);
-            Some(LogicalPlan::Filter(Filter::try_new(new_filter, f.input.clone()).unwrap()))
+            Some(LogicalPlan::Filter(
+                Filter::try_new(new_filter, f.input.clone()).unwrap(),
+            ))
         }
         _ => optimize_children(plan.clone()),
     }

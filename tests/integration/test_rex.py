@@ -1121,3 +1121,22 @@ def test_extract_date(c, gpu):
         {"i": [datetime(2021, 1, 3), datetime(2022, 2, 4), datetime(2023, 3, 5)]}
     )
     assert_eq(result, expected_df)
+
+
+def test_datetime_coercion(c):
+    d_table = pd.DataFrame(
+        {
+            "d_date": [
+                datetime(2023, 7, 1), datetime(2023, 7, 5), datetime(2023, 7, 10),
+            ],
+        }
+    )
+    c.create_table("d_table", d_table)
+
+    df = c.sql(
+        "SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + 5"
+    )
+    expected_df = c.sql(
+        "SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + INTERVAL '5 days'"
+    )
+    assert_eq(df, expected_df)
