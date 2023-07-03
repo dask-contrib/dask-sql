@@ -1127,15 +1127,15 @@ def test_datetime_coercion(c):
     d_table = pd.DataFrame(
         {
             "d_date": [
-                datetime(2023, 7, 1), datetime(2023, 7, 5), datetime(2023, 7, 10),
+                datetime(2023, 7, 1),
+                datetime(2023, 7, 5),
+                datetime(2023, 7, 10),
             ],
         }
     )
     c.create_table("d_table", d_table)
 
-    df = c.sql(
-        "SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + 5"
-    )
+    df = c.sql("SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + 5")
     expected_df = c.sql(
         "SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + INTERVAL '5 days'"
     )
