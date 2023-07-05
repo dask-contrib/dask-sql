@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, TimeUnit},
     datafusion_common::{Column, DFField, ScalarValue},
-    datafusion_expr::{logical_plan::Filter, utils::from_plan, BinaryExpr, Expr, LogicalPlan},
+    datafusion_expr::{logical_plan::Filter, utils::from_plan, BinaryExpr, Expr, LogicalPlan, Operator},
 };
 
 // Sometimes, DataFusion's optimizer will raise an OptimizationException before we even get the
@@ -14,19 +14,24 @@ use datafusion_python::{
 // datetime_coercion preoptimizer rule fixes a bug involving Timestamp-Int operations.
 
 // Helper function for datetime_coercion rule, which returns a vector of columns and literals
-// involved in a (possibly nested) BinaryExpr
+// involved in a (possibly nested) BinaryExpr mathematical expression
 fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
     let mut result = Vec::new();
     match expr {
-        Expr::Column(c) => {
-            result.push(Expr::Column(c.clone()));
-        }
-        Expr::Literal(l) => {
-            result.push(Expr::Literal(l.clone()));
-        }
         Expr::BinaryExpr(b) => {
-            result.extend(extract_columns_and_literals(&b.left));
-            result.extend(extract_columns_and_literals(&b.right));
+            if let Operator::Plus
+                | Operator::Minus
+                | Operator::Multiply
+                | Operator::Divide
+                | Operator::Modulo =
+                &b.op
+            {
+                result.append(&mut extract_columns_and_literals(&b.left));
+                result.append(&mut extract_columns_and_literals(&b.right));
+            }
+        }
+        Expr::Column(_) | Expr::Literal(_) => {
+            result.push(expr.clone());
         }
         _ => (),
     }
