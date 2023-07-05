@@ -138,9 +138,6 @@ class ReduceOperation(Operation):
                 )
             ):
                 operands = tuple(map(as_timelike, operands))
-            if is_cudf_type(operands[0]) and isinstance(operands[1], np.timedelta64):
-                operands = (dd.to_datetime(operands[0], unit="s"), operands[1])
-
             return reduce(partial(self.operation, **kwargs), operands)
         else:
             return self.unary_operation(*operands, **kwargs)
