@@ -3,7 +3,14 @@ use std::collections::HashMap;
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, TimeUnit},
     datafusion_common::{Column, DFField, ScalarValue},
-    datafusion_expr::{logical_plan::Filter, utils::from_plan, BinaryExpr, Expr, LogicalPlan, Operator},
+    datafusion_expr::{
+        logical_plan::Filter,
+        utils::from_plan,
+        BinaryExpr,
+        Expr,
+        LogicalPlan,
+        Operator,
+    },
 };
 
 // Sometimes, DataFusion's optimizer will raise an OptimizationException before we even get the
@@ -20,11 +27,10 @@ fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
     match expr {
         Expr::BinaryExpr(b) => {
             if let Operator::Plus
-                | Operator::Minus
-                | Operator::Multiply
-                | Operator::Divide
-                | Operator::Modulo =
-                &b.op
+            | Operator::Minus
+            | Operator::Multiply
+            | Operator::Divide
+            | Operator::Modulo = &b.op
             {
                 result.append(&mut extract_columns_and_literals(&b.left));
                 result.append(&mut extract_columns_and_literals(&b.right));
