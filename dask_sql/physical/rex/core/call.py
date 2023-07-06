@@ -251,6 +251,9 @@ class CastOperation(Operation):
         if output_type == "DECIMAL":
             sql_type_args = rex.getPrecisionScale()
 
+        if output_type == "TIMESTAMP" and pd.api.types.is_integer_dtype(operand):
+            operand = operand * 10**9
+
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
 
@@ -613,17 +616,8 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        # TODO: format timestamps for GPU tests
-        if is_cudf_type(df):
-            if format != default_format:
-                raise RuntimeError("Non-default timestamp formats not supported on GPU")
-            if df.dtype == "object":
-                return df
-            else:
-                nanoseconds_to_seconds = 10**9
-                return df * nanoseconds_to_seconds
         # String cases
-        elif type(df) == str:
+        if type(df) == str:
             return np.datetime64(datetime.strptime(df, format))
         elif df.dtype == "object":
             return dd.to_datetime(df, format=format)
@@ -656,7 +650,11 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[ns]")
+        df = (
+            df.astype("datetime64[s]")
+            if pd.api.types.is_integer_dtype(df)
+            else df.astype("datetime64[ns]")
+        )
 
         if is_cudf_type(df):
             from cudf import DateOffset
@@ -700,10 +698,22 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
+        if pd.api.types.is_integer_dtype(df1):
+            df1 = df1 * 10**9
+        if pd.api.types.is_integer_dtype(df2):
+            df2 = df2 * 10**9
+        if "datetime64[s]" == str(getattr(df1, "dtype", "")):
+            df1 = df1.astype("datetime64[ns]")
+        if "datetime64[s]" == str(getattr(df2, "dtype", "")):
+            df2 = df2.astype("datetime64[ns]")
+
         subtraction_op = ReduceOperation(
             operation=operator.sub, unary_operation=lambda x: -x
         )
         result = subtraction_op(df2, df1)
+
+        if is_cudf_type(df1):
+            result = result.astype("int")
 
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
