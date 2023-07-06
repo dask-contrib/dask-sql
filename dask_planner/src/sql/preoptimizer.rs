@@ -26,18 +26,30 @@ fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
     let mut result = Vec::new();
     match expr {
         Expr::BinaryExpr(b) => {
+            let left = *b.left.clone();
+            let right = *b.right.clone();
             if let Operator::Plus
             | Operator::Minus
             | Operator::Multiply
             | Operator::Divide
             | Operator::Modulo = &b.op
             {
-                result.append(&mut extract_columns_and_literals(&b.left));
-                result.append(&mut extract_columns_and_literals(&b.right));
+                if let (
+                    Expr::Column(_) | Expr::Literal(_),
+                    Expr::Column(_) | Expr::Literal(_)
+                ) = (left.clone(), right.clone()) {
+                    result.push(left);
+                    result.push(right);
+                }
+            } else {
+                if let Expr::BinaryExpr(_) = left {
+                    result.append(&mut extract_columns_and_literals(&left));
+                }
+
+                if let Expr::BinaryExpr(_) = right {
+                    result.append(&mut extract_columns_and_literals(&right));
+                }
             }
-        }
-        Expr::Column(_) | Expr::Literal(_) => {
-            result.push(expr.clone());
         }
         _ => (),
     }
@@ -94,30 +106,52 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
             let filter_expr = f.predicate.clone();
             let columns_and_literals = extract_columns_and_literals(&filter_expr);
 
-            // Detect whether a timestamp is involved in the operation
-            let mut is_timestamp_operation = false;
-            for item in columns_and_literals.clone() {
-                if let Expr::Column(column) = item {
-                    if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
-                        find_data_type(column, plan.schema().fields().clone())
-                    {
-                        is_timestamp_operation = true;
-                    }
-                }
-            }
-
-            // Convert an integer to an IntervalMonthDayNano
             let mut days_to_nanoseconds: HashMap<Expr, Expr> = HashMap::new();
-            if is_timestamp_operation {
-                for item in columns_and_literals {
-                    if let Expr::Literal(ScalarValue::Int64(i)) = item {
-                        let ns = i.unwrap() as i128 * 18446744073709552000;
+            // Because of the way extract_columns_and_literals works, we assume that any relevant
+            // Plus, Minus, etc. operation is strictly between Columns and/or Literals, i.e., that
+            // there is not a nested BinaryExpr such as date_col + 1 + 2. In that case, the result
+            // of extract_columns_and_literals will not include those Exprs
+            for pair in columns_and_literals.chunks(2) {
+                match pair {
+                    [item1, item2] => {
+                        // Detect whether a timestamp is involved in the operation
+                        let mut is_timestamp_operation = false;
+                        if let Expr::Column(column) = item1 {
+                            if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
+                                find_data_type(column.clone(), plan.schema().fields().clone())
+                            {
+                                is_timestamp_operation = true;
+                            }
+                        }
+                        if let Expr::Column(column) = item2 {
+                            if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
+                                find_data_type(column.clone(), plan.schema().fields().clone())
+                            {
+                                is_timestamp_operation = true;
+                            }
+                        }
 
-                        days_to_nanoseconds.insert(
-                            Expr::Literal(ScalarValue::Int64(i)),
-                            Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
-                        );
+                        // Convert an integer to an IntervalMonthDayNano
+                        if is_timestamp_operation {
+                            if let Expr::Literal(ScalarValue::Int64(i)) = item1 {
+                                let ns = i.unwrap() as i128 * 18446744073709552000;
+
+                                days_to_nanoseconds.insert(
+                                    Expr::Literal(ScalarValue::Int64(*i)),
+                                    Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
+                                );
+                            }
+                            if let Expr::Literal(ScalarValue::Int64(i)) = item2 {
+                                let ns = i.unwrap() as i128 * 18446744073709552000;
+
+                                days_to_nanoseconds.insert(
+                                    Expr::Literal(ScalarValue::Int64(*i)),
+                                    Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
+                                );
+                            }
+                        }
                     }
+                    _ => (),
                 }
             }
 
