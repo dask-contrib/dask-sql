@@ -92,9 +92,8 @@ def test_filter_cast_date(c, input_table, request):
             CAST(timezone AS DATE) > DATE '2014-08-01'
         """
     )
-
     expected_df = datetime_table[
-        datetime_table["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+        datetime_table["timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
         > pd.Timestamp("2014-08-01")
     ]
     assert_eq(return_df, expected_df)
@@ -109,6 +108,9 @@ def test_filter_cast_date(c, input_table, request):
             marks=(pytest.mark.gpu),
         ),
     ],
+)
+@pytest.mark.xfail(
+    reason="Need support for non-UTC timezoned literals, see https://github.com/dask-contrib/dask-sql/issues/1193"
 )
 def test_filter_cast_timestamp(c, input_table, request):
     datetime_table = request.getfixturevalue(input_table)

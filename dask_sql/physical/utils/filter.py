@@ -129,10 +129,12 @@ def attempt_predicate_pushdown(
 
     # Regenerate collection with filtered IO layer
     try:
+        _regen_cache = {}
         return dsk.layers[name]._regenerate_collection(
             dsk,
             # TODO: shouldn't need to specify index=False after dask#9661 is merged
             new_kwargs={io_layer: {"filters": filters, "index": False}},
+            _regen_cache=_regen_cache,
         )
     except ValueError as err:
         # Most-likely failed to apply filters in read_parquet.
@@ -195,15 +197,33 @@ class DNF:
     @classmethod
     def normalize(cls, filters: _And | _Or | list | tuple | None):
         """Convert raw filters to the `_Or(_And)` DNF representation"""
+
+        def _valid_tuple(predicate: tuple):
+            col, op, val = predicate
+            if isinstance(col, tuple):
+                raise TypeError("filters must be List[Tuple] or List[List[Tuple]]")
+            if op in ("in", "not in"):
+                return (col, op, tuple(val))
+            else:
+                return predicate
+
+        def _valid_list(conjunction: list):
+            valid = []
+            for predicate in conjunction:
+                if not isinstance(predicate, tuple):
+                    raise TypeError(f"Predicate must be a tuple, got {predicate}")
+                valid.append(_valid_tuple(predicate))
+            return valid
+
         if not filters:
             result = None
         elif isinstance(filters, list):
             conjunctions = filters if isinstance(filters[0], list) else [filters]
-            result = cls._Or([cls._And(conjunction) for conjunction in conjunctions])
+            result = cls._Or(
+                [cls._And(_valid_list(conjunction)) for conjunction in conjunctions]
+            )
         elif isinstance(filters, tuple):
-            if isinstance(filters[0], tuple):
-                raise TypeError("filters must be List[Tuple] or List[List[Tuple]]")
-            result = cls._Or((cls._And((filters,)),))
+            result = cls._Or((cls._And((_valid_tuple(filters),)),))
         elif isinstance(filters, cls._Or):
             result = cls._Or(se for e in filters for se in cls.normalize(e))
         elif isinstance(filters, cls._And):
@@ -332,7 +352,8 @@ class RegenerableLayer:
 
         # Return regenerated layer if the work was
         # already done
-        _regen_cache = _regen_cache or {}
+        if _regen_cache is None:
+            _regen_cache = {}
         if self.layer.output in _regen_cache:
             return _regen_cache[self.layer.output]
 
