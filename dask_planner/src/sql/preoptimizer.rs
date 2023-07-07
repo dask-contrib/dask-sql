@@ -21,37 +21,52 @@ use datafusion_python::{
 // datetime_coercion preoptimizer rule fixes a bug involving Timestamp-Int operations.
 
 // Helper function for datetime_coercion rule, which returns a vector of columns and literals
-// involved in a (possibly nested) BinaryExpr mathematical expression
-fn extract_columns_and_literals(expr: &Expr) -> Vec<Expr> {
+// involved in a (possibly nested) BinaryExpr mathematical expression, and the mathematical
+// BinaryExpr itself
+fn extract_columns_and_literals(expr: &Expr) -> Vec<(Vec<Expr>, Expr)> {
     let mut result = Vec::new();
-    match expr {
-        Expr::BinaryExpr(b) => {
-            let left = *b.left.clone();
-            let right = *b.right.clone();
-            if let Operator::Plus
-            | Operator::Minus
-            | Operator::Multiply
-            | Operator::Divide
-            | Operator::Modulo = &b.op
-            {
-                if let (
-                    Expr::Column(_) | Expr::Literal(_),
-                    Expr::Column(_) | Expr::Literal(_)
-                ) = (left.clone(), right.clone()) {
-                    result.push(left);
-                    result.push(right);
-                }
+    if let Expr::BinaryExpr(b) = expr {
+        let left = *b.left.clone();
+        let right = *b.right.clone();
+        if let Operator::Plus
+        | Operator::Minus
+        | Operator::Multiply
+        | Operator::Divide
+        | Operator::Modulo = &b.op
+        {
+            let mut operands = Vec::new();
+            if let Expr::Column(_) | Expr::Literal(_) = left.clone() {
+                operands.push(left);
             } else {
-                if let Expr::BinaryExpr(_) = left {
-                    result.append(&mut extract_columns_and_literals(&left));
+                let vector_of_vectors = extract_columns_and_literals(&left);
+                let mut flattened = Vec::new();
+                for vector in vector_of_vectors {
+                    flattened.extend(vector.0);
                 }
+                operands.append(&mut flattened);
+            }
 
-                if let Expr::BinaryExpr(_) = right {
-                    result.append(&mut extract_columns_and_literals(&right));
+            if let Expr::Column(_) | Expr::Literal(_) = right.clone() {
+                operands.push(right);
+            } else {
+                let vector_of_vectors = extract_columns_and_literals(&right);
+                let mut flattened = Vec::new();
+                for vector in vector_of_vectors {
+                    flattened.extend(vector.0);
                 }
+                operands.append(&mut flattened);
+            }
+
+            result.push((operands, expr.clone()));
+        } else {
+            if let Expr::BinaryExpr(_) = left {
+                result.append(&mut extract_columns_and_literals(&left));
+            }
+
+            if let Expr::BinaryExpr(_) = right {
+                result.append(&mut extract_columns_and_literals(&right));
             }
         }
-        _ => (),
     }
     result
 }
@@ -75,7 +90,7 @@ fn find_data_type(column: Column, fields: Vec<DFField>) -> Option<DataType> {
 // Helper function for datetime_coercion rule, which, given a BinaryExpr and a HashMap in which the
 // key represents a Literal and the value represents a Literal to replace the key with, returns the
 // modified BinaryExpr
-fn replace_literals(expr: Expr, replacements: &HashMap<Expr, Expr>) -> Expr {
+fn replace_literals(expr: Expr, replacements: HashMap<Expr, Expr>) -> Expr {
     match expr {
         Expr::Literal(l) => {
             if let Some(new_literal) = replacements.get(&Expr::Literal(l.clone())) {
@@ -85,13 +100,35 @@ fn replace_literals(expr: Expr, replacements: &HashMap<Expr, Expr>) -> Expr {
             }
         }
         Expr::BinaryExpr(b) => {
-            let left = replace_literals(*b.left, replacements);
+            let left = replace_literals(*b.left, replacements.clone());
             let right = replace_literals(*b.right, replacements);
             Expr::BinaryExpr(BinaryExpr {
                 left: Box::new(left),
                 op: b.op,
                 right: Box::new(right),
             })
+        }
+        _ => expr,
+    }
+}
+
+// Helper function for datetime_coercion rule, which, given a BinaryExpr expr and a HashMap in
+// which the key represents a BinaryExpr and the value represents a BinaryExpr to replace the key
+// with, returns the modified expr
+fn replace_binary_exprs(expr: Expr, replacements: HashMap<Expr, Expr>) -> Expr {
+    match expr {
+        Expr::BinaryExpr(b) => {
+            if let Some(new_expr) = replacements.get(&Expr::BinaryExpr(b.clone())) {
+                new_expr.clone()
+            } else {
+                let left = replace_binary_exprs(*b.left, replacements.clone());
+                let right = replace_binary_exprs(*b.right, replacements);
+                Expr::BinaryExpr(BinaryExpr {
+                    left: Box::new(left),
+                    op: b.op,
+                    right: Box::new(right),
+                })
+            }
         }
         _ => expr,
     }
@@ -106,56 +143,45 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
             let filter_expr = f.predicate.clone();
             let columns_and_literals = extract_columns_and_literals(&filter_expr);
 
-            let mut days_to_nanoseconds: HashMap<Expr, Expr> = HashMap::new();
-            // Because of the way extract_columns_and_literals works, we assume that any relevant
-            // Plus, Minus, etc. operation is strictly between Columns and/or Literals, i.e., that
-            // there is not a nested BinaryExpr such as date_col + 1 + 2. In that case, the result
-            // of extract_columns_and_literals will not include those Exprs
-            for pair in columns_and_literals.chunks(2) {
-                match pair {
-                    [item1, item2] => {
-                        // Detect whether a timestamp is involved in the operation
-                        let mut is_timestamp_operation = false;
-                        if let Expr::Column(column) = item1 {
-                            if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
-                                find_data_type(column.clone(), plan.schema().fields().clone())
-                            {
-                                is_timestamp_operation = true;
-                            }
-                        }
-                        if let Expr::Column(column) = item2 {
-                            if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
-                                find_data_type(column.clone(), plan.schema().fields().clone())
-                            {
-                                is_timestamp_operation = true;
-                            }
-                        }
-
-                        // Convert an integer to an IntervalMonthDayNano
-                        if is_timestamp_operation {
-                            if let Expr::Literal(ScalarValue::Int64(i)) = item1 {
-                                let ns = i.unwrap() as i128 * 18446744073709552000;
-
-                                days_to_nanoseconds.insert(
-                                    Expr::Literal(ScalarValue::Int64(*i)),
-                                    Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
-                                );
-                            }
-                            if let Expr::Literal(ScalarValue::Int64(i)) = item2 {
-                                let ns = i.unwrap() as i128 * 18446744073709552000;
-
-                                days_to_nanoseconds.insert(
-                                    Expr::Literal(ScalarValue::Int64(*i)),
-                                    Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
-                                );
-                            }
+            let mut days_to_nanoseconds: Vec<(Expr, HashMap<Expr, Expr>)> = Vec::new();
+            for vector in columns_and_literals.iter() {
+                // Detect whether a timestamp is involved in the operation
+                let mut is_timestamp_operation = false;
+                for item in vector.0.iter() {
+                    if let Expr::Column(column) = item {
+                        if let Some(DataType::Timestamp(TimeUnit::Nanosecond, _)) =
+                            find_data_type(column.clone(), plan.schema().fields().clone())
+                        {
+                            is_timestamp_operation = true;
                         }
                     }
-                    _ => (),
+                }
+
+                // Convert an integer to an IntervalMonthDayNano
+                if is_timestamp_operation {
+                    let mut find_replace = HashMap::new();
+                    for item in vector.0.iter() {
+                        if let Expr::Literal(ScalarValue::Int64(i)) = item {
+                            let ns = i.unwrap() as i128 * 18446744073709552000;
+    
+                            find_replace.insert(
+                                Expr::Literal(ScalarValue::Int64(*i)),
+                                Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
+                            );
+                        }
+                    }
+                    days_to_nanoseconds.push((vector.1.clone(), find_replace));
                 }
             }
 
-            let new_filter = replace_literals(filter_expr, &days_to_nanoseconds);
+            let mut binary_exprs = HashMap::new();
+            for replacements in days_to_nanoseconds.iter() {
+                binary_exprs.insert(
+                    replacements.0.clone(),
+                    replace_literals(replacements.0.clone(), replacements.1.clone()),
+                );
+            }
+            let new_filter = replace_binary_exprs(filter_expr, binary_exprs);
             Some(LogicalPlan::Filter(
                 Filter::try_new(new_filter, f.input.clone()).unwrap(),
             ))
@@ -165,7 +191,7 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
 }
 
 // Function used to iterate through a LogicalPlan and update it accordingly
-pub fn optimize_children(existing_plan: LogicalPlan) -> Option<LogicalPlan> {
+fn optimize_children(existing_plan: LogicalPlan) -> Option<LogicalPlan> {
     let plan = existing_plan.clone();
     let new_exprs = plan.expressions();
     let mut new_inputs = Vec::with_capacity(plan.inputs().len());

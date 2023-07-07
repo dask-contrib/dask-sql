@@ -1247,13 +1247,25 @@ def test_datetime_coercion(c):
                 datetime(2023, 7, 1),
                 datetime(2023, 7, 5),
                 datetime(2023, 7, 10),
+                datetime(2023, 7, 15),
             ],
+            "x": [1, 2, 3, 4],
         }
     )
     c.create_table("d_table", d_table)
 
-    df = c.sql("SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + 5")
+    df = c.sql(
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + (2 + 3)
+    """
+    )
     expected_df = c.sql(
-        "SELECT * FROM d_table d1, d_table d2 WHERE d2.d_date > d1.d_date + INTERVAL '5 days'"
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + INTERVAL '5 days'
+    """
     )
     assert_eq(df, expected_df)
