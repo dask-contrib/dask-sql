@@ -819,7 +819,8 @@ dependencies = [
 [[package]]
 name = "datafusion-python"
 version = "26.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion-python.git?branch=logical_extension#ce83d8a837ac2bd8473cbe3432cebd3eb90a6e1c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d406c7f116547044c2039be6d055c19c680a4ab8b1a550f0403c0ae276dff3c5"
 dependencies = [
  "async-trait",
  "datafusion",
