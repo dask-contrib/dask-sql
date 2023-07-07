@@ -42,7 +42,7 @@ impl DaskSqlOptimizer {
     pub fn new() -> Self {
         debug!("Creating new instance of DaskSqlOptimizer");
 
-        let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
+        let mut rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
@@ -84,6 +84,12 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownLimit::new()),
         ];
 
+        let join_reorder_index = 13;
+        if let Some(rule) = rules.get_mut(join_reorder_index) {
+            // TODO: Replace Arc::new(JoinReorder::default()), with user specifications
+            *rule = Arc::new(JoinReorder::default());
+        }
+
         Self {
             optimizer: Optimizer::with_rules(rules),
         }
@@ -91,9 +97,13 @@ impl DaskSqlOptimizer {
 
     // Create a separate instance of this optimization rule, since we want to ensure that it only
     // runs one time
-    pub fn dynamic_partition_pruner() -> Self {
-        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> =
-            vec![Arc::new(DynamicPartitionPruning::new())];
+    pub fn dynamic_partition_pruner(fact_dimension_ratio: Option<f64>) -> Self {
+        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>>;
+        if let Some(f) = fact_dimension_ratio {
+            rule = vec![Arc::new(DynamicPartitionPruning::new(f))];
+        } else {
+            rule = vec![Arc::new(DynamicPartitionPruning::default())];
+        }
 
         Self {
             optimizer: Optimizer::with_rules(rule),

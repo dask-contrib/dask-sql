@@ -13,6 +13,7 @@ from dask.utils_test import hlg_layer
 from dask_planner.rust import (
     DaskSchema,
     DaskSQLContext,
+    DaskSQLOptimizerConfig,
     DaskTable,
     DFOptimizationException,
     DFParsingException,
@@ -98,13 +99,15 @@ class Context:
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
-        # Create the `DaskSQLContext` Rust context
-        self.context = DaskSQLContext(self.catalog_name, self.schema_name)
-        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
-
-        self.context.apply_dynamic_partition_pruning(
-            dask_config.get("sql.dynamic_partition_pruning")
+        # Create the `DaskSQLOptimizerConfig` Rust context
+        optimizer_config = DaskSQLOptimizerConfig(
+            dask_config.get("sql.dynamic_partition_pruning"),
+            dask_config.get("sql.fact_dimension_ratio"),
         )
+
+        # Create the `DaskSQLContext` Rust context
+        self.context = DaskSQLContext(self.catalog_name, self.schema_name, optimizer_config)
+        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
@@ -799,9 +802,12 @@ class Context:
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
-        self.context.apply_dynamic_partition_pruning(
-            dask_config.get("sql.dynamic_partition_pruning")
+
+        optimizer_config = DaskSQLOptimizerConfig(
+            dask_config.get("sql.dynamic_partition_pruning"),
+            dask_config.get("sql.fact_dimension_ratio"),
         )
+        self.context.update_optimizer_config(optimizer_config)
 
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()

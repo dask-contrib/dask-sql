@@ -18,6 +18,8 @@ sql:
 
   dynamic_partition_pruning: True
 
+  fact_dimension_ratio: null
+
   sort:
     topk-nelem-limit: 1000000
 

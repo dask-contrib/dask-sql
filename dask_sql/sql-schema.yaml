@@ -69,6 +69,11 @@ properties:
         description: |
           Whether to apply the dynamic partition pruning optimizer rule.
 
+      fact_dimension_ratio:
+        type: [number, "null"]
+        description: |
+          Ratio of the size of the dimension tables to fact tables.
+
       sort:
         type: object
         properties:

@@ -24,6 +24,22 @@ pub struct JoinReorder {
     filter_selectivity: f64,
 }
 
+impl JoinReorder {
+    pub fn new(
+        max_fact_tables: usize,
+        fact_dimension_ratio: f64,
+        preserve_user_order: bool,
+        filter_selectivity: f64,
+    ) -> Self {
+        Self {
+            max_fact_tables,
+            fact_dimension_ratio,
+            preserve_user_order,
+            filter_selectivity,
+        }
+    }
+}
+
 impl Default for JoinReorder {
     fn default() -> Self {
         Self {

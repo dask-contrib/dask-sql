@@ -36,11 +36,24 @@ use log::warn;
 use crate::sql::table::DaskTableSource;
 
 // Optimizer rule for dynamic partition pruning
-pub struct DynamicPartitionPruning {}
+pub struct DynamicPartitionPruning {
+    /// Ratio of the size of the dimension tables to fact tables
+    fact_dimension_ratio: f64,
+}
 
 impl DynamicPartitionPruning {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(fact_dimension_ratio: f64) -> Self {
+        Self {
+            fact_dimension_ratio,
+        }
+    }
+}
+
+impl Default for DynamicPartitionPruning {
+    fn default() -> Self {
+        Self {
+            fact_dimension_ratio: 0.3,
+        }
     }
 }
 
@@ -106,9 +119,6 @@ impl OptimizerRule for DynamicPartitionPruning {
                         (left_table.unwrap(), right_table.unwrap());
                     let (left_field, right_field) = (left_field.unwrap(), right_field.unwrap());
 
-                    // TODO: Consider allowing the fact_dimension_ratio to be configured by the
-                    // user. See issue: https://github.com/dask-contrib/dask-sql/issues/1121
-                    let fact_dimension_ratio = 0.3;
                     let (mut left_filtered_table, mut right_filtered_table) = (None, None);
 
                     // Check if join uses an alias instead of the table name itself. Need to use
@@ -136,7 +146,7 @@ impl OptimizerRule for DynamicPartitionPruning {
                         .size
                         .unwrap_or(largest_size as usize) as f64
                         / largest_size
-                        < fact_dimension_ratio
+                        < self.fact_dimension_ratio
                     {
                         left_filtered_table =
                             read_table(left_table.clone(), left_field.clone(), tables.clone());
@@ -149,7 +159,7 @@ impl OptimizerRule for DynamicPartitionPruning {
                         .size
                         .unwrap_or(largest_size as usize) as f64
                         / largest_size
-                        < fact_dimension_ratio
+                        < self.fact_dimension_ratio
                     {
                         right_filtered_table =
                             read_table(right_table.clone(), right_field.clone(), tables.clone());
