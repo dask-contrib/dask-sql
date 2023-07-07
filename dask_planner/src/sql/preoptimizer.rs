@@ -163,7 +163,7 @@ pub fn datetime_coercion(plan: &LogicalPlan) -> Option<LogicalPlan> {
                     for item in vector.0.iter() {
                         if let Expr::Literal(ScalarValue::Int64(i)) = item {
                             let ns = i.unwrap() as i128 * 18446744073709552000;
-    
+
                             find_replace.insert(
                                 Expr::Literal(ScalarValue::Int64(*i)),
                                 Expr::Literal(ScalarValue::IntervalMonthDayNano(Some(ns))),
