@@ -18,6 +18,8 @@ sql:
 
   dynamic_partition_pruning: True
 
+  verbose_optimizer: False
+
   fact_dimension_ratio: null
 
   max_fact_tables: null

@@ -109,7 +109,9 @@ class Context:
         )
 
         # Create the `DaskSQLContext` Rust context
-        self.context = DaskSQLContext(self.catalog_name, self.schema_name, optimizer_config)
+        self.context = DaskSQLContext(
+            self.catalog_name, self.schema_name, optimizer_config
+        )
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
@@ -548,11 +550,18 @@ class Context:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        dynamic_partition_pruning = dask_config.get("sql.dynamic_partition_pruning")
+        if dask_config.get("sql.verbose_optimizer"):
+            dask_config.set({"sql.dynamic_partition_pruning": True})
+        else:
+            dask_config.set({"sql.dynamic_partition_pruning": False})
+
         if dataframes is not None:
             for df_name, df in dataframes.items():
                 self.create_table(df_name, df, gpu=gpu)
 
         _, rel_string = self._get_ral(sql)
+        dask_config.set({"sql.dynamic_partition_pruning": dynamic_partition_pruning})
         return rel_string
 
     def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover

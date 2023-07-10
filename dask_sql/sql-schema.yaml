@@ -69,29 +69,37 @@ properties:
         description: |
           Whether to apply the dynamic partition pruning optimizer rule.
 
+      verbose_optimizer:
+        type: boolean
+        description: |
+          The dynamic partition pruning optimizer rule can sometimes result in extremely long
+          c.explain() outputs which are not helpful to the user. Setting this option to true allows
+          the user to see the entire output, while setting it to false truncates the output.
+          Default is false.
+
       fact_dimension_ratio:
         type: [number, "null"]
         description: |
-          Ratio of the size of the dimension tables to fact tables. Parameter for Dynamic Partition
-          Pruning and Join Reorder optimization rules.
+          Ratio of the size of the dimension tables to fact tables. Parameter for dynamic partition
+          pruning and join reorder optimizer rules.
 
       max_fact_tables:
         type: [integer, "null"]
         description: |
-          Maximum number of fact tables to allow in a join. Parameter for Join Reorder optimization
+          Maximum number of fact tables to allow in a join. Parameter for join reorder optimizer
           rule.
 
       preserve_user_order:
         type: [boolean, "null"]
         description: |
-          Whether to preserve user-defined order of unfiltered dimensions. Parameter for Join
-          Reorder optimization rule.
+          Whether to preserve user-defined order of unfiltered dimensions. Parameter for join
+          reorder optimizer rule.
 
       filter_selectivity:
         type: [number, "null"]
         description: |
           Constant to use when determining the number of rows produced by a filtered relation.
-          Parameter for Join Reorder optimization rule.
+          Parameter for join reorder optimizer rule.
 
       sort:
         type: object

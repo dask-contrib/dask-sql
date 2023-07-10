@@ -523,7 +523,7 @@ impl DaskSQLContext {
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
             options: ConfigOptions::new(),
-            optimizer_config: optimizer_config,
+            optimizer_config,
         }
     }
 
@@ -625,20 +625,22 @@ impl DaskSQLContext {
                             self.optimizer_config.preserve_user_order,
                             self.optimizer_config.filter_selectivity,
                         )
-                            .optimize(existing_plan.original_plan)
+                        .optimize(existing_plan.original_plan)
+                        .map(|k| PyLogicalPlan {
+                            original_plan: k,
+                            current_node: None,
+                        })
+                        .map_err(py_optimization_exp);
+                        if self.optimizer_config.dynamic_partition_pruning {
+                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner(
+                                self.optimizer_config.fact_dimension_ratio,
+                            )
+                            .optimize_once(optimized_plan.unwrap().original_plan)
                             .map(|k| PyLogicalPlan {
                                 original_plan: k,
                                 current_node: None,
                             })
-                            .map_err(py_optimization_exp);
-                        if self.optimizer_config.dynamic_partition_pruning {
-                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner(self.optimizer_config.fact_dimension_ratio)
-                                .optimize_once(optimized_plan.unwrap().original_plan)
-                                .map(|k| PyLogicalPlan {
-                                    original_plan: k,
-                                    current_node: None,
-                                })
-                                .map_err(py_optimization_exp)
+                            .map_err(py_optimization_exp)
                         } else {
                             optimized_plan
                         }
