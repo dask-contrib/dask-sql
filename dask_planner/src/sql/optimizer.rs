@@ -39,10 +39,15 @@ pub struct DaskSqlOptimizer {
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new() -> Self {
+    pub fn new(
+        fact_dimension_ratio: Option<f64>,
+        max_fact_tables: Option<usize>,
+        preserve_user_order: Option<bool>,
+        filter_selectivity: Option<f64>,
+    ) -> Self {
         debug!("Creating new instance of DaskSqlOptimizer");
 
-        let mut rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
+        let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
@@ -72,7 +77,12 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             // Arc::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
-            Arc::new(JoinReorder::default()),
+            Arc::new(JoinReorder::new(
+                fact_dimension_ratio,
+                max_fact_tables,
+                preserve_user_order,
+                filter_selectivity,
+            )),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
@@ -83,12 +93,6 @@ impl DaskSqlOptimizer {
             // PushDownProjection can pushdown Projections through Limits, do PushDownLimit again.
             Arc::new(PushDownLimit::new()),
         ];
-
-        let join_reorder_index = 13;
-        if let Some(rule) = rules.get_mut(join_reorder_index) {
-            // TODO: Replace Arc::new(JoinReorder::default()), with user specifications
-            *rule = Arc::new(JoinReorder::default());
-        }
 
         Self {
             optimizer: Optimizer::with_rules(rules),
@@ -187,7 +191,7 @@ mod tests {
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new();
+        let optimizer = DaskSqlOptimizer::new(None, None, None, None);
         optimizer.optimize(plan)
     }
 

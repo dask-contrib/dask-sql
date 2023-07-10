@@ -72,7 +72,26 @@ properties:
       fact_dimension_ratio:
         type: [number, "null"]
         description: |
-          Ratio of the size of the dimension tables to fact tables.
+          Ratio of the size of the dimension tables to fact tables. Parameter for Dynamic Partition
+          Pruning and Join Reorder optimization rules.
+
+      max_fact_tables:
+        type: [integer, "null"]
+        description: |
+          Maximum number of fact tables to allow in a join. Parameter for Join Reorder optimization
+          rule.
+
+      preserve_user_order:
+        type: [boolean, "null"]
+        description: |
+          Whether to preserve user-defined order of unfiltered dimensions. Parameter for Join
+          Reorder optimization rule.
+
+      filter_selectivity:
+        type: [number, "null"]
+        description: |
+          Constant to use when determining the number of rows produced by a filtered relation.
+          Parameter for Join Reorder optimization rule.
 
       sort:
         type: object

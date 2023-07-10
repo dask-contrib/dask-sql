@@ -13,10 +13,10 @@ use log::warn;
 use crate::sql::table::DaskTableSource;
 
 pub struct JoinReorder {
-    /// Maximum number of fact tables to allow in a join
-    max_fact_tables: usize,
     /// Ratio of the size of the dimension tables to fact tables
     fact_dimension_ratio: f64,
+    /// Maximum number of fact tables to allow in a join
+    max_fact_tables: usize,
     /// Whether to preserve user-defined order of unfiltered dimensions
     preserve_user_order: bool,
     /// Constant to use when determining the number of rows produced by a
@@ -26,28 +26,17 @@ pub struct JoinReorder {
 
 impl JoinReorder {
     pub fn new(
-        max_fact_tables: usize,
-        fact_dimension_ratio: f64,
-        preserve_user_order: bool,
-        filter_selectivity: f64,
+        fact_dimension_ratio: Option<f64>,
+        max_fact_tables: Option<usize>,
+        preserve_user_order: Option<bool>,
+        filter_selectivity: Option<f64>,
     ) -> Self {
         Self {
-            max_fact_tables,
-            fact_dimension_ratio,
-            preserve_user_order,
-            filter_selectivity,
-        }
-    }
-}
-
-impl Default for JoinReorder {
-    fn default() -> Self {
-        Self {
-            max_fact_tables: 2,
-            // FIXME: fact_dimension_ratio should be 0.3
-            fact_dimension_ratio: 0.7,
-            preserve_user_order: true,
-            filter_selectivity: 1.0,
+            // FIXME: Default value for fact_dimension_ratio should be 0.3, not 0.7
+            fact_dimension_ratio: fact_dimension_ratio.unwrap_or(0.7),
+            max_fact_tables: max_fact_tables.unwrap_or(2),
+            preserve_user_order: preserve_user_order.unwrap_or(true),
+            filter_selectivity: filter_selectivity.unwrap_or(1.0),
         }
     }
 }

@@ -103,6 +103,9 @@ class Context:
         optimizer_config = DaskSQLOptimizerConfig(
             dask_config.get("sql.dynamic_partition_pruning"),
             dask_config.get("sql.fact_dimension_ratio"),
+            dask_config.get("sql.max_fact_tables"),
+            dask_config.get("sql.preserve_user_order"),
+            dask_config.get("sql.filter_selectivity"),
         )
 
         # Create the `DaskSQLContext` Rust context
@@ -806,8 +809,11 @@ class Context:
         optimizer_config = DaskSQLOptimizerConfig(
             dask_config.get("sql.dynamic_partition_pruning"),
             dask_config.get("sql.fact_dimension_ratio"),
+            dask_config.get("sql.max_fact_tables"),
+            dask_config.get("sql.preserve_user_order"),
+            dask_config.get("sql.filter_selectivity"),
         )
-        self.context.update_optimizer_config(optimizer_config)
+        self.context.set_optimizer_config(optimizer_config)
 
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()

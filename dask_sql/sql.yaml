@@ -20,6 +20,12 @@ sql:
 
   fact_dimension_ratio: null
 
+  max_fact_tables: null
+
+  preserve_user_order: null
+
+  filter_selectivity: null
+
   sort:
     topk-nelem-limit: 1000000
 

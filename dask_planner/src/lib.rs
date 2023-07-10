@@ -30,6 +30,7 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<sql::function::DaskFunction>()?;
     m.add_class::<sql::table::DaskStatistics>()?;
     m.add_class::<sql::logical::PyLogicalPlan>()?;
+    m.add_class::<sql::DaskSQLOptimizerConfig>()?;
 
     // Exceptions
     m.add(
