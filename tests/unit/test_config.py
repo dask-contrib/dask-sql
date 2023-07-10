@@ -1,4 +1,5 @@
 import os
+import sys
 from unittest import mock
 
 import dask.dataframe as dd
@@ -7,10 +8,9 @@ import pytest
 import yaml
 from dask import config as dask_config
 
-from dask_sql import Context
-
 # Required to instantiate default sql config
 import dask_sql  # noqa: F401
+from dask_sql import Context
 
 
 def test_custom_yaml(tmpdir):
@@ -102,6 +102,10 @@ def test_dask_setconfig():
     dask_config.refresh()
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 9),
+    reason="Writing and reading the Dask DataFrame causes a ProtocolError",
+)
 def test_dynamic_partition_pruning(tmpdir):
     c = Context()
 
