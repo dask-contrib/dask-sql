@@ -551,9 +551,7 @@ class Context:
 
         """
         dynamic_partition_pruning = dask_config.get("sql.dynamic_partition_pruning")
-        if dask_config.get("sql.verbose_optimizer"):
-            dask_config.set({"sql.dynamic_partition_pruning": True})
-        else:
+        if not dask_config.get("sql.verbose_optimizer"):
             dask_config.set({"sql.dynamic_partition_pruning": False})
 
         if dataframes is not None:
