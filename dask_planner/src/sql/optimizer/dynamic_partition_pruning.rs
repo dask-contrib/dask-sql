@@ -49,14 +49,6 @@ impl DynamicPartitionPruning {
     }
 }
 
-impl Default for DynamicPartitionPruning {
-    fn default() -> Self {
-        Self {
-            fact_dimension_ratio: 0.3,
-        }
-    }
-}
-
 impl OptimizerRule for DynamicPartitionPruning {
     fn name(&self) -> &str {
         "dynamic_partition_pruning"
