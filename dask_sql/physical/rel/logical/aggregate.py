@@ -127,9 +127,25 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
         "stddev": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevsamp": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddev_samp": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevpop": AggregationSpecification(
             dd.Aggregation(
                 "stddevpop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                )
+                ** (1 / 2),
+            )
+        ),
+        "stddev_pop": AggregationSpecification(
+            dd.Aggregation(
+                "stddev_pop",
                 lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
                 lambda count, sum, sum_of_squares: (
                     count.sum(),
@@ -187,6 +203,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "variancepop": AggregationSpecification(
             dd.Aggregation(
                 "variancepop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                ),
+            )
+        ),
+        "variance_pop": AggregationSpecification(
+            dd.Aggregation(
+                "variance_pop",
                 lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
                 lambda count, sum, sum_of_squares: (
                     count.sum(),
@@ -378,7 +408,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
             for input_expr in agg.getArgs(expr):
-                input_col = input_expr.column_name(input_rel)
+                # Wildcard expr
+                if input_expr.toString() != "*":
+                    input_col = input_expr.column_name(input_rel)
+                else:
+                    input_col = None
                 if input_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(

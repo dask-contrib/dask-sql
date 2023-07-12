@@ -104,9 +104,10 @@ impl PyExpr {
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
             Expr::Alias(..) => RexType::Alias,
-            Expr::Column(..) | Expr::QualifiedWildcard { .. } | Expr::GetIndexedField { .. } => {
-                RexType::Reference
-            }
+            Expr::Column(..)
+            | Expr::QualifiedWildcard { .. }
+            | Expr::GetIndexedField { .. }
+            | Expr::Wildcard => RexType::Reference,
             Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
             Expr::BinaryExpr { .. }
             | Expr::Not(..)
@@ -126,7 +127,6 @@ impl PyExpr {
             | Expr::WindowFunction { .. }
             | Expr::AggregateUDF { .. }
             | Expr::InList { .. }
-            | Expr::Wildcard
             | Expr::ScalarUDF { .. }
             | Expr::Exists { .. }
             | Expr::InSubquery { .. }
@@ -197,49 +197,54 @@ impl PyExpr {
                     schema.merge(plan.schema().as_ref());
                 }
                 let name = get_expr_name(&self.expr).map_err(py_runtime_err)?;
-                schema
-                    .index_of_column(&Column::from_qualified_name(name.clone()))
-                    .or_else(|_| {
-                        // Handles cases when from_qualified_name doesn't format the Column correctly.
-                        // "name" will always contain the name of the column. Anything in addition to
-                        // that will be separated by a '.' and should be further referenced.
-                        let parts = name.split('.').collect::<Vec<&str>>();
-                        let tbl_reference = match parts.len() {
-                            // Single element means name contains just the column name so no TableReference
-                            1 => None,
-                            // Tablename.column_name
-                            2 => Some(
-                                TableReference::Bare {
-                                    table: Cow::Borrowed(parts[0]),
-                                }
-                                .to_owned_reference(),
-                            ),
-                            // Schema_name.table_name.column_name
-                            3 => Some(
-                                TableReference::Partial {
-                                    schema: Cow::Borrowed(parts[0]),
-                                    table: Cow::Borrowed(parts[1]),
-                                }
-                                .to_owned_reference(),
-                            ),
-                            // catalog_name.schema_name.table_name.column_name
-                            4 => Some(
-                                TableReference::Full {
-                                    catalog: Cow::Borrowed(parts[0]),
-                                    schema: Cow::Borrowed(parts[1]),
-                                    table: Cow::Borrowed(parts[2]),
-                                }
-                                .to_owned_reference(),
-                            ),
-                            _ => None,
-                        };
+                if name != "*" {
+                    schema
+                        .index_of_column(&Column::from_qualified_name(name.clone()))
+                        .or_else(|_| {
+                            // Handles cases when from_qualified_name doesn't format the Column correctly.
+                            // "name" will always contain the name of the column. Anything in addition to
+                            // that will be separated by a '.' and should be further referenced.
+                            let parts = name.split('.').collect::<Vec<&str>>();
+                            let tbl_reference = match parts.len() {
+                                // Single element means name contains just the column name so no TableReference
+                                1 => None,
+                                // Tablename.column_name
+                                2 => Some(
+                                    TableReference::Bare {
+                                        table: Cow::Borrowed(parts[0]),
+                                    }
+                                    .to_owned_reference(),
+                                ),
+                                // Schema_name.table_name.column_name
+                                3 => Some(
+                                    TableReference::Partial {
+                                        schema: Cow::Borrowed(parts[0]),
+                                        table: Cow::Borrowed(parts[1]),
+                                    }
+                                    .to_owned_reference(),
+                                ),
+                                // catalog_name.schema_name.table_name.column_name
+                                4 => Some(
+                                    TableReference::Full {
+                                        catalog: Cow::Borrowed(parts[0]),
+                                        schema: Cow::Borrowed(parts[1]),
+                                        table: Cow::Borrowed(parts[2]),
+                                    }
+                                    .to_owned_reference(),
+                                ),
+                                _ => None,
+                            };
 
-                        let col = Column {
-                            relation: tbl_reference.clone(),
-                            name: parts[parts.len() - 1].to_string(),
-                        };
-                        schema.index_of_column(&col).map_err(py_runtime_err)
-                    })
+                            let col = Column {
+                                relation: tbl_reference.clone(),
+                                name: parts[parts.len() - 1].to_string(),
+                            };
+                            schema.index_of_column(&col).map_err(py_runtime_err)
+                        })
+                } else {
+                    // Since this is wildcard any Column will do, just use first one
+                    Ok(0)
+                }
             }
             _ => Err(py_runtime_err(
                 "We need a valid LogicalPlan instance to get the Expr's index in the schema",
@@ -425,11 +430,14 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
+            Expr::Wildcard => Ok(vec![PyExpr::from(
+                self.expr.clone(),
+                self.input_plan.clone(),
+            )]),
 
             // Currently un-support/implemented Expr types for Rex Call operations
             Expr::GroupingSet(..)
             | Expr::OuterReferenceColumn(_, _)
-            | Expr::Wildcard
             | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
             | Expr::Placeholder { .. }
@@ -894,6 +902,10 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::Alias(expr, _) => get_expr_name(expr),
+        Expr::Wildcard => {
+            // 'Wildcard' means any and all columns. We get the first valid column name here
+            Ok("*".to_owned())
+        }
         _ => Ok(expr.canonical_name()),
     }
 }
@@ -905,6 +917,10 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
             // DataFusion does not support create_name for sort expressions (since they never
             // appear in projections) so we just delegate to the contained expression instead
             expr_to_field(expr, input_plan)
+        }
+        Expr::Wildcard => {
+            // Any column will do. We use the first column to keep things consistent
+            Ok(input_plan.schema().field(0).clone())
         }
         _ => {
             let fields =

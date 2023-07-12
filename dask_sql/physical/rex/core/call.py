@@ -1077,6 +1077,9 @@ class RexCallPlugin(BaseRexPlugin):
         "characterlength": TensorScalarOperation(
             lambda x: x.str.len(), lambda x: len(x)
         ),
+        "character_length": TensorScalarOperation(
+            lambda x: x.str.len(), lambda x: len(x)
+        ),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
         "position": PositionOperation(),
@@ -1104,6 +1107,7 @@ class RexCallPlugin(BaseRexPlugin):
         "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": ExtractOperation(),
+        "date_part": ExtractOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),

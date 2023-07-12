@@ -21,7 +21,7 @@ use datafusion_python::{
     },
     datafusion_expr::{
         logical_plan::Extension,
-        AccumulatorFunctionImplementation,
+        AccumulatorFactoryFunction,
         AggregateUDF,
         LogicalPlan,
         ReturnTypeFunction,
@@ -385,7 +385,7 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
-        let acc: AccumulatorFunctionImplementation =
+        let acc: AccumulatorFactoryFunction =
             Arc::new(|_return_type| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
@@ -477,6 +477,13 @@ impl ContextProvider for DaskSQLContext {
 
     fn options(&self) -> &ConfigOptions {
         &self.options
+    }
+
+    fn get_window_meta(
+        &self,
+        _name: &str,
+    ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
+        unimplemented!("RUST: get_window_meta is not yet implemented for DaskSQLContext")
     }
 }
 
@@ -592,14 +599,19 @@ impl DaskSQLContext {
                                 current_node: None,
                             })
                             .map_err(py_optimization_exp);
-                        if self.dynamic_partition_pruning {
-                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
-                                .optimize_once(optimized_plan.unwrap().original_plan)
-                                .map(|k| PyLogicalPlan {
-                                    original_plan: k,
-                                    current_node: None,
-                                })
-                                .map_err(py_optimization_exp)
+
+                        if let Ok(optimized_plan) = optimized_plan {
+                            if self.dynamic_partition_pruning {
+                                optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                                    .optimize_once(optimized_plan.original_plan)
+                                    .map(|k| PyLogicalPlan {
+                                        original_plan: k,
+                                        current_node: None,
+                                    })
+                                    .map_err(py_optimization_exp)
+                            } else {
+                                Ok(optimized_plan)
+                            }
                         } else {
                             optimized_plan
                         }
