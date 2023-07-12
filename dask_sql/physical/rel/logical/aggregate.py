@@ -408,11 +408,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
             for input_expr in agg.getArgs(expr):
-                # Wildcard expr
-                if input_expr.toString() != "*":
-                    input_col = input_expr.column_name(input_rel)
-                else:
-                    input_col = None
+                input_col = input_expr.column_name(input_rel)
                 if input_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(
