@@ -230,6 +230,13 @@ mod tests {
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
             None
         }
+
+        fn get_window_meta(
+            &self,
+            _name: &str,
+        ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
+            None
+        }
     }
 
     struct MyTableSource {
