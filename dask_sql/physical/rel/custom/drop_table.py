@@ -1,12 +1,12 @@
 import logging
 from typing import TYPE_CHECKING
 
+from dask_planner.rust import DaskLogicalPlan
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,11 @@ class DropTablePlugin(BaseRelPlugin):
 
     class_name = "DropTable"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
         # Rust create_memory_table instance handle
-        drop_table = rel.drop_table()
+        drop_table = rel.to_variant()
 
         qualified_table_name = drop_table.getQualifiedName()
         *schema_name, table_name = qualified_table_name.split(".")

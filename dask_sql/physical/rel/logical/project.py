@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import RexType
+from dask_planner.rust import RexType, named_projects, row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
@@ -31,21 +31,20 @@ class DaskProjectPlugin(BaseRelPlugin):
         cc = dc.column_container
 
         # Collect all (new) columns
-        proj = rel.projection()
-        named_projects = proj.getNamedProjects()
+        proj = rel.to_variant()
 
         column_names = []
         new_columns = {}
         new_mappings = {}
 
         # Collect all (new) columns this Projection will limit to
-        for key, expr in named_projects:
+        for key, expr in named_projects(proj):
             key = str(key)
             column_names.append(key)
 
             # shortcut: if we have a column already, there is no need to re-assign it again
             # this is only the case if the expr is a RexInputRef
-            if expr.getRexType() == RexType.Reference:
+            if expr.rex_type() == RexType.Reference:
                 index = expr.getIndex()
                 backend_column_name = cc.get_backend_by_frontend_index(index)
                 logger.debug(
@@ -71,8 +70,8 @@ class DaskProjectPlugin(BaseRelPlugin):
         # Make sure the order is correct
         cc = cc.limit_to(column_names)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
 
         return dc

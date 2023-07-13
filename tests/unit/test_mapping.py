@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dask_planner.rust import SqlTypeName
+from dask_planner.rust import SqlType
 from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 
@@ -27,10 +27,10 @@ def test_python_decimal_to_sql():
 
 
 def test_sql_to_python():
-    assert sql_to_python_value(SqlTypeName.VARCHAR, "test 123") == "test 123"
-    assert type(sql_to_python_value(SqlTypeName.BIGINT, 653)) == np.int64
-    assert sql_to_python_value(SqlTypeName.BIGINT, 653) == 653
-    assert sql_to_python_value(SqlTypeName.INTERVAL, 4) == timedelta(microseconds=4000)
+    assert sql_to_python_value(SqlType.VARCHAR, "test 123") == "test 123"
+    assert type(sql_to_python_value(SqlType.BIGINT, 653)) == np.int64
+    assert sql_to_python_value(SqlType.BIGINT, 653) == 653
+    assert sql_to_python_value(SqlType.INTERVAL, 4) == timedelta(microseconds=4000)
 
 
 def test_python_to_sql_to_python():

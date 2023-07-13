@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import dask_sql.utils as utils
+from dask_planner.rust import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
@@ -40,8 +41,8 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
         cc = ColumnContainer(result.columns)
 
         # Rename columns like the rel specifies
-        row_type = rel.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
+        rt = row_type(rel)
+        field_specifications = [str(f) for f in rt.getFieldNames()]
 
         cc = cc.rename(
             {
@@ -49,5 +50,5 @@ class DaskCrossJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-        cc = self.fix_column_to_row_type(cc, row_type)
+        cc = self.fix_column_to_row_type(cc, rt)
         return DataContainer(result, cc)

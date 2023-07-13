@@ -9,7 +9,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner import LogicalPlan
+    from dask_planner import DaskLogicalPlan
 
 
 class ShowColumnsPlugin(BaseRelPlugin):
@@ -24,8 +24,10 @@ class ShowColumnsPlugin(BaseRelPlugin):
 
     class_name = "ShowColumns"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        show_columns = rel.show_columns()
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
+        show_columns = rel.to_variant()
 
         schema_name = show_columns.getSchemaName() or context.schema_name
         table_name = show_columns.getTableName()

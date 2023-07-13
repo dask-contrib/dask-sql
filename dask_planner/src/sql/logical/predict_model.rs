@@ -8,12 +8,12 @@ use std::{
 use datafusion_python::{
     datafusion_common::DFSchemaRef,
     datafusion_expr::{logical_plan::UserDefinedLogicalNode, Expr, LogicalPlan},
+    sql::logical::PyLogicalPlan,
 };
 use fmt::Debug;
 use pyo3::prelude::*;
 
-use super::PyLogicalPlan;
-use crate::sql::{exceptions::py_type_err, logical};
+use crate::sql::exceptions::py_type_err;
 
 #[derive(Clone, PartialEq)]
 pub struct PredictModelPlanNode {
@@ -112,12 +112,12 @@ impl PyPredictModel {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyPredictModel {
+impl TryFrom<LogicalPlan> for PyPredictModel {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::Extension(extension) => {
+            LogicalPlan::Extension(extension) => {
                 if let Some(ext) = extension
                     .node
                     .as_any()

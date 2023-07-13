@@ -7,13 +7,11 @@ use datafusion_python::{
         Expr,
         Operator,
     },
+    expr::{column::PyColumn, PyExpr},
 };
 use pyo3::prelude::*;
 
-use crate::{
-    expression::PyExpr,
-    sql::{column, exceptions::py_type_err},
-};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "Join", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -61,17 +59,14 @@ impl PyJoin {
                 .iter()
                 .fold(filters[0].clone(), |acc, expr| and(acc, expr.clone()));
 
-            Ok(Some(PyExpr::from(
-                root_expr,
-                Some(vec![self.join.left.clone(), self.join.right.clone()]),
-            )))
+            Ok(Some(PyExpr::from(root_expr)))
         } else {
             Ok(None)
         }
     }
 
     #[pyo3(name = "getJoinConditions")]
-    pub fn join_conditions(&mut self) -> PyResult<Vec<(column::PyColumn, column::PyColumn)>> {
+    pub fn join_conditions(&mut self) -> PyResult<Vec<(PyColumn, PyColumn)>> {
         // let lhs_table_name = match &*self.join.left {
         //     LogicalPlan::TableScan(scan) => scan.table_name.clone(),
         //     _ => {
@@ -90,7 +85,7 @@ impl PyJoin {
         //     }
         // };
 
-        let mut join_conditions: Vec<(column::PyColumn, column::PyColumn)> = Vec::new();
+        let mut join_conditions: Vec<(PyColumn, PyColumn)> = Vec::new();
         for (lhs, rhs) in self.join.on.clone() {
             match (lhs, rhs) {
                 (Expr::Column(lhs), Expr::Column(rhs)) => {

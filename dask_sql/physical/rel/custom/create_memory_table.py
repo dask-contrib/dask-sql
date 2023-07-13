@@ -36,7 +36,7 @@ class CreateMemoryTablePlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # Rust create_memory_table instance handle
-        create_memory_table = rel.create_memory_table()
+        create_memory_table = rel.to_variant()
 
         qualified_table_name = create_memory_table.getQualifiedName()
         *schema_name, table_name = qualified_table_name.split(".")

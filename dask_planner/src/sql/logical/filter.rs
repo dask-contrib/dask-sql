@@ -1,7 +1,10 @@
-use datafusion_python::datafusion_expr::{logical_plan::Filter, LogicalPlan};
+use datafusion_python::{
+    datafusion_expr::{logical_plan::Filter, LogicalPlan},
+    expr::PyExpr,
+};
 use pyo3::prelude::*;
 
-use crate::{expression::PyExpr, sql::exceptions::py_type_err};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "Filter", module = "dask_planner", subclass)]
 #[derive(Clone)]
@@ -14,10 +17,7 @@ impl PyFilter {
     /// LogicalPlan::Filter: The PyExpr, predicate, that represents the filtering condition
     #[pyo3(name = "getCondition")]
     pub fn get_condition(&mut self) -> PyResult<PyExpr> {
-        Ok(PyExpr::from(
-            self.filter.predicate.clone(),
-            Some(vec![self.filter.input.clone()]),
-        ))
+        Ok(PyExpr::from(self.filter.predicate.clone()))
     }
 }
 

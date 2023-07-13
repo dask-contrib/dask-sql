@@ -4,8 +4,6 @@ use datafusion_python::{
     datafusion_common::DataFusionError,
     datafusion_expr::LogicalPlan,
     datafusion_optimizer::{
-        decorrelate_where_exists::DecorrelateWhereExists,
-        decorrelate_where_in::DecorrelateWhereIn,
         eliminate_cross_join::EliminateCrossJoin,
         eliminate_limit::EliminateLimit,
         eliminate_outer_join::EliminateOuterJoin,
@@ -30,6 +28,8 @@ use dynamic_partition_pruning::DynamicPartitionPruning;
 mod join_reorder;
 use join_reorder::JoinReorder;
 
+use super::logical::DaskLogicalPlan;
+
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
 pub struct DaskSqlOptimizer {
@@ -46,8 +46,6 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
-            Arc::new(DecorrelateWhereExists::new()),
-            Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
             //Arc::new(ExtractEquijoinPredicate::new()),
 
@@ -102,9 +100,13 @@ impl DaskSqlOptimizer {
 
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
-    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+    pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<DaskLogicalPlan, DataFusionError> {
         let config = OptimizerContext::new();
-        self.optimizer.optimize(&plan, &config, Self::observe)
+        Ok(DaskLogicalPlan::_new(self.optimizer.optimize(
+            &plan,
+            &config,
+            Self::observe,
+        )?))
     }
 
     /// Iterates once through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
@@ -178,7 +180,7 @@ mod tests {
 
         // optimize the logical plan
         let optimizer = DaskSqlOptimizer::new();
-        optimizer.optimize(plan)
+        Ok((*optimizer.optimize(plan)?.plan).clone())
     }
 
     struct MySchemaProvider {
@@ -232,6 +234,13 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
+            None
+        }
+
+        fn get_window_meta(
+            &self,
+            _name: &str,
+        ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
             None
         }
     }

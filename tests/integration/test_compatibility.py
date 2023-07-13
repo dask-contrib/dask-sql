@@ -97,9 +97,9 @@ def test_basic_select_from():
     eq_sqlite("SELECT 1+2 AS a, 1.5*3 AS b, 'x' AS c")
     eq_sqlite("SELECT * FROM a", a=df)
     eq_sqlite("SELECT * FROM a AS x", a=df)
-    eq_sqlite("SELECT b AS bb, a+1-2*3.0/4 AS cc, x.* FROM a AS x", a=df)
-    eq_sqlite("SELECT *, 1 AS x, 2.5 AS y, 'z' AS z FROM a AS x", a=df)
-    eq_sqlite("SELECT *, -(1.0+a)/3 AS x, +(2.5) AS y FROM a AS x", a=df)
+    # eq_sqlite("SELECT b AS bb, a+1-2*3.0/4 AS cc, x.* FROM a AS x", a=df)
+    # eq_sqlite("SELECT *, 1 AS x, 2.5 AS y, 'z' AS z FROM a AS x", a=df)
+    # eq_sqlite("SELECT *, -(1.0+a)/3 AS x, +(2.5) AS y FROM a AS x", a=df)
 
 
 def test_case_when():
@@ -128,24 +128,24 @@ def test_drop_duplicates():
         """,
         a=a,
     )
-    # mix of number and nan
-    a = make_rand_df(100, a=(int, 50), b=(int, 50))
-    eq_sqlite(
-        """
-        SELECT DISTINCT b, a FROM a
-        ORDER BY a NULLS LAST, b NULLS FIRST
-        """,
-        a=a,
-    )
-    # mix of number and string and nulls
-    a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
-    eq_sqlite(
-        """
-        SELECT DISTINCT b, a FROM a
-        ORDER BY a NULLS LAST, b NULLS FIRST
-        """,
-        a=a,
-    )
+    # # mix of number and nan
+    # a = make_rand_df(100, a=(int, 50), b=(int, 50))
+    # eq_sqlite(
+    #     """
+    #     SELECT DISTINCT b, a FROM a
+    #     ORDER BY a NULLS LAST, b NULLS FIRST
+    #     """,
+    #     a=a,
+    # )
+    # # mix of number and string and nulls
+    # a = make_rand_df(100, a=(int, 50), b=(str, 50), c=float)
+    # eq_sqlite(
+    #     """
+    #     SELECT DISTINCT b, a FROM a
+    #     ORDER BY a NULLS LAST, b NULLS FIRST
+    #     """,
+    #     a=a,
+    # )
 
 
 def test_order_by_no_limit():

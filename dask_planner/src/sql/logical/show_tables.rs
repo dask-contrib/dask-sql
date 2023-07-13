@@ -16,7 +16,7 @@ use datafusion_python::{
 use fmt::Debug;
 use pyo3::prelude::*;
 
-use crate::sql::{exceptions::py_type_err, logical};
+use crate::sql::exceptions::py_type_err;
 
 #[derive(Clone, PartialEq)]
 pub struct ShowTablesPlanNode {
@@ -113,10 +113,10 @@ impl PyShowTables {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyShowTables {
+impl TryFrom<LogicalPlan> for PyShowTables {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
             LogicalPlan::Extension(Extension { node })
                 if node.as_any().downcast_ref::<ShowTablesPlanNode>().is_some() =>

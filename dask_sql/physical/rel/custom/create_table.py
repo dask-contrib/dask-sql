@@ -39,7 +39,7 @@ class CreateTablePlugin(BaseRelPlugin):
     class_name = "CreateTable"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        create_table = rel.create_table()
+        create_table = rel.to_variant()
 
         schema_name = create_table.getSchemaName() or context.schema_name
         table_name = create_table.getTableName()

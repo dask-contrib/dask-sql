@@ -9,6 +9,7 @@ from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
+from dask_planner.rust import RexType, row_type
 from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
@@ -18,7 +19,7 @@ from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan, Expression
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,12 @@ class DaskJoinPlugin(BaseRelPlugin):
         "LEFTANTI": "leftanti",
     }
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
         # Joining is a bit more complicated, so lets do it in steps:
 
-        join = rel.join()
+        join = rel.to_variant()
 
         # 1. We now have two inputs (from left and right), so we fetch them both
         dc_lhs, dc_rhs = self.assert_inputs(rel, 2, context)
@@ -185,8 +188,9 @@ class DaskJoinPlugin(BaseRelPlugin):
         cc = ColumnContainer(df.columns).limit_to(correct_column_order)
 
         # and to rename them like the rel specifies
-        row_type = rel.getRowType()
-        field_specifications = [str(f) for f in row_type.getFieldNames()]
+        rt = row_type(rel)
+        field_specifications = [str(f) for f in rt.getFieldNames()]
+
         if join_type in ("leftsemi", "leftanti"):
             field_specifications = field_specifications[: len(cc.columns)]
 
@@ -196,7 +200,7 @@ class DaskJoinPlugin(BaseRelPlugin):
                 for from_col, to_col in zip(cc.columns, field_specifications)
             }
         )
-        cc = self.fix_column_to_row_type(cc, row_type, join_type)
+        cc = self.fix_column_to_row_type(cc, rt, join_type)
         dc = DataContainer(df, cc)
 
         # 7. Last but not least we apply any filters by and-chaining together the filters
@@ -213,7 +217,7 @@ class DaskJoinPlugin(BaseRelPlugin):
             df = filter_or_scalar(df, filter_condition)
             dc = DataContainer(df, cc)
 
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType(), join_type)
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel), join_type)
         # # Rename underlying DataFrame column names back to their original values before returning
         # df = dc.assign()
         # dc = DataContainer(df, ColumnContainer(cc.columns))
@@ -291,9 +295,9 @@ class DaskJoinPlugin(BaseRelPlugin):
     def _split_join_condition(
         self, join_condition: "Expression"
     ) -> Tuple[List[str], List[str], List["Expression"]]:
-        if str(join_condition.getRexType()) in ["RexType.Literal", "RexType.Reference"]:
+        if str(join_condition.rex_type()) in ["RexType.Literal", "RexType.Reference"]:
             return [], [], [join_condition]
-        elif not str(join_condition.getRexType()) == "RexType.Call":
+        elif not str(join_condition.rex_type()) == "RexType.Call":
             raise NotImplementedError("Can not understand join condition.")
 
         lhs_on = []
@@ -313,7 +317,7 @@ class DaskJoinPlugin(BaseRelPlugin):
         return [], [], [join_condition]
 
     def _extract_lhs_rhs(self, rex):
-        assert str(rex.getRexType()) == "RexType.Call"
+        assert str(rex.rex_type()) == RexType.Call
 
         operator_name = str(rex.getOperatorName())
         assert operator_name in ["=", "AND"]
@@ -327,8 +331,8 @@ class DaskJoinPlugin(BaseRelPlugin):
             operand_rhs = operands[1]
 
             if (
-                str(operand_lhs.getRexType()) == "RexType.Reference"
-                and str(operand_rhs.getRexType()) == "RexType.Reference"
+                str(operand_lhs.rex_type()) == RexType.Reference
+                and str(operand_rhs.rex_type()) == RexType.Reference
             ):
                 lhs_index = operand_lhs.getIndex()
                 rhs_index = operand_rhs.getIndex()

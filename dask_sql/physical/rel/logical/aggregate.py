@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
+from dask_planner.rust import distinct_agg, get_filter_expr, row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -16,7 +17,7 @@ from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +128,25 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
         "stddev": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevsamp": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddev_samp": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevpop": AggregationSpecification(
             dd.Aggregation(
                 "stddevpop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                )
+                ** (1 / 2),
+            )
+        ),
+        "stddev_pop": AggregationSpecification(
+            dd.Aggregation(
+                "stddev_pop",
                 lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
                 lambda count, sum, sum_of_squares: (
                     count.sum(),
@@ -198,12 +215,28 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 ),
             )
         ),
+        "variance_pop": AggregationSpecification(
+            dd.Aggregation(
+                "variance_pop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                ),
+            )
+        ),
     }
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
 
-        agg = rel.aggregate()
+        agg = rel.to_variant()
 
         df = dc.df
         cc = dc.column_container
@@ -215,7 +248,10 @@ class DaskAggregatePlugin(BaseRelPlugin):
         group_columns = (
             agg.getDistinctColumns()
             if agg.isDistinctNode()
-            else [group_expr.column_name(rel) for group_expr in group_exprs]
+            else [
+                group_expr.column_name(rel.datafusion_plan())
+                for group_expr in group_exprs
+            ]
         )
 
         dc = DataContainer(df, cc)
@@ -250,14 +286,14 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
         cc = ColumnContainer(df_agg.columns).limit_to(backend_output_column_order)
 
-        cc = self.fix_column_to_row_type(cc, rel.getRowType())
+        cc = self.fix_column_to_row_type(cc, row_type(rel))
         dc = DataContainer(df_agg, cc)
-        dc = self.fix_dtype_to_row_type(dc, rel.getRowType())
+        dc = self.fix_dtype_to_row_type(dc, row_type(rel))
         return dc
 
     def _do_aggregations(
         self,
-        rel: "LogicalPlan",
+        rel: "DaskLogicalPlan",
         dc: DataContainer,
         group_columns: List[str],
         context: "dask_sql.Context",
@@ -346,7 +382,7 @@ class DaskAggregatePlugin(BaseRelPlugin):
 
     def _collect_aggregations(
         self,
-        rel: "LogicalPlan",
+        rel: "DaskLogicalPlan",
         df: dd.DataFrame,
         cc: ColumnContainer,
         context: "dask_sql.Context",
@@ -363,31 +399,31 @@ class DaskAggregatePlugin(BaseRelPlugin):
         where the aggregations are in the form (input_col, output_col, aggregation function (or string))
         """
         dc = DataContainer(df, cc)
-        agg = rel.aggregate()
+        agg = rel.to_variant()
 
-        input_rel = rel.get_inputs()[0]
+        input_rel = rel.inputs()[0]
 
         collected_aggregations = defaultdict(list)
 
         # convert and assign any input/filter columns that don't currently exist
         new_columns = {}
         for expr in agg.getNamedAggCalls():
-            assert expr.getExprType() in {
+            assert expr.variant_name() in {
                 "Alias",
                 "AggregateFunction",
                 "AggregateUDF",
             }, "Do not know how to handle this case!"
             for input_expr in agg.getArgs(expr):
-                input_col = input_expr.column_name(input_rel)
+                input_col = input_expr.column_name(input_rel.datafusion_plan())
                 if input_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(
                         input_rel, input_expr, dc, context=context
                     )
                     cc = cc.add(input_col, random_name)
-            filter_expr = expr.getFilterExpr()
+            filter_expr = get_filter_expr(expr)
             if filter_expr is not None:
-                filter_col = filter_expr.column_name(input_rel)
+                filter_col = filter_expr.column_name(input_rel.datafusion_plan())
                 if filter_col not in cc._frontend_backend_mapping:
                     random_name = new_temporary_column(df)
                     new_columns[random_name] = RexConverter.convert(
@@ -411,16 +447,16 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     # calcite some times gives one input/col to regr_count and
                     # another col has filter column
                     col1 = cc.get_backend_by_frontend_name(
-                        inputs[0].column_name(input_rel)
+                        inputs[0].column_name(input_rel.datafusion_plan())
                     )
                     df = df.assign(**{two_columns_proxy: (~is_null(df[col1]))})
 
                 else:
                     col1 = cc.get_backend_by_frontend_name(
-                        inputs[0].column_name(input_rel)
+                        inputs[0].column_name(input_rel.datafusion_plan())
                     )
                     col2 = cc.get_backend_by_frontend_name(
-                        inputs[1].column_name(input_rel)
+                        inputs[1].column_name(input_rel.datafusion_plan())
                     )
                     # both cols should be not null
                     df = df.assign(
@@ -432,20 +468,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
                     )
                 input_col = two_columns_proxy
             elif aggregation_name == "regr_syy":
-                input_col = inputs[0].column_name(input_rel)
+                input_col = inputs[0].column_name(input_rel.datafusion_plan())
             elif aggregation_name == "regr_sxx":
-                input_col = inputs[1].column_name(input_rel)
+                input_col = inputs[1].column_name(input_rel.datafusion_plan())
             elif len(inputs) == 1:
-                input_col = inputs[0].column_name(input_rel)
+                input_col = inputs[0].column_name(input_rel.datafusion_plan())
             elif len(inputs) == 0:
                 input_col = additional_column_name
             else:
                 raise NotImplementedError("Can not cope with more than one input")
 
-            filter_expr = expr.getFilterExpr()
+            filter_expr = get_filter_expr(expr)
             if filter_expr is not None:
                 filter_backend_col = cc.get_backend_by_frontend_name(
-                    filter_expr.column_name(input_rel)
+                    filter_expr.column_name(input_rel.datafusion_plan())
                 )
             else:
                 filter_backend_col = None
@@ -479,11 +515,11 @@ class DaskAggregatePlugin(BaseRelPlugin):
                 )
 
             # Finally, extract the output column name
-            output_col = expr.toString()
+            output_col = expr.column_name(input_rel.datafusion_plan())
 
             # Store the aggregation
             collected_aggregations[
-                (filter_backend_col, backend_name if expr.isDistinctAgg() else None)
+                (filter_backend_col, backend_name if distinct_agg(expr) else None)
             ].append((input_col, output_col, aggregation_function))
             output_column_order.append(output_col)
 

@@ -1,24 +1,25 @@
-use datafusion_python::datafusion_expr::{
-    logical_plan::{Partitioning, Repartition},
-    Expr,
-    LogicalPlan,
+use datafusion_python::{
+    datafusion_expr::{
+        logical_plan::{Partitioning, Repartition},
+        Expr,
+        LogicalPlan,
+    },
+    expr::PyExpr,
+    sql::logical::PyLogicalPlan,
 };
 use pyo3::prelude::*;
 
-use crate::{
-    expression::PyExpr,
-    sql::{exceptions::py_type_err, logical},
-};
+use crate::sql::exceptions::py_type_err;
 
 #[pyclass(name = "RepartitionBy", module = "dask_planner", subclass)]
 pub struct PyRepartitionBy {
-    pub(crate) repartition: Repartition,
+    pub repartition: Repartition,
 }
 
 #[pymethods]
 impl PyRepartitionBy {
     #[pyo3(name = "getSelectQuery")]
-    fn get_select_query(&self) -> PyResult<logical::PyLogicalPlan> {
+    fn get_select_query(&self) -> PyResult<PyLogicalPlan> {
         let log_plan = &*(self.repartition.input).clone();
         Ok(log_plan.clone().into())
     }
@@ -28,7 +29,7 @@ impl PyRepartitionBy {
         match &self.repartition.partitioning_scheme {
             Partitioning::DistributeBy(distribute_list) => Ok(distribute_list
                 .iter()
-                .map(|e| PyExpr::from(e.clone(), Some(vec![self.repartition.input.clone()])))
+                .map(|e| PyExpr::from(e.clone()))
                 .collect()),
             _ => Err(py_type_err("unexpected repartition strategy")),
         }

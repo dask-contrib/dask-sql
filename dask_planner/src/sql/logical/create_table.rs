@@ -12,10 +12,7 @@ use datafusion_python::{
 use fmt::Debug;
 use pyo3::prelude::*;
 
-use crate::{
-    parser::PySqlArg,
-    sql::{exceptions::py_type_err, logical},
-};
+use crate::{parser::PySqlArg, sql::exceptions::py_type_err};
 
 #[derive(Clone, PartialEq)]
 pub struct CreateTablePlanNode {
@@ -133,12 +130,12 @@ impl PyCreateTable {
     }
 }
 
-impl TryFrom<logical::LogicalPlan> for PyCreateTable {
+impl TryFrom<LogicalPlan> for PyCreateTable {
     type Error = PyErr;
 
-    fn try_from(logical_plan: logical::LogicalPlan) -> Result<Self, Self::Error> {
+    fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         match logical_plan {
-            logical::LogicalPlan::Extension(extension) => {
+            LogicalPlan::Extension(extension) => {
                 if let Some(ext) = extension
                     .node
                     .as_any()

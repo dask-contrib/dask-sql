@@ -8,84 +8,85 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-from dask_planner.rust import DaskTypeMap, SqlTypeName
+from dask_planner.rust import DaskTypeMap, SqlType
 
 logger = logging.getLogger(__name__)
 
 
 # Default mapping between python types and SQL types
 _PYTHON_TO_SQL = {
-    np.float64: SqlTypeName.DOUBLE,
-    pd.Float64Dtype(): SqlTypeName.DOUBLE,
-    float: SqlTypeName.FLOAT,
-    np.float32: SqlTypeName.FLOAT,
-    pd.Float32Dtype(): SqlTypeName.FLOAT,
-    np.int64: SqlTypeName.BIGINT,
-    pd.Int64Dtype(): SqlTypeName.BIGINT,
-    int: SqlTypeName.INTEGER,
-    np.int32: SqlTypeName.INTEGER,
-    pd.Int32Dtype(): SqlTypeName.INTEGER,
-    np.int16: SqlTypeName.SMALLINT,
-    pd.Int16Dtype(): SqlTypeName.SMALLINT,
-    np.int8: SqlTypeName.TINYINT,
-    pd.Int8Dtype(): SqlTypeName.TINYINT,
-    np.uint64: SqlTypeName.BIGINT,
-    pd.UInt64Dtype(): SqlTypeName.BIGINT,
-    np.uint32: SqlTypeName.INTEGER,
-    pd.UInt32Dtype(): SqlTypeName.INTEGER,
-    np.uint16: SqlTypeName.SMALLINT,
-    pd.UInt16Dtype(): SqlTypeName.SMALLINT,
-    np.uint8: SqlTypeName.TINYINT,
-    pd.UInt8Dtype(): SqlTypeName.TINYINT,
-    np.bool8: SqlTypeName.BOOLEAN,
-    pd.BooleanDtype(): SqlTypeName.BOOLEAN,
-    str: SqlTypeName.VARCHAR,
-    np.object_: SqlTypeName.VARCHAR,
-    pd.StringDtype(): SqlTypeName.VARCHAR,
-    np.datetime64: SqlTypeName.TIMESTAMP,
+    np.float64: SqlType.DOUBLE,
+    pd.Float64Dtype(): SqlType.DOUBLE,
+    float: SqlType.FLOAT,
+    np.float32: SqlType.FLOAT,
+    pd.Float32Dtype(): SqlType.FLOAT,
+    np.int64: SqlType.BIGINT,
+    pd.Int64Dtype(): SqlType.BIGINT,
+    int: SqlType.INTEGER,
+    np.int32: SqlType.INTEGER,
+    pd.Int32Dtype(): SqlType.INTEGER,
+    np.int16: SqlType.SMALLINT,
+    pd.Int16Dtype(): SqlType.SMALLINT,
+    np.int8: SqlType.TINYINT,
+    pd.Int8Dtype(): SqlType.TINYINT,
+    np.uint64: SqlType.BIGINT,
+    pd.UInt64Dtype(): SqlType.BIGINT,
+    np.uint32: SqlType.INTEGER,
+    pd.UInt32Dtype(): SqlType.INTEGER,
+    np.uint16: SqlType.SMALLINT,
+    pd.UInt16Dtype(): SqlType.SMALLINT,
+    np.uint8: SqlType.TINYINT,
+    pd.UInt8Dtype(): SqlType.TINYINT,
+    np.bool8: SqlType.BOOLEAN,
+    pd.BooleanDtype(): SqlType.BOOLEAN,
+    str: SqlType.VARCHAR,
+    np.object_: SqlType.VARCHAR,
+    pd.StringDtype(): SqlType.VARCHAR,
+    np.datetime64: SqlType.TIMESTAMP,
 }
 
 # Default mapping between SQL types and python types
 # for values
 _SQL_TO_PYTHON_SCALARS = {
-    "SqlTypeName.DOUBLE": np.float64,
-    "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float32,
-    "SqlTypeName.BIGINT": np.int64,
-    "SqlTypeName.INTEGER": np.int32,
-    "SqlTypeName.SMALLINT": np.int16,
-    "SqlTypeName.TINYINT": np.int8,
-    "SqlTypeName.BOOLEAN": np.bool8,
-    "SqlTypeName.VARCHAR": str,
-    "SqlTypeName.CHAR": str,
-    "SqlTypeName.NULL": type(None),
-    "SqlTypeName.SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
+    "SqlType.DOUBLE": np.float64,
+    "SqlType.FLOAT": np.float32,
+    "SqlType.DECIMAL": np.float32,
+    "SqlType.BIGINT": np.int64,
+    "SqlType.INTEGER": np.int32,
+    "SqlType.SMALLINT": np.int16,
+    "SqlType.TINYINT": np.int8,
+    "SqlType.BOOLEAN": np.bool8,
+    "SqlType.VARCHAR": str,
+    "SqlType.CHAR": str,
+    "SqlType.NULL": type(None),
+    "SqlType.SYMBOL": lambda x: x,  # SYMBOL is a special type used for e.g. flags etc. We just keep it
 }
 
 # Default mapping between SQL types and python types
 # for data frames
 _SQL_TO_PYTHON_FRAMES = {
-    "SqlTypeName.DOUBLE": np.float64,
-    "SqlTypeName.FLOAT": np.float32,
-    "SqlTypeName.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
-    "SqlTypeName.BIGINT": pd.Int64Dtype(),
-    "SqlTypeName.INTEGER": pd.Int32Dtype(),
-    "SqlTypeName.SMALLINT": pd.Int16Dtype(),
-    "SqlTypeName.TINYINT": pd.Int8Dtype(),
-    "SqlTypeName.BOOLEAN": pd.BooleanDtype(),
-    "SqlTypeName.VARCHAR": pd.StringDtype(),
-    "SqlTypeName.CHAR": pd.StringDtype(),
-    "SqlTypeName.DATE": np.dtype(
+    "SqlType.DOUBLE": np.float64,
+    "SqlType.FLOAT": np.float32,
+    # a column of Decimals in pandas is `object`, but cuDF has a dedicated dtype
+    "SqlType.DECIMAL": np.float64,  # We use np.float64 always, even though we might be able to use a smaller type
+    "SqlType.BIGINT": pd.Int64Dtype(),
+    "SqlType.INTEGER": pd.Int32Dtype(),
+    "SqlType.SMALLINT": pd.Int16Dtype(),
+    "SqlType.TINYINT": pd.Int8Dtype(),
+    "SqlType.BOOLEAN": pd.BooleanDtype(),
+    "SqlType.VARCHAR": pd.StringDtype(),
+    "SqlType.CHAR": pd.StringDtype(),
+    "SqlType.DATE": np.dtype(
         "<M8[ns]"
     ),  # TODO: ideally this would be np.dtype("<M8[D]") but that doesn't work for Pandas
-    "SqlTypeName.TIME": np.dtype("<M8[ns]"),
-    "SqlTypeName.TIMESTAMP": np.dtype("<M8[ns]"),
-    "SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
+    "SqlType.TIME": np.dtype("<M8[ns]"),
+    "SqlType.TIMESTAMP": np.dtype("<M8[ns]"),
+    "SqlType.TIMESTAMP_WITH_LOCAL_TIME_ZONE": pd.DatetimeTZDtype(
         unit="ns", tz="UTC"
     ),  # Everything is converted to UTC. So far, this did not break
-    "SqlTypeName.INTERVAL_DAY": np.dtype("<m8[ns]"),
-    "SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND": np.dtype("<m8[ns]"),
-    "SqlTypeName.NULL": type(None),
+    "SqlType.INTERVAL_DAY": np.dtype("<m8[ns]"),
+    "SqlType.INTERVAL_MONTH_DAY_NANOSECOND": np.dtype("<m8[ns]"),
+    "SqlType.NULL": type(None),
 }
 
 
@@ -102,14 +103,14 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
 
     if pd.api.types.is_datetime64tz_dtype(python_type):
         return DaskTypeMap(
-            SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
+            SqlType.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
             unit=str(python_type.unit),
             tz=str(python_type.tz),
         )
 
     if is_decimal(python_type):
         return DaskTypeMap(
-            SqlTypeName.DECIMAL,
+            SqlType.DECIMAL,
             precision=python_type.precision,
             scale=python_type.scale,
         )
@@ -142,7 +143,7 @@ def parse_datetime(obj):
     raise ValueError("Unable to parse datetime: " + obj)
 
 
-def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
+def sql_to_python_value(sql_type: "SqlType", literal_value: Any) -> Any:
     """Mapping between SQL and python values (of correct type)."""
     # In most of the cases, we turn the value first into a string.
     # That might not be the most efficient thing to do,
@@ -153,8 +154,7 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     logger.debug(
         f"sql_to_python_value -> sql_type: {sql_type} literal_value: {literal_value}"
     )
-
-    if sql_type == SqlTypeName.CHAR or sql_type == SqlTypeName.VARCHAR:
+    if sql_type == SqlType.CHAR or sql_type == SqlType.VARCHAR:
         # Some varchars contain an additional encoding
         # in the format _ENCODING'string'
         literal_value = str(literal_value)
@@ -167,18 +167,18 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         return literal_value
 
     elif (
-        sql_type == SqlTypeName.DECIMAL
+        sql_type == SqlType.DECIMAL
         and dask_config.get("sql.mappings.decimal_support") == "cudf"
     ):
         from decimal import Decimal
 
         python_type = Decimal
 
-    elif sql_type == SqlTypeName.INTERVAL_DAY:
+    elif sql_type == SqlType.INTERVAL_DAY:
         return np.timedelta64(literal_value[0], "D") + np.timedelta64(
             literal_value[1], "ms"
         )
-    elif sql_type == SqlTypeName.INTERVAL:
+    elif sql_type == SqlType.INTERVAL:
         # check for finer granular interval types, e.g., INTERVAL MONTH, INTERVAL YEAR
         try:
             interval_type = str(sql_type).split()[1].lower()
@@ -197,19 +197,19 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         # Calcite will always convert INTERVAL types except YEAR, QUATER, MONTH to milliseconds
         # Issue: if sql_type is INTERVAL MICROSECOND, and value <= 1000, literal_value will be rounded to 0
         return np.timedelta64(literal_value, "ms")
-    elif sql_type == SqlTypeName.INTERVAL_MONTH_DAY_NANOSECOND:
-        # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
-        return np.timedelta64(
-            (literal_value[0] * 30) + literal_value[1], "D"
-        ) + np.timedelta64(literal_value[2], "ns")
+    # elif sql_type == SqlType.INTERVAL_MONTH_DAY_NANOSECOND:
+    #     # DataFusion assumes 30 days per month. Therefore we multiply number of months by 30 and add to days
+    #     return np.timedelta64(
+    #         (literal_value[0] * 30) + literal_value[1], "D"
+    #     ) + np.timedelta64(literal_value[2], "ns")
 
-    elif sql_type == SqlTypeName.BOOLEAN:
+    elif sql_type == SqlType.BOOLEAN:
         return bool(literal_value)
 
     elif (
-        sql_type == SqlTypeName.TIMESTAMP
-        or sql_type == SqlTypeName.TIME
-        or sql_type == SqlTypeName.DATE
+        sql_type == SqlType.TIMESTAMP
+        or sql_type == SqlType.TIME
+        or sql_type == SqlType.DATE
     ):
         if isinstance(literal_value, str):
             literal_value = parse_datetime(literal_value)
@@ -217,8 +217,9 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
         elif str(literal_value) == "None":
             # NULL time
             return pd.NaT  # pragma: no cover
-        if sql_type == SqlTypeName.DATE:
-            return literal_value.astype("<M8[D]")
+        if sql_type == SqlType.DATE:
+            literal_value = np.datetime64(literal_value, "ns")
+            return literal_value.astype("<M8[ns]")
         return literal_value.astype("<M8[ns]")
     else:
         try:
@@ -240,11 +241,11 @@ def sql_to_python_value(sql_type: "SqlTypeName", literal_value: Any) -> Any:
     return python_type(literal_value)
 
 
-def sql_to_python_type(sql_type: "SqlTypeName", *args) -> type:
+def sql_to_python_type(sql_type: "SqlType", *args) -> type:
     """Turn an SQL type into a dataframe dtype"""
     try:
         if (
-            sql_type == SqlTypeName.DECIMAL
+            sql_type == SqlType.DECIMAL
             and dask_config.get("sql.mappings.decimal_support") == "cudf"
         ):
             try:

@@ -21,7 +21,7 @@ class UseSchemaPlugin(BaseRelPlugin):
     class_name = "UseSchema"
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        schema_name = rel.use_schema().getSchemaName()
+        schema_name = rel.to_variant().getSchemaName()
 
         if schema_name in context.schema:
             context.schema_name = schema_name

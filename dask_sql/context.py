@@ -11,12 +11,15 @@ from dask.base import optimize
 from dask.utils_test import hlg_layer
 
 from dask_planner.rust import (
+    DaskLogicalPlan,
     DaskSchema,
     DaskSQLContext,
     DaskTable,
     DFOptimizationException,
     DFParsingException,
     LogicalPlan,
+    get_current_node_type,
+    row_type,
 )
 
 try:
@@ -42,7 +45,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import OptimizationException, ParsingException
+from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
 
@@ -507,7 +510,7 @@ class Context:
 
             if isinstance(sql, str):
                 rel, _ = self._get_ral(sql)
-            elif isinstance(sql, LogicalPlan):
+            elif isinstance(sql, DaskLogicalPlan) or isinstance(sql, LogicalPlan):
                 rel = sql
             else:
                 raise RuntimeError(
@@ -831,27 +834,33 @@ class Context:
             try:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
             except DFOptimizationException as oe:
+                # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
-                raise OptimizationException(str(oe)) from None
+                logger.warn(str(oe))
         else:
             rel = nonOptimizedRel
 
-        rel_string = rel.explain_original()
+        rel_string = rel.display_indent()
         logger.debug(f"_get_ral -> LogicalPlan: {rel}")
         logger.debug(f"Extracted relational algebra:\n {rel_string}")
 
         return rel, rel_string
 
-    def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
+    def _compute_table_from_rel(
+        self, rel: "DaskLogicalPlan", return_futures: bool = True
+    ):
         dc = RelConverter.convert(rel, context=self)
 
-        if rel.get_current_node_type() == "Explain":
+        if not isinstance(rel, DaskLogicalPlan):
+            rel = DaskLogicalPlan(rel)
+
+        # Optimization might remove some alias projects. Make sure to keep them here.
+        select_names = [field for field in row_type(rel).getFieldList()]
+
+        if get_current_node_type(rel) == "Explain":
             return dc
         if dc is None:
             return
-
-        # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [field for field in rel.getRowType().getFieldList()]
 
         if select_names:
             cc = dc.column_container

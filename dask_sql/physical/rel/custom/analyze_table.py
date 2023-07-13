@@ -9,7 +9,7 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_planner.rust import DaskLogicalPlan
 
 
 class AnalyzeTablePlugin(BaseRelPlugin):
@@ -30,8 +30,11 @@ class AnalyzeTablePlugin(BaseRelPlugin):
 
     class_name = "AnalyzeTable"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
-        analyze_table = rel.analyze_table()
+    def convert(
+        self, rel: "DaskLogicalPlan", context: "dask_sql.Context"
+    ) -> DataContainer:
+        # AnalyzeTable is of type `LogicalPlan::Extension`. Therefore we cannot use `.to_variant()`
+        analyze_table = rel.to_variant()
 
         schema_name = analyze_table.getSchemaName() or context.schema_name
         table_name = analyze_table.getTableName()

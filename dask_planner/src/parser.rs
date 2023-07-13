@@ -4,17 +4,20 @@
 
 use std::collections::VecDeque;
 
-use datafusion_python::datafusion_sql::sqlparser::{
-    ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
-    dialect::{keywords::Keyword, Dialect},
-    parser::{Parser, ParserError},
-    tokenizer::{Token, TokenWithLocation, Tokenizer},
+use datafusion_python::{
+    common::data_type::SqlType,
+    datafusion_sql::sqlparser::{
+        ast::{Expr, Ident, SelectItem, Statement as SQLStatement, UnaryOperator, Value},
+        dialect::{keywords::Keyword, Dialect},
+        parser::{Parser, ParserError},
+        tokenizer::{Token, TokenWithLocation, Tokenizer},
+    },
 };
 use pyo3::prelude::*;
 
 use crate::{
     dialect::DaskDialect,
-    sql::{exceptions::py_type_err, parser_utils::DaskParserUtils, types::SqlTypeName},
+    sql::{exceptions::py_type_err, parser_utils::DaskParserUtils},
 };
 
 macro_rules! parser_err {
@@ -106,27 +109,27 @@ impl PySqlArg {
     }
 
     #[pyo3(name = "getSqlType")]
-    pub fn get_sql_type(&self) -> PyResult<SqlTypeName> {
+    pub fn get_sql_type(&self) -> PyResult<SqlType> {
         Ok(match &self.custom {
             Some(custom_expr) => match custom_expr {
-                CustomExpr::Map(_) => SqlTypeName::MAP,
-                CustomExpr::Multiset(_) => SqlTypeName::MULTISET,
+                CustomExpr::Map(_) => SqlType::MAP,
+                CustomExpr::Multiset(_) => SqlType::MULTISET,
                 _ => return self.expected("Map or multiset"),
             },
             None => match &self.expr {
-                Some(Expr::Array(_)) => SqlTypeName::ARRAY,
-                Some(Expr::Identifier(Ident { .. })) => SqlTypeName::VARCHAR,
+                Some(Expr::Array(_)) => SqlType::ARRAY,
+                Some(Expr::Identifier(Ident { .. })) => SqlType::VARCHAR,
                 Some(Expr::Value(scalar)) => match scalar {
-                    Value::Boolean(_) => SqlTypeName::BOOLEAN,
-                    Value::Number(_, false) => SqlTypeName::BIGINT,
-                    Value::SingleQuotedString(_) => SqlTypeName::VARCHAR,
+                    Value::Boolean(_) => SqlType::BOOLEAN,
+                    Value::Number(_, false) => SqlType::BIGINT,
+                    Value::SingleQuotedString(_) => SqlType::VARCHAR,
                     _ => return self.expected("Boolean, integer, float, or single-quoted string"),
                 },
                 Some(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr,
                 }) => match &**expr {
-                    Expr::Value(Value::Number(_, false)) => SqlTypeName::BIGINT,
+                    Expr::Value(Value::Number(_, false)) => SqlType::BIGINT,
                     _ => return self.expected("Integer or float"),
                 },
                 Some(_) => return self.expected("Array, identifier, or scalar"),

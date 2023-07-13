@@ -21,7 +21,7 @@ use datafusion_python::{
     },
     datafusion_expr::{
         logical_plan::Extension,
-        AccumulatorFunctionImplementation,
+        AccumulatorFactoryFunction,
         AggregateUDF,
         LogicalPlan,
         ReturnTypeFunction,
@@ -47,6 +47,7 @@ use self::logical::{
     create_catalog_schema::CreateCatalogSchemaPlanNode,
     drop_schema::DropSchemaPlanNode,
     use_schema::UseSchemaPlanNode,
+    DaskLogicalPlan,
 };
 use crate::{
     dialect::DaskDialect,
@@ -68,7 +69,6 @@ use crate::{
             show_models::ShowModelsPlanNode,
             show_schemas::ShowSchemasPlanNode,
             show_tables::ShowTablesPlanNode,
-            PyLogicalPlan,
         },
     },
 };
@@ -385,7 +385,7 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
-        let acc: AccumulatorFunctionImplementation =
+        let acc: AccumulatorFactoryFunction =
             Arc::new(|_return_type| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
@@ -478,6 +478,13 @@ impl ContextProvider for DaskSQLContext {
     fn options(&self) -> &ConfigOptions {
         &self.options
     }
+
+    fn get_window_meta(
+        &self,
+        _name: &str,
+    ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
+        unimplemented!("RUST: get_window_meta is not yet implemented for DaskSQLContext")
+    }
 }
 
 #[pymethods]
@@ -557,12 +564,8 @@ impl DaskSQLContext {
     pub fn logical_relational_algebra(
         &self,
         statement: statement::PyStatement,
-    ) -> PyResult<logical::PyLogicalPlan> {
+    ) -> PyResult<DaskLogicalPlan> {
         self._logical_relational_algebra(statement.statement)
-            .map(|e| PyLogicalPlan {
-                original_plan: e,
-                current_node: None,
-            })
             .map_err(py_parsing_exp)
     }
 
@@ -571,12 +574,12 @@ impl DaskSQLContext {
     /// `LogicalPlan`
     pub fn optimize_relational_algebra(
         &self,
-        existing_plan: logical::PyLogicalPlan,
-    ) -> PyResult<logical::PyLogicalPlan> {
+        existing_plan: DaskLogicalPlan,
+    ) -> PyResult<DaskLogicalPlan> {
         // Certain queries cannot be optimized. Ex: `EXPLAIN SELECT * FROM test` simply return those plans as is
         let mut visitor = OptimizablePlanVisitor {};
 
-        match existing_plan.original_plan.visit(&mut visitor) {
+        match (*existing_plan.plan()).visit(&mut visitor) {
             Ok(valid) => {
                 match valid {
                     VisitRecursion::Stop => {
@@ -586,20 +589,19 @@ impl DaskSQLContext {
                     }
                     _ => {
                         let optimized_plan = optimizer::DaskSqlOptimizer::new()
-                            .optimize(existing_plan.original_plan)
-                            .map(|k| PyLogicalPlan {
-                                original_plan: k,
-                                current_node: None,
-                            })
+                            .optimize((*existing_plan.plan).clone())
+                            .map(|k| DaskLogicalPlan { plan: k.plan })
                             .map_err(py_optimization_exp);
-                        if self.dynamic_partition_pruning {
-                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
-                                .optimize_once(optimized_plan.unwrap().original_plan)
-                                .map(|k| PyLogicalPlan {
-                                    original_plan: k,
-                                    current_node: None,
-                                })
-                                .map_err(py_optimization_exp)
+
+                        if let Ok(optimized_plan) = optimized_plan {
+                            if self.dynamic_partition_pruning {
+                                optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                                    .optimize_once((*optimized_plan.plan).clone())
+                                    .map(|k| DaskLogicalPlan { plan: k.into() })
+                                    .map_err(py_optimization_exp)
+                            } else {
+                                Ok(optimized_plan)
+                            }
                         } else {
                             optimized_plan
                         }
@@ -617,17 +619,20 @@ impl DaskSQLContext {
     pub fn _logical_relational_algebra(
         &self,
         dask_statement: DaskStatement,
-    ) -> Result<LogicalPlan, DataFusionError> {
-        match dask_statement {
+    ) -> Result<DaskLogicalPlan, DataFusionError> {
+        let inner_plan = match dask_statement {
             DaskStatement::Statement(statement) => {
                 let planner = SqlToRel::new(self);
-                planner.statement_to_plan(DFStatement::Statement(statement))
+                println!("Invoking generic DaskStatement::Statement logic ....");
+                Ok::<LogicalPlan, DataFusionError>(
+                    planner.statement_to_plan(DFStatement::Statement(statement))?,
+                )
             }
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
                     schema_name: create_model.schema_name,
                     model_name: create_model.model_name,
-                    input: self._logical_relational_algebra(create_model.select)?,
+                    input: (*self._logical_relational_algebra(create_model.select)?.plan).clone(),
                     if_not_exists: create_model.if_not_exists,
                     or_replace: create_model.or_replace,
                     with_options: create_model.with_options,
@@ -638,7 +643,10 @@ impl DaskSQLContext {
                     node: Arc::new(CreateExperimentPlanNode {
                         schema_name: create_experiment.schema_name,
                         experiment_name: create_experiment.experiment_name,
-                        input: self._logical_relational_algebra(create_experiment.select)?,
+                        input: (*self
+                            ._logical_relational_algebra(create_experiment.select)?
+                            .plan)
+                            .clone(),
                         if_not_exists: create_experiment.if_not_exists,
                         or_replace: create_experiment.or_replace,
                         with_options: create_experiment.with_options,
@@ -649,7 +657,7 @@ impl DaskSQLContext {
                 node: Arc::new(PredictModelPlanNode {
                     schema_name: predict_model.schema_name,
                     model_name: predict_model.model_name,
-                    input: self._logical_relational_algebra(predict_model.select)?,
+                    input: (*self._logical_relational_algebra(predict_model.select)?.plan).clone(),
                 }),
             })),
             DaskStatement::DescribeModel(describe_model) => Ok(LogicalPlan::Extension(Extension {
@@ -759,7 +767,9 @@ impl DaskSQLContext {
                     new_schema_name: alter_schema.new_schema_name,
                 }),
             })),
-        }
+        };
+
+        Ok(DaskLogicalPlan::_new(inner_plan?))
     }
 }
 
