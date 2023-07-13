@@ -15,6 +15,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_planner.rust import PythonType, SqlType, get_precision_scale
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT, PANDAS_GT_200
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
@@ -250,6 +251,12 @@ class CastOperation(Operation):
         # decimal datatypes require precision and scale
         if data_type_map.python_type == PythonType.Float:
             sql_type_args = get_precision_scale(rex)
+
+        if (
+            data_type_map.sql_type == SqlType.TIMESTAMP
+            and pd.api.types.is_integer_dtype(operand)
+        ):
+            operand = operand * 10**9
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
@@ -613,17 +620,8 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        # TODO: format timestamps for GPU tests
-        if is_cudf_type(df):
-            if format != default_format:
-                raise RuntimeError("Non-default timestamp formats not supported on GPU")
-            if df.dtype == "object":
-                return df
-            else:
-                nanoseconds_to_seconds = 10**9
-                return df * nanoseconds_to_seconds
         # String cases
-        elif type(df) == str:
+        if type(df) == str:
             return np.datetime64(datetime.strptime(df, format))
         elif df.dtype == "object":
             return dd.to_datetime(df, format=format)
@@ -656,7 +654,11 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[ns]")
+        df = (
+            df.astype("datetime64[s]")
+            if pd.api.types.is_integer_dtype(df)
+            else df.astype("datetime64[ns]")
+        )
 
         if is_cudf_type(df):
             from cudf import DateOffset
@@ -700,10 +702,22 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
+        if pd.api.types.is_integer_dtype(df1):
+            df1 = df1 * 10**9
+        if pd.api.types.is_integer_dtype(df2):
+            df2 = df2 * 10**9
+        if "datetime64[s]" == str(getattr(df1, "dtype", "")):
+            df1 = df1.astype("datetime64[ns]")
+        if "datetime64[s]" == str(getattr(df2, "dtype", "")):
+            df2 = df2.astype("datetime64[ns]")
+
         subtraction_op = ReduceOperation(
             operation=operator.sub, unary_operation=lambda x: -x
         )
         result = subtraction_op(df2, df1)
+
+        if is_cudf_type(df1):
+            result = result.astype("int")
 
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
@@ -902,9 +916,19 @@ class ExtractOperation(Operation):
         elif what in {"SECOND", "SECONDS"}:
             return df.second
         elif what in {"WEEK", "WEEKS"}:
-            return df.week
+            return df.isocalendar().week if PANDAS_GT_200 else df.week
         elif what in {"YEAR", "YEARS"}:
             return df.year
+        elif what == "DATE":
+            if isinstance(df, pd.Timestamp):
+                return df.date()
+            else:
+                if is_cudf_type(df) and not DASK_CUDF_TODATETIME_SUPPORT:
+                    raise RuntimeError(
+                        "Dask-cuDF to_datetime support requires Dask version >= 2023.5.1"
+                    )
+                else:
+                    return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
@@ -1031,6 +1055,9 @@ class RexCallPlugin(BaseRexPlugin):
         "characterlength": TensorScalarOperation(
             lambda x: x.str.len(), lambda x: len(x)
         ),
+        "character_length": TensorScalarOperation(
+            lambda x: x.str.len(), lambda x: len(x)
+        ),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
         "position": PositionOperation(),
@@ -1045,6 +1072,7 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
+        "extract_date": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
@@ -1057,6 +1085,7 @@ class RexCallPlugin(BaseRexPlugin):
         "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": ExtractOperation(),
+        "date_part": ExtractOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),

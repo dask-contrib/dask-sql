@@ -9,15 +9,15 @@ edition = "2021"
 rust-version = "1.65"
 
 [dependencies]
-async-trait = "0.1.68"
+async-trait = "0.1.71"
 datafusion-python = { git = "https://github.com/jdye64/arrow-datafusion-python.git", branch = "logical_extension" }
 env_logger = "0.10"
 log = "^0.4"
-pyo3 = { version = "0.18.3", features = ["extension-module", "abi3", "abi3-py38"] }
-pyo3-log = "0.8.1"
+pyo3 = { version = "0.19.0", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3-log = "0.8.2"
 
 [build-dependencies]
-pyo3-build-config = "0.18.3"
+pyo3-build-config = "0.19.1"
 
 [lib]
 crate-type = ["cdylib"]

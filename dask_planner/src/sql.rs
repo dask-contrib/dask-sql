@@ -21,7 +21,7 @@ use datafusion_python::{
     },
     datafusion_expr::{
         logical_plan::Extension,
-        AccumulatorFunctionImplementation,
+        AccumulatorFactoryFunction,
         AggregateUDF,
         LogicalPlan,
         ReturnTypeFunction,
@@ -99,6 +99,7 @@ pub struct DaskSQLContext {
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
     options: ConfigOptions,
+    dynamic_partition_pruning: bool,
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -243,6 +244,11 @@ impl ContextProvider for DaskSQLContext {
                             DataType::Int64,
                             DataType::Timestamp(TimeUnit::Nanosecond, None),
                         ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Int64,
+                        ]),
                     ],
                     Volatility::Immutable,
                 );
@@ -250,11 +256,23 @@ impl ContextProvider for DaskSQLContext {
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
             "timestampdiff" => {
-                let sig = Signature::exact(
+                let sig = Signature::one_of(
                     vec![
-                        DataType::Utf8,
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Date64,
+                            DataType::Date64,
+                        ]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Int64,
+                            DataType::Int64,
+                        ]),
                     ],
                     Volatility::Immutable,
                 );
@@ -309,6 +327,20 @@ impl ContextProvider for DaskSQLContext {
                 let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Int64)));
                 return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
             }
+            "extract_date" => {
+                let sig = Signature::one_of(
+                    vec![
+                        TypeSignature::Exact(vec![DataType::Utf8, DataType::Date64]),
+                        TypeSignature::Exact(vec![
+                            DataType::Utf8,
+                            DataType::Timestamp(TimeUnit::Nanosecond, None),
+                        ]),
+                    ],
+                    Volatility::Immutable,
+                );
+                let rtf: ReturnTypeFunction = Arc::new(|_| Ok(Arc::new(DataType::Date64)));
+                return Some(Arc::new(ScalarUDF::new(name, &sig, &rtf, &fun)));
+            }
             _ => (),
         }
 
@@ -353,7 +385,7 @@ impl ContextProvider for DaskSQLContext {
     }
 
     fn get_aggregate_meta(&self, name: &str) -> Option<Arc<AggregateUDF>> {
-        let acc: AccumulatorFunctionImplementation =
+        let acc: AccumulatorFactoryFunction =
             Arc::new(|_return_type| Err(DataFusionError::NotImplemented("".to_string())));
 
         let st: StateTypeFunction =
@@ -446,6 +478,13 @@ impl ContextProvider for DaskSQLContext {
     fn options(&self) -> &ConfigOptions {
         &self.options
     }
+
+    fn get_window_meta(
+        &self,
+        _name: &str,
+    ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
+        unimplemented!("RUST: get_window_meta is not yet implemented for DaskSQLContext")
+    }
 }
 
 #[pymethods]
@@ -457,7 +496,13 @@ impl DaskSQLContext {
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
             options: ConfigOptions::new(),
+            dynamic_partition_pruning: false,
         }
+    }
+
+    pub fn apply_dynamic_partition_pruning(&mut self, config: bool) -> PyResult<()> {
+        self.dynamic_partition_pruning = config;
+        Ok(())
     }
 
     /// Change the current schema
@@ -542,9 +587,25 @@ impl DaskSQLContext {
                         warn!("This LogicalPlan does not support Optimization. Returning original");
                         Ok(existing_plan)
                     }
-                    _ => optimizer::DaskSqlOptimizer::new()
-                        .optimize((*existing_plan.plan()).clone())
-                        .map_err(py_optimization_exp),
+                    _ => {
+                        let optimized_plan = optimizer::DaskSqlOptimizer::new()
+                            .optimize((*existing_plan.plan).clone())
+                            .map(|k| DaskLogicalPlan { plan: k.plan })
+                            .map_err(py_optimization_exp);
+
+                        if let Ok(optimized_plan) = optimized_plan {
+                            if self.dynamic_partition_pruning {
+                                optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                                    .optimize_once((*optimized_plan.plan).clone())
+                                    .map(|k| DaskLogicalPlan { plan: k.into() })
+                                    .map_err(py_optimization_exp)
+                            } else {
+                                Ok(optimized_plan)
+                            }
+                        } else {
+                            optimized_plan
+                        }
+                    }
                 }
             }
             Err(e) => Err(py_optimization_exp(e)),

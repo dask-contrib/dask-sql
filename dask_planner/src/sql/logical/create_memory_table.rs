@@ -83,16 +83,13 @@ impl TryFrom<LogicalPlan> for PyCreateMemoryTable {
 
     fn try_from(logical_plan: LogicalPlan) -> Result<Self, Self::Error> {
         Ok(match logical_plan {
-            LogicalPlan::Ddl(ddl) => match ddl {
-                DdlStatement::CreateMemoryTable(create_memory_table) => PyCreateMemoryTable {
-                    create_memory_table: Some(create_memory_table),
-                    create_view: None,
-                },
-                DdlStatement::CreateView(create_view) => PyCreateMemoryTable {
-                    create_memory_table: None,
-                    create_view: Some(create_view),
-                },
-                _ => return Err(py_type_err("unexpected plan")),
+            LogicalPlan::Ddl(DdlStatement::CreateMemoryTable(cmt)) => PyCreateMemoryTable {
+                create_memory_table: Some(cmt),
+                create_view: None,
+            },
+            LogicalPlan::Ddl(DdlStatement::CreateView(cv)) => PyCreateMemoryTable {
+                create_memory_table: None,
+                create_view: Some(cv),
             },
             _ => return Err(py_type_err("unexpected plan")),
         })

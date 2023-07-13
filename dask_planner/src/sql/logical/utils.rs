@@ -287,7 +287,7 @@ pub fn get_filter_expr(expr: PyExpr) -> PyResult<Option<PyExpr>> {
                 Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
                 None => Ok(None),
             },
-            Expr::AggregateUDF { filter, .. } => match filter {
+            Expr::AggregateUDF(filter) => match &filter.filter {
                 Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
                 None => Ok(None),
             },
@@ -299,7 +299,7 @@ pub fn get_filter_expr(expr: PyExpr) -> PyResult<Option<PyExpr>> {
             Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
             None => Ok(None),
         },
-        Expr::AggregateUDF { filter, .. } => match filter {
+        Expr::AggregateUDF(filter, ..) => match &filter.filter {
             Some(filter) => Ok(Some(PyExpr::from(*filter.clone()))),
             None => Ok(None),
         },

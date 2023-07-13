@@ -4,8 +4,6 @@ use datafusion_python::{
     datafusion_common::DataFusionError,
     datafusion_expr::LogicalPlan,
     datafusion_optimizer::{
-        decorrelate_where_exists::DecorrelateWhereExists,
-        decorrelate_where_in::DecorrelateWhereIn,
         eliminate_cross_join::EliminateCrossJoin,
         eliminate_limit::EliminateLimit,
         eliminate_outer_join::EliminateOuterJoin,
@@ -23,6 +21,9 @@ use datafusion_python::{
     },
 };
 use log::{debug, trace};
+
+mod dynamic_partition_pruning;
+use dynamic_partition_pruning::DynamicPartitionPruning;
 
 mod join_reorder;
 use join_reorder::JoinReorder;
@@ -45,8 +46,6 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
-            Arc::new(DecorrelateWhereExists::new()),
-            Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
             //Arc::new(ExtractEquijoinPredicate::new()),
 
@@ -88,6 +87,17 @@ impl DaskSqlOptimizer {
         }
     }
 
+    // Create a separate instance of this optimization rule, since we want to ensure that it only
+    // runs one time
+    pub fn dynamic_partition_pruner() -> Self {
+        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> =
+            vec![Arc::new(DynamicPartitionPruning::new())];
+
+        Self {
+            optimizer: Optimizer::with_rules(rule),
+        }
+    }
+
     /// Iterates through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
     /// to its final optimized form
     pub(crate) fn optimize(&self, plan: LogicalPlan) -> Result<DaskLogicalPlan, DataFusionError> {
@@ -97,6 +107,14 @@ impl DaskSqlOptimizer {
             &config,
             Self::observe,
         )?))
+    }
+
+    /// Iterates once through the configured `OptimizerRule`(s) to transform the input `LogicalPlan`
+    /// to its final optimized form
+    pub(crate) fn optimize_once(&self, plan: LogicalPlan) -> Result<LogicalPlan, DataFusionError> {
+        let mut config = OptimizerContext::new();
+        config = OptimizerContext::with_max_passes(config, 1);
+        self.optimizer.optimize(&plan, &config, Self::observe)
     }
 
     fn observe(optimized_plan: &LogicalPlan, optimization: &dyn OptimizerRule) {
@@ -216,6 +234,13 @@ mod tests {
         }
 
         fn get_variable_type(&self, _variable_names: &[String]) -> Option<DataType> {
+            None
+        }
+
+        fn get_window_meta(
+            &self,
+            _name: &str,
+        ) -> Option<Arc<datafusion_python::datafusion_expr::WindowUDF>> {
             None
         }
     }
