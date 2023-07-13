@@ -623,6 +623,7 @@ impl DaskSQLContext {
         let inner_plan = match dask_statement {
             DaskStatement::Statement(statement) => {
                 let planner = SqlToRel::new(self);
+                println!("Invoking generic DaskStatement::Statement logic ....");
                 Ok::<LogicalPlan, DataFusionError>(
                     planner.statement_to_plan(DFStatement::Statement(statement))?,
                 )

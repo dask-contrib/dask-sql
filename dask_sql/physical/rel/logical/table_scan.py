@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from dask.utils_test import hlg_layer
 
-from dask_planner.rust import plan_to_table, row_type
+from dask_planner.rust import get_table_scan_dnf_filters, plan_to_table, row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -84,8 +84,9 @@ class DaskTableScanPlugin(BaseRelPlugin):
 
         # All partial filters here are applied in conjunction (&)
         all_filters = table_scan.filters()
-        conjunctive_dnf_filters = table_scan.getDNFFilters().filtered_exprs
-        non_dnf_filters = table_scan.getDNFFilters().io_unfilterable_exprs
+        all_dnf_filters = get_table_scan_dnf_filters(table_scan)
+        conjunctive_dnf_filters = all_dnf_filters.filtered_exprs
+        non_dnf_filters = all_dnf_filters.io_unfilterable_exprs
 
         if conjunctive_dnf_filters:
             # Extract the PyExprs from the conjunctive DNF filters

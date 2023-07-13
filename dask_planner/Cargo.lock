@@ -849,7 +849,7 @@ dependencies = [
 [[package]]
 name = "datafusion-python"
 version = "27.0.0"
-source = "git+https://github.com/jdye64/arrow-datafusion-python.git?branch=logical_extension#4e421dbbf44e0093a0866f460790cfe52d3e6f2d"
+source = "git+https://github.com/jdye64/arrow-datafusion-python.git?branch=logical_extension#f3f27fe579062a470e76bfc62ece0188bdb574a4"
 dependencies = [
  "async-trait",
  "datafusion",

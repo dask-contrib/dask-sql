@@ -862,9 +862,6 @@ class Context:
         if dc is None:
             return
 
-        # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [field for field in rel.getRowType().getFieldList()]
-
         if select_names:
             cc = dc.column_container
 

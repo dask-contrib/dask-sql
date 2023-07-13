@@ -63,7 +63,6 @@ pub mod show_schemas;
 pub mod show_tables;
 pub mod sort;
 pub mod subquery_alias;
-pub mod table_scan;
 pub mod use_schema;
 pub mod utils;
 pub mod window;

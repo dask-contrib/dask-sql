@@ -1,19 +1,21 @@
 use std::sync::Arc;
 
+use pyo3::prelude::*;
+
 use datafusion_python::{
     datafusion::arrow::datatypes::DataType,
-    datafusion_common::DFField,
+    datafusion_common::{DFField, ScalarValue},
     datafusion_expr::{
-        expr::Sort,
+        expr::{Sort, InList},
         utils::exprlist_to_fields,
         Cast,
         DdlStatement,
         Expr,
         LogicalPlan,
     },
-    expr::{projection::PyProjection, PyExpr},
+    expr::{projection::PyProjection, PyExpr, table_scan::PyTableScan},
 };
-use pyo3::{pyfunction, PyResult};
+use pyo3::{pyfunction, PyResult, PyObject};
 
 use super::{
     alter_schema::AlterSchemaPlanNode,
@@ -329,4 +331,161 @@ pub fn get_precision_scale(expr: PyExpr) -> PyResult<(u8, i8)> {
             )))
         }
     })
+}
+
+
+type FilterTuple = (String, String, Option<Vec<PyObject>>);
+#[pyclass(name = "FilteredResult", module = "dask_planner", subclass)]
+#[derive(Debug, Clone)]
+pub struct PyFilteredResult {
+    // Certain Expr(s) do not have supporting logic in pyarrow for IO filtering
+    // at read time. Those Expr(s) cannot be ignored however. This field stores
+    // those Expr(s) so that they can be used on the Python side to create
+    // Dask operations that handle that filtering as an extra task in the graph.
+    #[pyo3(get)]
+    pub io_unfilterable_exprs: Vec<PyExpr>,
+    // Expr(s) that can have their filtering logic performed in the pyarrow IO logic
+    // are stored here in a DNF format that is expected by pyarrow.
+    #[pyo3(get)]
+    pub filtered_exprs: Vec<(PyExpr, FilterTuple)>,
+}
+
+
+#[pyfunction]
+pub fn get_table_scan_dnf_filters(table_scan: PyTableScan, py: Python) -> PyResult<PyFilteredResult> {
+    let results = self::_expand_dnf_filters(&table_scan.table_scan.filters, py);
+    Ok(results)
+}
+
+
+/// Ensures that a valid Expr variant type is present
+fn _valid_expr_type(expr: &[Expr]) -> bool {
+    expr.iter()
+        .all(|f| matches!(f, Expr::Column(_) | Expr::Literal(_)))
+}
+
+/// Transform the singular Expr instance into its DNF form serialized in a Vec instance. Possibly recursively expanding
+/// it as well if needed.
+pub fn _expand_dnf_filter(
+    filter: &Expr,
+    py: Python,
+) -> Result<Vec<(PyExpr, FilterTuple)>> {
+    let mut filter_tuple: Vec<(PyExpr, FilterTuple)> = Vec::new();
+
+    match filter {
+        Expr::InList(InList {
+            expr,
+            list,
+            negated,
+        }) => {
+            // Only handle simple Expr(s) for InList operations for now
+            if self::_valid_expr_type(list) {
+                // While ANSI SQL would not allow for anything other than a Column or Literal
+                // value in this "identifying" `expr` we explicitly check that here just to be sure.
+                // IF it is something else it is returned to Dask to handle
+                let ident = match *expr.clone() {
+                    Expr::Column(col) => Ok(col.name),
+                    Expr::Alias(_, name) => Ok(name),
+                    Expr::Literal(val) => Ok(format!("{}", val)),
+                    _ => Err(DaskPlannerError::InvalidIOFilter(format!(
+                        "Invalid InList Expr type `{}`. using in Dask instead",
+                        filter
+                    ))),
+                };
+
+                let op = if *negated { "not in" } else { "in" };
+                let il: Result<Vec<PyObject>> = list
+                    .iter()
+                    .map(|f| match f {
+                        Expr::Column(col) => Ok(col.name.clone().into_py(py)),
+                        Expr::Alias(_, name) => Ok(name.clone().into_py(py)),
+                        Expr::Literal(val) => match val {
+                            ScalarValue::Boolean(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Float32(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Float64(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Int8(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Int16(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Int32(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Int64(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::UInt8(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::UInt16(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::UInt32(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::UInt64(val) => Ok(val.unwrap().into_py(py)),
+                            ScalarValue::Utf8(val) => Ok(val.clone().unwrap().into_py(py)),
+                            ScalarValue::LargeUtf8(val) => Ok(val.clone().unwrap().into_py(py)),
+                            _ => Err(DaskPlannerError::InvalidIOFilter(format!(
+                                "Unsupported ScalarValue `{}` encountered. using in Dask instead",
+                                filter
+                            ))),
+                        },
+                        _ => Ok(f.canonical_name().into_py(py)),
+                    })
+                    .collect();
+
+                filter_tuple.push((
+                    PyExpr::from(filter.clone()),
+                    (
+                        ident.unwrap_or(expr.canonical_name()),
+                        op.to_string(),
+                        Some(il?),
+                    ),
+                ));
+                Ok(filter_tuple)
+            } else {
+                let er = DaskPlannerError::InvalidIOFilter(format!(
+                    "Invalid identifying column Expr instance `{}`. using in Dask instead",
+                    filter
+                ));
+                Err::<Vec<(PyExpr, FilterTuple)>, DaskPlannerError>(er)
+            }
+        }
+        Expr::IsNotNull(expr) => {
+            // Only handle simple Expr(s) for IsNotNull operations for now
+            let ident = match *expr.clone() {
+                Expr::Column(col) => Ok(col.name),
+                _ => Err(DaskPlannerError::InvalidIOFilter(format!(
+                    "Invalid IsNotNull Expr type `{}`. using in Dask instead",
+                    filter
+                ))),
+            };
+
+            filter_tuple.push((
+                PyExpr::from(filter.clone()),
+                (
+                    ident.unwrap_or(expr.canonical_name()),
+                    "is not".to_string(),
+                    None,
+                ),
+            ));
+            Ok(filter_tuple)
+        }
+        _ => {
+            let er = DaskPlannerError::InvalidIOFilter(format!(
+                "Unable to apply filter: `{}` to IO reader, using in Dask instead",
+                filter
+            ));
+            Err::<Vec<(PyExpr, FilterTuple)>, DaskPlannerError>(er)
+        }
+    }
+}
+
+/// Consume the `TableScan` filters (Expr(s)) and convert them into a PyArrow understandable
+/// DNF format that can be directly passed to PyArrow IO readers for Predicate Pushdown. Expr(s)
+/// that cannot be converted to correlating PyArrow IO calls will be returned as is and can be
+/// used in the Python logic to form Dask tasks for the graph to do computational filtering.
+pub fn _expand_dnf_filters(filters: &[Expr], py: Python) -> PyFilteredResult {
+    let mut filtered_exprs: Vec<(PyExpr, FilterTuple)> = Vec::new();
+    let mut unfiltered_exprs: Vec<PyExpr> = Vec::new();
+
+    filters
+        .iter()
+        .for_each(|f| match self::_expand_dnf_filter(f, py) {
+            Ok(mut expanded_dnf_filter) => filtered_exprs.append(&mut expanded_dnf_filter),
+            Err(_e) => unfiltered_exprs.push(PyExpr::from(f.clone())),
+        });
+
+    PyFilteredResult {
+        io_unfilterable_exprs: unfiltered_exprs,
+        filtered_exprs,
+    }
 }

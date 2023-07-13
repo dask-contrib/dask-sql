@@ -60,6 +60,8 @@ fn rust(py: Python, m: &PyModule) -> PyResult<()> {
         .unwrap();
     m.add_wrapped(wrap_pyfunction!(sql::logical::utils::get_precision_scale))
         .unwrap();
+    m.add_wrapped(wrap_pyfunction!(sql::logical::utils::get_table_scan_dnf_filters))
+        .unwrap();
 
     // Exceptions
     m.add(
