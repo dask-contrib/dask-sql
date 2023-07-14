@@ -55,11 +55,6 @@ jobs:
             distributed: true
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: stable
-            override: true
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
