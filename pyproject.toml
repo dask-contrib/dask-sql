@@ -71,7 +71,7 @@ license-files = ["LICENSE.txt"]
 find = {namespaces = false}
 
 [tool.maturin]
-module-name = "dask_sql"
+module-name = "dask_planner"
 include = [
     { path = "Cargo.lock", format = "sdist" }
 ]

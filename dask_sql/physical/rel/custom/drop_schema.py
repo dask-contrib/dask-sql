@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
-    import dask_sql
+    from dask_planner import LogicalPlan
 
-    from ._internal import LogicalPlan
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 

@@ -8,11 +8,10 @@ from uuid import uuid4
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from dask_planner import SqlTypeName
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
-
-from ._internal import SqlTypeName
 
 logger = logging.getLogger(__name__)
 

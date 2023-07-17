@@ -16,9 +16,9 @@ from dask_sql.physical.utils.sort import sort_partition_func
 from dask_sql.utils import LoggableDataFrame, new_temporary_column
 
 if TYPE_CHECKING:
-    import dask_sql
+    from dask_planner import LogicalPlan
 
-    from ._internal import LogicalPlan
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 

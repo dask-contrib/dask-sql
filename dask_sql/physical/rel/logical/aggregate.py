@@ -15,9 +15,9 @@ from dask_sql.physical.rex.core.call import IsNullOperation
 from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
-    import dask_sql
+    from dask_planner import LogicalPlan
 
-    from ._internal import LogicalPlan
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 

@@ -4,17 +4,16 @@ from typing import TYPE_CHECKING, Any
 
 import dask.dataframe as dd
 import numpy as np
+from dask_planner import SqlTypeName
 
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
 
-from ._internal import SqlTypeName
-
 if TYPE_CHECKING:
-    import dask_sql
+    from dask_planner import Expression, LogicalPlan
 
-    from ._internal import Expression, LogicalPlan
+    import dask_sql
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ mod sql;
 /// The higher-level public API is defined in pure python files under the
 /// dask_planner directory.
 #[pymodule]
-fn _internal(py: Python, m: &PyModule) -> PyResult<()> {
+fn dask_planner(py: Python, m: &PyModule) -> PyResult<()> {
     // Initialize the global Python logger instance
     pyo3_log::init();
 
@@ -40,7 +40,7 @@ fn _internal(py: Python, m: &PyModule) -> PyResult<()> {
         py.get_type::<sql::exceptions::OptimizationException>(),
     )?;
 
-    debug!("dask_planner Python module loaded");
+    debug!("dask_sql native library loaded");
 
     Ok(())
 }

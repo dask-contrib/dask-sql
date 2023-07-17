@@ -7,6 +7,7 @@ readme = "README.md"
 license = "Apache-2.0"
 edition = "2021"
 rust-version = "1.65"
+include = ["/src", "/dask_sql", "/LICENSE.txt", "pyproject.toml", "Cargo.toml", "Cargo.lock"]
 
 [lib]
 name = "dask_sql"

@@ -5,8 +5,7 @@ from functools import partial
 from typing import Any, Union
 
 import dask.dataframe as dd
-
-from ._internal import SqlTypeName
+from dask_planner import SqlTypeName
 
 try:
     from pyhive import hive
