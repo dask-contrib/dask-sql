@@ -11,7 +11,7 @@ use crate::{
     sql::exceptions::py_type_err,
 };
 
-#[pyclass(name = "Aggregate", module = "dask_planner", subclass)]
+#[pyclass(name = "Aggregate", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyAggregate {
     aggregate: Option<Aggregate>,

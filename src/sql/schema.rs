@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use super::types::PyDataType;
 use crate::sql::{function::DaskFunction, table};
 
-#[pyclass(name = "DaskSchema", module = "dask_planner", subclass)]
+#[pyclass(name = "DaskSchema", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSchema {
     #[pyo3(get, set)]

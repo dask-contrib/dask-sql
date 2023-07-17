@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// RelDataTypeField represents the definition of a field in a structured RelDataType.
-#[pyclass(name = "RelDataTypeField", module = "dask_planner", subclass)]
+#[pyclass(name = "RelDataTypeField", module = "dask_sql", subclass)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RelDataTypeField {
     qualifier: Option<String>,

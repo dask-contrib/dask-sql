@@ -658,8 +658,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "dask-planner"
-version = "0.1.0"
+name = "dask-sql"
+version = "2023.6.0"
 dependencies = [
  "async-trait",
  "datafusion-python",

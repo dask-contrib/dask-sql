@@ -95,7 +95,7 @@ impl UserDefinedLogicalNode for ExportModelPlanNode {
     }
 }
 
-#[pyclass(name = "ExportModel", module = "dask_planner", subclass)]
+#[pyclass(name = "ExportModel", module = "dask_sql", subclass)]
 pub struct PyExportModel {
     pub(crate) export_model: ExportModelPlanNode,
 }

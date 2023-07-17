@@ -88,7 +88,7 @@ impl UserDefinedLogicalNode for DropSchemaPlanNode {
     }
 }
 
-#[pyclass(name = "DropSchema", module = "dask_planner", subclass)]
+#[pyclass(name = "DropSchema", module = "dask_sql", subclass)]
 pub struct PyDropSchema {
     pub(crate) drop_schema: DropSchemaPlanNode,
 }

@@ -100,7 +100,7 @@ impl UserDefinedLogicalNode for CreateTablePlanNode {
     }
 }
 
-#[pyclass(name = "CreateTable", module = "dask_planner", subclass)]
+#[pyclass(name = "CreateTable", module = "dask_sql", subclass)]
 pub struct PyCreateTable {
     pub(crate) create_table: CreateTablePlanNode,
 }

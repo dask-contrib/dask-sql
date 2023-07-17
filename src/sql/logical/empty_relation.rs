@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;
 
-#[pyclass(name = "EmptyRelation", module = "dask_planner", subclass)]
+#[pyclass(name = "EmptyRelation", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyEmptyRelation {
     empty_relation: EmptyRelation,

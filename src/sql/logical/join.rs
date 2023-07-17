@@ -15,7 +15,7 @@ use crate::{
     sql::{column, exceptions::py_type_err},
 };
 
-#[pyclass(name = "Join", module = "dask_planner", subclass)]
+#[pyclass(name = "Join", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyJoin {
     join: Join,

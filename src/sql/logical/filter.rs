@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};
 
-#[pyclass(name = "Filter", module = "dask_planner", subclass)]
+#[pyclass(name = "Filter", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyFilter {
     filter: Filter,

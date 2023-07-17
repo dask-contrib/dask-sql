@@ -102,7 +102,7 @@ impl UserDefinedLogicalNode for AlterTablePlanNode {
     }
 }
 
-#[pyclass(name = "AlterTable", module = "dask_planner", subclass)]
+#[pyclass(name = "AlterTable", module = "dask_sql", subclass)]
 pub struct PyAlterTable {
     pub(crate) alter_table: AlterTablePlanNode,
 }

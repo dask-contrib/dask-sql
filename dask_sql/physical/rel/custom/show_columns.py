@@ -9,7 +9,8 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner import LogicalPlan
+
+    from ._internal import LogicalPlan
 
 
 class ShowColumnsPlugin(BaseRelPlugin):

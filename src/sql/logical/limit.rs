@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};
 
-#[pyclass(name = "Limit", module = "dask_planner", subclass)]
+#[pyclass(name = "Limit", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyLimit {
     limit: Limit,

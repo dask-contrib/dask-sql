@@ -105,7 +105,7 @@ impl UserDefinedLogicalNode for CreateExperimentPlanNode {
     }
 }
 
-#[pyclass(name = "CreateExperiment", module = "dask_planner", subclass)]
+#[pyclass(name = "CreateExperiment", module = "dask_sql", subclass)]
 pub struct PyCreateExperiment {
     pub(crate) create_experiment: CreateExperimentPlanNode,
 }

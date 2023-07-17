@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;
 
-#[pyclass(name = "SubqueryAlias", module = "dask_planner", subclass)]
+#[pyclass(name = "SubqueryAlias", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PySubqueryAlias {
     subquery_alias: SubqueryAlias,

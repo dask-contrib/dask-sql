@@ -90,7 +90,7 @@ fn is_supported_push_down_expr(_expr: &Expr) -> bool {
     true
 }
 
-#[pyclass(name = "DaskStatistics", module = "dask_planner", subclass)]
+#[pyclass(name = "DaskStatistics", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskStatistics {
     row_count: f64,
@@ -109,7 +109,7 @@ impl DaskStatistics {
     }
 }
 
-#[pyclass(name = "DaskTable", module = "dask_planner", subclass)]
+#[pyclass(name = "DaskTable", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskTable {
     pub(crate) schema_name: Option<String>,

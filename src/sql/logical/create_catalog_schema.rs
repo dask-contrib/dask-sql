@@ -95,7 +95,7 @@ impl UserDefinedLogicalNode for CreateCatalogSchemaPlanNode {
     }
 }
 
-#[pyclass(name = "CreateCatalogSchema", module = "dask_planner", subclass)]
+#[pyclass(name = "CreateCatalogSchema", module = "dask_sql", subclass)]
 pub struct PyCreateCatalogSchema {
     pub(crate) create_catalog_schema: CreateCatalogSchemaPlanNode,
 }

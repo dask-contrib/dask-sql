@@ -10,7 +10,7 @@ use crate::{
     sql::{exceptions::py_type_err, logical},
 };
 
-#[pyclass(name = "RepartitionBy", module = "dask_planner", subclass)]
+#[pyclass(name = "RepartitionBy", module = "dask_sql", subclass)]
 pub struct PyRepartitionBy {
     pub(crate) repartition: Repartition,
 }

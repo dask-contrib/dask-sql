@@ -1,7 +1,7 @@
 use datafusion_python::datafusion_common::Column;
 use pyo3::prelude::*;
 
-#[pyclass(name = "Column", module = "dask_planner", subclass)]
+#[pyclass(name = "Column", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyColumn {
     /// Original Column instance

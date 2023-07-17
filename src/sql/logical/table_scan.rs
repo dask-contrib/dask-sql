@@ -12,7 +12,7 @@ use crate::{
     sql::exceptions::py_type_err,
 };
 
-#[pyclass(name = "TableScan", module = "dask_planner", subclass)]
+#[pyclass(name = "TableScan", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyTableScan {
     pub(crate) table_scan: TableScan,
@@ -20,7 +20,7 @@ pub struct PyTableScan {
 }
 
 type FilterTuple = (String, String, Option<Vec<PyObject>>);
-#[pyclass(name = "FilteredResult", module = "dask_planner", subclass)]
+#[pyclass(name = "FilteredResult", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyFilteredResult {
     // Certain Expr(s) do not have supporting logic in pyarrow for IO filtering

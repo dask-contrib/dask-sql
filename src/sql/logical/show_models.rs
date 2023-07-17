@@ -85,7 +85,7 @@ impl UserDefinedLogicalNode for ShowModelsPlanNode {
     }
 }
 
-#[pyclass(name = "ShowModels", module = "dask_planner", subclass)]
+#[pyclass(name = "ShowModels", module = "dask_sql", subclass)]
 pub struct PyShowModels {
     pub(crate) show_models: ShowModelsPlanNode,
 }

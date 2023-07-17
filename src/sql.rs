@@ -92,7 +92,7 @@ use crate::{
 /// # Ok(())
 /// # }
 /// ```
-#[pyclass(name = "DaskSQLContext", module = "dask_planner", subclass)]
+#[pyclass(name = "DaskSQLContext", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLContext {
     current_catalog: String,

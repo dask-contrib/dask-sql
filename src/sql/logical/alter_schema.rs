@@ -96,7 +96,7 @@ impl UserDefinedLogicalNode for AlterSchemaPlanNode {
     }
 }
 
-#[pyclass(name = "AlterSchema", module = "dask_planner", subclass)]
+#[pyclass(name = "AlterSchema", module = "dask_sql", subclass)]
 pub struct PyAlterSchema {
     pub(crate) alter_schema: AlterSchemaPlanNode,
 }

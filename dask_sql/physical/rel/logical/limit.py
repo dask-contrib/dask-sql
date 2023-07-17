@@ -11,9 +11,9 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
-    from dask_planner import LogicalPlan
-
     import dask_sql
+
+    from ._internal import LogicalPlan
 
 
 class DaskLimitPlugin(BaseRelPlugin):

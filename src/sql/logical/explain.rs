@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 
 use crate::sql::exceptions::py_type_err;
 
-#[pyclass(name = "Explain", module = "dask_planner", subclass)]
+#[pyclass(name = "Explain", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyExplain {
     explain: Explain,

@@ -7,7 +7,7 @@ import dask_sql
 from dask_sql.datacontainer import DataContainer
 
 if TYPE_CHECKING:
-    from dask_planner import Expression, LogicalPlan
+    from ._internal import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 

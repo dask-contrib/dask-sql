@@ -6,7 +6,7 @@ use crate::{
     sql::exceptions::py_type_err,
 };
 
-#[pyclass(name = "Sort", module = "dask_planner", subclass)]
+#[pyclass(name = "Sort", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PySort {
     sort: Sort,

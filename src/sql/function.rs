@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use super::types::PyDataType;
 
-#[pyclass(name = "DaskFunction", module = "dask_planner", subclass)]
+#[pyclass(name = "DaskFunction", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskFunction {
     #[pyo3(get, set)]

@@ -17,19 +17,19 @@ use crate::{
     sql::exceptions::py_type_err,
 };
 
-#[pyclass(name = "Window", module = "dask_planner", subclass)]
+#[pyclass(name = "Window", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyWindow {
     window: Window,
 }
 
-#[pyclass(name = "WindowFrame", module = "dask_planner", subclass)]
+#[pyclass(name = "WindowFrame", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyWindowFrame {
     window_frame: WindowFrame,
 }
 
-#[pyclass(name = "WindowFrameBound", module = "dask_planner", subclass)]
+#[pyclass(name = "WindowFrameBound", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyWindowFrameBound {
     frame_bound: WindowFrameBound,

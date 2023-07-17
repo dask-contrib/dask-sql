@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 
 use crate::sql::{exceptions::py_type_err, logical::PyLogicalPlan};
 
-#[pyclass(name = "CreateMemoryTable", module = "dask_planner", subclass)]
+#[pyclass(name = "CreateMemoryTable", module = "dask_sql", subclass)]
 #[derive(Clone)]
 pub struct PyCreateMemoryTable {
     create_memory_table: Option<CreateMemoryTable>,

@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use crate::parser::DaskStatement;
 
-#[pyclass(name = "Statement", module = "dask_planner", subclass)]
+#[pyclass(name = "Statement", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyStatement {
     pub statement: DaskStatement,

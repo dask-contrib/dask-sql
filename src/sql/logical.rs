@@ -62,7 +62,7 @@ use self::{
 };
 use crate::{error::Result, sql::exceptions::py_type_err};
 
-#[pyclass(name = "LogicalPlan", module = "dask_planner", subclass)]
+#[pyclass(name = "LogicalPlan", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyLogicalPlan {
     /// The original LogicalPlan that was parsed by DataFusion from the input SQL

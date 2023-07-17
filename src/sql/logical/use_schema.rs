@@ -85,7 +85,7 @@ impl UserDefinedLogicalNode for UseSchemaPlanNode {
     }
 }
 
-#[pyclass(name = "UseSchema", module = "dask_planner", subclass)]
+#[pyclass(name = "UseSchema", module = "dask_sql", subclass)]
 pub struct PyUseSchema {
     pub(crate) use_schema: UseSchemaPlanNode,
 }
