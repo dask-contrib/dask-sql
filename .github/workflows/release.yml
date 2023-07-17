@@ -74,7 +74,7 @@ jobs:
         with:
           package-dir: .
           output-dir: dist
-          config-file: "dask_planner/pyproject.toml"
+          config-file: "pyproject.toml"
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
