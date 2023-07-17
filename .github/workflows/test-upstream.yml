@@ -71,7 +71,7 @@ jobs:
           bash update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
-          python setup.py build install
+          maturin develop
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
