@@ -11,7 +11,7 @@ dependencies:
 - intake>=0.6.0
 - jsonschema
 - lightgbm
-- maturin>=0.12.8
+- maturin>=0.15,<0.16
 - mlflow
 - mock
 - numpy>=1.21.6
@@ -28,7 +28,6 @@ dependencies:
 - pytest
 - python=3.9
 - scikit-learn>=1.0.0
-- setuptools-rust>=1.5.2
 - sphinx
 - sqlalchemy<2
 - tpot>=0.12.0
