@@ -12,7 +12,7 @@ mod sql;
 /// The higher-level public API is defined in pure python files under the
 /// dask_planner directory.
 #[pymodule]
-#[pyo3(name = "rust")]
+#[pyo3(name = "dask_planner")]
 fn rust(py: Python, m: &PyModule) -> PyResult<()> {
     // Initialize the global Python logger instance
     pyo3_log::init();

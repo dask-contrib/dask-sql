@@ -7,8 +7,9 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 if TYPE_CHECKING:
+    from dask_planner import LogicalPlan, RelDataType
+
     import dask_sql
-    from dask_planner.rust import LogicalPlan, RelDataType
 
 logger = logging.getLogger(__name__)
 

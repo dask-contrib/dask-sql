@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
-
-[tool.isort]
-profile = "black"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [tool.maturin]
+features = ["pyo3/extension-module"]
 include = [
     { path = "Cargo.lock", format = "sdist" }
 ]
 exclude = [".github/**", "ci/**", ".asf.yaml"]
-# Require Cargo.lock is up to date
 locked = true
+
+[tool.isort]
+profile = "black"

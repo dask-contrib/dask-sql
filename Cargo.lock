@@ -658,7 +658,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dask_planner"
+name = "dask-planner"
 version = "0.1.0"
 dependencies = [
  "async-trait",

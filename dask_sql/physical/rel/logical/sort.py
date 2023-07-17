@@ -5,8 +5,9 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.utils.sort import apply_sort
 
 if TYPE_CHECKING:
+    from dask_planner import LogicalPlan
+
     import dask_sql
-    from dask_planner.rust import LogicalPlan
 
 
 class DaskSortPlugin(BaseRelPlugin):

@@ -2,7 +2,6 @@ import os
 import sys
 
 from setuptools import find_packages, setup
-from setuptools_rust import Binding, RustExtension
 
 import versioneer
 
@@ -31,14 +30,6 @@ setup(
         include=["dask_sql", "dask_sql.*", "dask_planner", "dask_planner.*"]
     ),
     package_data={"dask_sql": ["sql*.yaml"]},
-    rust_extensions=[
-        RustExtension(
-            "dask_planner.rust",
-            binding=Binding.PyO3,
-            path="dask_planner/Cargo.toml",
-            debug=debug_build,
-        )
-    ],
     python_requires=">=3.8",
     setup_requires=sphinx_requirements,
     install_requires=[

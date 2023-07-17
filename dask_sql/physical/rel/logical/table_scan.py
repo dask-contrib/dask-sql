@@ -11,8 +11,9 @@ from dask_sql.physical.rel.logical.filter import filter_or_scalar
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
+    from dask_planner import LogicalPlan
+
     import dask_sql
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

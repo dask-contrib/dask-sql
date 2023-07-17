@@ -1,15 +1,17 @@
 import logging
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import RexType
+from dask_planner import RexType
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import new_temporary_column
 
 if TYPE_CHECKING:
+    from dask_planner import LogicalPlan
+
     import dask_sql
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

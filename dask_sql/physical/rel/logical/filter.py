@@ -11,8 +11,9 @@ from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
+    from dask_planner import LogicalPlan
+
     import dask_sql
-    from dask_planner.rust import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

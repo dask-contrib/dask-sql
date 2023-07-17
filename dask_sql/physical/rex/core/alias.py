@@ -7,8 +7,9 @@ from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
+    from dask_planner import Expression, LogicalPlan
+
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
 
 
 class RexAliasPlugin(BaseRexPlugin):
