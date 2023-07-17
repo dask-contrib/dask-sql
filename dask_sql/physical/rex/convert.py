@@ -8,9 +8,8 @@ from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
-    from dask_planner import Expression, LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 

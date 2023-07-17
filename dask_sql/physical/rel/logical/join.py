@@ -17,9 +17,8 @@ from dask_sql.physical.rex import RexConverter
 from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
-    from dask_planner import Expression, LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 

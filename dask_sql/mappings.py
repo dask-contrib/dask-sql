@@ -7,7 +7,8 @@ import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask_planner import DaskTypeMap, SqlTypeName
+
+from dask_sql._datafusion_lib import DaskTypeMap, SqlTypeName
 
 logger = logging.getLogger(__name__)
 

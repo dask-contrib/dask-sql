@@ -6,9 +6,8 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from dask_planner import LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class AlterSchemaPlugin(BaseRelPlugin):

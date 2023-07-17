@@ -12,7 +12,7 @@ mod sql;
 /// The higher-level public API is defined in pure python files under the
 /// dask_planner directory.
 #[pymodule]
-fn dask_planner(py: Python, m: &PyModule) -> PyResult<()> {
+fn _datafusion_lib(py: Python, m: &PyModule) -> PyResult<()> {
     // Initialize the global Python logger instance
     pyo3_log::init();
 

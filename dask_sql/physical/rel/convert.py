@@ -7,9 +7,8 @@ from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
-    from dask_planner import LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

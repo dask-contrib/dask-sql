@@ -3,8 +3,8 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import pytest
-from dask_planner import SqlTypeName
 
+from dask_sql._datafusion_lib import SqlTypeName
 from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 

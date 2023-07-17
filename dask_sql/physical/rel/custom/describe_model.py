@@ -7,9 +7,8 @@ from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
-    from dask_planner import LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class DescribeModelPlugin(BaseRelPlugin):

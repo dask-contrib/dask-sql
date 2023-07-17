@@ -8,9 +8,8 @@ from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
-    from dask_planner import LogicalPlan
-
     import dask_sql
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class ShowColumnsPlugin(BaseRelPlugin):

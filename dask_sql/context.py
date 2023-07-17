@@ -9,7 +9,8 @@ import pandas as pd
 from dask import config as dask_config
 from dask.base import optimize
 from dask.utils_test import hlg_layer
-from dask_planner import (
+
+from dask_sql._datafusion_lib import (
     DaskSchema,
     DaskSQLContext,
     DaskTable,
