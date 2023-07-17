@@ -116,7 +116,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies and nothing else
         run: |
-          mamba install "setuptools-rust>=1.5.2"
           pip install -e . -vv
 
           which python

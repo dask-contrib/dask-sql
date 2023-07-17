@@ -126,7 +126,6 @@ jobs:
           bash update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
-          mamba install setuptools-rust
           pip install -e . -vv
 
           which python
