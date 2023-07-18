@@ -12,7 +12,7 @@ use pyo3::{prelude::*, types::PyDict};
 use crate::{dialect::DaskDialect, error::DaskPlannerError, sql::exceptions::py_type_err};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[pyclass(name = "RexType", module = "datafusion")]
+#[pyclass(name = "RexType", module = "dask_sql")]
 pub enum RexType {
     Alias,
     Literal,
@@ -23,7 +23,7 @@ pub enum RexType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[pyclass(name = "DaskTypeMap", module = "datafusion", subclass)]
+#[pyclass(name = "DaskTypeMap", module = "dask_sql", subclass)]
 /// Represents a Python Data Type. This is needed instead of simple
 /// Enum instances because PyO3 can only support unit variants as
 /// of version 0.16 which means Enums like `DataType::TIMESTAMP_WITH_LOCAL_TIME_ZONE`
@@ -167,7 +167,7 @@ impl DaskTypeMap {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[pyclass(name = "PyDataType", module = "datafusion", subclass)]
+#[pyclass(name = "PyDataType", module = "dask_sql", subclass)]
 pub struct PyDataType {
     data_type: DataType,
 }
@@ -210,7 +210,7 @@ impl From<DataType> for PyDataType {
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[pyclass(name = "SqlTypeName", module = "datafusion")]
+#[pyclass(name = "SqlTypeName", module = "dask_sql")]
 pub enum SqlTypeName {
     ANY,
     ARRAY,

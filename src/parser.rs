@@ -30,7 +30,7 @@ pub enum CustomExpr {
     Nested(Vec<(String, PySqlArg)>),
 }
 
-#[pyclass(name = "SqlArg", module = "datafusion")]
+#[pyclass(name = "SqlArg", module = "dask_sql")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PySqlArg {
     expr: Option<Expr>,

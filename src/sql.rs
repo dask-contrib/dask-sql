@@ -78,20 +78,6 @@ use crate::{
 ///
 /// The following example demonstrates how to generate an optimized LogicalPlan
 /// from SQL using DaskSQLContext.
-///
-/// ```
-/// use datafusion_python::datafusion::prelude::*;
-///
-/// # use datafusion_python::datafusion_common::Result;
-/// # #[tokio::main]
-/// # async fn main() -> Result<()> {
-/// let mut ctx = DaskSQLContext::new();
-/// let parsed_sql = ctx.parse_sql("SELECT COUNT(*) FROM test_table");
-/// let nonOptimizedRelAlgebra = ctx.logical_relational_algebra(parsed_sql);
-/// let optmizedRelAlg = ctx.optimizeRelationalAlgebra(nonOptimizedRelAlgebra);
-/// # Ok(())
-/// # }
-/// ```
 #[pyclass(name = "DaskSQLContext", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct DaskSQLContext {

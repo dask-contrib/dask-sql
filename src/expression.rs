@@ -43,7 +43,7 @@ use crate::{
 };
 
 /// An PyExpr that can be used on a DataFrame
-#[pyclass(name = "Expression", module = "datafusion", subclass)]
+#[pyclass(name = "Expression", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyExpr {
     pub expr: Expr,
@@ -57,7 +57,7 @@ impl From<PyExpr> for Expr {
     }
 }
 
-#[pyclass(name = "ScalarValue", module = "datafusion", subclass)]
+#[pyclass(name = "ScalarValue", module = "dask_sql", subclass)]
 #[derive(Debug, Clone)]
 pub struct PyScalarValue {
     pub scalar_value: ScalarValue,
