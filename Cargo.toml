@@ -9,17 +9,21 @@ edition = "2021"
 rust-version = "1.65"
 include = ["/src", "/dask_sql", "/LICENSE.txt", "pyproject.toml", "Cargo.toml", "Cargo.lock"]
 
-[lib]
-name = "dask_sql"
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 async-trait = "0.1.71"
 datafusion-python = "27.0.0"
 env_logger = "0.10"
 log = "^0.4"
-pyo3 = { version = "0.19.0", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3 = { version = "0.19.1", features = ["extension-module", "abi3", "abi3-py38"] }
 pyo3-log = "0.8.2"
 
 [build-dependencies]
 pyo3-build-config = "0.19.1"
+
+[lib]
+name = "dask_sql"
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+lto = true
+codegen-units = 1

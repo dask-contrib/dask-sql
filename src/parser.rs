@@ -1374,14 +1374,7 @@ mod test {
         let statements = DaskParser::parse_sql(sql).unwrap();
         assert_eq!(1, statements.len());
         let actual = format!("{:?}", statements[0]);
-        let expected = "projection: [\
-        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"timestampadd\", quote_style: None }]), \
-        args: [\
-        Unnamed(Expr(Value(SingleQuotedString(\"YEAR\")))), \
-        Unnamed(Expr(Value(Number(\"2\", false)))), \
-        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None })))\
-        ], over: None, distinct: false, special: false }))\
-        ]";
+        let expected = "Statement(Query(Query { with: None, body: Select(Select { distinct: None, top: None, projection: [UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"timestampadd\", quote_style: None }]), args: [Unnamed(Expr(Value(SingleQuotedString(\"YEAR\")))), Unnamed(Expr(Value(Number(\"2\", false)))), Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None })))], over: None, distinct: false, special: false, order_by: [] }))], into: None, from: [TableWithJoins { relation: Table { name: ObjectName([Ident { value: \"t\", quote_style: None }]), alias: None, args: None, with_hints: [] }, joins: [] }], lateral_views: [], selection: None, group_by: [], cluster_by: [], distribute_by: [], sort_by: [], having: None, named_window: [], qualify: None }), order_by: [], limit: None, offset: None, fetch: None, locks: [] }))";
         assert!(actual.contains(expected));
     }
 
@@ -1391,26 +1384,16 @@ mod test {
         let statements1 = DaskParser::parse_sql(sql1).unwrap();
         assert_eq!(1, statements1.len());
         let actual1 = format!("{:?}", statements1[0]);
-        let expected1 = "projection: [\
-        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), \
-        args: [\
-        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), \
-        Unnamed(Expr(Value(SingleQuotedString(\"%Y-%m-%d %H:%M:%S\"))))\
-        ], over: None, distinct: false, special: false }))\
-        ]";
+        let expected1 = "Statement(Query(Query { with: None, body: Select(Select { distinct: None, top: None, projection: [UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), args: [Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), Unnamed(Expr(Value(SingleQuotedString(\"%Y-%m-%d %H:%M:%S\"))))], over: None, distinct: false, special: false, order_by: [] }))], into: None, from: [TableWithJoins { relation: Table { name: ObjectName([Ident { value: \"t\", quote_style: None }]), alias: None, args: None, with_hints: [] }, joins: [] }], lateral_views: [], selection: None, group_by: [], cluster_by: [], distribute_by: [], sort_by: [], having: None, named_window: [], qualify: None }), order_by: [], limit: None, offset: None, fetch: None, locks: [] }))";
+
         assert!(actual1.contains(expected1));
 
         let sql2 = "SELECT TO_TIMESTAMP(d, \"%d/%m/%Y\") FROM t";
         let statements2 = DaskParser::parse_sql(sql2).unwrap();
         assert_eq!(1, statements2.len());
         let actual2 = format!("{:?}", statements2[0]);
-        let expected2 = "projection: [\
-        UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), \
-        args: [\
-        Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), \
-        Unnamed(Expr(Value(SingleQuotedString(\"\\\"%d/%m/%Y\\\"\"))))\
-        ], over: None, distinct: false, special: false }))\
-        ]";
+        let expected2 = "Statement(Query(Query { with: None, body: Select(Select { distinct: None, top: None, projection: [UnnamedExpr(Function(Function { name: ObjectName([Ident { value: \"dsql_totimestamp\", quote_style: None }]), args: [Unnamed(Expr(Identifier(Ident { value: \"d\", quote_style: None }))), Unnamed(Expr(Value(SingleQuotedString(\"\\\"%d/%m/%Y\\\"\"))))], over: None, distinct: false, special: false, order_by: [] }))], into: None, from: [TableWithJoins { relation: Table { name: ObjectName([Ident { value: \"t\", quote_style: None }]), alias: None, args: None, with_hints: [] }, joins: [] }], lateral_views: [], selection: None, group_by: [], cluster_by: [], distribute_by: [], sort_by: [], having: None, named_window: [], qualify: None }), order_by: [], limit: None, offset: None, fetch: None, locks: [] }))";
+
         assert!(actual2.contains(expected2));
     }
 
