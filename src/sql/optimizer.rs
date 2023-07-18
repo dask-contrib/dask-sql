@@ -147,8 +147,7 @@ mod tests {
         AND (cast('2002-05-08' as date) + interval '5 days')\
     )";
         let plan = test_sql(sql)?;
-
-        assert!(expected.contains(r#"<= Date32("11820")"#));
+        assert!(format!("{:?}", plan).contains(r#"<= Date32("11820")"#));
         Ok(())
     }
 
