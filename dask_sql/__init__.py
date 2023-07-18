@@ -1,5 +1,5 @@
-# load in shared rust object first to minimize risk of aarch64 glibc TLS allocation bug
-# https://bugzilla.redhat.com/show_bug.cgi?id=1722181
+# FIXME: can we modify TLS model of Rust object to avoid aarch64 glibc bug?
+# https://github.com/dask-contrib/dask-sql/issues/1169
 import dask_planner.rust
 
 from . import _version, config
