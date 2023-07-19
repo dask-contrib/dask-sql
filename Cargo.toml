@@ -15,7 +15,7 @@ datafusion-python = "27.0.0"
 env_logger = "0.10"
 log = "^0.4"
 pyo3 = { version = "0.19.1", features = ["extension-module", "abi3", "abi3-py38"] }
-pyo3-log = "0.8.2"
+pyo3-log = "0.8.3"
 
 [build-dependencies]
 pyo3-build-config = "0.19.1"
