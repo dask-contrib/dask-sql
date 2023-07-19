@@ -1,13 +1,18 @@
 from typing import TYPE_CHECKING
 
-from dask_planner.rust import py_column_name, row_type, sort_ascending, sort_nulls_first
+from dask_sql._datafusion_lib import (
+    py_column_name,
+    row_type,
+    sort_ascending,
+    sort_nulls_first,
+)
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.utils.sort import apply_sort
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskLogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class DaskSortPlugin(BaseRelPlugin):

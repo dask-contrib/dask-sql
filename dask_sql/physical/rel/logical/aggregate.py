@@ -8,7 +8,7 @@ import dask.dataframe as dd
 import pandas as pd
 from dask import config as dask_config
 
-from dask_planner.rust import distinct_agg, get_filter_expr, row_type
+from dask_sql._datafusion_lib import distinct_agg, get_filter_expr, row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -17,7 +17,7 @@ from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskLogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
-from dask_planner.rust import row_type, sort_ascending, sort_nulls_first
 from dask_sql._compat import INDEXER_WINDOW_STEP_IMPLEMENTED
+from dask_sql._datafusion_lib import row_type, sort_ascending, sort_nulls_first
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex.convert import RexConverter
@@ -18,7 +18,7 @@ from dask_sql.utils import LoggableDataFrame, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

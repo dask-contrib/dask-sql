@@ -9,8 +9,8 @@ from dask import config as dask_config
 from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 
-from dask_planner.rust import RexType, row_type
 from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
+from dask_sql._datafusion_lib import RexType, row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -19,7 +19,7 @@ from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskLogicalPlan, Expression
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-from dask_planner.rust import SqlType
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 

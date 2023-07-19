@@ -7,7 +7,7 @@ from dask_sql.utils import LoggableDataFrame
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import DaskLogicalPlan
+    from dask_sql._datafusion_lib import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 

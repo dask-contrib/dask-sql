@@ -24,6 +24,7 @@ requirements:
   build:
     - python                                 # [build_platform != target_platform]
     - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - maturin                                # [build_platform != target_platform]
     - libprotobuf                            # [build_platform != target_platform]
     - zlib                                   # [build_platform != target_platform]
     - {{ compiler('c') }}
@@ -31,7 +32,7 @@ requirements:
   host:
     - pip
     - python
-    - setuptools-rust
+    - maturin
     - libprotobuf
     - zlib
   run:

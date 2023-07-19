@@ -6,8 +6,6 @@ from typing import Any, Union
 
 import dask.dataframe as dd
 
-from dask_planner.rust import SqlType
-
 try:
     from pyhive import hive
 except ImportError:  # pragma: no cover

@@ -51,7 +51,6 @@ jobs:
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          cd dask_planner
           bash update-dependencies.sh
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -60,11 +59,9 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check workspace in debug mode
         run: |
-          cd dask_planner
           cargo check
       - name: Check workspace in release mode
         run: |
-          cd dask_planner
           cargo check --release
 
   # test the crate
@@ -84,7 +81,6 @@ jobs:
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          cd dask_planner
           bash update-dependencies.sh
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -93,5 +89,4 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
         run: |
-          cd dask_planner
           cargo test

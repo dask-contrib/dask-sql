@@ -6,13 +6,13 @@ from dask.blockwise import Blockwise
 from dask.highlevelgraph import MaterializedLayer
 from dask.layers import DataFrameIOLayer
 
-from dask_planner.rust import row_type
+from dask_sql._datafusion_lib import row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class DaskLimitPlugin(BaseRelPlugin):

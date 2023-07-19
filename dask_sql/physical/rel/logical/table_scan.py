@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from dask.utils_test import hlg_layer
 
-from dask_planner.rust import get_table_scan_dnf_filters, plan_to_table, row_type
+from dask_sql._datafusion_lib import get_table_scan_dnf_filters, plan_to_table, row_type
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -13,7 +13,7 @@ from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

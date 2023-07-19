@@ -2,13 +2,13 @@ import logging
 from typing import TYPE_CHECKING
 
 import dask_sql.utils as utils
-from dask_planner.rust import row_type
+from dask_sql._datafusion_lib import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

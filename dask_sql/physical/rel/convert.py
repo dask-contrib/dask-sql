@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 
-from dask_planner.rust import DaskLogicalPlan, get_current_node_type
+from dask_sql._datafusion_lib import DaskLogicalPlan, get_current_node_type
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.utils import LoggableDataFrame, Pluggable
 
 if TYPE_CHECKING:
     import dask_sql
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 

@@ -3,14 +3,14 @@ from typing import TYPE_CHECKING
 import dask.dataframe as dd
 import pandas as pd
 
-from dask_planner.rust import row_type
+from dask_sql._datafusion_lib import row_type
 from dask_sql.datacontainer import ColumnContainer, DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class DaskValuesPlugin(BaseRelPlugin):

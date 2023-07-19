@@ -14,7 +14,6 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import PythonType, SqlType, get_precision_scale
 from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT, PANDAS_GT_200
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
@@ -34,7 +33,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]

@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "setuptools-rust>=1.5.2" \
+    "maturin>=0.15,<0.16" \
     # core dependencies
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \
@@ -26,7 +26,7 @@ RUN mamba install -y \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.1" \
+    "pyarrow>=6.0.2" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay

@@ -60,21 +60,21 @@ jobs:
             CARGO_NET_GIT_FETCH_WITH_CLI="true"
             PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           CIBW_ENVIRONMENT_WINDOWS: 'PATH="$UserProfile\.cargo\bin;$PATH"'
-          CIBW_BEFORE_BUILD: 'pip install -U setuptools-rust'
+          CIBW_BEFORE_BUILD: 'pip install -U "maturin>=0.15,<0.16"'
           CIBW_BEFORE_BUILD_LINUX: >
             ARCH=$([ $(uname -m) == x86_64 ] && echo x86_64 || echo aarch_64) &&
             DOWNLOAD_URL=$(curl --retry 6 --retry-delay 10 -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-${ARCH}.zip$") &&
             curl --retry 6 --retry-delay 10 -LO $DOWNLOAD_URL &&
             unzip protoc-*-linux-$ARCH.zip -d $HOME/.local &&
             protoc --version &&
-            pip install -U setuptools-rust &&
+            pip install -U "maturin>=0.15,<0.16" &&
             pip list &&
             curl --retry 6 --retry-delay 10 https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
             rustup show
         with:
           package-dir: .
           output-dir: dist
-          config-file: "dask_planner/pyproject.toml"
+          config-file: "pyproject.toml"
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
@@ -127,7 +127,7 @@ jobs:
           channel-priority: strict
       - name: Build source distribution
         run: |
-          mamba install setuptools-rust twine
+          mamba install "maturin>=0.15,<0.16" twine
 
           python setup.py sdist
       - name: Check dist files
