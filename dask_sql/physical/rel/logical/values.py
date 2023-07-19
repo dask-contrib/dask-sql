@@ -9,7 +9,7 @@ from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql.java import org
+    from dask_planner.rust import LogicalPlan
 
 
 class DaskValuesPlugin(BaseRelPlugin):
@@ -26,15 +26,12 @@ class DaskValuesPlugin(BaseRelPlugin):
     data samples.
     """
 
-    class_name = "com.dask.sql.nodes.DaskValues"
+    class_name = "Values"
 
-    def convert(
-        self, rel: "org.apache.calcite.rel.RelNode", context: "dask_sql.Context"
-    ) -> DataContainer:
+    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         # There should not be any input. This is the first step.
         self.assert_inputs(rel, 0)
-
-        rex_expression_rows = list(rel.getTuples())
+        rex_expression_rows = rel.values().getValues()
         rows = []
         for rex_expression_row in rex_expression_rows:
             # We convert each of the cells in the row
@@ -44,7 +41,7 @@ class DaskValuesPlugin(BaseRelPlugin):
             # their index.
             rows.append(
                 {
-                    str(i): RexConverter.convert(rex_cell, None, context=context)
+                    str(i): RexConverter.convert(rel, rex_cell, None, context=context)
                     for i, rex_cell in enumerate(rex_expression_row)
                 }
             )
