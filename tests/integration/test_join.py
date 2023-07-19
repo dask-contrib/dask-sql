@@ -86,6 +86,56 @@ def test_join_left(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
+def test_join_left_anti(c, gpu):
+    df1 = pd.DataFrame({"id": [1, 1, 2, 4], "a": ["a", "b", "c", "d"]})
+    df2 = pd.DataFrame({"id": [2, 1, 2, 3], "b": ["c", "c", "a", "c"]})
+    c.create_table("df_1", df1, gpu=gpu)
+    c.create_table("df_2", df2, gpu=gpu)
+
+    return_df = c.sql(
+        """
+    SELECT lhs.id, lhs.a
+    FROM df_1 AS lhs
+    LEFT ANTI JOIN df_2 AS rhs
+    ON lhs.id = rhs.id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "id": [4],
+            "a": ["d"],
+        }
+    )
+
+    assert_eq(return_df, expected_df, check_index=False)
+
+
+@pytest.mark.gpu
+def test_join_left_semi(c):
+    df1 = pd.DataFrame({"id": [1, 1, 2, 4], "a": ["a", "b", "c", "d"]})
+    df2 = pd.DataFrame({"id": [2, 1, 2, 3], "b": ["c", "c", "a", "c"]})
+    c.create_table("df_1", df1, gpu=True)
+    c.create_table("df_2", df2, gpu=True)
+
+    return_df = c.sql(
+        """
+    SELECT lhs.id, lhs.a
+    FROM df_1 AS lhs
+    LEFT SEMI JOIN df_2 AS rhs
+    ON lhs.id = rhs.id
+    """
+    )
+    expected_df = pd.DataFrame(
+        {
+            "id": [1, 1, 2],
+            "a": ["a", "b", "c"],
+        }
+    )
+
+    assert_eq(return_df, expected_df, check_index=False)
+
+
 def test_join_right(c):
     return_df = c.sql(
         """
@@ -119,7 +169,7 @@ def test_join_cross(c, user_table_1, department_table):
     user_table_1["key"] = 1
     department_table["key"] = 1
 
-    expected_df = dd.merge(user_table_1, department_table, on="key").drop("key", 1)
+    expected_df = dd.merge(user_table_1, department_table, on="key").drop(columns="key")
 
     assert_eq(return_df, expected_df, check_index=False)
 
