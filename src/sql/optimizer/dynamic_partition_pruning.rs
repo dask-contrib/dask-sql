@@ -782,6 +782,7 @@ fn satisfies_int64(long_value: Option<i64>, filter: Expr) -> bool {
                 Expr::Literal(ScalarValue::Int32(i)) => i64::from(i.unwrap()),
                 Expr::Literal(ScalarValue::Float64(i)) => i.unwrap() as i64,
                 Expr::Literal(ScalarValue::TimestampNanosecond(i, None)) => i.unwrap(),
+                Expr::Literal(ScalarValue::Date32(i)) => i64::from(i.unwrap()),
                 _ => {
                     panic!("Unknown ScalarValue type {filter_value}");
                 }
