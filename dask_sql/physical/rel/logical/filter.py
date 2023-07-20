@@ -13,7 +13,7 @@ from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql._datafusion_lib import LogicalPlan
+    from dask_sql._datafusion_lib import DaskLogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +55,14 @@ class DaskFilterPlugin(BaseRelPlugin):
 
     def convert(
         self,
-        rel: "LogicalPlan",
+        rel: "DaskLogicalPlan",
         context: "dask_sql.Context",
     ) -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
         df = dc.df
         cc = dc.column_container
 
-        filter = rel.filter()
+        filter = rel.to_variant()
 
         # Every logic is handled in the RexConverter
         # we just need to apply it here

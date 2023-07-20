@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_sql._datafusion_lib import LogicalPlan
+    from dask_sql._datafusion_lib import DaskLogicalPlan
 
 
 class AlterSchemaPlugin(BaseRelPlugin):
@@ -26,8 +26,8 @@ class AlterSchemaPlugin(BaseRelPlugin):
 
     class_name = "AlterSchema"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
-        alter_schema = rel.alter_schema()
+    def convert(self, rel: "DaskLogicalPlan", context: "dask_sql.Context"):
+        alter_schema = rel.to_variant()
 
         old_schema_name = alter_schema.getOldSchemaName()
         new_schema_name = alter_schema.getNewSchemaName()
@@ -60,8 +60,8 @@ class AlterTablePlugin(BaseRelPlugin):
 
     class_name = "AlterTable"
 
-    def convert(self, rel: "LogicalPlan", context: "dask_sql.Context"):
-        alter_table = rel.alter_table()
+    def convert(self, rel: "DaskLogicalPlan", context: "dask_sql.Context"):
+        alter_table = rel.to_variant()
 
         old_table_name = alter_table.getOldTableName()
         new_table_name = alter_table.getNewTableName()

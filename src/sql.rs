@@ -179,6 +179,8 @@ impl ContextProvider for DaskSQLContext {
             DataType::Float16,
             DataType::Float32,
             DataType::Float64,
+            DataType::Decimal128(1, 1),
+            DataType::Decimal256(1, 1),
         ];
 
         match name {
@@ -333,6 +335,7 @@ impl ContextProvider for DaskSQLContext {
         // Loop through all of the user defined functions
         for schema in self.schemas.values() {
             for (fun_name, func_mutex) in &schema.functions {
+                println!("**** Function Name: {:?}", fun_name);
                 if fun_name.eq(name) {
                     let function = func_mutex.lock().unwrap();
                     if function.aggregation.eq(&true) {
@@ -609,9 +612,16 @@ impl DaskSQLContext {
         let inner_plan = match dask_statement {
             DaskStatement::Statement(statement) => {
                 let planner = SqlToRel::new(self);
-                Ok::<LogicalPlan, DataFusionError>(
-                    planner.statement_to_plan(DFStatement::Statement(statement))?,
-                )
+                println!("> _logical_relational_algebra");
+                println!("> state");
+                let state = DFStatement::Statement(statement);
+                println!("< state 1");
+                println!("> plan");
+                let plan = planner.statement_to_plan(state);
+                println!("< plan: {:?}", plan);
+                let resp = Ok::<LogicalPlan, DataFusionError>(plan?);
+                println!("< _logical_relational_algebra");
+                resp
             }
             DaskStatement::CreateModel(create_model) => Ok(LogicalPlan::Extension(Extension {
                 node: Arc::new(CreateModelPlanNode {
@@ -753,6 +763,8 @@ impl DaskSQLContext {
                 }),
             })),
         };
+
+        println!("SHOW THYSELF SATAN!!!");
 
         Ok(DaskLogicalPlan::_new(inner_plan?))
     }
