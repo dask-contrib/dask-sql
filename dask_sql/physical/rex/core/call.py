@@ -22,6 +22,7 @@ from dask_sql.mappings import (
     sql_to_python_type,
     sql_to_python_value,
 )
+from dask_sql.physical.rel import RelConverter
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.physical.rex.core.literal import SargPythonImplementation
@@ -61,6 +62,12 @@ class Operation:
     # True, if the operation should also get the REX
     needs_rex = False
 
+    # True, if the operation should also needs the Context, possible subquery Relation expansion
+    needs_context = False
+
+    # True, if the operation needs the original relation algebra
+    needs_rel = False
+
     @staticmethod
     def op_needs_dc(op):
         return hasattr(op, "needs_dc") and op.needs_dc
@@ -68,6 +75,14 @@ class Operation:
     @staticmethod
     def op_needs_rex(op):
         return hasattr(op, "needs_rex") and op.needs_rex
+
+    @staticmethod
+    def op_needs_context(op):
+        return hasattr(op, "needs_context") and op.needs_context
+
+    @staticmethod
+    def op_needs_rel(op):
+        return hasattr(op, "needs_rel") and op.needs_rel
 
     def __init__(self, f: Callable):
         """Init with the given function"""
@@ -82,6 +97,8 @@ class Operation:
         new_op = Operation(lambda *x, **kwargs: self(op(*x, **kwargs)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
+        new_op.needs_context = Operation.op_needs_context(op)
+        new_op.needs_rel = Operation.op_needs_rel(op)
 
         return new_op
 
@@ -987,6 +1004,29 @@ class InListOperation(Operation):
         return ~result if rex.isNegated() else result
 
 
+class InSubqueryOperation(Operation):
+    """
+    Returns a boolean of whether an expression is/isn't in a Subquery Expression result
+    """
+
+    needs_rex = True
+    needs_context = True
+    needs_rel = True
+
+    def __init__(self):
+        super().__init__(self.inSubquery)
+
+    def inSubquery(
+        self, series: dd.Series, *operands, rel=None, rex=None, context=None
+    ):
+        sub_rel = rex.getSubqueryLogicalPlan()
+        dc = RelConverter.convert(sub_rel, context=context)
+
+        # Extract the specified column/Series from the Dataframe
+        fq_column_name = rex.column_name(rel).split(".")
+        return dc.df[fq_column_name[len(fq_column_name) - 1]]
+
+
 class RexCallPlugin(BaseRexPlugin):
     """
     RexCall is used for expressions, which calculate something.
@@ -1036,6 +1076,7 @@ class RexCallPlugin(BaseRexPlugin):
         "negative": NegativeOperation(),
         "not": NotOperation(),
         "in list": InListOperation(),
+        "in subquery": InSubqueryOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
@@ -1139,7 +1180,9 @@ class RexCallPlugin(BaseRexPlugin):
             try:
                 operation = context.schema[schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
-                raise NotImplementedError(f"{operator_name} not (yet) implemented")
+                raise NotImplementedError(
+                    f"RexCall operator '{operator_name}' not (yet) implemented"
+                )
 
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
@@ -1151,6 +1194,10 @@ class RexCallPlugin(BaseRexPlugin):
             kwargs["dc"] = dc
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = expr
+        if Operation.op_needs_context(operation):
+            kwargs["context"] = context
+        if Operation.op_needs_rel(operation):
+            kwargs["rel"] = rel
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it

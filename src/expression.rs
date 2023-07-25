@@ -166,6 +166,9 @@ impl PyExpr {
     pub fn subquery_plan(&self) -> PyResult<logical::PyLogicalPlan> {
         match &self.expr {
             Expr::ScalarSubquery(subquery) => Ok(subquery.subquery.as_ref().clone().into()),
+            Expr::InSubquery(insubquery) => {
+                Ok(insubquery.subquery.subquery.as_ref().clone().into())
+            }
             _ => Err(py_type_err(format!(
                 "Attempted to extract a LogicalPlan instance from invalid Expr {:?}.
                 Only Subquery and related variants are supported for this operation.",
@@ -467,6 +470,7 @@ impl PyExpr {
             Expr::IsNotFalse(_) => "is not false".to_string(),
             Expr::IsNotUnknown(_) => "is not unknown".to_string(),
             Expr::InList { .. } => "in list".to_string(),
+            Expr::InSubquery(..) => "in subquery".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
             Expr::Like(Like { negated, .. }) => {
@@ -917,6 +921,7 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
             // Any column will do. We use the first column to keep things consistent
             Ok(input_plan.schema().field(0).clone())
         }
+        Expr::InSubquery(insubquery) => expr_to_field(&insubquery.expr, input_plan),
         _ => {
             let fields =
                 exprlist_to_fields(&[expr.clone()], input_plan).map_err(DaskPlannerError::from)?;
