@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
+from dask_sql._compat import PA_GT_700
 from dask_sql._datafusion_lib import DaskTypeMap, SqlTypeName
 
 logger = logging.getLogger(__name__)
@@ -41,11 +42,13 @@ _PYTHON_TO_SQL = {
     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     str: SqlTypeName.VARCHAR,
     np.object_: SqlTypeName.VARCHAR,
-    # TODO: can we identify a case where we should always be using pyarrow strings?
     pd.StringDtype(): SqlTypeName.VARCHAR,
-    pd.StringDtype(storage="pyarrow"): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
+
+# TODO: can we identify a case where we should always be using pyarrow strings?
+if PA_GT_700:
+    _PYTHON_TO_SQL[pd.StringDtype(storage="pyarrow")] = SqlTypeName.VARCHAR
 
 # Default mapping between SQL types and python types
 # for values
