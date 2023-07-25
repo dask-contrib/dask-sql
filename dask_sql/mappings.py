@@ -41,7 +41,9 @@ _PYTHON_TO_SQL = {
     pd.BooleanDtype(): SqlTypeName.BOOLEAN,
     str: SqlTypeName.VARCHAR,
     np.object_: SqlTypeName.VARCHAR,
+    # TODO: can we identify a case where we should always be using pyarrow strings?
     pd.StringDtype(): SqlTypeName.VARCHAR,
+    pd.StringDtype(storage="pyarrow"): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
 
