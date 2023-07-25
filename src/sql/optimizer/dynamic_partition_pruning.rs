@@ -537,7 +537,7 @@ fn read_table(
                 .project(projection.clone())
                 .ok();
             if let Some(row_iter) = row_iter_result {
-                rows.extend(row_iter);
+                rows.extend(row_iter.map(|r| r.expect("Parquet error encountered")));
             } else {
                 // TODO: Investigate cases when this would happen
                 rows.clear();

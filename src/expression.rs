@@ -7,6 +7,7 @@ use datafusion_python::{
         expr::{
             AggregateFunction,
             AggregateUDF,
+            Alias,
             BinaryExpr,
             Cast,
             Exists,
@@ -115,7 +116,6 @@ impl PyExpr {
             | Expr::Negative(..)
             | Expr::IsNull(..)
             | Expr::Like { .. }
-            | Expr::ILike { .. }
             | Expr::SimilarTo { .. }
             | Expr::Between { .. }
             | Expr::Case { .. }
@@ -289,7 +289,6 @@ impl PyExpr {
             | Expr::IsNotTrue(_)
             | Expr::IsNotFalse(_)
             | Expr::Like { .. }
-            | Expr::ILike { .. }
             | Expr::SimilarTo { .. }
             | Expr::IsNotUnknown(_)
             | Expr::Case { .. }
@@ -333,8 +332,7 @@ impl PyExpr {
             }
 
             // Expr(s) that house the Expr instance to return in their bounded params
-            Expr::Alias(expr, ..)
-            | Expr::Not(expr)
+            Expr::Not(expr)
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr)
             | Expr::IsTrue(expr)
@@ -395,6 +393,9 @@ impl PyExpr {
 
                 Ok(operands)
             }
+            Expr::Alias(Alias { expr, .. }) => {
+                Ok(vec![PyExpr::from(*expr.clone(), self.input_plan.clone())])
+            }
             Expr::InList(InList { expr, list, .. }) => {
                 let mut operands: Vec<PyExpr> =
                     vec![PyExpr::from(*expr.clone(), self.input_plan.clone())];
@@ -409,10 +410,6 @@ impl PyExpr {
                 PyExpr::from(*right.clone(), self.input_plan.clone()),
             ]),
             Expr::Like(Like { expr, pattern, .. }) => Ok(vec![
-                PyExpr::from(*expr.clone(), self.input_plan.clone()),
-                PyExpr::from(*pattern.clone(), self.input_plan.clone()),
-            ]),
-            Expr::ILike(Like { expr, pattern, .. }) => Ok(vec![
                 PyExpr::from(*expr.clone(), self.input_plan.clone()),
                 PyExpr::from(*pattern.clone(), self.input_plan.clone()),
             ]),
@@ -477,13 +474,6 @@ impl PyExpr {
                     "not like".to_string()
                 } else {
                     "like".to_string()
-                }
-            }
-            Expr::ILike(Like { negated, .. }) => {
-                if *negated {
-                    "not ilike".to_string()
-                } else {
-                    "ilike".to_string()
                 }
             }
             Expr::SimilarTo(Like { negated, .. }) => {
@@ -577,6 +567,11 @@ impl PyExpr {
                 ScalarValue::List(..) => "List",
                 ScalarValue::Struct(..) => "Struct",
                 ScalarValue::FixedSizeBinary(_, _) => "FixedSizeBinary",
+                ScalarValue::Fixedsizelist(..) => "Fixedsizelist",
+                ScalarValue::DurationSecond(..) => "DurationSecond",
+                ScalarValue::DurationMillisecond(..) => "DurationMillisecond",
+                ScalarValue::DurationMicrosecond(..) => "DurationMicrosecond",
+                ScalarValue::DurationNanosecond(..) => "DurationNanosecond",
             },
             Expr::ScalarFunction(ScalarFunction { fun, args: _ }) => match fun {
                 BuiltinScalarFunction::Abs => "Abs",
@@ -658,7 +653,7 @@ impl PyExpr {
     pub fn get_filter_expr(&self) -> PyResult<Option<PyExpr>> {
         // TODO refactor to avoid duplication
         match &self.expr {
-            Expr::Alias(expr, _) => match expr.as_ref() {
+            Expr::Alias(Alias { expr, .. }) => match expr.as_ref() {
                 Expr::AggregateFunction(AggregateFunction { filter, .. })
                 | Expr::AggregateUDF(AggregateUDF { filter, .. }) => match filter {
                     Some(filter) => {
@@ -830,7 +825,7 @@ impl PyExpr {
         match &self.expr {
             Expr::AggregateFunction(funct) => Ok(funct.distinct),
             Expr::AggregateUDF { .. } => Ok(false),
-            Expr::Alias(expr, _) => match expr.as_ref() {
+            Expr::Alias(Alias { expr, .. }) => match expr.as_ref() {
                 Expr::AggregateFunction(funct) => Ok(funct.distinct),
                 Expr::AggregateUDF { .. } => Ok(false),
                 _ => Err(py_type_err(
@@ -871,9 +866,9 @@ impl PyExpr {
     #[pyo3(name = "getEscapeChar")]
     pub fn get_escape_char(&self) -> PyResult<Option<char>> {
         match &self.expr {
-            Expr::Like(Like { escape_char, .. })
-            | Expr::ILike(Like { escape_char, .. })
-            | Expr::SimilarTo(Like { escape_char, .. }) => Ok(*escape_char),
+            Expr::Like(Like { escape_char, .. }) | Expr::SimilarTo(Like { escape_char, .. }) => {
+                Ok(*escape_char)
+            }
             _ => Err(py_type_err(format!(
                 "Provided Expr {:?} not one of Like/ILike/SimilarTo",
                 &self.expr
@@ -901,7 +896,7 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
-        Expr::Alias(expr, _) => get_expr_name(expr),
+        Expr::Alias(Alias { expr, .. }) => get_expr_name(expr),
         Expr::Wildcard => {
             // 'Wildcard' means any and all columns. We get the first valid column name here
             Ok("*".to_owned())

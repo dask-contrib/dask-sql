@@ -2,7 +2,12 @@ use std::{sync::Arc, vec};
 
 use datafusion_python::{
     datafusion_common::{DFSchema, ScalarValue},
-    datafusion_expr::{expr::InList, logical_plan::TableScan, Expr, LogicalPlan},
+    datafusion_expr::{
+        expr::{Alias, InList},
+        logical_plan::TableScan,
+        Expr,
+        LogicalPlan,
+    },
 };
 use pyo3::prelude::*;
 
@@ -64,7 +69,7 @@ impl PyTableScan {
                     // IF it is something else it is returned to Dask to handle
                     let ident = match *expr.clone() {
                         Expr::Column(col) => Ok(col.name),
-                        Expr::Alias(_, name) => Ok(name),
+                        Expr::Alias(Alias { name, .. }) => Ok(name),
                         Expr::Literal(val) => Ok(format!("{}", val)),
                         _ => Err(DaskPlannerError::InvalidIOFilter(format!(
                             "Invalid InList Expr type `{}`. using in Dask instead",
@@ -77,7 +82,7 @@ impl PyTableScan {
                         .iter()
                         .map(|f| match f {
                             Expr::Column(col) => Ok(col.name.clone().into_py(py)),
-                            Expr::Alias(_, name) => Ok(name.clone().into_py(py)),
+                            Expr::Alias(Alias { name, ..}) => Ok(name.clone().into_py(py)),
                             Expr::Literal(val) => match val {
                                 ScalarValue::Boolean(val) => Ok(val.unwrap().into_py(py)),
                                 ScalarValue::Float32(val) => Ok(val.unwrap().into_py(py)),

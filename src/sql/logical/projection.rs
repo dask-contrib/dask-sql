@@ -1,4 +1,9 @@
-use datafusion_python::datafusion_expr::{logical_plan::Projection, Expr, LogicalPlan};
+use datafusion_python::datafusion_expr::{
+    expr::Alias,
+    logical_plan::Projection,
+    Expr,
+    LogicalPlan,
+};
 use pyo3::prelude::*;
 
 use crate::{expression::PyExpr, sql::exceptions::py_type_err};
@@ -14,7 +19,7 @@ impl PyProjection {
     fn projected_expressions(&mut self, local_expr: &PyExpr) -> Vec<PyExpr> {
         let mut projs: Vec<PyExpr> = Vec::new();
         match &local_expr.expr {
-            Expr::Alias(expr, _name) => {
+            Expr::Alias(Alias { expr, .. }) => {
                 let py_expr: PyExpr =
                     PyExpr::from(*expr.clone(), Some(vec![self.projection.input.clone()]));
                 projs.extend_from_slice(self.projected_expressions(&py_expr).as_slice());
@@ -35,9 +40,9 @@ impl PyProjection {
                 PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
             for expr in self.projected_expressions(&py_expr) {
                 match expr.expr {
-                    Expr::Alias(ex, name) => named.push((
+                    Expr::Alias(Alias { expr, name }) => named.push((
                         name.to_string(),
-                        PyExpr::from(*ex, Some(vec![self.projection.input.clone()])),
+                        PyExpr::from(*expr, Some(vec![self.projection.input.clone()])),
                     )),
                     _ => {
                         if let Ok(name) = expr._column_name(&self.projection.input) {
