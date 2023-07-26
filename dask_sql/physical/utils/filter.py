@@ -394,7 +394,7 @@ class RegenerableLayer:
             for i in range(len(regen_kwargs["filters"])):
                 new_filters = []
                 for f in regen_kwargs["filters"][i]:
-                    if isinstance(f[2], np.datetime64):
+                    if len(f) == 3 and isinstance(f[2], np.datetime64):
                         dt = pd.Timestamp(f[2])
                         new_filters.append((f[0], f[1], dt))
                     else:
