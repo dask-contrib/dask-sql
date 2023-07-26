@@ -207,42 +207,49 @@ impl PyExpr {
                             // Handles cases when from_qualified_name doesn't format the Column correctly.
                             // "name" will always contain the name of the column. Anything in addition to
                             // that will be separated by a '.' and should be further referenced.
-                            let parts = name.split('.').collect::<Vec<&str>>();
-                            let tbl_reference = match parts.len() {
-                                // Single element means name contains just the column name so no TableReference
-                                1 => None,
-                                // Tablename.column_name
-                                2 => Some(
-                                    TableReference::Bare {
-                                        table: Cow::Borrowed(parts[0]),
-                                    }
-                                    .to_owned_reference(),
-                                ),
-                                // Schema_name.table_name.column_name
-                                3 => Some(
-                                    TableReference::Partial {
-                                        schema: Cow::Borrowed(parts[0]),
-                                        table: Cow::Borrowed(parts[1]),
-                                    }
-                                    .to_owned_reference(),
-                                ),
-                                // catalog_name.schema_name.table_name.column_name
-                                4 => Some(
-                                    TableReference::Full {
-                                        catalog: Cow::Borrowed(parts[0]),
-                                        schema: Cow::Borrowed(parts[1]),
-                                        table: Cow::Borrowed(parts[2]),
-                                    }
-                                    .to_owned_reference(),
-                                ),
-                                _ => None,
-                            };
+                            match &self.expr {
+                                Expr::Column(col) => {
+                                    schema.index_of_column(col).map_err(py_runtime_err)
+                                }
+                                _ => {
+                                    let parts = name.split('.').collect::<Vec<&str>>();
+                                    let tbl_reference = match parts.len() {
+                                        // Single element means name contains just the column name so no TableReference
+                                        1 => None,
+                                        // Tablename.column_name
+                                        2 => Some(
+                                            TableReference::Bare {
+                                                table: Cow::Borrowed(parts[0]),
+                                            }
+                                            .to_owned_reference(),
+                                        ),
+                                        // Schema_name.table_name.column_name
+                                        3 => Some(
+                                            TableReference::Partial {
+                                                schema: Cow::Borrowed(parts[0]),
+                                                table: Cow::Borrowed(parts[1]),
+                                            }
+                                            .to_owned_reference(),
+                                        ),
+                                        // catalog_name.schema_name.table_name.column_name
+                                        4 => Some(
+                                            TableReference::Full {
+                                                catalog: Cow::Borrowed(parts[0]),
+                                                schema: Cow::Borrowed(parts[1]),
+                                                table: Cow::Borrowed(parts[2]),
+                                            }
+                                            .to_owned_reference(),
+                                        ),
+                                        _ => None,
+                                    };
 
-                            let col = Column {
-                                relation: tbl_reference.clone(),
-                                name: parts[parts.len() - 1].to_string(),
-                            };
-                            schema.index_of_column(&col).map_err(py_runtime_err)
+                                    let col = Column {
+                                        relation: tbl_reference.clone(),
+                                        name: parts[parts.len() - 1].to_string(),
+                                    };
+                                    schema.index_of_column(&col).map_err(py_runtime_err)
+                                }
+                            }
                         })
                 } else {
                     // Since this is wildcard any Column will do, just use first one
@@ -899,6 +906,7 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 }
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
+    println!("get_expr_name: {:?}", expr);
     match expr {
         Expr::Alias(Alias { expr, .. }) => get_expr_name(expr),
         Expr::Wildcard => {
