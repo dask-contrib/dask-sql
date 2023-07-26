@@ -4,9 +4,7 @@ import pytest
 
 XFAIL_QUERIES = (
     5,
-    6,
     8,
-    9,
     10,
     14,
     16,
@@ -25,7 +23,6 @@ XFAIL_QUERIES = (
     47,
     49,
     51,
-    54,
     57,
     58,
     62,
