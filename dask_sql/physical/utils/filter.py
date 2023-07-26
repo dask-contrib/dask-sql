@@ -6,6 +6,7 @@ import operator
 
 import dask.dataframe as dd
 import numpy as np
+import pandas as pd
 from dask.blockwise import Blockwise
 from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
@@ -388,6 +389,18 @@ class RegenerableLayer:
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
+
+        if "read_parquet" in str(func):
+            for i in range(len(regen_kwargs["filters"])):
+                new_filters = []
+                for f in regen_kwargs["filters"][i]:
+                    if isinstance(f[2], np.datetime64):
+                        dt = pd.Timestamp(f[2])
+                        new_filters.append((f[0], f[1], dt))
+                    else:
+                        new_filters.append(f)
+                regen_kwargs["filters"][i] = new_filters
+
         result = func(*inputs, *regen_args, **regen_kwargs)
         _regen_cache[self.layer.output] = result
         return result
