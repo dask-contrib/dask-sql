@@ -398,7 +398,7 @@ class RegenerableLayer:
                     if len(f) == 3 and isinstance(f[2], np.datetime64):
                         dt = pd.Timestamp(f[2])
                         new_filters.append((f[0], f[1], dt))
-                    elif len(f) == 3 and f[1] == "in":
+                    elif len(f) == 3 and f[1] == "in" and isinstance(f[2][0], str):
                         new_tuple = []
                         for dt in f[2]:
                             new_tuple.append(parse_datetime(dt))
