@@ -13,6 +13,7 @@ from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
 from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
+from dask_sql.mappings import parse_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -397,6 +398,11 @@ class RegenerableLayer:
                     if len(f) == 3 and isinstance(f[2], np.datetime64):
                         dt = pd.Timestamp(f[2])
                         new_filters.append((f[0], f[1], dt))
+                    elif len(f) == 3 and f[1] == "in":
+                        new_tuple = []
+                        for dt in f[2]:
+                            new_tuple.append(parse_datetime(dt))
+                        new_filters.append((f[0], f[1], tuple(new_tuple)))
                     else:
                         new_filters.append(f)
                 regen_kwargs["filters"][i] = new_filters

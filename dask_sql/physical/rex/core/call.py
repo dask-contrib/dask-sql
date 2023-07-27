@@ -46,7 +46,11 @@ def as_timelike(op):
     if isinstance(op, np.int64):
         return np.timedelta64(op, "D")
     elif isinstance(op, str):
-        return np.datetime64(op)
+        try:
+            return np.datetime64(op)
+        except ValueError:
+            op = datetime.strptime(op, "%Y-%m-%d")
+            return np.datetime64(op.strftime("%Y-%m-%d"))
     elif pd.api.types.is_datetime64_dtype(op) or isinstance(op, np.timedelta64):
         return op
     else:
