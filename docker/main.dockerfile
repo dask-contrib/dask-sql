@@ -19,6 +19,7 @@ RUN mamba install -y \
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
+    "httpx" \
     "uvicorn>=0.13.4" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \

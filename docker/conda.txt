@@ -11,6 +11,7 @@ mock>=4.0.3
 sphinx>=3.2.1
 tzlocal>=2.1
 fastapi>=0.92.0
+httpx
 uvicorn>=0.13.4
 pyarrow>=6.0.1
 prompt_toolkit>=3.0.8
