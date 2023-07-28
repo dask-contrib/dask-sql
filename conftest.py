@@ -12,6 +12,8 @@ def pytest_addoption(parser):
 
 
 def pytest_runtest_setup(item):
+    # TODO: explore adding support for pyarrow string columns
+    dask.config.set({"dataframe.convert-string": False})
     if "gpu" in item.keywords:
         if not item.config.getoption("--rungpu"):
             pytest.skip("need --rungpu option to run")
