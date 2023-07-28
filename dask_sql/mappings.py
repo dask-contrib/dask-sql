@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 
 from dask_planner.rust import DaskTypeMap, SqlTypeName
-from dask_sql._compat import PA_GT_700
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +44,6 @@ _PYTHON_TO_SQL = {
     pd.StringDtype(): SqlTypeName.VARCHAR,
     np.datetime64: SqlTypeName.TIMESTAMP,
 }
-
-# TODO: can we identify a case where we should always be using pyarrow strings?
-if PA_GT_700:
-    _PYTHON_TO_SQL[pd.StringDtype(storage="pyarrow")] = SqlTypeName.VARCHAR
 
 # Default mapping between SQL types and python types
 # for values
