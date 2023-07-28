@@ -61,6 +61,7 @@ jobs:
           conda mambabuild continuous_integration/recipe \
                            --python ${{ matrix.python }} \
                            --variants "{target_platform: [${{ matrix.arch }}]}" \
+                           --error-overlinking \
                            --no-test \
                            --no-anaconda-upload \
                            --output-folder packages
