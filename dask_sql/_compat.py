@@ -3,13 +3,7 @@ import pandas as pd
 import prompt_toolkit
 from packaging.version import parse as parseVersion
 
-try:
-    import pyarrow as pa
-except ImportError:
-    pa = None
-
 _pandas_version = parseVersion(pd.__version__)
-_pyarrow_version = parseVersion(pa.__version__) if pa else parseVersion("0.0.0")
 _prompt_toolkit_version = parseVersion(prompt_toolkit.__version__)
 _dask_version = parseVersion(dask.__version__)
 
@@ -27,5 +21,3 @@ PQ_NOT_IN_SUPPORT = parseVersion(dask.__version__) > parseVersion("2023.5.1")
 PQ_IS_SUPPORT = parseVersion(dask.__version__) >= parseVersion("2023.3.1")
 
 DASK_CUDF_TODATETIME_SUPPORT = _dask_version >= parseVersion("2023.5.1")
-
-PA_GT_700 = _pyarrow_version >= parseVersion("7.0.0")
