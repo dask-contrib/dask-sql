@@ -58,7 +58,7 @@ def get_result_or_error(app_client, response):
 
 def test_routes(app_client):
     assert app_client.post("/v1/statement", data="SELECT 1 + 1").status_code == 200
-    assert app_client.get("/v1/statement", data="SELECT 1 + 1").status_code == 405
+    assert app_client.get("/v1/statement").status_code == 405
     assert app_client.get("/v1/empty").status_code == 200
     assert app_client.get("/v1/status/some-wrong-uuid").status_code == 404
     assert app_client.delete("/v1/cancel/some-wrong-uuid").status_code == 404
