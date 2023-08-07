@@ -106,13 +106,14 @@ def test_meta_commands(c, client, capsys):
     captured = capsys.readouterr()
     assert "Schema not_exists not available\n" == captured.out
 
+    # FIXME: Revert to 8787 once https://github.com/dask/distributed/issues/8071 is fixed
     with pytest.raises(
         OSError,
-        match="Timed out .* to tcp://localhost:8787 after 5 s",
+        match="Timed out .* to tcp://localhost:8788 after 5 s",
     ):
         with dask_config.set({"distributed.comm.timeouts.connect": 5}):
-            client = _meta_commands("\\dsc localhost:8787", context=c, client=client)
-            assert client.scheduler.__dict__["addr"] == "localhost:8787"
+            client = _meta_commands("\\dsc localhost:8788", context=c, client=client)
+            assert client.scheduler.__dict__["addr"] == "localhost:8788"
 
 
 def test_connection_info(c, client, capsys):
