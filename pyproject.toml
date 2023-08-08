@@ -11,7 +11,7 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Rust",
     "Programming Language :: Python",
@@ -24,7 +24,6 @@ classifiers = [
     "Topic :: System :: Distributed Computing",
 ]
 readme = "README.md"
-urls = {Homepage = "https://github.com/dask-contrib/dask-sql/"}
 requires-python = ">=3.8"
 dependencies = [
     "dask[dataframe]>=2022.3.0",
@@ -39,6 +38,11 @@ dependencies = [
     "tabulate",
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/dask-contrib/dask-sql"
+Documentation = "https://dask-sql.readthedocs.io"
+Source = "https://github.com/dask-contrib/dask-sql"
 
 [project.optional-dependencies]
 dev = [
