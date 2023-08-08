@@ -14,7 +14,7 @@ dependencies:
 - intake>=0.6.0
 - jsonschema
 - lightgbm
-- maturin>=0.15,<0.16
+- maturin>=1.1,<1.2
 - mlflow
 - mock
 - numpy>=1.21.6

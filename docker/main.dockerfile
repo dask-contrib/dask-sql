@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "maturin>=0.15,<0.16" \
+    "maturin>=1.1,<1.2" \
     # core dependencies
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \
