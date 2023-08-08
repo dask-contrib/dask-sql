@@ -5,9 +5,9 @@ channels:
 dependencies:
 - c-compiler
 - dask>=2022.3.0
-# FIXME: handling is needed for httpx-based fastapi>=0.87.0
-- fastapi>=0.69.0,<0.87.0
+- fastapi>=0.92.0
 - fugue>=0.7.3
+- httpx>=0.24.1
 - intake>=0.6.0
 - jsonschema
 - lightgbm
