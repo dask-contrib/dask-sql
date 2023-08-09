@@ -6,14 +6,12 @@ import operator
 
 import dask.dataframe as dd
 import numpy as np
-import pandas as pd
 from dask.blockwise import Blockwise
 from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
 from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
-from dask_sql.mappings import parse_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +126,22 @@ def attempt_predicate_pushdown(
         # No filters encountered
         return ddf
     filters = filters.to_list_tuple()
+
+    # FIXME: pyarrow doesn't seem to like converting datetime64[D] to scalars
+    # so we must convert any we encounter to datetime64[ns]
+    filters = [
+        [
+            (
+                col,
+                op,
+                val.astype("datetime64[ns]")
+                if isinstance(val, np.datetime64) and val.dtype == "datetime64[D]"
+                else val,
+            )
+            for col, op, val in sublist
+        ]
+        for sublist in filters
+    ]
 
     # Regenerate collection with filtered IO layer
     try:
@@ -390,22 +404,6 @@ class RegenerableLayer:
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
-
-        if "read_parquet" in str(func):
-            for i in range(len(regen_kwargs["filters"])):
-                new_filters = []
-                for f in regen_kwargs["filters"][i]:
-                    if len(f) == 3 and isinstance(f[2], np.datetime64):
-                        dt = pd.Timestamp(f[2])
-                        new_filters.append((f[0], f[1], dt))
-                    elif len(f) == 3 and f[1] == "in" and isinstance(f[2][0], str):
-                        new_tuple = []
-                        for dt in f[2]:
-                            new_tuple.append(parse_datetime(dt))
-                        new_filters.append((f[0], f[1], tuple(new_tuple)))
-                    else:
-                        new_filters.append(f)
-                regen_kwargs["filters"][i] = new_filters
 
         result = func(*inputs, *regen_args, **regen_kwargs)
         _regen_cache[self.layer.output] = result
