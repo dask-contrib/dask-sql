@@ -43,6 +43,7 @@ QUERIES = [
     for i in range(1, 100)
 ]
 
+
 @pytest.fixture(scope="module")
 def c(data_dir):
     # Lazy import, otherwise the pytest framework has problems
