@@ -38,12 +38,10 @@ XFAIL_QUERIES = (
     99,
 )
 
-# QUERIES = [
-#     pytest.param(f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ())
-#     for i in range(1, 100)
-# ]
-
-QUERIES = ["q95.sql"]
+QUERIES = [
+    pytest.param(f"q{i}.sql", marks=pytest.mark.xfail if i in XFAIL_QUERIES else ())
+    for i in range(1, 100)
+]
 
 @pytest.fixture(scope="module")
 def c(data_dir):
