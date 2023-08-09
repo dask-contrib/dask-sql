@@ -1,3 +1,10 @@
+// Declare optimizer modules
+pub mod decorrelate_where_exists;
+pub mod decorrelate_where_in;
+pub mod dynamic_partition_pruning;
+pub mod join_reorder;
+pub mod utils;
+
 use std::sync::Arc;
 
 use datafusion_python::{
@@ -20,13 +27,11 @@ use datafusion_python::{
         OptimizerContext,
     },
 };
-use log::{debug, trace};
-
-mod dynamic_partition_pruning;
+use decorrelate_where_exists::DecorrelateWhereExists;
+use decorrelate_where_in::DecorrelateWhereIn;
 use dynamic_partition_pruning::DynamicPartitionPruning;
-
-mod join_reorder;
 use join_reorder::JoinReorder;
+use log::{debug, trace};
 
 /// Houses the optimization logic for Dask-SQL. This optimization controls the optimizations
 /// and their ordering in regards to their impact on the underlying `LogicalPlan` instance
@@ -44,6 +49,8 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(ReplaceDistinctWithAggregate::new()),
+            Arc::new(DecorrelateWhereExists::new()),
+            Arc::new(DecorrelateWhereIn::new()),
             Arc::new(ScalarSubqueryToJoin::new()),
             //Arc::new(ExtractEquijoinPredicate::new()),
 
