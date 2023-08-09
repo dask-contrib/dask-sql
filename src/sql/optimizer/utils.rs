@@ -37,6 +37,7 @@ use datafusion_python::{
 };
 use log::{debug, trace};
 
+#[allow(dead_code)]
 /// Convenience rule for writing optimizers: recursively invoke
 /// optimize on plan's children and then return a node of the same
 /// type. Useful for optimizer rules which want to leave the type
@@ -354,6 +355,7 @@ pub(crate) fn replace_qualified_name(
     replace_col(expr, &replace_map)
 }
 
+#[allow(dead_code)]
 /// Log the plan in debug/tracing mode after some part of the optimizer runs
 pub fn log_plan(description: &str, plan: &LogicalPlan) {
     debug!("{description}:\n{}\n", plan.display_indent());
