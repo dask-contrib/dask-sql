@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+import warnings
 from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
@@ -1028,7 +1029,17 @@ class InSubqueryOperation(Operation):
 
         # Extract the specified column/Series from the Dataframe
         fq_column_name = rex.column_name(rel).split(".")
-        return dc.df[fq_column_name[len(fq_column_name) - 1]]
+
+        # FIXME: dask's isin doesn't support dask frames as arguments
+        # so we need to compute here
+        col = dc.df[fq_column_name[-1]].compute()
+
+        warnings.warn(
+            "Dask doesn't support Dask frames as input for .isin, so we must force an early computation",
+            ResourceWarning,
+        )
+
+        return series.isin(col)
 
 
 class RexCallPlugin(BaseRexPlugin):
