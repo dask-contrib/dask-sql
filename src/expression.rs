@@ -906,7 +906,6 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 }
 
 fn get_expr_name(expr: &Expr) -> Result<String> {
-    println!("get_expr_name: {:?}", expr);
     match expr {
         Expr::Alias(Alias { expr, .. }) => get_expr_name(expr),
         Expr::Wildcard => {
