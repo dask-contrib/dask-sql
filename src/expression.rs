@@ -480,12 +480,16 @@ impl PyExpr {
             Expr::InSubquery(..) => "in subquery".to_string(),
             Expr::Negative(..) => "negative".to_string(),
             Expr::Not(..) => "not".to_string(),
-            Expr::Like(Like { negated, .. }) => {
-                if *negated {
-                    "not like".to_string()
-                } else {
-                    "like".to_string()
-                }
+            Expr::Like(Like {
+                negated,
+                case_insensitive,
+                ..
+            }) => {
+                format!(
+                    "{}{}like",
+                    if *negated { "not " } else { "" },
+                    if *case_insensitive { "i" } else { "" }
+                )
             }
             Expr::SimilarTo(Like { negated, .. }) => {
                 if *negated {
