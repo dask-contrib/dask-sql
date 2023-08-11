@@ -7,6 +7,7 @@ from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -1184,6 +1185,21 @@ class RexCallPlugin(BaseRexPlugin):
             RexConverter.convert(rel, o, dc, context=context)
             for o in expr.getOperands()
         ]
+
+        # FIXME: cuDF doesn't support binops between decimal columns and numpy ints / floats
+        if dask_config.get("sql.mappings.decimal_support") == "cudf" and any(
+            str(getattr(o, "dtype", None)) == "decimal128" for o in operands
+        ):
+            from decimal import Decimal
+
+            operands = [
+                Decimal(str(o))
+                if isinstance(o, float)
+                else o.item()
+                if np.isscalar(o) and pd.api.types.is_integer_dtype(o)
+                else o
+                for o in operands
+            ]
 
         # Now use the operator name in the mapping
         schema_name = context.schema_name
