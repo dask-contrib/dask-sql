@@ -25,8 +25,6 @@ jobs:
         target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v3
-      - name: Install zlib
-        run: sudo apt update && sudo apt install -y zlib1g-dev
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
@@ -35,6 +33,11 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+      - name: Check is zlib is installed
+        run: |
+          dpkg --list | grep zlib
+
+          ls /usr/include | grep zlib
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -85,7 +88,7 @@ jobs:
           pip install twine
 
           twine check dist/*
-          ls -lh dist/
+          ls dist/
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:
