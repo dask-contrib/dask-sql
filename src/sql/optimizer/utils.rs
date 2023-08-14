@@ -366,9 +366,11 @@ pub fn log_plan(description: &str, plan: &LogicalPlan) {
 mod tests {
     use std::collections::HashSet;
 
-    use arrow::datatypes::DataType;
-    use datafusion_common::Column;
-    use datafusion_expr::{col, expr::Cast, lit, utils::expr_to_columns};
+    use datafusion_python::{
+        datafusion::arrow::datatypes::DataType,
+        datafusion_common::Column,
+        datafusion_expr::{col, expr::Cast, lit, utils::expr_to_columns},
+    };
 
     use super::*;
 
