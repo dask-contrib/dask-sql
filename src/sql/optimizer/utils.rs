@@ -118,8 +118,8 @@ pub(crate) fn extract_join_filters(maybe_filter: &LogicalPlan) -> Result<(Vec<Ex
 ///
 /// # Example
 /// ```
-/// # use datafusion_expr::{col, lit};
-/// # use datafusion_optimizer::utils::split_conjunction_owned;
+/// # use datafusion_python::datafusion_expr::{col, lit};
+/// # use datafusion_python::datafusion_optimizer::utils::split_conjunction_owned;
 /// // a=1 AND b=2
 /// let expr = col("a").eq(lit(1)).and(col("b").eq(lit(2)));
 ///
@@ -144,8 +144,8 @@ pub fn split_conjunction_owned(expr: Expr) -> Vec<Expr> {
 ///
 /// # Example
 /// ```
-/// # use datafusion_expr::{col, lit, Operator};
-/// # use datafusion_optimizer::utils::split_binary_owned;
+/// # use datafusion_python::datafusion_expr::{col, lit, Operator};
+/// # use datafusion_python::datafusion_optimizer::utils::split_binary_owned;
 /// # use std::ops::Add;
 /// // a=1 + b=2
 /// let expr = col("a").eq(lit(1)).add(col("b").eq(lit(2)));
