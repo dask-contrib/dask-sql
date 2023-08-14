@@ -213,8 +213,8 @@ fn split_binary_impl<'a>(
 ///
 /// # Example
 /// ```
-/// # use datafusion_expr::{col, lit};
-/// # use datafusion_optimizer::utils::conjunction;
+/// # use datafusion_python::datafusion_expr::{col, lit};
+/// # use datafusion_python::datafusion_optimizer::utils::conjunction;
 /// // a=1 AND b=2
 /// let expr = col("a").eq(lit(1)).and(col("b").eq(lit(2)));
 ///
