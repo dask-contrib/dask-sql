@@ -18,7 +18,7 @@ build:
     - dask-sql-server = dask_sql.server.app:main
     - dask-sql = dask_sql.cmd:main
   string: py{{ python | replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
-  script: maturin build -i {{ PYTHON }} --compatibility off --release
+  script: RUST_BACKTRACE=full {{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
   build:
