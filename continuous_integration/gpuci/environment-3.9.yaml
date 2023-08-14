@@ -46,3 +46,4 @@ dependencies:
 - ucx-py=0.33
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
+- zlib
