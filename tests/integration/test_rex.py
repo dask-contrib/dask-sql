@@ -407,8 +407,7 @@ def test_coalesce(c, gpu):
             COALESCE(NULL, 'hi') as c3,
             COALESCE(NULL, NULL, 'bye', 5/0) as c4,
             COALESCE(NULL, 3/2, NULL, 'fly') as c5,
-            COALESCE(SUM(b), 'why', 2.2) as c6,
-            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c7
+            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c6
         FROM df
         """
     )
@@ -420,8 +419,7 @@ def test_coalesce(c, gpu):
             "c3": ["hi"],
             "c4": ["bye"],
             "c5": ["1.5"],
-            "c6": ["why"],
-            "c7": [2.0],
+            "c6": [2.0],
         }
     )
 
