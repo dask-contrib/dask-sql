@@ -234,9 +234,23 @@ class DaskAggregatePlugin(BaseRelPlugin):
             group_columns,
             context,
         )
-
         # SQL does not care about the index, but if group columns were specified we'll want to keep those
         df_agg = df_agg.reset_index(drop=(not group_columns))
+
+        # if a rollup groupby is specified, we also need to aggregate for the remaining groupby
+        # combinations and concat these to the original result
+        if agg.isRollupAggregation():
+            dfs = [df_agg]
+            for i in reversed(range(len(group_columns))):
+                # want to retain the output column order of the original groupby
+                df_result, _, _ = self._do_aggregations(
+                    rel,
+                    dc,
+                    group_columns[:i],
+                    context,
+                )
+                dfs.append(df_result.reset_index(drop=(not group_columns)))
+            df_agg = dd.concat(dfs)
 
         def try_get_backend_by_frontend_name(oc):
             try:
