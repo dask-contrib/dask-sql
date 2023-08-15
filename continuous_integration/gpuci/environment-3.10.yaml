@@ -15,7 +15,9 @@ dependencies:
 - jsonschema
 - lightgbm
 - maturin>=1.1,<1.2
-- mlflow
+# FIXME: mlflow 2.6.0 has import issues related to pydantic
+# https://github.com/mlflow/mlflow/issues/9331
+- mlflow<2.6
 - mock
 - numpy>=1.21.6
 - pandas>=1.4.0
