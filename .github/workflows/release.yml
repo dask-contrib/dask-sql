@@ -59,7 +59,7 @@ jobs:
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels for linux
+          name: wheels for linux ${{ matrix.target }}
           path: dist/*
       - name: Publish package
         if: env.upload == 'true'
@@ -138,7 +138,7 @@ jobs:
       - name: Upload binary wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels for macos
+          name: wheels for macos ${{ matrix.target }}
           path: dist/*
       - name: Publish package
         if: env.upload == 'true'
