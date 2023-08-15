@@ -43,7 +43,7 @@ jobs:
           sccache: 'true'
           manylinux: '2_17'
           before-script-linux: |
-            sudo apt-get update && sudo apt-get install protobuf-compiler
+            apt-get update && apt-get install protobuf-compiler
       - name: Build wheels for aarch64
         if: matrix.target == 'aarch64'
         uses: PyO3/maturin-action@v1
