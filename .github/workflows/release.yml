@@ -42,8 +42,11 @@ jobs:
           args: --release --out dist
           sccache: 'true'
           manylinux: '2_17'
-          before-script-linux: |
-            apt-get update && apt-get install protobuf-compiler
+          before-script-linux: >
+            DOWNLOAD_URL=$(curl --retry 6 --retry-delay 10 -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-x86_64.zip$") &&
+            curl --retry 6 --retry-delay 10 -LO $DOWNLOAD_URL &&
+            unzip protoc-*-linux-x86_64.zip -d $HOME/.local &&
+            protoc --version
       - name: Build wheels for aarch64
         if: matrix.target == 'aarch64'
         uses: PyO3/maturin-action@v1
