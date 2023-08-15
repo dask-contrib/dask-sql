@@ -41,6 +41,8 @@ jobs:
           args: --release --out dist
           sccache: 'true'
           manylinux: auto
+        env:
+          PROTOC: '/opt/hostedtoolcache/protoc/3.20.3/x64/protoc'
       - name: Build wheels for aarch64
         if: matrix.target == 'aarch64'
         uses: PyO3/maturin-action@v1
