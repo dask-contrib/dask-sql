@@ -32,11 +32,15 @@ RUN mamba install -y \
     && conda clean -ay
 
 # install dask-sql
+COPY Cargo.toml /opt/dask_sql/
+COPY Cargo.lock /opt/dask_sql/
+COPY pyproject.toml /opt/dask_sql/
 COPY setup.py /opt/dask_sql/
 COPY setup.cfg /opt/dask_sql/
 COPY versioneer.py /opt/dask_sql/
+COPY README.md /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
-COPY dask_planner /opt/dask_sql/dask_planner
+COPY src /opt/dask_sql/src
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
     && pip install -e . -vv
