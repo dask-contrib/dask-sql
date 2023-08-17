@@ -4,7 +4,6 @@ pub mod function;
 pub mod logical;
 pub mod optimizer;
 pub mod parser_utils;
-pub mod preoptimizer;
 pub mod schema;
 pub mod statement;
 pub mod table;
@@ -71,7 +70,6 @@ use crate::{
             show_tables::ShowTablesPlanNode,
             PyLogicalPlan,
         },
-        preoptimizer::datetime_coercion,
     },
 };
 
@@ -566,17 +564,6 @@ impl DaskSQLContext {
                 current_node: None,
             })
             .map_err(py_parsing_exp)
-    }
-
-    pub fn run_preoptimizer(
-        &self,
-        existing_plan: logical::PyLogicalPlan,
-    ) -> PyResult<logical::PyLogicalPlan> {
-        if let Some(plan) = datetime_coercion(&existing_plan.original_plan) {
-            Ok(plan.into())
-        } else {
-            Ok(existing_plan)
-        }
     }
 
     /// Accepts an existing relational plan, `LogicalPlan`, and optimizes it
