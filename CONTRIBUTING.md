@@ -39,14 +39,14 @@ DataFusion provides Dask-SQL with key functionality.
 ### Building
 Building the Dask-SQL Rust codebase is a straightforward process. If you create and activate the Dask-SQL Conda environment the Rust compiler and all necessary components will be installed for you during that process and therefore requires no further manual setup.
 
-`setuptools-rust` is used by Dask-SQL for building and bundling the resulting Rust binaries. This helps make building and installing the Rust binaries feel much more like a native Python workflow.
+`maturin` is used by Dask-SQL for building and bundling the resulting Rust binaries. This helps make building and installing the Rust binaries feel much more like a native Python workflow.
 
-More details about the building setup can be found at [setup.py](setup.py) and searching for `rust_extensions` which is the hook for the Rust code build and inclusion.
+More details about the building setup can be found in [pyproject.toml](pyproject.toml) and [Cargo.toml](Cargo.toml)
 
-Note that while `setuptools-rust` is used by CI and should be used during your development cycle, if the need arises to do something more specific that is not yet supported by `setuptools-rust` you can opt to use `cargo` directly from the command line.
+Note that while `maturin` is used by CI and should be used during your development cycle, if the need arises to do something more specific that is not yet supported by `maturin` you can opt to use `cargo` directly from the command line.
 
 #### Building with Python
-Building Dask-SQL is straightforward with Python. To build run ```python setup.py install```. This will build both the Rust and Python codebase and install it into your locally activated conda environment. While not required, if you have updated dependencies for Rust you might prefer a clean build. To clean your setup run ```python setup.py clean``` and then run ```python setup.py install```
+Building Dask-SQL is straightforward with Python. To build run ```pip install .```. This will build both the Rust and Python codebase and install it into your locally activated conda environment; note that if your Rust dependencies have been updated, this command must be rerun to rebuild the Rust codebase.
 
 #### DataFusion Modules
 DataFusion is broken down into a few modules. We consume those modules in our [Cargo.toml](Cargo.toml). The modules that we use currently are
@@ -58,8 +58,6 @@ DataFusion is broken down into a few modules. We consume those modules in our [C
 
 #### Retrieving Upstream Dependencies
 During development you might find yourself needing some upstream DataFusion changes not present in the projects current version. Luckily this can easily be achieved by updating [Cargo.toml](Cargo.toml) and changing the `rev` to the SHA of the version you need. Note that the same SHA should be used for all DataFusion modules.
-
-After updating the `Cargo.toml` file the codebase can be re-built to reflect those changes by running `python setup.py install`
 
 #### Local Documentation
 Sometimes when building against the latest Github commits for DataFusion you may find that the features you are consuming do not have their documentation public yet. In this case it can be helpful to build the DataFusion documentation locally so that it can be referenced to assist with development. Here is a rough outline for building that documentation locally.
