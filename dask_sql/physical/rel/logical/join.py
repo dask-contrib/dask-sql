@@ -18,7 +18,7 @@ from dask_sql.utils import is_cudf_type
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 

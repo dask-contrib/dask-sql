@@ -110,10 +110,7 @@ After that, you can install the package in development mode
     pip install -e ".[dev]"
 
 The Rust DataFusion bindings are built as part of the `pip install`.
-If changes are made to the Rust source in `dask_planner/`, another build/install must be run to recompile the bindings:
-
-    python setup.py build install
-
+Note that if changes are made to the Rust source in `src/`, another build must be run to recompile the bindings.
 This repository uses [pre-commit](https://pre-commit.com/) hooks. To install them, call
 
     pre-commit install

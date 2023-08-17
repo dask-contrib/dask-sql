@@ -72,7 +72,7 @@ jobs:
           shared-key: test
       - name: Build the Rust DataFusion bindings
         run: |
-          python setup.py build install
+          maturin develop
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -107,7 +107,9 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          python-version: "3.8"
+          # TODO: drop support for python 3.8, add support for python 3.11
+          # https://github.com/dask-contrib/dask-sql/pull/1143
+          python-version: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && '3.9' || '3.8' }}
           channel-priority: strict
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -116,7 +118,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies and nothing else
         run: |
-          mamba install "setuptools-rust>=1.5.2"
           pip install -e . -vv
 
           which python

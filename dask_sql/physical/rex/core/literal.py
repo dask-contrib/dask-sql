@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Any
 import dask.dataframe as dd
 import numpy as np
 
-from dask_planner.rust import SqlTypeName
+from dask_sql._datafusion_lib import SqlTypeName
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import sql_to_python_value
 from dask_sql.physical.rex.base import BaseRexPlugin
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 
