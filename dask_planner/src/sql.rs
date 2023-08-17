@@ -591,7 +591,15 @@ impl DaskSQLContext {
                                 original_plan: k,
                                 current_node: None,
                             })
-                            .map_err(py_optimization_exp)
+                            .map_err(py_optimization_exp);
+                        if self.dynamic_partition_pruning {
+                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner()
+                                .optimize_once(optimized_plan.unwrap().original_plan)
+                                .map(|k| PyLogicalPlan {
+                                    original_plan: k,
+                                    current_node: None,
+                                })
+                                .map_err(py_optimization_exp)
                         } else {
                             optimized_plan
                         }
