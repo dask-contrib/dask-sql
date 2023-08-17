@@ -1,6 +1,6 @@
 # FIXME: can we modify TLS model of Rust object to avoid aarch64 glibc bug?
 # https://github.com/dask-contrib/dask-sql/issues/1169
-import dask_planner.rust
+from . import _datafusion_lib  # isort:skip
 
 from . import _version, config
 from .cmd import cmd_loop

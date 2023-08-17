@@ -127,6 +127,22 @@ def attempt_predicate_pushdown(
         return ddf
     filters = filters.to_list_tuple()
 
+    # FIXME: pyarrow doesn't seem to like converting datetime64[D] to scalars
+    # so we must convert any we encounter to datetime64[ns]
+    filters = [
+        [
+            (
+                col,
+                op,
+                val.astype("datetime64[ns]")
+                if isinstance(val, np.datetime64) and val.dtype == "datetime64[D]"
+                else val,
+            )
+            for col, op, val in sublist
+        ]
+        for sublist in filters
+    ]
+
     # Regenerate collection with filtered IO layer
     try:
         _regen_cache = {}
@@ -388,6 +404,7 @@ class RegenerableLayer:
         regen_kwargs = self.creation_info.get("kwargs", {}).copy()
         regen_kwargs = {k: v for k, v in self.creation_info.get("kwargs", {}).items()}
         regen_kwargs.update((new_kwargs or {}).get(self.layer.output, {}))
+
         result = func(*inputs, *regen_args, **regen_kwargs)
         _regen_cache[self.layer.output] = result
         return result

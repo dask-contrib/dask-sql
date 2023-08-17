@@ -2,4 +2,7 @@
 *              @ayushdg @charlesbluca @galipremsagar
 
 # rust codeowners
-dask_planner/  @ayushdg @charlesbluca @galipremsagar @jdye64
+.cargo/        @ayushdg @charlesbluca @galipremsagar @jdye64
+src/           @ayushdg @charlesbluca @galipremsagar @jdye64
+Cargo.toml     @ayushdg @charlesbluca @galipremsagar @jdye64
+Cargo.lock     @ayushdg @charlesbluca @galipremsagar @jdye64

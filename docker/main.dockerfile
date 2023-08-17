@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "setuptools-rust>=1.5.2" \
+    "maturin>=1.1,<1.2" \
     # core dependencies
     "dask>=2022.3.0" \
     "pandas>=1.4.0" \
@@ -26,17 +26,21 @@ RUN mamba install -y \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.1" \
+    "pyarrow>=6.0.2" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
 
 # install dask-sql
+COPY Cargo.toml /opt/dask_sql/
+COPY Cargo.lock /opt/dask_sql/
+COPY pyproject.toml /opt/dask_sql/
 COPY setup.py /opt/dask_sql/
 COPY setup.cfg /opt/dask_sql/
 COPY versioneer.py /opt/dask_sql/
+COPY README.md /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
-COPY dask_planner /opt/dask_sql/dask_planner
+COPY src /opt/dask_sql/src
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
     && pip install -e . -vv

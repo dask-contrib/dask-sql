@@ -272,3 +272,15 @@ def test_multiple_column_projection(c, parquet_ddf, input_cols):
             "read-parquet",
         ).columns
     ) == sorted(input_cols)
+
+
+def test_wildcard_select(c):
+    result_df = c.sql("SELECT COUNT(*) FROM df")
+
+    expected_df = pd.DataFrame(
+        {
+            "COUNT(*)": [700],
+        }
+    )
+
+    assert_eq(result_df, expected_df)
