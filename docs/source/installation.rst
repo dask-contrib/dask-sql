@@ -84,12 +84,7 @@ After that, you can install the package in development mode
 
     pip install -e ".[dev]"
 
-To compile the Rust code (after changes), run
-
-.. code-block:: bash
-
-    python setup.py build_ext
-
+To compile the Rust code (after changes), the above command must be rerun.
 You can run the tests (after installation) with
 
 .. code-block:: bash

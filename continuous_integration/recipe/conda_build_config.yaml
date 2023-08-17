@@ -4,5 +4,5 @@ rust_compiler_version:
     - 1.69
 libprotobuf:
     - 3
-setuptools_rust:
-    - 1.5.2
+maturin:
+    - 1.1
