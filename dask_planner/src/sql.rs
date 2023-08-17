@@ -99,37 +99,7 @@ pub struct DaskSQLContext {
     current_schema: String,
     schemas: HashMap<String, schema::DaskSchema>,
     options: ConfigOptions,
-    optimizer_config: DaskSQLOptimizerConfig,
-}
-
-#[pyclass(name = "DaskSQLOptimizerConfig", module = "dask_planner", subclass)]
-#[derive(Debug, Clone)]
-pub struct DaskSQLOptimizerConfig {
     dynamic_partition_pruning: bool,
-    fact_dimension_ratio: Option<f64>,
-    max_fact_tables: Option<usize>,
-    preserve_user_order: Option<bool>,
-    filter_selectivity: Option<f64>,
-}
-
-#[pymethods]
-impl DaskSQLOptimizerConfig {
-    #[new]
-    pub fn new(
-        dynamic_partition_pruning: bool,
-        fact_dimension_ratio: Option<f64>,
-        max_fact_tables: Option<usize>,
-        preserve_user_order: Option<bool>,
-        filter_selectivity: Option<f64>,
-    ) -> Self {
-        Self {
-            dynamic_partition_pruning,
-            fact_dimension_ratio,
-            max_fact_tables,
-            preserve_user_order,
-            filter_selectivity,
-        }
-    }
 }
 
 impl ContextProvider for DaskSQLContext {
@@ -513,22 +483,18 @@ impl ContextProvider for DaskSQLContext {
 #[pymethods]
 impl DaskSQLContext {
     #[new]
-    pub fn new(
-        default_catalog_name: &str,
-        default_schema_name: &str,
-        optimizer_config: DaskSQLOptimizerConfig,
-    ) -> Self {
+    pub fn new(default_catalog_name: &str, default_schema_name: &str) -> Self {
         Self {
             current_catalog: default_catalog_name.to_owned(),
             current_schema: default_schema_name.to_owned(),
             schemas: HashMap::new(),
             options: ConfigOptions::new(),
-            optimizer_config,
+            dynamic_partition_pruning: false,
         }
     }
 
-    pub fn set_optimizer_config(&mut self, config: DaskSQLOptimizerConfig) -> PyResult<()> {
-        self.optimizer_config = config;
+    pub fn apply_dynamic_partition_pruning(&mut self, config: bool) -> PyResult<()> {
+        self.dynamic_partition_pruning = config;
         Ok(())
     }
 
@@ -619,23 +585,8 @@ impl DaskSQLContext {
                         Ok(existing_plan)
                     }
                     _ => {
-                        let optimized_plan = optimizer::DaskSqlOptimizer::new(
-                            self.optimizer_config.fact_dimension_ratio,
-                            self.optimizer_config.max_fact_tables,
-                            self.optimizer_config.preserve_user_order,
-                            self.optimizer_config.filter_selectivity,
-                        )
-                        .optimize(existing_plan.original_plan)
-                        .map(|k| PyLogicalPlan {
-                            original_plan: k,
-                            current_node: None,
-                        })
-                        .map_err(py_optimization_exp);
-                        if self.optimizer_config.dynamic_partition_pruning {
-                            optimizer::DaskSqlOptimizer::dynamic_partition_pruner(
-                                self.optimizer_config.fact_dimension_ratio,
-                            )
-                            .optimize_once(optimized_plan.unwrap().original_plan)
+                        let optimized_plan = optimizer::DaskSqlOptimizer::new()
+                            .optimize(existing_plan.original_plan)
                             .map(|k| PyLogicalPlan {
                                 original_plan: k,
                                 current_node: None,
