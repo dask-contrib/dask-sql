@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCKER_PUSH: ${{ github.event_name == 'push' && github.repository == 'dask-contrib/dask-sql' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ["linux/amd64", "linux/arm64", "linux/386"]
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -47,12 +51,11 @@ jobs:
           context: .
           file: ./docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          # platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
           push: ${{ fromJSON(env.DOCKER_PUSH) }}
-          # load: ${{ !fromJSON(env.DOCKER_PUSH) }}
+          load: ${{ !fromJSON(env.DOCKER_PUSH) }}
       - name: Check images
         run: |
           df -h
@@ -69,8 +72,7 @@ jobs:
           context: .
           file: ./docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
-          # platforms: ${{ fromJSON(env.DOCKER_PUSH) && 'linux/amd64,linux/arm64,linux/386' || 'linux/amd64' }}
-          platforms: linux/amd64,linux/arm64,linux/386
+          platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
           labels: ${{ steps.docker_meta_cloud.outputs.labels }}
           push: ${{ fromJSON(env.DOCKER_PUSH) }}
