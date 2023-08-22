@@ -52,7 +52,7 @@ jobs:
           tags: ${{ steps.docker_meta_main.outputs.tags }}
           labels: ${{ steps.docker_meta_main.outputs.labels }}
           push: ${{ fromJSON(env.DOCKER_PUSH) }}
-          load: ${{ !fromJSON(env.DOCKER_PUSH) }}
+          # load: ${{ !fromJSON(env.DOCKER_PUSH) }}
       - name: Check images
         run: |
           df -h
