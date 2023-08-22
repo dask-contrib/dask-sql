@@ -1,4 +1,4 @@
-name: Upload Docker image
+name: Build Docker image
 
 on:
   release:
@@ -28,10 +28,7 @@ jobs:
       matrix:
         platform: ["linux/amd64", "linux/arm64", "linux/386"]
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
+      - uses: actions/checkout@v3
       - name: Login to DockerHub
         if: ${{ fromJSON(env.DOCKER_PUSH) }}
         uses: docker/login-action@v2
