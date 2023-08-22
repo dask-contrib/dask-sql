@@ -8,7 +8,11 @@ on:
       - main
   pull_request:
     paths:
-      - "docker/**"
+      - setup.py
+      - Cargo.toml
+      - Cargo.lock
+      - pyproject.toml
+      - docker/**
       - .github/workflows/docker.yml
 
 # When this workflow is queued, automatically cancel any previous running
