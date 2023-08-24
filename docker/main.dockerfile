@@ -43,7 +43,7 @@ COPY .git /opt/dask_sql/.git
 COPY src /opt/dask_sql/src
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
-    && pip install -e . -vv
+    && CONDA_PREFIX="/opt/conda/" maturin develop
 
 # Set the script to execute
 COPY scripts/startup_script.py /opt/dask_sql/startup_script.py
