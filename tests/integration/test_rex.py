@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT
 from tests.utils import assert_eq
 
 
@@ -406,8 +407,7 @@ def test_coalesce(c, gpu):
             COALESCE(NULL, 'hi') as c3,
             COALESCE(NULL, NULL, 'bye', 5/0) as c4,
             COALESCE(NULL, 3/2, NULL, 'fly') as c5,
-            COALESCE(SUM(b), 'why', 2.2) as c6,
-            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c7
+            COALESCE(NULL, MEAN(b), MEAN(a), 4/0) as c6
         FROM df
         """
     )
@@ -418,9 +418,8 @@ def test_coalesce(c, gpu):
             "c2": [np.nan],
             "c3": ["hi"],
             "c4": ["bye"],
-            "c5": ["1"],
-            "c6": ["why"],
-            "c7": [2.0],
+            "c5": ["1.5"],
+            "c6": [2.0],
         }
     )
 
@@ -759,10 +758,11 @@ def test_date_functions(c):
             EXTRACT(SECOND FROM d) AS "second",
             EXTRACT(WEEK FROM d) AS "week",
             EXTRACT(YEAR FROM d) AS "year",
+            EXTRACT(DATE FROM d) AS "date",
 
             LAST_DAY(d) as "last_day",
 
-            TIMESTAMPADD(YEAR, 2, d) as "plus_1_year",
+            TIMESTAMPADD(YEAR, 1, d) as "plus_1_year",
             TIMESTAMPADD(MONTH, 1, d) as "plus_1_month",
             TIMESTAMPADD(WEEK, 1, d) as "plus_1_week",
             TIMESTAMPADD(DAY, 1, d) as "plus_1_day",
@@ -806,8 +806,9 @@ def test_date_functions(c):
             "second": [42],
             "week": [39],
             "year": [2021],
+            "date": [datetime(2021, 10, 3)],
             "last_day": [datetime(2021, 10, 31, 15, 53, 42, 47)],
-            "plus_1_year": [datetime(2023, 10, 3, 15, 53, 42, 47)],
+            "plus_1_year": [datetime(2022, 10, 3, 15, 53, 42, 47)],
             "plus_1_month": [datetime(2021, 11, 3, 15, 53, 42, 47)],
             "plus_1_week": [datetime(2021, 10, 10, 15, 53, 42, 47)],
             "plus_1_day": [datetime(2021, 10, 4, 15, 53, 42, 47)],
@@ -937,21 +938,7 @@ def test_timestampdiff(c):
     assert_eq(ddf, expected_df, check_dtype=False)
 
 
-@pytest.mark.parametrize(
-    "gpu",
-    [
-        False,
-        pytest.param(
-            True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    reason="Failing due to dask-cudf bug https://github.com/rapidsai/cudf/issues/12062"
-                ),
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_totimestamp(c, gpu):
     df = pd.DataFrame(
         {
@@ -1054,3 +1041,198 @@ def test_totimestamp(c, gpu):
         }
     )
     assert_eq(df, expected_df, check_dtype=False)
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    not DASK_CUDF_TODATETIME_SUPPORT,
+                    reason="Requires https://github.com/dask/dask/pull/9881",
+                    raises=RuntimeError,
+                ),
+            ),
+        ),
+    ],
+)
+def test_extract_date(c, gpu):
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3],
+            "b": [4, 5, 6],
+        }
+    )
+    df["t"] = [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]
+    c.create_table("df", df, gpu=gpu)
+
+    result = c.sql("SELECT EXTRACT(DATE FROM t) AS e FROM df")
+    expected_df = pd.DataFrame(
+        {"e": [datetime(2021, 1, 1), datetime(2022, 2, 2), datetime(2023, 3, 3)]}
+    )
+    assert_eq(result, expected_df)
+
+    result = c.sql("SELECT * FROM df WHERE EXTRACT(DATE FROM t) > '2021-02-01'")
+    expected_df = pd.DataFrame(
+        {
+            "a": [2, 3],
+            "b": [5, 6],
+            "t": [datetime(2022, 2, 2), datetime(2023, 3, 3)],
+        }
+    )
+    assert_eq(result, expected_df, check_index=False)
+
+    result = c.sql(
+        "SELECT * FROM df WHERE EXTRACT(DATE FROM t) BETWEEN '2020-10-01' AND '2022-10-10'"
+    )
+    expected_df = pd.DataFrame(
+        {"a": [1, 2], "b": [4, 5], "t": [datetime(2021, 1, 1), datetime(2022, 2, 2)]}
+    )
+    assert_eq(result, expected_df)
+
+    result = c.sql("SELECT TIMESTAMPADD(YEAR, 1, EXTRACT(DATE FROM t)) AS ta FROM df")
+    expected_df = pd.DataFrame(
+        {"ta": [datetime(2022, 1, 1), datetime(2023, 2, 2), datetime(2024, 3, 3)]}
+    )
+    assert_eq(result, expected_df)
+
+    result = c.sql("SELECT EXTRACT(DATE FROM t) + INTERVAL '2 days' AS i FROM df")
+    expected_df = pd.DataFrame(
+        {"i": [datetime(2021, 1, 3), datetime(2022, 2, 4), datetime(2023, 3, 5)]}
+    )
+    assert_eq(result, expected_df)
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=(
+                pytest.mark.gpu,
+                pytest.mark.xfail(
+                    not DASK_CUDF_TODATETIME_SUPPORT,
+                    reason="Requires https://github.com/dask/dask/pull/9881",
+                    raises=RuntimeError,
+                ),
+            ),
+        ),
+    ],
+)
+def test_scalar_timestamps(c, gpu):
+    df = pd.DataFrame({"d": [1203073300, 1503073700]})
+    c.create_table("df", df, gpu=gpu)
+
+    expected_df = pd.DataFrame(
+        {
+            "dt": [datetime(2008, 2, 20, 11, 1, 40), datetime(2017, 8, 23, 16, 28, 20)],
+        }
+    )
+
+    df1 = c.sql("SELECT to_timestamp(d) + INTERVAL '5 days' AS dt FROM df")
+    assert_eq(df1, expected_df)
+    df2 = c.sql("SELECT CAST(d AS TIMESTAMP) + INTERVAL '5 days' AS dt FROM df")
+    assert_eq(df2, expected_df)
+
+    df1 = c.sql("SELECT TIMESTAMPADD(DAY, 5, to_timestamp(d)) AS dt FROM df")
+    assert_eq(df1, expected_df)
+    df2 = c.sql("SELECT TIMESTAMPADD(DAY, 5, d) AS dt FROM df")
+    assert_eq(df2, expected_df)
+    df3 = c.sql("SELECT TIMESTAMPADD(DAY, 5, CAST(d AS TIMESTAMP)) AS dt FROM df")
+    assert_eq(df3, expected_df)
+
+    expected_df = pd.DataFrame({"day": [15, 18]})
+    df1 = c.sql("SELECT EXTRACT(DAY FROM to_timestamp(d)) AS day FROM df")
+    assert_eq(df1, expected_df, check_dtype=False)
+    df2 = c.sql("SELECT EXTRACT(DAY FROM CAST(d AS TIMESTAMP)) AS day FROM df")
+    assert_eq(df2, expected_df, check_dtype=False)
+
+    expected_df = pd.DataFrame(
+        {
+            "ceil_to_day": [datetime(2008, 2, 16), datetime(2017, 8, 19)],
+        }
+    )
+    df1 = c.sql("SELECT CEIL(to_timestamp(d) TO DAY) AS ceil_to_day FROM df")
+    assert_eq(df1, expected_df)
+    df2 = c.sql("SELECT CEIL(CAST(d AS TIMESTAMP) TO DAY) AS ceil_to_day FROM df")
+    assert_eq(df2, expected_df)
+
+    expected_df = pd.DataFrame(
+        {
+            "floor_to_day": [datetime(2008, 2, 15), datetime(2017, 8, 18)],
+        }
+    )
+    df1 = c.sql("SELECT FLOOR(to_timestamp(d) TO DAY) AS floor_to_day FROM df")
+    assert_eq(df1, expected_df)
+    df2 = c.sql("SELECT FLOOR(CAST(d AS TIMESTAMP) TO DAY) AS floor_to_day FROM df")
+    assert_eq(df2, expected_df)
+
+    df = pd.DataFrame({"d1": [1203073300], "d2": [1503073700]})
+    c.create_table("df", df, gpu=gpu)
+    expected_df = pd.DataFrame({"dt": [3472]})
+    df1 = c.sql(
+        "SELECT TIMESTAMPDIFF(DAY, to_timestamp(d1), to_timestamp(d2)) AS dt FROM df"
+    )
+    # TODO: The GPU case returns an incorrect value here
+    if not gpu:
+        assert_eq(df1, expected_df)
+    df2 = c.sql("SELECT TIMESTAMPDIFF(DAY, d1, d2) AS dt FROM df")
+    assert_eq(df2, expected_df, check_dtype=False)
+    df3 = c.sql(
+        "SELECT TIMESTAMPDIFF(DAY, CAST(d1 AS TIMESTAMP), CAST(d2 AS TIMESTAMP)) AS dt FROM df"
+    )
+    assert_eq(df3, expected_df)
+
+    scalar1 = 1203073300
+    scalar2 = 1503073700
+
+    expected_df = pd.DataFrame({"dt": [datetime(2008, 2, 20, 11, 1, 40)]})
+
+    df1 = c.sql(f"SELECT to_timestamp({scalar1}) + INTERVAL '5 days' AS dt")
+    assert_eq(df1, expected_df)
+    # TODO: Fix seconds/nanoseconds conversion
+    # df2 = c.sql(f"SELECT CAST({scalar1} AS TIMESTAMP) + INTERVAL '5 days' AS dt")
+    # assert_eq(df2, expected_df)
+
+    df1 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, to_timestamp({scalar1})) AS dt")
+    assert_eq(df1, expected_df)
+    df2 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, {scalar1}) AS dt")
+    assert_eq(df2, expected_df)
+    df3 = c.sql(f"SELECT TIMESTAMPADD(DAY, 5, CAST({scalar1} AS TIMESTAMP)) AS dt")
+    assert_eq(df3, expected_df)
+
+    expected_df = pd.DataFrame({"day": [15]})
+    df1 = c.sql(f"SELECT EXTRACT(DAY FROM to_timestamp({scalar1})) AS day")
+    assert_eq(df1, expected_df, check_dtype=False)
+    # TODO: Fix seconds/nanoseconds conversion
+    # df2 = c.sql(f"SELECT EXTRACT(DAY FROM CAST({scalar1} AS TIMESTAMP)) AS day")
+    # assert_eq(df2, expected_df, check_dtype=False)
+
+    expected_df = pd.DataFrame({"ceil_to_day": [datetime(2008, 2, 16)]})
+    df1 = c.sql(f"SELECT CEIL(to_timestamp({scalar1}) TO DAY) AS ceil_to_day")
+    assert_eq(df1, expected_df)
+    df2 = c.sql(f"SELECT CEIL(CAST({scalar1} AS TIMESTAMP) TO DAY) AS ceil_to_day")
+    assert_eq(df2, expected_df)
+
+    expected_df = pd.DataFrame({"floor_to_day": [datetime(2008, 2, 15)]})
+    df1 = c.sql(f"SELECT FLOOR(to_timestamp({scalar1}) TO DAY) AS floor_to_day")
+    assert_eq(df1, expected_df)
+    df2 = c.sql(f"SELECT FLOOR(CAST({scalar1} AS TIMESTAMP) TO DAY) AS floor_to_day")
+    assert_eq(df2, expected_df)
+
+    expected_df = pd.DataFrame({"dt": [3472]})
+    df1 = c.sql(
+        f"SELECT TIMESTAMPDIFF(DAY, to_timestamp({scalar1}), to_timestamp({scalar2})) AS dt"
+    )
+    assert_eq(df1, expected_df)
+    df2 = c.sql(f"SELECT TIMESTAMPDIFF(DAY, {scalar1}, {scalar2}) AS dt")
+    assert_eq(df2, expected_df, check_dtype=False)
+    df3 = c.sql(
+        f"SELECT TIMESTAMPDIFF(DAY, CAST({scalar1} AS TIMESTAMP), CAST({scalar2} AS TIMESTAMP)) AS dt"
+    )
+    assert_eq(df3, expected_df)

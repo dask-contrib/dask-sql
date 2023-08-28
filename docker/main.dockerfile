@@ -14,32 +14,36 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "setuptools-rust>=1.5.2" \
+    "maturin>=1.1,<1.2" \
     # core dependencies
-    "dask>=2022.3.0,<=2023.5.1" \
+    "dask>=2022.3.0" \
     "pandas>=1.4.0" \
-    # FIXME: handling is needed for httpx-based fastapi>=0.87.0
-    "fastapi>=0.69.0,<0.87.0" \
+    "fastapi>=0.92.0" \
+    "httpx>=0.24.1" \
     "uvicorn>=0.13.4" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.1" \
+    "pyarrow>=6.0.2" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
 
 # install dask-sql
+COPY Cargo.toml /opt/dask_sql/
+COPY Cargo.lock /opt/dask_sql/
+COPY pyproject.toml /opt/dask_sql/
 COPY setup.py /opt/dask_sql/
 COPY setup.cfg /opt/dask_sql/
 COPY versioneer.py /opt/dask_sql/
+COPY README.md /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
-COPY dask_planner /opt/dask_sql/dask_planner
+COPY src /opt/dask_sql/src
 COPY dask_sql /opt/dask_sql/dask_sql
 RUN cd /opt/dask_sql/ \
-    && pip install -e . -vv
+    && CONDA_PREFIX="/opt/conda/" maturin develop
 
 # Set the script to execute
 COPY scripts/startup_script.py /opt/dask_sql/startup_script.py

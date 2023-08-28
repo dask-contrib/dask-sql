@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dask_planner.rust import SqlTypeName
+from dask_sql._datafusion_lib import SqlTypeName
 from dask_sql.mappings import python_to_sql_type, similar_type, sql_to_python_value
 
 
@@ -47,4 +47,4 @@ def test_similar_type():
     assert similar_type(pd.Int64Dtype(), np.int32)
     assert not similar_type(np.uint32, np.int32)
     assert similar_type(np.float32, np.float64)
-    assert similar_type(np.object_, str)
+    assert similar_type(object, str)

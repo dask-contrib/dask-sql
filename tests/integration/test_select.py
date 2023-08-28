@@ -4,6 +4,7 @@ import pytest
 from dask.dataframe.optimize import optimize_dataframe_getitem
 from dask.utils_test import hlg_layer
 
+from dask_sql._compat import PANDAS_GT_200
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
@@ -33,7 +34,10 @@ def test_select_column(c, df):
 def test_select_different_types(c):
     expected_df = pd.DataFrame(
         {
-            "date": pd.to_datetime(["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT]),
+            "date": pd.to_datetime(
+                ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT],
+                format="mixed" if PANDAS_GT_200 else None,
+            ),
             "string": ["this is a test", "another test", "äölüć", ""],
             "integer": [1, 2, -4, 5],
             "float": [-1.1, np.NaN, pd.NA, np.sqrt(2)],
@@ -163,13 +167,13 @@ def test_date_casting(c, input_table, request):
 
     expected_df = datetime_table
     expected_df["timezone"] = (
-        expected_df["timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+        expected_df["timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
     )
     expected_df["no_timezone"] = (
         expected_df["no_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
     )
     expected_df["utc_timezone"] = (
-        expected_df["utc_timezone"].astype("<M8[ns]").dt.floor("D").astype("<M8[ns]")
+        expected_df["utc_timezone"].dt.tz_localize(None).dt.floor("D").astype("<M8[ns]")
     )
 
     assert_eq(result_df, expected_df)
@@ -194,7 +198,10 @@ def test_timestamp_casting(c, input_table, request):
         """
     )
 
-    expected_df = datetime_table.astype("<M8[ns]")
+    expected_df = datetime_table
+    expected_df["timezone"] = expected_df["timezone"].dt.tz_localize(None)
+    expected_df["utc_timezone"] = expected_df["utc_timezone"].dt.tz_localize(None)
+
     assert_eq(result_df, expected_df)
 
 
@@ -265,3 +272,15 @@ def test_multiple_column_projection(c, parquet_ddf, input_cols):
             "read-parquet",
         ).columns
     ) == sorted(input_cols)
+
+
+def test_wildcard_select(c):
+    result_df = c.sql("SELECT COUNT(*) FROM df")
+
+    expected_df = pd.DataFrame(
+        {
+            "COUNT(*)": [700],
+        }
+    )
+
+    assert_eq(result_df, expected_df)

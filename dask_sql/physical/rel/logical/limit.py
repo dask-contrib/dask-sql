@@ -12,7 +12,7 @@ from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 
 class DaskLimitPlugin(BaseRelPlugin):

@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
 
 import dask.config as dask_config
 import dask.dataframe as dd
@@ -12,12 +12,16 @@ from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
 
-def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Series]):
+def filter_or_scalar(
+    df: dd.DataFrame,
+    filter_condition: Union[np.bool_, dd.Series],
+    add_filters: List = None,
+):
     """
     Some (complex) SQL queries can lead to a strange condition which is always true or false.
     We do not need to filter in this case.
@@ -35,7 +39,7 @@ def filter_or_scalar(df: dd.DataFrame, filter_condition: Union[np.bool_, dd.Seri
     filter_condition = filter_condition.fillna(False)
     out = df[filter_condition]
     if dask_config.get("sql.predicate_pushdown"):
-        return attempt_predicate_pushdown(out)
+        return attempt_predicate_pushdown(out, add_filters=add_filters)
     else:
         return out
 

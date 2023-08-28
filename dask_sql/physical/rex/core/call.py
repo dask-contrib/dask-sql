@@ -1,11 +1,13 @@
 import logging
 import operator
 import re
+import warnings
 from datetime import datetime
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import dask.array as da
+import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -14,13 +16,15 @@ from dask.dataframe.core import Series
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
-from dask_planner.rust import SqlTypeName
+from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT, PANDAS_GT_200
+from dask_sql._datafusion_lib import SqlTypeName
 from dask_sql.datacontainer import DataContainer
 from dask_sql.mappings import (
     cast_column_to_type,
     sql_to_python_type,
     sql_to_python_value,
 )
+from dask_sql.physical.rel import RelConverter
 from dask_sql.physical.rex import RexConverter
 from dask_sql.physical.rex.base import BaseRexPlugin
 from dask_sql.physical.rex.core.literal import SargPythonImplementation
@@ -34,7 +38,7 @@ from dask_sql.utils import (
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import Expression, LogicalPlan
+    from dask_sql._datafusion_lib import Expression, LogicalPlan
 
 logger = logging.getLogger(__name__)
 SeriesOrScalar = Union[dd.Series, Any]
@@ -44,7 +48,11 @@ def as_timelike(op):
     if isinstance(op, np.int64):
         return np.timedelta64(op, "D")
     elif isinstance(op, str):
-        return np.datetime64(op)
+        try:
+            return np.datetime64(op)
+        except ValueError:
+            op = datetime.strptime(op, "%Y-%m-%d")
+            return np.datetime64(op.strftime("%Y-%m-%d"))
     elif pd.api.types.is_datetime64_dtype(op) or isinstance(op, np.timedelta64):
         return op
     else:
@@ -60,6 +68,12 @@ class Operation:
     # True, if the operation should also get the REX
     needs_rex = False
 
+    # True, if the operation should also needs the Context, possible subquery Relation expansion
+    needs_context = False
+
+    # True, if the operation needs the original relation algebra
+    needs_rel = False
+
     @staticmethod
     def op_needs_dc(op):
         return hasattr(op, "needs_dc") and op.needs_dc
@@ -67,6 +81,14 @@ class Operation:
     @staticmethod
     def op_needs_rex(op):
         return hasattr(op, "needs_rex") and op.needs_rex
+
+    @staticmethod
+    def op_needs_context(op):
+        return hasattr(op, "needs_context") and op.needs_context
+
+    @staticmethod
+    def op_needs_rel(op):
+        return hasattr(op, "needs_rel") and op.needs_rel
 
     def __init__(self, f: Callable):
         """Init with the given function"""
@@ -81,6 +103,8 @@ class Operation:
         new_op = Operation(lambda *x, **kwargs: self(op(*x, **kwargs)))
         new_op.needs_dc = Operation.op_needs_dc(op)
         new_op.needs_rex = Operation.op_needs_rex(op)
+        new_op.needs_context = Operation.op_needs_context(op)
+        new_op.needs_rel = Operation.op_needs_rel(op)
 
         return new_op
 
@@ -249,6 +273,9 @@ class CastOperation(Operation):
         # decimal datatypes require precision and scale
         if output_type == "DECIMAL":
             sql_type_args = rex.getPrecisionScale()
+
+        if output_type == "TIMESTAMP" and pd.api.types.is_integer_dtype(operand):
+            operand = operand * 10**9
 
         if not is_frame(operand):  # pragma: no cover
             return sql_to_python_value(sql_type, operand)
@@ -612,17 +639,8 @@ class ToTimestampOperation(Operation):
         format = format.replace('"', "")
         format = format.replace("'", "")
 
-        # TODO: format timestamps for GPU tests
-        if is_cudf_type(df):
-            if format != default_format:
-                raise RuntimeError("Non-default timestamp formats not supported on GPU")
-            if df.dtype == "object":
-                return df
-            else:
-                nanoseconds_to_seconds = 10**9
-                return df * nanoseconds_to_seconds
         # String cases
-        elif type(df) == str:
+        if type(df) == str:
             return np.datetime64(datetime.strptime(df, format))
         elif df.dtype == "object":
             return dd.to_datetime(df, format=format)
@@ -655,7 +673,11 @@ class TimeStampAddOperation(Operation):
         interval = int(interval)
         if interval < 0:
             raise RuntimeError(f"Negative time interval {interval} is not supported.")
-        df = df.astype("datetime64[ns]")
+        df = (
+            df.astype("datetime64[s]")
+            if pd.api.types.is_integer_dtype(df)
+            else df.astype("datetime64[ns]")
+        )
 
         if is_cudf_type(df):
             from cudf import DateOffset
@@ -699,10 +721,22 @@ class DatetimeSubOperation(Operation):
         super().__init__(self.datetime_sub)
 
     def datetime_sub(self, unit, df1, df2):
+        if pd.api.types.is_integer_dtype(df1):
+            df1 = df1 * 10**9
+        if pd.api.types.is_integer_dtype(df2):
+            df2 = df2 * 10**9
+        if "datetime64[s]" == str(getattr(df1, "dtype", "")):
+            df1 = df1.astype("datetime64[ns]")
+        if "datetime64[s]" == str(getattr(df2, "dtype", "")):
+            df2 = df2.astype("datetime64[ns]")
+
         subtraction_op = ReduceOperation(
             operation=operator.sub, unary_operation=lambda x: -x
         )
         result = subtraction_op(df2, df1)
+
+        if is_cudf_type(df1):
+            result = result.astype("int")
 
         if unit in {"NANOSECOND", "NANOSECONDS"}:
             return result
@@ -926,9 +960,19 @@ class ExtractOperation(Operation):
         elif what in {"SECOND", "SECONDS"}:
             return df.second
         elif what in {"WEEK", "WEEKS"}:
-            return df.week
+            return df.isocalendar().week if PANDAS_GT_200 else df.week
         elif what in {"YEAR", "YEARS"}:
             return df.year
+        elif what == "DATE":
+            if isinstance(df, pd.Timestamp):
+                return df.date()
+            else:
+                if is_cudf_type(df) and not DASK_CUDF_TODATETIME_SUPPORT:
+                    raise RuntimeError(
+                        "Dask-cuDF to_datetime support requires Dask version >= 2023.5.1"
+                    )
+                else:
+                    return dd.to_datetime(df.strftime("%Y-%m-%d"))
         else:
             raise NotImplementedError(f"Extraction of {what} is not (yet) implemented.")
 
@@ -964,6 +1008,39 @@ class InListOperation(Operation):
     def inList(self, series: dd.Series, *operands, rex=None):
         result = series.isin(operands)
         return ~result if rex.isNegated() else result
+
+
+class InSubqueryOperation(Operation):
+    """
+    Returns a boolean of whether an expression is/isn't in a Subquery Expression result
+    """
+
+    needs_rex = True
+    needs_context = True
+    needs_rel = True
+
+    def __init__(self):
+        super().__init__(self.inSubquery)
+
+    def inSubquery(
+        self, series: dd.Series, *operands, rel=None, rex=None, context=None
+    ):
+        sub_rel = rex.getSubqueryLogicalPlan()
+        dc = RelConverter.convert(sub_rel, context=context)
+
+        # Extract the specified column/Series from the Dataframe
+        fq_column_name = rex.column_name(rel).split(".")
+
+        # FIXME: dask's isin doesn't support dask frames as arguments
+        # so we need to compute here
+        col = dc.df[fq_column_name[-1]].compute()
+
+        warnings.warn(
+            "Dask doesn't support Dask frames as input for .isin, so we must force an early computation",
+            ResourceWarning,
+        )
+
+        return series.isin(col)
 
 
 class RexCallPlugin(BaseRexPlugin):
@@ -1015,6 +1092,7 @@ class RexCallPlugin(BaseRexPlugin):
         "negative": NegativeOperation(),
         "not": NotOperation(),
         "in list": InListOperation(),
+        "in subquery": InSubqueryOperation(),
         "is null": IsNullOperation(),
         "is not null": NotOperation().of(IsNullOperation()),
         "is true": IsTrueOperation(),
@@ -1056,6 +1134,9 @@ class RexCallPlugin(BaseRexPlugin):
         "characterlength": TensorScalarOperation(
             lambda x: x.str.len(), lambda x: len(x)
         ),
+        "character_length": TensorScalarOperation(
+            lambda x: x.str.len(), lambda x: len(x)
+        ),
         "upper": TensorScalarOperation(lambda x: x.str.upper(), lambda x: x.upper()),
         "lower": TensorScalarOperation(lambda x: x.str.lower(), lambda x: x.lower()),
         "position": PositionOperation(),
@@ -1070,6 +1151,7 @@ class RexCallPlugin(BaseRexPlugin):
         "coalesce": CoalesceOperation(),
         "replace": ReplaceOperation(),
         # date/time operations
+        "extract_date": ExtractOperation(),
         "localtime": Operation(lambda *args: pd.Timestamp.now()),
         "localtimestamp": Operation(lambda *args: pd.Timestamp.now()),
         "current_time": Operation(lambda *args: pd.Timestamp.now()),
@@ -1082,6 +1164,7 @@ class RexCallPlugin(BaseRexPlugin):
         "dsql_totimestamp": ToTimestampOperation(),
         # Temporary UDF functions that need to be moved after this POC
         "datepart": ExtractOperation(),
+        "date_part": ExtractOperation(),
         "year": YearOperation(),
         "timestampadd": TimeStampAddOperation(),
         "timestampceil": CeilFloorOperation("ceil"),
@@ -1103,6 +1186,21 @@ class RexCallPlugin(BaseRexPlugin):
             for o in expr.getOperands()
         ]
 
+        # FIXME: cuDF doesn't support binops between decimal columns and numpy ints / floats
+        if dask_config.get("sql.mappings.decimal_support") == "cudf" and any(
+            str(getattr(o, "dtype", None)) == "decimal128" for o in operands
+        ):
+            from decimal import Decimal
+
+            operands = [
+                Decimal(str(o))
+                if isinstance(o, float)
+                else o.item()
+                if np.isscalar(o) and pd.api.types.is_integer_dtype(o)
+                else o
+                for o in operands
+            ]
+
         # Now use the operator name in the mapping
         schema_name = context.schema_name
         operator_name = expr.getOperatorName().lower()
@@ -1113,7 +1211,9 @@ class RexCallPlugin(BaseRexPlugin):
             try:
                 operation = context.schema[schema_name].functions[operator_name]
             except KeyError:  # pragma: no cover
-                raise NotImplementedError(f"{operator_name} not (yet) implemented")
+                raise NotImplementedError(
+                    f"RexCall operator '{operator_name}' not (yet) implemented"
+                )
 
         logger.debug(
             f"Executing {operator_name} on {[str(LoggableDataFrame(df)) for df in operands]}"
@@ -1125,6 +1225,10 @@ class RexCallPlugin(BaseRexPlugin):
             kwargs["dc"] = dc
         if Operation.op_needs_rex(operation):
             kwargs["rex"] = expr
+        if Operation.op_needs_context(operation):
+            kwargs["context"] = context
+        if Operation.op_needs_rel(operation):
+            kwargs["rel"] = rel
 
         return operation(*operands, **kwargs)
         # TODO: We have information on the typing here - we should use it

@@ -1,13 +1,86 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
+requires = ["maturin>=1.1,<1.2"]
+build-backend = "maturin"
 
-[tool.isort]
-profile = "black"
+[project]
+name = "dask_sql"
+description = "SQL query layer for Dask"
+maintainers = [{name = "Nils Braun", email = "nilslennartbraun@gmail.com"}]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Rust",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Distributed Computing",
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "dask[dataframe]>=2022.3.0",
+    "distributed>=2022.3.0",
+    "pandas>=1.4.0",
+    "fastapi>=0.92.0",
+    "httpx>=0.24.1",
+    "uvicorn>=0.13.4",
+    "tzlocal>=2.1",
+    "prompt_toolkit>=3.0.8",
+    "pygments>=2.7.1",
+    "tabulate",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/dask-contrib/dask-sql"
+Documentation = "https://dask-sql.readthedocs.io"
+Source = "https://github.com/dask-contrib/dask-sql"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0.1",
+    "pytest-cov>=2.10.1",
+    "mock>=4.0.3",
+    "sphinx>=3.2.1",
+    "pyarrow>=6.0.2",
+    "scikit-learn>=1.0.0",
+    "intake>=0.6.0",
+    "pre-commit",
+    "black==22.10.0",
+    "isort==5.12.0",
+]
+fugue = ["fugue>=0.7.3"]
+
+[project.entry-points."fugue.plugins"]
+dasksql = "dask_sql.integrations.fugue:_register_engines[fugue]"
+
+[project.scripts]
+dask-sql = "dask_sql.cmd:main"
+dask-sql-server = "dask_sql.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+license-files = ["LICENSE.txt"]
+
+[tool.setuptools.packages]
+find = {namespaces = false}
 
 [tool.maturin]
+module-name = "dask_sql._datafusion_lib"
 include = [
     { path = "Cargo.lock", format = "sdist" }
 ]
-exclude = [".github/**", "ci/**", ".asf.yaml"]
-# Require Cargo.lock is up to date
+exclude = [".github/**", "continuous_integration/**"]
 locked = true
+
+[tool.isort]
+profile = "black"

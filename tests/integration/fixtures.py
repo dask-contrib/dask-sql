@@ -169,12 +169,21 @@ def gpu_string_table(string_table):
 
 @pytest.fixture()
 def gpu_datetime_table(datetime_table):
-    # cudf doesn't have support for timezoned datetime data
-    datetime_table["timezone"] = datetime_table["timezone"].astype("datetime64[ns]")
-    datetime_table["utc_timezone"] = datetime_table["utc_timezone"].astype(
-        "datetime64[ns]"
-    )
-    return cudf.from_pandas(datetime_table) if cudf else None
+    if cudf:
+        # TODO: remove once `from_pandas` has support for timezone-aware data
+        # https://github.com/rapidsai/cudf/issues/13611
+        df = datetime_table.copy()
+        df["timezone"] = df["timezone"].dt.tz_localize(None)
+        df["utc_timezone"] = df["utc_timezone"].dt.tz_localize(None)
+        gdf = cudf.from_pandas(df)
+        gdf["timezone"] = gdf["timezone"].dt.tz_localize(
+            str(datetime_table["timezone"].dt.tz)
+        )
+        gdf["utc_timezone"] = gdf["utc_timezone"].dt.tz_localize(
+            str(datetime_table["utc_timezone"].dt.tz)
+        )
+        return gdf
+    return None
 
 
 @pytest.fixture()
