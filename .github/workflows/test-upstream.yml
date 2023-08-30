@@ -68,7 +68,7 @@ jobs:
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         run: |
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           maturin develop
@@ -123,7 +123,7 @@ jobs:
         env:
           UPDATE_ALL_CARGO_DEPS: false
         run: |
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           pip install -e . -vv
