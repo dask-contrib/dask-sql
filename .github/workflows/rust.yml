@@ -51,7 +51,7 @@ jobs:
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
@@ -81,7 +81,7 @@ jobs:
       - name: Optionally update upstream dependencies
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
