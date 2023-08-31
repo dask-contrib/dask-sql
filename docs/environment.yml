@@ -8,7 +8,7 @@ dependencies:
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3
   - dask>=2022.3.0
-  - pandas>=1.4.0
+  - pandas>=1.4.0,<2.1
   - fugue>=0.7.3
   - fastapi>=0.92.0
   - httpx>=0.24.1

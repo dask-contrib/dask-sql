@@ -37,6 +37,9 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
+gpuci_logger "Update conda env"
+gpuci_mamba_retry env update -n dask_sql -f continuous_integration/gpuci/environment-${PYTHON_VER}.yaml
+
 gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 

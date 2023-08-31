@@ -17,7 +17,7 @@ dependencies:
 - mlflow<2.6
 - mock
 - numpy>=1.21.6
-- pandas>=1.4.0
+- pandas>=1.4.0,<2.1
 - pre-commit
 - prompt_toolkit>=3.0.8
 - psycopg2
