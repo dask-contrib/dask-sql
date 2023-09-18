@@ -45,7 +45,7 @@ jobs:
         with:
           images: nbraun/dask-sql
       - name: Build and push main image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/main.dockerfile
@@ -66,7 +66,7 @@ jobs:
         with:
           images: nbraun/dask-sql-cloud
       - name: Build and push cloud image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/cloud.dockerfile
