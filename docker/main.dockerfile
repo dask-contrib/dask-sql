@@ -17,7 +17,7 @@ RUN mamba install -y \
     "maturin>=1.1,<1.2" \
     # core dependencies
     "dask>=2022.3.0" \
-    "pandas>=1.4.0,<2.1" \
+    "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
     "httpx>=0.24.1" \
     "uvicorn>=0.13.4" \
