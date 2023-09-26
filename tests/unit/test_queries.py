@@ -36,6 +36,8 @@ XFAIL_QUERIES = (
     92,
     94,
     99,
+    # failing due to https://github.com/rapidsai/cudf/issues/14200
+    38,
 )
 
 QUERIES = [
