@@ -88,6 +88,9 @@ def test_training_and_prediction(c, gpu_client):
     check_trained_model(c, df_name=timeseries)
 
 
+@pytest.mark.flaky(
+    reruns=4, condition="sys.version_info >= (3, 9) and sys.platform == 'darwin'"
+)
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
@@ -626,6 +629,9 @@ def test_mlflow_export(c, tmpdir):
         )
 
 
+@pytest.mark.flaky(
+    reruns=4, condition="sys.version_info >= (3, 9) and sys.platform == 'darwin'"
+)
 def test_mlflow_export_xgboost(c, client, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
