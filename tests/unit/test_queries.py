@@ -16,6 +16,7 @@ XFAIL_QUERIES = (
     28,
     35,
     36,
+    38,  # failing due to https://github.com/rapidsai/cudf/issues/14200
     39,
     41,
     44,
@@ -24,6 +25,7 @@ XFAIL_QUERIES = (
     51,
     57,
     62,
+    64,  # failing due to parquet read issues in dask-cudf
     67,
     69,
     70,
@@ -36,8 +38,6 @@ XFAIL_QUERIES = (
     92,
     94,
     99,
-    # failing due to https://github.com/rapidsai/cudf/issues/14200
-    38,
 )
 
 QUERIES = [
