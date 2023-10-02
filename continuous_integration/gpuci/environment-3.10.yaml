@@ -7,6 +7,7 @@ channels:
 - nodefaults
 dependencies:
 - c-compiler
+- zlib
 - dask>=2022.3.0
 - fastapi>=0.92.0
 - fugue>=0.7.3
@@ -48,4 +49,7 @@ dependencies:
 - ucx-py=0.34
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
-- zlib
+- pip
+- pip:
+    - git+https://github.com/dask/dask
+    - git+https://github.com/dask/distributed
