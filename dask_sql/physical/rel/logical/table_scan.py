@@ -3,6 +3,8 @@ import operator
 from functools import reduce
 from typing import TYPE_CHECKING
 
+from dask.utils_test import hlg_layer
+
 from dask_sql.datacontainer import DataContainer
 from dask_sql.physical.rel.base import BaseRelPlugin
 from dask_sql.physical.rel.logical.filter import filter_or_scalar
@@ -10,7 +12,7 @@ from dask_sql.physical.rex import RexConverter
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -77,16 +79,38 @@ class DaskTableScanPlugin(BaseRelPlugin):
     def _apply_filters(self, table_scan, rel, dc, context):
         df = dc.df
         cc = dc.column_container
-        filters = table_scan.getFilters()
-        # All partial filters here are applied in conjunction (&)
-        if filters:
+        all_filters = table_scan.getFilters()
+        conjunctive_dnf_filters = table_scan.getDNFFilters().filtered_exprs
+        non_dnf_filters = table_scan.getDNFFilters().io_unfilterable_exprs
+
+        if conjunctive_dnf_filters:
+            # Extract the PyExprs from the conjunctive DNF filters
+            filter_exprs = [f[0] for f in conjunctive_dnf_filters]
+            if non_dnf_filters:
+                filter_exprs.extend(non_dnf_filters)
+
             df_condition = reduce(
                 operator.and_,
                 [
                     RexConverter.convert(rel, rex, dc, context=context)
-                    for rex in filters
+                    for rex in filter_exprs
+                ],
+            )
+            df = filter_or_scalar(
+                df, df_condition, add_filters=[f[1] for f in conjunctive_dnf_filters]
+            )
+        elif all_filters:
+            df_condition = reduce(
+                operator.and_,
+                [
+                    RexConverter.convert(rel, rex, dc, context=context)
+                    for rex in all_filters
                 ],
             )
             df = filter_or_scalar(df, df_condition)
+        try:
+            logger.debug(hlg_layer(df.dask, "read-parquet").creation_info)
+        except KeyError:
+            pass
 
         return DataContainer(df, cc)

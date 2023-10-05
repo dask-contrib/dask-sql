@@ -130,11 +130,8 @@ def is_topk_optimizable(
         sort_num_rows is None
         or not single_ascending
         or any(sort_null_first)
-        # pandas doesnt support nsmallest/nlargest with object dtypes
-        or (
-            "pandas" in str(df._partition_type)
-            and any(df[sort_columns].dtypes == "object")
-        )
+        # pandas/cudf don't support nsmallest/nlargest with object dtypes
+        or any(df[sort_columns].dtypes == "object")
         or (
             sort_num_rows * len(df.columns)
             > dask_config.get("sql.sort.topk-nelem-limit")
