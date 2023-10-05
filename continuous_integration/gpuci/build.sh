@@ -49,12 +49,6 @@ gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb_sor
 gpuci_logger "Download query files"
 gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
 
-# TODO: unpin after RAPIDS 23.12 release
-# gpuci_logger "Install dask"
-# python -m pip install git+https://github.com/dask/dask
-# gpuci_logger "Install distributed"
-# python -m pip install git+https://github.com/dask/distributed
-
 gpuci_logger "Install dask-sql"
 pip install -e . -vv
 
