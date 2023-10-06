@@ -8,7 +8,7 @@ channels:
 dependencies:
 - c-compiler
 - zlib
-- dask>=2022.3.0
+- dask>=2022.3.0,<=2023.9.3
 - fastapi>=0.92.0
 - fugue>=0.7.3
 - httpx>=0.24.1
@@ -49,7 +49,8 @@ dependencies:
 - ucx-py=0.34
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
-- pip
-- pip:
-    - git+https://github.com/dask/dask
-    - git+https://github.com/dask/distributed
+# TODO: unpin after RAPIDS 23.12 release
+# - pip
+# - pip:
+#     - git+https://github.com/dask/dask
+#     - git+https://github.com/dask/distributed
