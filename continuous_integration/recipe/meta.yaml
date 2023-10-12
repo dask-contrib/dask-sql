@@ -19,6 +19,8 @@ build:
     - dask-sql = dask_sql.cmd:main
   string: py{{ python | replace(".", "") }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script: RUST_BACKTRACE=full {{ PYTHON }} -m pip install . --no-deps -vv
+  ignore_run_exports:
+    - libprotobuf
 
 requirements:
   build:
@@ -47,9 +49,6 @@ requirements:
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
     - tabulate
-
-  ignore_run_exports:
-    - libprotobuf
 
 test:
   imports:
