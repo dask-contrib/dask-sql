@@ -48,6 +48,9 @@ requirements:
     - pygments >=2.7.1
     - tabulate
 
+  ignore_run_exports:
+    - libprotobuf
+
 test:
   imports:
     - dask_sql
