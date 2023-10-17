@@ -660,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "dask-sql"
-version = "2023.10.0"
+version = "2023.10.1"
 dependencies = [
  "async-trait",
  "datafusion-python",
