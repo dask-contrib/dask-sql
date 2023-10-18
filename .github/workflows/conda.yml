@@ -34,6 +34,36 @@ jobs:
         python: ["3.8", "3.9", "3.10"]
         arch: ["linux-64", "linux-aarch64"]
     steps:
+      - name: Manage disk space
+        if: matrix.arch == 'linux-aarch64'
+        run: |
+          sudo mkdir -p /opt/empty_dir || true
+          for d in \
+                    /opt/ghc \
+                    /opt/hostedtoolcache \
+                    /usr/lib/jvm \
+                    /usr/local/.ghcup \
+                    /usr/local/lib/android \
+                    /usr/local/share/powershell \
+                    /usr/share/dotnet \
+                    /usr/share/swift \
+                    ; do
+            sudo rsync --stats -a --delete /opt/empty_dir/ $d || true
+          done
+          sudo apt-get purge -y -f firefox \
+                                    google-chrome-stable \
+                                    microsoft-edge-stable
+          sudo apt-get autoremove -y >& /dev/null
+          sudo apt-get autoclean -y >& /dev/null
+          sudo docker image prune --all --force
+          df -h
+      - name: Create swapfile
+        if: matrix.arch == 'linux-aarch64'
+        run: |
+          sudo fallocate -l 10GiB /swapfile || true
+          sudo chmod 600 /swapfile || true
+          sudo mkswap /swapfile || true
+          sudo swapon /swapfile || true
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
