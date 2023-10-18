@@ -32,9 +32,7 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.8", "3.9", "3.10"]
-        # FIXME: aarch64 builds are consuming too much memory to run on GHA
-        # arch: ["linux-64", "linux-aarch64"]
-        arch: ["linux-64"]
+        arch: ["linux-64", "linux-aarch64"]
     steps:
       - uses: actions/checkout@v3
         with:
