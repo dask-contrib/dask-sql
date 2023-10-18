@@ -46,7 +46,7 @@ dependencies:
 - dask-cudf=23.12
 - dask-cuda=23.12
 - ucx-proc=*=gpu
-- ucx-py=0.34
+- ucx-py=0.35
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
 # TODO: unpin after RAPIDS 23.12 release
