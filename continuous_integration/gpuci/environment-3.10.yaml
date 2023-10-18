@@ -8,7 +8,7 @@ channels:
 dependencies:
 - c-compiler
 - zlib
-- dask>=2022.3.0,<=2023.9.3
+- dask>=2022.3.0
 - fastapi>=0.92.0
 - fugue>=0.7.3
 - httpx>=0.24.1
@@ -41,12 +41,12 @@ dependencies:
 - uvicorn>=0.13.4
 # GPU-specific requirements
 - cudatoolkit=11.5
-- cudf=23.10
-- cuml=23.10
-- dask-cudf=23.10
-- dask-cuda=23.10
+- cudf=23.12
+- cuml=23.12
+- dask-cudf=23.12
+- dask-cuda=23.12
 - ucx-proc=*=gpu
-- ucx-py=0.34
+- ucx-py=0.35
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
 # TODO: unpin after RAPIDS 23.12 release
