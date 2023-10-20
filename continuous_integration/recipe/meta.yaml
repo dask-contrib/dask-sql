@@ -24,13 +24,13 @@ requirements:
     - cross-python_{{ target_platform }}     # [build_platform != target_platform]
     - maturin                                # [build_platform != target_platform]
     - libprotobuf
-    - zlib
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
   host:
     - pip
     - python
     - maturin
+    - zlib
   run:
     - python
     - dask >=2022.3.0
