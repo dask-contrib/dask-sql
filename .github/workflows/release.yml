@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/release.yml
+      - dask_sql/__init__.py
 
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch

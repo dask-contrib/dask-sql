@@ -55,6 +55,7 @@ docs/source/_build/
 tests/unit/queries
 tests/unit/data
 target/*
+packages/*
 
 # Ignore development specific local testing files
 dev_tests

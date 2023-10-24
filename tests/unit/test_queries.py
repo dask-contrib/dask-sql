@@ -16,6 +16,7 @@ XFAIL_QUERIES = (
     28,
     35,
     36,
+    38,  # FIXME: failing due to https://github.com/rapidsai/cudf/issues/14200
     39,
     41,
     44,
@@ -24,6 +25,7 @@ XFAIL_QUERIES = (
     51,
     57,
     62,
+    64,  # FIXME: failing after cudf#14167 and #14079
     67,
     69,
     70,
