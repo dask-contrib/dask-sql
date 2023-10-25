@@ -588,3 +588,14 @@ def test_null_key_join(c):
     expected_df = pd.DataFrame({"a": [], "b": []})
 
     assert_eq(result_df, expected_df)
+
+
+def test_cross_join_duplicate_column_names(c):
+    c.create_table("df1", pd.DataFrame({"a": [1]}))
+    c.create_table("df2", pd.DataFrame({"a": [2]}))
+    c.create_table("df3", pd.DataFrame({"a": [3]}))
+
+    result_df = c.sql("SELECT * FROM df1, df2, df3")
+    expected_df = pd.DataFrame({"df1.a": [1], "df2.a": [2], "df3.a": [3]})
+
+    assert_eq(result_df, expected_df)
