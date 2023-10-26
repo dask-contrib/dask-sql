@@ -39,7 +39,6 @@ dependencies:
 - tpot>=0.12.0
 - tzlocal>=2.1
 - uvicorn>=0.13.4
-- patchelf
 # GPU-specific requirements
 - cudatoolkit=11.5
 - cudf=23.12
