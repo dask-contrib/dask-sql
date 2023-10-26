@@ -36,3 +36,4 @@ dependencies:
 - tzlocal=2.1
 - uvicorn=0.13.4
 - zlib
+- patchelf
