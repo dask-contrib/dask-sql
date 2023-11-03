@@ -18,7 +18,6 @@ import pandas as pd
 import pytest
 
 from dask_sql import Context
-from dask_sql._compat import PANDAS_GT_210
 from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
@@ -29,10 +28,8 @@ def cast_datetime_to_string(df):
     if not cols:
         return df
 
-    strf = "%Y-%m-%dT%H:%M:%S" if PANDAS_GT_210 else "%Y-%m-%d %H:%M:%S"
-
     for col in cols:
-        df[col] = df[col].dt.strftime(strf)
+        df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
 
     return df
 
