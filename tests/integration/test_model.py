@@ -88,10 +88,12 @@ def test_training_and_prediction(c, gpu_client):
     check_trained_model(c, df_name=timeseries)
 
 
-@pytest.mark.flaky(reruns=8, condition="sys.platform == 'darwin'")
 @pytest.mark.xfail(
     sys.platform == "win32",
     reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
+)
+@pytest.mark.xfail(
+    sys.platform == "darwin", reason="Intermittent socket errors on macOS", strict=False
 )
 @pytest.mark.parametrize(
     "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
@@ -627,7 +629,9 @@ def test_mlflow_export(c, tmpdir):
         )
 
 
-@pytest.mark.flaky(reruns=8, condition="sys.platform == 'darwin'")
+@pytest.mark.xfail(
+    sys.platform == "darwin", reason="Intermittent socket errors on macOS", strict=False
+)
 def test_mlflow_export_xgboost(c, client, tmpdir):
     # Test only when mlflow & xgboost was installed
     mlflow = pytest.importorskip("mlflow", reason="mlflow not installed")
