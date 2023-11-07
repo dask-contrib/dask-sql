@@ -37,6 +37,9 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
+gpuci_logger "Update conda env"
+gpuci_mamba_retry env update -n dask_sql -f continuous_integration/gpuci/environment-${PYTHON_VER}.yaml
+
 gpuci_logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
@@ -45,12 +48,6 @@ gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb_sor
 
 gpuci_logger "Download query files"
 gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
-
-# TODO: source install once dask/distributed are unpinned by dask-cuda
-# gpuci_logger "Install dask"
-# python -m pip install git+https://github.com/dask/dask
-# gpuci_logger "Install distributed"
-# python -m pip install git+https://github.com/dask/distributed
 
 gpuci_logger "Install dask-sql"
 pip install -e . -vv
