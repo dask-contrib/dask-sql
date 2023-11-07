@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/dask_planner"
+    directory: "/"
     schedule:
       interval: "daily"
     ignore:
