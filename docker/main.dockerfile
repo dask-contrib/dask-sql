@@ -35,9 +35,7 @@ RUN mamba install -y \
 COPY Cargo.toml /opt/dask_sql/
 COPY Cargo.lock /opt/dask_sql/
 COPY pyproject.toml /opt/dask_sql/
-COPY setup.py /opt/dask_sql/
 COPY setup.cfg /opt/dask_sql/
-COPY versioneer.py /opt/dask_sql/
 COPY README.md /opt/dask_sql/
 COPY .git /opt/dask_sql/.git
 COPY src /opt/dask_sql/src

@@ -28,8 +28,9 @@ def cast_datetime_to_string(df):
     if not cols:
         return df
 
-    # Casting directly to string loses second precision
-    df[cols] = df[cols].astype("object").astype("string")
+    for col in cols:
+        df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
+
     return df
 
 
