@@ -10,7 +10,7 @@ rust-version = "1.65"
 include = ["/src", "/dask_sql", "/LICENSE.txt", "pyproject.toml", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
-async-trait = "0.1.71"
+async-trait = "0.1.74"
 datafusion-python = "28.0.0"
 env_logger = "0.10"
 log = "^0.4"
