@@ -57,7 +57,7 @@ def apply_sort(
                 by=sort_columns,
                 ascending=sort_ascending[0],
                 na_position="first" if sort_null_first[0] else "last",
-                ignore_index=True,
+                # ignore_index=True,
             ).persist()
         except ValueError:
             pass

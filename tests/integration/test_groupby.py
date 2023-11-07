@@ -488,7 +488,7 @@ def test_covar_aggregation(c, timeseries_df):
         pytest.param("gpu_user_table_1", marks=pytest.mark.gpu),
     ],
 )
-@pytest.mark.parametrize("split_out", [None, 2, 4])
+@pytest.mark.parametrize("split_out", [1, 2, 4])
 def test_groupby_split_out(c, input_table, split_out, request):
     user_table = request.getfixturevalue(input_table)
 
