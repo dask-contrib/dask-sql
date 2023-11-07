@@ -667,7 +667,7 @@ dependencies = [
  "env_logger",
  "log",
  "pyo3",
- "pyo3-build-config",
+ "pyo3-build-config 0.20.0",
  "pyo3-log",
 ]
 
@@ -845,7 +845,7 @@ dependencies = [
  "prost",
  "prost-types",
  "pyo3",
- "pyo3-build-config",
+ "pyo3-build-config 0.19.2",
  "rand",
  "regex-syntax",
  "syn 2.0.23",
@@ -2069,7 +2069,7 @@ dependencies = [
  "libc",
  "memoffset",
  "parking_lot",
- "pyo3-build-config",
+ "pyo3-build-config 0.19.2",
  "pyo3-ffi",
  "pyo3-macros",
  "unindent",
@@ -2077,9 +2077,19 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.19.1"
+version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "554db24f0b3c180a9c0b1268f91287ab3f17c162e15b54caaae5a6b3773396b0"
+checksum = "076c73d0bc438f7a4ef6fdd0c3bb4732149136abd952b110ac93e4edb13a6ba5"
+dependencies = [
+ "once_cell",
+ "target-lexicon",
+]
+
+[[package]]
+name = "pyo3-build-config"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a96fe70b176a89cff78f2fa7b3c930081e163d5379b4dcdf993e3ae29ca662e5"
 dependencies = [
  "once_cell",
  "target-lexicon",
@@ -2092,7 +2102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "922ede8759e8600ad4da3195ae41259654b9c55da4f7eec84a0ccc7d067a70a4"
 dependencies = [
  "libc",
- "pyo3-build-config",
+ "pyo3-build-config 0.19.2",
 ]
 
 [[package]]
