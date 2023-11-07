@@ -10,7 +10,7 @@ from dask import config as dask_config
 from dask.base import optimize
 from dask.utils_test import hlg_layer
 
-from dask_planner.rust import (
+from dask_sql._datafusion_lib import (
     DaskSchema,
     DaskSQLContext,
     DaskTable,
@@ -42,7 +42,7 @@ from dask_sql.integrations.ipython import ipython_integration
 from dask_sql.mappings import python_to_sql_type
 from dask_sql.physical.rel import RelConverter, custom, logical
 from dask_sql.physical.rex import RexConverter, core
-from dask_sql.utils import OptimizationException, ParsingException
+from dask_sql.utils import ParsingException
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,10 @@ class Context:
         # Create the `DaskSQLContext` Rust context
         self.context = DaskSQLContext(self.catalog_name, self.schema_name)
         self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
+
+        self.context.apply_dynamic_partition_pruning(
+            dask_config.get("sql.dynamic_partition_pruning")
+        )
 
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
@@ -795,6 +799,9 @@ class Context:
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
+        self.context.apply_dynamic_partition_pruning(
+            dask_config.get("sql.dynamic_partition_pruning")
+        )
 
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
@@ -824,8 +831,9 @@ class Context:
             try:
                 rel = self.context.optimize_relational_algebra(nonOptimizedRel)
             except DFOptimizationException as oe:
+                # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
-                raise OptimizationException(str(oe)) from None
+                logger.warn(str(oe))
         else:
             rel = nonOptimizedRel
 
@@ -838,15 +846,19 @@ class Context:
     def _compute_table_from_rel(self, rel: "LogicalPlan", return_futures: bool = True):
         dc = RelConverter.convert(rel, context=self)
 
-        # Optimization might remove some alias projects. Make sure to keep them here.
-        select_names = [field for field in rel.getRowType().getFieldList()]
-
         if rel.get_current_node_type() == "Explain":
             return dc
         if dc is None:
             return
 
+        # Optimization might remove some alias projects. Make sure to keep them here.
+        select_names = [field for field in rel.getRowType().getFieldList()]
+
         if select_names:
+            cc = dc.column_container
+
+            select_names = select_names[: len(cc.columns)]
+
             # Use FQ name if not unique and simple name if it is unique. If a join contains the same column
             # names the output col is prepended with the fully qualified column name
             field_counts = Counter([field.getName() for field in select_names])
@@ -857,7 +869,6 @@ class Context:
                 for field in select_names
             ]
 
-            cc = dc.column_container
             cc = cc.rename(
                 {
                     df_col: select_name

@@ -22,7 +22,7 @@ No matter of via the Python API (:ref:`api`), the command line client (:ref:`cmd
 This function will first give the SQL string to the dask_planner Rust crate via the ``PyO3`` library.
 Inside this crate, Apache Arrow DataFusion is used to first parse the SQL string and then turn it into a relational algebra.
 For this, DataFusion uses the SQL language description specified in the `sqlparser-rs library <https://github.com/sqlparser-rs/sqlparser-rs/>`_
-We also include `SQL extensions specific to Dask-SQL <https://github.com/dask-contrib/dask-sql/blob/main/dask_planner/src/parser.rs/>`_. They specify custom language features, such as the ``CREATE MODEL`` statement.
+We also include `SQL extensions specific to Dask-SQL <https://github.com/dask-contrib/dask-sql/blob/main/src/parser.rs/>`_. They specify custom language features, such as the ``CREATE MODEL`` statement.
 
 3. SQL is (maybe) optimized
 ---------------------------

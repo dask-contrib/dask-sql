@@ -68,11 +68,10 @@ jobs:
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         run: |
-          cd dask_planner
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
-          python setup.py build install
+          maturin develop
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -122,11 +121,9 @@ jobs:
         env:
           UPDATE_ALL_CARGO_DEPS: false
         run: |
-          cd dask_planner
-          bash update-dependencies.sh
+          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
-          mamba install setuptools-rust
           pip install -e . -vv
 
           which python

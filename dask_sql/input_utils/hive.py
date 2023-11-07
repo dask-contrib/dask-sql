@@ -6,7 +6,7 @@ from typing import Any, Union
 
 import dask.dataframe as dd
 
-from dask_planner.rust import SqlTypeName
+from dask_sql._datafusion_lib import SqlTypeName
 
 try:
     from pyhive import hive

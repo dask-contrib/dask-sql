@@ -72,7 +72,7 @@ jobs:
           shared-key: test
       - name: Build the Rust DataFusion bindings
         run: |
-          python setup.py build install
+          maturin develop
       - name: Install hive testing dependencies
         # FIXME: sasl is not available on python 3.11
         if: |
@@ -119,7 +119,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies and nothing else
         run: |
-          mamba install "setuptools-rust>=1.5.2"
           pip install -e . -vv
 
           which python

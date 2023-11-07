@@ -16,7 +16,7 @@ from dask_sql.utils import is_cudf_type, new_temporary_column
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan
+    from dask_sql._datafusion_lib import LogicalPlan
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +127,25 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "avg": AggregationSpecification("mean", AggregationOnPandas("mean")),
         "stddev": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevsamp": AggregationSpecification("std", AggregationOnPandas("std")),
+        "stddev_samp": AggregationSpecification("std", AggregationOnPandas("std")),
         "stddevpop": AggregationSpecification(
             dd.Aggregation(
                 "stddevpop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                )
+                ** (1 / 2),
+            )
+        ),
+        "stddev_pop": AggregationSpecification(
+            dd.Aggregation(
+                "stddev_pop",
                 lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
                 lambda count, sum, sum_of_squares: (
                     count.sum(),
@@ -187,6 +203,20 @@ class DaskAggregatePlugin(BaseRelPlugin):
         "variancepop": AggregationSpecification(
             dd.Aggregation(
                 "variancepop",
+                lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
+                lambda count, sum, sum_of_squares: (
+                    count.sum(),
+                    sum.sum(),
+                    sum_of_squares.sum(),
+                ),
+                lambda count, sum, sum_of_squares: (
+                    (sum_of_squares / count) - (sum / count) ** 2
+                ),
+            )
+        ),
+        "variance_pop": AggregationSpecification(
+            dd.Aggregation(
+                "variance_pop",
                 lambda s: (s.count(), s.sum(), s.agg(lambda x: (x**2).sum())),
                 lambda count, sum, sum_of_squares: (
                     count.sum(),

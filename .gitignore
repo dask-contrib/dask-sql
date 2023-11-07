@@ -46,23 +46,16 @@ venv
 # IDE
 .idea
 .vscode
-planner/.classpath
-planner/.project
-planner/.settings/
-planner/.idea
-planner/*.iml
 *.swp
 
 # project specific
-planner/dependency-reduced-pom.xml
-planner/target/
-dask_sql/jar
-.next/
 dask-worker-space/
 node_modules/
 docs/source/_build/
 tests/unit/queries
 tests/unit/data
+target/*
+packages/*
 
 # Ignore development specific local testing files
 dev_tests

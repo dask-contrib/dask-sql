@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import dask.dataframe as dd
 
@@ -8,7 +8,7 @@ from dask_sql.mappings import cast_column_type, sql_to_python_type
 
 if TYPE_CHECKING:
     import dask_sql
-    from dask_planner.rust import LogicalPlan, RelDataType
+    from dask_sql._datafusion_lib import LogicalPlan, RelDataType
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class BaseRelPlugin:
 
     @staticmethod
     def fix_column_to_row_type(
-        cc: ColumnContainer, row_type: "RelDataType"
+        cc: ColumnContainer, row_type: "RelDataType", join_type: Optional[str] = None
     ) -> ColumnContainer:
         """
         Make sure that the given column container
@@ -39,6 +39,8 @@ class BaseRelPlugin:
         and will just "blindly" rename the columns.
         """
         field_names = [str(x) for x in row_type.getFieldNames()]
+        if join_type in ("leftsemi", "leftanti"):
+            field_names = field_names[: len(cc.columns)]
 
         logger.debug(f"Renaming {cc.columns} to {field_names}")
         cc = cc.rename_handle_duplicates(
@@ -84,7 +86,9 @@ class BaseRelPlugin:
         return [RelConverter.convert(input_rel, context) for input_rel in input_rels]
 
     @staticmethod
-    def fix_dtype_to_row_type(dc: DataContainer, row_type: "RelDataType"):
+    def fix_dtype_to_row_type(
+        dc: DataContainer, row_type: "RelDataType", join_type: Optional[str] = None
+    ):
         """
         Fix the dtype of the given data container (or: the df within it)
         to the data type given as argument.
@@ -98,9 +102,12 @@ class BaseRelPlugin:
         df = dc.df
         cc = dc.column_container
 
+        field_list = row_type.getFieldList()
+        if join_type in ("leftsemi", "leftanti"):
+            field_list = field_list[: len(cc.columns)]
+
         field_types = {
-            str(field.getQualifiedName()): field.getType()
-            for field in row_type.getFieldList()
+            str(field.getQualifiedName()): field.getType() for field in field_list
         }
 
         for field_name, field_type in field_types.items():
