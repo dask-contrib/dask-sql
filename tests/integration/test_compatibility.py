@@ -22,14 +22,24 @@ from dask_sql.utils import ParsingException
 from tests.utils import assert_eq
 
 
-def cast_datetime_to_string(df):
-    cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
+def normalize_dask_result(df):
+    datetime_cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
+    nullable_cols = df.select_dtypes(include=["Int64", "string[python]"]).columns.tolist()
 
-    if not cols:
+    if not datetime_cols and not nullable_cols:
         return df
 
-    for col in cols:
+    # casting to object to ensure equality with sql-lite
+    # which returns object dtype for datetime inputs
+    for col in datetime_cols:
         df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    # converting nullable dtype columns that cannot be filled with np.nan 
+    for col in nullable_cols:
+        if df[col].dtype == "Int64":
+            df[col] = df[col].astype("float64")
+        if df[col].dtype == "string[python]":
+            df[col] = df[col].astype("object")
 
     return df
 
@@ -47,7 +57,7 @@ def eq_sqlite(sql, check_index=True, **dfs):
 
     # casting to object to ensure equality with sql-lite
     # which returns object dtype for datetime inputs
-    dask_result = cast_datetime_to_string(dask_result)
+    dask_result = normalize_dask_result(dask_result)
 
     # Make sure SQL and Dask use the same "NULL" value
     dask_result = dask_result.fillna(np.NaN)
