@@ -392,6 +392,7 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.filterwarnings("ignore:divide by zero:RuntimeWarning:dask_sql.physical.rex.core.call")
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_coalesce(c, gpu):
     df = dd.from_pandas(
