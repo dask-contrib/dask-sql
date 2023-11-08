@@ -833,7 +833,7 @@ class Context:
             except DFOptimizationException as oe:
                 # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
-                logger.warn(str(oe))
+                logger.warning(str(oe))
         else:
             rel = nonOptimizedRel
 
