@@ -100,7 +100,7 @@ def python_to_sql_type(python_type) -> "DaskTypeMap":
     if isinstance(python_type, np.dtype):
         python_type = python_type.type
 
-    if pd.api.types.is_datetime64tz_dtype(python_type):
+    if isinstance(python_type, pd.DatetimeTZDtype):
         return DaskTypeMap(
             SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
             unit=str(python_type.unit),
@@ -277,8 +277,8 @@ def similar_type(lhs: type, rhs: type) -> bool:
     is_object = pdt.is_object_dtype
     is_string = pdt.is_string_dtype
     is_dt_ns = pdt.is_datetime64_ns_dtype
-    is_dt_tz = lambda t: is_dt_ns(t) and pdt.is_datetime64tz_dtype(t)
-    is_dt_ntz = lambda t: is_dt_ns(t) and not pdt.is_datetime64tz_dtype(t)
+    is_dt_tz = lambda t: is_dt_ns(t) and isinstance(t, pd.DatetimeTZDtype)
+    is_dt_ntz = lambda t: is_dt_ns(t) and not isinstance(t, pd.DatetimeTZDtype)
     is_td_ns = pdt.is_timedelta64_ns_dtype
     is_bool = pdt.is_bool_dtype
 
@@ -334,8 +334,8 @@ def cast_column_to_type(col: dd.Series, expected_type: str):
     pdt = pd.api.types
 
     is_dt_ns = pdt.is_datetime64_ns_dtype
-    is_dt_tz = lambda t: is_dt_ns(t) and pdt.is_datetime64tz_dtype(t)
-    is_dt_ntz = lambda t: is_dt_ns(t) and not pdt.is_datetime64tz_dtype(t)
+    is_dt_tz = lambda t: is_dt_ns(t) and isinstance(t, pd.DatetimeTZDtype)
+    is_dt_ntz = lambda t: is_dt_ns(t) and not isinstance(t, pd.DatetimeTZDtype)
 
     current_type = col.dtype
 
