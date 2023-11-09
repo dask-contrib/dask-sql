@@ -497,7 +497,7 @@ def test_describe_model(c):
         .sort_index()
     )
     # test
-    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(lambda x: str(x))
+    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(lambda x: str(x), meta=('Params', 'object'))
 
     assert_eq(expected_series, result)
 
