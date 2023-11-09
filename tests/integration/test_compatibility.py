@@ -19,29 +19,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq
-
-
-def normalize_dask_result(df):
-    datetime_cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
-    nullable_cols = df.select_dtypes(include=["Int64", "string[python]"]).columns.tolist()
-
-    if not datetime_cols and not nullable_cols:
-        return df
-
-    # casting to object to ensure equality with sql-lite
-    # which returns object dtype for datetime inputs
-    for col in datetime_cols:
-        df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    # converting nullable dtype columns that cannot be filled with np.nan 
-    for col in nullable_cols:
-        if df[col].dtype == "Int64":
-            df[col] = df[col].astype("float64")
-        if df[col].dtype == "string[python]":
-            df[col] = df[col].astype("object")
-
-    return df
+from tests.utils import assert_eq, normalize_dask_result
 
 
 def eq_sqlite(sql, check_index=True, **dfs):
@@ -55,8 +33,7 @@ def eq_sqlite(sql, check_index=True, **dfs):
     dask_result = c.sql(sql).reset_index(drop=True)
     sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
 
-    # casting to object to ensure equality with sql-lite
-    # which returns object dtype for datetime inputs
+    # normalize result for sqlite
     dask_result = normalize_dask_result(dask_result)
 
     # Make sure SQL and Dask use the same "NULL" value

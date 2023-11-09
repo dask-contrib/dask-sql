@@ -8,7 +8,7 @@ import pytest
 from dask.datasets import timeseries as dd_timeseries
 from dask.distributed import Client
 
-from tests.utils import assert_eq
+from tests.utils import assert_eq, normalize_dask_result
 
 try:
     import cudf
@@ -341,6 +341,13 @@ def assert_query_gives_same_result(engine):
 
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
+
+        # normalize result for sqlite
+        dask_result = normalize_dask_result(dask_result)
+
+        # Make sure SQL and Dask use the same "NULL" value
+        dask_result = dask_result.fillna(np.NaN)
+        sql_result = sql_result.fillna(np.NaN)
 
         assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
 
