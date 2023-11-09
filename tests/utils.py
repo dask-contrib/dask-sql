@@ -18,7 +18,9 @@ def assert_eq(*args, **kwargs):
 
 def normalize_dask_result(df):
     datetime_cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
-    nullable_cols = df.select_dtypes(include=["Int64", "Float64", "string[python]"]).columns.tolist()
+    nullable_cols = df.select_dtypes(
+        include=["Int64", "Float64", "string[python]"]
+    ).columns.tolist()
 
     if not datetime_cols and not nullable_cols:
         return df
@@ -28,7 +30,7 @@ def normalize_dask_result(df):
     for col in datetime_cols:
         df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    # converting nullable dtype columns that cannot be filled with np.nan 
+    # converting nullable dtype columns that cannot be filled with np.nan
     for col in nullable_cols:
         if df[col].dtype in ("Int64", "Float64"):
             df[col] = df[col].astype("float64")
