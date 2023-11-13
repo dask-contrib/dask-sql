@@ -30,11 +30,6 @@ jobs:
         id: detect-trigger
         with:
           keyword: "[test-df-upstream]"
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
   # Check crate compiles
   linux-build-lib:
@@ -52,11 +47,6 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           bash continuous_integration/scripts/update-dependencies.sh
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check workspace in debug mode
         run: |
           cargo check
@@ -82,11 +72,6 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           bash continuous_integration/scripts/update-dependencies.sh
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
         run: |
           cargo test
