@@ -24,7 +24,6 @@ use datafusion_python::{
     datafusion_expr::{
         expr::InList,
         logical_plan::LogicalPlan,
-        utils::from_plan,
         Expr,
         JoinType,
         Operator,
@@ -1083,7 +1082,7 @@ fn optimize_children(
         new_inputs.push(new_input.unwrap_or_else(|| input.clone()))
     }
     if plan_is_changed {
-        Ok(Some(from_plan(plan, &new_exprs, &new_inputs)?))
+        Ok(Some(plan.with_new_exprs(new_exprs, &new_inputs)?))
     } else {
         Ok(None)
     }

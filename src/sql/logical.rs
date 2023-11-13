@@ -372,6 +372,7 @@ impl PyLogicalPlan {
                 }
             }
             LogicalPlan::Unnest(_unnest) => "Unnest",
+            LogicalPlan::Copy(_) => "Copy",
         })
     }
 
