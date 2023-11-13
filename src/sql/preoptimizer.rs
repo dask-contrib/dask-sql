@@ -5,7 +5,6 @@ use datafusion_python::{
     datafusion_common::{Column, DFField, ScalarValue},
     datafusion_expr::{
         logical_plan::Filter,
-        utils::from_plan,
         BinaryExpr,
         Expr,
         LogicalPlan,
@@ -205,7 +204,7 @@ fn optimize_children(existing_plan: LogicalPlan) -> Option<LogicalPlan> {
         new_inputs.push(new_input.unwrap_or_else(|| input.clone()))
     }
     if plan_is_changed {
-        Some(from_plan(&plan, &new_exprs, &new_inputs).ok()?)
+        Some(plan.with_new_exprs(new_exprs, &new_inputs).ok()?)
     } else {
         Some(existing_plan)
     }
