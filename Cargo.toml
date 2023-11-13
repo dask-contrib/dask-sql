@@ -11,7 +11,7 @@ include = ["/src", "/dask_sql", "/LICENSE.txt", "pyproject.toml", "Cargo.toml", 
 
 [dependencies]
 async-trait = "0.1.74"
-datafusion-python = "28.0.0"
+datafusion-python = { git = "https://github.com/apache/arrow-datafusion-python.git", ref = "da6c183" }
 env_logger = "0.10"
 log = "^0.4"
 pyo3 = { version = "0.19.2", features = ["extension-module", "abi3", "abi3-py38"] }

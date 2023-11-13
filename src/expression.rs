@@ -546,12 +546,16 @@ impl PyExpr {
                         "Bitwise operators unsupported in get_type".to_string(),
                     ));
                 }
+                Operator::AtArrow | Operator::ArrowAt => {
+                    todo!()
+                }
             },
             Expr::Literal(scalar_value) => match scalar_value {
                 ScalarValue::Boolean(_value) => "Boolean",
                 ScalarValue::Float32(_value) => "Float32",
                 ScalarValue::Float64(_value) => "Float64",
                 ScalarValue::Decimal128(_value, ..) => "Decimal128",
+                ScalarValue::Decimal256(_, _, _) => "Decimal256",
                 ScalarValue::Dictionary(..) => "Dictionary",
                 ScalarValue::Int8(_value) => "Int8",
                 ScalarValue::Int16(_value) => "Int16",
