@@ -3,13 +3,7 @@ use std::collections::HashMap;
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, TimeUnit},
     datafusion_common::{Column, DFField, ScalarValue},
-    datafusion_expr::{
-        logical_plan::Filter,
-        BinaryExpr,
-        Expr,
-        LogicalPlan,
-        Operator,
-    },
+    datafusion_expr::{logical_plan::Filter, BinaryExpr, Expr, LogicalPlan, Operator},
 };
 
 // Sometimes, DataFusion's optimizer will raise an OptimizationException before we even get the
