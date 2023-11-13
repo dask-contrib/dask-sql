@@ -18,4 +18,4 @@ dependencies:
   - pygments>=2.7.1
   - tabulate
   - ucx-proc=*=cpu
-  - rust>=1.65.0
+  - rust>=1.73.0
