@@ -18,7 +18,7 @@
 use std::sync::Arc;
 
 use datafusion_python::{
-    datafusion_common::{alias::AliasGenerator, context, Column, Result},
+    datafusion_common::{alias::AliasGenerator, context, Column, DataFusionError, Result},
     datafusion_expr::{
         expr::InSubquery,
         expr_rewriter::unnormalize_col,
@@ -155,7 +155,7 @@ fn optimize_where_in(
     left: &LogicalPlan,
     alias: &AliasGenerator,
 ) -> Result<LogicalPlan> {
-    let projection = Projection::try_from_plan(&query_info.query.subquery)
+    let projection = try_from_plan(&query_info.query.subquery)
         .map_err(|e| context!("a projection is required", e))?;
     let subquery_input = projection.input.clone();
     // TODO add the validate logic to Analyzer
@@ -239,6 +239,15 @@ fn remove_duplicated_filter(filters: Vec<Expr>, in_predicate: Expr) -> Vec<Expr>
             }
         })
         .collect::<Vec<_>>()
+}
+
+fn try_from_plan(plan: &LogicalPlan) -> Result<&Projection> {
+    match plan {
+        LogicalPlan::Projection(it) => Ok(it),
+        _ => Err(DataFusionError::Internal(
+            "Could not coerce into Projection!".to_string(),
+        )),
+    }
 }
 
 struct SubqueryInfo {
