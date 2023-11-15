@@ -70,7 +70,7 @@ properties:
           Whether to apply the dynamic partition pruning optimizer rule.
 
       optimizer:
-        type: boolean
+        type: object
         properties:
 
           verbose:
