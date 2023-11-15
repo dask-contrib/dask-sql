@@ -69,13 +69,17 @@ properties:
         description: |
           Whether to apply the dynamic partition pruning optimizer rule.
 
-      dynamic_partition_pruning.verbose:
+      dynamic_partition_pruning:
         type: boolean
-        description: |
-          The dynamic partition pruning optimizer rule can sometimes result in extremely long
-          c.explain() outputs which are not helpful to the user. Setting this option to true allows
-          the user to see the entire output, while setting it to false truncates the output.
-          Default is false.
+        properties:
+
+          verbose:
+            type: boolean
+            description: |
+              The dynamic partition pruning optimizer rule can sometimes result in extremely long
+              c.explain() outputs which are not helpful to the user. Setting this option to true
+              allows the user to see the entire output, while setting it to false truncates the
+              output. Default is false.
 
       fact_dimension_ratio:
         type: [number, "null"]

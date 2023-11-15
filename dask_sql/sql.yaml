@@ -18,7 +18,8 @@ sql:
 
   dynamic_partition_pruning: True
 
-  dynamic_partition_pruning.verbose: False
+  dynamic_partition_pruning:
+    verbose: False
 
   fact_dimension_ratio: null
 
