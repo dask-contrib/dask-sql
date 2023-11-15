@@ -18,7 +18,7 @@ sql:
 
   dynamic_partition_pruning: True
 
-  dynamic_partition_pruning:
+  optimizer:
     verbose: False
 
   fact_dimension_ratio: null
