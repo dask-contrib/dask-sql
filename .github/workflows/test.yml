@@ -24,7 +24,7 @@ jobs:
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - uses: xarray-contrib/ci-trigger@v1.2
@@ -54,7 +54,7 @@ jobs:
             python: "3.10"
             distributed: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
@@ -101,7 +101,7 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.2.0
         with:
