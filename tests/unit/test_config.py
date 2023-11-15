@@ -133,23 +133,23 @@ def test_dynamic_partition_pruning(tmpdir):
     inlist_expr = "df2.x IN ([Int64(1)])"
 
     # Default value is False
-    dask_config.set({"sql.verbose_optimizer": True})
+    dask_config.set({"sql.dynamic_partition_pruning.verbose": True})
 
     # When DPP is turned off, the explain output will not contain the INLIST expression
     dask_config.set({"sql.dynamic_partition_pruning": False})
     explain_string = c.explain(query)
     assert inlist_expr not in explain_string
 
-    # When DPP is turned on but verbose_optimizer is off, the explain output will not contain the
+    # When DPP is turned on but sql.dynamic_partition_pruning.verbose is off, the explain output will not contain the
     # INLIST expression
     dask_config.set({"sql.dynamic_partition_pruning": True})
-    dask_config.set({"sql.verbose_optimizer": False})
+    dask_config.set({"sql.dynamic_partition_pruning.verbose": False})
     explain_string = c.explain(query)
     assert inlist_expr not in explain_string
 
-    # When both DPP and verbose_optimizer are turned on, the explain output will contain the INLIST
+    # When both DPP and sql.dynamic_partition_pruning.verbose are turned on, the explain output will contain the INLIST
     # expression
     dask_config.set({"sql.dynamic_partition_pruning": True})
-    dask_config.set({"sql.verbose_optimizer": True})
+    dask_config.set({"sql.dynamic_partition_pruning.verbose": True})
     explain_string = c.explain(query)
     assert inlist_expr in explain_string
