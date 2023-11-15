@@ -17,7 +17,8 @@ sql:
   predicate_pushdown: True
 
   dynamic_partition_pruning: True
-    verbose: False
+
+  dynamic_partition_pruning.verbose: False
 
   fact_dimension_ratio: null
 
