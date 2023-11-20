@@ -8,7 +8,7 @@ channels:
 dependencies:
 - c-compiler
 - zlib
-- dask>=2022.3.0
+- dask>=2022.3.0,<=2023.11.0
 - fastapi>=0.92.0
 - fugue>=0.7.3
 - httpx>=0.24.1
