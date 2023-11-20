@@ -518,6 +518,10 @@ def _inv(symbol: str):
 def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for a simple comparison
     left = _get_blockwise_input(0, indices, dsk)
+
+    # at this point, RHS must be a scalar and not a column name (i.e. getitem task)
+    if indices[1][1] is not None:
+        raise ValueError
     right = _get_blockwise_input(1, indices, dsk)
 
     if is_arraylike(left) and hasattr(left, "item") and left.size == 1:
