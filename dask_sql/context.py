@@ -848,7 +848,8 @@ class Context:
         # Optimize the `LogicalPlan` or skip if configured
         if dask_config.get("sql.optimize"):
             try:
-                rel = self.context.optimize_relational_algebra(nonOptimizedRel)
+                rel = self.context.run_preoptimizer(nonOptimizedRel)
+                rel = self.context.optimize_relational_algebra(rel)
             except DFOptimizationException as oe:
                 # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
