@@ -484,11 +484,18 @@ fn read_table(
     field_string: String,
     tables: HashMap<String, TableInfo>,
 ) -> Option<HashSet<RowValue>> {
-    // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
-    let paths = fs::read_dir(tables.get(&table_string).unwrap().filepath.clone()).unwrap();
+    let file_path = tables.get(&table_string).unwrap().filepath.clone();
+    let paths: fs::ReadDir;
     let mut files = vec![];
-    for path in paths {
-        files.push(path.unwrap().path().display().to_string())
+    if fs::metadata(&file_path).map(|metadata| metadata.is_dir()).unwrap_or(false) {
+        // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
+        paths = fs::read_dir(&file_path).unwrap();
+        for path in paths {
+            files.push(path.unwrap().path().display().to_string())
+        }
+    } else {
+        // Obtain single Parquet file
+        files.push(file_path);
     }
 
     // Using the filepaths to the Parquet tables, obtain the schemas of the relevant tables
