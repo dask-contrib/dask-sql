@@ -487,7 +487,10 @@ fn read_table(
     let file_path = tables.get(&table_string).unwrap().filepath.clone();
     let paths: fs::ReadDir;
     let mut files = vec![];
-    if fs::metadata(&file_path).map(|metadata| metadata.is_dir()).unwrap_or(false) {
+    if fs::metadata(&file_path)
+        .map(|metadata| metadata.is_dir())
+        .unwrap_or(false)
+    {
         // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
         paths = fs::read_dir(&file_path).unwrap();
         for path in paths {
