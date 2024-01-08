@@ -11,7 +11,7 @@ on:
       - Cargo.toml
       - Cargo.lock
       - pyproject.toml
-      - docker/**
+      - continuous_integration/docker/**
       - .github/workflows/docker.yml
 
 # When this workflow is queued, automatically cancel any previous running
@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/main.dockerfile
+          file: ./continuous_integration/docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
           platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
@@ -68,7 +68,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/cloud.dockerfile
+          file: ./continuous_integration/docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
           platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}
