@@ -9,9 +9,8 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 pytestmark = pytest.mark.xfail(
-    # FIXME: sasl is not available on python 3.11
-    condition="sys.platform in ('win32', 'darwin') or sys.version_info == (3, 11)",
-    reason="hive testing only supported on linux with python<3.11",
+    condition="sys.platform in ('win32', 'darwin')",
+    reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
 sqlalchemy = pytest.importorskip("sqlalchemy")
