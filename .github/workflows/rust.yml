@@ -23,18 +23,13 @@ jobs:
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - uses: xarray-contrib/ci-trigger@v1.2
         id: detect-trigger
         with:
           keyword: "[test-df-upstream]"
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
   # Check crate compiles
   linux-build-lib:
@@ -42,7 +37,7 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache Cargo
         uses: actions/cache@v3
         with:
@@ -52,11 +47,6 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           bash continuous_integration/scripts/update-dependencies.sh
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check workspace in debug mode
         run: |
           cargo check
@@ -70,7 +60,7 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Cache Cargo
@@ -82,11 +72,6 @@ jobs:
         if: needs.detect-ci-trigger.outputs.triggered == 'true'
         run: |
           bash continuous_integration/scripts/update-dependencies.sh
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
         run: |
           cargo test

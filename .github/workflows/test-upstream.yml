@@ -53,11 +53,11 @@ jobs:
             python: "3.11"
             distributed: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags.
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
+        uses: conda-incubator/setup-miniconda@v2.3.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -103,19 +103,14 @@ jobs:
     name: "Test importing with bare requirements and upstream dev"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
+        uses: conda-incubator/setup-miniconda@v2.3.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
           python-version: "3.9"
           channel-priority: strict
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Optionally update upstream cargo dependencies
         if: env.which_upstream == 'DataFusion'
         env:
@@ -150,7 +145,7 @@ jobs:
       && github.repository == 'dask-contrib/dask-sql'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
       - name: Prepare logs & issue label
         run: |

@@ -25,13 +25,7 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        if: matrix.target == 'aarch64'
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -43,11 +37,6 @@ jobs:
           args: --release --out dist
           sccache: 'true'
           manylinux: '2_17'
-          before-script-linux: >
-            DOWNLOAD_URL=$(curl --retry 6 --retry-delay 10 -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -o '"browser_download_url": "[^"]*' | cut -d'"' -f4 | grep "\linux-x86_64.zip$") &&
-            curl --retry 6 --retry-delay 10 -LO $DOWNLOAD_URL &&
-            unzip protoc-*-linux-x86_64.zip -d $HOME/.local
-          docker-options: --env PROTOC=/root/.local/bin/protoc
       - name: Build wheels for aarch64
         if: matrix.target == 'aarch64'
         uses: PyO3/maturin-action@v1
@@ -78,12 +67,7 @@ jobs:
     name: Build and publish wheels for windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -120,12 +104,7 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
@@ -156,7 +135,7 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
