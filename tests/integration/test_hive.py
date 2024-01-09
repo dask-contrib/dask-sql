@@ -1,4 +1,5 @@
 import shutil
+import sys
 import tempfile
 import time
 
@@ -9,7 +10,7 @@ from dask_sql.context import Context
 from tests.utils import assert_eq
 
 pytestmark = pytest.mark.xfail(
-    condition="sys.platform in ('win32', 'darwin')",
+    condition=sys.platform in ("win32", "darwin"),
     reason="hive testing not supported on Windows/macOS",
 )
 docker = pytest.importorskip("docker")
