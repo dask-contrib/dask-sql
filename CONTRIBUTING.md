@@ -19,7 +19,7 @@ rustup update
 To initialize and activate the conda environment for a given Python version:
 
 ```
-conda env create -f dask-sql/continuous_integration/environment-{$PYTHON_VER}-dev.yaml
+conda env create -f dask-sql/continuous_integration/environment-{$PYTHON_VER}.yaml
 conda activate dask-sql
 ```
 

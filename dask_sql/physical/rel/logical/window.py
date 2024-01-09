@@ -1,7 +1,7 @@
 import logging
 from collections import namedtuple
 from functools import partial
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Optional
 
 import dask.dataframe as dd
 import numpy as np
@@ -109,7 +109,7 @@ class Indexer(BaseIndexer):
         min_periods: Optional[int] = None,
         center: Optional[bool] = None,
         closed: Optional[str] = None,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         if self.start is None:
             start = np.zeros(num_values, dtype=np.int64)
         else:
@@ -141,7 +141,7 @@ class Indexer(BaseIndexer):
             center: Optional[bool] = None,
             closed: Optional[str] = None,
             step: Optional[int] = None,
-        ) -> Tuple[np.ndarray, np.ndarray]:
+        ) -> tuple[np.ndarray, np.ndarray]:
             return self._get_window_bounds(num_values, min_periods, center, closed)
 
     else:
@@ -152,18 +152,18 @@ class Indexer(BaseIndexer):
             min_periods: Optional[int] = None,
             center: Optional[bool] = None,
             closed: Optional[str] = None,
-        ) -> Tuple[np.ndarray, np.ndarray]:
+        ) -> tuple[np.ndarray, np.ndarray]:
             return self._get_window_bounds(num_values, min_periods, center, closed)
 
 
 def map_on_each_group(
     partitioned_group: pd.DataFrame,
-    sort_columns: List[str],
-    sort_ascending: List[bool],
-    sort_null_first: List[bool],
+    sort_columns: list[str],
+    sort_ascending: list[bool],
+    sort_null_first: list[bool],
     lower_bound: BoundDescription,
     upper_bound: BoundDescription,
-    operations: List[Tuple[Callable, str, List[str]]],
+    operations: list[tuple[Callable, str, list[str]]],
 ):
     """Internal function mapped on each group of the dataframe after partitioning"""
     # Apply sorting
@@ -261,7 +261,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         rel,
         window,
         dc: DataContainer,
-        field_names: List[str],
+        field_names: list[str],
         context: "dask_sql.Context",
     ):
         temporary_columns = []
@@ -366,7 +366,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         window,
         dc: DataContainer,
         context: "dask_sql.Context",
-    ) -> Tuple[dd.DataFrame, str]:
+    ) -> tuple[dd.DataFrame, str]:
         """Prepare grouping columns we can later use while applying the main function"""
         partition_keys = rel.window().getPartitionExprs(window)
         if partition_keys:
@@ -385,7 +385,7 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def _extract_ordering(
         self, rel, window, cc: ColumnContainer
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Prepare sorting information we can later use while applying the main function"""
         logger.debug(
             "Error is about to be encountered, FIX me when bindings are available in subsequent PR"
@@ -407,7 +407,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         df: dd.DataFrame,
         dc: DataContainer,
         context: "dask_sql.Context",
-    ) -> List[Tuple[Callable, str, List[str]]]:
+    ) -> list[tuple[Callable, str, list[str]]]:
         # Finally apply the actual function on each group separately
         operations = []
 
