@@ -3,7 +3,7 @@
 """Meta-estimators for parallelizing estimators using the scikit-learn API."""
 import logging
 import warnings
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Union
 
 import dask.array as da
 import dask.dataframe as dd
@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 # Scorers
-accuracy_scorer: Tuple[Any, Any] = (accuracy_score, {})
+accuracy_scorer: tuple[Any, Any] = (accuracy_score, {})
 neg_mean_squared_error_scorer = (mean_squared_error, dict(greater_is_better=False))
-r2_scorer: Tuple[Any, Any] = (r2_score, {})
+r2_scorer: tuple[Any, Any] = (r2_score, {})
 neg_log_loss_scorer = (log_loss, dict(greater_is_better=False, needs_proba=True))
 
 
@@ -504,7 +504,7 @@ class Incremental(ParallelPostFit):
         self.shuffle_blocks = shuffle_blocks
         self.random_state = random_state
         self.assume_equal_chunks = assume_equal_chunks
-        super(Incremental, self).__init__(
+        super().__init__(
             estimator=estimator,
             scoring=scoring,
             predict_meta=predict_meta,
