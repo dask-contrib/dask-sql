@@ -707,7 +707,7 @@ dependencies = [
  "env_logger",
  "log",
  "pyo3",
- "pyo3-build-config 0.20.0",
+ "pyo3-build-config 0.20.2",
  "pyo3-log",
 ]
 
@@ -919,7 +919,7 @@ dependencies = [
  "prost",
  "prost-types",
  "pyo3",
- "pyo3-build-config 0.20.0",
+ "pyo3-build-config 0.20.2",
  "rand",
  "regex-syntax 0.8.2",
  "syn 2.0.48",
@@ -2037,9 +2037,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.20.0"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a96fe70b176a89cff78f2fa7b3c930081e163d5379b4dcdf993e3ae29ca662e5"
+checksum = "07426f0d8fe5a601f26293f300afd1a7b1ed5e78b2a705870c5f30893c5163be"
 dependencies = [
  "once_cell",
  "target-lexicon",
