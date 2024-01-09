@@ -74,7 +74,7 @@ Create a new conda environment and install the development environment:
 
 .. code-block:: bash
 
-    conda env create -f continuous_integration/environment-3.9-dev.yaml
+    conda env create -f continuous_integration/environment-3.9.yaml
 
 It is not recommended to use ``pip`` instead of ``conda``.
 

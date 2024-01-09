@@ -37,21 +37,21 @@ jobs:
     needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}.yaml
       DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.8", "3.9", "3.10"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
         distributed: [false]
         include:
           # run tests on a distributed client
           - os: "ubuntu-latest"
-            python: "3.8"
+            python: "3.9"
             distributed: true
           - os: "ubuntu-latest"
-            python: "3.10"
+            python: "3.11"
             distributed: true
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,6 @@ jobs:
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Optionally install upstream dev Dask
@@ -107,9 +106,7 @@ jobs:
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          # TODO: drop support for python 3.8, add support for python 3.11
-          # https://github.com/dask-contrib/dask-sql/pull/1143
-          python-version: ${{ needs.detect-ci-trigger.outputs.triggered == 'true' && '3.9' || '3.8' }}
+          python-version: "3.9"
           channel-priority: strict
       - name: Install dependencies and nothing else
         run: |
