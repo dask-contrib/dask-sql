@@ -74,8 +74,7 @@ jobs:
         run: |
           maturin develop
       - name: Install hive testing dependencies
-        if: |
-          matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
