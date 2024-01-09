@@ -49,8 +49,7 @@ dependencies:
 - ucx-py=0.36
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
-# TODO: unpin after RAPIDS 24.02 release
-# - pip
-# - pip:
-#     - git+https://github.com/dask/dask
-#     - git+https://github.com/dask/distributed
+- pip
+- pip:
+    - git+https://github.com/dask/dask
+    - git+https://github.com/dask/distributed
