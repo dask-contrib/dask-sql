@@ -177,18 +177,17 @@ fn optimize_exists(
 /// This function can't optimize non-correlated subquery, and will return None.
 fn optimize_subquery(subquery: &LogicalPlan) -> Result<Option<(Expr, LogicalPlan)>> {
     match subquery {
-        LogicalPlan::Distinct(subqry_distinct) => {
-            let distinct_input = &subqry_distinct.input;
-            let optimized_plan = optimize_subquery(distinct_input)?.map(|(filters, right)| {
+        LogicalPlan::Distinct(subqry_distinct) => match subqry_distinct {
+            Distinct::All(input) => Ok(optimize_subquery(input)?.map(|(filters, right)| {
                 (
                     filters,
-                    LogicalPlan::Distinct(Distinct {
-                        input: Arc::new(right),
-                    }),
+                    LogicalPlan::Distinct(Distinct::All(Arc::new(right))),
                 )
-            });
-            Ok(optimized_plan)
-        }
+            })),
+            Distinct::On { .. } => Err(DataFusionError::NotImplemented(
+                "Partial distinct is not supported".to_string(),
+            )),
+        },
         LogicalPlan::Projection(projection) => {
             // extract join filters
             let (join_filters, subquery_input) = extract_join_filters(&projection.input)?;

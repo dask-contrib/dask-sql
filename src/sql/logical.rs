@@ -37,7 +37,7 @@ pub mod window;
 
 use datafusion_python::{
     datafusion_common::{DFSchemaRef, DataFusionError},
-    datafusion_expr::{DdlStatement, LogicalPlan},
+    datafusion_expr::{logical_plan::Distinct, DdlStatement, LogicalPlan},
 };
 use pyo3::prelude::*;
 
@@ -411,8 +411,8 @@ impl PyLogicalPlan {
                 lhs_fields.append(&mut rhs_fields);
                 Ok(RelDataType::new(false, lhs_fields))
             }
-            LogicalPlan::Distinct(distinct) => {
-                let schema = distinct.input.schema();
+            LogicalPlan::Distinct(Distinct::All(input)) => {
+                let schema = input.schema();
                 let rel_fields: Vec<RelDataTypeField> = schema
                     .fields()
                     .iter()

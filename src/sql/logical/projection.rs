@@ -40,7 +40,7 @@ impl PyProjection {
                 PyExpr::from(expression, Some(vec![self.projection.input.clone()]));
             for expr in self.projected_expressions(&py_expr) {
                 match expr.expr {
-                    Expr::Alias(Alias { expr, name }) => named.push((
+                    Expr::Alias(Alias { expr, name, .. }) => named.push((
                         name.to_string(),
                         PyExpr::from(*expr, Some(vec![self.projection.input.clone()])),
                     )),

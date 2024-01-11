@@ -1101,7 +1101,7 @@ impl<'a> DaskParser<'a> {
                         } else {
                             self.parser.prev_token();
                             Ok(DaskStatement::Statement(Box::from(
-                                self.parser.parse_create_view(or_replace)?,
+                                self.parser.parse_create_view(or_replace, false)?,
                             )))
                         }
                     }

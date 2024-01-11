@@ -56,7 +56,7 @@ impl DaskTypeMap {
             SqlTypeName::TIMESTAMP_WITH_LOCAL_TIME_ZONE => {
                 let (unit, tz) = match py_kwargs {
                     Some(dict) => {
-                        let tz: Option<Arc<str>> = match dict.get_item("tz") {
+                        let tz: Option<Arc<str>> = match dict.get_item("tz")? {
                             Some(e) => {
                                 let res: PyResult<String> = e.extract();
                                 Some(Arc::from(<std::string::String as AsRef<str>>::as_ref(
@@ -65,7 +65,7 @@ impl DaskTypeMap {
                             }
                             None => None,
                         };
-                        let unit: TimeUnit = match dict.get_item("unit") {
+                        let unit: TimeUnit = match dict.get_item("unit")? {
                             Some(e) => {
                                 let res: PyResult<&str> = e.extract();
                                 match res.unwrap() {
@@ -89,7 +89,7 @@ impl DaskTypeMap {
             SqlTypeName::TIMESTAMP => {
                 let (unit, tz) = match py_kwargs {
                     Some(dict) => {
-                        let tz: Option<Arc<str>> = match dict.get_item("tz") {
+                        let tz: Option<Arc<str>> = match dict.get_item("tz")? {
                             Some(e) => {
                                 let res: PyResult<String> = e.extract();
                                 Some(Arc::from(<std::string::String as AsRef<str>>::as_ref(
@@ -98,7 +98,7 @@ impl DaskTypeMap {
                             }
                             None => None,
                         };
-                        let unit: TimeUnit = match dict.get_item("unit") {
+                        let unit: TimeUnit = match dict.get_item("unit")? {
                             Some(e) => {
                                 let res: PyResult<&str> = e.extract();
                                 match res.unwrap() {
@@ -122,14 +122,14 @@ impl DaskTypeMap {
             SqlTypeName::DECIMAL => {
                 let (precision, scale) = match py_kwargs {
                     Some(dict) => {
-                        let precision: u8 = match dict.get_item("precision") {
+                        let precision: u8 = match dict.get_item("precision")? {
                             Some(e) => {
                                 let res: PyResult<u8> = e.extract();
                                 res.unwrap()
                             }
                             None => 38,
                         };
-                        let scale: i8 = match dict.get_item("scale") {
+                        let scale: i8 = match dict.get_item("scale")? {
                             Some(e) => {
                                 let res: PyResult<i8> = e.extract();
                                 res.unwrap()

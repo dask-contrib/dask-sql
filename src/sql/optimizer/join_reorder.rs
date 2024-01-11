@@ -5,8 +5,15 @@ use std::collections::HashSet;
 
 use datafusion_python::{
     datafusion_common::{Column, Result},
-    datafusion_expr::{Expr, Join, JoinType, LogicalPlan, LogicalPlanBuilder},
-    datafusion_optimizer::{utils, utils::split_conjunction, OptimizerConfig, OptimizerRule},
+    datafusion_expr::{
+        utils::split_conjunction,
+        Expr,
+        Join,
+        JoinType,
+        LogicalPlan,
+        LogicalPlanBuilder,
+    },
+    datafusion_optimizer::{utils, OptimizerConfig, OptimizerRule},
 };
 use log::warn;
 

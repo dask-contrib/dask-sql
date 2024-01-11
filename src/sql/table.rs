@@ -4,8 +4,13 @@ use async_trait::async_trait;
 use datafusion_python::{
     datafusion::arrow::datatypes::{DataType, Fields, SchemaRef},
     datafusion_common::DFField,
-    datafusion_expr::{Expr, LogicalPlan, TableProviderFilterPushDown, TableSource},
-    datafusion_optimizer::utils::split_conjunction,
+    datafusion_expr::{
+        utils::split_conjunction,
+        Expr,
+        LogicalPlan,
+        TableProviderFilterPushDown,
+        TableSource,
+    },
     datafusion_sql::TableReference,
 };
 use pyo3::prelude::*;

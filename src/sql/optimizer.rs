@@ -14,12 +14,10 @@ use datafusion_python::{
         eliminate_cross_join::EliminateCrossJoin,
         eliminate_limit::EliminateLimit,
         eliminate_outer_join::EliminateOuterJoin,
-        eliminate_project::EliminateProjection,
         filter_null_join_keys::FilterNullJoinKeys,
         optimizer::{Optimizer, OptimizerRule},
         push_down_filter::PushDownFilter,
         push_down_limit::PushDownLimit,
-        push_down_projection::PushDownProjection,
         rewrite_disjunctive_predicate::RewriteDisjunctivePredicate,
         scalar_subquery_to_join::ScalarSubqueryToJoin,
         simplify_expressions::SimplifyExpressions,
@@ -81,8 +79,8 @@ impl DaskSqlOptimizer {
             Arc::new(SimplifyExpressions::new()),
             Arc::new(UnwrapCastInComparison::new()),
             // Arc::new(CommonSubexprEliminate::new()),
-            Arc::new(PushDownProjection::new()),
-            Arc::new(EliminateProjection::new()),
+            // Arc::new(PushDownProjection::new()),
+            // Arc::new(EliminateProjection::new()),
             // PushDownProjection can pushdown Projections through Limits, do PushDownLimit again.
             Arc::new(PushDownLimit::new()),
         ];
@@ -191,7 +189,7 @@ mod tests {
             &self.options
         }
 
-        fn get_table_provider(
+        fn get_table_source(
             &self,
             name: TableReference,
         ) -> datafusion_python::datafusion_common::Result<Arc<dyn TableSource>> {
