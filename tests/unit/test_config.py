@@ -103,7 +103,7 @@ def test_dask_setconfig():
 
 
 @pytest.mark.skipif(
-    sys.version_info <= (3, 9),
+    sys.version_info < (3, 9),
     reason="Writing and reading the Dask DataFrame causes a ProtocolError",
 )
 def test_dpp_single_file_parquet(tmpdir):
@@ -115,7 +115,9 @@ def test_dpp_single_file_parquet(tmpdir):
             "z": [7, 8, 9],
         },
     )
-    dd.from_pandas(df1, npartitions=1).to_parquet(os.path.join(tmpdir, "df1_single_file"))
+    dd.from_pandas(df1, npartitions=1).to_parquet(
+        os.path.join(tmpdir, "df1_single_file")
+    )
     df1 = dd.read_parquet(os.path.join(tmpdir, "df1_single_file/part.0.parquet"))
     c.create_table("df1", df1)
 
