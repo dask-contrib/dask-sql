@@ -103,7 +103,7 @@ def test_dask_setconfig():
 
 
 @pytest.mark.skipif(
-    sys.version_info <= (3, 9),
+    sys.version_info < (3, 10),
     reason="Writing and reading the Dask DataFrame causes a ProtocolError",
 )
 def test_dynamic_partition_pruning(tmpdir):
