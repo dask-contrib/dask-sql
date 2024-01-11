@@ -102,10 +102,6 @@ def test_dask_setconfig():
     dask_config.refresh()
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="Writing and reading the Dask DataFrame causes a ProtocolError",
-)
 def test_dpp_single_file_parquet(tmpdir):
     c = Context()
 
