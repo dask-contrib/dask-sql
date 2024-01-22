@@ -5,9 +5,7 @@ import sys
 import joblib
 import pandas as pd
 import pytest
-
 from packaging.version import parse as parseVersion
-
 
 from tests.utils import assert_eq
 
