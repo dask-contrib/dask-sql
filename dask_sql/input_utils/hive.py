@@ -30,12 +30,12 @@ class HiveInputPlugin(BaseInputPlugin):
     def is_correct_input(
         self, input_item: Any, table_name: str, format: str = None, **kwargs
     ):
-        is_sqlalchemy_hive = sqlalchemy and isinstance(
-            input_item, sqlalchemy.engine.base.Connection
-        )
         is_hive_cursor = hive and isinstance(input_item, hive.Cursor)
 
-        return is_sqlalchemy_hive or is_hive_cursor or format == "hive"
+        return self.is_sqlalchemy_hive(input_item) or is_hive_cursor or format == "hive"
+
+    def is_sqlalchemy_hive(self, input_item: Any):
+        return sqlalchemy and isinstance(input_item, sqlalchemy.engine.base.Connection)
 
     def to_dc(
         self,
@@ -201,7 +201,11 @@ class HiveInputPlugin(BaseInputPlugin):
         of the DESCRIBE FORMATTED call, which is unfortunately
         in a format not easily readable by machines.
         """
-        cursor.execute(f"USE {schema}")
+        cursor.execute(
+            sqlalchemy.text(f"USE {schema}")
+            if self.is_sqlalchemy_hive(cursor)
+            else f"USE {schema}"
+        )
         if partition:
             # Hive wants quoted, comma separated list of partition keys
             partition = partition.replace("=", '="')
@@ -283,7 +287,11 @@ class HiveInputPlugin(BaseInputPlugin):
         """
         Extract all partition informaton for a given table
         """
-        cursor.execute(f"USE {schema}")
+        cursor.execute(
+            sqlalchemy.text(f"USE {schema}")
+            if self.is_sqlalchemy_hive(cursor)
+            else f"USE {schema}"
+        )
         result = self._fetch_all_results(cursor, f"SHOW PARTITIONS {table_name}")
 
         return [row[0] for row in result]
@@ -298,7 +306,9 @@ class HiveInputPlugin(BaseInputPlugin):
         The former has the fetchall method on the cursor,
         whereas the latter on the executed query.
         """
-        result = cursor.execute(sql)
+        result = cursor.execute(
+            sqlalchemy.text(sql) if self.is_sqlalchemy_hive(cursor) else sql
+        )
 
         try:
             return result.fetchall()
