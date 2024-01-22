@@ -31,7 +31,7 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.9
-- scikit-learn>=1.0,<1.4
+- scikit-learn>=1.0.0
 - sphinx
 - sqlalchemy
 - tpot>=0.12.0

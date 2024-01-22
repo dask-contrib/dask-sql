@@ -27,7 +27,7 @@ RUN mamba install -y \
     tabulate \
     # additional dependencies
     "pyarrow>=6.0.2" \
-    "scikit-learn>=1.0,<1.4" \
+    "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
 
