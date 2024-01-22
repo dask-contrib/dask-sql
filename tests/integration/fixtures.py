@@ -335,6 +335,10 @@ def assert_query_gives_same_result(engine):
         # as expressions are handled differently
         dask_result.columns = sql_result.columns
 
+        # replace all pd.NA scalars, which are resistent to
+        # check_dype=False and .astype()
+        dask_result = dask_result.replace({pd.NA: None})
+
         if sort_columns:
             sql_result = sql_result.sort_values(sort_columns)
             dask_result = dask_result.sort_values(sort_columns)
