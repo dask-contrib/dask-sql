@@ -11,7 +11,7 @@ on:
       - Cargo.toml
       - Cargo.lock
       - pyproject.toml
-      - docker/**
+      - continuous_integration/docker/**
       - .github/workflows/docker.yml
 
 # When this workflow is queued, automatically cancel any previous running
@@ -31,23 +31,23 @@ jobs:
       matrix:
         platform: ["linux/amd64", "linux/arm64", "linux/386"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Login to DockerHub
         if: ${{ fromJSON(env.DOCKER_PUSH) }}
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Docker meta for main image
         id: docker_meta_main
-        uses: crazy-max/ghaction-docker-meta@v4
+        uses: crazy-max/ghaction-docker-meta@v5
         with:
           images: nbraun/dask-sql
       - name: Build and push main image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/main.dockerfile
+          file: ./continuous_integration/docker/main.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
           platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_main.outputs.tags }}
@@ -61,14 +61,14 @@ jobs:
           docker image inspect ${{ steps.docker_meta_main.outputs.tags }}
       - name: Docker meta for cloud image
         id: docker_meta_cloud
-        uses: crazy-max/ghaction-docker-meta@v4
+        uses: crazy-max/ghaction-docker-meta@v5
         with:
           images: nbraun/dask-sql-cloud
       - name: Build and push cloud image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/cloud.dockerfile
+          file: ./continuous_integration/docker/cloud.dockerfile
           build-args: DOCKER_META_VERSION=${{ steps.docker_meta_main.outputs.version }}
           platforms: ${{ matrix.platform }}
           tags: ${{ steps.docker_meta_cloud.outputs.tags }}

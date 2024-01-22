@@ -27,38 +27,38 @@ export CUDA_REL=${CUDA_VERSION%.*}
 # SETUP - Check environment
 ################################################################################
 
-gpuci_logger "Check environment variables"
+rapids-logger "Check environment variables"
 env
 
-gpuci_logger "Check GPU usage"
+rapids-logger "Check GPU usage"
 nvidia-smi
 
-gpuci_logger "Activate conda env"
+rapids-logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate dask_sql
 
-gpuci_logger "Update conda env"
+rapids-logger "Update conda env"
 gpuci_mamba_retry env update -n dask_sql -f continuous_integration/gpuci/environment-${PYTHON_VER}.yaml
 
-gpuci_logger "Install awscli"
+rapids-logger "Install awscli"
 gpuci_mamba_retry install -y -c conda-forge awscli
 
-gpuci_logger "Download parquet dataset"
-gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb_sorted/" tests/unit/data/ --recursive
+rapids-logger "Download parquet dataset"
+rapids-retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}parquet_2gb_sorted/" tests/unit/data/ --recursive
 
-gpuci_logger "Download query files"
-gpuci_retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
+rapids-logger "Download query files"
+rapids-retry aws s3 cp --only-show-errors "${DASK_SQL_BUCKET_NAME}queries/" tests/unit/queries/ --recursive
 
-gpuci_logger "Install dask-sql"
+rapids-logger "Install dask-sql"
 pip install -e . -vv
 
-gpuci_logger "Check Python version"
+rapids-logger "Check Python version"
 python --version
 
-gpuci_logger "Check conda environment"
+rapids-logger "Check conda environment"
 conda info
 conda config --show-sources
 conda list --show-channel-urls
 
-gpuci_logger "Python py.test for dask-sql"
+rapids-logger "Python py.test for dask-sql"
 py.test $WORKSPACE -n 4 -v -m gpu --runqueries --rungpu --junitxml="$WORKSPACE/junit-dask-sql.xml" --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term

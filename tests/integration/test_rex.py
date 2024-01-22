@@ -1240,3 +1240,34 @@ def test_scalar_timestamps(c, gpu):
         f"SELECT TIMESTAMPDIFF(DAY, CAST({scalar1} AS TIMESTAMP), CAST({scalar2} AS TIMESTAMP)) AS dt"
     )
     assert_eq(df3, expected_df)
+
+
+def test_datetime_coercion(c):
+    d_table = pd.DataFrame(
+        {
+            "d_date": [
+                datetime(2023, 7, 1),
+                datetime(2023, 7, 5),
+                datetime(2023, 7, 10),
+                datetime(2023, 7, 15),
+            ],
+            "x": [1, 2, 3, 4],
+        }
+    )
+    c.create_table("d_table", d_table)
+
+    df = c.sql(
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + (2 + 3)
+    """
+    )
+    expected_df = c.sql(
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + INTERVAL '5 days'
+    """
+    )
+    assert_eq(df, expected_df)

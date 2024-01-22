@@ -1,7 +1,7 @@
 [package]
 name = "dask-sql"
 repository = "https://github.com/dask-contrib/dask-sql"
-version = "2023.11.0-rc1"
+version = "2023.11.0"
 description = "Bindings for DataFusion used by Dask-SQL"
 readme = "README.md"
 license = "Apache-2.0"
@@ -10,11 +10,11 @@ rust-version = "1.72"
 include = ["/src", "/dask_sql", "/LICENSE.txt", "pyproject.toml", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
-async-trait = "0.1.74"
+async-trait = "0.1.77"
 datafusion-python = { git = "https://github.com/apache/arrow-datafusion-python.git", ref = "da6c183" }
 env_logger = "0.10"
 log = "^0.4"
-pyo3 = { version = "0.19.2", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3 = { version = "0.19.2", features = ["extension-module", "abi3", "abi3-py39"] }
 pyo3-log = "0.9.0"
 
 [build-dependencies]
