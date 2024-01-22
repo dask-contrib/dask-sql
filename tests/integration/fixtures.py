@@ -335,9 +335,9 @@ def assert_query_gives_same_result(engine):
         # as expressions are handled differently
         dask_result.columns = sql_result.columns
 
-        # nullable dtypes make it such that `check_dtype=False` isn't sufficient to
-        # normalize Postgres & Dask results
-        dask_result = dask_result.astype(sql_result.dtypes.to_dict())
+        # replace all pd.NA scalars, which are resistent to
+        # check_dype=False and .astype()
+        dask_result = dask_result.replace({pd.NA: None})
 
         if sort_columns:
             sql_result = sql_result.sort_values(sort_columns)
@@ -346,9 +346,7 @@ def assert_query_gives_same_result(engine):
         sql_result = sql_result.reset_index(drop=True)
         dask_result = dask_result.reset_index(drop=True)
 
-        dask_result = dask_result.astype(sql_result.dtypes.to_dict())
-
-        assert_eq(sql_result, dask_result, **kwargs)
+        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
 
     return _assert_query_gives_same_result
 
