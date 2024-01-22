@@ -52,7 +52,7 @@ dev = [
     "mock>=4.0.3",
     "sphinx>=3.2.1",
     "pyarrow>=6.0.2",
-    "scikit-learn>=1.0.0",
+    "scikit-learn>=1.0,<1.4",
     "intake>=0.6.0",
     "pre-commit",
     "black==22.10.0",
