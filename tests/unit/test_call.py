@@ -51,7 +51,12 @@ def test_case():
 def test_is_true():
     op = call.IsTrueOperation()
 
-    assert_eq(op(df1.a > 2), pd.Series([False, False, True]), check_names=False, check_dtype=False)
+    assert_eq(
+        op(df1.a > 2),
+        pd.Series([False, False, True]),
+        check_names=False,
+        check_dtype=False,
+    )
     assert_eq(
         op(df3.a),
         pd.Series([True, False, False]),
@@ -69,7 +74,12 @@ def test_is_true():
 def test_is_false():
     op = call.IsFalseOperation()
 
-    assert_eq(op(df1.a > 2), pd.Series([True, True, False]), check_names=False, check_dtype=False)
+    assert_eq(
+        op(df1.a > 2),
+        pd.Series([True, True, False]),
+        check_names=False,
+        check_dtype=False,
+    )
     assert_eq(
         op(df3.a),
         pd.Series([False, False, True]),

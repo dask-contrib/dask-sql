@@ -341,7 +341,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         # TODO: That is a bit of a hack. We should really use the real column dtype
         meta = df._meta.assign(**{col: 0.0 for col in newly_created_columns})
 
-        df = df.groupby(group_columns, dropna=False)[df.columns.tolist()].apply(filled_map, meta=meta)
+        df = df.groupby(group_columns, dropna=False)[df.columns.tolist()].apply(
+            filled_map, meta=meta
+        )
         logger.debug(
             f"Having created a dataframe {LoggableDataFrame(df)} after windowing. Will now drop {temporary_columns}."
         )

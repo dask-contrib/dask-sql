@@ -19,7 +19,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq, normalize_dask_result
+from tests.utils import assert_eq
 
 
 def eq_sqlite(sql, **dfs):
@@ -33,7 +33,9 @@ def eq_sqlite(sql, **dfs):
     dask_result = c.sql(sql).map_partitions(pd.DataFrame.convert_dtypes)
     sqlite_result = pd.read_sql(sql, engine).convert_dtypes()
 
-    datetime_cols = dask_result.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
+    datetime_cols = dask_result.select_dtypes(
+        include=["datetime64[ns]"]
+    ).columns.tolist()
     for col in datetime_cols:
         sqlite_result[col] = sqlite_result[col].astype("datetime64[ns]")
 
