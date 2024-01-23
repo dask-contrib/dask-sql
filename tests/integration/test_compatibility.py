@@ -37,7 +37,7 @@ def eq_sqlite(sql, **dfs):
         include=["datetime64[ns]"]
     ).columns.tolist()
     for col in datetime_cols:
-        sqlite_result[col] = sqlite_result[col].astype("datetime64[ns]")
+        sqlite_result[col] = pd.to_datetime(sqlite_result[col])
 
     assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=False)
 
