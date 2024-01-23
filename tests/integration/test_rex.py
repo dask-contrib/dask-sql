@@ -426,6 +426,7 @@ def test_coalesce(c, gpu):
             "c6": [2.0],
         }
     )
+    expected_df["c2"] = expected_df["c2"].astype("Int8")
 
     assert_eq(df, expected_df, check_dtype=False)
 
