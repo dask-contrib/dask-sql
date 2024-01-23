@@ -463,7 +463,6 @@ def test_join_reorder(c):
         SELECT a1, b2, c3
         FROM a, b, c
         WHERE b1 < 3 AND c3 < 5 AND a1 = b1 AND b2 = c2
-        LIMIT 10
     """
 
     explain_string = c.explain(query)
@@ -491,15 +490,20 @@ def test_join_reorder(c):
     assert explain_string.index(second_join) < explain_string.index(first_join)
 
     result_df = c.sql(query)
-    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4] * 10})
-    assert_eq(result_df, expected_df)
+    merged_df = df.merge(df2, left_on="a1", right_on="b1").merge(
+        df3, left_on="b2", right_on="c2"
+    )
+    expected_df = merged_df[(merged_df["b1"] < 3) & (merged_df["c3"] < 5)][
+        ["a1", "b2", "c3"]
+    ]
+
+    assert_eq(result_df, expected_df, check_index=False)
 
     # By default, join reordering should NOT reorder unfiltered dimension tables
     query = """
         SELECT a1, b2, c3
         FROM a, b, c
         WHERE a1 = b1 AND b2 = c2
-        LIMIT 10
     """
 
     explain_string = c.explain(query)
@@ -510,8 +514,11 @@ def test_join_reorder(c):
     assert explain_string.index(second_join) < explain_string.index(first_join)
 
     result_df = c.sql(query)
-    expected_df = pd.DataFrame({"a1": [1] * 10, "b2": [2] * 10, "c3": [4, 5] * 5})
-    assert_eq(result_df, expected_df)
+    expected_df = df.merge(df2, left_on="a1", right_on="b1").merge(
+        df3, left_on="b2", right_on="c2"
+    )[["a1", "b2", "c3"]]
+
+    assert_eq(result_df, expected_df, check_index=False)
 
 
 @pytest.mark.xfail(
