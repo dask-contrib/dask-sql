@@ -794,11 +794,11 @@ class CeilFloorOperation(PredicateBasedOperation):
 
         unit_map = {
             "DAY": "D",
-            "HOUR": "H",
-            "MINUTE": "T",
-            "SECOND": "S",
+            "HOUR": "h",
+            "MINUTE": "min",
+            "SECOND": "s",
             "MICROSECOND": "U",
-            "MILLISECOND": "L",
+            "MILLISECOND": "ms",
         }
 
         try:
