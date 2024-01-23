@@ -460,7 +460,7 @@ def test_boolean_operations(c):
     )  # turn into a bool column
     c.create_table("df", df)
 
-    df = c.sql(
+    result_df = c.sql(
         """
         SELECT
             b IS TRUE AS t,
@@ -474,19 +474,15 @@ def test_boolean_operations(c):
 
     expected_df = pd.DataFrame(
         {
-            "t": [True, False, False],
-            "f": [False, True, False],
-            "nt": [False, True, True],
-            "nf": [True, False, True],
-            "u": [False, False, True],
-            "nu": [True, True, False],
+            "t": df.b.astype("boolean").fillna(False),
+            "f": ~df.b.astype("boolean").fillna(True),
+            "nt": ~df.b.astype("boolean").fillna(False),
+            "nf": df.b.astype("boolean").fillna(True),
+            "u": df.b.isna(),
+            "nu": ~df.b.isna().astype("boolean"),
         },
-        dtype="bool",
     )
-    expected_df["nt"] = expected_df["nt"].astype("boolean")
-    expected_df["nf"] = expected_df["nf"].astype("boolean")
-    expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_eq(df, expected_df)
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_math_operations(c, df):

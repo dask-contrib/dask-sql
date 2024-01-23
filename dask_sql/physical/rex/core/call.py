@@ -311,7 +311,7 @@ class IsFalseOperation(Operation):
         Returns false on nan.
         """
         if is_frame(df):
-            return ~df.fillna(True)
+            return ~df.astype("boolean").fillna(True)
 
         return not pd.isna(df) and df is not None and not np.isnan(df) and not bool(df)
 
@@ -331,7 +331,7 @@ class IsTrueOperation(Operation):
         Returns false on nan.
         """
         if is_frame(df):
-            return df.fillna(False)
+            return df.astype("boolean").fillna(False)
 
         return not pd.isna(df) and df is not None and not np.isnan(df) and bool(df)
 
