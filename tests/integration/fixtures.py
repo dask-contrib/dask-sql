@@ -8,7 +8,7 @@ import pytest
 from dask.datasets import timeseries as dd_timeseries
 from dask.distributed import Client
 
-from tests.utils import assert_eq, normalize_dask_result
+from tests.utils import assert_eq
 
 try:
     import cudf
@@ -329,31 +329,18 @@ def assert_query_gives_same_result(engine):
 
     def _assert_query_gives_same_result(query, sort_columns=None, **kwargs):
         sql_result = pd.read_sql_query(query, engine)
-        dask_result = c.sql(query).compute()
+        dask_result = c.sql(query)
 
         # allow that the names are different
         # as expressions are handled differently
         dask_result.columns = sql_result.columns
 
-        # replace all pd.NA scalars, which are resistent to
-        # check_dype=False and .astype()
-        dask_result = dask_result.replace({pd.NA: None})
+        sql_result = sql_result.convert_dtypes()
+        dask_result = dask_result.map_partitions(pd.DataFrame.convert_dtypes)
 
-        if sort_columns:
-            sql_result = sql_result.sort_values(sort_columns)
-            dask_result = dask_result.sort_values(sort_columns)
-
-        sql_result = sql_result.reset_index(drop=True)
-        dask_result = dask_result.reset_index(drop=True)
-
-        # normalize result for sqlite
-        dask_result = normalize_dask_result(dask_result)
-
-        # Make sure SQL and Dask use the same "NULL" value
-        dask_result = dask_result.fillna(np.NaN)
-        sql_result = sql_result.fillna(np.NaN)
-
-        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
+        assert_eq(
+            sql_result, dask_result, check_dtype=False, check_index=False, **kwargs
+        )
 
     return _assert_query_gives_same_result
 
