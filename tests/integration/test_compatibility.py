@@ -22,7 +22,7 @@ from dask_sql.utils import ParsingException
 from tests.utils import assert_eq, normalize_dask_result
 
 
-def eq_sqlite(sql, check_index=True, **dfs):
+def eq_sqlite(sql, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
 
@@ -30,17 +30,14 @@ def eq_sqlite(sql, check_index=True, **dfs):
         c.create_table(name, df)
         df.to_sql(name, engine, index=False)
 
-    dask_result = c.sql(sql).reset_index(drop=True)
-    sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
+    dask_result = c.sql(sql).map_partitions(pd.DataFrame.convert_dtypes)
+    sqlite_result = pd.read_sql(sql, engine).convert_dtypes()
 
-    # normalize result for sqlite
-    dask_result = normalize_dask_result(dask_result)
+    datetime_cols = dask_result.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
+    for col in datetime_cols:
+        sqlite_result[col] = sqlite_result[col].astype("datetime64[ns]")
 
-    # Make sure SQL and Dask use the same "NULL" value
-    dask_result = dask_result.fillna(np.NaN)
-    sqlite_result = sqlite_result.fillna(np.NaN)
-
-    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=check_index)
+    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=False)
 
 
 def make_rand_df(size: int, **kwargs):
@@ -940,7 +937,6 @@ def test_union():
             UNION ALL SELECT * FROM c
         ORDER BY b NULLS FIRST, c NULLS FIRST
         """,
-        check_index=False,
         a=a,
         b=b,
         c=c,
