@@ -40,7 +40,7 @@ dependencies:
 - tzlocal>=2.1
 - uvicorn>=0.13.4
 # GPU-specific requirements
-- cudatoolkit=11.5
+- cudatoolkit=11.8
 - cudf=24.02
 - cuml=24.02
 - dask-cudf=24.02
