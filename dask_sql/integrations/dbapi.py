@@ -13,9 +13,9 @@ import re
 from decimal import Decimal
 
 from pyhive import common
-from pyhive.exc import *  # noqa : F403
 
 from dask_sql import Context
+from dask_sql.utils import ParsingException
 
 # PEP 249 module globals
 apilevel = "2.0"
@@ -25,6 +25,46 @@ paramstyle = "pyformat"  # Python extended format codes, e.g. ...WHERE name=%(na
 _logger = logging.getLogger(__name__)
 
 _TIMESTAMP_PATTERN = re.compile(r"(\d+-\d+-\d+ \d+:\d+:\d+(\.\d{,6})?)")
+
+
+class Error(Exception):
+    pass
+
+
+class Warning(Exception):
+    pass
+
+
+class InterfaceError(Error):
+    pass
+
+
+class DatabaseError(Error):
+    pass
+
+
+class InternalError(DatabaseError):
+    pass
+
+
+class OperationalError(DatabaseError):
+    pass
+
+
+class ProgrammingError(DatabaseError):
+    pass
+
+
+class IntegrityError(DatabaseError):
+    pass
+
+
+class DataError(DatabaseError):
+    pass
+
+
+class NotSupportedError(DatabaseError):
+    pass
 
 
 def _parse_timestamp(value):
@@ -212,7 +252,11 @@ class Cursor(object):
         else:
             sql = operation % _escaper.escape_args(parameters)
 
-        self._last_result = self._connection._context.sql(sql, **kwargs)
+        try:
+            self._last_result = self._connection._context.sql(sql, **kwargs)
+        except ParsingException:
+            raise ProgrammingError("Could not execute query: {}".format(sql))
+
         self._row_number = None if self._last_result is None else 0
 
     def executemany(self, operation, seq_of_parameters, **kwargs):
@@ -238,7 +282,13 @@ class Cursor(object):
         if self._last_result is None:
             raise IndexError("No result set")
         else:
-            res = self._last_result.compute().iloc[self._row_number].values.tolist()
+            try:
+                # might want to persist here to avoid repeated computation
+                # or keep track of length of result set
+                res = self._last_result.compute().iloc[self._row_number].values.tolist()
+            except IndexError:
+                # should we do something else here?
+                return None
             self._row_number += 1
             return res
 
