@@ -1,12 +1,16 @@
 import os
+import sys
 from unittest import mock
 
+import dask.dataframe as dd
+import pandas as pd
 import pytest
 import yaml
 from dask import config as dask_config
 
 # Required to instantiate default sql config
 import dask_sql  # noqa: F401
+from dask_sql import Context
 
 
 def test_custom_yaml(tmpdir):
@@ -96,3 +100,56 @@ def test_dask_setconfig():
         assert dask_config.get("sql.foo") == {"bar": 1, "baz": "2"}
     assert dask_config.get("sql.foo") == {"bar": 1}
     dask_config.refresh()
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 10),
+    reason="Writing and reading the Dask DataFrame causes a ProtocolError",
+)
+def test_dynamic_partition_pruning(tmpdir):
+    c = Context()
+
+    df1 = pd.DataFrame(
+        {
+            "x": [1, 2, 3],
+            "z": [7, 8, 9],
+        },
+    )
+    dd.from_pandas(df1, npartitions=3).to_parquet(os.path.join(tmpdir, "df1"))
+    df1 = dd.read_parquet(os.path.join(tmpdir, "df1"))
+    c.create_table("df1", df1)
+
+    df2 = pd.DataFrame(
+        {
+            "x": [1, 2, 3] * 1000,
+            "y": [4, 5, 6] * 1000,
+        },
+    )
+    dd.from_pandas(df2, npartitions=3).to_parquet(os.path.join(tmpdir, "df2"))
+    df2 = dd.read_parquet(os.path.join(tmpdir, "df2"))
+    c.create_table("df2", df2)
+
+    query = "SELECT * FROM df1, df2 WHERE df1.x = df2.x AND df1.z=7"
+    inlist_expr = "df2.x IN ([Int64(1)])"
+
+    # Default value is False
+    dask_config.set({"sql.optimizer.verbose": True})
+
+    # When DPP is turned off, the explain output will not contain the INLIST expression
+    dask_config.set({"sql.dynamic_partition_pruning": False})
+    explain_string = c.explain(query)
+    assert inlist_expr not in explain_string
+
+    # When DPP is turned on but sql.optimizer.verbose is off, the explain output will not contain the
+    # INLIST expression
+    dask_config.set({"sql.dynamic_partition_pruning": True})
+    dask_config.set({"sql.optimizer.verbose": False})
+    explain_string = c.explain(query)
+    assert inlist_expr not in explain_string
+
+    # When both DPP and sql.optimizer.verbose are turned on, the explain output will contain the INLIST
+    # expression
+    dask_config.set({"sql.dynamic_partition_pruning": True})
+    dask_config.set({"sql.optimizer.verbose": True})
+    explain_string = c.explain(query)
+    assert inlist_expr in explain_string
