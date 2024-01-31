@@ -18,7 +18,7 @@ dependencies:
 - pre-commit
 - prompt_toolkit>=3.0.8
 - psycopg2
-- pyarrow>=6.0.2
+- pyarrow>=7.0
 - pygments>=2.7.1
 - pyhive
 - pytest-cov
@@ -33,5 +33,5 @@ dependencies:
 # FIXME: https://github.com/fugue-project/fugue/issues/526
 - triad<0.9.2
 - tzlocal>=2.1
-- uvicorn>=0.13.4
+- uvicorn>=0.14
 - zlib

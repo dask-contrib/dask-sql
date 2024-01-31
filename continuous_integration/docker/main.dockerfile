@@ -20,13 +20,13 @@ RUN mamba install -y \
     "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
     "httpx>=0.24.1" \
-    "uvicorn>=0.13.4" \
+    "uvicorn>=0.14" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.2" \
+    "pyarrow>=7.0" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay

@@ -36,7 +36,7 @@ requirements:
     - pandas >=1.4.0
     - fastapi >=0.92.0
     - httpx >=0.24.1
-    - uvicorn >=0.13.4
+    - uvicorn >=0.14
     - tzlocal >=2.1
     - prompt-toolkit >=3.0.8
     - pygments >=2.7.1
