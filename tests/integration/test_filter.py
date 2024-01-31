@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
 from tests.utils import assert_eq
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
@@ -182,10 +181,6 @@ def test_filter_year(c):
             "SELECT * FROM parquet_ddf WHERE b NOT IN (1, 3, 5, 6)",
             lambda x: x[~x["b"].isin([1, 3, 5, 6])],
             [[("b", "not in", (1, 3, 5, 6))]],
-            marks=pytest.mark.skipif(
-                not PQ_NOT_IN_SUPPORT,
-                reason="Requires https://github.com/dask/dask/pull/10320",
-            ),
         ),
         (
             "SELECT a FROM parquet_ddf WHERE (b > 5 AND b < 10) OR a = 1",
@@ -317,10 +312,6 @@ def test_filter_decimal(c, gpu):
     c.drop_table("df")
 
 
-@pytest.mark.skipif(
-    not PQ_IS_SUPPORT,
-    reason="Requires https://github.com/dask/dask/pull/10320",
-)
 def test_predicate_pushdown_isna(tmpdir):
     from dask_sql.context import Context
 

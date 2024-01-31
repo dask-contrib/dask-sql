@@ -1051,11 +1051,6 @@ def test_totimestamp(c, gpu):
             True,
             marks=(
                 pytest.mark.gpu,
-                pytest.mark.xfail(
-                    not DASK_CUDF_TODATETIME_SUPPORT,
-                    reason="Requires https://github.com/dask/dask/pull/9881",
-                    raises=RuntimeError,
-                ),
             ),
         ),
     ],
@@ -1115,11 +1110,6 @@ def test_extract_date(c, gpu):
             True,
             marks=(
                 pytest.mark.gpu,
-                pytest.mark.xfail(
-                    not DASK_CUDF_TODATETIME_SUPPORT,
-                    reason="Requires https://github.com/dask/dask/pull/9881",
-                    raises=RuntimeError,
-                ),
             ),
         ),
     ],
