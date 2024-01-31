@@ -6,7 +6,7 @@ dependencies:
   - sphinx>=4.0.0
   - sphinx-tabs
   - dask-sphinx-theme>=2.0.3
-  - dask>=2022.3.0,<=2024.1.1
+  - dask>=2022.3.0
   - pandas>=1.4.0
   - fugue>=0.7.3
   # FIXME: https://github.com/fugue-project/fugue/issues/526
