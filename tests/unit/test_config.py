@@ -153,3 +153,38 @@ def test_dynamic_partition_pruning(tmpdir):
     dask_config.set({"sql.optimizer.verbose": True})
     explain_string = c.explain(query)
     assert inlist_expr in explain_string
+
+
+def test_dpp_single_file_parquet(tmpdir):
+    c = Context()
+
+    dask_config.set({"sql.dynamic_partition_pruning": True})
+    dask_config.set({"sql.optimizer.verbose": True})
+
+    df1 = pd.DataFrame(
+        {
+            "x": [1, 2, 3],
+            "z": [7, 8, 9],
+        },
+    )
+    dd.from_pandas(df1, npartitions=1).to_parquet(
+        os.path.join(tmpdir, "df1_single_file")
+    )
+    df1 = dd.read_parquet(os.path.join(tmpdir, "df1_single_file/part.0.parquet"))
+    c.create_table("df1", df1)
+
+    df2 = pd.DataFrame(
+        {
+            "x": [1, 2, 3] * 1000,
+            "y": [4, 5, 6] * 1000,
+        },
+    )
+    dd.from_pandas(df2, npartitions=3).to_parquet(os.path.join(tmpdir, "df2"))
+    df2 = dd.read_parquet(os.path.join(tmpdir, "df2"))
+    c.create_table("df2", df2)
+
+    query = "SELECT * FROM df1, df2 WHERE df1.x = df2.x AND df1.z=7"
+    inlist_expr = "df2.x IN ([Int64(1)])"
+
+    explain_string = c.explain(query)
+    assert inlist_expr in explain_string
