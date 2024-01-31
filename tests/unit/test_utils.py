@@ -3,7 +3,6 @@ import pytest
 from dask import dataframe as dd
 from dask.utils_test import hlg_layer
 
-from dask_sql._compat import PQ_IS_SUPPORT
 from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 from dask_sql.utils import Pluggable, is_frame
 

@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT
 from tests.utils import assert_eq
 
 
@@ -1049,9 +1048,7 @@ def test_totimestamp(c, gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-            ),
+            marks=(pytest.mark.gpu,),
         ),
     ],
 )
@@ -1108,9 +1105,7 @@ def test_extract_date(c, gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-            ),
+            marks=(pytest.mark.gpu,),
         ),
     ],
 )
