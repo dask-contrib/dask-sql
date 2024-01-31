@@ -158,6 +158,9 @@ def test_dynamic_partition_pruning(tmpdir):
 def test_dpp_single_file_parquet(tmpdir):
     c = Context()
 
+    dask_config.set({"sql.dynamic_partition_pruning": True})
+    dask_config.set({"sql.optimizer.verbose": True})
+
     df1 = pd.DataFrame(
         {
             "x": [1, 2, 3],
