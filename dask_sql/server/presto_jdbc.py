@@ -25,7 +25,7 @@ def create_meta_data(c: Context):
     """
 
     if c is None:
-        logger.warn("Context None: jdbc meta data not created")
+        logger.warning("Context None: jdbc meta data not created")
         return
     catalog = ""
     system_schema = "system_jdbc"
