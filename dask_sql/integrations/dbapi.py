@@ -124,13 +124,6 @@ class Connection(object):
 
     def __init__(
         self,
-        host,
-        port,
-        database,
-        username,
-        password,
-        auth=None,
-        configuration=None,
     ):
         self._context = Context()
 
@@ -326,6 +319,6 @@ class Cursor(object):
         if self._last_result is None:
             raise IndexError("No result set")
         else:
-            res = self._last_result.iloc[self._row_number :].compute().values.tolist()
+            res = self._last_result.compute().iloc[self._row_number :].values.tolist()
             self._row_number = len(res)
             return res
