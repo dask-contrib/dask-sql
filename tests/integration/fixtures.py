@@ -333,7 +333,7 @@ def assert_query_gives_same_result(engine):
 
         # allow that the names are different
         # as expressions are handled differently
-        dask_result.columns = sql_result.columns
+        sql_result.columns = dask_result.columns
 
         sql_result = sql_result.convert_dtypes()
         dask_result = dask_result.convert_dtypes()
