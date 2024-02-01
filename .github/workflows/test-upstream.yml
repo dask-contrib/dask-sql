@@ -1,35 +1,13 @@
 name: Nightly upstream testing
 on:
   schedule:
-    - cron: "0 0 * * *" # Daily “At 00:00” UTC for upstream dask testing
-    - cron: "0 3 * * *" # Daily "At 03:00" UTC for upstream datafusion testing
+    - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
-    inputs:
-      which_upstream:
-        type: choice
-        description: 'Library to update for upstream testing'
-        required: false
-        default: 'Dask'
-        options:
-          - Dask
-          - DataFusion
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
     shell: bash -l {0}
-
-env:
-  which_upstream: >-
-    ${{
-      github.event_name == 'workflow_dispatch'
-      && inputs.which_upstream
-      || (
-        github.event.schedule == '0 0 * * *'
-        && 'Dask'
-        || 'DataFusion'
-      )
-    }}
 
 jobs:
   test-dev:
@@ -65,10 +43,6 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        run: |
-          bash continuous_integration/scripts/update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           maturin develop
@@ -78,7 +52,6 @@ jobs:
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
       - name: Install pytest-reportlog
@@ -110,12 +83,6 @@ jobs:
           use-mamba: true
           python-version: "3.9"
           channel-priority: strict
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        env:
-          UPDATE_ALL_CARGO_DEPS: false
-        run: |
-          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           pip install -e . -vv
@@ -124,7 +91,6 @@ jobs:
           pip list
           mamba list
       - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
         run: |
           python -m pip install git+https://github.com/dask/dask
           python -m pip install git+https://github.com/dask/distributed
@@ -154,12 +120,9 @@ jobs:
           else
               touch results.jsonl
           fi
-
-          # convert which_upstream to lowercase
-          echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
       - name: Open or update issue on failure
         uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
           log-path: results.jsonl
-          issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
-          issue-label: upstream-${{ env.which_upstream_lower }}
+          issue-title: ⚠️ Upstream CI failed ⚠️
+          issue-label: upstream
