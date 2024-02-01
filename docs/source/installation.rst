@@ -35,7 +35,7 @@ More details can be found on the `RAPIDS Getting Started <https://rapids.ai/star
 .. code-block:: bash
 
     conda create --name rapids-env -c rapidsai-nightly -c nvidia -c conda-forge \
-        cudf=22.10 dask-cudf=22.10 ucx-py ucx-proc=*=gpu python=3.9 cudatoolkit=11.5
+        cudf=22.10 dask-cudf=22.10 ucx-py ucx-proc=*=gpu python=3.9 cudatoolkit=11.8
     conda activate rapids-env
 
 Note that using UCX is mainly necessary if you have an Infiniband or NVLink enabled system.
