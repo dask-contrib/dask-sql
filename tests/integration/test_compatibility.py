@@ -19,7 +19,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq
+from tests.utils import assert_eq, convert_nullable_columns
 
 
 def eq_sqlite(sql, **dfs):
@@ -30,14 +30,19 @@ def eq_sqlite(sql, **dfs):
         c.create_table(name, df)
         df.to_sql(name, engine, index=False)
 
-    dask_result = c.sql(sql).map_partitions(pd.DataFrame.convert_dtypes)
+    dask_result = c.sql(sql).compute().convert_dtypes()
     sqlite_result = pd.read_sql(sql, engine).convert_dtypes()
+
+    convert_nullable_columns(dask_result)
+    convert_nullable_columns(sqlite_result)
 
     datetime_cols = dask_result.select_dtypes(
         include=["datetime64[ns]"]
     ).columns.tolist()
     for col in datetime_cols:
         sqlite_result[col] = pd.to_datetime(sqlite_result[col])
+
+    sqlite_result = sqlite_result.astype(dask_result.dtypes)
 
     assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=False)
 
