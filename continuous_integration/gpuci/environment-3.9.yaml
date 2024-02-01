@@ -2,6 +2,7 @@ name: dask-sql
 channels:
 - rapidsai
 - rapidsai-nightly
+- dask/label/dev
 - conda-forge
 - nvidia
 - nodefaults
@@ -40,7 +41,7 @@ dependencies:
 - tzlocal>=2.1
 - uvicorn>=0.13.4
 # GPU-specific requirements
-- cudatoolkit=11.5
+- cudatoolkit=11.8
 - cudf=24.02
 - cuml=24.02
 - dask-cudf=24.02
@@ -49,7 +50,3 @@ dependencies:
 - ucx-py=0.36
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
-- pip
-- pip:
-    - git+https://github.com/dask/dask
-    - git+https://github.com/dask/distributed

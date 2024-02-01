@@ -8,7 +8,7 @@ import pytest
 from dask.datasets import timeseries as dd_timeseries
 from dask.distributed import Client
 
-from tests.utils import assert_eq
+from tests.utils import assert_eq, convert_nullable_columns
 
 try:
     import cudf
@@ -333,20 +333,17 @@ def assert_query_gives_same_result(engine):
 
         # allow that the names are different
         # as expressions are handled differently
-        dask_result.columns = sql_result.columns
+        sql_result.columns = dask_result.columns
 
-        # replace all pd.NA scalars, which are resistent to
-        # check_dype=False and .astype()
-        dask_result = dask_result.replace({pd.NA: None})
+        sql_result = sql_result.convert_dtypes()
+        dask_result = dask_result.convert_dtypes()
 
-        if sort_columns:
-            sql_result = sql_result.sort_values(sort_columns)
-            dask_result = dask_result.sort_values(sort_columns)
+        convert_nullable_columns(sql_result)
+        convert_nullable_columns(dask_result)
 
-        sql_result = sql_result.reset_index(drop=True)
-        dask_result = dask_result.reset_index(drop=True)
-
-        assert_eq(sql_result, dask_result, check_dtype=False, **kwargs)
+        assert_eq(
+            sql_result, dask_result, check_dtype=False, check_index=False, **kwargs
+        )
 
     return _assert_query_gives_same_result
 

@@ -92,3 +92,18 @@ locked = true
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+markers = [
+    "gpu: marks tests that require GPUs (skipped by default, run with --rungpu)",
+    "queries: marks tests that run test queries (skipped by default, run with --runqueries)",
+]
+addopts = "-v -rsxfE --color=yes --cov dask_sql --cov-config=.coveragerc --cov-report=term-missing"
+filterwarnings = [
+    "error:::dask_sql[.*]",
+    "error:::dask[.*]",
+    "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
+    "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
+    "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",
+]
+xfail_strict = true

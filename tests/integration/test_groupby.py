@@ -171,7 +171,7 @@ def test_group_by_case(c):
     )
 
 
-def test_group_by_nan(c):
+def test_group_by_nan(c, user_table_nan):
     return_df = c.sql(
         """
     SELECT
@@ -180,7 +180,7 @@ def test_group_by_nan(c):
     GROUP BY c
     """
     )
-    expected_df = pd.DataFrame({"c": [3, float("nan"), 1]})
+    expected_df = user_table_nan.drop_duplicates(subset=["c"])
 
     # we return nullable int dtype instead of float
     assert_eq(return_df, expected_df, check_dtype=False)

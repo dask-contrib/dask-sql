@@ -19,22 +19,10 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq
+from tests.utils import assert_eq, convert_nullable_columns
 
 
-def cast_datetime_to_string(df):
-    cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
-
-    if not cols:
-        return df
-
-    for col in cols:
-        df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    return df
-
-
-def eq_sqlite(sql, check_index=True, **dfs):
+def eq_sqlite(sql, **dfs):
     c = Context()
     engine = sqlite3.connect(":memory:")
 
@@ -42,18 +30,21 @@ def eq_sqlite(sql, check_index=True, **dfs):
         c.create_table(name, df)
         df.to_sql(name, engine, index=False)
 
-    dask_result = c.sql(sql).reset_index(drop=True)
-    sqlite_result = pd.read_sql(sql, engine).reset_index(drop=True)
+    dask_result = c.sql(sql).compute().convert_dtypes()
+    sqlite_result = pd.read_sql(sql, engine).convert_dtypes()
 
-    # casting to object to ensure equality with sql-lite
-    # which returns object dtype for datetime inputs
-    dask_result = cast_datetime_to_string(dask_result)
+    convert_nullable_columns(dask_result)
+    convert_nullable_columns(sqlite_result)
 
-    # Make sure SQL and Dask use the same "NULL" value
-    dask_result = dask_result.fillna(np.NaN)
-    sqlite_result = sqlite_result.fillna(np.NaN)
+    datetime_cols = dask_result.select_dtypes(
+        include=["datetime64[ns]"]
+    ).columns.tolist()
+    for col in datetime_cols:
+        sqlite_result[col] = pd.to_datetime(sqlite_result[col])
 
-    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=check_index)
+    sqlite_result = sqlite_result.astype(dask_result.dtypes)
+
+    assert_eq(dask_result, sqlite_result, check_dtype=False, check_index=False)
 
 
 def make_rand_df(size: int, **kwargs):
@@ -953,7 +944,6 @@ def test_union():
             UNION ALL SELECT * FROM c
         ORDER BY b NULLS FIRST, c NULLS FIRST
         """,
-        check_index=False,
         a=a,
         b=b,
         c=c,
