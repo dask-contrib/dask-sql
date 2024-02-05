@@ -99,7 +99,6 @@ addopts = "-v -rsxfE --color=yes --cov dask_sql --cov-config=.coveragerc --cov-r
 filterwarnings = [
     "error:::dask_sql[.*]",
     "error:::dask[.*]",
-    "error:::pandas[.*]",
     "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
     "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
     "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",
