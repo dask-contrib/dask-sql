@@ -51,7 +51,7 @@ dev = [
     "pytest-cov>=2.10.1",
     "mock>=4.0.3",
     "sphinx>=3.2.1",
-    "pyarrow>=6.0.2",
+    "pyarrow>=14.0.1",
     "scikit-learn>=1.0.0",
     "intake>=0.6.0",
     "pre-commit",
@@ -99,6 +99,7 @@ addopts = "-v -rsxfE --color=yes --cov dask_sql --cov-config=.coveragerc --cov-r
 filterwarnings = [
     "error:::dask_sql[.*]",
     "error:::dask[.*]",
+    "error:::pandas[.*]",
     "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
     "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
     "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",

@@ -26,7 +26,7 @@ RUN mamba install -y \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.2" \
+    "pyarrow>=14.0.1" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
