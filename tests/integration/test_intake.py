@@ -29,7 +29,7 @@ def intake_catalog_location():
         args:
             urlpath: "{{ CATALOG_DIR }}/data.csv"
         description: "Some Data"
-        driver: csv
+        driver: intake.source.csv.CSVSource
         """
         )
 
