@@ -74,6 +74,9 @@ jobs:
   import-dev:
     name: "Test importing with bare requirements and upstream dev"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        query-planning: [true, false]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -94,7 +97,12 @@ jobs:
         run: |
           python -m pip install git+https://github.com/dask/dask
           python -m pip install git+https://github.com/dask/distributed
+      - name: Install upstream dev dask-expr
+        if: matrix.query-planning
+        run: |
+          python -m pip install git+https://github.com/dask-contrib/dask-expr
       - name: Try to import dask-sql
+        env: DASK_DATAFRAME_QUERY_PLANNING=${{ matrix.query-planning }}
         run: |
           python -c "import dask_sql; print('ok')"
 
