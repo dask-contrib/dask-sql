@@ -20,7 +20,7 @@ except ImportError:
 
 sklearn = pytest.importorskip("sklearn")
 
-SKLEARN_GT_130 = parseVersion(sklearn.__version__) >= parseVersion("1.4")
+SKLEARN_EQ_140 = parseVersion(sklearn.__version__) == parseVersion("1.4.0")
 
 
 def check_trained_model(c, model_name="my_model", df_name="timeseries"):
@@ -909,7 +909,9 @@ def test_ml_experiment(c, client):
         )
 
 
-@pytest.mark.xfail(reason="tpot is broken with sklearn>=1.4", condition=SKLEARN_GT_130)
+@pytest.mark.xfail(
+    reason="tpot is broken with sklearn==1.4.0", condition=SKLEARN_EQ_140
+)
 def test_experiment_automl_classifier(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 
@@ -934,7 +936,9 @@ def test_experiment_automl_classifier(c, client):
     check_trained_model(c, "my_automl_exp1")
 
 
-@pytest.mark.xfail(reason="tpot is broken with sklearn>=1.4", condition=SKLEARN_GT_130)
+@pytest.mark.xfail(
+    reason="tpot is broken with sklearn==1.4.0", condition=SKLEARN_EQ_140
+)
 def test_experiment_automl_regressor(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 
