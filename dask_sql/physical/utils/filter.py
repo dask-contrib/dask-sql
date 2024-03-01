@@ -11,8 +11,6 @@ from dask.highlevelgraph import HighLevelGraph, MaterializedLayer
 from dask.layers import DataFrameIOLayer
 from dask.utils import M, apply, is_arraylike
 
-from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
-
 logger = logging.getLogger(__name__)
 
 
@@ -501,8 +499,6 @@ def _get_blockwise_input(input_index, indices: list, dsk: RegenerableGraph):
 
 
 def _inv(symbol: str):
-    if symbol == "in" and not PQ_NOT_IN_SUPPORT:
-        raise ValueError("This version of dask does not support 'not in'")
     return {
         ">": "<",
         "<": ">",
@@ -568,8 +564,6 @@ def _blockwise_isin_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
 
 def _blockwise_isna_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for `isna`
-    if not PQ_IS_SUPPORT:
-        raise ValueError("This version of dask does not support 'is' predicates.")
     left = _get_blockwise_input(0, indices, dsk)
     return DNF((left, "is", None))
 

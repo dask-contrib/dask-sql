@@ -3,7 +3,6 @@ import pytest
 from dask import dataframe as dd
 from dask.utils_test import hlg_layer
 
-from dask_sql._compat import PQ_IS_SUPPORT, PQ_NOT_IN_SUPPORT
 from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 from dask_sql.utils import Pluggable, is_frame
 
@@ -84,10 +83,6 @@ def test_predicate_pushdown_logical(parquet_ddf):
     assert got_filters == expected_filters
 
 
-@pytest.mark.skipif(
-    not PQ_NOT_IN_SUPPORT,
-    reason="Requires https://github.com/dask/dask/pull/10320",
-)
 def test_predicate_pushdown_in(parquet_ddf):
     filtered_df = parquet_ddf[
         (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2)
@@ -108,10 +103,6 @@ def test_predicate_pushdown_in(parquet_ddf):
     assert got_filters == expected_filters
 
 
-@pytest.mark.skipif(
-    not PQ_IS_SUPPORT,
-    reason="Requires dask>=2023.3.1",
-)
 def test_predicate_pushdown_isna(parquet_ddf):
     filtered_df = parquet_ddf[
         (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2)

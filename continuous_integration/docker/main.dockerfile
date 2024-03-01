@@ -16,11 +16,11 @@ RUN mamba install -y \
     # build requirements
     "maturin>=1.3,<1.4" \
     # core dependencies
-    "dask>=2022.3.0" \
+    "dask==2024.1.1" \
     "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
     "httpx>=0.24.1" \
-    "uvicorn>=0.13.4" \
+    "uvicorn>=0.14" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \

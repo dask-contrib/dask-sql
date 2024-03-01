@@ -5,7 +5,6 @@ import pytest
 from dask.utils_test import hlg_layer
 
 from dask_sql import Context
-from dask_sql._compat import BROADCAST_JOIN_SUPPORT_WORKING
 from dask_sql.datacontainer import Statistics
 from tests.utils import assert_eq
 
@@ -524,10 +523,6 @@ def test_join_reorder(c):
     assert_eq(result_df, expected_df, check_index=False)
 
 
-@pytest.mark.xfail(
-    not BROADCAST_JOIN_SUPPORT_WORKING,
-    reason="Broadcast Joins do not work as expected with dask<2023.1.1",
-)
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_broadcast_join(c, client, gpu):
     df1 = dd.from_pandas(
