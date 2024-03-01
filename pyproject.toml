@@ -51,7 +51,7 @@ dev = [
     "pytest-cov>=2.10.1",
     "mock>=4.0.3",
     "sphinx>=3.2.1",
-    "pyarrow>=7.0",
+    "pyarrow>=14.0.1",
     "scikit-learn>=1.0.0",
     "intake>=0.6.0",
     "pre-commit",
@@ -89,3 +89,18 @@ locked = true
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+markers = [
+    "gpu: marks tests that require GPUs (skipped by default, run with --rungpu)",
+    "queries: marks tests that run test queries (skipped by default, run with --runqueries)",
+]
+addopts = "-v -rsxfE --color=yes --cov dask_sql --cov-config=.coveragerc --cov-report=term-missing"
+filterwarnings = [
+    "error:::dask_sql[.*]",
+    "error:::dask[.*]",
+    "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
+    "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
+    "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",
+]
+xfail_strict = true

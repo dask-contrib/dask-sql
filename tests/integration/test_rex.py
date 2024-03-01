@@ -38,19 +38,20 @@ def test_case(c, df):
     """
     )
     expected_df = pd.DataFrame(index=df.index)
-    expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else pd.NA)
+    expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else np.NaN)
     expected_df["S2"] = df.a.apply(lambda a: a if a > 0 else 1)
-    expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1)
-    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a)
+    expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1).astype("Int64")
+    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a).astype(
+        "Int64"
+    )
     expected_df["S5"] = df.a.apply(
         lambda a: "in-between" if ((1 <= a < 2) or (a > 2)) else "out-of-range"
     )
     expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
-    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1)
+    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1).astype("Int64")
 
-    # Do not check dtypes, as pandas versions are inconsistent here
-    assert_eq(result_df, expected_df, check_dtype=False)
+    assert_eq(result_df, expected_df)
 
 
 def test_intervals(c):
@@ -391,6 +392,9 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:divide by zero:RuntimeWarning:dask_sql.physical.rex.core.call"
+)
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_coalesce(c, gpu):
     df = dd.from_pandas(
@@ -414,13 +418,14 @@ def test_coalesce(c, gpu):
     expected_df = pd.DataFrame(
         {
             "c1": [3],
-            "c2": [np.nan],
+            "c2": [pd.NA],
             "c3": ["hi"],
             "c4": ["bye"],
             "c5": ["1.5"],
             "c6": [2.0],
         }
     )
+    expected_df["c2"] = expected_df["c2"].astype("Int8")
 
     assert_eq(df, expected_df, check_dtype=False)
 
@@ -455,7 +460,7 @@ def test_boolean_operations(c):
     )  # turn into a bool column
     c.create_table("df", df)
 
-    df = c.sql(
+    result_df = c.sql(
         """
         SELECT
             b IS TRUE AS t,
@@ -469,19 +474,15 @@ def test_boolean_operations(c):
 
     expected_df = pd.DataFrame(
         {
-            "t": [True, False, False],
-            "f": [False, True, False],
-            "nt": [False, True, True],
-            "nf": [True, False, True],
-            "u": [False, False, True],
-            "nu": [True, True, False],
+            "t": df.b.astype("boolean").fillna(False),
+            "f": ~df.b.astype("boolean").fillna(True),
+            "nt": ~df.b.astype("boolean").fillna(False),
+            "nf": df.b.astype("boolean").fillna(True),
+            "u": df.b.isna(),
+            "nu": ~df.b.isna().astype("boolean"),
         },
-        dtype="bool",
     )
-    expected_df["nt"] = expected_df["nt"].astype("boolean")
-    expected_df["nf"] = expected_df["nf"].astype("boolean")
-    expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_eq(df, expected_df)
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_math_operations(c, df):

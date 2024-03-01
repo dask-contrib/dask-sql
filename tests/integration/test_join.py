@@ -363,6 +363,9 @@ def test_conditional_join_with_limit(c):
     assert_eq(actual_df, expected_df, check_index=False)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:You are merging on int and float:UserWarning:dask.dataframe.multi"
+)
 def test_intersect(c):
 
     # Join df_simple against itself
