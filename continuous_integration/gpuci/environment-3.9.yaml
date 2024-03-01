@@ -32,6 +32,7 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.9
+- py-xgboost>=1.7.0
 - scikit-learn>=1.0.0
 - sphinx
 - sqlalchemy
