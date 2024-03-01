@@ -32,7 +32,7 @@ requirements:
     - xz  # [linux64]
   run:
     - python
-    - dask >=2023.6.0,<=2024.1.1
+    - dask ==2024.1.1
     - pandas >=1.4.0
     - fastapi >=0.92.0
     - httpx >=0.24.1
