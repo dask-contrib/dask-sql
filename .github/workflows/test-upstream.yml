@@ -35,7 +35,7 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags.
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.3.0
+        uses: conda-incubator/setup-miniconda@v3.0.3
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -77,7 +77,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.3.0
+        uses: conda-incubator/setup-miniconda@v3.0.3
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
