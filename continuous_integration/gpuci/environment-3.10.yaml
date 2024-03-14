@@ -32,7 +32,7 @@ dependencies:
 - pytest-xdist
 - pytest
 - python=3.10
-- py-xgboost>=1.7.0
+- py-xgboost>=2.0.3
 - scikit-learn>=1.0.0
 - sphinx
 - sqlalchemy
