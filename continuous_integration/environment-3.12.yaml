@@ -3,7 +3,7 @@ channels:
 - conda-forge
 dependencies:
 - c-compiler
-- dask==2024.1.1
+- dask>=2024.1.1
 - fastapi>=0.92.0
 - fugue>=0.7.3
 - httpx>=0.24.1
