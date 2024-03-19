@@ -6,7 +6,6 @@ use datafusion_python::{
     datafusion_expr::{
         expr::{
             AggregateFunction,
-            AggregateUDF,
             Alias,
             BinaryExpr,
             Cast,
@@ -14,7 +13,6 @@ use datafusion_python::{
             InList,
             InSubquery,
             ScalarFunction,
-            ScalarUDF,
             Sort,
             TryCast,
             WindowFunction,
@@ -29,6 +27,7 @@ use datafusion_python::{
         Like,
         LogicalPlan,
         Operator,
+        ScalarFunctionDefinition,
     },
     datafusion_sql::TableReference,
 };
@@ -105,10 +104,9 @@ impl PyExpr {
     fn _rex_type(&self, expr: &Expr) -> RexType {
         match expr {
             Expr::Alias(..) => RexType::Alias,
-            Expr::Column(..)
-            | Expr::QualifiedWildcard { .. }
-            | Expr::GetIndexedField { .. }
-            | Expr::Wildcard => RexType::Reference,
+            Expr::Column(..) | Expr::GetIndexedField { .. } | Expr::Wildcard { .. } => {
+                RexType::Reference
+            }
             Expr::ScalarVariable(..) | Expr::Literal(..) => RexType::Literal,
             Expr::BinaryExpr { .. }
             | Expr::Not(..)
@@ -125,9 +123,7 @@ impl PyExpr {
             | Expr::ScalarFunction { .. }
             | Expr::AggregateFunction { .. }
             | Expr::WindowFunction { .. }
-            | Expr::AggregateUDF { .. }
             | Expr::InList { .. }
-            | Expr::ScalarUDF { .. }
             | Expr::Exists { .. }
             | Expr::InSubquery { .. }
             | Expr::GroupingSet(..)
@@ -280,11 +276,8 @@ impl PyExpr {
             | Expr::AggregateFunction { .. }
             | Expr::InList { .. }
             | Expr::InSubquery { .. }
-            | Expr::ScalarUDF { .. }
-            | Expr::AggregateUDF { .. }
             | Expr::Exists { .. }
             | Expr::ScalarSubquery(..)
-            | Expr::QualifiedWildcard { .. }
             | Expr::Not(..)
             | Expr::OuterReferenceColumn(_, _)
             | Expr::GroupingSet(..) => self.expr.variant_name(),
@@ -305,7 +298,7 @@ impl PyExpr {
             | Expr::TryCast { .. }
             | Expr::WindowFunction { .. }
             | Expr::Placeholder { .. }
-            | Expr::Wildcard => {
+            | Expr::Wildcard { .. } => {
                 return Err(py_type_err(format!(
                     "Encountered unsupported expression type: {}",
                     &self.expr.variant_name()
@@ -362,9 +355,7 @@ impl PyExpr {
 
             // Expr variants containing a collection of Expr(s) for operands
             Expr::AggregateFunction(AggregateFunction { args, .. })
-            | Expr::AggregateUDF(AggregateUDF { args, .. })
             | Expr::ScalarFunction(ScalarFunction { args, .. })
-            | Expr::ScalarUDF(ScalarUDF { args, .. })
             | Expr::WindowFunction(WindowFunction { args, .. }) => Ok(args
                 .iter()
                 .map(|arg| PyExpr::from(arg.clone(), self.input_plan.clone()))
@@ -437,7 +428,7 @@ impl PyExpr {
                 PyExpr::from(*low.clone(), self.input_plan.clone()),
                 PyExpr::from(*high.clone(), self.input_plan.clone()),
             ]),
-            Expr::Wildcard => Ok(vec![PyExpr::from(
+            Expr::Wildcard { .. } => Ok(vec![PyExpr::from(
                 self.expr.clone(),
                 self.input_plan.clone(),
             )]),
@@ -445,7 +436,6 @@ impl PyExpr {
             // Currently un-support/implemented Expr types for Rex Call operations
             Expr::GroupingSet(..)
             | Expr::OuterReferenceColumn(_, _)
-            | Expr::QualifiedWildcard { .. }
             | Expr::ScalarSubquery(..)
             | Expr::Placeholder { .. }
             | Expr::Exists { .. } => Err(py_runtime_err(format!(
@@ -463,8 +453,7 @@ impl PyExpr {
                 op,
                 right: _,
             }) => format!("{op}"),
-            Expr::ScalarFunction(ScalarFunction { fun, args: _ }) => format!("{fun}"),
-            Expr::ScalarUDF(ScalarUDF { fun, .. }) => fun.name.clone(),
+            Expr::ScalarFunction(ScalarFunction { func_def, args: _ }) => format!("{func_def:?}"),
             Expr::Cast { .. } => "cast".to_string(),
             Expr::Between { .. } => "between".to_string(),
             Expr::Case { .. } => "case".to_string(),
@@ -586,18 +575,19 @@ impl PyExpr {
                 ScalarValue::List(..) => "List",
                 ScalarValue::Struct(..) => "Struct",
                 ScalarValue::FixedSizeBinary(_, _) => "FixedSizeBinary",
-                ScalarValue::Fixedsizelist(..) => "Fixedsizelist",
+                ScalarValue::FixedSizeList(..) => "FixedSizeList",
                 ScalarValue::DurationSecond(..) => "DurationSecond",
                 ScalarValue::DurationMillisecond(..) => "DurationMillisecond",
                 ScalarValue::DurationMicrosecond(..) => "DurationMicrosecond",
                 ScalarValue::DurationNanosecond(..) => "DurationNanosecond",
+                ScalarValue::LargeList(..) => "LargeList",
             },
-            Expr::ScalarFunction(ScalarFunction { fun, args: _ }) => match fun {
-                BuiltinScalarFunction::Abs => "Abs",
-                BuiltinScalarFunction::DatePart => "DatePart",
+            Expr::ScalarFunction(ScalarFunction { func_def, args: _ }) => match func_def {
+                ScalarFunctionDefinition::BuiltIn(BuiltinScalarFunction::Abs) => "Abs",
+                ScalarFunctionDefinition::BuiltIn(BuiltinScalarFunction::DatePart) => "DatePart",
                 _ => {
                     return Err(py_type_err(format!(
-                        "Catch all triggered for ScalarFunction in get_type; {fun:?}"
+                        "Catch all triggered for ScalarFunction in get_type; {func_def:?}"
                     )))
                 }
             },
@@ -673,8 +663,7 @@ impl PyExpr {
         // TODO refactor to avoid duplication
         match &self.expr {
             Expr::Alias(Alias { expr, .. }) => match expr.as_ref() {
-                Expr::AggregateFunction(AggregateFunction { filter, .. })
-                | Expr::AggregateUDF(AggregateUDF { filter, .. }) => match filter {
+                Expr::AggregateFunction(AggregateFunction { filter, .. }) => match filter {
                     Some(filter) => {
                         Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone())))
                     }
@@ -684,8 +673,7 @@ impl PyExpr {
                     "getFilterExpr() - Non-aggregate expression encountered",
                 )),
             },
-            Expr::AggregateFunction(AggregateFunction { filter, .. })
-            | Expr::AggregateUDF(AggregateUDF { filter, .. }) => match filter {
+            Expr::AggregateFunction(AggregateFunction { filter, .. }) => match filter {
                 Some(filter) => Ok(Some(PyExpr::from(*filter.clone(), self.input_plan.clone()))),
                 None => Ok(None),
             },
@@ -843,10 +831,8 @@ impl PyExpr {
         // TODO refactor to avoid duplication
         match &self.expr {
             Expr::AggregateFunction(funct) => Ok(funct.distinct),
-            Expr::AggregateUDF { .. } => Ok(false),
             Expr::Alias(Alias { expr, .. }) => match expr.as_ref() {
                 Expr::AggregateFunction(funct) => Ok(funct.distinct),
-                Expr::AggregateUDF { .. } => Ok(false),
                 _ => Err(py_type_err(
                     "isDistinctAgg() - Non-aggregate expression encountered",
                 )),
@@ -916,7 +902,7 @@ fn unexpected_literal_value(value: &ScalarValue) -> PyErr {
 fn get_expr_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::Alias(Alias { expr, .. }) => get_expr_name(expr),
-        Expr::Wildcard => {
+        Expr::Wildcard { .. } => {
             // 'Wildcard' means any and all columns. We get the first valid column name here
             Ok("*".to_owned())
         }
@@ -932,7 +918,7 @@ pub fn expr_to_field(expr: &Expr, input_plan: &LogicalPlan) -> Result<DFField> {
             // appear in projections) so we just delegate to the contained expression instead
             expr_to_field(expr, input_plan)
         }
-        Expr::Wildcard => {
+        Expr::Wildcard { .. } => {
             // Any column will do. We use the first column to keep things consistent
             Ok(input_plan.schema().field(0).clone())
         }

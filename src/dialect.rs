@@ -74,6 +74,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("timestampceil")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,
@@ -106,6 +108,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("timestampfloor")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,
@@ -135,6 +139,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("timestampadd")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,
@@ -163,6 +169,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("timestampdiff")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,
@@ -193,6 +201,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("dsql_totimestamp")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,
@@ -223,6 +233,8 @@ impl Dialect for DaskDialect {
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName(vec![Ident::new("extract_date")]),
                         args,
+                        filter: None,
+                        null_treatment: None,
                         over: None,
                         distinct: false,
                         special: false,

@@ -121,7 +121,7 @@ impl DaskSQLOptimizerConfig {
 }
 
 impl ContextProvider for DaskSQLContext {
-    fn get_table_provider(
+    fn get_table_source(
         &self,
         name: TableReference,
     ) -> Result<Arc<dyn TableSource>, DataFusionError> {
