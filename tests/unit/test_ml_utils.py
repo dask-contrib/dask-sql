@@ -98,7 +98,7 @@ def make_classification(
 
 def _assert_eq(l, r, name=None, **kwargs):
     array_types = (np.ndarray, da.Array)
-    frame_types = (pd.core.generic.NDFrame, dd._Frame)
+    frame_types = (pd.core.generic.NDFrame, dd.DataFrame)
     if isinstance(l, array_types):
         assert_eq_ar(l, r, **kwargs)
     elif isinstance(l, frame_types):
