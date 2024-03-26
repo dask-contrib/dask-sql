@@ -304,10 +304,10 @@ _regenerable_ops = (
 # Specify functions that must be generated with
 # a different API at the dataframe-collection level
 _special_op_mappings = {
-    M.fillna: dd._Frame.fillna,
-    M.isin: dd._Frame.isin,
-    M.isna: dd._Frame.isna,
-    M.astype: dd._Frame.astype,
+    M.fillna: dd.DataFrame.fillna,
+    M.isin: dd.DataFrame.isin,
+    M.isna: dd.DataFrame.isna,
+    M.astype: dd.DataFrame.astype,
 }
 
 # Convert _pass_through_ops to respect "special" mappings
@@ -316,7 +316,7 @@ _pass_through_ops = {_special_op_mappings.get(op, op) for op in _pass_through_op
 
 def _preprocess_layers(input_layers):
     # NOTE: This is a Layer-specific work-around to deal with
-    # the fact that `dd._Frame.isin(values)` will add a distinct
+    # the fact that `dd.DataFrame.isin(values)` will add a distinct
     # `MaterializedLayer` for the `values` argument.
     # See: https://github.com/dask-contrib/dask-sql/issues/607
     skip = set()
@@ -418,9 +418,9 @@ class RegenerableLayer:
             func = _blockwise_logical_dnf
         elif op == operator.getitem:
             func = _blockwise_getitem_dnf
-        elif op == dd._Frame.isin:
+        elif op == dd.DataFrame.isin:
             func = _blockwise_isin_dnf
-        elif op == dd._Frame.isna:
+        elif op == dd.DataFrame.isna:
             func = _blockwise_isna_dnf
         elif op == operator.inv:
             func = _blockwise_inv_dnf

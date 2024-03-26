@@ -3,6 +3,7 @@ import operator
 from functools import reduce
 from typing import TYPE_CHECKING
 
+from dask.dataframe import _dask_expr_enabled
 from dask.utils_test import hlg_layer
 
 from dask_sql.datacontainer import DataContainer
@@ -108,9 +109,11 @@ class DaskTableScanPlugin(BaseRelPlugin):
                 ],
             )
             df = filter_or_scalar(df, df_condition)
-        try:
-            logger.debug(hlg_layer(df.dask, "read-parquet").creation_info)
-        except KeyError:
-            pass
+
+        if not _dask_expr_enabled():
+            try:
+                logger.debug(hlg_layer(df.dask, "read-parquet").creation_info)
+            except KeyError:
+                pass
 
         return DataContainer(df, cc)
