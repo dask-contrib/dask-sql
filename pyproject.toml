@@ -67,6 +67,9 @@ fugue = [
 [project.entry-points."fugue.plugins"]
 dasksql = "dask_sql.integrations.fugue:_register_engines[fugue]"
 
+[project.entry-points."sqlalchemy.dialects"]
+dasksql = "dask_sql.integrations.sqlalchemy:DaskDialect"
+
 [project.scripts]
 dask-sql = "dask_sql.cmd:main"
 dask-sql-server = "dask_sql.server.app:main"
