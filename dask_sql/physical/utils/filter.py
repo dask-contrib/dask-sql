@@ -513,6 +513,9 @@ def _inv(symbol: str):
 
 def _blockwise_comparison_dnf(op, indices: list, dsk: RegenerableGraph) -> DNF:
     # Return DNF expression pattern for a simple comparison
+    if indices[0][1] is not None and indices[1][1] is not None:
+        raise ValueError("Comparisons between columns are not supported")
+
     left = _get_blockwise_input(0, indices, dsk)
     right = _get_blockwise_input(1, indices, dsk)
 
