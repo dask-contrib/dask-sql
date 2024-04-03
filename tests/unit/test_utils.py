@@ -5,6 +5,7 @@ from dask.utils_test import hlg_layer
 
 from dask_sql.physical.utils.filter import attempt_predicate_pushdown
 from dask_sql.utils import Pluggable, is_frame
+from tests.utils import SKIPIF_DASK_EXPR_ENABLED
 
 
 def test_is_frame_for_frame():
@@ -56,6 +57,7 @@ def test_overwrite():
     assert PluginTest1().get_plugin("some_key") == "value_2"
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_simple(parquet_ddf):
     filtered_df = parquet_ddf[parquet_ddf["a"] > 1]
     pushdown_df = attempt_predicate_pushdown(filtered_df)
@@ -68,6 +70,7 @@ def test_predicate_pushdown_simple(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_logical(parquet_ddf):
     filtered_df = parquet_ddf[
         (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2) | (parquet_ddf["a"] == -1)
@@ -83,6 +86,7 @@ def test_predicate_pushdown_logical(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_in(parquet_ddf):
     filtered_df = parquet_ddf[
         (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2)
@@ -103,6 +107,7 @@ def test_predicate_pushdown_in(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_isna(parquet_ddf):
     filtered_df = parquet_ddf[
         (parquet_ddf["a"] > 1) & (parquet_ddf["b"] < 2)
@@ -123,6 +128,7 @@ def test_predicate_pushdown_isna(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_add_filters(parquet_ddf):
     filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
     pushdown_df = attempt_predicate_pushdown(
@@ -141,6 +147,7 @@ def test_predicate_pushdown_add_filters(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_add_filters_no_extract(parquet_ddf):
     filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
     pushdown_df = attempt_predicate_pushdown(
@@ -157,6 +164,7 @@ def test_predicate_pushdown_add_filters_no_extract(parquet_ddf):
     assert got_filters == expected_filters
 
 
+@SKIPIF_DASK_EXPR_ENABLED
 def test_predicate_pushdown_add_filters_no_preserve(parquet_ddf):
     filtered_df = parquet_ddf[(parquet_ddf["a"] > 1) | (parquet_ddf["a"] == -1)]
     pushdown_df0 = attempt_predicate_pushdown(filtered_df)
