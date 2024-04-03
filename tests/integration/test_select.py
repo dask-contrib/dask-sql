@@ -6,7 +6,7 @@ from dask.utils_test import hlg_layer
 
 from dask_sql._compat import PANDAS_GT_200
 from dask_sql.utils import ParsingException
-from tests.utils import SKIPIF_DASK_EXPR_ENABLED, assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
 
 
 def test_select(c, df):
@@ -259,7 +259,7 @@ def test_singular_column_selection(c):
         ["a", "b", "d"],
     ],
 )
-@SKIPIF_DASK_EXPR_ENABLED
+@skipif_dask_expr_enabled()
 def test_multiple_column_projection(c, parquet_ddf, input_cols):
     projection_list = ", ".join(input_cols)
     result_df = c.sql(f"SELECT {projection_list} from parquet_ddf")

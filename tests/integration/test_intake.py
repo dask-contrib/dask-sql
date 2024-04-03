@@ -6,7 +6,12 @@ import pandas as pd
 import pytest
 
 from dask_sql.context import Context
-from tests.utils import assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
+
+# intake doesn't yet have proper dask-expr support
+pytestmark = skipif_dask_expr_enabled(
+    reason="Intake doesn't yet have proper dask-expr support"
+)
 
 # skip the test if intake is not installed
 intake = pytest.importorskip("intake")

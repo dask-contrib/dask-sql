@@ -4,11 +4,6 @@ import pytest
 from dask.dataframe import _dask_expr_enabled
 from dask.dataframe.utils import assert_eq as _assert_eq
 
-SKIPIF_DASK_EXPR_ENABLED = pytest.mark.skipif(
-    _dask_expr_enabled(),
-    reason="Predicate pushdown & column projection should be handled implicitly by dask-expr",
-)
-
 # use distributed client for testing if it's available
 scheduler = (
     "distributed"
@@ -40,3 +35,19 @@ def convert_nullable_columns(df):
             df[selected_cols] = df[selected_cols].astype(dtypes_mapping[dtype])
 
     return df
+
+
+def skipif_dask_expr_enabled(reason=None):
+    """
+    Skip the test if dask-expr is enabled
+    """
+    # most common reason for skipping
+    if reason is None:
+        reason = (
+            "Predicate pushdown & column projection should be handled implicitly by dask-expr",
+        )
+
+    return pytest.mark.skipif(
+        _dask_expr_enabled(),
+        reason=reason,
+    )
