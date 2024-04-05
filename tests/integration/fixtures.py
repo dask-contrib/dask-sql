@@ -120,7 +120,15 @@ def datetime_table():
 
 @pytest.fixture()
 def timeseries():
-    return dd_timeseries(freq="1d").reset_index(drop=True)
+    df = dd_timeseries(freq="1d").reset_index(drop=True)
+
+    # dask-expr doesn't play well with the timeseries dataset
+    # roundtripping through pandas seems to help
+    # see: https://github.com/dask/dask-expr/issues/1013
+    if dd._dask_expr_enabled():
+        df = dd.from_pandas(df.compute())
+
+    return df
 
 
 @pytest.fixture()
