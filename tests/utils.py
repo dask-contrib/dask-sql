@@ -43,9 +43,7 @@ def skipif_dask_expr_enabled(reason=None):
     """
     # most common reason for skipping
     if reason is None:
-        reason = (
-            "Predicate pushdown & column projection should be handled implicitly by dask-expr",
-        )
+        reason = "Predicate pushdown & column projection should be handled implicitly by dask-expr"
 
     return pytest.mark.skipif(
         _dask_expr_enabled(),
