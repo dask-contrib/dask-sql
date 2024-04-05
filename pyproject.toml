@@ -102,5 +102,6 @@ filterwarnings = [
     "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
     "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
     "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",
+    "ignore:Merging dataframes with merge column data type mismatches:UserWarning:dask[.*]",
 ]
 xfail_strict = true
