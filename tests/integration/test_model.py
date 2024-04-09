@@ -501,12 +501,12 @@ def test_describe_model(c):
         .apply(lambda x: str(x))
         .sort_index()
     )
-    # test
-    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(
-        lambda x: str(x), meta=("Params", "object")
+    actual_series = c.sql("DESCRIBE MODEL ex_describe_model")
+    actual_series = actual_series["Params"].apply(
+        lambda x: str(x), meta=actual_series["Params"]
     )
 
-    assert_eq(expected_series, result)
+    assert_eq(expected_series, actual_series)
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")
