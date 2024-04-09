@@ -11,6 +11,7 @@ from dask import config as dask_config
 # Required to instantiate default sql config
 import dask_sql  # noqa: F401
 from dask_sql import Context
+from tests.utils import skipif_dask_expr_enabled
 
 
 def test_custom_yaml(tmpdir):
@@ -106,6 +107,7 @@ def test_dask_setconfig():
     sys.version_info < (3, 10),
     reason="Writing and reading the Dask DataFrame causes a ProtocolError",
 )
+@skipif_dask_expr_enabled("dynamic partition pruning not yet supported with dask-expr")
 def test_dynamic_partition_pruning(tmpdir):
     c = Context()
 
@@ -155,6 +157,7 @@ def test_dynamic_partition_pruning(tmpdir):
     assert inlist_expr in explain_string
 
 
+@skipif_dask_expr_enabled("dynamic partition pruning not yet supported with dask-expr")
 def test_dpp_single_file_parquet(tmpdir):
     c = Context()
 
