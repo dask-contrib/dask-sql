@@ -1,4 +1,12 @@
+c_compiler:
+    - gcc
+c_compiler_version:
+    - '12'
+rust_compiler:
+    - rust
 rust_compiler_version:
-    - 1.69
+    - '1.72'
 maturin:
-    - 1.1
+    - '1.3'
+xz:        # [linux64]
+    - '5'  # [linux64]

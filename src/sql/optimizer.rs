@@ -42,7 +42,12 @@ pub struct DaskSqlOptimizer {
 impl DaskSqlOptimizer {
     /// Creates a new instance of the DaskSqlOptimizer with all the DataFusion desired
     /// optimizers as well as any custom `OptimizerRule` trait impls that might be desired.
-    pub fn new() -> Self {
+    pub fn new(
+        fact_dimension_ratio: Option<f64>,
+        max_fact_tables: Option<usize>,
+        preserve_user_order: Option<bool>,
+        filter_selectivity: Option<f64>,
+    ) -> Self {
         debug!("Creating new instance of DaskSqlOptimizer");
 
         let rules: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![
@@ -75,7 +80,12 @@ impl DaskSqlOptimizer {
             Arc::new(PushDownFilter::new()),
             // Arc::new(SingleDistinctToGroupBy::new()),
             // Dask-SQL specific optimizations
-            Arc::new(JoinReorder::default()),
+            Arc::new(JoinReorder::new(
+                fact_dimension_ratio,
+                max_fact_tables,
+                preserve_user_order,
+                filter_selectivity,
+            )),
             // The previous optimizations added expressions and projections,
             // that might benefit from the following rules
             Arc::new(SimplifyExpressions::new()),
@@ -94,9 +104,10 @@ impl DaskSqlOptimizer {
 
     // Create a separate instance of this optimization rule, since we want to ensure that it only
     // runs one time
-    pub fn dynamic_partition_pruner() -> Self {
-        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> =
-            vec![Arc::new(DynamicPartitionPruning::new())];
+    pub fn dynamic_partition_pruner(fact_dimension_ratio: Option<f64>) -> Self {
+        let rule: Vec<Arc<dyn OptimizerRule + Sync + Send>> = vec![Arc::new(
+            DynamicPartitionPruning::new(fact_dimension_ratio.unwrap_or(0.3)),
+        )];
 
         Self {
             optimizer: Optimizer::with_rules(rule),
@@ -170,7 +181,7 @@ mod tests {
         let plan = sql_to_rel.sql_statement_to_plan(statement.clone()).unwrap();
 
         // optimize the logical plan
-        let optimizer = DaskSqlOptimizer::new();
+        let optimizer = DaskSqlOptimizer::new(None, None, None, None);
         optimizer.optimize(plan)
     }
 

@@ -2,7 +2,7 @@ import importlib
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 import dask.dataframe as dd
@@ -142,8 +142,8 @@ class LoggableDataFrame:
 
 
 def convert_sql_kwargs(
-    sql_kwargs: Dict[str, str],
-) -> Dict[str, Any]:
+    sql_kwargs: dict[str, str],
+) -> dict[str, Any]:
     """
     Convert the Rust Vec of key/value pairs into a Dict containing the keys and values
     """

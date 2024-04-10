@@ -11,22 +11,22 @@ RUN sh /rustup-init.sh -y --default-toolchain=stable --profile=minimal \
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install conda dependencies for dask-sql
-COPY docker/conda.txt /opt/dask_sql/
+COPY continuous_integration/docker/conda.txt /opt/dask_sql/
 RUN mamba install -y \
     # build requirements
-    "maturin>=1.1,<1.2" \
+    "maturin>=1.3,<1.4" \
     # core dependencies
-    "dask>=2022.3.0" \
+    "dask==2024.1.1" \
     "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
     "httpx>=0.24.1" \
-    "uvicorn>=0.13.4" \
+    "uvicorn>=0.14" \
     "tzlocal>=2.1" \
     "prompt_toolkit>=3.0.8" \
     "pygments>=2.7.1" \
     tabulate \
     # additional dependencies
-    "pyarrow>=6.0.2" \
+    "pyarrow>=14.0.1" \
     "scikit-learn>=1.0.0" \
     "intake>=0.6.0" \
     && conda clean -ay
@@ -44,7 +44,7 @@ RUN cd /opt/dask_sql/ \
     && CONDA_PREFIX="/opt/conda/" maturin develop
 
 # Set the script to execute
-COPY scripts/startup_script.py /opt/dask_sql/startup_script.py
+COPY continuous_integration/scripts/startup_script.py /opt/dask_sql/startup_script.py
 
 EXPOSE 8080
 ENTRYPOINT [ "/usr/bin/prepare.sh", "/opt/conda/bin/python", "/opt/dask_sql/startup_script.py" ]

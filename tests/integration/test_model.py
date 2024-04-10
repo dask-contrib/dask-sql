@@ -5,6 +5,7 @@ import sys
 import joblib
 import pandas as pd
 import pytest
+from packaging.version import parse as parseVersion
 
 from tests.utils import assert_eq
 
@@ -16,6 +17,10 @@ except ImportError:
     cuml = None
     xgboost = None
     dask_cudf = None
+
+sklearn = pytest.importorskip("sklearn")
+
+SKLEARN_EQ_140 = parseVersion(sklearn.__version__) == parseVersion("1.4.0")
 
 
 def check_trained_model(c, model_name="my_model", df_name="timeseries"):
@@ -363,7 +368,7 @@ def test_correct_argument_passing(c):
         boolean=False,
         array=[1, 2],
         dict={"a": 1},
-        set=set([1, 2, 3]),
+        set={1, 2, 3},
     )
 
 
@@ -497,7 +502,9 @@ def test_describe_model(c):
         .sort_index()
     )
     # test
-    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(lambda x: str(x))
+    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(
+        lambda x: str(x), meta=("Params", "object")
+    )
 
     assert_eq(expected_series, result)
 
@@ -902,10 +909,12 @@ def test_ml_experiment(c, client):
         )
 
 
+@pytest.mark.xfail(
+    reason="tpot is broken with sklearn==1.4.0", condition=SKLEARN_EQ_140
+)
 def test_experiment_automl_classifier(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 
-    # currently tested with tpot==
     c.sql(
         """
         CREATE EXPERIMENT my_automl_exp1 WITH (
@@ -927,6 +936,9 @@ def test_experiment_automl_classifier(c, client):
     check_trained_model(c, "my_automl_exp1")
 
 
+@pytest.mark.xfail(
+    reason="tpot is broken with sklearn==1.4.0", condition=SKLEARN_EQ_140
+)
 def test_experiment_automl_regressor(c, client):
     tpot = pytest.importorskip("tpot", reason="tpot not installed")
 

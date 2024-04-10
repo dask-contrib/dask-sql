@@ -112,7 +112,7 @@ For this, it uses the following mapping:
 +-----------------------+----------------+
 | From Python Type      | To SQL Type    |
 +=======================+================+
-| ``np.bool8``          |  ``BOOLEAN``   |
+| ``np.bool_``          |  ``BOOLEAN``   |
 +-----------------------+----------------+
 | ``np.datetime64``     |  ``TIMESTAMP`` |
 +-----------------------+----------------+

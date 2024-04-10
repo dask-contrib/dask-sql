@@ -121,7 +121,7 @@ To run a standalone SQL server in your ``dask`` cluster, follow these three step
 
         FROM nbraun/dask-sql
 
-        COPY startup_script.py /opt/dask_sql/startup_script.py
+        COPY continuous_integration/docker/startup_script.py /opt/dask_sql/startup_script.py
 
         ENTRYPOINT [ "/opt/conda/bin/python", "/opt/dask_sql/startup_script.py" ]
 

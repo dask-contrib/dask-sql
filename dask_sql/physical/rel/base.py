@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 import dask.dataframe as dd
 
@@ -68,7 +68,7 @@ class BaseRelPlugin:
         rel: "LogicalPlan",
         n: int = 1,
         context: "dask_sql.Context" = None,
-    ) -> List[dd.DataFrame]:
+    ) -> list[dd.DataFrame]:
         """
         LogicalPlan nodes build on top of others.
         Those are called the "input" of the LogicalPlan.

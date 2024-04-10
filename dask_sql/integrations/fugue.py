@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover
         "Can not load the fugue module. If you want to use this integration, you need to install it."
     )
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import dask.dataframe as dd
 
@@ -94,7 +94,7 @@ def fsql_dask(
     ctx: Optional[Context] = None,
     register: bool = False,
     fugue_conf: Any = None,
-) -> Dict[str, dd.DataFrame]:
+) -> dict[str, dd.DataFrame]:
     """FugueSQL utility function that can consume Context directly. FugueSQL is a language
     extending standard SQL. It makes SQL eligible to describe end to end workflows. It also
     enables you to invoke python extensions in the SQL like language.

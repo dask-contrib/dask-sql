@@ -24,7 +24,6 @@ use datafusion_python::{
     datafusion_expr::{
         expr::InList,
         logical_plan::LogicalPlan,
-        utils::from_plan,
         Expr,
         JoinType,
         Operator,
@@ -37,11 +36,16 @@ use log::warn;
 use crate::sql::table::DaskTableSource;
 
 // Optimizer rule for dynamic partition pruning
-pub struct DynamicPartitionPruning {}
+pub struct DynamicPartitionPruning {
+    /// Ratio of the size of the dimension tables to fact tables
+    fact_dimension_ratio: f64,
+}
 
 impl DynamicPartitionPruning {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(fact_dimension_ratio: f64) -> Self {
+        Self {
+            fact_dimension_ratio,
+        }
     }
 }
 
@@ -107,9 +111,6 @@ impl OptimizerRule for DynamicPartitionPruning {
                         (left_table.unwrap(), right_table.unwrap());
                     let (left_field, right_field) = (left_field.unwrap(), right_field.unwrap());
 
-                    // TODO: Consider allowing the fact_dimension_ratio to be configured by the
-                    // user. See issue: https://github.com/dask-contrib/dask-sql/issues/1121
-                    let fact_dimension_ratio = 0.3;
                     let (mut left_filtered_table, mut right_filtered_table) = (None, None);
 
                     // Check if join uses an alias instead of the table name itself. Need to use
@@ -137,7 +138,7 @@ impl OptimizerRule for DynamicPartitionPruning {
                         .size
                         .unwrap_or(largest_size as usize) as f64
                         / largest_size
-                        < fact_dimension_ratio
+                        < self.fact_dimension_ratio
                     {
                         left_filtered_table =
                             read_table(left_table.clone(), left_field.clone(), tables.clone());
@@ -150,7 +151,7 @@ impl OptimizerRule for DynamicPartitionPruning {
                         .size
                         .unwrap_or(largest_size as usize) as f64
                         / largest_size
-                        < fact_dimension_ratio
+                        < self.fact_dimension_ratio
                     {
                         right_filtered_table =
                             read_table(right_table.clone(), right_field.clone(), tables.clone());
@@ -485,11 +486,21 @@ fn read_table(
     field_string: String,
     tables: HashMap<String, TableInfo>,
 ) -> Option<HashSet<RowValue>> {
-    // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
-    let paths = fs::read_dir(tables.get(&table_string).unwrap().filepath.clone()).unwrap();
+    let file_path = tables.get(&table_string).unwrap().filepath.clone();
+    let paths: fs::ReadDir;
     let mut files = vec![];
-    for path in paths {
-        files.push(path.unwrap().path().display().to_string())
+    if fs::metadata(&file_path)
+        .map(|metadata| metadata.is_dir())
+        .unwrap_or(false)
+    {
+        // Obtain filepaths to all relevant Parquet files, e.g., in a directory of Parquet files
+        paths = fs::read_dir(&file_path).unwrap();
+        for path in paths {
+            files.push(path.unwrap().path().display().to_string())
+        }
+    } else {
+        // Obtain single Parquet file
+        files.push(file_path);
     }
 
     // Using the filepaths to the Parquet tables, obtain the schemas of the relevant tables
@@ -1081,7 +1092,7 @@ fn optimize_children(
         new_inputs.push(new_input.unwrap_or_else(|| input.clone()))
     }
     if plan_is_changed {
-        Ok(Some(from_plan(plan, &new_exprs, &new_inputs)?))
+        Ok(Some(plan.with_new_exprs(new_exprs, &new_inputs)?))
     } else {
         Ok(None)
     }

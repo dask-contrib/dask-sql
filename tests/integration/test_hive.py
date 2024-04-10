@@ -142,25 +142,43 @@ def hive_cursor():
 
         # Create a non-partitioned column
         cursor.execute(
-            f"CREATE TABLE df (i INTEGER, j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir}'"
+            sqlalchemy.text(
+                f"CREATE TABLE df (i INTEGER, j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir}'"
+            )
         )
-        cursor.execute("INSERT INTO df (i, j) VALUES (1, 2)")
-        cursor.execute("INSERT INTO df (i, j) VALUES (2, 4)")
+        cursor.execute(sqlalchemy.text("INSERT INTO df (i, j) VALUES (1, 2)"))
+        cursor.execute(sqlalchemy.text("INSERT INTO df (i, j) VALUES (2, 4)"))
 
         cursor.execute(
-            f"CREATE TABLE df_part (i INTEGER) PARTITIONED BY (j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'"
+            sqlalchemy.text(
+                f"CREATE TABLE df_part (i INTEGER) PARTITIONED BY (j INTEGER) ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_parted}'"
+            )
         )
-        cursor.execute("INSERT INTO df_part PARTITION (j=2) (i) VALUES (1)")
-        cursor.execute("INSERT INTO df_part PARTITION (j=4) (i) VALUES (2)")
+        cursor.execute(
+            sqlalchemy.text("INSERT INTO df_part PARTITION (j=2) (i) VALUES (1)")
+        )
+        cursor.execute(
+            sqlalchemy.text("INSERT INTO df_part PARTITION (j=4) (i) VALUES (2)")
+        )
 
         cursor.execute(
-            f"""
+            sqlalchemy.text(
+                f"""
             CREATE TABLE df_parts (i INTEGER) PARTITIONED BY (j INTEGER, k STRING)
             ROW FORMAT DELIMITED STORED AS PARQUET LOCATION '{tmpdir_multiparted}'
             """
+            )
         )
-        cursor.execute("INSERT INTO df_parts PARTITION (j=1, k='a') (i) VALUES (1)")
-        cursor.execute("INSERT INTO df_parts PARTITION (j=2, k='b') (i) VALUES (2)")
+        cursor.execute(
+            sqlalchemy.text(
+                "INSERT INTO df_parts PARTITION (j=1, k='a') (i) VALUES (1)"
+            )
+        )
+        cursor.execute(
+            sqlalchemy.text(
+                "INSERT INTO df_parts PARTITION (j=2, k='b') (i) VALUES (2)"
+            )
+        )
 
         # The data files are created as root user by default. Change that:
         hive_server.exec_run(["chmod", "a+rwx", "-R", tmpdir])

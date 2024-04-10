@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dask_sql._compat import DASK_CUDF_TODATETIME_SUPPORT
 from tests.utils import assert_eq
 
 
@@ -39,19 +38,20 @@ def test_case(c, df):
     """
     )
     expected_df = pd.DataFrame(index=df.index)
-    expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else pd.NA)
+    expected_df["S1"] = df.a.apply(lambda a: 1 if a == 3 else np.NaN)
     expected_df["S2"] = df.a.apply(lambda a: a if a > 0 else 1)
-    expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1)
-    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a)
+    expected_df["S3"] = df.a.apply(lambda a: 3 if a == 4 else a + 1).astype("Int64")
+    expected_df["S4"] = df.a.apply(lambda a: 1 if a == 3 else 2 if a > 0 else a).astype(
+        "Int64"
+    )
     expected_df["S5"] = df.a.apply(
         lambda a: "in-between" if ((1 <= a < 2) or (a > 2)) else "out-of-range"
     )
     expected_df["S6"] = df.a.apply(lambda a: 42 if ((a < 2) or (3 < a < 4)) else 47)
     expected_df["S7"] = df.a.apply(lambda a: 1 if (1 < a <= 4) else 0)
-    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1)
+    expected_df["S8"] = df.a.apply(lambda a: 5 if a == 2 else a + 1).astype("Int64")
 
-    # Do not check dtypes, as pandas versions are inconsistent here
-    assert_eq(result_df, expected_df, check_dtype=False)
+    assert_eq(result_df, expected_df)
 
 
 def test_intervals(c):
@@ -392,6 +392,9 @@ def test_null(c):
     assert_eq(df, expected_df)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:divide by zero:RuntimeWarning:dask_sql.physical.rex.core.call"
+)
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_coalesce(c, gpu):
     df = dd.from_pandas(
@@ -415,13 +418,14 @@ def test_coalesce(c, gpu):
     expected_df = pd.DataFrame(
         {
             "c1": [3],
-            "c2": [np.nan],
+            "c2": [pd.NA],
             "c3": ["hi"],
             "c4": ["bye"],
             "c5": ["1.5"],
             "c6": [2.0],
         }
     )
+    expected_df["c2"] = expected_df["c2"].astype("Int8")
 
     assert_eq(df, expected_df, check_dtype=False)
 
@@ -456,7 +460,7 @@ def test_boolean_operations(c):
     )  # turn into a bool column
     c.create_table("df", df)
 
-    df = c.sql(
+    result_df = c.sql(
         """
         SELECT
             b IS TRUE AS t,
@@ -470,19 +474,15 @@ def test_boolean_operations(c):
 
     expected_df = pd.DataFrame(
         {
-            "t": [True, False, False],
-            "f": [False, True, False],
-            "nt": [False, True, True],
-            "nf": [True, False, True],
-            "u": [False, False, True],
-            "nu": [True, True, False],
+            "t": df.b.astype("boolean").fillna(False),
+            "f": ~df.b.astype("boolean").fillna(True),
+            "nt": ~df.b.astype("boolean").fillna(False),
+            "nf": df.b.astype("boolean").fillna(True),
+            "u": df.b.isna(),
+            "nu": ~df.b.isna().astype("boolean"),
         },
-        dtype="bool",
     )
-    expected_df["nt"] = expected_df["nt"].astype("boolean")
-    expected_df["nf"] = expected_df["nf"].astype("boolean")
-    expected_df["nu"] = expected_df["nu"].astype("boolean")
-    assert_eq(df, expected_df)
+    assert_eq(result_df, expected_df, check_dtype=False)
 
 
 def test_math_operations(c, df):
@@ -1049,14 +1049,7 @@ def test_totimestamp(c, gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    not DASK_CUDF_TODATETIME_SUPPORT,
-                    reason="Requires https://github.com/dask/dask/pull/9881",
-                    raises=RuntimeError,
-                ),
-            ),
+            marks=(pytest.mark.gpu,),
         ),
     ],
 )
@@ -1113,14 +1106,7 @@ def test_extract_date(c, gpu):
         False,
         pytest.param(
             True,
-            marks=(
-                pytest.mark.gpu,
-                pytest.mark.xfail(
-                    not DASK_CUDF_TODATETIME_SUPPORT,
-                    reason="Requires https://github.com/dask/dask/pull/9881",
-                    raises=RuntimeError,
-                ),
-            ),
+            marks=(pytest.mark.gpu,),
         ),
     ],
 )
@@ -1236,3 +1222,34 @@ def test_scalar_timestamps(c, gpu):
         f"SELECT TIMESTAMPDIFF(DAY, CAST({scalar1} AS TIMESTAMP), CAST({scalar2} AS TIMESTAMP)) AS dt"
     )
     assert_eq(df3, expected_df)
+
+
+def test_datetime_coercion(c):
+    d_table = pd.DataFrame(
+        {
+            "d_date": [
+                datetime(2023, 7, 1),
+                datetime(2023, 7, 5),
+                datetime(2023, 7, 10),
+                datetime(2023, 7, 15),
+            ],
+            "x": [1, 2, 3, 4],
+        }
+    )
+    c.create_table("d_table", d_table)
+
+    df = c.sql(
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + (2 + 3)
+    """
+    )
+    expected_df = c.sql(
+        """
+        SELECT * FROM d_table d1, d_table d2
+        WHERE d2.x < d1.x + (1 + 2)
+        AND d2.d_date > d1.d_date + INTERVAL '5 days'
+    """
+    )
+    assert_eq(df, expected_df)

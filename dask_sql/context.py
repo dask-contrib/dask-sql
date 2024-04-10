@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import logging
 from collections import Counter
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Union
 
 import dask.dataframe as dd
 import pandas as pd
@@ -13,6 +13,7 @@ from dask.utils_test import hlg_layer
 from dask_sql._datafusion_lib import (
     DaskSchema,
     DaskSQLContext,
+    DaskSQLOptimizerConfig,
     DaskTable,
     DFOptimizationException,
     DFParsingException,
@@ -98,13 +99,20 @@ class Context:
         # A started SQL server (useful for jupyter notebooks)
         self.sql_server = None
 
-        # Create the `DaskSQLContext` Rust context
-        self.context = DaskSQLContext(self.catalog_name, self.schema_name)
-        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
-
-        self.context.apply_dynamic_partition_pruning(
-            dask_config.get("sql.dynamic_partition_pruning")
+        # Create the `DaskSQLOptimizerConfig` Rust context
+        optimizer_config = DaskSQLOptimizerConfig(
+            dask_config.get("sql.dynamic_partition_pruning"),
+            dask_config.get("sql.fact_dimension_ratio"),
+            dask_config.get("sql.max_fact_tables"),
+            dask_config.get("sql.preserve_user_order"),
+            dask_config.get("sql.filter_selectivity"),
         )
+
+        # Create the `DaskSQLContext` Rust context
+        self.context = DaskSQLContext(
+            self.catalog_name, self.schema_name, optimizer_config
+        )
+        self.context.register_schema(self.schema_name, DaskSchema(self.schema_name))
 
         # # Register any default plugins, if nothing was registered before.
         RelConverter.add_plugin_class(logical.DaskAggregatePlugin, replace=False)
@@ -309,7 +317,7 @@ class Context:
         self,
         f: Callable,
         name: str,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
@@ -400,7 +408,7 @@ class Context:
         self,
         f: dd.Aggregation,
         name: str,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name: str = None,
@@ -467,9 +475,9 @@ class Context:
         self,
         sql: Any,
         return_futures: bool = True,
-        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        dataframes: dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
-        config_options: Dict[str, Any] = None,
+        config_options: dict[str, Any] = None,
     ) -> Union[dd.DataFrame, pd.DataFrame]:
         """
         Query the registered tables with the given SQL.
@@ -519,7 +527,7 @@ class Context:
     def explain(
         self,
         sql: str,
-        dataframes: Dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
+        dataframes: dict[str, Union[dd.DataFrame, pd.DataFrame]] = None,
         gpu: bool = False,
     ) -> str:
         """
@@ -542,11 +550,16 @@ class Context:
             :obj:`str`: a description of the created relational algebra.
 
         """
+        dynamic_partition_pruning = dask_config.get("sql.dynamic_partition_pruning")
+        if not dask_config.get("sql.optimizer.verbose"):
+            dask_config.set({"sql.dynamic_partition_pruning": False})
+
         if dataframes is not None:
             for df_name, df in dataframes.items():
                 self.create_table(df_name, df, gpu=gpu)
 
         _, rel_string = self._get_ral(sql)
+        dask_config.set({"sql.dynamic_partition_pruning": dynamic_partition_pruning})
         return rel_string
 
     def visualize(self, sql: str, filename="mydask.png") -> None:  # pragma: no cover
@@ -606,7 +619,7 @@ class Context:
         self,
         model_name: str,
         model: Any,
-        training_columns: List[str],
+        training_columns: list[str],
         schema_name: str = None,
     ):
         """
@@ -708,7 +721,7 @@ class Context:
 
         self.sql_server = None
 
-    def fqn(self, tbl: "DaskTable") -> Tuple[str, str]:
+    def fqn(self, tbl: "DaskTable") -> tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
 
@@ -799,9 +812,15 @@ class Context:
         """Helper function to turn the sql query into a relational algebra and resulting column names"""
 
         logger.debug(f"Entering _get_ral('{sql}')")
-        self.context.apply_dynamic_partition_pruning(
-            dask_config.get("sql.dynamic_partition_pruning")
+
+        optimizer_config = DaskSQLOptimizerConfig(
+            dask_config.get("sql.dynamic_partition_pruning"),
+            dask_config.get("sql.fact_dimension_ratio"),
+            dask_config.get("sql.max_fact_tables"),
+            dask_config.get("sql.preserve_user_order"),
+            dask_config.get("sql.filter_selectivity"),
         )
+        self.context.set_optimizer_config(optimizer_config)
 
         # get the schema of what we currently have registered
         schemas = self._prepare_schemas()
@@ -829,11 +848,12 @@ class Context:
         # Optimize the `LogicalPlan` or skip if configured
         if dask_config.get("sql.optimize"):
             try:
-                rel = self.context.optimize_relational_algebra(nonOptimizedRel)
+                rel = self.context.run_preoptimizer(nonOptimizedRel)
+                rel = self.context.optimize_relational_algebra(rel)
             except DFOptimizationException as oe:
                 # Use original plan and warn about inability to optimize plan
                 rel = nonOptimizedRel
-                logger.warn(str(oe))
+                logger.warning(str(oe))
         else:
             rel = nonOptimizedRel
 
@@ -907,7 +927,7 @@ class Context:
         f: Any,
         name: str,
         aggregation: bool,
-        parameters: List[Tuple[str, type]],
+        parameters: list[tuple[str, type]],
         return_type: type,
         replace: bool = False,
         schema_name=None,

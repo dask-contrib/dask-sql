@@ -1,63 +1,41 @@
 name: Nightly upstream testing
 on:
   schedule:
-    - cron: "0 0 * * *" # Daily “At 00:00” UTC for upstream dask testing
-    - cron: "0 3 * * *" # Daily "At 03:00" UTC for upstream datafusion testing
+    - cron: "0 0 * * *" # Daily “At 00:00” UTC
   workflow_dispatch: # allows you to trigger the workflow run manually
-    inputs:
-      which_upstream:
-        type: choice
-        description: 'Library to update for upstream testing'
-        required: false
-        default: 'Dask'
-        options:
-          - Dask
-          - DataFusion
 
 # Required shell entrypoint to have properly activated conda environments
 defaults:
   run:
     shell: bash -l {0}
 
-env:
-  which_upstream: >-
-    ${{
-      github.event_name == 'workflow_dispatch'
-      && inputs.which_upstream
-      || (
-        github.event.schedule == '0 0 * * *'
-        && 'Dask'
-        || 'DataFusion'
-      )
-    }}
-
 jobs:
   test-dev:
     name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
     runs-on: ${{ matrix.os }}
     env:
-      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}-dev.yaml
+      CONDA_FILE: continuous_integration/environment-${{ matrix.python }}.yaml
       DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.8", "3.9", "3.10"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
         distributed: [false]
         include:
           # run tests on a distributed client
           - os: "ubuntu-latest"
-            python: "3.8"
+            python: "3.9"
             distributed: true
           - os: "ubuntu-latest"
-            python: "3.10"
+            python: "3.11"
             distributed: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags.
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
+        uses: conda-incubator/setup-miniconda@v2.3.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -65,21 +43,15 @@ jobs:
           channel-priority: strict
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        run: |
-          bash continuous_integration/scripts/update-dependencies.sh
       - name: Build the Rust DataFusion bindings
         run: |
           maturin develop
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mamba install -c conda-forge "sasl>=0.3.1"
           docker pull bde2020/hive:2.3.2-postgresql-metastore
           docker pull bde2020/hive-metastore-postgresql:2.3.0
       - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
         run: |
           mamba install --no-channel-priority dask/label/dev::dask
       - name: Install pytest-reportlog
@@ -103,27 +75,14 @@ jobs:
     name: "Test importing with bare requirements and upstream dev"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.2.0
+        uses: conda-incubator/setup-miniconda@v2.3.0
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
-          # TODO: drop support for python 3.8, add support for python 3.11
-          # https://github.com/dask-contrib/dask-sql/pull/1143
           python-version: "3.9"
           channel-priority: strict
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Optionally update upstream cargo dependencies
-        if: env.which_upstream == 'DataFusion'
-        env:
-          UPDATE_ALL_CARGO_DEPS: false
-        run: |
-          bash continuous_integration/scripts/update-dependencies.sh
       - name: Install dependencies and nothing else
         run: |
           pip install -e . -vv
@@ -132,7 +91,6 @@ jobs:
           pip list
           mamba list
       - name: Install upstream dev Dask
-        if: env.which_upstream == 'Dask'
         run: |
           python -m pip install git+https://github.com/dask/dask
           python -m pip install git+https://github.com/dask/distributed
@@ -152,7 +110,7 @@ jobs:
       && github.repository == 'dask-contrib/dask-sql'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
       - name: Prepare logs & issue label
         run: |
@@ -162,12 +120,9 @@ jobs:
           else
               touch results.jsonl
           fi
-
-          # convert which_upstream to lowercase
-          echo "which_upstream_lower=${which_upstream,,}" >> $GITHUB_ENV
       - name: Open or update issue on failure
         uses: xarray-contrib/issue-from-pytest-log@v1.2.6
         with:
           log-path: results.jsonl
-          issue-title: ⚠️ Upstream CI ${{ env.which_upstream }} failed ⚠️
-          issue-label: upstream-${{ env.which_upstream_lower }}
+          issue-title: ⚠️ Upstream CI failed ⚠️
+          issue-label: upstream
