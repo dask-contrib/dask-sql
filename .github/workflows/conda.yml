@@ -76,7 +76,7 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         run: |
-          mamba install -c conda-forge boa "conda-build<24.3" conda-verify
+          mamba install -c conda-forge "boa<0.17" "conda-build<24.1" conda-verify
 
           which python
           pip list
