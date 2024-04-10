@@ -8,7 +8,7 @@ from dask.utils_test import hlg_layer
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
-from tests.utils import assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
 
 
 def test_join(c):
@@ -427,6 +427,9 @@ def test_intersect_multi_col(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+# TODO: remove this marker once fix for dask-expr#1018 is released
+# see: https://github.com/dask/dask-expr/issues/1018
+@skipif_dask_expr_enabled("Waiting for fix to dask-expr#1018")
 def test_join_alias_w_projection(c, parquet_ddf):
     result_df = c.sql(
         "SELECT t2.c as c_y from parquet_ddf t1, parquet_ddf t2 WHERE t1.a=t2.a and t1.c='A'"
