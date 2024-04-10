@@ -94,10 +94,6 @@ def test_training_and_prediction(c, gpu_client):
 
 
 @pytest.mark.xfail(
-    sys.platform == "win32",
-    reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
-)
-@pytest.mark.xfail(
     sys.platform == "darwin", reason="Intermittent socket errors on macOS", strict=False
 )
 @pytest.mark.parametrize(
