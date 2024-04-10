@@ -76,7 +76,8 @@ def test_over_with_different(c, user_table_1):
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
 
-@skipif_dask_expr_enabled()
+# TODO: investigate source of window count deadlocks
+@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_over_calls(c, user_table_1):
     return_df = c.sql(
         """
@@ -140,7 +141,8 @@ def test_over_single_value(c, user_table_1):
     assert_eq(return_df, expected_df, check_dtype=False, check_index=False)
 
 
-@skipif_dask_expr_enabled()
+# TODO: investigate source of window count deadlocks
+@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_over_with_windows(c):
     tmp_df = pd.DataFrame({"a": range(5)})
     c.create_table("tmp", tmp_df)

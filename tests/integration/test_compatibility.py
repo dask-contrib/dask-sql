@@ -813,7 +813,8 @@ def test_window_min_max_partition_by():
         )
 
 
-@skipif_dask_expr_enabled()
+# TODO: investigate source of window count deadlocks
+@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_window_count():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -864,7 +865,8 @@ def test_window_count():
         )
 
 
-@skipif_dask_expr_enabled()
+# TODO: investigate source of window count deadlocks
+@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_window_count_partition_by():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
