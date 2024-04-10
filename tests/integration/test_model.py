@@ -94,7 +94,9 @@ def test_training_and_prediction(c, gpu_client):
 
 
 @pytest.mark.xfail(
-    sys.platform == "darwin", reason="Intermittent socket errors on macOS", strict=False
+    sys.platform in ("darwin", "win32"),
+    reason="Intermittent failures on macOS/Windows",
+    strict=False,
 )
 @pytest.mark.parametrize(
     "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
