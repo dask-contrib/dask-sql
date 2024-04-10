@@ -23,6 +23,7 @@ cd "$WORKSPACE"
 # Determine CUDA release version
 export CUDA_REL=${CUDA_VERSION%.*}
 
+# TODO: remove once RAPIDS 24.06 has support for query planning
 export DASK_DATAFRAME__QUERY_PLANNING=false
 
 ################################################################################
