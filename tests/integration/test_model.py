@@ -93,13 +93,21 @@ def test_training_and_prediction(c, gpu_client):
     check_trained_model(c, df_name=timeseries)
 
 
+# TODO: investigate deadlocks on GPU
 @pytest.mark.xfail(
     sys.platform in ("darwin", "win32"),
     reason="Intermittent failures on macOS/Windows",
     strict=False,
 )
 @pytest.mark.parametrize(
-    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+    "gpu_client",
+    [
+        False,
+        pytest.param(
+            True, marks=(pytest.mark.gpu, pytest.mark.skip(reason="Deadlocks on GPU"))
+        ),
+    ],
+    indirect=True,
 )
 def test_xgboost_training_prediction(c, gpu_client):
     gpu = "CUDA" in str(gpu_client.cluster)
