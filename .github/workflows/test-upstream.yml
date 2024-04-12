@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }}, query-planning: ${{ matrix.query-planning }})"
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}.yaml
@@ -85,7 +85,7 @@ jobs:
           path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
   import-dev:
-    name: "Test importing with bare requirements and upstream dev"
+    name: "Test importing with bare requirements and upstream dev (query-planning: ${{ matrix.query-planning }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

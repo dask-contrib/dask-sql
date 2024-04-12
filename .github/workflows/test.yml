@@ -33,7 +33,7 @@ jobs:
           keyword: "[test-upstream]"
 
   test:
-    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
+    name: "Build & Test (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }}, query-planning: ${{ matrix.query-planning }})"
     needs: [detect-ci-trigger]
     runs-on: ${{ matrix.os }}
     env:
@@ -109,7 +109,7 @@ jobs:
         uses: codecov/codecov-action@v3
 
   import:
-    name: "Test importing with bare requirements"
+    name: "Test importing with bare requirements (query-planning: ${{ matrix.query-planning }})"
     needs: [detect-ci-trigger]
     runs-on: ubuntu-latest
     strategy:
