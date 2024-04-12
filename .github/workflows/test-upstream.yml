@@ -113,7 +113,8 @@ jobs:
           python -m pip install git+https://github.com/dask/dask-expr
           python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
-        env: DASK_DATAFRAME_QUERY_PLANNING=${{ matrix.query-planning }}
+        env:
+          DASK_DATAFRAME_QUERY_PLANNING: ${{ matrix.query-planning }}
         run: |
           python -c "import dask_sql; print('ok')"
 
