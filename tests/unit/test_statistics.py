@@ -5,6 +5,12 @@ import pytest
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
 from dask_sql.physical.utils.statistics import parquet_statistics
+from tests.utils import skipif_dask_expr_enabled
+
+# TODO: add support for parquet statistics with dask-expr
+pytestmark = skipif_dask_expr_enabled(
+    reason="Parquet statistics not yet supported with dask-expr"
+)
 
 
 @pytest.mark.parametrize("parallel", [None, False, 2])

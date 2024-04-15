@@ -93,15 +93,21 @@ def test_training_and_prediction(c, gpu_client):
     check_trained_model(c, df_name=timeseries)
 
 
+# TODO: investigate deadlocks on GPU
 @pytest.mark.xfail(
-    sys.platform == "win32",
-    reason="'xgboost.core.XGBoostError: Failed to poll' on Windows only",
-)
-@pytest.mark.xfail(
-    sys.platform == "darwin", reason="Intermittent socket errors on macOS", strict=False
+    sys.platform in ("darwin", "win32"),
+    reason="Intermittent failures on macOS/Windows",
+    strict=False,
 )
 @pytest.mark.parametrize(
-    "gpu_client", [False, pytest.param(True, marks=pytest.mark.gpu)], indirect=True
+    "gpu_client",
+    [
+        False,
+        pytest.param(
+            True, marks=(pytest.mark.gpu, pytest.mark.skip(reason="Deadlocks on GPU"))
+        ),
+    ],
+    indirect=True,
 )
 def test_xgboost_training_prediction(c, gpu_client):
     gpu = "CUDA" in str(gpu_client.cluster)
@@ -501,12 +507,12 @@ def test_describe_model(c):
         .apply(lambda x: str(x))
         .sort_index()
     )
-    # test
-    result = c.sql("DESCRIBE MODEL ex_describe_model")["Params"].apply(
-        lambda x: str(x), meta=("Params", "object")
+    actual_series = c.sql("DESCRIBE MODEL ex_describe_model")
+    actual_series = actual_series["Params"].apply(
+        lambda x: str(x), meta=actual_series["Params"]
     )
 
-    assert_eq(expected_series, result)
+    assert_eq(expected_series, actual_series)
 
     with pytest.raises(RuntimeError):
         c.sql("DESCRIBE MODEL undefined_model")

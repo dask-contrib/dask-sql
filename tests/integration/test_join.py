@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -6,7 +8,7 @@ from dask.utils_test import hlg_layer
 
 from dask_sql import Context
 from dask_sql.datacontainer import Statistics
-from tests.utils import assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
 
 
 def test_join(c):
@@ -425,6 +427,9 @@ def test_intersect_multi_col(c):
     assert_eq(return_df, expected_df, check_index=False)
 
 
+# TODO: remove this marker once fix for dask-expr#1018 is released
+# see: https://github.com/dask/dask-expr/issues/1018
+@skipif_dask_expr_enabled("Waiting for fix to dask-expr#1018")
 def test_join_alias_w_projection(c, parquet_ddf):
     result_df = c.sql(
         "SELECT t2.c as c_y from parquet_ddf t1, parquet_ddf t2 WHERE t1.a=t2.a and t1.c='A'"
@@ -523,6 +528,30 @@ def test_join_reorder(c):
     assert_eq(result_df, expected_df, check_index=False)
 
 
+def check_broadcast_join(df, val, raises=False):
+    """
+    Check that the broadcast join is correctly set in the Dask layer or expression graph
+
+    Parameters
+    ----------
+    df : DataFrame
+        The DataFrame to check
+    val : bool or float
+        The expected value of the broadcast join
+    raises : bool, optional
+        Whether the legacy Dask check should raise an error if the broadcast join is not set
+    """
+    if dd._dask_expr_enabled():
+        from dask_expr._merge import Merge
+
+        merge_ops = [op for op in df.expr.find_operations(Merge)]
+        assert len(merge_ops) == 1
+        assert merge_ops[0].broadcast == val
+    else:
+        with pytest.raises(KeyError) if raises else nullcontext():
+            assert hlg_layer(df.dask, "bcast-join")
+
+
 @pytest.mark.parametrize("gpu", [False, pytest.param(True, marks=pytest.mark.gpu)])
 def test_broadcast_join(c, client, gpu):
     df1 = dd.from_pandas(
@@ -545,7 +574,7 @@ def test_broadcast_join(c, client, gpu):
     expected_df = df1.merge(df2, on="user_id", how="inner")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": True})
-    assert hlg_layer(res_df.dask, "bcast-join")
+    check_broadcast_join(res_df, True)
     assert_eq(
         res_df,
         expected_df,
@@ -555,7 +584,7 @@ def test_broadcast_join(c, client, gpu):
     )
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": 1.0})
-    assert hlg_layer(res_df.dask, "bcast-join")
+    check_broadcast_join(res_df, 1.0)
     assert_eq(
         res_df,
         expected_df,
@@ -565,18 +594,15 @@ def test_broadcast_join(c, client, gpu):
     )
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": 0.5})
-    with pytest.raises(KeyError):
-        hlg_layer(res_df.dask, "bcast-join")
+    check_broadcast_join(res_df, 0.5, raises=True)
     assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": False})
-    with pytest.raises(KeyError):
-        hlg_layer(res_df.dask, "bcast-join")
+    check_broadcast_join(res_df, False, raises=True)
     assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
 
     res_df = c.sql(query_string, config_options={"sql.join.broadcast": None})
-    with pytest.raises(KeyError):
-        hlg_layer(res_df.dask, "bcast-join")
+    check_broadcast_join(res_df, None, raises=True)
     assert_eq(res_df, expected_df, check_index=False, scheduler="distributed")
 
 

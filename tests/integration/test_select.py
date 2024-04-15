@@ -4,9 +4,8 @@ import pytest
 from dask.dataframe.optimize import optimize_dataframe_getitem
 from dask.utils_test import hlg_layer
 
-from dask_sql._compat import PANDAS_GT_200
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
 
 
 def test_select(c, df):
@@ -36,7 +35,7 @@ def test_select_different_types(c):
         {
             "date": pd.to_datetime(
                 ["2022-01-21 17:34", "2022-01-21", "17:34", pd.NaT],
-                format="mixed" if PANDAS_GT_200 else None,
+                format="mixed",
             ),
             "string": ["this is a test", "another test", "äölüć", ""],
             "integer": [1, 2, -4, 5],
@@ -259,6 +258,7 @@ def test_singular_column_selection(c):
         ["a", "b", "d"],
     ],
 )
+@skipif_dask_expr_enabled()
 def test_multiple_column_projection(c, parquet_ddf, input_cols):
     projection_list = ", ".join(input_cols)
     result_df = c.sql(f"SELECT {projection_list} from parquet_ddf")

@@ -38,7 +38,8 @@ def filter_or_scalar(
     # In SQL, a NULL in a boolean is False on filtering
     filter_condition = filter_condition.fillna(False)
     out = df[filter_condition]
-    if dask_config.get("sql.predicate_pushdown"):
+    # dask-expr should implicitly handle predicate pushdown
+    if dask_config.get("sql.predicate_pushdown") and not dd._dask_expr_enabled():
         return attempt_predicate_pushdown(out, add_filters=add_filters)
     else:
         return out

@@ -3,7 +3,8 @@ channels:
 - conda-forge
 dependencies:
 - c-compiler
-- dask==2024.1.1
+- dask>=2024.4.1
+- dask-expr>=1.0.11
 - fastapi>=0.92.0
 - fugue>=0.7.3
 - httpx>=0.24.1
@@ -14,7 +15,7 @@ dependencies:
 - mlflow>=2.9
 - mock
 - numpy>=1.22.4
-- pandas>=1.4.0
+- pandas>=2
 - pre-commit
 - prompt_toolkit>=3.0.8
 - psycopg2

@@ -58,6 +58,7 @@ class DaskLimitPlugin(BaseRelPlugin):
             # check if the first partition contains our desired window
             if (
                 dask_config.get("sql.limit.check-first-partition")
+                and not dd._dask_expr_enabled()
                 and all(
                     [
                         isinstance(
@@ -78,6 +79,10 @@ class DaskLimitPlugin(BaseRelPlugin):
 
         def limit_partition_func(df, partition_borders, partition_info=None):
             """Limit the partition to values contained within the specified window, returning an empty dataframe if there are none"""
+
+            # with dask-expr we may need to explicitly compute here
+            if hasattr(partition_borders, "compute"):
+                partition_borders = partition_borders.compute()
 
             # TODO: remove the `cumsum` call here when dask#9067 is resolved
             partition_borders = partition_borders.cumsum().to_dict()
