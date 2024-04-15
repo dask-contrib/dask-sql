@@ -11,25 +11,38 @@ defaults:
 
 jobs:
   test-dev:
-    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }})"
+    name: "Test upstream dev (${{ matrix.os }}, python: ${{ matrix.python }}, distributed: ${{ matrix.distributed }}, query-planning: ${{ matrix.query-planning }})"
     runs-on: ${{ matrix.os }}
     env:
       CONDA_FILE: continuous_integration/environment-${{ matrix.python }}.yaml
       DASK_SQL_DISTRIBUTED_TESTS: ${{ matrix.distributed }}
+      DASK_DATAFRAME__QUERY_PLANNING: ${{ matrix.query-planning }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.9", "3.10", "3.11", "3.12"]
         distributed: [false]
+        query-planning: [true]
         include:
           # run tests on a distributed client
           - os: "ubuntu-latest"
             python: "3.9"
             distributed: true
+            query-planning: true
           - os: "ubuntu-latest"
             python: "3.11"
             distributed: true
+            query-planning: true
+          # run tests with query planning disabled
+          - os: "ubuntu-latest"
+            python: "3.9"
+            distributed: false
+            query-planning: false
+          - os: "ubuntu-latest"
+            python: "3.11"
+            distributed: false
+            query-planning: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,8 +85,12 @@ jobs:
           path: test-${{ matrix.os }}-py${{ matrix.python }}-results.jsonl
 
   import-dev:
-    name: "Test importing with bare requirements and upstream dev"
+    name: "Test importing with bare requirements and upstream dev (query-planning: ${{ matrix.query-planning }})"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        query-planning: [true, false]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -93,8 +110,11 @@ jobs:
       - name: Install upstream dev Dask
         run: |
           python -m pip install git+https://github.com/dask/dask
+          python -m pip install git+https://github.com/dask/dask-expr
           python -m pip install git+https://github.com/dask/distributed
       - name: Try to import dask-sql
+        env:
+          DASK_DATAFRAME_QUERY_PLANNING: ${{ matrix.query-planning }}
         run: |
           python -c "import dask_sql; print('ok')"
 

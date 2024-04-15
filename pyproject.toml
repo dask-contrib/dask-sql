@@ -27,8 +27,8 @@ classifiers = [
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "dask[dataframe]==2024.1.1",
-    "distributed==2024.1.1",
+    "dask[dataframe]>=2024.4.1",
+    "distributed>=2024.4.1",
     "pandas>=1.4.0",
     "fastapi>=0.92.0",
     "httpx>=0.24.1",
@@ -102,5 +102,6 @@ filterwarnings = [
     "ignore:Need to do a cross-join:ResourceWarning:dask_sql[.*]",
     "ignore:Dask doesn't support Dask frames:ResourceWarning:dask_sql[.*]",
     "ignore:Running on a single-machine scheduler:UserWarning:dask[.*]",
+    "ignore:Merging dataframes with merge column data type mismatches:UserWarning:dask[.*]",
 ]
 xfail_strict = true

@@ -207,7 +207,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 estimator=self._postfit_estimator,
                 meta=output_meta,
             )
-        elif isinstance(X, dd._Frame):
+        elif isinstance(X, dd.DataFrame):
             if output_meta is None:
                 output_meta = _transform(X._meta_nonempty, self._postfit_estimator)
             try:
@@ -305,7 +305,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
             )
             return result
 
-        elif isinstance(X, dd._Frame):
+        elif isinstance(X, dd.DataFrame):
             if output_meta is None:
                 # dask-dataframe relies on dd.core.no_default
                 # for infering meta
@@ -364,7 +364,7 @@ class ParallelPostFit(sklearn.base.BaseEstimator, sklearn.base.MetaEstimatorMixi
                 meta=output_meta,
                 chunks=(X.chunks[0], len(self._postfit_estimator.classes_)),
             )
-        elif isinstance(X, dd._Frame):
+        elif isinstance(X, dd.DataFrame):
             if output_meta is None:
                 # dask-dataframe relies on dd.core.no_default
                 # for infering meta
