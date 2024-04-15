@@ -16,7 +16,7 @@ RUN mamba install -y \
     # build requirements
     "maturin>=1.3,<1.4" \
     # core dependencies
-    "dask>=2024.2.1" \
+    "dask>=2024.3.1" \
     "pandas>=1.4.0" \
     "fastapi>=0.92.0" \
     "httpx>=0.24.1" \

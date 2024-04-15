@@ -1,5 +1,5 @@
 python>=3.9
-dask>=2024.2.1
+dask>=2024.3.1
 pandas>=1.4.0
 jpype1>=1.0.2
 openjdk>=8
