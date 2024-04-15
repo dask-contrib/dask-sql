@@ -120,14 +120,7 @@ def datetime_table():
 
 @pytest.fixture()
 def timeseries():
-    df = dd_timeseries(freq="1d").reset_index(drop=True)
-
-    # TODO: remove this roundtrip once fix for dask-expr#1013 is released
-    # see: https://github.com/dask/dask-expr/issues/1013
-    if dd._dask_expr_enabled():
-        df = dd.from_pandas(df.compute())
-
-    return df
+    return dd_timeseries(freq="1d").reset_index(drop=True)
 
 
 @pytest.fixture()
