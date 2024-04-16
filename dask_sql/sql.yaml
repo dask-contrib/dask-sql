@@ -1,9 +1,3 @@
-# TODO: get pyarrow strings and p2p shuffle working
-dataframe:
-  convert-string: False
-  shuffle:
-    method: "tasks"
-
 sql:
   aggregate:
     split_out: 1
