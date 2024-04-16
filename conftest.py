@@ -12,6 +12,9 @@ def pytest_addoption(parser):
 
 
 def pytest_runtest_setup(item):
+    # TODO: get pyarrow strings and p2p shuffle working
+    dask.config.set({"dataframe.convert-string": False})
+    dask.config.set({"dataframe.shuffle.method": "tasks"})
     if "gpu" in item.keywords:
         if not item.config.getoption("--rungpu"):
             pytest.skip("need --rungpu option to run")
