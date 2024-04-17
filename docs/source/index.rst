@@ -52,7 +52,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
          result.compute()
 
          # ...or use it for another computation
-         result.sum.mean().compute()
+         result["sum"].mean().compute()
 
    .. group-tab:: GPU
 
@@ -82,7 +82,7 @@ For this example, we use some data loaded from disk and query it with a SQL comm
          result.compute()
 
          # ...or use it for another computation
-         result.sum.mean().compute()
+         result["sum"].mean().compute()
 
 
 .. toctree::
