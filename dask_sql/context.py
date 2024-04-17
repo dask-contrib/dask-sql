@@ -262,15 +262,23 @@ class Context:
             self.schema[schema_name].filepaths[table_name.lower()] = input_table
         elif hasattr(input_table, "dask") and dd.utils.is_dataframe_like(input_table):
             try:
-                dask_filepath = hlg_layer(
-                    input_table.dask, "read-parquet"
-                ).creation_info["args"][0]
+                if dd._dask_expr_enabled():
+                    from dask_expr.io.parquet import ReadParquet
+
+                    dask_filepath = None
+                    operations = input_table.find_operations(ReadParquet)
+                    for op in operations:
+                        dask_filepath = op._args[0]
+                else:
+                    dask_filepath = hlg_layer(
+                        input_table.dask, "read-parquet"
+                    ).creation_info["args"][0]
                 dc.filepath = dask_filepath
                 self.schema[schema_name].filepaths[table_name.lower()] = dask_filepath
             except KeyError:
                 logger.debug("Expected 'read-parquet' layer")
 
-        if parquet_statistics and not statistics:
+        if parquet_statistics and not dd._dask_expr_enabled() and not statistics:
             statistics = parquet_statistics(dc.df)
             if statistics:
                 row_count = 0

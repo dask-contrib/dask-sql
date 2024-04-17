@@ -5,7 +5,7 @@ import pytest
 from dask.utils_test import hlg_layer
 from packaging.version import parse as parseVersion
 
-from tests.utils import assert_eq
+from tests.utils import assert_eq, skipif_dask_expr_enabled
 
 DASK_GT_2022_4_2 = parseVersion(dask.__version__) >= parseVersion("2022.4.2")
 
@@ -208,6 +208,7 @@ def test_filter_year(c):
         ),
     ],
 )
+@skipif_dask_expr_enabled()
 def test_predicate_pushdown(c, parquet_ddf, query, df_func, filters):
 
     # Check for predicate pushdown.
@@ -312,6 +313,7 @@ def test_filter_decimal(c, gpu):
     c.drop_table("df")
 
 
+@skipif_dask_expr_enabled()
 def test_predicate_pushdown_isna(tmpdir):
     from dask_sql.context import Context
 

@@ -23,6 +23,9 @@ cd "$WORKSPACE"
 # Determine CUDA release version
 export CUDA_REL=${CUDA_VERSION%.*}
 
+# TODO: remove once RAPIDS 24.06 has support for query planning
+export DASK_DATAFRAME__QUERY_PLANNING=false
+
 ################################################################################
 # SETUP - Check environment
 ################################################################################
@@ -61,4 +64,4 @@ conda config --show-sources
 conda list --show-channel-urls
 
 rapids-logger "Python py.test for dask-sql"
-py.test $WORKSPACE -n 4 -v -m gpu --runqueries --rungpu --junitxml="$WORKSPACE/junit-dask-sql.xml" --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term
+py.test $WORKSPACE -n $PARALLEL_LEVEL -v -m gpu --runqueries --rungpu --junitxml="$WORKSPACE/junit-dask-sql.xml" --cov-config="$WORKSPACE/.coveragerc" --cov=dask_sql --cov-report=xml:"$WORKSPACE/dask-sql-coverage.xml" --cov-report term

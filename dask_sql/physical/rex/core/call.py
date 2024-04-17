@@ -11,9 +11,6 @@ import dask.config as dask_config
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask.base import tokenize
-from dask.dataframe.core import Series
-from dask.highlevelgraph import HighLevelGraph
 from dask.utils import random_state_data
 
 from dask_sql._datafusion_lib import SqlTypeName
@@ -828,37 +825,28 @@ class BaseRandomOperation(Operation):
 
     def random_frame(self, seed: int, dc: DataContainer, **kwargs) -> dd.Series:
         """This function - in contrast to others in this module - will only ever be called on data frames"""
-
-        random_state = np.random.RandomState(seed=seed)
-
-        # Idea taken from dask.DataFrame.sample:
-        # initialize a random state for each of the partitions
-        # separately and then create a random series
-        # for each partition
         df = dc.df
-        name = "sample-" + tokenize(df, random_state)
+        state_data = random_state_data(df.npartitions, np.random.RandomState(seed=seed))
 
-        state_data = random_state_data(df.npartitions, random_state)
-        dsk = {
-            (name, i): (
-                self.random_function,
-                (df._name, i),
-                np.random.RandomState(state),
-                kwargs,
+        def random_partition_func(df, state_data, partition_info=None):
+            """Create a random number for each partition"""
+            partition_index = (
+                partition_info["number"] if partition_info is not None else 0
             )
-            for i, state in enumerate(state_data)
-        }
 
-        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[df])
-        random_series = Series(graph, name, ("random", "float64"), df.divisions)
+            state = np.random.RandomState(state_data[partition_index])
+            return self.random_function(df, state, kwargs)
+
+        random_series = df.map_partitions(
+            random_partition_func, state_data, meta=("random", "float64")
+        )
 
         # This part seems to be stupid, but helps us do a very simple
         # task without going into the (private) internals of Dask:
         # copy all meta information from the original input dataframe
         # This is important so that the returned series looks
         # exactly like coming from the input dataframe
-        return_df = df.assign(random=random_series)["random"]
-        return return_df
+        return df.assign(random=random_series)["random"]
 
 
 class RandOperation(BaseRandomOperation):
