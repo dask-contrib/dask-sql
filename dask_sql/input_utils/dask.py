@@ -23,11 +23,10 @@ class DaskInputPlugin(BaseInputPlugin):
     ):
         if gpu:  # pragma: no cover
             try:
-                import dask_cudf
+                import dask_cudf  # noqa: F841
             except ImportError:
                 raise ModuleNotFoundError(
                     "Setting `gpu=True` for table creation requires dask_cudf"
                 )
-            if not isinstance(input_item, dask_cudf.DataFrame):
-                input_item = dask_cudf.from_dask_dataframe(input_item, **kwargs)
+            return input_item.to_backend("cudf", **kwargs)
         return input_item
