@@ -83,6 +83,9 @@ jobs:
         with:
           workspaces: dask_planner
           shared-key: test
+      - name: Install x86_64-apple-darwin target
+        if: matrix.os == 'macos-latest'
+        run: rustup target add x86_64-apple-darwin
       - name: Build the Rust DataFusion bindings
         run: |
           maturin develop
