@@ -23,7 +23,7 @@ class DaskInputPlugin(BaseInputPlugin):
     ):
         if gpu:  # pragma: no cover
             try:
-                import dask_cudf  # noqa: F841
+                import dask_cudf  # noqa: F401
             except ImportError:
                 raise ModuleNotFoundError(
                     "Setting `gpu=True` for table creation requires dask_cudf"
