@@ -188,7 +188,7 @@ def gpu_datetime_table(datetime_table):
 
 @pytest.fixture()
 def gpu_timeseries(timeseries):
-    return dask_cudf.from_dask_dataframe(timeseries) if dask_cudf else None
+    return timeseries.to_backend("cudf") if dask_cudf else None
 
 
 @pytest.fixture()
