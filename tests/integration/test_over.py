@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from tests.utils import assert_eq, skipif_dask_expr_enabled
+from tests.utils import assert_eq
 
 
 def test_over_with_sorting(c, user_table_1):
@@ -77,7 +77,6 @@ def test_over_with_different(c, user_table_1):
 
 
 # TODO: investigate source of window count deadlocks
-@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_over_calls(c, user_table_1):
     return_df = c.sql(
         """
@@ -142,7 +141,6 @@ def test_over_single_value(c, user_table_1):
 
 
 # TODO: investigate source of window count deadlocks
-@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_over_with_windows(c):
     tmp_df = pd.DataFrame({"a": range(5)})
     c.create_table("tmp", tmp_df)

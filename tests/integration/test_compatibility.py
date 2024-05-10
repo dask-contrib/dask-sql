@@ -19,7 +19,7 @@ import pytest
 
 from dask_sql import Context
 from dask_sql.utils import ParsingException
-from tests.utils import assert_eq, convert_nullable_columns, skipif_dask_expr_enabled
+from tests.utils import assert_eq, convert_nullable_columns
 
 
 def eq_sqlite(sql, **dfs):
@@ -814,7 +814,6 @@ def test_window_min_max_partition_by():
 
 
 # TODO: investigate source of window count deadlocks
-@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_window_count():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
@@ -866,7 +865,6 @@ def test_window_count():
 
 
 # TODO: investigate source of window count deadlocks
-@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_window_count_partition_by():
     for func in ["COUNT"]:
         a = make_rand_df(100, a=float, b=(int, 50), c=(str, 50))
