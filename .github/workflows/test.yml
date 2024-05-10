@@ -89,6 +89,9 @@ jobs:
       - name: Build the Rust DataFusion bindings
         run: |
           maturin develop
+      - name: Source install dask-expr with #1059
+        if: matrix.query-planning == 'true'
+        run: pip install --no-deps git+https://github.com/rjzamora/dask-match.git@cache-lower_once
       - name: Install hive testing dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
