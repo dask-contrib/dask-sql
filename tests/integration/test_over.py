@@ -101,10 +101,10 @@ def test_over_calls(c, user_table_1):
         {
             "user_id": user_table_1.user_id,
             "b": user_table_1.b,
-            # "O1": [2, 1, 1, 1],
-            # "O2": [19, 7, 19, 27],
+            "O1": [2, 1, 1, 1],
+            "O2": [19, 7, 19, 27],
             # "O3": [19, 7, 19, 27], https://github.com/dask-contrib/dask-sql/issues/651
-            # "O4": [17, 7, 17, 27],
+            "O4": [17, 7, 17, 27],
             "O5": [4, 1, 2, 3],
             "O6": [2, 1, 2, 3],
             "O7": [2, 1, 1, 1],
