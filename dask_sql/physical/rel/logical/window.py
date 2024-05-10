@@ -226,15 +226,27 @@ class DaskWindowPlugin(BaseRelPlugin):
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
         (dc,) = self.assert_inputs(rel, 1, context)
+        df = dc.df
 
         # Output to the right field names right away
         field_names = rel.getRowType().getFieldNames()
 
+        # Extract the operations here to avoid overly complex graph structure
+        operations_dict = dict()
         for window in rel.window().getGroups():
-            dc = self._apply_window(rel, window, dc, field_names, context)
+            operations, df = self._extract_operations(rel, window, df, dc, context)
+            operations_dict[window.toString()] = operations
+
+        for window in rel.window().getGroups():
+            dc = self._apply_window(
+                rel, window, dc, df, field_names, context, operations_dict
+            )
 
         # Finally, fix the output schema if needed
         df = dc.df
+
+        breakpoint()
+
         cc = dc.column_container
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
@@ -247,12 +259,13 @@ class DaskWindowPlugin(BaseRelPlugin):
         rel,
         window,
         dc: DataContainer,
+        df: dd.DataFrame,
         field_names: list[str],
         context: "dask_sql.Context",
+        operations_dict: dict[str, list[tuple[Callable, str, list[str]]]],
     ):
         temporary_columns = []
 
-        df = dc.df
         cc = dc.column_container
 
         # Now extract the groupby and order information
@@ -270,7 +283,7 @@ class DaskWindowPlugin(BaseRelPlugin):
             f"Before applying the function, partitioning according to {group_columns}."
         )
 
-        operations, df = self._extract_operations(rel, window, df, dc, context)
+        operations = operations_dict[window.toString()]
         for _, _, cols in operations:
             temporary_columns += cols
 
@@ -343,7 +356,7 @@ class DaskWindowPlugin(BaseRelPlugin):
             cc = cc.add(field_name, c)
         dc = DataContainer(df, cc)
         logger.debug(
-            f"Removed unneeded columns and registered new ones: {LoggableDataFrame(dc)}."
+            f"Removed unneeded columns and registered new ones: {LoggableDataFrame(df)}."
         )
         return dc
 
