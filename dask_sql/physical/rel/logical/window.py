@@ -241,12 +241,10 @@ class DaskWindowPlugin(BaseRelPlugin):
             dc = self._apply_window(
                 rel, window, dc, df, field_names, context, operations_dict
             )
+            df = dc.df
 
         # Finally, fix the output schema if needed
         df = dc.df
-
-        breakpoint()
-
         cc = dc.column_container
         cc = self.fix_column_to_row_type(cc, rel.getRowType())
         dc = DataContainer(df, cc)
@@ -265,6 +263,7 @@ class DaskWindowPlugin(BaseRelPlugin):
         operations_dict: dict[str, list[tuple[Callable, str, list[str]]]],
     ):
         temporary_columns = []
+        newly_created_columns = []
 
         cc = dc.column_container
 
@@ -284,10 +283,9 @@ class DaskWindowPlugin(BaseRelPlugin):
         )
 
         operations = operations_dict[window.toString()]
-        for _, _, cols in operations:
-            temporary_columns += cols
-
-        newly_created_columns = [new_column for _, new_column, _ in operations]
+        for _, result_col, operand_cols in operations:
+            temporary_columns += operand_cols
+            newly_created_columns.append(result_col)
 
         logger.debug(f"Will create {newly_created_columns} new columns")
 

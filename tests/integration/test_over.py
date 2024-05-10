@@ -77,7 +77,7 @@ def test_over_with_different(c, user_table_1):
 
 
 # TODO: investigate source of window count deadlocks
-# @skipif_dask_expr_enabled("Deadlocks with query planning enabled")
+@skipif_dask_expr_enabled("Deadlocks with query planning enabled")
 def test_over_calls(c, user_table_1):
     return_df = c.sql(
         """
