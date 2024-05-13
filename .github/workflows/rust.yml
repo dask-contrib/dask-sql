@@ -41,6 +41,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: 1.72
+            default: true
       - name: Cache Cargo
         uses: actions/cache@v3
         with:
@@ -69,6 +70,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: 1.72
+            default: true
       - name: Cache Cargo
         uses: actions/cache@v3
         with:
