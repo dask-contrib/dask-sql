@@ -3,7 +3,6 @@ channels:
 - conda-forge
 dependencies:
 - c-compiler
-- sysroot_linux-64=2.17
 - dask=2024.4.1
 - dask-expr=1.0.11
 - fastapi=0.92.0
