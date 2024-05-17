@@ -8,6 +8,11 @@ concurrency:
   group: style-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   pre-commit:
     name: Run pre-commit hooks
@@ -23,8 +28,6 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         run: |
-          rustup self uninstall -y
-
           mamba install -c conda-forge rust=1.77
 
           which python
