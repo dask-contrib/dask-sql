@@ -23,6 +23,8 @@ jobs:
           channel-priority: strict
       - name: Install dependencies
         run: |
+          rustup self uninstall -y
+
           mamba install -c conda-forge rust=1.77
 
           which python
