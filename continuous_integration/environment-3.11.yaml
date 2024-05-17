@@ -28,7 +28,7 @@ dependencies:
 - pytest
 - python=3.11
 - py-xgboost>=2.0.3
-- rust=1.72
+- rust=1.77
 - scikit-learn>=1.0.0
 - sphinx
 - sqlalchemy
