@@ -8,31 +8,15 @@ concurrency:
   group: style-${{ github.head_ref }}
   cancel-in-progress: true
 
-# Required shell entrypoint to have properly activated conda environments
-defaults:
-  run:
-    shell: bash -l {0}
-
 jobs:
   pre-commit:
     name: Run pre-commit hooks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.3.0
+      - uses: actions/setup-python@v4
+      - uses: actions-rs/toolchain@v1
         with:
-          miniforge-variant: Mambaforge
-          use-mamba: true
-          python-version: "3.9"
-          channel-priority: strict
-      - name: Ensure we use conda rust toolchain
-        run: |
-          rustup self uninstall -y
-
-          mamba install -c conda-forge rust=1.77
-
-          which python
-          pip list
-          mamba list
+            toolchain: 1.77
+            default: true
       - uses: pre-commit/action@v3.0.0
