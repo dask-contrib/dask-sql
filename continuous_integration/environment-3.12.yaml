@@ -29,9 +29,11 @@ dependencies:
 - pytest
 - python=3.12
 - py-xgboost>=2.0.3
+- rust=1.77
 - scikit-learn>=1.0.0
 - sphinx
 - sqlalchemy
+- sysroot_linux-64>=2.17
 # TODO: add once tpot supports python 3.12
 # - tpot>=0.12.0
 # FIXME: https://github.com/fugue-project/fugue/issues/526
