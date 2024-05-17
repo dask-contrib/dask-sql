@@ -26,8 +26,10 @@ jobs:
           use-mamba: true
           python-version: "3.9"
           channel-priority: strict
-      - name: Install dependencies
+      - name: Ensure we use conda rust toolchain
         run: |
+          rustup self uninstall -y
+
           mamba install -c conda-forge rust=1.77
 
           which python
