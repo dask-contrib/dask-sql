@@ -68,6 +68,10 @@ jobs:
             query-planning: false
     steps:
       - uses: actions/checkout@v4
+      - name: Don't install sysroot on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          sed -i '/^.*- sysroot_linux-64/s/^/#/' ${{ env.CONDA_FILE }}
       - name: Set up Python
         uses: conda-incubator/setup-miniconda@v2.3.0
         with:
