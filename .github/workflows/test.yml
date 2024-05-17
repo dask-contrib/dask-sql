@@ -78,10 +78,6 @@ jobs:
           activate-environment: dask-sql
           environment-file: ${{ env.CONDA_FILE }}
           run-post: ${{ matrix.os != 'windows-latest' && 'true' || 'false' }}
-      - uses: actions-rs/toolchain@v1
-        with:
-            toolchain: 1.72
-            default: true
       - name: Install x86_64-apple-darwin target
         if: matrix.os == 'macos-latest'
         run: rustup target add x86_64-apple-darwin
@@ -127,10 +123,6 @@ jobs:
           use-mamba: true
           python-version: "3.9"
           channel-priority: strict
-      - uses: actions-rs/toolchain@v1
-        with:
-            toolchain: 1.72
-            default: true
       - name: Install dependencies and nothing else
         run: |
           pip install -e . -vv
