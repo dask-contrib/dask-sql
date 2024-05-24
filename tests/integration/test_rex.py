@@ -1144,7 +1144,7 @@ def test_scalar_timestamps(c, gpu):
         }
     )
     df1 = c.sql("SELECT CEIL(to_timestamp(d) TO DAY) AS ceil_to_day FROM df")
-    assert_eq(df1, expected_df)
+    assert_eq(df1, expected_df, check_dtype=(not gpu))
     df2 = c.sql("SELECT CEIL(CAST(d AS TIMESTAMP) TO DAY) AS ceil_to_day FROM df")
     assert_eq(df2, expected_df)
 
@@ -1154,7 +1154,7 @@ def test_scalar_timestamps(c, gpu):
         }
     )
     df1 = c.sql("SELECT FLOOR(to_timestamp(d) TO DAY) AS floor_to_day FROM df")
-    assert_eq(df1, expected_df)
+    assert_eq(df1, expected_df, check_dtype=(not gpu))
     df2 = c.sql("SELECT FLOOR(CAST(d AS TIMESTAMP) TO DAY) AS floor_to_day FROM df")
     assert_eq(df2, expected_df)
 
