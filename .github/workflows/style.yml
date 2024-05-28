@@ -17,6 +17,11 @@ jobs:
       - uses: actions/setup-python@v4
       - uses: actions-rs/toolchain@v1
         with:
+            toolchain: 1.72
+            components: clippy
+            default: true
+      - uses: actions-rs/toolchain@v1
+        with:
             toolchain: nightly
             components: rustfmt
       - uses: pre-commit/action@v3.0.0
