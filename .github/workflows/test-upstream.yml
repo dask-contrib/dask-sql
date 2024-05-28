@@ -152,7 +152,7 @@ jobs:
               touch results.jsonl
           fi
       - name: Open or update issue on failure
-        uses: xarray-contrib/issue-from-pytest-log@v1.2.6
+        uses: xarray-contrib/issue-from-pytest-log@v1.2.8
         with:
           log-path: results.jsonl
           issue-title: ⚠️ Upstream CI failed ⚠️
