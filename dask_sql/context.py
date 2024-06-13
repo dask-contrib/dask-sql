@@ -729,6 +729,22 @@ class Context:
 
         self.sql_server = None
 
+    def sqlalchemy_connection(self):
+        """
+        Yield a sqlalchemy connection to this context.
+        """
+        try:
+            from sqlalchemy import create_engine
+        except ImportError:  # pragma: no cover
+            raise ImportError(
+                "`sqlalchemy` must be installed to create a sqlalchemy connection"
+            )
+
+        conn = create_engine("dasksql:///:memory:").connect()
+        conn._dbapi_connection.dbapi_connection._context = self
+
+        return conn
+
     def fqn(self, tbl: "DaskTable") -> tuple[str, str]:
         """
         Return the fully qualified name of an object, maybe including the schema name.
