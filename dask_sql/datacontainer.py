@@ -220,15 +220,27 @@ class DataContainer:
         a dataframe which has the the columns specified in the
         stored ColumnContainer.
         """
-        df = self.df[
-            [
-                self.column_container._frontend_backend_mapping[out_col]
-                for out_col in self.column_container.columns
-            ]
-        ]
-        df.columns = self.column_container.columns
+        # df = self.df[
+        #     [
+        #         self.column_container._frontend_backend_mapping[out_col]
+        #         for out_col in self.column_container.columns
+        #     ]
+        # ]
+        # df.columns = self.column_container.columns
 
-        return df
+        return self.df.assign(
+            **dict(
+                zip(
+                    self.column_container.columns,
+                    [
+                        self.df[
+                            self.column_container._frontend_backend_mapping[out_col]
+                        ]
+                        for out_col in self.column_container.columns
+                    ],
+                )
+            )
+        )[self.column_container.columns]
 
 
 class UDF:
