@@ -184,10 +184,22 @@ def map_on_each_group(
     # Calculate the results
     new_columns = {}
     for f, new_column_name, temporary_operand_columns in operations:
-        if f is None:
+        if f == "row_number":
             # This is the row_number operator.
             # We do not need to do any windowing
             column_result = range(1, len(partitioned_group) + 1)
+        elif f == "rank":
+            column_result = partitioned_group.rank(method="min", na_option="top").iloc[
+                :, 0
+            ]
+        elif f == "dense_rank":
+            column_result = partitioned_group.rank(
+                method="dense", na_option="top"
+            ).iloc[:, 0]
+        elif f == "percent_rank":
+            column_result = partitioned_group.rank(
+                method="min", na_option="top", pct=True
+            ).iloc[:, 0]
         else:
             column_result = f(windowed_group, *temporary_operand_columns)
 
@@ -212,7 +224,6 @@ class DaskWindowPlugin(BaseRelPlugin):
     class_name = "Window"
 
     OPERATION_MAPPING = {
-        "row_number": None,  # That is the easiest one: we do not even need to have any windowing. We therefore threat it separately
         "$sum0": SumOperation(),
         "sum": SumOperation(),
         "count": CountOperation(),
@@ -222,6 +233,11 @@ class DaskWindowPlugin(BaseRelPlugin):
         "first_value": FirstValueOperation(),
         "last_value": LastValueOperation(),
         "avg": AvgOperation(),
+        # operations that don't require windowing
+        "row_number": "row_number",
+        "rank": "rank",
+        "dense_rank": "dense_rank",
+        "percent_rank": "percent_rank",
     }
 
     def convert(self, rel: "LogicalPlan", context: "dask_sql.Context") -> DataContainer:
