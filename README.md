@@ -1,3 +1,6 @@
+**Dask-SQL is currently not in active maintenance, see [#1344](https://github.com/dask-contrib/dask-sql/issues/1344) for more information**
+
+
 [![Conda](https://img.shields.io/conda/v/conda-forge/dask-sql)](https://anaconda.org/conda-forge/dask-sql)
 [![PyPI](https://img.shields.io/pypi/v/dask-sql?logo=pypi)](https://pypi.python.org/pypi/dask-sql/)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dask-contrib/dask-sql/test.yml?branch=main)](https://github.com/dask-contrib/dask-sql/actions/workflows/test.yml?query=branch%3Amain)
