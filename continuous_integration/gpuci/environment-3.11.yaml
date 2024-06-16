@@ -43,11 +43,11 @@ dependencies:
 - uvicorn>=0.14
 # GPU-specific requirements
 - cudatoolkit=11.8
-- cudf=24.06
-- cuml=24.06
-- dask-cudf=24.06
-- dask-cuda=24.06
+- cudf=24.08
+- cuml=24.08
+- dask-cudf=24.08
+- dask-cuda=24.08
 - ucx-proc=*=gpu
-- ucx-py=0.38
+- ucx-py=0.39
 - xgboost=*=rapidsai_py*
 - libxgboost=*=rapidsai_h*
