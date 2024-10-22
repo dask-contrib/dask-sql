@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.3.0
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
@@ -121,7 +121,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: conda-incubator/setup-miniconda@v2.3.0
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           miniforge-variant: Mambaforge
           use-mamba: true
